@@ -116,6 +116,10 @@ func (f fakeCluster) Peers() []peer.Peer {
 	return nil
 }
 
+func (f fakeCluster) Ready() bool {
+	return true
+}
+
 type fakeLeadership struct {
 	leader    bool
 	changed   bool
@@ -227,7 +231,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		require.NoError(t, c.Update(newArgs))
@@ -254,7 +258,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 		c := newComponentForTesting(t, reg, logger)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		require.NoError(t, c.Update(newArgs))
@@ -281,7 +285,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		c.NotifyClusterChange()
@@ -306,7 +310,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		c.NotifyClusterChange()
@@ -332,7 +336,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		c.NotifyClusterChange()
@@ -357,7 +361,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			require.NoError(t, c.iteration(context.Background(), leader, state, health))
+			require.NoError(t, c.iteration(t.Context(), leader, state, health))
 		}()
 
 		c.NotifyClusterChange()
@@ -369,7 +373,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 }
 
 func TestIterationHandlesContextCanceled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	reg := prometheus.NewPedanticRegistry()
 	logger := log.NewNopLogger()
 
@@ -401,7 +405,7 @@ func TestIterationHandlesTick(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, c.iteration(context.Background(), leader, state, health))
+		require.NoError(t, c.iteration(t.Context(), leader, state, health))
 	}()
 
 	wg.Wait()

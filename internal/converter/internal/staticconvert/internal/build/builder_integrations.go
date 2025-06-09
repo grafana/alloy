@@ -76,7 +76,7 @@ func (b *ConfigBuilder) appendV1Integrations() {
 		}
 
 		if !scrapeIntegration {
-			b.diags.Add(diag.SeverityLevelError, fmt.Sprintf("The converter does not support handling integrations which are not being scraped: %s.", integration.Name()))
+			b.diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("The converter does not support handling integrations which are not being scraped: %s.", integration.Name()))
 			continue
 		}
 
@@ -185,7 +185,7 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 	}
 
 	if len(b.cfg.Integrations.ConfigV1.PrometheusRemoteWrite) == 0 {
-		b.diags.Add(diag.SeverityLevelError, "The converter does not support handling integrations which are not connected to a remote_write.")
+		b.diags.Add(diag.SeverityLevelCritical, "The converter does not support handling integrations which are not connected to a remote_write.")
 	}
 
 	jobNameToCompLabelsFunc := func(jobName string) string {

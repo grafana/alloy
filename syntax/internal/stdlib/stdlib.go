@@ -22,6 +22,7 @@ import (
 // identifiers that are considered "experimental".
 var ExperimentalIdentifiers = map[string]bool{
 	"array.combine_maps": true,
+	"array.group_by":     true,
 }
 
 // DeprecatedIdentifiers are deprecated in favour of the namespaced ones.
@@ -78,6 +79,7 @@ var encoding = map[string]interface{}{
 	"from_yaml":      yamlDecode,
 	"from_base64":    base64Decode,
 	"from_URLbase64": base64URLDecode,
+	"to_json":        jsonEncode,
 	"to_base64":      base64Encode,
 	"to_URLbase64":   base64URLEncode,
 }
@@ -95,9 +97,115 @@ var str = map[string]interface{}{
 	"trim_space":  strings.TrimSpace,
 }
 
+// groupBy takes an array of objects, a key to group by, and a boolean to determine
+// whether to drop objects missing the key. It returns an array of objects containing
+// the key value and grouped items.
+var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+	if len(args) != 3 {
+		return value.Null, fmt.Errorf("group_by: expected 3 arguments, got %d", len(args))
+	}
+
+	if args[0].Type() != value.TypeArray {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[0],
+			Index:    0,
+			Inner: value.TypeError{
+				Value:    args[0],
+				Expected: value.TypeArray,
+			},
+		}
+	}
+
+	if args[1].Type() != value.TypeString {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[1],
+			Index:    1,
+			Inner: value.TypeError{
+				Value:    args[1],
+				Expected: value.TypeString,
+			},
+		}
+	}
+
+	if args[2].Type() != value.TypeBool {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[2],
+			Index:    2,
+			Inner: value.TypeError{
+				Value:    args[2],
+				Expected: value.TypeBool,
+			},
+		}
+	}
+
+	key := args[1].Text()
+	dropMissing := args[2].Bool()
+
+	groups := make(map[string][]value.Value)
+	for i := 0; i < args[0].Len(); i++ {
+		item := args[0].Index(i)
+		if item.Type() != value.TypeObject {
+			obj, ok := item.TryConvertToObject()
+			if !ok {
+				return value.Null, value.ArgError{
+					Function: funcValue,
+					Argument: item,
+					Index:    i,
+					Inner: value.TypeError{
+						Value:    item,
+						Expected: value.TypeObject,
+					},
+				}
+			}
+			item = value.Object(obj)
+		}
+
+		val, hasKey := item.Key(key)
+		if !hasKey {
+			if dropMissing {
+				continue
+			}
+			// Add to empty value group if not dropping
+			groups[""] = append(groups[""], item)
+			continue
+		}
+
+		// Only accept string values for the key field
+		if val.Type() != value.TypeString {
+			return value.Null, value.ArgError{
+				Function: funcValue,
+				Argument: val,
+				Index:    i,
+				Inner: value.TypeError{
+					Value:    val,
+					Expected: value.TypeString,
+				},
+			}
+		}
+
+		valStr := val.Text()
+		groups[valStr] = append(groups[valStr], item)
+	}
+
+	result := make([]value.Value, 0, len(groups))
+	for val, items := range groups {
+		groupObj := map[string]value.Value{
+			key:     value.String(val),
+			"items": value.Array(items...),
+		}
+		result = append(result, value.Object(groupObj))
+	}
+
+	return value.Array(result...), nil
+})
+
 var array = map[string]interface{}{
 	"concat":       concat,
 	"combine_maps": combineMaps,
+	"group_by":     groupBy,
 }
 
 var convert = map[string]interface{}{
@@ -338,6 +446,18 @@ func base64URLEncode(in string) (string, error) {
 func base64Encode(in string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(in))
 	return encoded, nil
+}
+
+func jsonEncode(in interface{}) (string, error) {
+	v, ok := in.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("jsonEncode only supports map")
+	}
+	res, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(res), nil
 }
 
 func jsonPath(jsonString string, path string) ([]interface{}, error) {

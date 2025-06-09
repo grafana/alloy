@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
@@ -52,7 +51,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*alloy_runtime.Source, error)
+	ReloadFunc func() error
 
 	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
 	MemoryListenAddr string                // Address to accept in-memory traffic on.
@@ -63,7 +62,8 @@ type Options struct {
 
 // Arguments holds runtime settings for the HTTP service.
 type Arguments struct {
-	TLS *TLSArguments `alloy:"tls,block,optional"`
+	Auth *AuthArguments `alloy:"auth,block,optional"`
+	TLS  *TLSArguments  `alloy:"tls,block,optional"`
 }
 
 type Service struct {
@@ -83,6 +83,10 @@ type Service struct {
 
 	// Track the raw config for use with the support bundle
 	sources map[string]*ast.File
+
+	authenticatorMut sync.RWMutex
+	// authenticator is applied to every request made to http server
+	authenticator authenticator
 
 	// publicLis and tcpLis are used to lazily enable TLS, since TLS is
 	// optionally configurable at runtime.
@@ -137,6 +141,8 @@ func New(opts Options) *Service {
 		gatherer:     r,
 		opts:         opts,
 
+		authenticator: allowAuthenticator,
+
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
 		memLis:    memconn.NewListener(l),
@@ -188,6 +194,23 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		otelmux.WithTracerProvider(s.tracer),
 	))
 
+	// Apply authenticator middleware.
+	// If none is configured allowAuthenticator is used and no authentication is required.
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.authenticatorMut.RLock()
+			err := s.authenticator(w, r)
+			s.authenticatorMut.RUnlock()
+			if err != nil {
+				level.Info(s.log).Log("msg", "failed to authenticate request", "path", r.URL.Path, "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	})
+
 	// The implementation for "/-/healthy" is inspired by
 	// the "/components" web API endpoint in /internal/web/api/api.go
 	r.HandleFunc("/-/healthy", func(w http.ResponseWriter, r *http.Request) {
@@ -210,8 +233,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 	})
 
 	r.Handle(
@@ -244,8 +267,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
 			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
 
-			_, err := s.opts.ReloadFunc()
-			if err != nil {
+			if err := s.opts.ReloadFunc(); err != nil {
 				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -412,6 +434,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			return
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})
@@ -471,6 +494,14 @@ func (s *Service) Update(newConfig any) error {
 			return err
 		}
 	}
+
+	s.authenticatorMut.Lock()
+	if newArgs.Auth != nil {
+		s.authenticator = newArgs.Auth.authenticator()
+	} else {
+		s.authenticator = allowAuthenticator
+	}
+	s.authenticatorMut.Unlock()
 
 	return nil
 }

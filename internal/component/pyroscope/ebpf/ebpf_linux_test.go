@@ -3,6 +3,10 @@
 package ebpf
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"sync"
 	"testing"
 	"time"
 

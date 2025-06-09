@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -12,12 +13,17 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -61,10 +67,10 @@ type LoaderOptions struct {
 	// ComponentGlobals contains data to use when creating components.
 	ComponentGlobals ComponentGlobals
 
-	Services          []service.Service // Services to load into the DAG.
-	Host              service.Host      // Service host (when running services).
-	ComponentRegistry ComponentRegistry // Registry to search for components.
-	WorkerPool        worker.Pool       // Worker pool to use for async tasks.
+	Services          []service.Service  // Services to load into the DAG.
+	Host              service.Host       // Service host (when running services).
+	ComponentRegistry component.Registry // Registry to search for components.
+	WorkerPool        worker.Pool        // Worker pool to use for async tasks.
 }
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
@@ -80,7 +86,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	parent, id := splitPath(globals.ControllerID)
 
 	if reg == nil {
-		reg = NewDefaultComponentRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
+		reg = component.NewDefaultRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
 	}
 
 	l := &Loader{
@@ -594,6 +600,14 @@ func (l *Loader) populateComponentNodes(g *dag.Graph, componentBlocks []*ast.Blo
 func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 	var diags diag.Diagnostics
 
+	// Reset outgoing data flow edges for all component nodes.
+	for _, n := range g.Nodes() {
+		switch n := n.(type) {
+		case ComponentNode:
+			n.ResetDataFlowEdgeTo()
+		}
+	}
+
 	for _, n := range g.Nodes() {
 		switch n := n.(type) {
 		case *ServiceNode: // Service depending on other services.
@@ -633,6 +647,7 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 		l.cache.mut.RLock()
 		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetContext(), l.globals.MinStability)
 		l.cache.mut.RUnlock()
+		setDataFlowEdges(n, refs)
 		for _, ref := range refs {
 			g.AddEdge(dag.Edge{From: n, To: ref.Target})
 		}
@@ -951,7 +966,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType || componentName == templateType:
+		case componentName == declareType || componentName == foreach.TypeTemplate:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}
@@ -965,4 +980,51 @@ func splitPath(id string) (string, string) {
 	parent, id := path.Split(id)
 	parent, _ = strings.CutSuffix(parent, "/")
 	return "/" + parent, id
+}
+
+func setDataFlowEdges(n dag.Node, refs []Reference) {
+	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
+	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
+	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
+	if cn, ok := n.(ComponentNode); ok {
+		for _, ref := range refs {
+			if tn, ok := ref.Target.(ComponentNode); ok {
+				exports := tn.Exports()
+				if exports == nil {
+					continue
+				}
+
+				t := reflect.TypeOf(exports)
+
+				if t.Kind() != reflect.Struct {
+					continue
+				}
+
+				found := false
+				var field reflect.StructField
+				for i := 0; i < t.NumField(); i++ {
+					field = t.Field(i)
+
+					// Extracts the alloy arg tag value from the field.
+					tagValue := field.Tag.Get("alloy")
+					tagParts := strings.Split(tagValue, ",")
+					// After the component references search, the traversal string refers to the export field.
+					if len(tagParts) > 0 && tagParts[0] == ref.Traversal.String() {
+						found = true
+						break
+					}
+				}
+
+				// For most export types, the data flow edge has the opposite direction of the reference.
+				if found {
+					switch field.Type {
+					case otelConsumerType, appendableType, logsReceiverType:
+						cn.AddDataFlowEdgeTo(tn.NodeID())
+					default:
+						tn.AddDataFlowEdgeTo(cn.NodeID())
+					}
+				}
+			}
+		}
+	}
 }

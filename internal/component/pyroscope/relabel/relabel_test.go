@@ -187,7 +187,7 @@ func TestRelabeling(t *testing.T) {
 				Labels: tt.inputLabels,
 			}
 
-			err = c.AppendIngest(context.Background(), profile)
+			err = c.AppendIngest(t.Context(), profile)
 
 			profiles := app.Profiles()
 
@@ -228,12 +228,12 @@ func TestCache(t *testing.T) {
 
 	// Test basic cache functionality
 	labels := labels.FromStrings("env", "prod")
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels})
 	require.NoError(t, err)
 	require.Equal(t, 1, c.cache.Len(), "cache should have 1 entry")
 
 	// Test cache hit
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels})
 	require.NoError(t, err)
 	require.Equal(t, 1, c.cache.Len(), "cache length should not change after hit")
 }
@@ -260,9 +260,9 @@ func TestCacheCollisions(t *testing.T) {
 		"expected labelset fingerprints to collide")
 
 	// Add both colliding profiles
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: ls1})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: ls1})
 	require.NoError(t, err)
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: ls2})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: ls2})
 	require.NoError(t, err)
 
 	// Verify both are stored under same hash
@@ -294,13 +294,13 @@ func TestCacheLRU(t *testing.T) {
 	labels2 := labels.FromStrings("env", "dev")
 	labels3 := labels.FromStrings("env", "stage")
 
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels1})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels1})
 	require.NoError(t, err)
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels2})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels2})
 	require.NoError(t, err)
 
 	// Add one more to trigger eviction
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels3})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels3})
 	require.NoError(t, err)
 
 	// Verify size and that oldest entry was evicted
@@ -331,9 +331,9 @@ func TestCachePurge(t *testing.T) {
 	// Add some entries to cache
 	labels1 := labels.FromStrings("env", "prod")
 	labels2 := labels.FromStrings("env", "dev")
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels1})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels1})
 	require.NoError(t, err)
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: labels2})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: labels2})
 	require.NoError(t, err)
 	require.Equal(t, 2, c.cache.Len(), "cache should have 2 entries")
 
@@ -375,26 +375,26 @@ func TestMetricsWithRelabeling(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test empty labels (bypass relabeling)
-	err = c.Append(context.Background(), labels.EmptyLabels(), []*pyroscope.RawSample{})
+	err = c.Append(t.Context(), labels.EmptyLabels(), []*pyroscope.RawSample{})
 	require.NoError(t, err)
 
 	// Test profile that should be processed but not dropped
 	prodLabels := labels.FromStrings("env", "prod")
-	err = c.Append(context.Background(), prodLabels, []*pyroscope.RawSample{})
+	err = c.Append(t.Context(), prodLabels, []*pyroscope.RawSample{})
 	require.NoError(t, err)
 
 	// Test profile that should be dropped
 	devLabels := labels.FromStrings("env", "dev")
-	err = c.Append(context.Background(), devLabels, []*pyroscope.RawSample{})
+	err = c.Append(t.Context(), devLabels, []*pyroscope.RawSample{})
 	require.NoError(t, err)
 
 	// Send same profile again to test cache hit
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: prodLabels})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: prodLabels})
 	require.NoError(t, err)
 
 	// Send new profile to test cache miss
 	stageLabels := labels.FromStrings("env", "stage")
-	err = c.AppendIngest(context.Background(), &pyroscope.IncomingProfile{Labels: stageLabels})
+	err = c.AppendIngest(t.Context(), &pyroscope.IncomingProfile{Labels: stageLabels})
 	require.NoError(t, err)
 
 	// Verify all metrics

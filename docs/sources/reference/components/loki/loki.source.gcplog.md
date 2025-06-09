@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.gcplog
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.gcplog
 ---
 
@@ -31,12 +33,12 @@ loki.source.gcplog "<LABEL>" {
 
 ## Arguments
 
-`loki.source.gcplog` supports the following arguments:
+You can use the following arguments with `loki.source.gcplog`:
 
 | Name            | Type                 | Description                               | Default | Required |
 | --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
-| `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | "{}"    | no       |
+| `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | `{}`    | no       |
 
 ## Blocks
 
@@ -72,7 +74,7 @@ Any omitted fields take their default values.
 | ------------------------ | ------------- | ------------------------------------------------------------------------- | ------- | -------- |
 | `project_id`             | `string`      | The GCP project id the subscription belongs to.                           |         | yes      |
 | `subscription`           | `string`      | The subscription to pull logs from.                                       |         | yes      |
-| `labels`                 | `map(string)` | Additional labels to associate with incoming logs.                        | `"{}"`  | no       |
+| `labels`                 | `map(string)` | Additional labels to associate with incoming logs.                        | `{}`    | no       |
 | `use_full_line`          | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. | `false` | no       |
 | `use_incoming_timestamp` | `bool`        | Whether to use the incoming log timestamp.                                | `false` | no       |
 
@@ -88,13 +90,13 @@ The `push` block defines the configuration of the server that receives push requ
 The following arguments can be used to configure the `push` block.
 Any omitted fields take their default values.
 
-| Name                        | Type          | Description                                                                                                                                                | Default | Required |
-| --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                                         | "30s"   | no       |
-| `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                                                                                                      | `"{}"`  | no       |
-| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                                            | `"0s"`  | no       |
-| `use_full_line`             | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. By default, if `textPayload` is present in the line, then it's used as log line. | `false` | no       |
-| `use_incoming_timestamp`    | `bool`        | Whether to use the incoming entry timestamp.                                                                                                               | `false` | no       |
+| Name                        | Type          | Description                                                                                                                               | Default | Required |
+| --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `graceful_shutdown_timeout` | `duration`    | Timeout for servers graceful shutdown. If configured, should be greater than zero.                                                        | `"30s"` | no       |
+| `labels`                    | `map(string)` | Additional labels to associate with incoming entries.                                                                                     | `{}`    | no       |
+| `push_timeout`              | `duration`    | Sets a maximum processing time for each incoming GCP log entry.                                                                           | `"0s"`  | no       |
+| `use_full_line`             | `bool`        | Send the full line from Cloud Logging even if `textPayload` is available. If `textPayload` is present in the line, it's used as log line. | `false` | no       |
+| `use_incoming_timestamp`    | `bool`        | Whether to use the incoming entry timestamp.                                                                                              | `false` | no       |
 
 The server listens for POST requests from GCP Push subscriptions on `HOST:PORT/gcp/api/v1/push`.
 

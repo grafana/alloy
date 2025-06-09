@@ -6,7 +6,6 @@ package cloudflaretarget
 // components.
 
 import (
-	"context"
 	"errors"
 	"os"
 	"sort"
@@ -135,7 +134,7 @@ func Test_RetryErrorLogpullReceived(t *testing.T) {
 		metrics: NewMetrics(nil),
 	}
 
-	require.NoError(t, ta.pull(context.Background(), start, end))
+	require.NoError(t, ta.pull(t.Context(), start, end))
 }
 
 func Test_RetryErrorIterating(t *testing.T) {
@@ -182,7 +181,7 @@ func Test_RetryErrorIterating(t *testing.T) {
 		metrics: metrics,
 	}
 
-	require.NoError(t, ta.pull(context.Background(), start, end))
+	require.NoError(t, ta.pull(t.Context(), start, end))
 	require.Eventually(t, func() bool {
 		return len(client.Received()) == 4
 	}, 5*time.Second, 100*time.Millisecond)

@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.http
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.http
 ---
 
@@ -34,7 +36,7 @@ You can use the following arguments with `remote.http`:
 | `url`            | `string`      | URL to poll.                                                 |         | yes      |
 | `body`           | `string`      | The request body.                                            | `""`    | no       |
 | `headers`        | `map(string)` | Custom headers for the request.                              | `{}`    | no       |
-| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | false   | no       |
+| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | `false` | no       |
 | `method`         | `string`      | Define HTTP method for the request                           | `"GET"` | no       |
 | `poll_frequency` | `duration`    | Frequency to poll the URL.                                   | `"1m"`  | no       |
 | `poll_timeout`   | `duration`    | Timeout when polling the URL.                                | `"10s"` | no       |
@@ -50,7 +52,7 @@ The poll is successful if the URL returns a `200 OK` response code.
 All other response codes are treated as errors and mark the component as unhealthy.
 After a successful poll, the response body from the URL is exported.
 
-[secret]: ../../../concepts/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 
 ## Blocks
 
@@ -66,7 +68,7 @@ You can use the following blocks with `remote.http`:
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to an `basic_auth` block defined inside a `client` block.
+For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
 
 [client]: #client
 [authorization]: #authorization

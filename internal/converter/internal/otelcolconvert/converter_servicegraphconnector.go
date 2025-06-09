@@ -2,6 +2,7 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"
@@ -52,6 +53,14 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
+	metricsFlushInterval := cfg.MetricsFlushInterval
+	var metricsFlushIntervalValue time.Duration
+	if metricsFlushInterval == nil {
+		metricsFlushIntervalValue = 60 * time.Second
+	} else {
+		metricsFlushIntervalValue = *metricsFlushInterval
+	}
+
 	return &servicegraph.Arguments{
 		LatencyHistogramBuckets: cfg.LatencyHistogramBuckets,
 		Dimensions:              cfg.Dimensions,
@@ -59,10 +68,11 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 			MaxItems: cfg.Store.MaxItems,
 			TTL:      cfg.Store.TTL,
 		},
-		CacheLoop:             cfg.CacheLoop,
-		StoreExpirationLoop:   cfg.StoreExpirationLoop,
-		MetricsFlushInterval:  cfg.MetricsFlushInterval,
-		DatabaseNameAttribute: cfg.DatabaseNameAttribute,
+		CacheLoop:              cfg.CacheLoop,
+		StoreExpirationLoop:    cfg.StoreExpirationLoop,
+		MetricsFlushInterval:   metricsFlushIntervalValue,
+		DatabaseNameAttribute:  cfg.DatabaseNameAttribute,
+		DatabaseNameAttributes: cfg.DatabaseNameAttributes,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},

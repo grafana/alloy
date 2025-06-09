@@ -129,10 +129,10 @@ func TestGenerateProbeConfig(t *testing.T) {
 							Labels: map[string]string{
 								"static": "label",
 							},
-							RelabelConfigs: []*promopv1.RelabelConfig{
+							RelabelConfigs: []promopv1.RelabelConfig{
 								{
 									TargetLabel: "foo",
-									Replacement: "bar",
+									Replacement: stringPtr("bar"),
 									Action:      "replace",
 								},
 							},
@@ -220,10 +220,10 @@ func TestGenerateProbeConfig(t *testing.T) {
 							Labels: map[string]string{
 								"static": "label",
 							},
-							RelabelConfigs: []*promopv1.RelabelConfig{
+							RelabelConfigs: []promopv1.RelabelConfig{
 								{
 									TargetLabel: "foo",
-									Replacement: "bar",
+									Replacement: stringPtr("bar"),
 									Action:      "replace",
 								},
 							},

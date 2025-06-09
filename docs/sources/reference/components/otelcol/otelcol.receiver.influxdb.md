@@ -1,10 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.influxdb/
 description: Learn about otelcol.receiver.influxdb
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.influxdb
 ---
 
-# otelcol.receiver.influxdb
+# `otelcol.receiver.influxdb`
 
 `otelcol.receiver.influxdb` receives InfluxDB metrics, converts them into OpenTelemetry (OTEL) format, and forwards them to other `otelcol.*` components over the network.
 
@@ -24,43 +28,42 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 
 ## Arguments
 
-`otelcol.receiver.influxdb` supports the following arguments:
+You can use the following arguments with `otelcol.receiver.influxdb`:
 
-| Name                     | Type           | Description                                                     | Default                                                    | Required |
-| ------------------------ | -------------- | --------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
-| `endpoint`               | `string`       | `host:port` to listen for traffic on.                           | `"localhost:8086"`                                         | no       |
-| `max_request_body_size`  | `string`       | Maximum request body size the server will allow.                | `20MiB`                                                    | no       |
-| `include_metadata`       | `boolean`      | Propagate incoming connection metadata to downstream consumers. |                                                            | no       |
-| `compression_algorithms` | `list(string)` | A list of compression algorithms the server can accept.         | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
-`auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no
+| Name                     | Type                       | Description                                                                  | Default                                                    | Required |
+| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
+| `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8086"`                                         | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 
 By default, `otelcol.receiver.influxdb` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8086` to listen on all network interfaces.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.receiver.influxdb`:
+You can use the following blocks with `otelcol.receiver.influxdb`:
 
-| Hierarchy     | Block             | Description                                           | Required |
-| ------------- | ----------------- | ----------------------------------------------------- | -------- |
-| tls           | [tls][]           | Configures TLS for the HTTP server.                   | no       |
-| cors          | [cors][]          | Configures CORS for the HTTP server.                  | no       |
-| debug_metrics | [debug_metrics][] | Configures the metrics that this component generates. | no       |
-| output        | [output][]        | Configures where to send received metrics.            | yes      |
+| Block                            | Description                                           | Required |
+| -------------------------------- | ----------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received metrics.            | yes      |
+| [`cors`][cors]                   | Configures CORS for the HTTP server.                  | no       |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates. | no       |
+| [`tls`][tls]                     | Configures TLS for the HTTP server.                   | no       |
 
-[tls]: #tls-block
-[cors]: #cors-block
-[debug_metrics]: #debug_metrics-block
-[output]: #output-block
+[tls]: #tls
+[cors]: #cors
+[debug_metrics]: #debug_metrics
+[output]: #output
 
-### tls block
+### `output`
 
-The `tls` block configures TLS settings used for a server. If the `tls` block
-isn't provided, TLS won't be used for connections to the server.
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
 
-{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### cors block
+### `cors`
 
 The `cors` block configures CORS settings for an HTTP server.
 
@@ -82,13 +85,16 @@ CORS request. The following headers are always implicitly allowed:
 
 If `allowed_headers` includes `"*"`, all headers are permitted.
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### output block
+### `tls`
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+The `tls` block configures TLS settings used for a server.
+If the `tls` block isn't provided, TLS won't be used for connections to the server.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -121,7 +127,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```
@@ -153,7 +159,8 @@ prometheus.remote_write "mimir" {
 
 ## Enable authentication
 
-You can create a `otelcol.receiver.influxdb` component that requires authentication for requests. This is useful for limiting who can push data to the server. 
+You can create a `otelcol.receiver.influxdb` component that requires authentication for requests.
+This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}
 Not all OpenTelemetry Collector authentication plugins support receiver authentication.
@@ -169,8 +176,8 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 }
 
 otelcol.auth.basic "creds" {
-    username = sys.env("USERNAME")
-    password = sys.env("PASSWORD")
+    username = sys.env("<USERNAME>")
+    password = sys.env("<PASSWORD>")
 }
 ```
 

@@ -15,7 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
@@ -23,7 +22,7 @@ import (
 // Test performs a basic integration test which runs the otelcol.receiver.syslog
 // component and ensures that it can receive and forward data.
 func Test(t *testing.T) {
-	tcp := getFreeAddr(t)
+	tcp := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -46,6 +45,8 @@ func Test(t *testing.T) {
 
 	var args syslog.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	require.Equal(t, "send", args.OnError)
 
 	// Override our settings so logs get forwarded to logsCh.
 	logCh := make(chan plog.Logs)
@@ -115,15 +116,6 @@ func makeLogsOutput(ch chan plog.Logs) *otelcol.ConsumerArguments {
 	}
 }
 
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("127.0.0.1:%d", portNumber)
-}
-
 func TestUnmarshal(t *testing.T) {
 	alloyCfg := `
 		protocol = "rfc5424"
@@ -132,7 +124,7 @@ func TestUnmarshal(t *testing.T) {
 		max_octets = 16000
 		allow_skip_pri_header = true
 		non_transparent_framing_trailer = "NUL"
-
+		on_error = "drop_quiet"
 		tcp {
 			listen_address = "localhost:1514"
 			max_log_size = "2MiB"
@@ -179,4 +171,15 @@ func TestUnmarshal(t *testing.T) {
 	var args syslog.Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.NoError(t, err)
+}
+
+func TestValidateOnError(t *testing.T) {
+	alloyCfg := `
+		on_error = "invalid"
+		output {
+		}
+	`
+	var args syslog.Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.ErrorContains(t, err, "invalid on_error: invalid")
 }

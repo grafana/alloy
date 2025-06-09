@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.docker
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.docker
 ---
 
@@ -33,7 +35,7 @@ You can use the following arguments with `discovery.docker`:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                  |               | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                            | `true`        | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                        | `true`        | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                             |               | no       |
 | `host_networking_host`   | `string`            | Host to use if the container is in host networking mode.                                                            | `"localhost"` | no       |
 | `match_first_network`    | `bool`              | Match the first network if the container has multiple networks defined, thus avoiding collecting duplicate targets. | `true`        | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                    |               | no       |
@@ -43,7 +45,7 @@ You can use the following arguments with `discovery.docker`:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                |               | no       |
 | `refresh_interval`       | `duration`          | Frequency to refresh list of containers.                                                                            | `"1m"`        | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -105,7 +107,7 @@ Refer to [List containers][List containers] from the Docker Engine API documenta
 
 ### `oauth2`
 
-The `oauth` block configures OAuth 2.0 authentication to the endpoint.
+The `oauth2` block configures OAuth 2.0 authentication to the endpoint.
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

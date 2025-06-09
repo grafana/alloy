@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.cloudwatch
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.cloudwatch
 ---
 
@@ -307,11 +309,11 @@ Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWat
 | Name                       | Type           | Description                                                                | Default                                                                                                            | Required |
 | -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
 | `name`                     | `string`       | Metric name.                                                               |                                                                                                                    | yes      |
-| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
 | `period`                   | `duration`     | Refer to the [period][] section below.                                     |                                                                                                                    | yes      |
+| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
+| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | `false`                                                                                                            | no       |
 | `length`                   | `duration`     | Refer to the [period][] section below.                                     | Calculated based on `period`. Refer to [period][] for details.                                                     | no       |
 | `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [static][] or [discovery][] block. `true` if not set in the parent block. | no       |
-| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | `false`                                                                                                            | no       |
 
 [period]: #period-and-length
 

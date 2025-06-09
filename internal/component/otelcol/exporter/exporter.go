@@ -114,7 +114,7 @@ var (
 func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -180,19 +180,14 @@ func (e *Exporter) Update(args component.Arguments) error {
 		metricOpts = append(metricOpts, metric.WithView(views.DropHighCardinalityServerAttributes()...))
 	}
 
-	metricsLevel, err := debugMetricsConfig.Level.Convert()
-	if err != nil {
-		return err
-	}
-
 	mp := metric.NewMeterProvider(metricOpts...)
 	settings := otelexporter.Settings{
+		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
-			MetricsLevel:   metricsLevel,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

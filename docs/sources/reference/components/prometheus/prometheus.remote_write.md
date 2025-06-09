@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.remote_write
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.remote_write
 ---
 
@@ -93,7 +95,7 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |         | no       |
 | `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
@@ -390,9 +392,9 @@ To troubleshoot, take the following steps in order:
    ./promtool tsdb dump --match='{__name__="otelcol_connector_spanmetrics_duration_seconds_bucket", http_method="GET", job="ExampleJobName"}' /path/to/wal/
    ```
 
-[clustering]: ../../../configure/clustering
+[clustering]: ../../../../configure/clustering
 [mimir-ooo-err]: https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/#err-mimir-sample-out-of-order
-[run-cmd]: ../../cli/run/
+[run-cmd]: ../../../cli/run/
 [promtool]: https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-tsdb
 
 ## Technical details

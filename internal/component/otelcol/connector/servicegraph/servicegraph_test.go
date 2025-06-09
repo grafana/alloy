@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
@@ -46,9 +50,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 1000,
 					TTL:      2 * time.Second,
 				},
-				CacheLoop:             1 * time.Minute,
-				StoreExpirationLoop:   2 * time.Second,
-				DatabaseNameAttribute: "db.name",
+				CacheLoop:              1 * time.Minute,
+				StoreExpirationLoop:    2 * time.Second,
+				DatabaseNameAttributes: []string{"db.name"},
+				MetricsFlushInterval:   ptr(60 * time.Second),
 				//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 				// the "processor.servicegraph.virtualNode" feature gate.
 				// VirtualNodePeerAttributes: []string{
@@ -74,7 +79,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					}
 					cache_loop = "55m"
 					store_expiration_loop = "77s"
-
+					metrics_flush_interval = "5s"
 					output {}
 				`,
 			expected: servicegraphconnector.Config{
@@ -88,9 +93,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxItems: 333,
 					TTL:      12 * time.Hour,
 				},
-				CacheLoop:             55 * time.Minute,
-				StoreExpirationLoop:   77 * time.Second,
-				DatabaseNameAttribute: "db.name",
+				CacheLoop:              55 * time.Minute,
+				StoreExpirationLoop:    77 * time.Second,
+				DatabaseNameAttributes: []string{"db.name"},
+				MetricsFlushInterval:   ptr(5 * time.Second),
 				//TODO: Ad VirtualNodePeerAttributes when it's no longer controlled by
 				// the "processor.servicegraph.virtualNode" feature gate.
 				// VirtualNodePeerAttributes: []string{"attr1", "attr2"},

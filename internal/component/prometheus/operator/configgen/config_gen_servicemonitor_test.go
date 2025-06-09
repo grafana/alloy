@@ -355,7 +355,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					LabelLimit:            ptr.To(uint64(103)),
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
-					AttachMetadata:        &promopv1.AttachMetadata{Node: true},
+					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
 				},
 			},
 			ep: promopv1.Endpoint{
@@ -373,11 +373,11 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				FilterRunning:   &falseVal,
 				TLSConfig: &promopv1.TLSConfig{
 					SafeTLSConfig: promopv1.SafeTLSConfig{
-						ServerName:         "foo.com",
-						InsecureSkipVerify: true,
+						ServerName:         stringPtr("foo.com"),
+						InsecureSkipVerify: boolPtr(true),
 					},
 				},
-				RelabelConfigs: []*promopv1.RelabelConfig{
+				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
@@ -504,7 +504,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				},
 			},
 			ep: promopv1.Endpoint{
-				MetricRelabelConfigs: []*promopv1.RelabelConfig{
+				MetricRelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",

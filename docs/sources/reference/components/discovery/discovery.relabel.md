@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.relabel
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.relabel
 ---
 
@@ -89,6 +91,9 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
+The following example shows how the `discovery.relabel` component applies relabel rules to the incoming targets. In practice, the 
+`targets` slice will come from another `discovery.*` component, but they are enumerated here to help clarify the example.
+
 ```alloy
 discovery.relabel "keep_backend_only" {
   targets = [
@@ -97,6 +102,7 @@ discovery.relabel "keep_backend_only" {
     { "__meta_baz" = "baz", "__address__" = "localhost", "instance" = "three", "app" = "frontend" },
   ]
 
+  # Combine the "__address__" and "instance" labels into a new "destination" label.
   rule {
     source_labels = ["__address__", "instance"]
     separator     = "/"
@@ -104,10 +110,17 @@ discovery.relabel "keep_backend_only" {
     action        = "replace"
   }
 
+  # Drop any targets that do not have the value "backend" in their "app" label.
   rule {
     source_labels = ["app"]
     action        = "keep"
     regex         = "backend"
+  }
+
+  # Add a static label to all remaining targets.
+  rule {
+    target_label = "custom_static_label"
+    replacement = "static_value"
   }
 }
 ```

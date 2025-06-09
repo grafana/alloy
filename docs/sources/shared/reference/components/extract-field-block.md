@@ -6,13 +6,12 @@ headless: true
 
 The following attributes are supported:
 
-Name        | Type     | Description                                                                                   | Default | Required
-------------|----------|-----------------------------------------------------------------------------------------------|---------|---------
-`from`      | `string` | The source of the labels or annotations. Allowed values are `pod`, `namespace`, and `node`.    | `pod`   | no
-`key_regex` | `string` | A regular expression used to extract a key that matches the regular expression.               | `""`    | no
-`key`       | `string` | The annotation or label name. This key must exactly match an annotation or label name.        | `""`    | no
-`regex`     | `string` | An optional field used to extract a sub-string from a complex field value.                    | `""`    | no
-`tag_name`  | `string` | The name of the resource attribute added to logs, metrics, or spans.                          | `""`    | no
+| Name        | Type     | Description                                                                                 | Default | Required |
+| ----------- | -------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
+| `from`      | `string` | The source of the labels or annotations. Allowed values are `pod`, `namespace`, and `node`. | `pod`   | no       |
+| `key_regex` | `string` | A regular expression used to extract a key that matches the regular expression.             | `""`    | no       |
+| `key`       | `string` | The annotation or label name. This key must exactly match an annotation or label name.      | `""`    | no       |
+| `tag_name`  | `string` | The name of the resource attribute added to logs, metrics, or spans.                        | `""`    | no       |
 
 When you don't specify the `tag_name`, a default tag name is used with the format:
 

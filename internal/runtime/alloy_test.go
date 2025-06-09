@@ -13,9 +13,9 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
@@ -41,7 +41,7 @@ var testFile = `
 func TestController_LoadSource_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl := New(testOptions(t))
-	defer cleanUpController(ctrl)
+	defer cleanUpController(t.Context(), ctrl)
 
 	// Use testFile from graph_builder_test.go.
 	f, err := ParseSource(t.Name(), []byte(testFile))
@@ -77,7 +77,7 @@ var modulePathTestFile = `
 func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl := New(testOptions(t))
-	defer cleanUpController(ctrl)
+	defer cleanUpController(t.Context(), ctrl)
 
 	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
 func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	ctrl := New(testOptions(t))
-	defer cleanUpController(ctrl)
+	defer cleanUpController(t.Context(), ctrl)
 
 	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -204,9 +204,9 @@ func testOptions(t *testing.T) Options {
 	}
 }
 
-func cleanUpController(ctrl *Runtime) {
+func cleanUpController(ctx context.Context, ctrl *Runtime) {
 	// To avoid leaking goroutines and clean-up, we need to run and shut down the controller.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)

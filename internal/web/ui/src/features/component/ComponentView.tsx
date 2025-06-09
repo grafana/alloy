@@ -1,13 +1,14 @@
 import { FC, Fragment, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
-import { faBug, faCubes, faLink } from '@fortawesome/free-solid-svg-icons';
+import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
 
 import ComponentBody from './ComponentBody';
 import ComponentList from './ComponentList';
+import ForeachList from './ForeachList';
 import { HealthLabel } from './HealthLabel';
 import { ComponentDetail, ComponentInfo, PartitionedBody } from './types';
 
@@ -31,6 +32,8 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   const location = useLocation();
   const useRemotecfg = location.pathname.startsWith('/remotecfg');
 
+  const isModule = props.component.moduleInfo && props.component.name !== 'foreach';
+  const isForeach = props.component.moduleInfo && props.component.name === 'foreach';
   function partitionTOC(partition: PartitionedBody): ReactElement {
     return (
       <li>
@@ -49,10 +52,6 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
   }
 
   function liveDebuggingButton(): ReactElement | string {
-    if (useRemotecfg) {
-      return 'Live debugging is not yet available for remote components';
-    }
-
     if (!liveDebuggingEnabled) {
       return 'Live debugging is not yet available for this component';
     }
@@ -122,6 +121,14 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </a>
         </div>
 
+        {isModule && (
+          <div className={styles.debugLink}>
+            <a href={`graph/${pathJoin([props.component.moduleID, props.component.localID])}`}>
+              <FontAwesomeIcon icon={faDiagramProject} /> Graph
+            </a>
+          </div>
+        )}
+
         {liveDebuggingButton()}
 
         {props.component.health.message && (
@@ -158,11 +165,20 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
           </section>
         )}
 
-        {props.component.moduleInfo && (
+        {isModule && props.component.moduleInfo && (
           <section id="module">
             <h2>Module components</h2>
             <div className={styles.sectionContent}>
               <ComponentList components={props.component.moduleInfo} useRemotecfg={useRemotecfg} />
+            </div>
+          </section>
+        )}
+
+        {isForeach && (
+          <section id="foreach">
+            <h2>Foreach components</h2>
+            <div className={styles.sectionContent}>
+              <ForeachList foreach={props.component} useRemotecfg={useRemotecfg} />
             </div>
           </section>
         )}

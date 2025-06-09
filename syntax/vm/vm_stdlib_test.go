@@ -42,7 +42,11 @@ func TestVM_Stdlib(t *testing.T) {
 		{"encoding.from_URLbase64", `encoding.from_URLbase64("c3RyaW5nMTIzIT8kKiYoKSctPUB-")`, string(`string123!?$*&()'-=@~`)},
 		{"encoding.to_base64", `encoding.to_base64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB+`)},
 		{"encoding.to_URLbase64", `encoding.to_URLbase64("string123!?$*&()'-=@~")`, string(`c3RyaW5nMTIzIT8kKiYoKSctPUB-`)},
-
+		{
+			"encoding.to_json object",
+			`encoding.to_json({"modules"={"http_2xx"={"prober"="http","timeout"="5s","http"={"headers"={"Authorization"=sys.env("TEST_VAR")}}}}})`,
+			string(`{"modules":{"http_2xx":{"http":{"headers":{"Authorization":"Hello!"}},"prober":"http","timeout":"5s"}}}`),
+		},
 		// Map tests
 		{
 			// Basic case. No conflicting key/val pairs.
@@ -174,6 +178,11 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 			"array.combine_maps",
 			`array.combine_maps([{"a" = "a1", "b" = "b1"}], [{"a" = "a1", "c" = "b1"}], [])`,
 			`combine_maps: merge conditions must not be empty`,
+		},
+		{
+			"encoding.to_json",
+			`encoding.to_json(12)`,
+			`encoding.to_json jsonEncode only supports map`,
 		},
 	}
 
@@ -418,5 +427,146 @@ func BenchmarkConcat(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var b Body
 		_ = eval.Evaluate(scope, &b)
+	}
+}
+
+func TestStdlibGroupBy(t *testing.T) {
+	tt := []struct {
+		name   string
+		input  string
+		expect interface{}
+	}{
+		{
+			"basic grouping",
+			`array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}], "type", false)`,
+			[]map[string]interface{}{
+				{"type": "fruit", "items": []interface{}{
+					map[string]interface{}{"type": "fruit", "name": "apple"},
+					map[string]interface{}{"type": "fruit", "name": "banana"},
+				}},
+				{"type": "vegetable", "items": []interface{}{
+					map[string]interface{}{"type": "vegetable", "name": "carrot"},
+				}},
+			},
+		},
+		{
+			"drop missing keys",
+			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", true)`,
+			[]map[string]interface{}{
+				{"age": "20", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": "20"},
+				}},
+				{"age": "30", "items": []interface{}{
+					map[string]interface{}{"name": "charlie", "age": "30"},
+				}},
+			},
+		},
+		{
+			"keep missing keys",
+			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", false)`,
+			[]map[string]interface{}{
+				{"age": "20", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": "20"},
+				}},
+				{"age": "30", "items": []interface{}{
+					map[string]interface{}{"name": "charlie", "age": "30"},
+				}},
+				{"age": "", "items": []interface{}{
+					map[string]interface{}{"name": "bob"},
+				}},
+			},
+		},
+		{
+			"empty array",
+			`array.group_by([], "age", false)`,
+			[]map[string]interface{}{},
+		},
+		{
+			"all items missing key",
+			`array.group_by([{"name" = "alice"}, {"name" = "bob"}], "age", false)`,
+			[]map[string]interface{}{
+				{"age": "", "items": []interface{}{
+					map[string]interface{}{"name": "alice"},
+					map[string]interface{}{"name": "bob"},
+				}},
+			},
+		},
+		{
+			"key refers to a nested object",
+			`array.group_by([{"name" = "alice", "age" = 20, "address" = {"city" = "New York", "state" = "NY"}}], "address.city", false)`,
+			// The key should be present at the top level of the object. In this case, the group_by assumes that the key is missing.
+			[]map[string]interface{}{
+				{"address.city": "", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": 20, "address": map[string]interface{}{"city": "New York", "state": "NY"}},
+				}},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf(tc.expect))
+			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
+			result := rv.Elem().Interface().([]map[string]interface{})
+			expected := tc.expect.([]map[string]interface{})
+			require.ElementsMatch(t, expected, result, "groups should match without order")
+		})
+	}
+}
+
+func TestStdlibGroupBy_Errors(t *testing.T) {
+	tt := []struct {
+		name        string
+		input       string
+		expectedErr string
+	}{
+		{
+			"wrong number of arguments",
+			`array.group_by([{"name" = "alice"}], "age")`,
+			`group_by: expected 3 arguments, got 2`,
+		},
+		{
+			"first argument not array",
+			`array.group_by("not an array", "age", false)`,
+			`"not an array" should be array, got string`,
+		},
+		{
+			"second argument not string",
+			`array.group_by([{"name" = "alice"}], 123, false)`,
+			`123 should be string, got number`,
+		},
+		{
+			"third argument not bool",
+			`array.group_by([{"name" = "alice"}], "age", "not a bool")`,
+			`"not a bool" should be bool, got string`,
+		},
+		{
+			"array element not object",
+			`array.group_by(["not an object"], "age", false)`,
+			`"not an object" should be object, got string`,
+		},
+		{
+			"key value not string",
+			`array.group_by([{"name" = "alice", "age" = 20}], "age", false)`,
+			`20 should be string, got number`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf([]map[string]interface{}{}))
+			err = eval.Evaluate(nil, rv.Interface())
+			require.ErrorContains(t, err, tc.expectedErr)
+		})
 	}
 }

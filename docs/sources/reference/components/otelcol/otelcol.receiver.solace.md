@@ -1,13 +1,16 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.solace/
 description: Learn about otelcol.receiver.solace
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.solace
 ---
 
-# otelcol.receiver.solace
+# `otelcol.receiver.solace`
 
-`otelcol.receiver.solace` accepts traces from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/) and
-forwards it to other `otelcol.*` components.
+`otelcol.receiver.solace` accepts traces from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/) and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector `solace` receiver from the `otelcol-contrib` distribution.
@@ -19,8 +22,8 @@ You can specify multiple `otelcol.receiver.solace` components by giving them dif
 ## Usage
 
 ```alloy
-otelcol.receiver.solace "LABEL" {
-  queue = "QUEUE"
+otelcol.receiver.solace "<LABEL>" {
+  queue = "<QUEUE>"
   auth {
     // sasl_plain or sasl_xauth2 or sasl_external block
   }
@@ -32,57 +35,72 @@ otelcol.receiver.solace "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `otelcol.receiver.solace`:
 
-| Name                 | Type     | Description                                                               | Default          | Required |
-| -------------------- | -------- | ------------------------------------------------------------------------- | ---------------- | -------- |
-| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                  | yes      |
-| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `localhost:5671` | no       |
-| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | 10               | no       |
+| Name                 | Type     | Description                                                               | Default            | Required |
+| -------------------- | -------- | ------------------------------------------------------------------------- | ------------------ | -------- |
+| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                    | yes      |
+| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `"localhost:5671"` | no       |
+| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | `10`               | no       |
 
 `queue` must have the format `queue://#telemetry-myTelemetryProfile`.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.receiver.solace`:
+You can use the following blocks with `otelcol.receiver.solace`:
 
-| Hierarchy                      | Block              | Description                                                                                                                      | Required |
-| ------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| authentication                 | [authentication][] | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
-| authentication > sasl_plain    | [sasl_plain][]     | Authenticates against the Solace broker with SASL PLAIN.                                                                         | no       |
-| authentication > sasl_xauth2   | [sasl_xauth2][]    | Authenticates against the Solace broker with SASL XOauth2.                                                                       | no       |
-| authentication > sasl_external | [sasl_external][]  | Authenticates against the Solace broker with SASL External.                                                                      | no       |
-| flow                           | [flow][]           | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
-| flow > delayed_retry           | [delayed_retry][]  | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
-| tls                            | [tls][]            | Configures TLS for connecting to the Solace broker.                                                                              | no       |
-| debug_metrics                  | [debug_metrics][]  | Configures the metrics which this component generates to monitor its state.                                                      | no       |
-| output                         | [output][]         | Configures where to send received telemetry data.                                                                                | yes      |
+| Block                                               | Description                                                                                                                      | Required |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| [`output`][output]                                  | Configures where to send received telemetry data.                                                                                | yes      |
+| [`authentication`][authentication]                  | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
+| `authentication` > [`sasl_external`][sasl_external] | Authenticates against the Solace broker with SASL External.                                                                      | no       |
+| `authentication` > [`sasl_plain`][sasl_plain]       | Authenticates against the Solace broker with SASL PLAIN.                                                                         | no       |
+| `authentication` > [`sasl_xauth2`][sasl_xauth2]     | Authenticates against the Solace broker with SASL XOauth2.                                                                       | no       |
+| [`debug_metrics`][debug_metrics]                    | Configures the metrics which this component generates to monitor its state.                                                      | no       |
+| [`flow`][flow]                                      | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
+| `flow` > [`delayed_retry`][delayed_retry]           | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
+| [`tls`][tls]                                        | Configures TLS for connecting to the Solace broker.                                                                              | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
 
 One SASL authentication block is required in the `authentication` block.
 
 `sasl_external` must be used together with the `tls` block.
 
-The `>` symbol indicates deeper levels of nesting. For example,
-`authentication > tls` refers to a `tls` block defined inside an
-`authentication` block.
+[authentication]: #authentication
+[sasl_plain]: #sasl_plain
+[sasl_xauth2]: #sasl_xauth2
+[sasl_external]: #sasl_external
+[tls]: #tls
+[flow]: #flow
+[delayed_retry]: #delayed_retry
+[debug_metrics]: #debug_metrics
+[output]: #output
 
-[authentication]: #authentication-block
-[sasl_plain]: #sasl_plain-block
-[sasl_xauth2]: #sasl_xauth2-block
-[sasl_external]: #sasl_external-block
-[tls]: #tls-block
-[flow]: #flow-block
-[delayed_retry]: #delayed_retry-block
-[debug_metrics]: #debug_metrics-block
-[output]: #output-block
+### `output`
 
-### authentication block
+<span class="badge docs-labels__stage docs-labels__item">Required</span>
+
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+{{< admonition type="warning" >}}
+Having multiple consumers may result in duplicated traces in case of errors because of the retry strategy.
+It's recommended to only set one consumer for this component.
+{{< /admonition >}}
+
+### `authentication`
 
 The `authentication` block configures how to authenticate for connecting to the Solace broker.
 It doesn't support any arguments and is configured fully through inner blocks.
 
-### sasl_plain block
+### `sasl_external`
+
+The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL External.
+It doesn't support any arguments or blocks.
+It must be used with the [`tls`][tls] block.
+
+### `sasl_plain`
 
 The `sasl_plain` block configures how to authenticate to the Solace broker with SASL PLAIN.
 
@@ -90,10 +108,10 @@ The following arguments are supported:
 
 | Name       | Type     | Description          | Default | Required |
 | ---------- | -------- | -------------------- | ------- | -------- |
-| `username` | `string` | The username to use. |         | yes      |
 | `password` | `string` | The password to use. |         | yes      |
+| `username` | `string` | The username to use. |         | yes      |
 
-### sasl_xauth2 block
+### `sasl_xauth2`
 
 The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL XOauth2.
 
@@ -101,20 +119,19 @@ The following arguments are supported:
 
 | Name       | Type     | Description               | Default | Required |
 | ---------- | -------- | ------------------------- | ------- | -------- |
-| `username` | `string` | The username to use.      |         | yes      |
 | `bearer`   | `string` | The bearer in plain text. |         | yes      |
+| `username` | `string` | The username to use.      |         | yes      |
 
-### sasl_external block
+### `debug_metrics`
 
-The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL External.
-It doesn't support any arguments or blocks. It must be used with the [tls][] block.
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### flow block
+### `flow`
 
 The `flow` block configures the behaviour to use when temporary errors are encountered from the next component.
 It doesn't support any arguments and is configured fully through inner blocks.
 
-### delayed_retry block
+### `delayed_retry`
 
 The `delayed_retry` block sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again.
 
@@ -124,26 +141,13 @@ The following arguments are supported:
 | ------- | -------- | --------------------------------- | -------- | -------- |
 | `delay` | `string` | The time to wait before retrying. | `"10ms"` | no       |
 
-### tls block
+### `tls`
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### output block
-
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-{{< admonition type="warning" >}}
-Having multiple consumers may result in duplicated traces in case of errors because of the retry strategy.
-It is recommended to only set one consumer for this component.
-{{< /admonition >}}
-
 ## Exported fields
 
-`otelcol.receiver.solace` does not export any fields.
+`otelcol.receiver.solace` doesn't export any fields.
 
 ## Component health
 
@@ -152,13 +156,12 @@ configuration.
 
 ## Debug information
 
-`otelcol.receiver.solace` does not expose any component-specific debug
+`otelcol.receiver.solace` doesn't expose any component-specific debug
 information.
 
 ## Example
 
-This example forwards read telemetry data through a batch processor before
-finally sending it to an OTLP-capable endpoint:
+This example forwards read telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:
 
 ```alloy
 otelcol.receiver.solace "default" {
@@ -187,7 +190,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```

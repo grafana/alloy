@@ -18,7 +18,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -31,7 +30,7 @@ import (
 )
 
 func TestOnDiskCache(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	client := &collectorClient{}
 
@@ -55,7 +54,11 @@ func TestOnDiskCache(t *testing.T) {
 	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)
 	require.NoError(t, err)
 
+	// Run the service.
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
 
@@ -66,10 +69,13 @@ func TestOnDiskCache(t *testing.T) {
 		assert.NoError(c, err)
 		assert.Equal(c, cacheContents, string(b))
 	}, time.Second, 10*time.Millisecond)
+
+	cancel()
+	wg.Wait()
 }
 
 func TestGoodBadGood(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
@@ -91,7 +97,10 @@ func TestGoodBadGood(t *testing.T) {
 	`, url)))
 
 	// Run the service.
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
 
@@ -133,10 +142,11 @@ func TestGoodBadGood(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
+	wg.Wait()
 }
 
 func TestAPIResponse(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -158,7 +168,10 @@ func TestAPIResponse(t *testing.T) {
 	`, url)))
 
 	// Run the service.
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
 
@@ -181,10 +194,11 @@ func TestAPIResponse(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
+	wg.Wait()
 }
 
 func TestAPIResponseNotModified(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 
@@ -205,7 +219,10 @@ func TestAPIResponseNotModified(t *testing.T) {
 	`, url)))
 
 	// Run the service.
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
 
@@ -222,12 +239,17 @@ func TestAPIResponseNotModified(t *testing.T) {
 	client.getConfigFunc = buildGetConfigHandler("", "12345", true)
 	client.mut.Unlock()
 
+	calls := client.getConfigCalls.Load()
+
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Ensure that getConfig has been called again since changing the response.
+		assert.Greater(c, client.getConfigCalls.Load(), calls)
 		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
+	wg.Wait()
 }
 
 func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
@@ -324,34 +346,36 @@ func (f fakeHost) NewController(id string) service.Controller {
 }
 
 type collectorClient struct {
+	getConfigCalls        atomic.Int32
 	mut                   sync.RWMutex
 	getConfigFunc         func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
 	registerCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
 }
 
-func (ag *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-	ag.mut.RLock()
-	defer ag.mut.RUnlock()
+func (c *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 
-	if ag.getConfigFunc != nil {
-		return ag.getConfigFunc(ctx, req)
+	if c.getConfigFunc != nil {
+		c.getConfigCalls.Inc()
+		return c.getConfigFunc(ctx, req)
 	}
 
 	panic("getConfigFunc not set")
 }
 
-func (ag *collectorClient) RegisterCollector(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
-	ag.mut.RLock()
-	defer ag.mut.RUnlock()
+func (c *collectorClient) RegisterCollector(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 
-	if ag.registerCollectorFunc != nil {
-		return ag.registerCollectorFunc(ctx, req)
+	if c.registerCollectorFunc != nil {
+		return c.registerCollectorFunc(ctx, req)
 	}
 
 	panic("registerCollectorFunc not set")
 }
 
-func (ag *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
+func (c *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
 	panic("unregisterCollector isn't wired yet")
 }
 

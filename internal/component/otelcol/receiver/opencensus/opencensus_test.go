@@ -11,14 +11,13 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confignet"
 )
 
 // Test ensures that otelcol.receiver.opencensus can start successfully.
 func Test(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -72,7 +71,7 @@ func TestDefaultArguments_UnmarshalAlloy(t *testing.T) {
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 	in := fmt.Sprintf(`
 		cors_allowed_origins = ["https://*.test.com", "https://test.com"]
 
@@ -99,15 +98,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.Equal(t, len(otelArgs.CorsOrigins), 2)
 	require.Equal(t, otelArgs.CorsOrigins[0], "https://*.test.com")
 	require.Equal(t, otelArgs.CorsOrigins[1], "https://test.com")
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

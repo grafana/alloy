@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.kubernetes
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.kubernetes
 ---
 
@@ -36,7 +38,7 @@ You can use the following arguments with `discovery.kubernetes`:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `kubeconfig_file`        | `string`            | Path of kubeconfig file to use for connecting to Kubernetes.                                     |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
@@ -215,7 +217,7 @@ You can use the following blocks with `discovery.kubernetes`:
 | [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`selectors`][selectors]              | Selectors to filter discovered Kubernetes resources.       | no       |
-| [`tls_config`][selectors]             | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.

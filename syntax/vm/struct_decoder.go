@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/internal/reflectutil"
 	"github.com/grafana/alloy/syntax/internal/syntaxtags"
+	"github.com/grafana/alloy/syntax/internal/tagcache"
 	"github.com/grafana/alloy/syntax/internal/value"
 )
 
@@ -18,7 +19,7 @@ type structDecoder struct {
 	VM      *Evaluator
 	Scope   *Scope
 	Assoc   map[value.Value]ast.Node
-	TagInfo *tagInfo
+	TagInfo *tagcache.TagInfo
 }
 
 // Decode decodes the list of statements into the struct value specified by rv.
@@ -112,7 +113,7 @@ func (st *structDecoder) Decode(stmts ast.Body, rv reflect.Value) error {
 
 type decodeOptions struct {
 	Tags       map[string]syntaxtags.Field
-	EnumBlocks map[string]enumBlock
+	EnumBlocks map[string]tagcache.EnumBlock
 
 	SeenAttrs, SeenBlocks, SeenEnums map[string]struct{}
 

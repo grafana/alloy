@@ -33,7 +33,7 @@ func Test_FanOut(t *testing.T) {
 			return nil
 		}),
 	}, "foo", prometheus.NewRegistry())
-	require.NoError(t, f.Appender().Append(context.Background(), lbls, []*RawSample{}))
+	require.NoError(t, f.Appender().Append(t.Context(), lbls, []*RawSample{}))
 	require.Equal(t, int32(3), totalAppend.Load())
 	f.UpdateChildren([]Appendable{
 		AppendableFunc(func(_ context.Context, labels labels.Labels, _ []*RawSample) error {
@@ -48,7 +48,7 @@ func Test_FanOut(t *testing.T) {
 		}),
 	})
 	totalAppend.Store(0)
-	require.Error(t, f.Appender().Append(context.Background(), lbls, []*RawSample{}))
+	require.Error(t, f.Appender().Append(t.Context(), lbls, []*RawSample{}))
 	require.Equal(t, int32(2), totalAppend.Load())
 }
 
@@ -80,7 +80,7 @@ func Test_FanOut_AppendIngest(t *testing.T) {
 		}),
 	}, "foo", prometheus.NewRegistry())
 	totalAppend.Store(0)
-	require.Error(t, f.Appender().AppendIngest(context.Background(), profile))
+	require.Error(t, f.Appender().AppendIngest(t.Context(), profile))
 	require.Equal(t, int32(3), totalAppend.Load())
 	f.UpdateChildren([]Appendable{
 		AppendableIngestFunc(func(_ context.Context, p *IncomingProfile) error {
@@ -97,6 +97,6 @@ func Test_FanOut_AppendIngest(t *testing.T) {
 		}),
 	})
 	totalAppend.Store(0)
-	require.Error(t, f.Appender().AppendIngest(context.Background(), profile))
+	require.Error(t, f.Appender().AppendIngest(t.Context(), profile))
 	require.Equal(t, int32(2), totalAppend.Load())
 }

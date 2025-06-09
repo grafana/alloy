@@ -6,6 +6,12 @@ otelcol.auth.headers "default" {
 	}
 
 	header {
+		key            = "X-Scope-OrgID-Fake"
+		from_attribute = "tenant_id"
+		action         = "insert"
+	}
+
+	header {
 		key   = "User-ID"
 		value = "user_id"
 	}

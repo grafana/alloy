@@ -23,6 +23,8 @@ func TestAlloyUnmarshal(t *testing.T) {
 		URI:             "mongodb://127.0.0.1:27017",
 		DirectConnect:   true,
 		DiscoveringMode: true,
+		CompatibleMode:  true,
+		CollectAll:      true,
 	}
 
 	require.Equal(t, expected, args)
@@ -44,6 +46,8 @@ func TestConvert(t *testing.T) {
 		URI:             "mongodb://127.0.0.1:27017",
 		DirectConnect:   true,
 		DiscoveringMode: true,
+		CompatibleMode:  true,
+		CollectAll:      true,
 	}
 	require.Equal(t, expected, *res)
 }

@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -10,11 +9,12 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 func TestSchemaTable(t *testing.T) {
@@ -109,6 +109,7 @@ func TestSchemaTable(t *testing.T) {
 					"index_name",
 					"seq_in_index",
 					"column_name",
+					"expression",
 					"nullable",
 					"non_unique",
 					"index_type",
@@ -116,6 +117,7 @@ func TestSchemaTable(t *testing.T) {
 					"PRIMARY",
 					1,
 					"id",
+					nil,
 					"",
 					0,
 					"BTREE",
@@ -137,7 +139,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -159,11 +161,643 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+	})
+	t.Run("detect table schema, index with expression", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaTable(SchemaTableArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow(
+					"some_schema",
+				),
+			)
+
+		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"table_type",
+					"create_time",
+					"update_time",
+				}).AddRow(
+					"some_table",
+					"BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"create_statement",
+				}).AddRow(
+					"some_schema.some_table",
+					"CREATE TABLE some_table (id INT, category INT)",
+				),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"COLUMN_NAME",
+					"COLUMN_DEFAULT",
+					"IS_NULLABLE",
+					"COLUMN_TYPE",
+					"COLUMN_KEY",
+					"EXTRA",
+				}).AddRow(
+					"id",
+					"null",
+					"NO",
+					"int",
+					"PRI",
+					"auto_increment",
+				).AddRow(
+					"category",
+					"null",
+					"NO",
+					"int",
+					"",
+					"",
+				),
+			)
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"seq_in_index",
+					"column_name",
+					"expression",
+					"nullable",
+					"non_unique",
+					"index_type",
+				}).AddRow(
+					"idx_category",
+					1,
+					"category",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_category",
+					2,
+					nil,
+					"category = 0",
+					"",
+					0,
+					"BTREE",
+				),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT)"))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"idx_category","type":"BTREE","columns":["category"],"expressions":["category = 0"],"unique":true,"nullable":false}]}`))
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+	})
+	t.Run("detect table schema, index with multiple columns", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaTable(SchemaTableArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow(
+					"some_schema",
+				),
+			)
+
+		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"table_type",
+					"create_time",
+					"update_time",
+				}).AddRow(
+					"some_table",
+					"BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"create_statement",
+				}).AddRow(
+					"some_schema.some_table",
+					"CREATE TABLE some_table (id INT, category INT, name VARCHAR(255))",
+				),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"COLUMN_NAME",
+					"COLUMN_DEFAULT",
+					"IS_NULLABLE",
+					"COLUMN_TYPE",
+					"COLUMN_KEY",
+					"EXTRA",
+				}).AddRow(
+					"id",
+					"null",
+					"NO",
+					"int",
+					"PRI",
+					"auto_increment",
+				).AddRow(
+					"category",
+					"null",
+					"NO",
+					"int",
+					"",
+					"",
+				).AddRow(
+					"name",
+					"null",
+					"YES",
+					"varchar(255)",
+					"",
+					"",
+				),
+			)
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"seq_in_index",
+					"column_name",
+					"expression",
+					"nullable",
+					"non_unique",
+					"index_type",
+				}).AddRow(
+					"PRIMARY",
+					1,
+					"id",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_name",
+					1,
+					"name",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_name",
+					2,
+					nil,
+					"name = 'test'",
+					"",
+					0,
+					"BTREE",
+				),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}).AddRow(
+					"fk_name",
+					"category",
+					"categories",
+					"id",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT, name VARCHAR(255))"))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"},{"name":"name","type":"varchar(255)","default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"BTREE","columns":["name"],"expressions":["name = 'test'"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+	})
+	t.Run("detect table schema, index with expression", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaTable(SchemaTableArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow(
+					"some_schema",
+				),
+			)
+
+		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"table_type",
+					"create_time",
+					"update_time",
+				}).AddRow(
+					"some_table",
+					"BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"create_statement",
+				}).AddRow(
+					"some_schema.some_table",
+					"CREATE TABLE some_table (id INT, category INT)",
+				),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"COLUMN_NAME",
+					"COLUMN_DEFAULT",
+					"IS_NULLABLE",
+					"COLUMN_TYPE",
+					"COLUMN_KEY",
+					"EXTRA",
+				}).AddRow(
+					"id",
+					"null",
+					"NO",
+					"int",
+					"PRI",
+					"auto_increment",
+				).AddRow(
+					"category",
+					"null",
+					"NO",
+					"int",
+					"",
+					"",
+				),
+			)
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"seq_in_index",
+					"column_name",
+					"expression",
+					"nullable",
+					"non_unique",
+					"index_type",
+				}).AddRow(
+					"idx_category",
+					1,
+					"category",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_category",
+					2,
+					nil,
+					"category = 0",
+					"",
+					0,
+					"BTREE",
+				),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT)"))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"idx_category","type":"BTREE","columns":["category"],"expressions":["category = 0"],"unique":true,"nullable":false}]}`))
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+	})
+	t.Run("detect table schema, index with multiple columns", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaTable(SchemaTableArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectSchemaName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow(
+					"some_schema",
+				),
+			)
+
+		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"table_type",
+					"create_time",
+					"update_time",
+				}).AddRow(
+					"some_table",
+					"BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"create_statement",
+				}).AddRow(
+					"some_schema.some_table",
+					"CREATE TABLE some_table (id INT, category INT, name VARCHAR(255))",
+				),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"COLUMN_NAME",
+					"COLUMN_DEFAULT",
+					"IS_NULLABLE",
+					"COLUMN_TYPE",
+					"COLUMN_KEY",
+					"EXTRA",
+				}).AddRow(
+					"id",
+					"null",
+					"NO",
+					"int",
+					"PRI",
+					"auto_increment",
+				).AddRow(
+					"category",
+					"null",
+					"NO",
+					"int",
+					"",
+					"",
+				).AddRow(
+					"name",
+					"null",
+					"YES",
+					"varchar(255)",
+					"",
+					"",
+				),
+			)
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"seq_in_index",
+					"column_name",
+					"expression",
+					"nullable",
+					"non_unique",
+					"index_type",
+				}).AddRow(
+					"PRIMARY",
+					1,
+					"id",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_name",
+					1,
+					"name",
+					nil,
+					"",
+					0,
+					"BTREE",
+				).AddRow(
+					"idx_name",
+					2,
+					nil,
+					"name = 'test'",
+					"",
+					0,
+					"BTREE",
+				),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}).AddRow(
+					"fk_name",
+					"category",
+					"categories",
+					"id",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT, name VARCHAR(255))"))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"},{"name":"name","type":"varchar(255)","default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"BTREE","columns":["name"],"expressions":["name = 'test'"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("detect table schema, cache enabled (write)", func(t *testing.T) {
 		t.Parallel()
@@ -255,6 +889,7 @@ func TestSchemaTable(t *testing.T) {
 					"index_name",
 					"seq_in_index",
 					"column_name",
+					"expression",
 					"nullable",
 					"non_unique",
 					"index_type",
@@ -262,6 +897,7 @@ func TestSchemaTable(t *testing.T) {
 					"PRIMARY",
 					1,
 					"id",
+					nil,
 					"",
 					0,
 					"BTREE",
@@ -282,7 +918,7 @@ func TestSchemaTable(t *testing.T) {
 					"id",
 				),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -306,11 +942,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("detect table schema, cache enabled (write and read)", func(t *testing.T) {
 		t.Parallel()
@@ -394,6 +1030,7 @@ func TestSchemaTable(t *testing.T) {
 					"index_name",
 					"seq_in_index",
 					"column_name",
+					"expression",
 					"nullable",
 					"non_unique",
 					"index_type",
@@ -401,6 +1038,7 @@ func TestSchemaTable(t *testing.T) {
 					"PRIMARY",
 					1,
 					"id",
+					nil,
 					"",
 					0,
 					"BTREE",
@@ -443,7 +1081,7 @@ func TestSchemaTable(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -467,17 +1105,17 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[3].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[3].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[3].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[4].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[4].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[4].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[5].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[5].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[5].Line)
 	})
 	t.Run("detect view schema", func(t *testing.T) {
 		t.Parallel()
@@ -564,6 +1202,7 @@ func TestSchemaTable(t *testing.T) {
 					"index_name",
 					"seq_in_index",
 					"column_name",
+					"expression",
 					"nullable",
 					"non_unique",
 					"index_type",
@@ -571,6 +1210,7 @@ func TestSchemaTable(t *testing.T) {
 					"PRIMARY",
 					1,
 					"id",
+					nil,
 					"",
 					0,
 					"BTREE",
@@ -586,7 +1226,7 @@ func TestSchemaTable(t *testing.T) {
 					"referenced_column_name",
 				}),
 			)
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -608,11 +1248,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 	t.Run("schemas result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -643,7 +1283,7 @@ func TestSchemaTable(t *testing.T) {
 				"another_schema",
 			).RowError(1, fmt.Errorf("rs error"))) // error on the second row
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -662,7 +1302,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 	})
 	t.Run("tables result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -710,7 +1350,7 @@ func TestSchemaTable(t *testing.T) {
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -729,9 +1369,9 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 	})
 	t.Run("connection error recovery", func(t *testing.T) {
 		t.Parallel()
@@ -810,6 +1450,7 @@ func TestSchemaTable(t *testing.T) {
 					"index_name",
 					"seq_in_index",
 					"column_name",
+					"expression",
 					"nullable",
 					"non_unique",
 					"index_type",
@@ -817,6 +1458,7 @@ func TestSchemaTable(t *testing.T) {
 					"PRIMARY",
 					1,
 					"id",
+					nil,
 					"",
 					0,
 					"BTREE",
@@ -833,7 +1475,7 @@ func TestSchemaTable(t *testing.T) {
 				}),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
@@ -852,10 +1494,10 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 }

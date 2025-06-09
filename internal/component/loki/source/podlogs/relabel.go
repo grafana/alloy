@@ -16,8 +16,8 @@ func convertRelabelConfig(in []*promv1.RelabelConfig) ([]*relabel.Config, error)
 		if len(inRule.SourceLabels) > 0 {
 			outRule.SourceLabels = convertLabelNames(inRule.SourceLabels)
 		}
-		if inRule.Separator != "" {
-			outRule.Separator = inRule.Separator
+		if inRule.Separator != nil && *inRule.Separator != "" {
+			outRule.Separator = *inRule.Separator
 		}
 		if inRule.Regex != "" {
 			regex, err := relabel.NewRegexp(inRule.Regex)
@@ -32,8 +32,8 @@ func convertRelabelConfig(in []*promv1.RelabelConfig) ([]*relabel.Config, error)
 		if inRule.TargetLabel != "" {
 			outRule.TargetLabel = inRule.TargetLabel
 		}
-		if inRule.Replacement != "" {
-			outRule.Replacement = inRule.Replacement
+		if inRule.Replacement != nil && *inRule.Replacement != "" {
+			outRule.Replacement = *inRule.Replacement
 		}
 		if inRule.Action != "" {
 			outRule.Action = relabel.Action(strings.ToLower(inRule.Action))

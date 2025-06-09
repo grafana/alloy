@@ -6,7 +6,7 @@ menuTitle: Choose a component
 weight: 100
 ---
 
-# Choose a  {{< param "FULL_PRODUCT_NAME" >}} component
+# Choose a  {{% param "FULL_PRODUCT_NAME" %}} component
 
 [Components][components] are the building blocks of {{< param "FULL_PRODUCT_NAME" >}}, and there is a [large number of them][components-ref].
 The components you select and configure depend on the telemetry signals you want to collect.

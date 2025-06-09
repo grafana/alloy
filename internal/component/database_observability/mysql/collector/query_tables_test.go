@@ -1,17 +1,17 @@
 package collector
 
 import (
-	"context"
 	"database/sql/driver"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
@@ -22,278 +22,272 @@ func TestQueryTables(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
-		name       string
-		rows       [][]driver.Value
-		logsLabels []model.LabelSet
-		logsLines  []string
+		name                string
+		eventStatementsRows [][]driver.Value
+		logsLabels          []model.LabelSet
+		logsLines           []string
 	}{
 		{
 			name: "select query",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"select * from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "insert query",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"INSERT INTO `some_table` (`id`, `name`) VALUES (...)",
 				"some_schema",
 				"insert into some_table (`id`, `name`) values (1, 'foo')",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="insert" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="insert into some_table(id, name) values (:redacted1, :redacted2)"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "update query",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"UPDATE `some_table` SET `active` = false, `reason` = ? WHERE `id` = ? AND `name` = ?",
 				"some_schema",
-				"update some_table set active=false, reason=null where id = 1 and  name = 'foo'",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
+				"update some_table set active=false, reason=null where id = 1 and name = 'foo'",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="update" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="update some_table set active = false, reason = null where id = :redacted1 and name = :redacted2"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "delete query",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"DELETE FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"delete from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="delete" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="delete from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "join two tables",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT `t`.`id`, `t`.`val1`, `o`.`val2` FROM `some_table` `t` INNER JOIN `other_table` AS `o` ON `t`.`id` = `o`.`id` WHERE `o`.`val2` = ? ORDER BY `t`.`val1` DESC",
 				"some_schema",
 				"select t.id, t.val1, o.val2 FROM some_table t inner join other_table as o on t.id = o.id where o.val2 = 1 order by t.val1 desc",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select t.id, t.val1, o.val2 from some_table as t join other_table as o on t.id = o.id where o.val2 = :redacted1 order by t.val1 desc"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="some_schema" digest="abc123" table="other_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="other_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "truncated query",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"xyz456",
+				"INSERT INTO `some_table`...",
 				"some_schema",
 				"insert into some_table (`id1`, `id2`, `id3`, `id...",
-				"2024-02-02T00:00:00.000Z",
-				"2000",
 			}, {
 				"abc123",
+				"SELECT * FROM `another_table` WHERE `id` = ?",
 				"some_schema",
-				"select * from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
+				"select * from another_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="another_table"`,
 			},
 		},
 		{
 			name: "truncated in multi-line comment",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"select * from some_table where id = 1 /*traceparent='00-abc...",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "truncated with properly closed comment",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ? AND `name` =",
 				"some_schema",
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{},
 			logsLines:  []string{},
 		},
 		{
 			name: "start transaction",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"START TRANSACTION",
 				"some_schema",
 				"START TRANSACTION",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
-			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
-			},
-			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="begin"`,
-			},
+			logsLabels: []model.LabelSet{},
+			logsLines:  []string{},
 		},
 		{
 			name: "sql parse error",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"xyz456",
+				"not valid sql",
 				"some_schema",
 				"not valid sql",
-				"2024-02-02T00:00:00.000Z",
-				"2000",
 			}, {
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"select * from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "multiple schemas",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"some_schema",
 				"select * from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}, {
 				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
 				"other_schema",
 				"select * from some_table where id = 1",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="some_schema" digest="abc123" table="some_table"`,
-				`schema="other_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`,
-				`schema="other_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="other_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "subquery and union",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SELECT * FROM (SELECT `id`, `name` FROM `employees_us_east` UNION SELECT `id`, `name` FROM `employees_us_west`) AS `employees_us` UNION SELECT `id`, `name` FROM `employees_emea`",
 				"some_schema",
 				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from (select id, name from employees_us_east union select id, name from employees_us_west) as employees_us union select id, name from employees_emea"`,
-				`schema="some_schema" digest="abc123" table="employees_us_east"`,
-				`schema="some_schema" digest="abc123" table="employees_us_west"`,
-				`schema="some_schema" digest="abc123" table="employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_emea"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_east"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_west"`,
 			},
 		},
 		{
-			name: "show create table (table name is not parsed)",
-			rows: [][]driver.Value{{
+			name: "show create table",
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SHOW CREATE TABLE `some_table`",
 				"some_schema",
 				"SHOW CREATE TABLE some_table",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show create table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
 		},
 		{
 			name: "show variables",
-			rows: [][]driver.Value{{
+			eventStatementsRows: [][]driver.Value{{
 				"abc123",
+				"SHOW VARIABLES LIKE ?",
 				"some_schema",
 				"SHOW VARIABLES LIKE 'version'",
-				"2024-01-01T00:00:00.000Z",
-				"1000",
+			}},
+			logsLabels: []model.LabelSet{},
+			logsLines:  []string{},
+		},
+		{
+			name: "query truncated with dots fallback to digest_text",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
+				"some_schema",
+				"select * from some_table whe...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`schema="some_schema" digest="abc123" query_type="" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="show variables"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
 			},
+		},
+		{
+			name: "query truncated without dots fallback to digest_text",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE `id` = ?",
+				"some_schema",
+				"select * from some_table where",
+			}},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
+		{
+			name: "both query and fallback query are unparseable",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE",
+				"some_schema",
+				"select * from some_table where",
+			}},
+			logsLabels: []model.LabelSet{},
+			logsLines:  []string{},
 		},
 	}
 
@@ -321,16 +315,15 @@ func TestQueryTables(t *testing.T) {
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"digest",
+						"digest_text",
 						"schema_name",
 						"query_sample_text",
-						"query_sample_seen",
-						"query_sample_timer_wait",
 					}).AddRows(
-						tc.rows...,
+						tc.eventStatementsRows...,
 					),
 				)
 
-			err = collector.Start(context.Background())
+			err = collector.Start(t.Context())
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
@@ -357,7 +350,7 @@ func TestQueryTables(t *testing.T) {
 	}
 }
 
-func TestQuerySampleSQLDriverErrors(t *testing.T) {
+func TestQueryTablesSQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
@@ -391,24 +384,22 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
+					"digest_text",
 					"schema_name",
 					"query_sample_text",
-					"query_sample_seen",
-					"query_sample_timer_wait",
 				}).AddRow(
 					"abc123",
+					"SELECT * FROM `some_table` WHERE `id` = ?",
 					"some_schema",
 					"select * from some_table where id = 1",
-					"2024-01-01T00:00:00.000Z",
-					"1000",
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
+			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -422,10 +413,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -451,30 +440,27 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
+					"digest_text",
 					"schema_name",
 					"query_sample_text",
-					"query_sample_seen",
-					"query_sample_timer_wait",
 				}).AddRow(
 					"abc123",
+					"SELECT * FROM `some_table` WHERE `id` = ?",
 					"some_schema",
 					"select * from some_table where id = 1",
-					"2024-01-01T00:00:00.000Z",
-					"1000",
 				).AddRow(
 					"def456",
+					"SELECT * FROM `another_table` WHERE `id` = ?",
 					"another_schema",
 					"select * from another_table where id = 2",
-					"2024-01-01T00:00:00.000Z",
-					"1000",
 				).RowError(1, fmt.Errorf("rs error")), // error on second row
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
+			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -488,10 +474,8 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -519,24 +503,22 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"digest",
+					"digest_text",
 					"schema_name",
 					"query_sample_text",
-					"query_sample_seen",
-					"query_sample_timer_wait",
 				}).AddRow(
 					"abc123",
+					"SELECT * FROM `some_table` WHERE `id` = ?",
 					"some_schema",
 					"select * from some_table where id = 1",
-					"2024-01-01T00:00:00.000Z",
-					"1000",
 				),
 			)
 
-		err = collector.Start(context.Background())
+		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
+			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -550,9 +532,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_TABLES, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" query_type="select" query_sample_seen="2024-01-01T00:00:00.000Z" query_sample_timer_wait="1000" query_sample_redacted="select * from some_table where id = :redacted1"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[0].Line)
 	})
 }

@@ -8,6 +8,12 @@ import (
 	"strings"
 	"time"
 
+	ebpfspy "github.com/grafana/pyroscope/ebpf"
+	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
+	"github.com/grafana/pyroscope/ebpf/pprof"
+	"github.com/grafana/pyroscope/ebpf/sd"
+	"github.com/grafana/pyroscope/ebpf/symtab"
+
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -77,7 +83,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		args:                   args,
 		targetFinder:           discovery,
 		dynamicProfilingPolicy: dynamicProfilingPolicy,
-		argsUpdate:             make(chan Arguments),
+		argsUpdate:             make(chan Arguments, 4),
 	}
 
 	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, res)

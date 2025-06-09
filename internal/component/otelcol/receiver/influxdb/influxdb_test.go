@@ -3,19 +3,20 @@ package influxdb_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"
+	alloycomponenttest "github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/syntax"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	influxdb1 "github.com/influxdata/influxdb1-client/v2"
 	influxdbreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer"
@@ -35,13 +36,6 @@ func (m *mockConsumer) ConsumeMetrics(_ context.Context, md pmetric.Metrics) err
 	m.lastMetricsConsumed = pmetric.NewMetrics()
 	md.CopyTo(m.lastMetricsConsumed)
 	return nil
-}
-
-// Helper function to create a free address for testing
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-	port := 8086 // Use a suitable port for testing
-	return fmt.Sprintf("localhost:%d", port)
 }
 
 // provided channel.
@@ -97,7 +91,7 @@ func TestInfluxdbUnmarshal(t *testing.T) {
 
 // TestWriteLineProtocol_Alloy tests the InfluxDB receiver's ability to process metrics
 func TestWriteLineProtocol_Alloy(t *testing.T) {
-	addr := getFreeAddr(t)
+	addr := alloycomponenttest.GetFreeAddr(t)
 	config := &influxdbreceiver.Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: addr,
@@ -105,12 +99,12 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
 	}
 	nextConsumer := new(mockConsumer)
 
-	receiver, outerErr := influxdbreceiver.NewFactory().CreateMetrics(context.Background(), receivertest.NewNopSettings(), config, nextConsumer)
+	receiver, outerErr := influxdbreceiver.NewFactory().CreateMetrics(t.Context(), receivertest.NewNopSettings(component.MustNewType("influxdb")), config, nextConsumer)
 	require.NoError(t, outerErr)
 	require.NotNil(t, receiver)
 
-	require.NoError(t, receiver.Start(context.Background(), componenttest.NewNopHost()))
-	t.Cleanup(func() { require.NoError(t, receiver.Shutdown(context.Background())) })
+	require.NoError(t, receiver.Start(t.Context(), componenttest.NewNopHost()))
+	t.Cleanup(func() { require.NoError(t, receiver.Shutdown(t.Context())) })
 
 	// Send test data using InfluxDB client v1
 	t.Run("influxdb-client-v1", func(t *testing.T) {
@@ -147,7 +141,7 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
 		client := influxdb2.NewClientWithOptions("http://"+addr, "", o)
 		t.Cleanup(client.Close)
 
-		err := client.WriteAPIBlocking("my-org", "my-bucket").WriteRecord(context.Background(), "cpu_temp,foo=bar gauge=87.332")
+		err := client.WriteAPIBlocking("my-org", "my-bucket").WriteRecord(t.Context(), "cpu_temp,foo=bar gauge=87.332")
 		require.NoError(t, err)
 
 		metrics := nextConsumer.lastMetricsConsumed
@@ -159,7 +153,7 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
 	})
 }
 func TestReceiverStart(t *testing.T) {
-	addr := getFreeAddr(t)
+	addr := alloycomponenttest.GetFreeAddr(t)
 	metricCh := make(chan pmetric.Metrics)
 	config := influxdb.Arguments{
 		HTTPServer: otelcol.HTTPServerArguments{
@@ -173,20 +167,20 @@ func TestReceiverStart(t *testing.T) {
 	require.NoError(t, err, "Failed to convert configuration")
 
 	receiver, err := influxdbreceiver.NewFactory().CreateMetrics(
-		context.Background(),
-		receivertest.NewNopSettings(),
+		t.Context(),
+		receivertest.NewNopSettings(component.MustNewType("influxdb")),
 		convertedConfig,
 		new(mockConsumer),
 	)
 	require.NoError(t, err, "Failed to create receiver")
 
-	require.NoError(t, receiver.Start(context.Background(), componenttest.NewNopHost()))
-	defer func() { require.NoError(t, receiver.Shutdown(context.Background())) }()
+	require.NoError(t, receiver.Start(t.Context(), componenttest.NewNopHost()))
+	defer func() { require.NoError(t, receiver.Shutdown(t.Context())) }()
 
 	require.NoError(t, nil, "Receiver failed to start")
 }
 func TestReceiverProcessesMetrics(t *testing.T) {
-	addr := getFreeAddr(t)
+	addr := alloycomponenttest.GetFreeAddr(t)
 	nextConsumer := &mockConsumer{}
 
 	config := influxdb.Arguments{
@@ -201,15 +195,15 @@ func TestReceiverProcessesMetrics(t *testing.T) {
 	require.NoError(t, err, "Failed to convert configuration")
 
 	receiver, err := influxdbreceiver.NewFactory().CreateMetrics(
-		context.Background(),
-		receivertest.NewNopSettings(),
+		t.Context(),
+		receivertest.NewNopSettings(component.MustNewType("influxdb")),
 		convertedConfig,
 		nextConsumer,
 	)
 	require.NoError(t, err, "Failed to create receiver")
 
-	require.NoError(t, receiver.Start(context.Background(), componenttest.NewNopHost()))
-	defer func() { require.NoError(t, receiver.Shutdown(context.Background())) }()
+	require.NoError(t, receiver.Start(t.Context(), componenttest.NewNopHost()))
+	defer func() { require.NoError(t, receiver.Shutdown(t.Context())) }()
 
 	t.Log("Receiver started successfully")
 
@@ -220,7 +214,7 @@ func TestReceiverProcessesMetrics(t *testing.T) {
 	defer client.Close()
 
 	t.Log("Sending test payload")
-	err = client.WriteAPIBlocking("org", "bucket").WriteRecord(context.Background(), "cpu_temp,foo=bar gauge=87.332")
+	err = client.WriteAPIBlocking("org", "bucket").WriteRecord(t.Context(), "cpu_temp,foo=bar gauge=87.332")
 	require.NoError(t, err, "Failed to send metrics")
 
 	// Validate the output

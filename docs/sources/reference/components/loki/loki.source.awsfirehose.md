@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.awsfirehose
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.awsfirehose
 ---
 
@@ -86,12 +88,12 @@ Example of the valid `X-Amz-Firehose-Common-Attributes` value with two custom la
 
 You can use the following arguments with `loki.source.awsfirehose`:
 
-| Name                     | Type                 | Description                                                    | Default | Required |
-| ------------------------ | -------------------- | -------------------------------------------------------------- | ------- | -------- |
-| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                      |         | yes      |
-| `access_key`             | `secret`             | If set, require Data Firehose to provide a matching key.       | `""`    | no       |
-| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                      | `{}`    | no       |
-| `use_incoming_timestamp` | `bool`               | Whether or not to use the timestamp received from the request. | `false` | no       |
+| Name                     | Type                 | Description                                              | Default | Required |
+| ------------------------ | -------------------- | -------------------------------------------------------- | ------- | -------- |
+| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.                |         | yes      |
+| `access_key`             | `secret`             | If set, require Data Firehose to provide a matching key. | `""`    | no       |
+| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.                | `{}`    | no       |
+| `use_incoming_timestamp` | `bool`               | Whether to use the timestamp received from the request.  | `false` | no       |
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 

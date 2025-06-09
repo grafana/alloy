@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.docker
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.docker
 ---
 
@@ -34,10 +36,10 @@ You can use the following arguments with `loki.source.docker`:
 | ------------------ | -------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `forward_to`       | `list(LogsReceiver)` | List of receivers to send log entries to.                                      |         | yes      |
 | `host`             | `string`             | Address of the Docker daemon.                                                  |         | yes      |
-| `labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `"{}"`  | yes      |
+| `labels`           | `map(string)`        | The default set of labels to apply on entries.                                 | `{}`    | yes      |
 | `targets`          | `list(map(string))`  | List of containers to read logs from.                                          |         | yes      |
 | `refresh_interval` | `duration`           | The refresh interval to use when connecting to the Docker daemon over HTTP(S). | `"60s"` | no       |
-| `relabel_rules`    | `RelabelRules`       | Relabeling rules to apply on log entries.                                      | `"{}"`  | no       |
+| `relabel_rules`    | `RelabelRules`       | Relabeling rules to apply on log entries.                                      | `{}`    | no       |
 
 ## Blocks
 
@@ -140,7 +142,7 @@ loki.source.docker "default" {
 
 loki.write "local" {
   endpoint {
-    url = "loki:3100/loki/api/v1/push"
+    url = "http://loki:3100/loki/api/v1/push"
   }
 }
 ```

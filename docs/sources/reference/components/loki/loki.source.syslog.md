@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.syslog
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.syslog
 ---
 
@@ -37,7 +39,7 @@ You can use the following arguments with `loki.source.syslog`:
 | Name            | Type                 | Description                               | Default | Required |
 | --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
-| `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | "{}"    | no       |
+| `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | `{}`    | no       |
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
@@ -65,18 +67,18 @@ The `listener` block defines the listen address and protocol where the listener 
 The following arguments can be used to configure a `listener`.
 Only the `address` field is required and any omitted fields take their default values.
 
-| Name                              | Type          | Description                                                                            | Default   | Required |
-| --------------------------------- | ------------- | -------------------------------------------------------------------------------------- | --------- | -------- |
-| `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |           | yes      |
-| `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`  | no       |
-| `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`   | no       |
-| `labels`                          | `map(string)` | The labels to associate with each received syslog record.                              | `{}`      | no       |
-| `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                    | `8192`    | no       |
-| `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.          | `tcp`     | no       |
-| `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year. | `false`   | no       |
-| `syslog_format`                   | `string`      | The format for incoming messages. Must be either `rfc5424` or `rfc3164`.               | `rfc5424` | no       |
-| `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                  | `false`   | no       |
-| `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                          | `false`   | no       |
+| Name                              | Type          | Description                                                                            | Default     | Required |
+| --------------------------------- | ------------- | -------------------------------------------------------------------------------------- | ----------- | -------- |
+| `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |             | yes      |
+| `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`    | no       |
+| `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`     | no       |
+| `labels`                          | `map(string)` | The labels to associate with each received syslog record.                              | `{}`        | no       |
+| `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                    | `8192`      | no       |
+| `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.          | `"tcp"`     | no       |
+| `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year. | `false`     | no       |
+| `syslog_format`                   | `string`      | The format for incoming messages. Must be either `rfc5424` or `rfc3164`.               | `"rfc5424"` | no       |
+| `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                  | `false`     | no       |
+| `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                          | `false`     | no       |
 
 By default, the component assigns the log entry timestamp as the time it was processed.
 

@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.mssql
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.mssql
 ---
 
@@ -27,7 +29,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | Name                   | Type       | Description                                                         | Default | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
 | `connection_string`    | `secret`   | The connection string used to connect to an Microsoft SQL Server.   |         | yes      |
-| `connection_name`      | `string`   | The name of the connection, used as a label in uptime metrics.       | `""`    | no       |
+| `connection_name`      | `string`   | The name of the connection, used as a label in uptime metrics.      | `""`    | no       |
 | `max_idle_connections` | `int`      | Maximum number of idle connections to any one target.               | `3`     | no       |
 | `max_open_connections` | `int`      | Maximum number of open connections to any one target.               | `3`     | no       |
 | `timeout`              | `duration` | The query timeout in seconds.                                       | `"10s"` | no       |
@@ -38,6 +40,11 @@ The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/b
 ```text
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
 ```
+
+{{< admonition type="note" >}}
+If your username or password contain special characters, you must URL encode the characters in the `connection_string` argument.
+For more information, refer to the [Data Source Names](https://github.com/burningalchemist/sql_exporter#data-source-names-dsn) section in the `sql_exporter` documentation
+{{< /admonition >}}
 
 The `connection_name` parameter allows uptime metrics.
 Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
@@ -64,10 +71,10 @@ sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 
 If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
 The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
-The Windows domain may need to be prefixed to the username with a trailing `\`.
+You must use a URL encoded backslash, `%5C`, when you prefix the Windows domain to the username.
 
 ```text
-sqlserver://<DOMAIN>\<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
+sqlserver://<DOMAIN>%5C<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
 ```
 
 ## Blocks

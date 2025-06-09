@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	extauth "go.opentelemetry.io/collector/extension/auth"
+	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 )
 
 const (
@@ -64,7 +64,7 @@ func TestClientAuth(t *testing.T) {
 	clientExtension, err := exports.Handler.GetExtension(auth.Client)
 	require.NoError(t, err)
 	require.NotNil(t, clientExtension)
-	clientAuth, ok := clientExtension.Extension.(extauth.Client)
+	clientAuth, ok := clientExtension.Extension.(extauth.HTTPClient)
 	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
 	rt, err := clientAuth.RoundTripper(http.DefaultTransport)

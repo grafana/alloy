@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.self
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.self
 ---
 
@@ -21,7 +23,7 @@ prometheus.exporter.self "<LABEL>" {
 
 ## Arguments
 
-The `prometheus.exporter.self` doesn't support any arguments.
+The `prometheus.exporter.self` component doesn't support any arguments.
 
 ## Blocks
 

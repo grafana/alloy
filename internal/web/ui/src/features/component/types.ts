@@ -44,6 +44,11 @@ export interface ComponentInfo {
   referencesTo: string[];
 
   /**
+   * IDs of components which this component sends data to.
+   */
+  dataFlowEdgesTo: string[];
+
+  /**
    * Used to indicate if live debugging is available for the component
    */
   liveDebuggingEnabled: boolean;

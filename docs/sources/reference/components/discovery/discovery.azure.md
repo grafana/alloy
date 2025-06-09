@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.azure
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.azure
 ---
 
@@ -36,7 +38,7 @@ You can use the following arguments with `discovery.azure`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                      | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`              | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |                      | no       |
-| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `5m`                 | no       |
+| `refresh_interval`       | `duration`          | Interval at which to refresh the list of targets.                                                | `"5m"`               | no       |
 | `subscription_id`        | `string`            | Azure subscription ID.                                                                           |                      | no       |
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}

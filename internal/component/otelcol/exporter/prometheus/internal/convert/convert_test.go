@@ -166,6 +166,66 @@ func TestConverter(t *testing.T) {
 			enableOpenMetrics: true,
 		},
 		{
+			name: "Histogram out-of-order exemplars",
+			input: `{
+				"resource_metrics": [{
+					"scope_metrics": [{
+						"metrics": [{
+							"name": "test_metric_seconds",
+							"histogram": {
+								"aggregation_temporality": 2,
+								"data_points": [{
+									"start_time_unix_nano": 1000000010,
+									"time_unix_nano": 1000000010,
+									"count": 333,
+									"sum": 100,
+									"bucket_counts": [0, 111, 0, 222],
+									"explicit_bounds": [0.25, 0.5, 0.75, 1.0],
+									"exemplars":[
+										{
+											"time_unix_nano": 1000000001,
+											"as_double": 0.3,
+											"span_id": "aaaaaaaaaaaaaaaa",
+											"trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+										},
+										{
+											"time_unix_nano": 1000000000,
+											"as_double": 0.3,
+											"span_id": "dddddddddddddddd",
+											"trace_id": "dddddddddddddddddddddddddddddddd"
+										},
+										{
+											"time_unix_nano": 1000000003,
+											"as_double": 1.5,
+											"span_id": "cccccccccccccccc",
+											"trace_id": "cccccccccccccccccccccccccccccccc"
+										},
+										{
+											"time_unix_nano": 1000000002,
+											"as_double": 0.5,
+											"span_id": "bbbbbbbbbbbbbbbb",
+											"trace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+										}
+									]
+								}]
+							}
+						}]
+					}]
+				}]
+			}`,
+			expect: `
+				# TYPE test_metric_seconds histogram
+				test_metric_seconds_bucket{le="0.25"} 0
+				test_metric_seconds_bucket{le="0.5"} 111 # {span_id="aaaaaaaaaaaaaaaa",trace_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"} 0.3
+				test_metric_seconds_bucket{le="0.75"} 111 # {span_id="bbbbbbbbbbbbbbbb",trace_id="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"} 0.5
+				test_metric_seconds_bucket{le="1.0"} 333
+				test_metric_seconds_bucket{le="+Inf"} 333 # {span_id="cccccccccccccccc",trace_id="cccccccccccccccccccccccccccccccc"} 1.5
+				test_metric_seconds_sum 100.0
+				test_metric_seconds_count 333
+			`,
+			enableOpenMetrics: true,
+		},
+		{
 			name: "Histogram out-of-order bounds",
 			input: `{
 				"resource_metrics": [{
@@ -1127,7 +1187,7 @@ func TestConverter(t *testing.T) {
 				AddMetricSuffixes:             tc.addMetricSuffixes,
 				ResourceToTelemetryConversion: tc.resourceToTelemetryConversion,
 			})
-			require.NoError(t, conv.ConsumeMetrics(context.Background(), payload))
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
 			families, err := app.MetricFamilies()
 			require.NoError(t, err)
@@ -1191,7 +1251,7 @@ func TestConverterExponentialHistograms(t *testing.T) {
 				}]
 			}]
 		}`,
-			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage. Therefore only the exemplar "bbbbbbbbbbbbbbbb" is stored.
+			// The tests only allow one exemplar/series because it uses a map[series]exemplar as storage. Therefore only the exemplar "cccccccccccccccc" is stored(bbbbbbbbbbbbbbbb is out-of-order).
 			expect: `{
 				"bucket": [
 				  {
@@ -1199,14 +1259,14 @@ func TestConverterExponentialHistograms(t *testing.T) {
 					  "label": [
 						{
 						  "name": "span_id",
-						  "value": "bbbbbbbbbbbbbbbb"
+						  "value": "cccccccccccccccc"
 						},
 						{
 						  "name": "trace_id",
-						  "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+						  "value": "cccccccccccccccccccccccccccccccc"
 						}
 					  ],
-					  "value": 1.5
+					  "value": 1.0
 					}
 				  }
 				],
@@ -1317,7 +1377,7 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			var app testappender.Appender
 			l := util.TestLogger(t)
 			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{})
-			require.NoError(t, conv.ConsumeMetrics(context.Background(), payload))
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
 			families, err := app.MetricFamilies()
 			require.NoError(t, err)
