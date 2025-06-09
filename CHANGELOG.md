@@ -21,6 +21,7 @@ Main (unreleased)
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+- Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
 
 v1.9.1
 -----------------
