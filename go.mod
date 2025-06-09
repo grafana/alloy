@@ -984,7 +984,10 @@ require (
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 )
 
-require github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+require (
+	github.com/buger/jsonparser v1.1.1
+	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+)
 
 require (
 	github.com/DataDog/datadog-agent/pkg/config/create v0.66.0 // indirect
@@ -993,7 +996,6 @@ require (
 	github.com/DefangLabs/secret-detector v0.0.0-20250403165618-22662109213e // indirect
 	github.com/apache/arrow-go/v18 v18.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/containerd/containerd/v2 v2.0.5 // indirect
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
