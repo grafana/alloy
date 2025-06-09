@@ -92,7 +92,7 @@ You can attach arbitrary labels to your metrics using the `labels` argument in `
 
 ## Secure known hosts setup
 
-### How It Works
+{{< param "PRODUCT_NAME" >}} performs the following steps to set up known hosts:
 
 1. **First Run**: If `~/.ssh/known_hosts` is missing, a new one is created using `ssh-keyscan`.
 1. **Validation**: Host keys are validated on every connection attempt.
