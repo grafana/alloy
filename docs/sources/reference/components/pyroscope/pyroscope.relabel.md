@@ -5,6 +5,8 @@ aliases:
 description: Learn about pyroscope.relabel
 labels:
   stage: public-preview
+  products:
+    - oss
 title: pyroscope.relabel
 ---
 
@@ -41,7 +43,7 @@ You can use the following arguments with `pyroscope.relabel`:
 | Name             | Type                         | Description                                               | Default | Required |
 | ---------------- | ---------------------------- | --------------------------------------------------------- | ------- | -------- |
 | `forward_to`     | `list(pyroscope.Appendable)` | List of receivers to forward profiles to after relabeling |         | yes      |
-| `max_cache_size` | `number`                     | Maximum number of entries in the label cache              | 10000   | no       |
+| `max_cache_size` | `number`                     | Maximum number of entries in the label cache              | `10000` | no       |
 
 ## Blocks
 
@@ -53,7 +55,7 @@ You can use the following block with `pyroscope.relabel`:
 
 [rule]: #rule
 
-### rule
+### `rule`
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

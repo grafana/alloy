@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.file
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.file
 ---
 
@@ -35,13 +37,13 @@ The component starts a new reader for each of the given `targets` and fans out l
 
 You can use the following arguments with `loki.source.file`:
 
-| Name                    | Type                 | Description                                                                 | Default | Required |
-| ----------------------- | -------------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                                   |         | yes      |
-| `targets`               | `list(map(string))`  | List of files to read from.                                                 |         | yes      |
-| `encoding`              | `string`             | The encoding to convert from when reading files.                            | `""`    | no       |
-| `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.                               | `""`    | no       |
-| `tail_from_end`         | `bool`               | Whether a log file is tailed from the end if a stored position isn't found. | `false` | no       |
+| Name                    | Type                 | Description                                                | Default | Required |
+| ----------------------- | -------------------- | ---------------------------------------------------------- | ------- | -------- |
+| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                  |         | yes      |
+| `targets`               | `list(map(string))`  | List of files to read from.                                |         | yes      |
+| `encoding`              | `string`             | The encoding to convert from when reading files.           | `""`    | no       |
+| `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.              | `""`    | no       |
+| `tail_from_end`         | `bool`               | Whether to tail from end if a stored position isn't found. | `false` | no       |
 
 The `encoding` argument must be a valid [IANA encoding][] name.
 If not set, it defaults to UTF-8.

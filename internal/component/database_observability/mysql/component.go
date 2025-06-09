@@ -50,19 +50,19 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
+	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
+	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 
-	// TODO(cristian): experimental, will be removed soon
-	UseTiDBParser bool `alloy:"use_tidb_parser,attr,optional"`
+	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 1 * time.Minute,
-	UseTiDBParser:   false,
+	CollectInterval:               1 * time.Minute,
+	SetupConsumersCollectInterval: 1 * time.Hour,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -211,9 +211,10 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryTablesName: true,
-		collector.SchemaTableName: true,
-		collector.QuerySampleName: false,
+		collector.QueryTablesName:    true,
+		collector.SchemaTableName:    true,
+		collector.SetupConsumersName: true,
+		collector.QuerySampleName:    false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -254,7 +255,6 @@ func (c *Component) startCollectors() error {
 			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
-			UseTiDBParser:   c.args.UseTiDBParser,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
@@ -294,11 +294,12 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
-			CollectInterval: c.args.CollectInterval,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:                    dbConnection,
+			InstanceKey:           c.instanceKey,
+			CollectInterval:       c.args.CollectInterval,
+			EntryHandler:          entryHandler,
+			Logger:                c.opts.Logger,
+			DisableQueryRedaction: c.args.DisableQueryRedaction,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
@@ -309,6 +310,24 @@ func (c *Component) startCollectors() error {
 			return err
 		}
 		c.collectors = append(c.collectors, qsCollector)
+	}
+
+	if collectors[collector.SetupConsumersName] {
+		scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
+			DB:              dbConnection,
+			Registry:        c.registry,
+			Logger:          c.opts.Logger,
+			CollectInterval: c.args.SetupConsumersCollectInterval,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)
+			return err
+		}
+		if err := scCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start SetupConsumer collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, scCollector)
 	}
 
 	// Connection Info collector is always enabled

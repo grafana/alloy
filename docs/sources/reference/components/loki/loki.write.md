@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.write
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.write
 ---
 
@@ -30,7 +32,7 @@ You can use the following arguments with `loki.write`:
 
 | Name              | Type          | Description                                  | Default        | Required |
 | ----------------- | ------------- | -------------------------------------------- | -------------- | -------- |
-| `external_labels` | `map(string)` | Labels to add to logs sent over the network. |                | no       |
+| `external_labels` | `map(string)` | Labels to add to logs sent over the network. | `{}`           | no       |
 | `max_streams`     | `int`         | Maximum number of active streams.            | `0` (no limit) | no       |
 
 ## Blocks
@@ -75,10 +77,10 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
-| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | 10        | no       |
+| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
 | `name`                   | `string`            | Optional name to identify this endpoint with.                                                    |           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no       |
@@ -167,7 +169,7 @@ The following arguments are supported:
 | Name                 | Type       | Description                                                                                                    | Default   | Required |
 | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- | --------- | -------- |
 | `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                | `"30s"`   | no       |
-| `enabled`            | `bool`     | Whether to enable the WAL.                                                                                     | false     | no       |
+| `enabled`            | `bool`     | Whether to enable the WAL.                                                                                     | `false`   | no       |
 | `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                             | `"1s"`    | no       |
 | `max_segment_age`    | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting are eventually deleted. | `"1h"`    | no       |
 | `min_read_frequency` | `duration` | Minimum backoff time in the backup read mechanism.                                                             | `"250ms"` | no       |

@@ -18,9 +18,16 @@ on:
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/publish-alloy-release.yml'
+
+permissions:
+  contents: read
+
 jobs:
   check_windows_container:
-    uses: ./.github/workflows/publish-alloy.yaml
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       img-name: alloy-devel
       push: false

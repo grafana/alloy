@@ -62,6 +62,11 @@ func (ds *Diagnostics) Add(d Diagnostic) {
 	*ds = append(*ds, d)
 }
 
+// Merge merges other into the diagnostics list.
+func (ds *Diagnostics) Merge(other Diagnostics) {
+	*ds = append(*ds, other...)
+}
+
 // Error implements error.
 func (ds Diagnostics) Error() string {
 	switch len(ds) {

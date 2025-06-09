@@ -1,5 +1,5 @@
 prometheus.exporter.kafka "kafka_metrics" {
-  kafka_uris = ["127.0.0.1:9094"]
+  kafka_uris = ["kafka:9092"]
 }
 
 prometheus.scrape "kafka_metrics" {
@@ -11,7 +11,7 @@ prometheus.scrape "kafka_metrics" {
 
 prometheus.remote_write "kafka_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }

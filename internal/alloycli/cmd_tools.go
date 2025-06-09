@@ -10,7 +10,7 @@ import (
 func toolsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tools",
-		Short: "Utilties for various components",
+		Short: "Utilities for various components",
 		Long:  `The tools command contains a collection of utilities for components.`,
 	}
 

@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
@@ -52,7 +51,7 @@ type Options struct {
 	Gatherer prometheus.Gatherer  // Where to collect metrics from.
 
 	ReadyFunc  func() bool
-	ReloadFunc func() (*alloy_runtime.Source, error)
+	ReloadFunc func() error
 
 	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
 	MemoryListenAddr string                // Address to accept in-memory traffic on.
@@ -234,8 +233,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 	})
 
 	r.Handle(
@@ -268,8 +267,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
 			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
 
-			_, err := s.opts.ReloadFunc()
-			if err != nil {
+			if err := s.opts.ReloadFunc(); err != nil {
 				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -436,6 +434,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			return
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})

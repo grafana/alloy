@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/go-kit/log"
@@ -11,23 +12,38 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	OP_QUERY_SAMPLE = "query_sample"
 	QuerySampleName = "query_sample"
+	OP_QUERY_SAMPLE = "query_sample"
+	OP_WAIT_EVENT   = "wait_event"
+
+	sqlTextField              = `, statements.SQL_TEXT`
+	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
+	digestTextNotNullClause   = ` AND statements.DIGEST_TEXT IS NOT NULL`
+	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?`
+	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?`
 )
 
-const selectLatestTimerEnd = `SELECT MAX(TIMER_END) FROM performance_schema.events_statements_history`
+const selectUptime = `SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'`
+
+const selectNowAndUptime = `
+SELECT unix_timestamp() AS now,
+       variable_value AS uptime
+FROM performance_schema.global_status
+WHERE variable_name = 'UPTIME'`
 
 const selectQuerySamples = `
-SELECT unix_timestamp()             AS now,
-	global_status.variable_value AS uptime,
+SELECT
 	statements.CURRENT_SCHEMA,
+	statements.THREAD_ID,
+	statements.EVENT_ID,
+	statements.END_EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
-	statements.TIMER_START,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
 	statements.CPU_TIME,
@@ -36,53 +52,62 @@ SELECT unix_timestamp()             AS now,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
 	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY
-FROM performance_schema.events_statements_history AS statements
-JOIN performance_schema.global_status
-WHERE statements.sql_text IS NOT NULL
-	AND global_status.variable_name = 'UPTIME'
+	statements.MAX_TOTAL_MEMORY,
+	waits.event_id as WAIT_EVENT_ID,
+	waits.end_event_id as WAIT_END_EVENT_ID,
+	waits.event_name as WAIT_EVENT_NAME,
+	waits.object_name as WAIT_OBJECT_NAME,
+	waits.object_type as WAIT_OBJECT_TYPE,
+	waits.timer_wait as WAIT_TIMER_WAIT
+	%s
+FROM
+	performance_schema.events_statements_history AS statements
+LEFT JOIN
+	performance_schema.events_waits_history waits
+	ON statements.thread_id = waits.thread_id
+	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+WHERE
+	statements.DIGEST IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	AND statements.TIMER_END >= ?;`
+	%s %s`
 
 type QuerySampleArguments struct {
-	DB              *sql.DB
-	InstanceKey     string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	UseTiDBParser   bool
+	DB                    *sql.DB
+	InstanceKey           string
+	CollectInterval       time.Duration
+	EntryHandler          loki.EntryHandler
+	DisableQueryRedaction bool
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection    *sql.DB
-	instanceKey     string
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
-	sqlParser       parser.Parser
+	dbConnection          *sql.DB
+	instanceKey           string
+	collectInterval       time.Duration
+	entryHandler          loki.EntryHandler
+	sqlParser             parser.Parser
+	disableQueryRedaction bool
 
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
 
-	lastSampleSeenTimestamp float64
+	timerBookmark float64
+	lastUptime    float64
 }
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", QuerySampleName),
-		running:         &atomic.Bool{},
-	}
-
-	if args.UseTiDBParser {
-		c.sqlParser = parser.NewTiDBSqlParser()
-	} else {
-		c.sqlParser = parser.NewXwbSqlParser()
+		dbConnection:          args.DB,
+		instanceKey:           args.InstanceKey,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		sqlParser:             parser.NewTiDBSqlParser(),
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", QuerySampleName),
+		running:               &atomic.Bool{},
 	}
 
 	return c, nil
@@ -93,15 +118,19 @@ func (c *QuerySample) Name() string {
 }
 
 func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
 	c.cancel = cancel
 
-	if err := c.setLastSampleSeenTimestamp(c.ctx); err != nil {
-		level.Error(c.logger).Log("msg", "failed to set last sample seen timestamp", "err", err)
+	if err := c.initializeBookmark(c.ctx); err != nil {
+		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
 		return err
 	}
 
@@ -139,56 +168,72 @@ func (c *QuerySample) Stop() {
 	c.cancel()
 }
 
-// setLastSampleSeenTimestamp queries the database for the latest sample seen timestamp so that upon startup we don't collect
+// initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
 // samples that may have been collected previously.
-func (c *QuerySample) setLastSampleSeenTimestamp(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectLatestTimerEnd)
-	if err != nil {
-		return fmt.Errorf("failed to fetch last sample seen timestamp: %w", err)
-	}
-	defer rs.Close()
+func (c *QuerySample) initializeBookmark(ctx context.Context) error {
+	rs := c.dbConnection.QueryRowContext(ctx, selectUptime)
 
-	for rs.Next() {
-		var ts sql.NullFloat64
-		err := rs.Scan(&ts)
-		if err != nil {
-			return fmt.Errorf("failed to scan row: %w", err)
-		}
-		if !ts.Valid {
-			return fmt.Errorf("no valid timestamp found: %w", err)
-		}
-		c.lastSampleSeenTimestamp = ts.Float64
+	var uptime float64
+	err := rs.Scan(&uptime)
+	if err != nil {
+		return fmt.Errorf("failed to scan uptime: %w", err)
 	}
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate rows: %w", err)
-	}
+
+	c.lastUptime = uptime
+	c.timerBookmark = uptimeSinceOverflow(uptime)
 	return nil
 }
 
 func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQuerySamples, c.lastSampleSeenTimestamp)
+	timeRow := c.dbConnection.QueryRowContext(ctx, selectNowAndUptime)
+
+	var now, uptime float64
+	if err := timeRow.Scan(&now, &uptime); err != nil {
+		return fmt.Errorf("failed to scan now and uptime info: %w", err)
+	}
+
+	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
+
+	var textField, textNotNullClause string
+	if c.disableQueryRedaction {
+		textField = sqlTextField
+		textNotNullClause = sqlTextNotNullClause
+	} else {
+		textField = ""
+		textNotNullClause = digestTextNotNullClause
+	}
+
+	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch history table samples", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch query samples: %w", err)
 	}
 	defer rs.Close()
 
+	// set the new bookmarks
+	c.timerBookmark = limit
+	c.lastUptime = uptime
+
+	lastDigestLogged := ""
+	lastEventIDLogged := ""
+
 	for rs.Next() {
 		row := struct {
-			// system times
-			NowSeconds    uint64
-			UptimeSeconds uint64
-
-			// sample metadata
-			Schema     sql.NullString
-			Digest     sql.NullString
-			DigestText sql.NullString
+			// sample query details
+			Schema              sql.NullString
+			ThreadID            sql.NullString
+			StatementEventID    sql.NullString
+			StatementEndEventID sql.NullString
+			Digest              sql.NullString
+			DigestText          sql.NullString
+			SQLText             sql.NullString
 
 			// sample time
-			TimerStartPicoseconds  sql.NullFloat64
 			TimerEndPicoseconds    sql.NullFloat64
-			ElapsedTimePicoseconds sql.NullInt64
-			CPUTime                uint64
+			TimestampMilliseconds  float64
+			ElapsedTimePicoseconds sql.NullFloat64
+			CPUTime                float64
 
 			// sample row info
 			RowsExamined uint64
@@ -199,15 +244,23 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
+
+			// sample wait info, if any
+			WaitEventID    sql.NullString
+			WaitEndEventID sql.NullString
+			WaitEventName  sql.NullString
+			WaitObjectName sql.NullString
+			WaitObjectType sql.NullString
+			WaitTime       sql.NullFloat64
 		}{}
 
-		err := rs.Scan(
-			&row.NowSeconds,
-			&row.UptimeSeconds,
+		scanArgs := []interface{}{
 			&row.Schema,
+			&row.ThreadID,
+			&row.StatementEventID,
+			&row.StatementEndEventID,
 			&row.Digest,
 			&row.DigestText,
-			&row.TimerStartPicoseconds,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
 			&row.CPUTime,
@@ -217,7 +270,18 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.Errors,
 			&row.MaxControlledMemory,
 			&row.MaxTotalMemory,
-		)
+			&row.WaitEventID,
+			&row.WaitEndEventID,
+			&row.WaitEventName,
+			&row.WaitObjectName,
+			&row.WaitObjectType,
+			&row.WaitTime,
+		}
+		if c.disableQueryRedaction {
+			scanArgs = append(scanArgs, &row.SQLText)
+		}
+
+		err := rs.Scan(scanArgs...)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
 			continue
@@ -228,9 +292,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			continue
 		}
 
-		if row.TimerEndPicoseconds.Float64 > c.lastSampleSeenTimestamp {
-			c.lastSampleSeenTimestamp = row.TimerEndPicoseconds.Float64
-		}
+		serverStartTime := now - uptime
+		row.TimestampMilliseconds = c.calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -244,28 +307,71 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			continue
 		}
 
-		cpuTime := float64(row.CPUTime) / 1e9
-		elapsedTime := float64(row.ElapsedTimePicoseconds.Int64) / 1e9
+		cpuTime := picosecondsToMilliseconds(row.CPUTime)
+		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
-			OP_QUERY_SAMPLE,
-			c.instanceKey,
-			fmt.Sprintf(
-				`schema="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+		logMessage := fmt.Sprintf(
+			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			row.Schema.String, row.ThreadID.String,
+			row.StatementEventID.String, row.StatementEndEventID.String,
+			row.Digest.String,
+			digestText,
+			row.RowsExamined,
+			row.RowsSent,
+			row.RowsAffected,
+			row.Errors,
+			row.MaxControlledMemory,
+			row.MaxTotalMemory,
+			cpuTime,
+			elapsedTime,
+			elapsedTime,
+		)
+		if c.disableQueryRedaction && row.SQLText.Valid {
+			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+		}
+
+		if lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+			lastDigestLogged = row.Digest.String
+			lastEventIDLogged = row.StatementEventID.String
+
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_QUERY_SAMPLE,
+				c.instanceKey,
+				logMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		}
+
+		if row.WaitEventID.Valid {
+			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			waitLogMessage := fmt.Sprintf(
+				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
+				row.ThreadID.String,
 				row.Digest.String,
 				digestText,
-				row.RowsExamined,
-				row.RowsSent,
-				row.RowsAffected,
-				row.Errors,
-				row.MaxControlledMemory,
-				row.MaxTotalMemory,
-				cpuTime,
-				elapsedTime,
-				elapsedTime,
-			),
-		)
+				row.StatementEventID.String,
+				row.WaitEventID.String,
+				row.WaitEndEventID.String,
+				row.WaitEventName.String,
+				row.WaitObjectName.String,
+				row.WaitObjectType.String,
+				waitTime,
+			)
+
+			if c.disableQueryRedaction && row.SQLText.Valid {
+				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			}
+
+			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				c.instanceKey,
+				waitLogMessage,
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+			)
+		}
 	}
 
 	if err := rs.Err(); err != nil {
@@ -274,4 +380,78 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 {
+	// timer indicates event timing since server startup.
+	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
+	// We need to account for this overflow when calculating the timestamp.
+
+	// Knowing the number of overflows that occurred, we can calculate how much overflow time to compensate.
+	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
+	overflowTime := float64(previousOverflows) * picosecondsOverflowInSeconds
+	// We then add this overflow compensation to the server start time, and also add the timer value (remember this is counted from server start).
+	// The resulting value is the timestamp in seconds at which an event happened.
+	timerSeconds := picosecondsToSeconds(timer)
+	timestampSeconds := serverStartTime + overflowTime + timerSeconds
+
+	return secondsToMilliseconds(timestampSeconds)
+}
+
+func calculateNumberOfOverflows(uptime float64) int {
+	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
+}
+
+func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
+	timerClause := endOfTimeline
+	currentOverflows := calculateNumberOfOverflows(uptime)
+	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
+	switch {
+	case currentOverflows > previousOverflows:
+		// if we have just overflowed, collect both the beginning and end of the timeline
+		timerClause = beginningAndEndOfTimeline
+	case uptime < c.lastUptime:
+		// server has restarted
+		c.timerBookmark = 0
+	}
+
+	limit := uptimeSinceOverflow(uptime)
+
+	return timerClause, limit
+}
+
+// uptimeSinceOverflow calculates the uptime "modulo" overflows (if any): it returns the remainder of the uptime value with any
+// overflowed time removed
+func uptimeSinceOverflow(uptime float64) float64 {
+	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
+	return secondsToPicoseconds(uptime - overflowAdjustment)
+}
+
+var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
+
+const (
+	picosecondsPerSecond      float64 = 1e12
+	millisecondsPerSecond     float64 = 1e3
+	millisecondsPerPicosecond float64 = 1e9
+	nanosecondsPerMillisecond float64 = 1e6
+)
+
+func picosecondsToSeconds(picoseconds float64) float64 {
+	return picoseconds / picosecondsPerSecond
+}
+
+func picosecondsToMilliseconds(picoseconds float64) float64 {
+	return picoseconds / millisecondsPerPicosecond
+}
+
+func millisecondsToNanoseconds(milliseconds float64) float64 {
+	return milliseconds * nanosecondsPerMillisecond
+}
+
+func secondsToPicoseconds(seconds float64) float64 {
+	return seconds * picosecondsPerSecond
+}
+
+func secondsToMilliseconds(seconds float64) float64 {
+	return seconds * millisecondsPerSecond
 }

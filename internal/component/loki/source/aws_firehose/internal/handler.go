@@ -210,9 +210,9 @@ func sendAPIResponse(w http.ResponseWriter, firehoseID, errMsg string, status in
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if errMsg != "" {
-		_, _ = w.Write([]byte(fmt.Sprintf(errorResponseTemplate, firehoseID, timestamp, errMsg)))
+		_, _ = fmt.Fprintf(w, errorResponseTemplate, firehoseID, timestamp, errMsg)
 	} else {
-		_, _ = w.Write([]byte(fmt.Sprintf(successResponseTemplate, firehoseID, timestamp)))
+		_, _ = fmt.Fprintf(w, successResponseTemplate, firehoseID, timestamp)
 	}
 }
 
@@ -274,6 +274,9 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	cwLogsLabels.Set("__aws_cw_msg_type", cwRecord.MessageType)
 
 	for _, event := range cwRecord.LogEvents {
+		if h.useIncomingTs {
+			timestamp = time.UnixMilli(event.Timestamp)
+		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
 			Entry: logproto.Entry{

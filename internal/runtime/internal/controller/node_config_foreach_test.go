@@ -276,6 +276,68 @@ func TestNonAlphaNumericString3(t *testing.T) {
 	require.ElementsMatch(t, customComponentIds, []string{"foreach_123__s4_1", "foreach_123__s4_1_1"})
 }
 
+func TestStringIDHash(t *testing.T) {
+	config := `foreach "default" {
+		collection = ["123./st%4$"]
+		var = "num"
+		hash_string_id = true
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_1"})
+}
+
+func TestStringIDHashWithKey(t *testing.T) {
+	config := `foreach "default" {
+		collection = [obj1, obj2]
+		var = "num"
+		hash_string_id = true
+		id = "label1"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	vars := map[string]interface{}{
+		"obj1": map[string]string{
+			"label1": "123./st%4$",
+			"label2": "b",
+		},
+		"obj2": map[string]string{
+			"label1": "aaaaaaaaaaaaaaabbbbbbbbbcccccccccdddddddddeeeeeeeeeffffffffffgggggggggggghhhhhhhhhhiiiiiiiiiiijjjjjjjjjjjkkkkkkkkkklllll",
+		},
+	}
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_1", "foreach_986cb398ec7d2d70a69bab597e8525ccc5c67594765a82ee7d0f011937cdec25_1"})
+}
+
+func TestStringIDHashWithKeySameValue(t *testing.T) {
+	config := `foreach "default" {
+		collection = [obj1, obj2]
+		var = "num"
+		hash_string_id = true
+		id = "label1"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	vars := map[string]interface{}{
+		"obj1": map[string]string{
+			"label1": "123./st%4$",
+			"label2": "b",
+		},
+		"obj2": map[string]string{
+			"label1": "123./st%4$",
+		},
+	}
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(vars)))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_1", "foreach_1951d330e1267d082c816bfb3f40cce6eb9a8da9f6a6b9da09ace3c6514361cd_2"})
+}
+
 func TestCollectionNonArrayValue(t *testing.T) {
 	config := `foreach "default" {
 		collection = "aaa"
@@ -285,6 +347,24 @@ func TestCollectionNonArrayValue(t *testing.T) {
 	}`
 	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
 	require.ErrorContains(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))), `"aaa" should be array, got string`)
+}
+
+func TestModuleControllerUpdate(t *testing.T) {
+	config := `foreach "default" {
+		collection = [1, 2, 3]
+		var = "num"
+		template {
+		}
+	}`
+	foreachConfigNode := NewForeachConfigNode(getBlockFromConfig(t, config), getComponentGlobals(t), nil)
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds := foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
+
+	// Re-evaluate, the module controller should still contain the same custom components
+	require.NoError(t, foreachConfigNode.Evaluate(vm.NewScope(make(map[string]interface{}))))
+	customComponentIds = foreachConfigNode.moduleController.(*ModuleControllerMock).CustomComponents
+	require.ElementsMatch(t, customComponentIds, []string{"foreach_1_1", "foreach_2_1", "foreach_3_1"})
 }
 
 func getBlockFromConfig(t *testing.T, config string) *ast.BlockStmt {

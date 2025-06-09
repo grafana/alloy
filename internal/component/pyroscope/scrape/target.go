@@ -55,10 +55,12 @@ type Target struct {
 	lastScrape         time.Time
 	lastScrapeDuration time.Duration
 	health             TargetHealth
+	godeltaprof        bool
 }
 
 // NewTarget creates a reasonably configured target for querying.
 func NewTarget(lbls labels.Labels, params url.Values) *Target {
+	godeltaprof := false
 	var publicLabels labels.Labels
 	// lbls are sorted. Private labels goes before public labels.
 	// find pivot to calculate publicLabels as subslice, with no allocations
@@ -69,10 +71,13 @@ func NewTarget(lbls labels.Labels, params url.Values) *Target {
 				switch l.Value {
 				case pprofGoDeltaProfMemory:
 					lbls[i].Value = pprofMemory
+					godeltaprof = true
 				case pprofGoDeltaProfBlock:
 					lbls[i].Value = pprofBlock
+					godeltaprof = true
 				case pprofGoDeltaProfMutex:
 					lbls[i].Value = pprofMutex
+					godeltaprof = true
 				}
 			}
 			continue
@@ -87,11 +92,12 @@ func NewTarget(lbls labels.Labels, params url.Values) *Target {
 	_, _ = h.Write([]byte(url))
 
 	return &Target{
-		allLabels: lbls,
-		url:       url,
-		hash:      h.Sum64(),
-		params:    params,
-		health:    HealthUnknown,
+		allLabels:   lbls,
+		url:         url,
+		hash:        h.Sum64(),
+		params:      params,
+		health:      HealthUnknown,
+		godeltaprof: godeltaprof,
 	}
 }
 
@@ -272,7 +278,7 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 		switch lb.Get(model.SchemeLabel) {
 		case "http", "":
 			addr = addr + ":80"
-		case "https":
+		case "https": //nolint:goconst
 			addr = addr + ":443"
 		default:
 			return nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)

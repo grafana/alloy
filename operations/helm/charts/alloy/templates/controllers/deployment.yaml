@@ -11,11 +11,11 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.controller.autoscaling.enabled }}
+  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled)) }}
   replicas: {{ .Values.controller.replicas }}
   {{- end }}
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
-  minReadySeconds: 10
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
   {{- end }}
   selector:
     matchLabels:

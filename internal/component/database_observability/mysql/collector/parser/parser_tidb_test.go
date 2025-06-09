@@ -124,7 +124,6 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "DROP TABLE IF EXISTS some_table",
 			tables: []string{"some_table"},
 		},
-		// the following tests pass only with tidb parser
 		{
 			name:   "show create table",
 			sql:    "SHOW CREATE TABLE some_table",
@@ -134,6 +133,21 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			name:   "create user with password",
 			sql:    "CREATE USER 'exporter'@'%' IDENTIFIED BY <secret>",
 			tables: nil,
+		},
+		{
+			name:   "insert with redacted values",
+			sql:    "INSERT INTO some_table(id, url) VALUES (...)",
+			tables: []string{"some_table"},
+		},
+		{
+			name:   "trim function (sql mode ignore case)",
+			sql:    "SELECT TRIM (TRAILING '/' FROM url)",
+			tables: nil,
+		},
+		{
+			name:   "if with redacted values",
+			sql:    "SELECT IF(`some_table`.`url` IS NULL, ?, ...) AS `url` FROM `some_table`",
+			tables: []string{"some_table"},
 		},
 	}
 

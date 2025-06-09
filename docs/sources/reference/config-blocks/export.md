@@ -1,32 +1,35 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/export/
 description: Learn about the export configuration block
-menuTitle: export
-title: export block
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: export
 ---
 
-# export block
+# `export`
 
 `export` is an optional configuration block used to specify an emitted value of a [custom component][].
 `export` blocks must be given a label which determine the name of the export.
 
 The `export` block may only be specified inside the definition of [a `declare` block][declare].
 
-## Example
+## Usage
 
 ```alloy
-export "ARGUMENT_NAME" {
-  value = ARGUMENT_VALUE
+export "<ARGUMENT_NAME>" {
+  value = <ARGUMENT_VALUE>
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `export`:
 
-Name    | Type  | Description      | Default | Required
---------|-------|------------------|---------|---------
-`value` | `any` | Value to export. |         | yes
+| Name    | Type  | Description      | Default | Required |
+| ------- | ----- | ---------------- | ------- | -------- |
+| `value` | `any` | Value to export. |         | yes      |
 
 The `value` argument determines what the value of the export is.
 To expose an exported field of another component, set `value` to an expression that references that exported value.
@@ -46,7 +49,7 @@ declare "pods_and_nodes" {
   }
 
   discovery.kubernetes "nodes" {
-    role = "nodes"
+    role = "node"
   }
 
   export "kubernetes_resources" {
