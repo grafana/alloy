@@ -72,11 +72,13 @@ You can use the following blocks with `otelcol.receiver.opencensus`:
 | `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
+| `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `keepalive` > `enforcesment_policy` refers to an `enforcement_policy` block defined inside a `keepalive` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
@@ -130,7 +132,13 @@ The following arguments are supported:
 The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

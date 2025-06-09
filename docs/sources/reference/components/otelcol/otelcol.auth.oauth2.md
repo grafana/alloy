@@ -68,8 +68,10 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | TLS settings for the token client.                                         | no       |
+| `tls` > [`tpm`][tpm]             | TPM settings for the TLS key_file.                                         | no       |
 
 [tls]: #tls
+[tpm]: #tpm
 [debug_metrics]: #debug_metrics
 
 ### `debug_metrics`
@@ -81,7 +83,13 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 The `tls` block configures TLS settings used for connecting to the token client.
 If the `tls` block isn't provided, TLS won't be used for communication.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

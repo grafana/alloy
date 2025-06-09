@@ -55,6 +55,7 @@ You can use the following blocks with `otelcol.exporter.otlphttp`:
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                        | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                              | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                | no       |
@@ -64,6 +65,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 [client]: #client
 [tls]: #tls
+[tpm]: #tpm
 [cookies]: #cookies
 [compression_params]: #compression_params
 [sending_queue]: #sending_queue
@@ -140,7 +142,13 @@ The following arguments are supported:
 
 The `tls` block configures TLS settings used for the connection to the HTTP server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `debug_metrics`
 

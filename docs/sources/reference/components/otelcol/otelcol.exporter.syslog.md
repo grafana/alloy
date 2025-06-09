@@ -82,8 +82,13 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                | no       |
 | [`tls`][tls]                           | Configures TLS for a TCP connection.                                       | no       |
+| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS key_file.                                         | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [sending_queue]: #sending_queue
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
@@ -108,7 +113,13 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 
 The `tls` block configures TLS settings used for a connection to a TCP syslog server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

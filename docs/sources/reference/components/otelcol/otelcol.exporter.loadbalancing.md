@@ -104,6 +104,7 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > [`client`][client]                  | Configures the exporter gRPC client.                                              | no       |
 | `protocol` > `otlp` > `client` > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
 | `protocol` > `otlp` > `client` > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
+| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS key_file.                                     | no       |
 | `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
 | [`queue`][queue]                                          | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
@@ -130,6 +131,7 @@ There are two types of [queue][] and [retry][] blocks:
 [otlp]: #otlp
 [client]: #client
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [queue]: #queue
 [retry]: #retry
@@ -290,7 +292,13 @@ The following arguments are supported:
 
 The `tls` block configures TLS settings used for the connection to the gRPC server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `queue`
 

@@ -47,11 +47,13 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | [`http`][http]                                                    | Configures the HTTP server to serve Jaeger remote sampling.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                             | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                              | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
 | [`grpc`][grpc]                                                    | Configures the gRPC server to serve Jaeger remote sampling.                      | no       |
 | `grpc` > [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                         | no       |
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                       | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                          | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                              | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state.       | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -59,6 +61,7 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 
 [http]: #http
 [tls]: #tls
+[tpm]: #tpm
 [cors]: #cors
 [grpc]: #grpc
 [keepalive]: #keepalive
@@ -142,7 +145,13 @@ The following arguments are supported:
 
 This `tls` block configures TLS settings used for the connection to the gRPC server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 
@@ -185,7 +194,13 @@ If `allowed_headers` includes `"*"`, all headers will be permitted.
 The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `grpc`
 

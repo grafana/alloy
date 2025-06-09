@@ -60,6 +60,7 @@ You can use the following blocks with `otelcol.receiver.solace`:
 | [`flow`][flow]                                      | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
 | `flow` > [`delayed_retry`][delayed_retry]           | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
 | [`tls`][tls]                                        | Configures TLS for connecting to the Solace broker.                                                                              | no       |
+| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS key_file.                                                                                    | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -73,6 +74,7 @@ One SASL authentication block is required in the `authentication` block.
 [sasl_xauth2]: #sasl_xauth2
 [sasl_external]: #sasl_external
 [tls]: #tls
+[tpm]: #tpm
 [flow]: #flow
 [delayed_retry]: #delayed_retry
 [debug_metrics]: #debug_metrics
@@ -96,7 +98,7 @@ It doesn't support any arguments and is configured fully through inner blocks.
 
 ### `sasl_external`
 
-The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL External.
+The `sasl_external` block configures how to authenticate to the Solace broker with SASL External.
 It doesn't support any arguments or blocks.
 It must be used with the [`tls`][tls] block.
 
@@ -143,7 +145,13 @@ The following arguments are supported:
 
 ### `tls`
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

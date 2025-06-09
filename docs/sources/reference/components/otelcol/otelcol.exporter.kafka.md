@@ -69,6 +69,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                              | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
 | `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM for the TLS `key_file.                                       | no       |
 | [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state. | no       |
 | [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                               | no       |
 | [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                     | no       |
@@ -78,6 +79,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                             | no       |
 | [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                 | no       |
 | [`tls`][tls]                                     | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS key_file.                               | no       |
 | [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                             | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -91,6 +93,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [sasl]: #sasl
 [aws_msk]: #aws_msk
 [tls]: #tls
+[tpm]: #tpm
 [kerberos]: #kerberos
 [metadata]: #metadata
 [retry]: #retry
@@ -151,7 +154,13 @@ The `traces` block configures how to send traces to Kafka brokers.
 The `tls` block configures TLS settings used for connecting to the Kafka brokers.
 If the `tls` block isn't provided, TLS won't be used for communication.
 
-{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `debug_metrics`
 
