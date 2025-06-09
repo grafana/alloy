@@ -15,6 +15,7 @@ v1.9.2
 - Send profiles concurrently from `pyroscope.ebpf`. (@korniltsev)
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+- Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
 
 - Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
 
