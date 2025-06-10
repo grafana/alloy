@@ -23,6 +23,8 @@ Main (unreleased)
 
 - (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
 
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
+
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
@@ -130,8 +132,6 @@ v1.9.0
   - [0.27.2] Fix panic on certain invalid lines
   
 - Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
-
-- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0
 
 ### Bugfixes
 
