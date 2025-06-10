@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
+	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
@@ -357,22 +358,26 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 	}
 
 	// On node restart, the API server is not always immediately available.
-	// Retry up to 2x to give time for the network to initialize.
+	// Retry with backoff to give time for the network to initialize.
 	var informer cache.Informer
 	var err error
-	i := 0
-	for {
+
+	backoff := backoff.New(
+		ctx,
+		backoff.Config{
+			MinBackoff: 1 * time.Second,
+			MaxBackoff: 10 * time.Second,
+			MaxRetries: 3, // retry up to 3 times
+		},
+	)
+	for backoff.Ongoing() {
 		// Retry to get the informer in case of a timeout.
 		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
 		if err == nil {
 			break
 		}
-		if i == 2 {
-			return err
-		}
-		level.Warn(c.logger).Log("msg", "failed to get informer, retrying in 1s", "err", err)
-		time.Sleep(1 * time.Second)
-		i++
+		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", backoff.NextDelay(), "err", err)
+		backoff.Wait()
 	}
 
 	const resync = 5 * time.Minute
