@@ -27,7 +27,7 @@ import (
 const (
 	OP_EXPLAIN_PLAN        = "explain_plan"
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	ExplainPlanName        = "explain_plan" // This could be OP_EXPLAIN_PLAN?
+	ExplainPlanName        = "explain_plan"
 )
 
 const selectDigestsForExplainPlan = `
@@ -704,8 +704,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
-// This is presently only used in the tests. Later we'll probably use it to redact attached conditions before
-// debug logging the entire explain plan in alloy.
 func RedactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {
 	parser := parser.NewTiDBSqlParser()
 	attachedConditions, err := traverseJSONForAttachedConditions(explainPlanJSON)
