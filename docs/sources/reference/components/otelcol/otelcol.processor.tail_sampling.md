@@ -16,8 +16,10 @@ title: otelcol.processor.tail_sampling
 All spans for a given trace _must_ be received by the same collector instance for effective sampling decisions.
 
 {{< admonition type="note" >}}
-`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib `tail_sampling` processor.
+`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib [`tail_sampling`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tail_sampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/tailsamplingprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.tail_sampling` components by giving them different labels.

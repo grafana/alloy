@@ -16,8 +16,10 @@ title: otelcol.receiver.splunkhec
 The receiver accepts data formatted as JSON HEC events under any path or as EOL separated log raw data if sent to the `raw_path` path.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` receiver.
+`otelcol.receiver.splunkhec` is a wrapper over the upstream OpenTelemetry Collector [`splunkhec`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`splunkhec`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/splunkhecreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.splunkhec` components by giving them different labels.

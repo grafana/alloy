@@ -17,8 +17,10 @@ title: otelcol.exporter.kafka
 It's important to use `otelcol.exporter.kafka` together with `otelcol.processor.batch` to make sure `otelcol.exporter.kafka` doesn't slow down due to sending Kafka a huge number of small payloads.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.kafka` is a wrapper over the upstream OpenTelemetry Collector `kafka` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.kafka` is a wrapper over the upstream OpenTelemetry Collector [`kafka`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`kafka`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/kafkaexporter
 {{< /admonition >}}
 
 Multiple `otelcol.exporter.kafka` components can be specified by giving them

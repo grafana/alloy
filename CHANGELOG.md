@@ -14,11 +14,30 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 
-- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
-
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+
+- (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
+
+- (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
+
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
+
+### Bugfixes
+
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+- Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
+
+- For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
+
+v1.9.1
+-----------------
+
+### Features
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
 
 ### Bugfixes
 

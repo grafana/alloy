@@ -17,8 +17,10 @@ description: Learn about otelcol.receiver.vcenter
 `otelcol.receiver.vcenter` accepts metrics from a vCenter or ESXi host running VMware vSphere APIs and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector `vcenter` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector [`vcenter`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`vcenter`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/vcenterreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.vcenter` components by giving them different labels.

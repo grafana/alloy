@@ -15,8 +15,10 @@ title: otelcol.receiver.tcplog
 `otelcol.receiver.tcplog` accepts log messages over a TCP connection and forwards them as logs to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector `tcplog` receiver.
+`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector [`tcplog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tcplog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/tcplogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.tcplog` components by giving them different labels.

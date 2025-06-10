@@ -14,6 +14,13 @@ title: otelcol.receiver.influxdb
 
 You can specify multiple `otelcol.receiver.influxdb` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.influxdb` is a wrapper over the upstream OpenTelemetry Collector [`influxdb`][] receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`influxdb`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

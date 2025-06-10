@@ -15,8 +15,10 @@ title: otelcol.extension.jaeger_remote_sampling
 `otelcol.extension.jaeger_remote_sampling` serves a specified Jaeger remote sampling document.
 
 {{< admonition type="note" >}}
-`otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry Collector `jaegerremotesampling` extension.
+`otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry Collector [`jaegerremotesampling`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`jaegerremotesampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/jaegerremotesampling
 {{< /admonition >}}
 
 You can specify multiple `otelcol.extension.jaeger_remote_sampling` components by giving them different labels.

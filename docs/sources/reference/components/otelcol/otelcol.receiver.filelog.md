@@ -15,8 +15,10 @@ title: otelcol.receiver.filelog
 `otelcol.receiver.filelog` reads log entries from files and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector `filelog` receiver.
+`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector [`filelog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`filelog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.filelog` components by giving them different labels.

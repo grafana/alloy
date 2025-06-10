@@ -17,8 +17,10 @@ description: Learn about otelcol.processor.resourcedetection
 [OpenTelemetry resource semantic conventions]: https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions/
 
 {{< admonition type="note" >}}
-`otelcol.processor.resourcedetection` is a wrapper over the upstream OpenTelemetry Collector Contrib `resourcedetection` processor.
+`otelcol.processor.resourcedetection` is a wrapper over the upstream OpenTelemetry Collector Contrib [`resourcedetection`][] processor.
 If necessary, bug reports or feature requests are redirected to the upstream repository.
+
+[`resourcedetection`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/resourcedetectionprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.resourcedetection` components by giving them different labels.
