@@ -37,15 +37,15 @@ After an effort has been made to triage an issue, the issue should be in one of 
   * *These issues should no longer have the `needs-triage` label*
 * Closed
   * An issue might be closed after triage if
-    * a solution was offered, the issue was labelled `waiting-for-author`, and the author confirmed their need was met
-    * there is an existing duplicate issue with sufficient context to resolve the issue
-    * the issue was already solved (there should be a duplicate closed issue in most cases, link to it)
-    * based on discussion, the issue should be re-opened as a new `proposal` based on concensus in the issue comments
+    * A solution was offered, the issue was labelled `waiting-for-author`, and the author confirmed their need was met
+    * There is an existing duplicate issue with sufficient context to resolve the issue
+    * The issue was already solved (there should be a duplicate closed issue in most cases, link to it)
+    * Based on discussion, the issue should be re-opened as a new `proposal` based on concensus in the issue comments
   * It's unlikely an issue will be closed after first triage, unless it doesn't meet community standards.
 
 ### Stale issues
 
-The `needs-attention` label is applied to issues that are seen as stale in a github action.
+The `needs-attention` label is applied to issues that are seen as stale in a GitHub action.
 This includes issues that have not been interacted with in 90 days.
 Issues with the `needs-attention` label may be closed if they are not in an actionable state.  
 
@@ -60,7 +60,7 @@ There are a variety of other labels that can be applied to issues and pull reque
 Adding the label to a pull request will trigger the full suite of tests on Windows on a pull request.
 At this time there are no other OS-based labels.
 * There are various `dependencies` and language (`go`, `javascript`, etc) labels that may be applied by bots.
-* Component labels like `prometheus.remote_write` should be applied whenever possible. These labels should all be generated (but not automatically applied) by a github action.
+* Component labels like `prometheus.remote_write` should be applied whenever possible. These labels should all be generated (but not automatically applied) by a GitHub action.
 * The `v2.0-breaking-change` label may be applied if the issue represents a breaking change that will need to be delayed until Alloy v2.x.
 
 ## Community Members
