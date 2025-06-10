@@ -24,10 +24,10 @@ otelcol.example.component "<LABEL>" {
     ...
     tls {
         ...
-        key_file = my-tss2-key.key
+        key_file = "my-tss2-key.key"
         tpm {
             enabled = true
-            path = /dev/tpmrm0
+            path = "/dev/tpmrm0"
         }
     }
 }

@@ -213,7 +213,7 @@ The following levels are valid combinations of `compression` and `level`:
 |-------------|-------|------------------------|
 | `gzip`      | `1`   | BestSpeed              |
 | `gzip`      | `9`   | BestCompression        |
-| `gzip`      | `1-`  | DefaultCompression     |
+| `gzip`      | `-1`  | DefaultCompression     |
 | `zstd`      | `1`   | SpeedFastest           |
 | `zstd`      | `3`   | SpeedDefault           |
 | `zstd`      | `6`   | SpeedBetterCompression |
