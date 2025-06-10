@@ -13,8 +13,10 @@ title: otelcol.receiver.solace
 `otelcol.receiver.solace` accepts traces from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/) and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector `solace` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector [`solace`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`solace`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/solacereceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.solace` components by giving them different labels.
@@ -37,11 +39,11 @@ otelcol.receiver.solace "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.solace`:
 
-| Name                 | Type     | Description                                                               | Default          | Required |
-| -------------------- | -------- | ------------------------------------------------------------------------- | ---------------- | -------- |
-| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                  | yes      |
-| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `localhost:5671` | no       |
-| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | 10               | no       |
+| Name                 | Type     | Description                                                               | Default            | Required |
+| -------------------- | -------- | ------------------------------------------------------------------------- | ------------------ | -------- |
+| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                    | yes      |
+| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `"localhost:5671"` | no       |
+| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | `10`               | no       |
 
 `queue` must have the format `queue://#telemetry-myTelemetryProfile`.
 

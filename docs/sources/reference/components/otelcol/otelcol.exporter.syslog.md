@@ -16,8 +16,10 @@ title: otelcol.exporter.syslog
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` exporter.
+`otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector [`syslog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`syslog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/syslogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.syslog` components by giving them different labels.
@@ -57,14 +59,14 @@ Refer to the [OpenTelemetry documentation][upstream_readme] for the exporter for
 
 You can use the following arguments with `otelcol.exporter.syslog`:
 
-| Name                    | Type       | Description                                           | Default   | Required |
-| ----------------------- | ---------- | ----------------------------------------------------- | --------- | -------- |
-| `endpoint`              | `string`   | The endpoint to send syslog formatted logs to.        |           | yes      |
-| `network`               | `string`   | The type of network connection to use to send logs.   | `tcp`     | no       |
-| `port`                  | `int`      | The port where the syslog server accepts connections. | `514`     | no       |
-| `protocol`              | `string`   | The syslog protocol that the syslog server supports.  | `rfc5424` | no       |
-| `enable_octet_counting` | `bool`     | Whether to enable rfc6587 octet counting.             | `false`   | no       |
-| `timeout`               | `duration` | Time to wait before marking a request as failed.      | `5s`      | no       |
+| Name                    | Type       | Description                                           | Default     | Required |
+| ----------------------- | ---------- | ----------------------------------------------------- | ----------- | -------- |
+| `endpoint`              | `string`   | The endpoint to send syslog formatted logs to.        |             | yes      |
+| `network`               | `string`   | The type of network connection to use to send logs.   | `"tcp"`     | no       |
+| `port`                  | `int`      | The port where the syslog server accepts connections. | `514`       | no       |
+| `protocol`              | `string`   | The syslog protocol that the syslog server supports.  | `"rfc5424"` | no       |
+| `enable_octet_counting` | `bool`     | Whether to enable rfc6587 octet counting.             | `false`     | no       |
+| `timeout`               | `duration` | Time to wait before marking a request as failed.      | `"5s"`      | no       |
 
 The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol.
 `network` must be one of `tcp`, `udp`.

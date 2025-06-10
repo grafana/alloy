@@ -17,8 +17,10 @@ title: otelcol.processor.deltatocumulative
 `otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporality to cumulative.
 
 {{< admonition type="note" >}}
-`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector `deltatocumulative` processor.
+`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector [`deltatocumulative`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`deltatocumulative`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/deltatocumulativeprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.deltatocumulative` components by giving them different labels.
@@ -37,9 +39,9 @@ otelcol.processor.deltatocumulative "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.deltatocumulative`:
 
-| Name          | Type       | Description                                                         | Default       | Required |
-| ------------- | ---------- | ------------------------------------------------------------------- | ------------- | -------- |
-| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`        | no       |
+| Name          | Type       | Description                                                         | Default               | Required |
+| ------------- | ---------- | ------------------------------------------------------------------- | --------------------- | -------- |
+| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`                | no       |
 | `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
 `otelcol.processor.deltatocumulative` tracks incoming metric streams.

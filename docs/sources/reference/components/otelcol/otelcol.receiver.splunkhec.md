@@ -16,8 +16,10 @@ title: otelcol.receiver.splunkhec
 The receiver accepts data formatted as JSON HEC events under any path or as EOL separated log raw data if sent to the `raw_path` path.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` receiver.
+`otelcol.receiver.splunkhec` is a wrapper over the upstream OpenTelemetry Collector [`splunkhec`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`splunkhec`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/splunkhecreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.splunkhec` components by giving them different labels.
@@ -43,10 +45,10 @@ You can use the following arguments with `otelcol.receiver.splunkhec`:
 | `auth`                     | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                   |                                                            | no       |
 | `compression_algorithms`   | `list(string)`             | A list of compression algorithms the server can accept.                                                        | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`                 | `string`                   | `host:port` to listen for traffic on.                                                                          | `"localhost:8088"`                                         | no       |
-| `health_path`              | `string`                   | The path reporting health checks.                                                                              | `/services/collector/health`                               | no       |
+| `health_path`              | `string`                   | The path reporting health checks.                                                                              | `"/services/collector/health"`                             | no       |
 | `include_metadata`         | `bool`                     | Propagate incoming connection metadata to downstream consumers.                                                | `false`                                                    | no       |
-| `max_request_body_size`    | `string`                   | Maximum request body size the server will allow.                                                               | `20MiB`                                                    | no       |
-| `raw_path`                 | `string`                   | The path accepting raw HEC events. Only applies when the receiver is used for logs.                            | `/services/collector/raw`                                  | no       |
+| `max_request_body_size`    | `string`                   | Maximum request body size the server will allow.                                                               | `"20MiB"`                                                  | no       |
+| `raw_path`                 | `string`                   | The path accepting raw HEC events. Only applies when the receiver is used for logs.                            | `"/services/collector/raw"`                                | no       |
 | `splitting`                | `string`                   | Defines the splitting strategy used by the receiver when ingesting raw events. Can be set to "line" or "none". | `"line"`                                                   | no       |
 
 By default, `otelcol.receiver.splunkhec` listens for HTTP connections on `localhost:8088`.

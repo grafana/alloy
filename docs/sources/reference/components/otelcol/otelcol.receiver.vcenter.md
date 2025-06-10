@@ -17,8 +17,10 @@ description: Learn about otelcol.receiver.vcenter
 `otelcol.receiver.vcenter` accepts metrics from a vCenter or ESXi host running VMware vSphere APIs and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector `vcenter` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector [`vcenter`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`vcenter`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/vcenterreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.vcenter` components by giving them different labels.
@@ -59,9 +61,9 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 | `endpoint`            | `string`   | Endpoint to a vCenter Server or ESXi host which has the SDK path enabled. |         | yes      |
 | `username`            | `string`   | Username to use for authentication.                                       |         | yes      |
 | `password`            | `string`   | Password to use for authentication.                                       |         | yes      |
-| `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `1m`    | no       |
-| `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `1s`    | no       |
-| `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `0s`    | no       |
+| `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `"1m"`  | no       |
+| `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `"1s"`  | no       |
+| `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `"0s"`  | no       |
 
 `endpoint` has the format `<protocol>://<hostname>`. For example, `https://vcsa.hostname.localnet`.
 

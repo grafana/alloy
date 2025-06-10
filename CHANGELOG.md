@@ -10,7 +10,49 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
+
+### Enhancements
+
+- Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+
+- (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
+
+- (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
+
+### Bugfixes
+
+- Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+- Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
+
+v1.9.1
+-----------------
+
+### Features
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This adds new metrics to the `dns` collector. (@dehaansa)
+
+### Bugfixes
+
+- Update the `prometheus.exporter.windows` component to version v0.30.7. This fixes an error with the exchange collector and terminal_services collector (@dehaansa)
+
+- Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
+
+- Fix elevated CPU usage when using some `otelcol` components due to debug logging. (@thampiotr)
+
+v1.9.0
+-----------------
+
 ### Breaking changes
+
+- The `prometheus.exporter.windows` component has been update to version v0.30.6. This update includes a significant rework of the exporter and includes some breaking changes. (@dehaansa)
+  - The `msmq` and `service` collectors can no longer be configured with a WMI where clause. Any filtering previously done in a where clause will need to be done in a `prometheus.relabel` component.
+  - The `service` collector no longer provides `enable_v2_collector` and `use_api` configuration options.
+  - The `mscluster_*` and `netframework_*` collectors are now replaced with one `mscluster` and `netframework` collector that allows you to enable the separate metric groupings individually.
+  - The `teradici_pcoip` and `vmware_blast` collectors have been removed from the exporter.
 
 - The `prometheus.exporter.oracledb` component now embeds the [`oracledb_exporter from oracle`](https://github.com/oracle/oracle-db-appdev-monitoring) instead of the deprecated [`oracledb_exporter from iamseth`](https://github.com/iamseth/oracledb_exporter) for collecting metrics from an OracleDB server: (@wildum)
   - The arguments `username`, `password`, `default_metrics`, and `custom_metrics` are now supported.
@@ -39,6 +81,8 @@ Main (unreleased)
 - Add support for Mimir federated rule groups in `mimir.rules.kubernetes` (@QuentinBisson)
 
 ### Enhancements
+
+- `prometheus.exporter.windows` has been significantly refactored upstream and includes new collectors like `filetime`, `pagefile`, `performancecounter`, `udp`, and `update` as well as new configuration options for existing collectors. (@dehaansa)
 
 - `prometheus.exporter.mongodb` now offers fine-grained control over collected metrics with new configuration options. (@TeTeHacko)
 
@@ -93,6 +137,8 @@ Main (unreleased)
 
 - Fix `otelcol.receiver.filelog` documentation's default value for `start_at`. (@petewall)
 
+- Fix `pyroscope.scrape` scraping godeltaprof profiles. (@korniltsev)
+
 - Fix [#3386](https://github.com/grafana/alloy/issues/3386) lower casing scheme in `prometheus.operator.scrapeconfigs`. (@alex-berger)
 
 - Fix [#3437](https://github.com/grafana/alloy/issues/3437) Component Graph links now follow `--server.http.ui-path-prefix`. (@solidcellaMoon)
@@ -100,6 +146,10 @@ Main (unreleased)
 - Fix a bug in the `foreach` preventing the UI from showing the components in the template when the block was re-evaluated. (@wildum)
 
 - Fix alloy health handler so header is written before response body. (@kalleep)
+
+- Fix `prometheus.exporter.unix` to pass hwmon config correctly. (@kalleep)
+
+- Fix [#3408](https://github.com/grafana/alloy/issues/3408) `loki.source.docker` can now collect logs from containers not in the running state. (@adamamsmith)
 
 ### Other changes
 

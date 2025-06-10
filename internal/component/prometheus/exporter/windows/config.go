@@ -3,6 +3,7 @@ package windows
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
@@ -31,7 +32,6 @@ type Arguments struct {
 	Exchange      ExchangeConfig      `alloy:"exchange,block,optional"`
 	IIS           IISConfig           `alloy:"iis,block,optional"`
 	LogicalDisk   LogicalDiskConfig   `alloy:"logical_disk,block,optional"`
-	MSMQ          MSMQConfig          `alloy:"msmq,block,optional"`
 	MSSQL         MSSQLConfig         `alloy:"mssql,block,optional"`
 	Network       NetworkConfig       `alloy:"network,block,optional"`
 	PhysicalDisk  PhysicalDiskConfig  `alloy:"physical_disk,block,optional"`
@@ -43,28 +43,40 @@ type Arguments struct {
 	SMBClient     SMBClientConfig     `alloy:"smb_client,block,optional"`
 	SMTP          SMTPConfig          `alloy:"smtp,block,optional"`
 	TextFile      TextFileConfig      `alloy:"text_file,block,optional"`
+	TCP           TCPConfig           `alloy:"tcp,block,optional"`
+	// Currently disabled because the config is not exposed upstream.
+	//Update             UpdateConfig             `alloy:"update,block,optional"`
+	Filetime           FiletimeConfig           `alloy:"filetime,block,optional"`
+	PerformanceCounter PerformanceCounterConfig `alloy:"performancecounter,block,optional"`
+	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`
+	NetFramework       NetFrameworkConfig       `alloy:"netframework,block,optional"`
+	DNS                DNSConfig                `alloy:"dns,block,optional"`
 }
 
 // Convert converts the component's Arguments to the integration's Config.
 func (a *Arguments) Convert() *windows_integration.Config {
 	return &windows_integration.Config{
-		EnabledCollectors: strings.Join(a.EnabledCollectors, ","),
-		Dfsr:              a.Dfsr.Convert(),
-		Exchange:          a.Exchange.Convert(),
-		IIS:               a.IIS.Convert(),
-		LogicalDisk:       a.LogicalDisk.Convert(),
-		MSMQ:              a.MSMQ.Convert(),
-		MSSQL:             a.MSSQL.Convert(),
-		Network:           a.Network.Convert(),
-		Process:           a.Process.Convert(),
-		PhysicalDisk:      a.PhysicalDisk.Convert(),
-		Printer:           a.Printer.Convert(),
-		ScheduledTask:     a.ScheduledTask.Convert(),
-		Service:           a.Service.Convert(),
-		SMB:               a.SMB.Convert(),
-		SMBClient:         a.SMBClient.Convert(),
-		SMTP:              a.SMTP.Convert(),
-		TextFile:          a.TextFile.Convert(),
+		EnabledCollectors:  strings.Join(a.EnabledCollectors, ","),
+		Dfsr:               a.Dfsr.Convert(),
+		Exchange:           a.Exchange.Convert(),
+		IIS:                a.IIS.Convert(),
+		LogicalDisk:        a.LogicalDisk.Convert(),
+		MSSQL:              a.MSSQL.Convert(),
+		Network:            a.Network.Convert(),
+		Process:            a.Process.Convert(),
+		PhysicalDisk:       a.PhysicalDisk.Convert(),
+		Printer:            a.Printer.Convert(),
+		ScheduledTask:      a.ScheduledTask.Convert(),
+		Service:            a.Service.Convert(),
+		SMB:                a.SMB.Convert(),
+		SMBClient:          a.SMBClient.Convert(),
+		SMTP:               a.SMTP.Convert(),
+		TextFile:           a.TextFile.Convert(),
+		TCP:                a.TCP.Convert(),
+		Filetime:           a.Filetime.Convert(),
+		PerformanceCounter: a.PerformanceCounter.Convert(),
+		MSCluster:          a.MSCluster.Convert(),
+		NetFramework:       a.NetFramework.Convert(),
 	}
 }
 
@@ -150,35 +162,35 @@ func (t SMTPConfig) Convert() windows_integration.SMTPConfig {
 
 // ServiceConfig handles settings for the windows_exporter service collector
 type ServiceConfig struct {
-	UseApi string `alloy:"use_api,attr,optional"`
-	Where  string `alloy:"where_clause,attr,optional"`
-	V2     string `alloy:"enable_v2_collector,attr,optional"`
+	Include string `alloy:"include,attr,optional"`
+	Exclude string `alloy:"exclude,attr,optional"`
 }
 
 // Convert converts the component's ServiceConfig to the integration's ServiceConfig.
 func (t ServiceConfig) Convert() windows_integration.ServiceConfig {
 	return windows_integration.ServiceConfig{
-		UseApi: t.UseApi,
-		Where:  t.Where,
-		V2:     t.V2,
+		Include: wrapRegex(t.Include),
+		Exclude: wrapRegex(t.Exclude),
 	}
 }
 
 // ProcessConfig handles settings for the windows_exporter process collector
 type ProcessConfig struct {
-	BlackList string `alloy:"blacklist,attr,optional"`
-	WhiteList string `alloy:"whitelist,attr,optional"`
-	Exclude   string `alloy:"exclude,attr,optional"`
-	Include   string `alloy:"include,attr,optional"`
+	BlackList              string `alloy:"blacklist,attr,optional"`
+	WhiteList              string `alloy:"whitelist,attr,optional"`
+	Exclude                string `alloy:"exclude,attr,optional"`
+	Include                string `alloy:"include,attr,optional"`
+	EnableIISWorkerProcess bool   `alloy:"enable_iis_worker_process,attr,optional"`
 }
 
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
 func (t ProcessConfig) Convert() windows_integration.ProcessConfig {
 	return windows_integration.ProcessConfig{
-		BlackList: wrapRegex(t.BlackList),
-		WhiteList: wrapRegex(t.WhiteList),
-		Exclude:   wrapRegex(t.Exclude),
-		Include:   wrapRegex(t.Include),
+		BlackList:              wrapRegex(t.BlackList),
+		WhiteList:              wrapRegex(t.WhiteList),
+		Exclude:                wrapRegex(t.Exclude),
+		Include:                wrapRegex(t.Include),
+		EnableIISWorkerProcess: t.EnableIISWorkerProcess,
 	}
 }
 
@@ -223,18 +235,6 @@ type MSSQLConfig struct {
 func (t MSSQLConfig) Convert() windows_integration.MSSQLConfig {
 	return windows_integration.MSSQLConfig{
 		EnabledClasses: strings.Join(t.EnabledClasses, ","),
-	}
-}
-
-// MSMQConfig handles settings for the windows_exporter MSMQ collector
-type MSMQConfig struct {
-	Where string `alloy:"where_clause,attr,optional"`
-}
-
-// Convert converts the component's MSMQConfig to the integration's MSMQConfig.
-func (t MSMQConfig) Convert() windows_integration.MSMQConfig {
-	return windows_integration.MSMQConfig{
-		Where: t.Where,
 	}
 }
 
@@ -304,6 +304,92 @@ type SMBClientConfig struct {
 // Convert converts the component's ExchangeConfig to the integration's ExchangeConfig.
 func (t SMBClientConfig) Convert() windows_integration.SMBClientConfig {
 	return windows_integration.SMBClientConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// TCPConfig handles settings for the windows_exporter TCP collector
+type TCPConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's TCPConfig to the integration's TCPConfig.
+func (t TCPConfig) Convert() windows_integration.TCPConfig {
+	return windows_integration.TCPConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// UpdateConfig handles settings for the windows_exporter Update collector
+type UpdateConfig struct {
+	Online         bool          `alloy:"online,attr,optional"`
+	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
+}
+
+// Convert converts the component's UpdateConfig to the integration's UpdateConfig.
+func (t UpdateConfig) Convert() windows_integration.UpdateConfig {
+	return windows_integration.UpdateConfig{
+		Online:         t.Online,
+		ScrapeInterval: t.ScrapeInterval,
+	}
+}
+
+// FiletimeConfig handles settings for the windows_exporter filetime collector
+type FiletimeConfig struct {
+	FilePatterns []string `alloy:"file_patterns,attr,optional"`
+}
+
+// Convert converts the component's FiletimeConfig to the integration's FiletimeConfig.
+func (t FiletimeConfig) Convert() windows_integration.FiletimeConfig {
+	return windows_integration.FiletimeConfig{
+		FilePatterns: t.FilePatterns,
+	}
+}
+
+// PerformanceCounterConfig handles settings for the windows_exporter performance counter collector
+type PerformanceCounterConfig struct {
+	Objects string `alloy:"objects,attr,optional"`
+}
+
+// Convert converts the component's PerformanceCounterConfig to the integration's PerformanceCounterConfig.
+func (t PerformanceCounterConfig) Convert() windows_integration.PerformanceCounterConfig {
+	return windows_integration.PerformanceCounterConfig{
+		Objects: t.Objects,
+	}
+}
+
+// MSClusterConfig handles settings for the windows_exporter MSCluster collector
+type MSClusterConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's MSClusterConfig to the integration's MSClusterConfig.
+func (t MSClusterConfig) Convert() windows_integration.MSClusterConfig {
+	return windows_integration.MSClusterConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// NetFrameworkConfig handles settings for the windows_exporter NetFramework collector
+type NetFrameworkConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's NetFrameworkConfig to the integration's NetFrameworkConfig.
+func (t NetFrameworkConfig) Convert() windows_integration.NetFrameworkConfig {
+	return windows_integration.NetFrameworkConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// DNSConfig handles settings for the windows_exporter DNS collector
+type DNSConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's DNSConfig to the integration's DNSConfig.
+func (t DNSConfig) Convert() windows_integration.DNSConfig {
+	return windows_integration.DNSConfig{
 		EnabledList: strings.Join(t.EnabledList, ","),
 	}
 }

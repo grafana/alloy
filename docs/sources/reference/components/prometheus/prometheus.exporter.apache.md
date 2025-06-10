@@ -25,11 +25,11 @@ prometheus.exporter.apache "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.apache`.
 
-| Name            | Type     | Description                               | Default                               | Required |
-| --------------- | -------- | ----------------------------------------- | ------------------------------------- | -------- |
-| `host_override` | `string` | Override for HTTP Host header.            |                                       | no       |
-| `insecure`      | `bool`   | Ignore server certificate if using HTTPS. | false                                 | no       |
-| `scrape_uri`    | `string` | URI to Apache stub status page.           | `http://localhost/server-status?auto` | no       |
+| Name            | Type     | Description                               | Default                                 | Required |
+| --------------- | -------- | ----------------------------------------- | --------------------------------------- | -------- |
+| `host_override` | `string` | Override for HTTP Host header.            |                                         | no       |
+| `insecure`      | `bool`   | Ignore server certificate if using HTTPS. | `false`                                 | no       |
+| `scrape_uri`    | `string` | URI to Apache stub status page.           | `"http://localhost/server-status?auto"` | no       |
 
 ## Blocks
 

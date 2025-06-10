@@ -15,8 +15,10 @@ title: otelcol.receiver.jaeger
 `otelcol.receiver.jaeger` accepts Jaeger-formatted data over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector `jaeger` receiver.
+`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector [`jaeger`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`jaeger`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.jaeger` components by giving them different labels.
@@ -42,7 +44,7 @@ otelcol.receiver.jaeger "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.jaeger` doesn't support any arguments and is configured fully through inner blocks.
+The `otelcol.receiver.jaeger` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -166,7 +168,7 @@ The following arguments are supported:
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14268"`                                          | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 
 ### `cors`
 

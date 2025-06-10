@@ -18,6 +18,10 @@ title: otelcol.receiver.prometheus
 
 You can specify multiple `otelcol.receiver.prometheus` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry receiver.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -30,11 +34,11 @@ otelcol.receiver.prometheus "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.prometheus` doesn't support any arguments and is configured fully through inner blocks.
+The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
-You can use the following blocks with `otelcol.receiver.prometheus`:
+You can use the following block with `otelcol.receiver.prometheus`:
 
 | Block              | Description                                       | Required |
 | ------------------ | ------------------------------------------------- | -------- |

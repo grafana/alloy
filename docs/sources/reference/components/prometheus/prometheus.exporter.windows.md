@@ -47,32 +47,41 @@ Refer to the [Collectors list](#collectors-list) for the default set.
 
 You can use the following blocks with `prometheus.exporter.windows`:
 
-| Name                               | Description                                | Required |
-| ---------------------------------- | ------------------------------------------ | -------- |
-| [`dfsr`][dfsr]                     | Configures the `dfsr` collector.           | no       |
-| [`exchange`][exchange]             | Configures the `exchange` collector.       | no       |
-| [`iis`][iis]                       | Configures the `iis` collector.            | no       |
-| [`logical_disk`][logical_disk]     | Configures the `logical_disk` collector.   | no       |
-| [`msmq`][msmq]                     | Configures the `msmq` collector.           | no       |
-| [`mssql`][mssql]                   | Configures the `mssql` collector.          | no       |
-| [`network`][network]               | Configures the `network` collector.        | no       |
-| [`physical_disk`][physical_disk]   | Configures the `physical_disk` collector.  | no       |
-| [`printer`][printer]               | Configures the `printer` collector.        | no       |
-| [`process`][process]               | Configures the `process` collector.        | no       |
-| [`scheduled_task`][scheduled_task] | Configures the `scheduled_task` collector. | no       |
-| [`service`][service]               | Configures the `service` collector.        | no       |
-| [`smb_client`][smb_client]         | Configures the `smb_client` collector.     | no       |
-| [`smb`][smb]                       | Configures the `smb` collector.            | no       |
-| [`smtp`][smtp]                     | Configures the `smtp` collector.           | no       |
-| [`text_file`][text_file]           | Configures the `text_file` collector.      | no       |
+| Name                                       | Description                                    | Required |
+| ------------------------------------------ | ---------------------------------------------- | -------- |
+| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
+| [`dns`][dns]                               | Configures the `dns` collector.                | no       |
+| [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
+| [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
+| [`iis`][iis]                               | Configures the `iis` collector.                | no       |
+| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.       | no       |
+| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.          | no       |
+| [`mssql`][mssql]                           | Configures the `mssql` collector.              | no       |
+| [`netframework`][netframework]             | Configures the `netframework` collector.       | no       |
+| [`network`][network]                       | Configures the `network` collector.            | no       |
+| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector. | no       |
+| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.      | no       |
+| [`printer`][printer]                       | Configures the `printer` collector.            | no       |
+| [`process`][process]                       | Configures the `process` collector.            | no       |
+| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.     | no       |
+| [`service`][service]                       | Configures the `service` collector.            | no       |
+| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.         | no       |
+| [`smb`][smb]                               | Configures the `smb` collector.                | no       |
+| [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
+| [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
+| [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
 [dfsr]: #dfsr
+[dns]: #dns
 [exchange]: #exchange
+[filetime]: #filetime
 [iis]: #iis
 [logical_disk]: #logical_disk
-[msmq]: #msmq
+[mscluster]: #mscluster
 [mssql]: #mssql
+[netframework]: #netframework
 [network]: #network
+[performancecounter]: #performancecounter
 [physical_disk]: #physical_disk
 [printer]: #printer
 [process]: #process
@@ -82,6 +91,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 [smb]: #smb
 [smtp]: #smtp
 [text_file]: #text_file
+[tcp]: #tcp
 
 ### `dfsr`
 
@@ -89,11 +99,23 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | ---------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
 | `source_enabled` | `list(string)` | A list of DFSR Perflib sources to use. | `["connection","folder","volume"]` | no       |
 
+### `dns`
+
+| Name           | Type           | Description                  | Default                      | Required |
+|----------------|----------------|------------------------------|------------------------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics", "wmi_stats"]` | no       |
+
 ### `exchange`
 
 | Name           | Type           | Description                  | Default       | Required |
 | ---------------|----------------|------------------------------|---------------|--------- |
 | `enabled_list` | `list(string)` | A list of collectors to use. | `["ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"]` | no |
+
+### `filetime`
+
+| Name            | Type           | Description                                             | Default | Required |
+|-----------------|----------------|---------------------------------------------------------|---------|----------|
+| `file_patterns` | `list(string)` | A list of glob patterns matching files to be monitored. | `[]`    | no       |
 
 ### `iis`
 
@@ -117,19 +139,27 @@ Volume names must match the regular expression specified by `include` and must _
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
-### `msmq`
+### `mscluster`
 
-| Name           | Type     | Description                                     | Default | Required |
-| -------------- | -------- | ----------------------------------------------- | ------- | -------- |
-| `where_clause` | `string` | WQL 'where' clause to use in WMI metrics query. | `""`    | no       |
+| Name           | Type           | Description                  | Default                                                   | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["cluster","network","node","resource","resourcegroup"]` | no       |
 
-Specifying `enabled_classes` is useful to limit the response to the MSMQs you specify, reducing the size of the response.
+The collectors specified by `enabled_list` can include the following:
+
+* `cluster`
+* `network`
+* `node`
+* `resource`
+* `resouregroup`
+
+For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `mssql`
 
-| Name              | Type           | Description                         | Default | Required |
-| ----------------- | -------------- | ----------------------------------- | ------- | -------- |
-| `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "locks", "memmgr", "sqlstats", "sqlerrors", "transactions", "waitstats"]` | no       |
+| Name              | Type           | Description                         | Default                                                                                                                                                              | Required |
+| ----------------- | -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"]` | no       |
 
 ### `network`
 
@@ -141,6 +171,54 @@ Specifying `enabled_classes` is useful to limit the response to the MSMQs you sp
 NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+
+### `netframework`
+
+| Name           | Type           | Description                  | Default                                                                                                             | Required |
+| -------------- | -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["clrexceptions","clrinterop","clrjit","clrloading","clrlocksandthreads","clrmemory","clrremoting","clrsecurity"]` | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+* `clrexceptions`
+* `clrinterop`
+* `clrjit`
+* `clrloading`
+* `clrlocksandthreads`
+* `clrmemory`
+* `clrremoting`
+* `clrsecurity`
+
+For example, you can set `enabled_list` to `["clrjit"]`.
+
+### `performancecounter`
+
+| Name      | Type     | Description                                       | Default  | Required |
+| --------- | -------- | ------------------------------------------------- | -------- | -------- |
+| `objects` | `string` | YAML string representing the counters to monitor. | `""`     | no       |
+
+The `objects` field should contain a YAML file as a string that satisfies the schema shown in the exporter's [documentation] for the `performancecounter` collector.
+While there are ways to construct this directly in {{< param "PRODUCT_NAME" >}} syntax using [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings] for example, the best way to configure
+this collector will be using a `local.file` component.
+
+```alloy
+local.file "counters" {
+  filename = "/etc/alloy/performance_counters.yaml"
+}
+
+prometheus.exporter.windows "default" {
+  ...
+
+  performancecounter {
+    objects = local.file.counters.content
+  }
+  
+  ...
+}
+```
+
+[documentation]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md
+[raw-strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings
 
 ### `physical_disk`
 
@@ -164,14 +242,17 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `process`
 
-| Name      | Type     | Description                                 | Default  | Required |
-| --------- | -------- | ------------------------------------------- | -------- | -------- |
-| `exclude` | `string` | Regular expression of processes to exclude. | `"^$"`   | no       |
-| `include` | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
+| Name                        | Type     | Description                                   | Default  | Required |
+|-----------------------------|----------|-----------------------------------------------|----------|----------|
+| `exclude`                   | `string` | Regular expression of processes to exclude.   | `"^$"`   | no       |
+| `include`                   | `string` | Regular expression of processes to include.   | `"^.+$"` | no       |
+| `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries | `false`  | no       |
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+
+There is a warning in the upstream collector that use of `enable_iis_worker_process` may leak memory. Use with caution.
 
 ### `scheduled_task`
 
@@ -180,22 +261,20 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `exclude` | `string` | Regular expression of tasks to exclude. | `"^$"`   | no       |
 | `include` | `string` | Regular expression of tasks to include. | `"^.+$"` | no       |
 
-For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
+For a task to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 ### `service`
 
-| Name                  | Type     | Description                                           | Default   | Required |
-| --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
-| `enable_v2_collector` | `string` | Enable V2 service collector.                          | `"false"` | no       |
-| `use_api`             | `string` | Use API calls to collect service data instead of WMI. | `"false"` | no       |
-| `where_clause`        | `string` | WQL 'where' clause to use in WMI metrics query.       | `""`      | no       |
+| Name      | Type     | Description                                | Default  | Required |
+| --------- | -------- | ------------------------------------------ | -------- | -------- |
+| `exclude` | `string` | Regular expression of services to exclude. | `"^$"`   | no       |
+| `include` | `string` | Regular expression of services to include. | `"^.+$"` | no       |
 
-The `where_clause` argument can be used to limit the response to the services you specify, reducing the size of the response.
-If `use_api` is enabled, `where_clause` won't be effective.
+For a service to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
-The v2 collector can query service states much more efficiently, but can't provide general service information.
+User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 ### `smb`
 
@@ -219,7 +298,7 @@ The collectors specified by `enabled_list` can include the following:
 
 * `ClientShares`
 
-For example, `enabled_list` may be set to `"ClientShares"`.
+For example, `enabled_list` may be set to `["ClientShares"]`.
 
 ### `smtp`
 
@@ -231,6 +310,19 @@ For example, `enabled_list` may be set to `"ClientShares"`.
 For a server name to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+
+### `tcp`
+
+| Name           | Type           | Description                  | Default                           | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics","connections_state"]` | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+* `connections_state`
+* `metrics`
+
+For example, you can set `enabled_list` to `["metrics"]`.
 
 ### `text_file`
 
@@ -304,29 +396,21 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`dhcp`][dhcp]                                                       | DHCP Server                                                          |                    |
 | [`dns`][dns]                                                         | DNS Server                                                           |                    |
 | [`exchange`][exchange]                                               | Exchange metrics                                                     |                    |
+| [`filetime`][filetime]                                               | File modification time metrics                                       |                    |
 | [`fsrmquota`][fsrmquota]                                             | Microsoft File Server Resource Manager (FSRM) Quotas collector       |                    |
 | [`hyperv`][hyperv]                                                   | Hyper-V hosts                                                        |                    |
 | [`iis`][iis]                                                         | IIS sites and applications                                           |                    |
 | [`logical_disk`][logical_disk]                                       | Logical disks, disk I/O                                              | Yes                |
 | [`logon`][logon]                                                     | User logon sessions                                                  |                    |
 | [`memory`][memory]                                                   | Memory usage metrics                                                 |                    |
-| [`mscluster_cluster`][mscluster_cluster]                             | MSCluster cluster metrics                                            |                    |
-| [`mscluster_network`][mscluster_network]                             | MSCluster network metrics                                            |                    |
-| [`mscluster_node`][mscluster_node]                                   | MSCluster Node metrics                                               |                    |
-| [`mscluster_resource`][mscluster_resource]                           | MSCluster Resource metrics                                           |                    |
-| [`mscluster_resourcegroup`][mscluster_resourcegroup]                 | MSCluster ResourceGroup metrics                                      |                    |
+| [`mscluster`][mscluster]                                             | MSCluster metrics                                                    |                    |
 | [`msmq`][msmq]                                                       | MSMQ queues                                                          |                    |
 | [`mssql`][mssql]                                                     | [SQL Server Performance Objects][sql_server] metrics                 |                    |
-| [`netframework_clrexceptions`][netframework_clrexceptions]           | .NET Framework CLR Exceptions                                        |                    |
-| [`netframework_clrinterop`][netframework_clrinterop]                 | .NET Framework Interop Metrics                                       |                    |
-| [`netframework_clrjit`][netframework_clrjit]                         | .NET Framework JIT metrics                                           |                    |
-| [`netframework_clrloading`][netframework_clrloading]                 | .NET Framework CLR Loading metrics                                   |                    |
-| [`netframework_clrlocksandthreads`][netframework_clrlocksandthreads] | .NET Framework locks and metrics threads                             |                    |
-| [`netframework_clrmemory`][netframework_clrmemory]                   | .NET Framework Memory metrics                                        |                    |
-| [`netframework_clrremoting`][netframework_clrremoting]               | .NET Framework Remoting metrics                                      |                    |
-| [`netframework_clrsecurity`][netframework_clrsecurity]               | .NET Framework Security Check metrics                                |                    |
+| [`netframework`][netframework]                                       | .NET Framework metrics                                               |                    |
 | [`net`][net]                                                         | Network interface I/O                                                | Yes                |
 | [`os`][os]                                                           | OS metrics (memory, processes, users)                                | Yes                |
+| [`pagefile`][pagefile]                                               | Pagefile metrics                                                     |                    |
+| [`performancecounter`][performancecounter]                           | Performance Counter metrics                                          |                    |
 | [`physical_disk`][physical_disk]                                     | Physical disks                                                       | Yes                |
 | [`printer`][printer]                                                 | Printer metrics                                                      |                    |
 | [`process`][process]                                                 | Per-process metrics                                                  |                    |
@@ -338,12 +422,11 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`smtp`][smtp]                                                       | IIS SMTP Server                                                      |                    |
 | [`system`][system]                                                   | System calls                                                         | Yes                |
 | [`tcp`][tcp]                                                         | TCP connections                                                      |                    |
-| [`teradici_pcoip`][teradici_pcoip]                                   | [Teradici PCoIP][Teradici PCoIP] session metrics                     |                    |
 | [`time`][time]                                                       | Windows Time Service                                                 |                    |
 | [`thermalzone`][thermalzone]                                         | Thermal information                                                  |                    |
 | [`terminal_services`][terminal_services]                             | Terminal services (RDS)                                              |                    |
 | [`textfile`][textfile]                                               | Read Prometheus metrics from a text file                             |                    |
-| [`vmware_blast`][vmware_blast]                                       | VMware Blast session metrics                                         |                    |
+| [`udp`][udp]                                                         | UDP connections                                                      |                    |
 | [`vmware`][vmware]                                                   | Performance counters installed by the VMware Guest agent             |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
@@ -358,29 +441,21 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [dhcp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dhcp.md
 [dns]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dns.md
 [exchange]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.exchange.md
+[filetime]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.filetime.md
 [fsrmquota]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.fsrmquota.md
 [hyperv]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.hyperv.md
 [iis]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.iis.md
 [logical_disk]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.logical_disk.md
 [logon]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.logon.md
 [memory]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.memory.md
-[mscluster_cluster]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster_cluster.md
-[mscluster_network]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster_network.md
-[mscluster_node]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster_node.md
-[mscluster_resource]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster_resource.md
-[mscluster_resourcegroup]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster_resourcegroup.md
+[mscluster]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster.md
 [msmq]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.msmq.md
 [mssql]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mssql.md
-[netframework_clrexceptions]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrexceptions.md
-[netframework_clrinterop]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrinterop.md
-[netframework_clrjit]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrjit.md
-[netframework_clrloading]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrloading.md
-[netframework_clrlocksandthreads]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrlocksandthreads.md
-[netframework_clrmemory]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrmemory.md
-[netframework_clrremoting]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrremoting.md
-[netframework_clrsecurity]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework_clrsecurity.md
+[netframework]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.netframework.md
 [net]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.net.md
 [os]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.os.md
+[pagefile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.pagefile.md
+[performancecounter]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md
 [physical_disk]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.physical_disk.md
 [printer]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.printer.md
 [process]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.process.md
@@ -392,21 +467,21 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [smtp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.smtp.md
 [system]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.system.md
 [tcp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.tcp.md
-[teradici_pcoip]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.teradici_pcoip.md
 [time]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.time.md
 [thermalzone]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.thermalzone.md
 [terminal_services]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.terminal_services.md
 [textfile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.textfile.md
-[vmware_blast]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware_blast.md
+[udp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.udp.md
 [vmware]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware.md
 [sql_server]: https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs
-[Teradici PCoIP]: https://www.teradici.com/web-help/pcoip_wmi_specs/
 
 Refer to the linked documentation on each collector for more information on reported metrics, configuration settings and usage examples.
 
 {{< admonition type="caution" >}}
 Certain collectors cause {{< param "PRODUCT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
-These include but aren't limited to `mscluster_*`, `vmware`, `nps`, `dns`, `msmq`, `teradici_pcoip`, `ad`, `hyperv`, and `scheduled_task`.
+These include but aren't limited to `mscluster`, `vmware`, `nps`, `dns`, `msmq`, `ad`, `hyperv`, and `scheduled_task`.
+
+The `cs` collector has been deprecated and may be removed in future versions of the exporter.
 {{< /admonition >}}
 
 ## Example

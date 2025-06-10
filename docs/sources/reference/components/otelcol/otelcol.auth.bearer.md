@@ -17,8 +17,10 @@ title: otelcol.auth.bearer
 This component supports both server and client authentication.
 
 {{< admonition type="note" >}}
-`otelcol.auth.bearer` is a wrapper over the upstream OpenTelemetry Collector `bearertokenauth` extension.
+`otelcol.auth.bearer` is a wrapper over the upstream OpenTelemetry Collector [`bearertokenauth`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`bearertokenauth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/bearertokenauthextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.bearer` components by giving them different labels.
@@ -35,11 +37,11 @@ otelcol.auth.bearer "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.bearer`:
 
-| Name     | Type     | Description                                      | Default         | Required |
-| -------- | -------- | ------------------------------------------------ | --------------- | -------- |
-| `token`  | `secret` | Bearer token to use for authenticating requests. |                 | yes      |
-| `header` | `string` | Specifies the auth header name.                  | "Authorization" | no       |
-| `scheme` | `string` | Authentication scheme name.                      | "Bearer"        | no       |
+| Name     | Type     | Description                                      | Default           | Required |
+| -------- | -------- | ------------------------------------------------ | ----------------- | -------- |
+| `token`  | `secret` | Bearer token to use for authenticating requests. |                   | yes      |
+| `header` | `string` | Specifies the auth header name.                  | `"Authorization"` | no       |
+| `scheme` | `string` | Authentication scheme name.                      | `"Bearer"`        | no       |
 
 When sending the token, the value of `scheme` is prepended to the `token` value.
 The string is then sent out as either a header for HTTP or as metadata for gRPC.

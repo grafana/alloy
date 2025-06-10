@@ -18,8 +18,10 @@ title: otelcol.exporter.datadog
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/datadogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.
@@ -111,7 +113,7 @@ The following arguments are supported:
 | ------------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no       |
-| `insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no       |
+| `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   |         | no       |
 | `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no       |
 | `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no       |
 | `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no       |

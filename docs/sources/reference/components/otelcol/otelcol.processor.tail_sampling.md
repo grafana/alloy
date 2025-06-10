@@ -16,8 +16,10 @@ title: otelcol.processor.tail_sampling
 All spans for a given trace _must_ be received by the same collector instance for effective sampling decisions.
 
 {{< admonition type="note" >}}
-`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib `tail_sampling` processor.
+`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib [`tail_sampling`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tail_sampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/tailsamplingprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.tail_sampling` components by giving them different labels.
@@ -292,9 +294,9 @@ The following arguments are supported:
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `key`                    | `string`       | Tag that the filter is matched against.                                                                                                                     |         | yes      |
 | `values`                 | `list(string)` | Set of values or regular expressions to use when matching against attribute values.                                                                         |         | yes      |
-| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | false   | no       |
+| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | `false` | no       |
 | `cache_max_size`         | `string`       | The maximum number of attribute entries of Least Recently Used (LRU) Cache that stores the matched result from the regular expressions defined in `values.` |         | no       |
-| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | false   | no       |
+| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | `false` | no       |
 
 ### `trace_state`
 

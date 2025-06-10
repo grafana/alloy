@@ -16,8 +16,10 @@ title: otelcol.exporter.splunkhec
 `otelcol.exporter.splunkhec` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Splunk HEC.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector `splunkhec` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.splunkhec` is a wrapper over the upstream OpenTelemetry Collector [`splunkhec`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`splunkhec`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/splunkhecexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.splunkhec` components by giving them different labels.
@@ -37,11 +39,11 @@ otelcol.exporter.splunkhec "<LABEL>" {
 
 ## Arguments
 
-The `otelcol.exporter.splunkhec` component doesn't support any arguments.
+The `otelcol.exporter.splunkhec` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.exporter.splunkhec`:
+You can use the following blocks with `otelcol.exporter.splunkhec`:
 
 | Block                                                 | Description                                                                    | Required |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
@@ -76,42 +78,42 @@ The `splunk` block configures Splunk HEC specific settings.
 
 The following arguments are supported:
 
-| Name                         | Type     | Description                                                                                                            | Default                       | Required |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------- |
-| `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                               | yes      |
-| `disable_compression`        | `bool`   | Disable Gzip compression.                                                                                              | `false`                       | no       |
-| `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                       | no       |
-| `health_check_enabled`       | `bool`   | Used to verify Splunk HEC health on exporter startup.                                                                  | `true`                        | no       |
-| `health_path`                | `string` | Path for the health API.                                                                                               | `/services/collector/health'` | no       |
-| `index`                      | `string` | Splunk index name.                                                                                                     | `""`                          | no       |
-| `log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.           | `true`                        | no       |
-| `max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                                               | `2097152`                     | no       |
-| `max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB).                                            | `2097152`                     | no       |
-| `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                     | no       |
-| `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                     | no       |
-| `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                        | no       |
-| `source_type`                | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                          | no       |
-| `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                          | no       |
-| `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `Alloy`                       | no       |
-| `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                          | no       |
-| `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                       | no       |
+| Name                         | Type     | Description                                                                                                            | Default                        | Required |
+| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------- |
+| `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                                | yes      |
+| `disable_compression`        | `bool`   | Disable Gzip compression.                                                                                              | `false`                        | no       |
+| `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                        | no       |
+| `health_check_enabled`       | `bool`   | Used to verify Splunk HEC health on exporter startup.                                                                  | `true`                         | no       |
+| `health_path`                | `string` | Path for the health API.                                                                                               | `"/services/collector/health"` | no       |
+| `index`                      | `string` | Splunk index name.                                                                                                     | `""`                           | no       |
+| `log_data_enabled`           | `bool`   | Enable sending logs from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`.           | `true`                         | no       |
+| `max_content_length_logs`    | `uint`   | Maximum log payload size in bytes. Must be less than 838860800 (~800MB).                                               | `2097152`                      | no       |
+| `max_content_length_metrics` | `uint`   | Maximum metric payload size in bytes. Must be less than 838860800 (~800MB).                                            | `2097152`                      | no       |
+| `max_content_length_traces`  | `uint`   | Maximum trace payload size in bytes. Must be less than 838860800 (~800MB).                                             | `2097152`                      | no       |
+| `max_event_size`             | `uint`   | Maximum event payload size in bytes. Must be less than 838860800 (~800MB).                                             | `5242880`                      | no       |
+| `profiling_data_enabled`     | `bool`   | Enable sending profiling data from the exporter. One of `log_data_enabled` or `profiling_data_enabled` must be `true`. | `true`                         | no       |
+| `source_type`                | `string` | [Splunk source type](https://docs.splunk.com/Splexicon:Sourcetype).                                                    | `""`                           | no       |
+| `source`                     | `string` | [Splunk source](https://docs.splunk.com/Splexicon:Source).                                                             | `""`                           | no       |
+| `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `"Alloy"`                      | no       |
+| `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                           | no       |
+| `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                        | no       |
 
 #### `batcher`
 
-| Name            | Type            | Description                                                                                                                                                                                               | Default | Required |
-| --------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `enabled`       | `bool`          | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false` | no       |
-| `flush_timeout` | `time.Duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `200ms` | no       |
-| `max_size`      | `uint`          | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`     | no       |
-| `min_size`      | `uint`          | The minimum size of a batch.                                                                                                                                                                              | `8192`  | no       |
-| `sizer`         | `string`        | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `items` | no       |
+| Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
+| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `enabled`       | `bool`     | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false`   | no       |
+| `flush_timeout` | `duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `"200ms"` | no       |
+| `max_size`      | `uint`     | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`       | no       |
+| `min_size`      | `uint`     | The minimum size of a batch.                                                                                                                                                                              | `8192`    | no       |
+| `sizer`         | `string`   | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `"items"` | no       |
 
 #### `heartbeat`
 
-| Name       | Type            | Description                                           | Default | Required |
-| ---------- | --------------- | ----------------------------------------------------- | ------- | -------- |
-| `interval` | `time.Duration` | Time interval for the heartbeat interval, in seconds. | `0s`    | no       |
-| `startup`  | `bool`          | Send heartbeat events on exporter startup.            | `false` | no       |
+| Name       | Type       | Description                                           | Default | Required |
+| ---------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+| `interval` | `duration` | Time interval for the heartbeat interval, in seconds. | `"0s"`  | no       |
+| `startup`  | `bool`     | Send heartbeat events on exporter startup.            | `false` | no       |
 
 #### `otel_to_hec_fields`
 

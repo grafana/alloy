@@ -15,8 +15,10 @@ title: otelcol.receiver.zipkin
 `otelcol.receiver.zipkin` accepts Zipkin-formatted traces over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.zipkin` is a wrapper over the upstream OpenTelemetry Collector `zipkin` receiver.
+`otelcol.receiver.zipkin` is a wrapper over the upstream OpenTelemetry Collector [`zipkin`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`zipkin`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/zipkinreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.zipkin` components by giving them different labels.
@@ -39,7 +41,7 @@ You can use the following arguments with `otelcol.receiver.zipkin`:
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | `parse_string_tags`      | `bool`                     | Parse string tags and binary annotations into non-string types.              | `false`                                                    | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:9411"`                                           | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |

@@ -17,8 +17,10 @@ title: otelcol.auth.headers
 This component only supports client authentication.
 
 {{< admonition type="note" >}}
-`otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector `headerssetter` extension.
+`otelcol.auth.headers` is a wrapper over the upstream OpenTelemetry Collector [`headerssetter`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`headerssetter`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/headerssetterextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.headers` components by giving them different labels.
@@ -36,7 +38,7 @@ otelcol.auth.headers "<LABEL>" {
 
 ## Arguments
 
-`otelcol.auth.headers` doesn't support any arguments.
+The `otelcol.auth.headers` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -44,15 +46,11 @@ You can use the following blocks with `otelcol.auth.headers`:
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`header`][header]               | Custom header to attach to requests.                                       | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`header`][header]               | Custom header to attach to requests.                                       | no       |
 
 [header]: #header
 [debug_metrics]: #debug_metrics
-
-### `debug_metrics`
-
-{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `header`
 
@@ -86,6 +84,10 @@ For `from_context` to work, other components in the pipeline also need to be con
 * `otelcol` receivers must be configured with `include_metadata` set to `true` so that metadata keys are available to the pipeline.
 
 `from_attribute` metadata can't, at this time, be preserved through an `otelcol.processor.batch` component, and is only provided from the `otelcol.auth.basic` extension.
+
+### `debug_metrics`
+
+{{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

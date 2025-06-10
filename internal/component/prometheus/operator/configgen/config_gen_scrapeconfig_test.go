@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -45,7 +44,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 			},
 			ep: promopv1alpha1.StaticConfig{
 				Targets: []promopv1alpha1.Target{"foo", "bar"},
-				Labels: map[promopv1.LabelName]string{
+				Labels: map[string]string{
 					"foo": "bar",
 				},
 			},

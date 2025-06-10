@@ -16,8 +16,10 @@ title: otelcol.processor.span
 It also supports the ability to filter input data to determine if it should be included or excluded from this processor.
 
 {{< admonition type="note" >}}
-`otelcol.processor.span` is a wrapper over the upstream OpenTelemetry Collector `span` processor.
+`otelcol.processor.span` is a wrapper over the upstream OpenTelemetry Collector [`span`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`span`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/spanprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.span` components by giving them different labels.
@@ -34,7 +36,7 @@ otelcol.processor.span "<LABEL>" {
 
 ## Arguments
 
-`otelcol.processor.span` doesn't support any arguments.
+The `otelcol.processor.span` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
