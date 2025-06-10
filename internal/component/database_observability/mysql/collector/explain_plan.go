@@ -628,7 +628,8 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlansPrefix+qi.queryText)
 
 		if err := rsExplain.Err(); err != nil {
-			level.Error(logger).Log("msg", "failed to iterate rs for explain plan", "err", err)
+			level.Error(logger).Log("msg", "failed to run explain plan", "err", err)
+
 			continue
 		}
 
