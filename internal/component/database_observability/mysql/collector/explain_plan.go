@@ -639,8 +639,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		generatedAt := time.Now().Format(time.RFC3339)
-
 		// Skip if byteExplainPlanJSON is nil or empty
 		if len(byteExplainPlanJSON) == 0 {
 			level.Error(logger).Log("msg", "explain plan json bytes is empty")
@@ -669,6 +667,8 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			"instance", c.instanceKey,
 			"explain_plan_output", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
+		generatedAt := time.Now().Format(time.RFC3339)
+
 		explainPlanOutput, err := NewExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to create explain plan output", "err", err)
@@ -688,12 +688,11 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
 
-		c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+		c.entryHandler.Chan() <- buildLokiEntry(
 			logging.LevelInfo,
 			OP_EXPLAIN_PLAN_OUTPUT,
 			c.instanceKey,
 			logMessage,
-			int64(time.Now().UnixNano()),
 		)
 		// TODO: Add context to logging when errors occur so the original node can be found.
 		// I.E. query_block->nested_loop[1]->table etc..
