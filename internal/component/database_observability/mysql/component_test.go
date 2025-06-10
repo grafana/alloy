@@ -78,6 +78,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    true,
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: true,
+			collector.ExplainPlanName:    false,
 		}, actualCollectors)
 	})
 
@@ -85,7 +86,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
 	`
 
 		var args Arguments
@@ -99,6 +100,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    true,
 			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
+			collector.ExplainPlanName:    true,
 		}, actualCollectors)
 	})
 
@@ -106,7 +108,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
+		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
 	`
 
 		var args Arguments
@@ -120,6 +122,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    false,
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: false,
+			collector.ExplainPlanName:    false,
 		}, actualCollectors)
 	})
 
@@ -127,8 +130,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers"]
+		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
 	`
 
 		var args Arguments
@@ -142,6 +145,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    true,
 			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
+			collector.ExplainPlanName:    true,
 		}, actualCollectors)
 	})
 
@@ -149,7 +153,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		var exampleDBO11yAlloyConfig = `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_table", "query_sample", "setup_consumers"]
+		disable_collectors = ["schema_table", "query_sample", "setup_consumers", "explain_plan"]
 		enable_collectors = ["query_tables"]
 	`
 
@@ -164,6 +168,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    false,
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: false,
+			collector.ExplainPlanName:    false,
 		}, actualCollectors)
 	})
 
@@ -186,6 +191,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaTableName:    true,
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: true,
+			collector.ExplainPlanName:    false,
 		}, actualCollectors)
 	})
 }

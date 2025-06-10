@@ -54,7 +54,7 @@ type Arguments struct {
 	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
 	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
 	ExplainPlanCollectInterval    time.Duration       `alloy:"explain_plan_collect_interval,attr,optional"`
-	ExplainPlanPerCollectRatio    float64           `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	ExplainPlanPerCollectRatio    float64             `alloy:"explain_plan_per_collect_ratio,attr,optional"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
@@ -219,7 +219,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SchemaTableName:    true,
 		collector.SetupConsumersName: true,
 		collector.QuerySampleName:    false,
-		collector.ExplainPlanName:    true,
+		collector.ExplainPlanName:    false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -337,12 +337,12 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.ExplainPlanName] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB: dbConnection,
-			InstanceKey: c.instanceKey,
+			DB:             dbConnection,
+			InstanceKey:    c.instanceKey,
 			ScrapeInterval: c.args.ExplainPlanCollectInterval,
 			PerScrapeRatio: c.args.ExplainPlanPerCollectRatio,
-			Logger: c.opts.Logger,
-			EntryHandler: entryHandler,
+			Logger:         c.opts.Logger,
+			EntryHandler:   entryHandler,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
