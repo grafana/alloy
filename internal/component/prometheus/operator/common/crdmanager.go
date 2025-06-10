@@ -379,6 +379,9 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", backoff.NextDelay(), "err", err)
 		backoff.Wait()
 	}
+	if err != nil {
+		return err
+	}
 
 	const resync = 5 * time.Minute
 	switch c.kind {
