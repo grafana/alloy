@@ -111,6 +111,8 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 |--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | [`histogram`][histogram]                   | Configures the histogram derived from spans durations.                                                                                                     | yes      |
 | `histogram` > [`dimension`][dimension]     | Span event attributes to add as dimensions to the duration metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block | no       |
+| `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
+| `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
 | [`output`][output]                         | Configures where to send telemetry data.                                                                                                                   | yes      |
 | [`calls_dimension`][calls_dimension]       | Span event attributes to add as dimensions to the calls metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block    | no       |
 | [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                                                                                 | no       |
@@ -118,8 +120,6 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 | [`events`][events]                         | Configures the events metric.                                                                                                                              | no       |
 | `events` > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block.  | no       |
 | [`exemplars`][exemplars]                   | Configures how to attach exemplars to histograms.                                                                                                          | no       |
-| `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
-| `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
 
 You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
 You can't specify both blocks in the same configuration.
