@@ -56,15 +56,18 @@ You can use the following blocks with `otelcol.receiver.otlp`:
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 | [`http`][http]                                                    | Configures the HTTP server to receive telemetry data.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                       | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                        | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` block.
 
 [grpc]: #grpc
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
@@ -139,6 +142,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 

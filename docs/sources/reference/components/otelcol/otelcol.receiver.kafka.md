@@ -106,6 +106,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                                         | no       |
 | `authentication` > [`tls`][tls]                  | (Deprecated) Configures TLS for connecting to the Kafka brokers.                           | no       |
+| `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS key_file.                                              | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |
 | [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state.                | no       |
 | [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                                              | no       |
@@ -117,6 +118,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | [`metrics`][metrics]                             | Configures how to send metrics to Kafka brokers.                                           | no       |
 | [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                                            | no       |
 | [`tls`][tls][]                                   | Configures TLS for connecting to the Kafka brokers.                                        | no       |
+| `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS key_file.                                              | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -129,6 +131,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [sasl]: #sasl
 [aws_msk]: #aws_msk
 [tls]: #tls
+[tpm]: #tpm
 [kerberos]: #kerberos
 [metadata]: #metadata
 [retry]: #retry
@@ -198,6 +201,12 @@ The `tls` block configures TLS settings used for connecting to the Kafka brokers
 If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `autocommit`
 

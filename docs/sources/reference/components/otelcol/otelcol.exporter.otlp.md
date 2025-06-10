@@ -50,6 +50,7 @@ You can use the following blocks with `otelcol.exporter.otlp`:
 | [`client`][client]                     | Configures the gRPC client to send telemetry data to.                      | yes      |
 | `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
 | `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
+| `client` > `tls` > [`tpm`][tpm]        | Configures TPM settings for the TLS key_file.                              | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                | no       |
@@ -59,6 +60,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 [client]: #client
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [sending_queue]: #sending_queue
 [retry_on_failure]: #retry_on_failure
@@ -126,6 +128,12 @@ The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< admonition type="note" >}}
 `otelcol.exporter.otlp` uses gRPC, which doesn't allow you to send sensitive credentials like `auth` over insecure channels.

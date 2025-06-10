@@ -14,6 +14,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
@@ -151,6 +152,9 @@ type Producer struct {
 	// The options are: 'none', 'gzip', 'snappy', 'lz4', and 'zstd'
 	Compression string `alloy:"compression,attr,optional"`
 
+	// CompressionParams defines parameters for compression codec.
+	CompressionParams CompressionParams `alloy:"compression_params,block,optional"`
+
 	// The maximum number of messages the producer will send in a single
 	// broker request. Defaults to 0 for unlimited. Similar to
 	// `queue.buffering.max.messages` in the JVM producer.
@@ -160,10 +164,21 @@ type Producer struct {
 // Convert converts args into the upstream type.
 func (args Producer) Convert() configkafka.ProducerConfig {
 	return configkafka.ProducerConfig{
-		MaxMessageBytes:  args.MaxMessageBytes,
-		RequiredAcks:     configkafka.RequiredAcks(args.RequiredAcks),
-		Compression:      args.Compression,
-		FlushMaxMessages: args.FlushMaxMessages,
+		MaxMessageBytes:   args.MaxMessageBytes,
+		RequiredAcks:      configkafka.RequiredAcks(args.RequiredAcks),
+		Compression:       args.Compression,
+		CompressionParams: args.CompressionParams.Convert(),
+		FlushMaxMessages:  args.FlushMaxMessages,
+	}
+}
+
+type CompressionParams struct {
+	Level int `alloy:"level,attr,optional"`
+}
+
+func (c *CompressionParams) Convert() configcompression.CompressionParams {
+	return configcompression.CompressionParams{
+		Level: configcompression.Level(c.Level),
 	}
 }
 
@@ -188,9 +203,12 @@ func (args *Arguments) SetToDefault() {
 			},
 		},
 		Producer: Producer{
-			MaxMessageBytes:  1000000,
-			RequiredAcks:     1,
-			Compression:      "none",
+			MaxMessageBytes: 1000000,
+			RequiredAcks:    1,
+			Compression:     "none",
+			CompressionParams: CompressionParams{
+				Level: -1, // Default compression level
+			},
 			FlushMaxMessages: 0,
 		},
 	}

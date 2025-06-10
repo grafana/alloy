@@ -78,8 +78,13 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 | [`metrics`][metrics]                         | Configures which metrics will be sent to downstream components.            | no       |
 | [`resource_attributes`][resource_attributes] | Configures resource attributes for metrics sent to downstream components.  | no       |
 | [`tls`][tls]                                 | Configures TLS for the HTTP client.                                        | no       |
+| `tls` > [`tpm`][tpm]                         | Configures TPM settings for the TLS key_file.                              | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [debug_metrics]: #debug_metrics
 [metrics]: #metrics
 [resource_attributes]: #resource_attributes
@@ -210,6 +215,12 @@ The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

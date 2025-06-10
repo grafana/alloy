@@ -805,6 +805,12 @@ The `tls` block configures TLS settings used for the connection to the gRPC serv
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 #### `openshift` > `resource_attributes`
 
 The `resource_attributes` block supports the following blocks:

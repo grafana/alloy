@@ -47,6 +47,17 @@ v1.9.1
 
 - Fix elevated CPU usage when using some `otelcol` components due to debug logging. (@thampiotr)
 
+### Other changes
+
+- Upgrade `otelcol` components from OpenTelemetry v0.125.0 to v0.126.0 (@dehaansa):
+  - [`pkg/ottl`] Add support for `HasPrefix` and `HasSuffix` functions.
+  - [`pkg/configtls`] Add trusted platform module (TPM) support to TLS authentication for all `otelcol` components supporting TLS.
+  - [`otelcol.connector.spanmetrics`] Add `calls_dimension` and `histogram:dimension` blocks for configuring additional dimensions for `traces.span.metrics.calls` and `traces.span.metrics.duration` metrics.
+  - [`otelcol.exporter.datadog`] Enable `instrumentation_scope_metadata_as_tags` by default.
+  - [`otelcol.exporter.kafka`] support configuration of `compression` `level` in producer configuration.
+  - [`otelcol.processor.tailsampling`] `invert sample` and `inverted not sample` decisions deprecated, use the `drop` policy instead to explicitly not sample traces.
+  - [`otelcol.receiver.filelog`] support `compression` value of `auto` to automatically detect file compression type.
+
 v1.9.0
 -----------------
 

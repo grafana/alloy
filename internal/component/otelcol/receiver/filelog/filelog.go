@@ -297,7 +297,7 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	if args.Compression != "" && args.Compression != "gzip" {
+	if args.Compression != "" && args.Compression != "gzip" && args.Compression != "auto" {
 		errs = multierror.Append(errs, fmt.Errorf("invalid 'compression' type: %s", args.Compression))
 	}
 

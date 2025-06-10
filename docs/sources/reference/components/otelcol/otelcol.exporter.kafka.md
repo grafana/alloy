@@ -63,24 +63,27 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                            | Description                                                                 | Required |
-| ------------------------------------------------ | --------------------------------------------------------------------------- | -------- |
-| [`authentication`][authentication]               | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]      | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]                  | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state. | no       |
-| [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                               | no       |
-| [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                 | no       |
-| [`metrics`][metrics]                             | Configures how to send metrics to Kafka brokers.                            | no       |
-| [`producer`][producer]                           | Kafka producer configuration,                                               | no       |
-| [`retry_on_failure`][retry_on_failure]           | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]                 | Configures batching of data before sending.                                 | no       |
-| [`tls`][tls]                                     | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                             | no       |
+| Block                                                   | Description                                                                 | Required |
+|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
+| [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                  | no       |
+| `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                          | no       |
+| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                         | no       |
+| `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                              | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
+| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                       | no       |
+| [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state. | no       |
+| [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                               | no       |
+| [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                     | no       |
+| `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                 | no       |
+| [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                            | no       |
+| [`producer`][producer]                                  | Kafka producer configuration,                                               | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.               | no       |
+| [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                             | no       |
+| [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                 | no       |
+| [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                         | no       |
+| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                               | no       |
+| [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                             | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -93,12 +96,14 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [sasl]: #sasl
 [aws_msk]: #aws_msk
 [tls]: #tls
+[tpm]: #tpm
 [kerberos]: #kerberos
 [metadata]: #metadata
 [retry]: #retry
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
 [producer]: #producer
+[compression_params]: #compression_params
 [debug_metrics]: #debug_metrics
 
 ### `logs`
@@ -155,6 +160,12 @@ If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -187,6 +198,31 @@ Refer to the [Go sarama documentation][CompressionCodec] for more information.
 
 [RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
 [CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec
+
+### `compression_params`
+
+The `compression_params` block configures the producer compression parameters.
+
+The following argument is supported:
+
+| Name                 | Type     | Description                                         | Default   | Required |
+| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
+| `level`              | `int`    | The level of compression to use on messages.        | `-1`      | no       |
+
+The following levels are valid combinations of `compression` and `level`:
+
+| Compression | Value | Description            |
+|-------------|-------|------------------------|
+| `gzip`      | `1`   | BestSpeed              |
+| `gzip`      | `9`   | BestCompression        |
+| `gzip`      | `-1`  | DefaultCompression     |
+| `zstd`      | `1`   | SpeedFastest           |
+| `zstd`      | `3`   | SpeedDefault           |
+| `zstd`      | `6`   | SpeedBetterCompression |
+| `zstd`      | `11`  | SpeedBestCompression   |
+
+
+`lz4` and `snappy` do not currently support compression levels in this component.
 
 ### `retry_on_failure`
 

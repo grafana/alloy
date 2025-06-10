@@ -56,7 +56,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 		}
 
 		authentication = &otelconfighttp.AuthConfig{
-			Authentication: otelconfigauth.Authentication{
+			Config: otelconfigauth.Config{
 				AuthenticatorID: ext.ID,
 			},
 		}
@@ -149,13 +149,13 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authentication *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Config
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
-		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+		authentication = &otelconfigauth.Config{AuthenticatorID: ext.ID}
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)

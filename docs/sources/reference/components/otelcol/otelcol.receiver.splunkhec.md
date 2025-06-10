@@ -68,8 +68,13 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
 | [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
 | [`tls`][tls]                                               | Configures TLS for the HTTP server.                                        | no       |
+| `tls` > [`tpm`][tpm]                                       | Configures TPM settings for the TLS key_file.                              | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -135,6 +140,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS isn't used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

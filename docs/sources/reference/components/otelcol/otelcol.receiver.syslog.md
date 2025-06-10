@@ -87,6 +87,7 @@ You can use the following blocks with `otelcol.receiver.syslog`:
 | [`tcp`][tcp]                           | Configures a TCP syslog server to receive syslog messages.                                      | no*      |
 | `tcp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages                                     | no       |
 | `tcp` > [`tls`][tls]                   | Configures TLS for the TCP syslog server.                                                       | no       |
+| `tcp` > `tls` > [`tpm`][tpm]           | Configures TPM settings for the TLS key_file.                                                   | no       |
 | [`udp`][udp]                           | Configures a UDP syslog server to receive syslog messages.                                      | no*      |
 | `udp` > [`async`][async]               | Configures rules for asynchronous parsing of incoming messages.                                 | no       |
 | `udp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages.                                    | no       |
@@ -97,6 +98,7 @@ For example, `tcp` > `tls` refers to a `tls` block defined inside a `tcp` block.
 A syslog receiver must have either a `udp` or `tcp` block configured.
 
 [tls]: #tls
+[tpm]: #tpm
 [udp]: #udp
 [tcp]: #tcp
 [multiline]: #multiline
@@ -172,6 +174,12 @@ The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `udp`
 
