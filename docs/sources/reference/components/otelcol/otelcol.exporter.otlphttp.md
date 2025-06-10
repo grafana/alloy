@@ -142,7 +142,7 @@ The following arguments are supported:
 
 The `tls` block configures TLS settings used for the connection to the HTTP server.
 
-\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tpm`
 

@@ -145,7 +145,7 @@ The following arguments are supported:
 
 This `tls` block configures TLS settings used for the connection to the gRPC server.
 
-\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tpm`
 
@@ -194,7 +194,7 @@ If `allowed_headers` includes `"*"`, all headers will be permitted.
 The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
-\{\{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tpm`
 

@@ -113,7 +113,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 
 The `tls` block configures TLS settings used for a connection to a TCP syslog server.
 
-\{\{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >\}\}
+{{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tpm`
 
