@@ -419,7 +419,7 @@ prometheus.remote_write "demo" {
 
     basic_auth {
       username = "<USERNAME>"
-      password = "<PASSWORD">
+      password = "<PASSWORD>"
     }
   }
 }
