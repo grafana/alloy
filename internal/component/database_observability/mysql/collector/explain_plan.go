@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -578,10 +579,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			c.queryCache = append(c.queryCache, qi)
 		}
 		// Calculate batch size based on current cache size
-		c.currentBatchSize = int(float64(len(c.queryCache)) * c.perScrapeRatio)
-		if c.currentBatchSize < 1 {
-			c.currentBatchSize = 1 // Ensure we process at least one query
-		}
+		c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
 		level.Info(c.logger).Log("msg", "fetched digests", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	}
 
@@ -593,11 +591,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			break
 		}
 
-		processedCount++
-
 		// Defer deletion of current item from cache and increment processed count
 		defer func(index int) {
 			c.queryCache = slices.Delete(c.queryCache, index, index+1)
+			processedCount++
 		}(i)
 
 		// Skip truncated queries
