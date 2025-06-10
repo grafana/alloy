@@ -59,7 +59,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		QueueConfig:  *q,
 		RetryConfig:  *args.Retry.Convert(),
 	}, nil
-
 }
 
 func (args *Arguments) Validate() error {
@@ -75,7 +74,6 @@ func (args *Arguments) Validate() error {
 	}
 	faroCfg := otelCfg.(*faroexporter.Config)
 	return faroCfg.Validate()
-
 }
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
