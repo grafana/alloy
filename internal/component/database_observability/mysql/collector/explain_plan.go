@@ -555,33 +555,40 @@ func (c *ExplainPlan) Stop() {
 	c.cancel()
 }
 
+func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
+	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
+		return err
+	}
+	defer rs.Close()
+
+	// Populate cache
+	for rs.Next() {
+		if err := rs.Err(); err != nil {
+			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
+			return err
+		}
+
+		var qi queryInfo
+		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
+			return err
+		}
+		c.queryCache = append(c.queryCache, qi)
+	}
+	// Calculate batch size based on current cache size
+	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
+	level.Info(c.logger).Log("msg", "fetched digests", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
+	return nil
+}
+
 func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	// If cache is empty, fetch all available queries
 	if len(c.queryCache) == 0 {
-		rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
+		if err := c.populateQueryCache(ctx); err != nil {
 			return err
 		}
-		defer rs.Close()
-
-		// Populate cache
-		for rs.Next() {
-			if err := rs.Err(); err != nil {
-				level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
-				return err
-			}
-
-			var qi queryInfo
-			if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
-				return err
-			}
-			c.queryCache = append(c.queryCache, qi)
-		}
-		// Calculate batch size based on current cache size
-		c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
-		level.Info(c.logger).Log("msg", "fetched digests", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	}
 
 	// Process up to batchSize queries from cache
