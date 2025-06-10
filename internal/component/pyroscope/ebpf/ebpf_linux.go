@@ -4,8 +4,8 @@ package ebpf
 
 import (
 	"context"
-	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -125,15 +125,29 @@ type Component struct {
 
 	metrics *metrics
 	cfg     *controller.Config
+
+	healthMut sync.RWMutex
+	health    component.Health
 }
 
 func (c *Component) Run(ctx context.Context) error {
 	ctlr := controller.New(c.cfg)
-	err := ctlr.Start(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to start agent controller: %v", err)
+	const sessionMaxErrors = 3
+	var err error
+	for i := 0; i < sessionMaxErrors; i++ {
+		err = ctlr.Start(ctx)
+		if err != nil {
+			c.reportUnhealthy(err)
+			time.Sleep(c.cfg.ReporterInterval)
+			continue
+		}
+		defer ctlr.Shutdown()
+		c.reportHealthy()
+		break
 	}
-	defer ctlr.Shutdown()
+	if err != nil {
+		return err
+	}
 
 	var g run.Group
 	g.Add(func() error {
@@ -153,14 +167,18 @@ func (c *Component) Run(ctx context.Context) error {
 
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
-	c.argsUpdate <- newArgs
+	select {
+	case c.argsUpdate <- newArgs:
+	default:
+		_ = level.Debug(c.options.Logger).Log("msg", "dropped args update")
+	}
 	return nil
 }
 
 func targetsOptions(dynamicProfilingPolicy bool, args Arguments) discovery2.TargetsOptions {
 	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
-		targets = append(targets, t.AsMap()) // todo optimize AsMap
+		targets = append(targets, t.AsMap())
 	}
 	return discovery2.TargetsOptions{
 		Targets:     targets,
@@ -215,12 +233,43 @@ func tracersFromArgs(args Arguments) string {
 	return strings.Join(tracers, ",")
 }
 
-func (c *Component) ConsumePprofProfiles(pprofs []reporter.PPROF) {
+func (c *Component) ConsumePprofProfiles(ctx context.Context, pprofs []reporter.PPROF) {
 	for _, pprof := range pprofs {
+		if ctx.Err() != nil {
+			return
+		}
 		appender := c.appendable.Appender()
-		err := appender.Append(context.Background(), pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
+		err := appender.Append(ctx, pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
 		if err != nil {
 			_ = level.Error(c.options.Logger).Log("msg", "pprof write", "err", err)
 		}
 	}
+}
+
+func (c *Component) reportUnhealthy(err error) {
+	_ = level.Error(c.options.Logger).
+		Log("msg", "unhealthy", "err", err)
+
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeUnhealthy,
+		Message:    err.Error(),
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) reportHealthy() {
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeHealthy,
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) CurrentHealth() component.Health {
+	c.healthMut.RLock()
+	defer c.healthMut.RUnlock()
+	return c.health
 }

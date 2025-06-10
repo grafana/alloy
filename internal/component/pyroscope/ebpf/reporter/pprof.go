@@ -32,7 +32,7 @@ type PPROF struct {
 	Origin libpf.Origin
 }
 type PPROFConsumer interface {
-	ConsumePprofProfiles(p []PPROF)
+	ConsumePprofProfiles(ctx context.Context, p []PPROF)
 }
 
 type Config struct {
@@ -107,18 +107,6 @@ func NewPPROF(
 		Frames:      frames,
 		sd:          sd,
 	}, nil
-}
-
-func (p *PPROFReporter) ReportFramesForTrace(_ *libpf.Trace) {
-
-}
-
-func (p *PPROFReporter) ReportCountForTrace(
-	_ libpf.TraceHash,
-	_ uint16,
-	_ *samples.TraceEventMeta,
-) {
-
 }
 
 func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.TraceEventMeta) error {
@@ -289,7 +277,7 @@ func (p *PPROFReporter) Stop() {
 	p.wg.Wait()
 }
 
-func (p *PPROFReporter) reportProfile(_ context.Context) {
+func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	traceEvents := p.traceEvents.WLock()
 	events := make(map[libpf.Origin]samples.KeyToEventMapping, 2)
 	for _, origin := range []libpf.Origin{support.TraceOriginSampling,
@@ -310,7 +298,7 @@ func (p *PPROFReporter) reportProfile(_ context.Context) {
 		profiles = append(profiles, pp...)
 	}
 
-	p.cfg.Consumer.ConsumePprofProfiles(profiles)
+	p.cfg.Consumer.ConsumePprofProfiles(ctx, profiles)
 	sz := 0
 	for _, it := range profiles {
 		sz += len(it.Raw)
