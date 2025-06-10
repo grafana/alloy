@@ -320,11 +320,12 @@ func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (plan
 			}
 			if childDetails.Details.JoinAlgorithm != nil && *childDetails.Details.JoinAlgorithm != algo {
 				thisLoop.Details.JoinAlgorithm = childDetails.Details.JoinAlgorithm
-				if *childDetails.Details.JoinAlgorithm == explainPlanJoinAlgorithmHash {
+				switch *childDetails.Details.JoinAlgorithm {
+				case explainPlanJoinAlgorithmHash:
 					thisLoop.Operation = explainPlanOutputOperationHashJoin
-				} else if *childDetails.Details.JoinAlgorithm == explainPlanJoinAlgorithmMerge {
+				case explainPlanJoinAlgorithmMerge:
 					thisLoop.Operation = explainPlanOutputOperationMergeJoin
-				} else {
+				default:
 					thisLoop.Operation = explainPlanOutputOperationNestedLoopJoin
 				}
 			}
