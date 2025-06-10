@@ -46,38 +46,6 @@ const selectExplainPlansPrefix = `EXPLAIN FORMAT=JSON `
 
 const selectDbSchemaVersion = `SELECT VERSION()`
 
-type ExplainPlanArguments struct {
-	DB             *sql.DB
-	InstanceKey    string
-	ScrapeInterval time.Duration
-	PerScrapeRatio float64
-	EntryHandler   loki.EntryHandler
-
-	Logger log.Logger
-}
-
-type queryInfo struct {
-	schemaName *string
-	digest     string
-	queryText  string
-}
-
-type ExplainPlan struct {
-	dbConnection     *sql.DB
-	instanceKey      string
-	dbVersion        string
-	scrapeInterval   time.Duration
-	queryCache       []queryInfo
-	perScrapeRatio   float64
-	currentBatchSize int
-	entryHandler     loki.EntryHandler
-
-	logger  log.Logger
-	running *atomic.Bool
-	ctx     context.Context
-	cancel  context.CancelFunc
-}
-
 type explainPlanOutputOperation string
 
 const (
@@ -485,6 +453,38 @@ func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (planNode, 
 	return pnode, nil
 }
 
+type queryInfo struct {
+	schemaName *string
+	digest     string
+	queryText  string
+}
+
+type ExplainPlanArguments struct {
+	DB             *sql.DB
+	InstanceKey    string
+	ScrapeInterval time.Duration
+	PerScrapeRatio float64
+	EntryHandler   loki.EntryHandler
+
+	Logger log.Logger
+}
+
+type ExplainPlan struct {
+	dbConnection     *sql.DB
+	instanceKey      string
+	dbVersion        string
+	scrapeInterval   time.Duration
+	queryCache       []queryInfo
+	perScrapeRatio   float64
+	currentBatchSize int
+	entryHandler     loki.EntryHandler
+
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+}
+
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	rs := args.DB.QueryRowContext(context.Background(), selectDbSchemaVersion)
 	if rs.Err() != nil {
@@ -649,7 +649,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			loggedSchemaName = *qi.schemaName
 		}
 
-		redactedByteExplainPlanJSON, _, err := RedactAttachedConditions(byteExplainPlanJSON)
+		redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to redact explain plan json", "err", err)
 			continue
@@ -694,7 +694,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
-func RedactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {
+func redactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {
 	parser := parser.NewTiDBSqlParser()
 	attachedConditions, err := traverseJSONForAttachedConditions(explainPlanJSON)
 	if err != nil {
