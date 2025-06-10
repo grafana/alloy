@@ -1,55 +1,39 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.otlphttp/
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.faro/
 aliases:
-  - ../otelcol.exporter.otlphttp/ # /docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
-description: Learn about otelcol.exporter.otlphttp
+  - ../otelcol.exporter.faro/ # /docs/alloy/latest/reference/components/otelcol.exporter.faro/
+description: Learn about otelcol.exporter.faro
 labels:
   stage: general-availability
   products:
     - oss
-title: otelcol.exporter.otlphttp
+title: otelcol.exporter.faro
 ---
 
-# `otelcol.exporter.otlphttp`
+# `otelcol.exporter.faro`
 
-`otelcol.exporter.otlphttp` accepts telemetry data from other `otelcol` components and writes them over the network using the OTLP HTTP protocol.
+`otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlphttp` is a wrapper over the upstream OpenTelemetry Collector [`otlphttp`][] exporter.
+`otelcol.exporter.faro` is a wrapper over the upstream OpenTelemetry Collector `faro` exporter from the `otelcol-contrib`  distribution.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
-
-[`otlphttp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlphttpexporter
 {{< /admonition >}}
 
-You can specify multiple `otelcol.exporter.otlphttp` components by giving them different labels.
+Multiple `otelcol.exporter.faro` components can be specified by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.exporter.otlphttp "<LABEL>" {
-  client {
-    endpoint = "<HOST>:<PORT>"
-  }
+otelcol.exporter.faro "<LABEL>" {
+    client {
+        endpoint = "<HOST>:<PORT>"
+    }
 }
 ```
 
-## Arguments
-
-You can use the following arguments with `otelcol.exporter.otlphttp`:
-
-| Name               | Type     | Description                                                               | Default                           | Required |
-| ------------------ | -------- | ------------------------------------------------------------------------- | --------------------------------- | -------- |
-| `encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no       |
-| `logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no       |
-| `metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no       |
-| `traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no       |
-
-The default value depends on the `endpoint` field set in the required `client` block.
-If set, these arguments override the `client.endpoint` field for the corresponding signal.
-
 ## Blocks
 
-You can use the following blocks with `otelcol.exporter.otlphttp`:
+You can use the following blocks with `otelcol.exporter.faro`:
 
 | Block                                                 | Description                                                                | Required |
 | ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
@@ -57,7 +41,6 @@ You can use the following blocks with `otelcol.exporter.otlphttp`:
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                        | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                              | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                | no       |
@@ -67,7 +50,6 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 [client]: #client
 [tls]: #tls
-[tpm]: #tpm
 [cookies]: #cookies
 [compression_params]: #compression_params
 [sending_queue]: #sending_queue
@@ -102,12 +84,6 @@ The `tls` block configures TLS settings used for the connection to the HTTP serv
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `tpm`
-
-The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
-
-{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -136,32 +112,32 @@ The following fields are exported and can be referenced by other components:
 
 ## Component health
 
-`otelcol.exporter.otlphttp` is only reported as unhealthy if given an invalid configuration.
+`otelcol.exporter.faro` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.exporter.otlphttp` doesn't expose any component-specific debug information.
+`otelcol.exporter.faro` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example creates an exporter to send data to a locally running Grafana Tempo without TLS:
+This example creates an exporter to send data to a [Faro][Faro] endpoint.
 
 ```alloy
-otelcol.exporter.otlphttp "tempo" {
+otelcol.exporter.faro "default" {
     client {
-        endpoint = "http://tempo:4318"
-        tls {
-            insecure             = true
-            insecure_skip_verify = true
-        }
+        endpoint = "<FARO_COLLECTOR_ADDRESS>"
     }
 }
 ```
+Replace the following:
+
+* _`<FARO_COLLECTOR_ADDRESS>`_: The address of the Faro-compatible server to send data to.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
-`otelcol.exporter.otlphttp` has exports that can be consumed by the following components:
+`otelcol.exporter.faro` has exports that can be consumed by the following components:
 
 - Components that consume [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-consumers)
 
@@ -171,3 +147,5 @@ Refer to the linked documentation for more details.
 {{< /admonition >}}
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
+
+[Faro]: https://grafana.com/oss/faro/
