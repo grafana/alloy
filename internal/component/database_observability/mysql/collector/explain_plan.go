@@ -46,12 +46,6 @@ const selectExplainPlansPrefix = `EXPLAIN FORMAT=JSON `
 
 const selectDbSchemaVersion = `SELECT VERSION()`
 
-type queryInfo struct {
-	schemaName *string
-	digest     string
-	queryText  string
-}
-
 type ExplainPlanArguments struct {
 	DB             *sql.DB
 	InstanceKey    string
@@ -60,6 +54,12 @@ type ExplainPlanArguments struct {
 	EntryHandler   loki.EntryHandler
 
 	Logger log.Logger
+}
+
+type queryInfo struct {
+	schemaName *string
+	digest     string
+	queryText  string
 }
 
 type ExplainPlan struct {
@@ -78,76 +78,76 @@ type ExplainPlan struct {
 	cancel  context.CancelFunc
 }
 
-type ExplainPlanOutputOperation string
+type explainPlanOutputOperation string
 
 const (
-	ExplainPlanOutputOperationTableScan            ExplainPlanOutputOperation = "Table Scan"
-	ExplainPlanOutputOperationIndexScan            ExplainPlanOutputOperation = "Index Scan"
-	ExplainPlanOutputOperationNestedLoopJoin       ExplainPlanOutputOperation = "Nested Loop Join"
-	ExplainPlanOutputOperationHashJoin             ExplainPlanOutputOperation = "Hash Join"
-	ExplainPlanOutputOperationMergeJoin            ExplainPlanOutputOperation = "Merge Join"
-	ExplainPlanOutputOperationGroupingOperation    ExplainPlanOutputOperation = "Grouping Operation"
-	ExplainPlanOutputOperationOrderingOperation    ExplainPlanOutputOperation = "Ordering Operation"
-	ExplainPlanOutputOperationDuplicatesRemoval    ExplainPlanOutputOperation = "Duplicates Removal"
-	ExplainPlanOutputOperationMaterializedSubquery ExplainPlanOutputOperation = "Materialized Subquery"
-	ExplainPlanOutputOperationAttachedSubquery     ExplainPlanOutputOperation = "Attached Subquery"
-	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
+	explainPlanOutputOperationTableScan            explainPlanOutputOperation = "Table Scan"
+	explainPlanOutputOperationIndexScan            explainPlanOutputOperation = "Index Scan"
+	explainPlanOutputOperationNestedLoopJoin       explainPlanOutputOperation = "Nested Loop Join"
+	explainPlanOutputOperationHashJoin             explainPlanOutputOperation = "Hash Join"
+	explainPlanOutputOperationMergeJoin            explainPlanOutputOperation = "Merge Join"
+	explainPlanOutputOperationGroupingOperation    explainPlanOutputOperation = "Grouping Operation"
+	explainPlanOutputOperationOrderingOperation    explainPlanOutputOperation = "Ordering Operation"
+	explainPlanOutputOperationDuplicatesRemoval    explainPlanOutputOperation = "Duplicates Removal"
+	explainPlanOutputOperationMaterializedSubquery explainPlanOutputOperation = "Materialized Subquery"
+	explainPlanOutputOperationAttachedSubquery     explainPlanOutputOperation = "Attached Subquery"
+	explainPlanOutputOperationUnion                explainPlanOutputOperation = "Union"
 )
 
-type ExplainPlanAccessType string
+type explainPlanAccessType string
 
 const (
-	ExplainPlanAccessTypeAll   ExplainPlanAccessType = "all"
-	ExplainPlanAccessTypeIndex ExplainPlanAccessType = "index"
-	ExplainPlanAccessTypeRange ExplainPlanAccessType = "range"
-	ExplainPlanAccessTypeRef   ExplainPlanAccessType = "ref"
-	ExplainPlanAccessTypeEqRef ExplainPlanAccessType = "eq_ref"
+	explainPlanAccessTypeAll   explainPlanAccessType = "all"
+	explainPlanAccessTypeIndex explainPlanAccessType = "index"
+	explainPlanAccessTypeRange explainPlanAccessType = "range"
+	explainPlanAccessTypeRef   explainPlanAccessType = "ref"
+	explainPlanAccessTypeEqRef explainPlanAccessType = "eq_ref"
 )
 
-type ExplainPlanJoinAlgorithm string
+type explainPlanJoinAlgorithm string
 
 const (
-	ExplainPlanJoinAlgorithmHash       ExplainPlanJoinAlgorithm = "hash"
-	ExplainPlanJoinAlgorithmMerge      ExplainPlanJoinAlgorithm = "merge"
-	ExplainPlanJoinAlgorithmNestedLoop ExplainPlanJoinAlgorithm = "nested_loop"
+	explainPlanJoinAlgorithmHash       explainPlanJoinAlgorithm = "hash"
+	explainPlanJoinAlgorithmMerge      explainPlanJoinAlgorithm = "merge"
+	explainPlanJoinAlgorithmNestedLoop explainPlanJoinAlgorithm = "nested_loop"
 )
 
-type ExplainPlanOutput struct {
-	Metadata MetadataInfo `json:"metadata"`
-	Plan     PlanNode     `json:"plan"`
+type explainPlanOutput struct {
+	Metadata metadataInfo `json:"metadata"`
+	Plan     planNode     `json:"plan"`
 }
 
-type MetadataInfo struct {
+type metadataInfo struct {
 	DatabaseEngine  string `json:"database_engine"`
 	DatabaseVersion string `json:"database_version"`
 	QueryIdentifier string `json:"query_identifier"`
 	GeneratedAt     string `json:"generated_at"`
 }
 
-type PlanNode struct {
-	Operation ExplainPlanOutputOperation `json:"operation"`
-	Details   NodeDetails                `json:"details"`
-	Children  []PlanNode                 `json:"children,omitempty"`
+type planNode struct {
+	Operation explainPlanOutputOperation `json:"operation"`
+	Details   nodeDetails                `json:"details"`
+	Children  []planNode                 `json:"children,omitempty"`
 }
 
-type NodeDetails struct {
+type nodeDetails struct {
 	EstimatedRows int64                     `json:"estimatedRows"`
 	EstimatedCost *float64                  `json:"estimatedCost,omitempty"`
 	TableName     *string                   `json:"tableName,omitempty"`
 	Alias         *string                   `json:"alias,omitempty"`
-	AccessType    *ExplainPlanAccessType    `json:"accessType,omitempty"`
+	AccessType    *explainPlanAccessType    `json:"accessType,omitempty"`
 	KeyUsed       *string                   `json:"keyUsed,omitempty"`
 	JoinType      *string                   `json:"joinType,omitempty"`
-	JoinAlgorithm *ExplainPlanJoinAlgorithm `json:"joinAlgorithm,omitempty"`
+	JoinAlgorithm *explainPlanJoinAlgorithm `json:"joinAlgorithm,omitempty"`
 	Condition     *string                   `json:"condition,omitempty"`
 	GroupByKeys   []string                  `json:"groupByKeys,omitempty"`
 	SortKeys      []string                  `json:"sortKeys,omitempty"`
 	Warning       *string                   `json:"warning,omitempty"`
 }
 
-func NewExplainPlanOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*ExplainPlanOutput, error) {
-	output := &ExplainPlanOutput{
-		Metadata: MetadataInfo{
+func NewExplainPlanOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*explainPlanOutput, error) {
+	output := &explainPlanOutput{
+		Metadata: metadataInfo{
 			DatabaseEngine:  "MySQL",
 			DatabaseVersion: dbVersion,
 			QueryIdentifier: digest,
@@ -173,12 +173,12 @@ func NewExplainPlanOutput(logger log.Logger, dbVersion string, digest string, ex
 	return output, nil
 }
 
-func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (PlanNode, error) {
+func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode, error) {
 	// Table at top level
 	if table, _, _, err := jsonparser.Get(topLevelPlanNode, "table"); err == nil {
 		tableDetails, err := parseTableNode(logger, table)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
 
 		return tableDetails, nil
@@ -187,92 +187,92 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (PlanNode
 
 	// Nested Loop Join
 	if nestedLoopJoin, _, _, err := jsonparser.Get(topLevelPlanNode, "nested_loop"); err == nil {
-		planNode, err := parseNestedLoopJoinNode(logger, nestedLoopJoin)
+		pnode, err := parseNestedLoopJoinNode(logger, nestedLoopJoin)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
-		return planNode, nil
+		return pnode, nil
 	}
 
 	// Grouping Operation
 	if groupingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "grouping_operation"); err == nil {
-		planNode, err := parseGroupingOperationNode(logger, groupingOperation)
+		pnode, err := parseGroupingOperationNode(logger, groupingOperation)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
-		return planNode, nil
+		return pnode, nil
 	}
 
 	// Ordering Operation
 	if orderingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "ordering_operation"); err == nil {
-		planNode, err := parseOrderingOperationNode(logger, orderingOperation)
+		pnode, err := parseOrderingOperationNode(logger, orderingOperation)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
-		return planNode, nil
+		return pnode, nil
 	}
 
 	// Duplicates Removal
 	if duplicatesRemoval, _, _, err := jsonparser.Get(topLevelPlanNode, "duplicates_removal"); err == nil {
-		planNode, err := parseDuplicatesRemovalNode(logger, duplicatesRemoval)
+		pnode, err := parseDuplicatesRemovalNode(logger, duplicatesRemoval)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
-		return planNode, nil
+		return pnode, nil
 	}
 
 	if unionResult, _, _, err := jsonparser.Get(topLevelPlanNode, "union_result"); err == nil {
-		planNode, err := parseUnionResultNode(logger, unionResult)
+		pnode, err := parseUnionResultNode(logger, unionResult)
 		if err != nil {
-			return PlanNode{}, err
+			return planNode{}, err
 		}
-		return planNode, nil
+		return pnode, nil
 	}
 
-	return PlanNode{}, nil
+	return planNode{}, nil
 }
 
-func parseTableNode(logger log.Logger, tableNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationTableScan,
-		Details:   NodeDetails{},
+func parseTableNode(logger log.Logger, tableNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationTableScan,
+		Details:   nodeDetails{},
 	}
 
 	// Check for join algorithm. Nested loop would be set in parseNestedLoopJoinNode, since not all table nodes are children of nested loop joins.
 	if joinAlgorithm, _, _, err := jsonparser.Get(tableNode, "using_join_buffer"); err == nil {
 		if string(joinAlgorithm) == "hash join" {
-			joinAlgorithmConst := ExplainPlanJoinAlgorithmHash
-			planNode.Details.JoinAlgorithm = &joinAlgorithmConst
+			joinAlgorithmConst := explainPlanJoinAlgorithmHash
+			pnode.Details.JoinAlgorithm = &joinAlgorithmConst
 		}
 	}
 
 	tableAlias, err := jsonparser.GetString(tableNode, "table_name")
 	// TODO: This should output some of the context in the original explain plan JSON so that errors in nested objects can be found.
 	if err != nil {
-		return planNode, fmt.Errorf("failed to get table alias: %w", err)
+		return pnode, fmt.Errorf("failed to get table alias: %w", err)
 	}
-	planNode.Details.Alias = &tableAlias
+	pnode.Details.Alias = &tableAlias
 
 	accessType, err := jsonparser.GetString(tableNode, "access_type")
 	if err != nil {
-		return planNode, fmt.Errorf("failed to get access type: %w", err)
+		return pnode, fmt.Errorf("failed to get access type: %w", err)
 	}
-	accessTypeconst := ExplainPlanAccessType(strings.ToLower(accessType))
-	planNode.Details.AccessType = &accessTypeconst
+	accessTypeconst := explainPlanAccessType(strings.ToLower(accessType))
+	pnode.Details.AccessType = &accessTypeconst
 
 	// Until now, the properties being parsed were probably mandatory, now let's look for ones that are optional.
 	estimatedRows, err := jsonparser.GetInt(tableNode, "rows_produced_per_join")
 	if err == nil {
-		planNode.Details.EstimatedRows = estimatedRows
+		pnode.Details.EstimatedRows = estimatedRows
 	}
 
 	estimatedCost, err := jsonparser.GetString(tableNode, "cost_info", "prefix_cost")
 	if err == nil {
 		estimatedCostFloat, err := strconv.ParseFloat(estimatedCost, 64)
 		if err != nil {
-			return planNode, fmt.Errorf("failed to parse estimated cost as float: %w", err)
+			return pnode, fmt.Errorf("failed to parse estimated cost as float: %w", err)
 		}
-		planNode.Details.EstimatedCost = &estimatedCostFloat
+		pnode.Details.EstimatedCost = &estimatedCostFloat
 	}
 
 	attachedCondition, _, _, err := jsonparser.Get(tableNode, "attached_condition")
@@ -280,22 +280,22 @@ func parseTableNode(logger log.Logger, tableNode []byte) (PlanNode, error) {
 		parser := parser.NewTiDBSqlParser()
 		redactedAttachedCondition, err := parser.Redact(string(attachedCondition))
 		if err != nil {
-			return planNode, fmt.Errorf("failed to redact attached condition: %s error: %w", string(attachedCondition), err)
+			return pnode, fmt.Errorf("failed to redact attached condition: %s error: %w", string(attachedCondition), err)
 		}
-		planNode.Details.Condition = &redactedAttachedCondition
+		pnode.Details.Condition = &redactedAttachedCondition
 	}
 
 	keyUsed, err := jsonparser.GetString(tableNode, "key")
 	if err == nil {
-		planNode.Details.KeyUsed = &keyUsed
+		pnode.Details.KeyUsed = &keyUsed
 	}
 
 	if materializedSubquery, _, _, err := jsonparser.Get(tableNode, "materialized_from_subquery"); err == nil {
 		childNode, err := parseMaterializedSubqueryNode(logger, materializedSubquery)
 		if err != nil {
-			return PlanNode{}, err
+			return pnode, err
 		}
-		planNode.Children = append(planNode.Children, childNode)
+		pnode.Children = append(pnode.Children, childNode)
 	}
 
 	if attachedSubquery, _, _, err := jsonparser.Get(tableNode, "attached_subqueries"); err == nil {
@@ -304,26 +304,26 @@ func parseTableNode(logger log.Logger, tableNode []byte) (PlanNode, error) {
 			if err != nil {
 				return
 			}
-			planNode.Children = append(planNode.Children, childNode)
+			pnode.Children = append(pnode.Children, childNode)
 		})
 		if err != nil {
-			return planNode, err
+			return pnode, err
 		}
 	}
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (PlanNode, error) {
-	algo := ExplainPlanJoinAlgorithmNestedLoop
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationNestedLoopJoin,
-		Details: NodeDetails{
+func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (planNode, error) {
+	algo := explainPlanJoinAlgorithmNestedLoop
+	pnode := planNode{
+		Operation: explainPlanOutputOperationNestedLoopJoin,
+		Details: nodeDetails{
 			JoinAlgorithm: &algo,
 		},
-		Children: make([]PlanNode, 0),
+		Children: make([]planNode, 0),
 	}
-	var previousChild *PlanNode
+	var previousChild *planNode
 	_, err := jsonparser.ArrayEach(nestedLoopJoinNode, func(value []byte, dataType jsonparser.ValueType, offset int, inerr error) {
 		tableNode, _, _, err := jsonparser.Get(value, "table")
 		if err != nil {
@@ -340,24 +340,24 @@ func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (Plan
 			childDetails.Details.JoinAlgorithm = &algo // TODO:This is a duplicate from the parent node. Is that necessary?
 		}
 		if previousChild != nil {
-			thisLoop := PlanNode{
-				Operation: ExplainPlanOutputOperationNestedLoopJoin,
-				Details: NodeDetails{
+			thisLoop := planNode{
+				Operation: explainPlanOutputOperationNestedLoopJoin,
+				Details: nodeDetails{
 					JoinAlgorithm: &algo,
 				},
-				Children: []PlanNode{
+				Children: []planNode{
 					*previousChild,
 					childDetails,
 				},
 			}
 			if childDetails.Details.JoinAlgorithm != nil && *childDetails.Details.JoinAlgorithm != algo {
 				thisLoop.Details.JoinAlgorithm = childDetails.Details.JoinAlgorithm
-				if *childDetails.Details.JoinAlgorithm == ExplainPlanJoinAlgorithmHash {
-					thisLoop.Operation = ExplainPlanOutputOperationHashJoin
-				} else if *childDetails.Details.JoinAlgorithm == ExplainPlanJoinAlgorithmMerge {
-					thisLoop.Operation = ExplainPlanOutputOperationMergeJoin
+				if *childDetails.Details.JoinAlgorithm == explainPlanJoinAlgorithmHash {
+					thisLoop.Operation = explainPlanOutputOperationHashJoin
+				} else if *childDetails.Details.JoinAlgorithm == explainPlanJoinAlgorithmMerge {
+					thisLoop.Operation = explainPlanOutputOperationMergeJoin
 				} else {
-					thisLoop.Operation = ExplainPlanOutputOperationNestedLoopJoin
+					thisLoop.Operation = explainPlanOutputOperationNestedLoopJoin
 				}
 			}
 			previousChild = &thisLoop
@@ -366,106 +366,106 @@ func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (Plan
 		}
 	})
 	if err != nil {
-		return planNode, err
+		return pnode, err
 	}
 	if previousChild != nil {
-		if previousChild.Operation != ExplainPlanOutputOperationNestedLoopJoin && previousChild.Operation != ExplainPlanOutputOperationHashJoin {
-			planNode.Children = append(planNode.Children, *previousChild)
+		if previousChild.Operation != explainPlanOutputOperationNestedLoopJoin && previousChild.Operation != explainPlanOutputOperationHashJoin {
+			pnode.Children = append(pnode.Children, *previousChild)
 		} else {
 			return *previousChild, nil
 		}
 	}
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseGroupingOperationNode(logger log.Logger, groupingOperationNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationGroupingOperation,
+func parseGroupingOperationNode(logger log.Logger, groupingOperationNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationGroupingOperation,
 	}
 
 	children, err := parseTopLevelPlanNode(logger, groupingOperationNode)
 	if err != nil {
-		return PlanNode{}, err
+		return pnode, err
 	}
-	planNode.Children = append(planNode.Children, children)
+	pnode.Children = append(pnode.Children, children)
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseOrderingOperationNode(logger log.Logger, orderingOperationNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationOrderingOperation,
+func parseOrderingOperationNode(logger log.Logger, orderingOperationNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationOrderingOperation,
 	}
 
 	children, err := parseTopLevelPlanNode(logger, orderingOperationNode)
 	if err != nil {
-		return PlanNode{}, err
+		return pnode, err
 	}
-	planNode.Children = append(planNode.Children, children)
+	pnode.Children = append(pnode.Children, children)
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseDuplicatesRemovalNode(logger log.Logger, duplicatesRemovalNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationDuplicatesRemoval,
+func parseDuplicatesRemovalNode(logger log.Logger, duplicatesRemovalNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationDuplicatesRemoval,
 	}
 
 	children, err := parseTopLevelPlanNode(logger, duplicatesRemovalNode)
 	if err != nil {
-		return PlanNode{}, err
+		return pnode, err
 	}
-	planNode.Children = append(planNode.Children, children)
+	pnode.Children = append(pnode.Children, children)
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseMaterializedSubqueryNode(logger log.Logger, materializedSubqueryNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationMaterializedSubquery,
+func parseMaterializedSubqueryNode(logger log.Logger, materializedSubqueryNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationMaterializedSubquery,
 	}
 
 	queryBlock, _, _, err := jsonparser.Get(materializedSubqueryNode, "query_block")
 	if err != nil {
-		return planNode, fmt.Errorf("failed to get query block: %w", err)
+		return pnode, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	childNode, err := parseTopLevelPlanNode(logger, queryBlock)
 	if err != nil {
-		return planNode, fmt.Errorf("failed to parse top level plan node: %w", err)
+		return pnode, fmt.Errorf("failed to parse top level plan node: %w", err)
 	}
-	planNode.Children = append(planNode.Children, childNode)
+	pnode.Children = append(pnode.Children, childNode)
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseAttachedSubqueryNode(logger log.Logger, attachedSubqueryNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationAttachedSubquery,
+func parseAttachedSubqueryNode(logger log.Logger, attachedSubqueryNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationAttachedSubquery,
 	}
 
 	queryBlock, _, _, err := jsonparser.Get(attachedSubqueryNode, "query_block")
 	if err != nil {
-		return planNode, fmt.Errorf("failed to get query block: %w", err)
+		return pnode, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	childNode, err := parseTopLevelPlanNode(logger, queryBlock)
 	if err != nil {
-		return PlanNode{}, err
+		return pnode, err
 	}
-	planNode.Children = append(planNode.Children, childNode)
+	pnode.Children = append(pnode.Children, childNode)
 
-	return planNode, nil
+	return pnode, nil
 }
 
-func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (PlanNode, error) {
-	planNode := PlanNode{
-		Operation: ExplainPlanOutputOperationUnion,
+func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (planNode, error) {
+	pnode := planNode{
+		Operation: explainPlanOutputOperationUnion,
 	}
 
 	querySpecifications, _, _, err := jsonparser.Get(unionResultNode, "query_specifications")
 	if err != nil {
-		return planNode, fmt.Errorf("failed to get query specifications: %w", err)
+		return pnode, fmt.Errorf("failed to get query specifications: %w", err)
 	}
 
 	_, err = jsonparser.ArrayEach(querySpecifications, func(value []byte, dataType jsonparser.ValueType, offset int, inerr error) {
@@ -477,12 +477,12 @@ func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (PlanNode, 
 		if err != nil {
 			return
 		}
-		planNode.Children = append(planNode.Children, childNode)
+		pnode.Children = append(pnode.Children, childNode)
 	})
 	if err != nil {
-		return planNode, err
+		return pnode, err
 	}
-	return planNode, nil
+	return pnode, nil
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
@@ -605,13 +605,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		// Skip non-select queries
 		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") {
-			parser := parser.NewTiDBSqlParser()
-			redacted, err := parser.Redact(qi.queryText)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to redact sql", "err", err)
-				continue
-			}
-			level.Debug(logger).Log("msg", "skipping non-select query", "query_text", redacted)
 			continue
 		}
 
