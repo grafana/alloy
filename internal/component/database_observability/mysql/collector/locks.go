@@ -116,7 +116,7 @@ func NewLock(args LockArguments) (*Lock, error) {
 		collectInterval:        args.CollectInterval,
 		lockTimerWaitThreshold: args.LockWaitThreshold,
 		entryHandler:           args.EntryHandler,
-		logger:                 log.With(args.Logger, "mysql", "collector", "locks"),
+		logger:                 log.With(args.Logger, "collector", LocksName),
 		running:                &atomic.Bool{},
 	}, nil
 }
