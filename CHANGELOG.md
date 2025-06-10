@@ -23,6 +23,8 @@ Main (unreleased)
 
 - (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
 
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
+
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
