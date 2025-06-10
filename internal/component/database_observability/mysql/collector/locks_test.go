@@ -1,20 +1,23 @@
 package collector
 
 import (
-	"fmt"
+	"context"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 func Test_QueryLocks(t *testing.T) {
-	t.Run("both query sample and associated wait event is collected", func(t *testing.T) {
+	t.Run("no logs with no lock events", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -31,29 +34,150 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectDataLocks))
+		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows(
+				[]string{
+					"waitingTimerWait",
+					"waitingLockTime",
+					"waitingDigest",
+					"waitingDigestText",
+					"blockingTimerWait",
+					"blockingDigest",
+					"blockingDigestText",
+				},
+			),
+		)
 
-		err = collector.Start(t.Context())
+		require.NoError(t, collector.Start(context.Background()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 0
+		}, 2*time.Second, 50*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiEntries := lokiClient.Received()
+		assert.Empty(t, lokiEntries, "Expected no log entries for no lock events")
+	})
+
+	t.Run("data lock is logged", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
+		defer db.Close()
 
-		//require.Eventually(t, func() bool {
-		//	return len(lokiClient.Received()) == 2
-		//}, 5*time.Second, 100*time.Millisecond)
-		//
-		//collector.Stop()
-		//lokiClient.Stop()
-		//
-		//require.Eventually(t, func() bool {
-		//	return collector.Stopped()
-		//}, 5*time.Second, 100*time.Millisecond)
-		//
-		//err = mock.ExpectationsWereMet()
-		//require.NoError(t, err)
-		//
-		//lokiEntries := lokiClient.Received()
-		//assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		//assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
-		//assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		//assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
+		lokiClient := fake.NewClient(func() {})
+
+		collector, err := NewLock(LockArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows(
+				[]string{
+					"waitingTimerWait",
+					"waitingLockTime",
+					"waitingDigest",
+					"waitingDigestText",
+					"blockingTimerWait",
+					"blockingDigest",
+					"blockingDigestText",
+				},
+			).AddRow(
+				1500000000000,
+				1000000000000,
+				"abc123",
+				"SELECT * FROM users WHERE id = ?",
+				2000000000000,
+				"def456",
+				"UPDATE users SET name = ? WHERE id = ?",
+			),
+		)
+
+		require.NoError(t, collector.Start(context.Background()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATA_LOCKS, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000 ms" blocking_timer_wait="2000.000000 ms"`, lokiEntries[0].Line)
+	})
+
+	t.Run("multiple data locks are logged", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := fake.NewClient(func() {})
+
+		collector, err := NewLock(LockArguments{
+			DB:              db,
+			InstanceKey:     "mysql-db",
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows(
+				[]string{
+					"waitingTimerWait",
+					"waitingLockTime",
+					"waitingDigest",
+					"waitingDigestText",
+					"blockingTimerWait",
+					"blockingDigest",
+					"blockingDigestText",
+				},
+			).AddRow(
+				1500000000000,
+				1000000000000,
+				"abc123",
+				"SELECT * FROM users WHERE id = ?",
+				2000000000000,
+				"def456",
+				"UPDATE users SET name = ? WHERE id = ?",
+			).AddRow(
+				2500000000000,
+				2000000000000,
+				"xyz789",
+				"SELECT * FROM orders WHERE user_id = ?",
+				3000000000000,
+				"ghi012",
+				"DELETE FROM sessions WHERE expired = ?",
+			),
+		)
+
+		require.NoError(t, collector.Start(context.Background()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 2*time.Second, 50*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
+		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATA_LOCKS, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000 ms" blocking_timer_wait="2000.000000 ms"`, lokiEntries[0].Line)
+		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATA_LOCKS, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		assert.Equal(t, `level="info" waiting_digest="xyz789" waiting_digest_text="SELECT * FROM orders WHERE user_id = ?" blocking_digest="ghi012" blocking_digest_text="DELETE FROM sessions WHERE expired = ?" waiting_timer_wait="2500.000000 ms" blocking_timer_wait="3000.000000 ms"`, lokiEntries[1].Line)
 	})
 }
