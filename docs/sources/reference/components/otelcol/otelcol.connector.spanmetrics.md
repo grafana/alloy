@@ -105,21 +105,24 @@ A value of `0` means no limit is applied.
 
 You can use the following blocks with `otelcol.connector.spanmetrics`:
 
-| Block                                      | Description                                                                                                                                               | Required |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| [`histogram`][histogram]                   | Configures the histogram derived from spans durations.                                                                                                    | yes      |
-| [`output`][output]                         | Configures where to send telemetry data.                                                                                                                  | yes      |
-| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                                                                                | no       |
-| [`dimension`][dimension]                   | Dimensions to be added in addition to the default ones.                                                                                                   | no       |
-| [`events`][events]                         | Configures the events metric.                                                                                                                             | no       |
-| `events` > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block. | no       |
-| [`exemplars`][exemplars]                   | Configures how to attach exemplars to histograms.                                                                                                         | no       |
-| `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                      | no       |
-| `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                   | no       |
+| Block                                      | Description                                                                                                                                                | Required |
+|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| [`histogram`][histogram]                   | Configures the histogram derived from spans durations.                                                                                                     | yes      |
+| `histogram` > [`dimension`][dimension]     | Span event attributes to add as dimensions to the duration metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block | no       |
+| [`output`][output]                         | Configures where to send telemetry data.                                                                                                                   | yes      |
+| [`calls_dimension`][calls_dimension]       | Span event attributes to add as dimensions to the calls metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block    | no       |
+| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                                                                                 | no       |
+| [`dimension`][dimension]                   | Dimensions to be added in addition to the default ones.                                                                                                    | no       |
+| [`events`][events]                         | Configures the events metric.                                                                                                                              | no       |
+| `events` > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block.  | no       |
+| [`exemplars`][exemplars]                   | Configures how to attach exemplars to histograms.                                                                                                          | no       |
+| `histogram` > [`explicit`][explicit]       | Configuration for a histogram with explicit buckets.                                                                                                       | no       |
+| `histogram` > [`exponential`][exponential] | Configuration for a histogram with exponential buckets.                                                                                                    | no       |
 
 You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
 You can't specify both blocks in the same configuration.
 
+[calls_dimension]: #calls_dimension
 [dimension]: #dimension
 [histogram]: #histogram
 [exponential]: #exponential
@@ -168,7 +171,7 @@ The default dimensions are:
 * `span.kind`
 * `status.code`
 
-The default dimensions are always added. If no additional dimensions are specified, only the default ones will be added.
+The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones will be added.
 
 The following attributes are supported:
 
@@ -185,6 +188,10 @@ If the attribute is missing in both the span and resource attributes:
 * If `default` isn't set, the dimension will be omitted.
 * If `default` is set, the dimension will be added and its value will be set to the value of `default`.
 
+### `calls_dimension`
+
+The attributes and behavior of the `calls_dimension` block match the [`dimension`][dimension] block.
+
 ### `events`
 
 The `events` block configures the `events` metric, which tracks [span events][span-events].
@@ -195,7 +202,7 @@ The following attributes are supported:
 | --------- | ------ | -------------------------- | ------- | -------- |
 | `enabled` | `bool` | Enables all events metric. | `false` | no       |
 
-At least one `dimension` block is required if `enabled` is set to `true`.
+At least one nested `dimension` block is required if `enabled` is set to `true`.
 
 [span-events]: https://opentelemetry.io/docs/concepts/signals/traces/#span-events
 
