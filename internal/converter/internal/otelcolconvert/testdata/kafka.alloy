@@ -127,8 +127,12 @@ otelcol.exporter.kafka "default" {
 	}
 
 	producer {
-		max_message_bytes  = 1000001
-		compression        = "snappy"
+		max_message_bytes = 1000001
+		compression       = "gzip"
+
+		compression_params {
+			level = 9
+		}
 		flush_max_messages = 11
 	}
 }

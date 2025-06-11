@@ -40,6 +40,7 @@ type Arguments struct {
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
 	Dimensions        []Dimension `alloy:"dimension,block,optional"`
+	CallsDimensions   []Dimension `alloy:"calls_dimension,block,optional"`
 	ExcludeDimensions []string    `alloy:"exclude_dimensions,attr,optional"`
 
 	// DimensionsCacheSize defines the size of cache for storing Dimensions, which helps to avoid cache memory growing
@@ -173,6 +174,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		dimensions = append(dimensions, d.Convert())
 	}
 
+	callsDimensions := make([]spanmetricsconnector.Dimension, 0, len(args.CallsDimensions))
+	for _, d := range args.CallsDimensions {
+		callsDimensions = append(callsDimensions, d.Convert())
+	}
+
 	histogram, err := args.Histogram.Convert()
 	if err != nil {
 		return nil, err
@@ -189,6 +195,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &spanmetricsconnector.Config{
 		Dimensions:                   dimensions,
+		CallsDimensions:              callsDimensions,
 		ExcludeDimensions:            excludeDimensions,
 		DimensionsCacheSize:          args.DimensionsCacheSize,
 		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,

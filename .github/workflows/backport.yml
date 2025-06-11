@@ -1,9 +1,6 @@
 name: Backport PR Creator
 on:
-  pull_request_target: # zizmor: ignore[dangerous-triggers] In order to backport PRs from external
-    # contributors, this workflow needs to run against the base repo. The checkout action below is
-    # pinned to a specific commit to prevent arbitrary code execution by a fork that updates the
-    # logic of this workflow.
+  pull_request:
     types:
       - closed
       - labeled
@@ -14,6 +11,8 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
+    # For now, only run this on the main repo. 
+    if: github.repository == 'grafana/alloy'
     # These permissions are needed to assume roles from Github's OIDC.
     permissions:
       contents: read

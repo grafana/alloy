@@ -15,8 +15,10 @@ title: otelcol.receiver.tcplog
 `otelcol.receiver.tcplog` accepts log messages over a TCP connection and forwards them as logs to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector `tcplog` receiver.
+`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector [`tcplog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tcplog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/tcplogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.tcplog` components by giving them different labels.
@@ -62,8 +64,13 @@ You can use the following blocks with `otelcol.receiver.tcplog`:
 | [`multiline`][multiline]               | Configures rules for multiline parsing of incoming messages                                     | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | [`tls`][tls]                           | Configures TLS for the TCP server.                                                              | no       |
+| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS key_file.                                                   | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [multiline]: #multiline
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
@@ -115,6 +122,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

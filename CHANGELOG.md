@@ -17,11 +17,20 @@ Main (unreleased)
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+- Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+
+- (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
+
+- (_Experimental_) `prometheus.write.queue` initialize queue metrics that are seconds values as time.Now, not 0. (@dehaansa)
+
+- Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
 
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
 - Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
+
+- For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
 
 v1.9.1
 -----------------
@@ -37,6 +46,17 @@ v1.9.1
 - Fix `loki.source.firehose` to propagate specific cloudwatch event timestamps when useIncomingTs is set to true. (@michaelPotter)
 
 - Fix elevated CPU usage when using some `otelcol` components due to debug logging. (@thampiotr)
+
+### Other changes
+
+- Upgrade `otelcol` components from OpenTelemetry v0.125.0 to v0.126.0 (@dehaansa):
+  - [`pkg/ottl`] Add support for `HasPrefix` and `HasSuffix` functions.
+  - [`pkg/configtls`] Add trusted platform module (TPM) support to TLS authentication for all `otelcol` components supporting TLS.
+  - [`otelcol.connector.spanmetrics`] Add `calls_dimension` and `histogram:dimension` blocks for configuring additional dimensions for `traces.span.metrics.calls` and `traces.span.metrics.duration` metrics.
+  - [`otelcol.exporter.datadog`] Enable `instrumentation_scope_metadata_as_tags` by default.
+  - [`otelcol.exporter.kafka`] support configuration of `compression` `level` in producer configuration.
+  - [`otelcol.processor.tailsampling`] `invert sample` and `inverted not sample` decisions deprecated, use the `drop` policy instead to explicitly not sample traces.
+  - [`otelcol.receiver.filelog`] support `compression` value of `auto` to automatically detect file compression type.
 
 v1.9.0
 -----------------

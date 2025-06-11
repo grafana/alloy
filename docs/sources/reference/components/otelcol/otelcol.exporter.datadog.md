@@ -18,8 +18,10 @@ title: otelcol.exporter.datadog
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/datadogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.
@@ -182,10 +184,10 @@ The `exporter` block configures the metric exporter settings.
 
 The following arguments are supported:
 
-| Name                                     | Type   | Description                                                                          | Default | Required |
-| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `true` to add metadata about the instrumentation scope that created a metric. | `false` | no       |
-| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.             | `false` | no       |
+| Name                                     | Type   | Description                                                                               | Default | Required |
+| ---------------------------------------- | ------ |-------------------------------------------------------------------------------------------|---------| -------- |
+| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `false` to not add metadata about the instrumentation scope that created a metric. | `true`  | no       |
+| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.                  | `false` | no       |
 
 ### `histograms`
 

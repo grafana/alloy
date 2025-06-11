@@ -69,9 +69,11 @@ exporters:
         realm: myrealm
     producer:
       max_message_bytes: 1000001
-      compression: snappy
+      compression: gzip
       required_acks: 0
       flush_max_messages: 11
+      compression_params:
+        level: 9
 
 service:
   pipelines:
