@@ -17,8 +17,10 @@ description: Learn about otelcol.receiver.vcenter
 `otelcol.receiver.vcenter` accepts metrics from a vCenter or ESXi host running VMware vSphere APIs and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector `vcenter` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.vcenter` is a wrapper over the upstream OpenTelemetry Collector [`vcenter`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`vcenter`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/vcenterreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.vcenter` components by giving them different labels.
@@ -76,8 +78,13 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 | [`metrics`][metrics]                         | Configures which metrics will be sent to downstream components.            | no       |
 | [`resource_attributes`][resource_attributes] | Configures resource attributes for metrics sent to downstream components.  | no       |
 | [`tls`][tls]                                 | Configures TLS for the HTTP client.                                        | no       |
+| `tls` > [`tpm`][tpm]                         | Configures TPM settings for the TLS key_file.                              | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [debug_metrics]: #debug_metrics
 [metrics]: #metrics
 [resource_attributes]: #resource_attributes
@@ -208,6 +215,12 @@ The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
@@ -65,6 +66,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				MaxMessageBytes: 1000000,
 				RequiredAcks:    1,
 				Compression:     "none",
+				CompressionParams: configcompression.CompressionParams{
+					Level: -1,
+				},
 			},
 		}
 	}
@@ -202,6 +206,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					max_message_bytes =  2000001
 					required_acks = 0
 					compression = "gzip"
+					compression_params {
+						level = 9
+					}
 					flush_max_messages = 101
 				}
 
@@ -269,9 +276,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				Producer: configkafka.ProducerConfig{
-					MaxMessageBytes:  2000001,
-					RequiredAcks:     0,
-					Compression:      "gzip",
+					MaxMessageBytes: 2000001,
+					RequiredAcks:    0,
+					Compression:     "gzip",
+					CompressionParams: configcompression.CompressionParams{
+						Level: 9,
+					},
 					FlushMaxMessages: 101,
 				},
 				TopicFromAttribute:                   "my-attr",
