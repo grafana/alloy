@@ -88,22 +88,22 @@ Use this statement to enable the consumer if it's disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
 ```
 
-7. Optionally enable the `events_waits_history` consumer if you want to collect wait events for each query sample. Verify the current settings:
+7. Optionally enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings:
 
 ```promql
-database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name="events_waits_history"}
+database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name=~"events_waits_(current|history)"}
 ```
 
 or with a sql query:
 
 ```sql
-SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_waits_history';
+SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
 ```
 
-Use this statement to enable the consumer if it's disabled:
+Use this statement to enable the consumers if they are disabled:
 
 ```sql
-UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_waits_history';
+UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME IN ('events_waits_current', 'events_waits_history');
 ```
 
 ## Running and configuring Alloy
