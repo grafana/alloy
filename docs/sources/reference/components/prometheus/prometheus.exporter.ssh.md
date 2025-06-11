@@ -31,6 +31,7 @@ prometheus.exporter.ssh "example" {
     }
   }
 }
+```
 
 # Arguments
 
