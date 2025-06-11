@@ -1,34 +1,36 @@
 #!/bin/bash
 
-# Script to expose Grafana and Mimir services via port-forward
+# Script to expose Grafana Cloud Collector pod via port-forward
 KUBECONFIG=${1:-build/kubeconfig.yaml}
 
-# Start Grafana port-forward in background
-kubectl --kubeconfig "$KUBECONFIG" port-forward -n grafana service/grafana 3000:80 &
-GRAFANA_PID=$!
+# Get the first pod name from the daemonset
+POD_NAME=$(kubectl --kubeconfig "$KUBECONFIG" get pods -n grafana-cloud -l app.kubernetes.io/name=alloy-starter -o jsonpath="{.items[0].metadata.name}")
 
-# Start Mimir port-forward in background
-kubectl --kubeconfig "$KUBECONFIG" port-forward -n mimir service/mimir-nginx 9009:80 &
-MIMIR_PID=$!
+if [ -z "$POD_NAME" ]; then
+    echo "Error: No pods found for grafana-cloud-collector-alloy-starter daemonset"
+    exit 1
+fi
+
+# Start port-forward in background
+kubectl --kubeconfig "$KUBECONFIG" port-forward -n grafana-cloud pod/$POD_NAME 12345:12345 &
+PORT_FORWARD_PID=$!
 
 # Give port-forward a moment to start
 sleep 2
 
-# Print available URLs
+# Print available URL
 echo ""
-echo "🌐 Services are now available at:"
-echo "   Grafana: http://localhost:3000"
-echo "   Mimir: http://localhost:9009"
+echo "🌐 Service is now available at:"
+echo "   Grafana Cloud Collector: http://localhost:12345"
 echo ""
-echo "Press Ctrl+C to stop all port forwarding"
+echo "Press Ctrl+C to stop port forwarding"
 echo ""
 
 # Function to cleanup background processes
 cleanup() {
   echo ""
   echo "Stopping port forwarding..."
-  kill $GRAFANA_PID 2>/dev/null || true
-  kill $MIMIR_PID 2>/dev/null || true
+  kill $PORT_FORWARD_PID 2>/dev/null || true
   exit 0
 }
 

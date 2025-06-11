@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   KUBECONFIG: build/kubeconfig.yaml
-  CLUSTERNAME: alloy-example
+  CLUSTERNAME: alloy-example  
 
 tasks:
   create-cluster:
@@ -27,42 +27,13 @@ tasks:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo update
 
-  deploy:operator:
-    deps: [create-cluster, update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy-operator -n operator --create-namespace grafana/alloy-operator --wait
-
-  deploy:grafana:
-    deps: [create-cluster, update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana -n grafana --create-namespace grafana/grafana --values {{.TASK_DIR}}/config/grafana/values.yaml --wait
-
-  deploy:mimir:
-    deps: [create-cluster, update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install mimir -n mimir --create-namespace grafana/mimir-distributed --values {{.TASK_DIR}}/config/mimir/values.yaml --wait
-
-  deploy:k8s-monitoring:
-    deps: [create-cluster, update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install k8s-monitoring -n k8s-monitoring --create-namespace grafana/k8s-monitoring --values {{.TASK_DIR}}/config/k8s-monitoring/values.yaml --values {{.TASK_DIR}}/config/k8s-monitoring/credentials.yaml --wait
-
   deploy:cloud-onboarding:local:
     deps: [create-cluster]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud-onboarding -n grafana-cloud-onboarding --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
-
-  deploy:alloy:daemon:
-    desc: Deploy the consolidated Alloy DaemonSet for o11y onboarding
-    cmds:
-      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.TASK_DIR}}/config/k8s-monitoring/alloy-daemon.yaml
-
-  deploy:alloy:logs-daemonset:
-    cmds:
-      - kubectl --kubeconfig {{.KUBECONFIG}} apply -k {{.TASK_DIR}}/config/alloy/overlays/logs-daemonset
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud-collector -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
 
   expose:
     desc: Expose all services on localhost via port-forward
-    deps: [deploy:grafana, deploy:mimir]
+    deps: [deploy:cloud-onboarding:local]
     cmds:
       - "{{.TASK_DIR}}/config/expose.sh {{.KUBECONFIG}}"
