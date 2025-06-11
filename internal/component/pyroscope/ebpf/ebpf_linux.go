@@ -4,8 +4,11 @@ package ebpf
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -131,6 +134,7 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
 	var err error
@@ -272,4 +276,26 @@ func (c *Component) CurrentHealth() component.Health {
 	c.healthMut.RLock()
 	defer c.healthMut.RUnlock()
 	return c.health
+}
+
+func (c *Component) checkTraceFS() {
+	candidates := []string{
+		"/sys/kernel/tracing",
+		"/sys/kernel/debug/tracing",
+	}
+	for _, p := range candidates {
+		_, err := os.Stat(filepath.Join(p, "events"))
+		if err != nil {
+			continue
+		}
+		level.Debug(c.options.Logger).Log("msg", "found tracefs at "+p)
+		return
+	}
+	mountPath := candidates[0]
+	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
+	if err != nil {
+		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
+	} else {
+		level.Error(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
+	}
 }

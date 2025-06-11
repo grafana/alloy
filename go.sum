@@ -564,8 +564,6 @@ github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f/go.mod h1:l
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
-github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270 h1:JIxGEMs4E5Zb6R7z2C5IgecI0mkqS97WAEF31wUbYTM=
-github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270/go.mod h1:2XtVRGCw/HthOLxU0Qw6o6jSJrcEoOb2OCCl8gQYvGw=
 github.com/aws/aws-lambda-go v1.13.3/go.mod h1:4UKl9IzQMoD+QF79YdCuzCwp8VbmG4VAQwij/eHl5CU=
 github.com/aws/aws-msk-iam-sasl-signer-go v1.0.1 h1:nMp7diZObd4XEVUR0pEvn7/E13JIgManMX79Q6quV6E=
 github.com/aws/aws-msk-iam-sasl-signer-go v1.0.1/go.mod h1:MVYeeOhILFFemC/XlYTClvBjYZrg/EPd3ts885KrNTI=
@@ -1428,8 +1426,8 @@ github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0
 github.com/grafana/opentelemetry-collector-contrib/receiver/kafkareceiver v0.0.0-20250513154522-927cb8a6022a/go.mod h1:qf8hdVvTTECX+5HRbGxJ5ZPnvN2cKo1qDFHawrg9gJ4=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250609090949-a59d51e9ffb9 h1:has78PEw+bVFSMZzSQ3OwRDOBo0UBjGXhLregLysSHA=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250609090949-a59d51e9ffb9/go.mod h1:mFIqYBhIcLC8UQFIndG3aDpfiGpFLWosxxOGWzwCqqU=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250611075056-624b9aaad518 h1:iR7JQZVWKLVH5MtUnRPM1RhMh4BS0atTzGuWkE4F/os=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250611075056-624b9aaad518/go.mod h1:mFIqYBhIcLC8UQFIndG3aDpfiGpFLWosxxOGWzwCqqU=
 github.com/grafana/postgres_exporter v0.15.1-0.20250312140329-3046b223bba0 h1:UdXc6g+G/JsDGvh5TpJ5siGskJt9P7IdUiG5pvcw15g=
 github.com/grafana/postgres_exporter v0.15.1-0.20250312140329-3046b223bba0/go.mod h1:ws2UAbpWWvs87mYgclemWvosRQjIp6fuOxDjLzfo7L0=
 github.com/grafana/prometheus v1.8.2-0.20250410112059-2c3eb5bff000 h1:zxMLTFyjhG0YyP2TZCm68MOCER/PX6uuI7e29i63Vcg=
@@ -2837,8 +2835,6 @@ github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGr
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/ugorji/go/codec v1.1.7/go.mod h1:Ax+UKWsSmolVDwsd+7N3ZtXu+yMGCf907BLYF3GoBXY=
-github.com/ulikunitz/xz v0.5.12 h1:37Nm15o69RwBkXM0J6A5OlE67RZTfzUxTj8fB3dfcsc=
-github.com/ulikunitz/xz v0.5.12/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/valyala/fastjson v1.6.4 h1:uAUNq9Z6ymTgGhcm0UynUAB6tlbakBrz6CQFax3BXVQ=
