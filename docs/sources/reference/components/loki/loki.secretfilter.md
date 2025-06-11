@@ -44,13 +44,14 @@ You can use the following arguments with `loki.secretfilter`:
 | ----------------- | -------------------- | -------------------------------------------------------------- | ---------------------------------- | -------- |
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                                    | yes      |
 | `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets.     | `{}`                               | no       |
+| `enable_entropy`  | `bool`               | Enable entropy-based filtering.                                | `false`                            | no       |
 | `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                       | Embedded Gitleaks file             | no       |
 | `include_generic` | `bool`               | Include the generic API key rule.                              | `false`                            | no       |
 | `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. | `""`                               | no       |
 | `partial_mask`    | `int`                | Show the first N characters of the secret.                     | `0`                                | no       |
 | `redact_with`     | `string`             | String to use to redact secrets.                               | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
 | `types`           | `map(string)`        | Types of secret to look for.                                   | All types                          | no       |
-| `enable_entropy`  | `bool`               | Enable entropy-based filtering.                                | `false`                            | no       |
+
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.
