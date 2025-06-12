@@ -70,7 +70,7 @@ var DefaultArguments = Arguments{
 	ExplainPlanCollectInterval:    1 * time.Minute,
 	ExplainPlanPerCollectRatio:    1.0,
 	LocksCollectInterval:          10 * time.Second,
-	LocksThreshold:                0,
+	LocksThreshold:                100 * time.Millisecond,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -224,6 +224,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SetupConsumersName: true,
 		collector.QuerySampleName:    false,
 		collector.ExplainPlanName:    false,
+		collector.LocksName:          false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
