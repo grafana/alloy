@@ -544,6 +544,9 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 // calculateEntropy computes the Shannon entropy of a given string.
+// This is based on the entropy calculation feature of the Gitleaks project by Zachary Rice, which is licensed under the MIT license.
+// https://github.com/gitleaks/gitleaks/blob/master/detect/utils.go
+// See the gitleaks.toml file for copyright and license details.
 func calculateEntropy(str string) float64 {
 	entropy := 0.0
 	// Create a map to store the frequency of each rune
@@ -554,9 +557,11 @@ func calculateEntropy(str string) float64 {
 		frequences[char]++
 	}
 
+	invLength := 1.0 / float64(len(str))
+
 	// Calculate the entropy using the frequency of each rune
 	for _, freq := range frequences {
-		probability := float64(freq) / float64(len(str))
+		probability := float64(freq) * invLength
 		entropy -= probability * math.Log2(probability)
 	}
 
