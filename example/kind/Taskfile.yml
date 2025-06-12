@@ -8,6 +8,7 @@ vars:
 
 tasks:
   create-cluster:
+    desc: Create a kind cluster
     run: once
     status:
       - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
@@ -16,21 +17,24 @@ tasks:
       - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
 
   delete-cluster:
+    desc: Delete the kind cluster
     run: once
     cmds:
       - kind delete cluster --name {{.CLUSTERNAME}}
       - rm -rf {{.KUBECONFIG}}
 
   update-helm-repos:
+    desc: Update helm repositories
     run: once
     cmds:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo update
 
   deploy:cloud-onboarding:local:
+    desc: Deploy Grafana Cloud Collector helm chart using local checkout
     deps: [create-cluster]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud-collector -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
 
   expose:
     desc: Expose all services on localhost via port-forward

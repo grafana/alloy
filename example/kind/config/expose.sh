@@ -21,7 +21,7 @@ sleep 2
 # Print available URL
 echo ""
 echo "🌐 Service is now available at:"
-echo "   Grafana Cloud Collector: http://localhost:12345"
+echo "   Alloy: http://localhost:12345"
 echo ""
 echo "Press Ctrl+C to stop port forwarding"
 echo ""
