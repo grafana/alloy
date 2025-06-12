@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
@@ -36,6 +37,7 @@ func init() {
 			return New(opts, arguments)
 		},
 	})
+	python.NoContinueWithNextUnwinder.Store(true)
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
@@ -110,6 +112,7 @@ func NewDefaultArguments() Arguments {
 		RubyEnabled:          true,
 		V8Enabled:            true,
 		DotNetEnabled:        true,
+		GoEnabled:            true,
 	}
 }
 
@@ -134,6 +137,7 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
@@ -233,6 +237,9 @@ func tracersFromArgs(args Arguments) string {
 	}
 	if args.DotNetEnabled {
 		tracers = append(tracers, "dotnet")
+	}
+	if args.DotNetEnabled {
+		tracers = append(tracers, "go")
 	}
 	return strings.Join(tracers, ",")
 }

@@ -5,6 +5,7 @@ package reporter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"maps"
 	"sync"
 	"time"
@@ -84,8 +85,8 @@ func NewPPROF(
 		return nil, err
 	}
 	executables.SetLifetime(ExecutableCacheLifetime)
-	executables.SetOnEvict(func(_ libpf.FileID, _ samples.ExecInfo) {
-
+	executables.SetOnEvict(func(f libpf.FileID, ei samples.ExecInfo) {
+		log.Log("msg", "evicting executable", "f", f.StringNoQuotes(), "n", ei.FileName, "id", ei.GnuBuildID)
 	})
 
 	frames, err := freelru.NewSynced[
@@ -158,10 +159,14 @@ func (p *PPROFReporter) ExecutableKnown(fileID libpf.FileID) bool {
 }
 
 func (p *PPROFReporter) ExecutableMetadata(args *reporter2.ExecutableMetadataArgs) {
-	p.Executables.Add(args.FileID, samples.ExecInfo{
+	lt := ExecutableCacheLifetime
+	if args.Interp == libpf.Kernel {
+		lt = 365 * 24 * time.Hour
+	}
+	p.Executables.AddWithLifetime(args.FileID, samples.ExecInfo{
 		FileName:   args.FileName,
 		GnuBuildID: args.GnuBuildID,
-	})
+	}, lt)
 }
 
 func (p *PPROFReporter) FrameKnown(frameID libpf.FrameID) bool {
@@ -252,17 +257,21 @@ func (p *PPROFReporter) Start(ctx context.Context) error {
 		defer tick.Stop()
 		purgeTick := time.NewTicker(5 * time.Minute)
 		defer purgeTick.Stop()
-
+		purge := false
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-tick.C:
 				p.reportProfile(ctx)
+				if purge {
+					p.Executables.PurgeExpired()
+					p.Frames.PurgeExpired()
+					p.cgroups.PurgeExpired()
+					purge = false
+				}
 			case <-purgeTick.C:
-				p.Executables.Purge()
-				p.Frames.Purge()
-				p.cgroups.PurgeExpired()
+				purge = true
 			}
 		}
 	}()
@@ -348,70 +357,67 @@ func (p *PPROFReporter) createProfile(
 			addrOrLineNo := traceInfo.Linenos[i]
 			frameID := libpf.NewFrameID(fileID, addrOrLineNo)
 			location, locationFresh := b.Location(frameID)
-			s.Location = append(s.Location, location)
-			if !locationFresh {
-				continue
-			}
-			location.Address = uint64(addrOrLineNo)
-			switch frameKind := traceInfo.FrameTypes[i]; frameKind {
-			case libpf.NativeFrame:
-				mapping, mappingFresh := b.Mapping(traceInfo.Files[i])
-				if mappingFresh {
-					ei, exists := p.Executables.GetAndRefresh(traceInfo.Files[i],
-						ExecutableCacheLifetime)
+			if locationFresh {
+				location.Address = uint64(addrOrLineNo)
+				switch frameKind := traceInfo.FrameTypes[i]; frameKind {
+				case libpf.NativeFrame:
+					mapping, mappingFresh := b.Mapping(traceInfo.Files[i])
+					if mappingFresh {
+						ei, exists := p.Executables.GetAndRefresh(traceInfo.Files[i],
+							ExecutableCacheLifetime)
 
-					var fileName = "UNKNOWN"
-					if exists {
-						fileName = ei.FileName
+						var fileName = "UNKNOWN"
+						if exists {
+							fileName = ei.FileName
+						}
+						mapping.Start = uint64(traceInfo.MappingStarts[i])
+						mapping.Limit = uint64(traceInfo.MappingEnds[i])
+						mapping.Offset = traceInfo.MappingFileOffsets[i]
+						mapping.File = fileName
+						mapping.BuildID = ei.GnuBuildID
 					}
-					mapping.Start = uint64(traceInfo.MappingStarts[i])
-					mapping.Limit = uint64(traceInfo.MappingEnds[i])
-					mapping.Offset = traceInfo.MappingFileOffsets[i]
-					mapping.File = fileName
-					mapping.BuildID = ei.GnuBuildID
-				}
-				location.Mapping = mapping
-				p.symbolizeNativeFrame(b, location, traceInfo, i)
-			case libpf.AbortFrame:
-				// Next step: Figure out how the OTLP protocol
-				// could handle artificial frames, like AbortFrame,
-				// that are not originated from a native or interpreted
-				// program.
-			default:
-				// Store interpreted frame information as a Line message:
-				fileIDInfoLock, exists := p.Frames.GetAndRefresh(traceInfo.Files[i],
-					FramesCacheLifetime)
-				var funcName string
-				var filePath string
-				var lineNo int64
-				if !exists {
-					funcName = "UNREPORTED"
-				} else {
-					fileIDInfo := fileIDInfoLock.RLock()
-					if si, exists := (*fileIDInfo).GetAndRefresh(traceInfo.Linenos[i], FramesCacheLifetime); exists {
-						if len(si.Frames) == 1 {
-							frame := si.Frames[0]
-							funcName = frame.FunctionName
-							filePath = frame.FilePath
-							lineNo = int64(frame.LineNumber)
+					location.Mapping = mapping
+					p.symbolizeNativeFrame(b, location, traceInfo, i)
+				case libpf.AbortFrame:
+					// Next step: Figure out how the OTLP protocol
+					// could handle artificial frames, like AbortFrame,
+					// that are not originated from a native or interpreted
+					// program.
+				default:
+					// Store interpreted frame information as a Line message:
+					fileIDInfoLock, exists := p.Frames.GetAndRefresh(traceInfo.Files[i],
+						FramesCacheLifetime)
+					var funcName string
+					var filePath string
+					var lineNo int64
+					if !exists {
+						funcName = "UNREPORTED"
+					} else {
+						fileIDInfo := fileIDInfoLock.RLock()
+						if si, exists := (*fileIDInfo).GetAndRefresh(traceInfo.Linenos[i], FramesCacheLifetime); exists {
+							if len(si.Frames) == 1 {
+								frame := si.Frames[0]
+								funcName = frame.FunctionName
+								filePath = frame.FilePath
+								lineNo = int64(frame.LineNumber)
+							} else {
+								funcName = "UNRESOLVED"
+							}
 						} else {
 							funcName = "UNRESOLVED"
 						}
-					} else {
-						funcName = "UNRESOLVED"
+						fileIDInfoLock.RUnlock(&fileIDInfo)
 					}
-					fileIDInfoLock.RUnlock(&fileIDInfo)
-				}
-				if frameKind == libpf.PythonFrame && funcName == "<interpreter trampoline>" {
-					// skip
-				} else {
 					location.Line = []profile.Line{{
 						Line:     lineNo,
 						Function: b.Function(funcName, filePath)},
 					}
-
 				}
 			}
+			if traceInfo.FrameTypes[i] == libpf.PythonFrame && len(location.Line) == 1 && location.Line[0].Function.Name == "<interpreter trampoline>" {
+				continue
+			}
+			s.Location = append(s.Location, location)
 		}
 	}
 	res := make([]PPROF, 0, len(bs.Builders))
@@ -459,15 +465,20 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	frameID := libpf.NewFrameID(fileID, addr)
 
 	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, p.Frames, loc.Mapping.File, frameID, func(si samples.SourceInfo) {
-		for _, fn := range si.Frames {
-			line := profile.Line{Function: b.Function(fn.FunctionName, fn.FilePath)}
-			line.Line = int64(fn.LineNumber)
+		if len(si.Frames) > 0 {
+			for _, fn := range si.Frames {
+				line := profile.Line{Function: b.Function(fn.FunctionName, fn.FilePath)}
+				line.Line = int64(fn.LineNumber)
+				loc.Line = append(loc.Line, line)
+			}
+		} else {
+			line := profile.Line{Function: b.Function(fmt.Sprintf("[n] %s 0x%x", loc.Mapping.File, addr), "")}
 			loc.Line = append(loc.Line, line)
 		}
 	})
 }
 
 const (
-	ExecutableCacheLifetime = 1 * time.Hour
-	FramesCacheLifetime     = 1 * time.Hour
+	ExecutableCacheLifetime = 8 * time.Hour
+	FramesCacheLifetime     = 8 * time.Hour
 )

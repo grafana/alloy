@@ -21,6 +21,7 @@ type Arguments struct {
 	RubyEnabled          bool                   `alloy:"ruby_enabled,attr,optional"`
 	V8Enabled            bool                   `alloy:"v8_enabled,attr,optional"`
 	DotNetEnabled        bool                   `alloy:"dotnet_enabled,attr,optional"`
+	GoEnabled            bool                   `alloy:"go_enabled,attr,optional"`
 	PIDMapSize           int                    `alloy:"pid_map_size,attr,optional"`
 	Demangle             string                 `alloy:"demangle,attr,optional"`
 	ContainerIDCacheSize uint32                 `alloy:"container_id_cache_size,attr,optional"`
