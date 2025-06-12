@@ -7,13 +7,6 @@ import (
 )
 
 func TestKafkaMetrics(t *testing.T) {
-	// kafka_consumergroup_current_offset
-	// kafka_consumergroup_current_offset_sum
-	// kafka_consumer_lag_interpolation
-	// kafka_consumergroup_uncommitted_offsets_sum
-	// kafka_consumergroup_uncommitted_offsets
-	// kafka_consumergroup_members
-	// kafka_consumer_lag_millis
 	var kafkaMetrics = []string{
 		"kafka_topic_partition_replicas",
 		"kafka_topic_partition_leader",
