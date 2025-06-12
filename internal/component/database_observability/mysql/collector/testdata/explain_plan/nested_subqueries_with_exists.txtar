@@ -1,0 +1,122 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, e.last_name
+FROM employees e
+WHERE EXISTS (
+    SELECT 1 FROM dept_manager dm
+    WHERE dm.emp_no = e.emp_no
+    AND EXISTS (
+        SELECT 1 FROM salaries s
+        WHERE s.emp_no = dm.emp_no
+        AND s.salary > 100000
+        AND s.to_date = '9999-01-01'
+    )
+)\G
+```
+
+-- nested_subqueries_with_exists.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "58.57"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "dm",
+          "access_type": "index",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no",
+            "dept_no"
+          ],
+          "key_length": "20",
+          "rows_examined_per_scan": 24,
+          "rows_produced_per_join": 24,
+          "filtered": "100.00",
+          "using_index": true,
+          "loosescan": true,
+          "cost_info": {
+            "read_cost": "1.11",
+            "eval_cost": "2.40",
+            "prefix_cost": "3.51",
+            "data_read_per_join": "768"
+          },
+          "used_columns": [
+            "emp_no"
+          ]
+        }
+      },
+      {
+        "table": {
+          "table_name": "s",
+          "access_type": "ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.dm.emp_no"
+          ],
+          "rows_examined_per_scan": 9,
+          "rows_produced_per_join": 7,
+          "filtered": "3.33",
+          "first_match": "dm",
+          "cost_info": {
+            "read_cost": "24.21",
+            "eval_cost": "0.75",
+            "prefix_cost": "50.19",
+            "data_read_per_join": "120"
+          },
+          "used_columns": [
+            "emp_no",
+            "salary",
+            "to_date"
+          ],
+          "attached_condition": "((`employees`.`s`.`to_date` = DATE'9999-01-01') and (`employees`.`s`.`salary` > 100000))"
+        }
+      },
+      {
+        "table": {
+          "table_name": "e",
+          "access_type": "eq_ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.dm.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 1,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "7.52",
+            "eval_cost": "0.10",
+            "prefix_cost": "58.57",
+            "data_read_per_join": "136"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name"
+          ]
+        }
+      }
+    ]
+  }
+}
