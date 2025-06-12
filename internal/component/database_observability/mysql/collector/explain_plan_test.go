@@ -1503,14 +1503,12 @@ func TestExplainPlanOutput(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.fname, func(t *testing.T) {
-
 			archive, err := txtar.ParseFile(fmt.Sprintf("./testdata/explain_plan/%s.txtar", test.fname))
 			require.NoError(t, err)
 			require.Equal(t, 1, len(archive.Files))
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 			output, err := NewExplainPlanOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
