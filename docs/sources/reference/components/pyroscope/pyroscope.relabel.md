@@ -4,15 +4,13 @@ aliases:
   - ../pyroscope.relabel/ # /docs/alloy/latest/reference/components/pyroscope.relabel/
 description: Learn about pyroscope.relabel
 labels:
-  stage: public-preview
+  stage: general-availability
   products:
     - oss
 title: pyroscope.relabel
 ---
 
 # `pyroscope.relabel`
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `pyroscope.relabel` component rewrites the label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 

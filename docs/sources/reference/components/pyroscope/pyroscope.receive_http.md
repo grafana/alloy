@@ -2,15 +2,13 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.receive_http/
 description: Learn about pyroscope.receive_http
 labels:
-  stage: public-preview
+  stage: general-availability
   products:
     - oss
 title: pyroscope.receive_http
 ---
 
 # `pyroscope.receive_http`
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
