@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"embed"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ type Rule struct {
 	name        string
 	regex       *regexp.Regexp
 	secretGroup int
+	entropy     float64
 	allowlist   []AllowRule
 }
 
@@ -55,6 +57,7 @@ func init() {
 // - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
 // - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value.
 // - loki_secretfilter_secrets_allowlisted_total: Number of secrets that matched a rule but were in an allowlist, partitioned by source.
+// - loki_secretfilter_secrets_skipped_entropy_by_rule_total: Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name.
 
 // Arguments holds values which are used to configure the secretfilter
 // component.
@@ -67,6 +70,7 @@ type Arguments struct {
 	AllowList      []string            `alloy:"allowlist,attr,optional"`       // List of regexes to allowlist (on top of what's in the Gitleaks config)
 	PartialMask    uint                `alloy:"partial_mask,attr,optional"`    // Show the first N characters of the secret (default: 0)
 	OriginLabel    string              `alloy:"origin_label,attr,optional"`    // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
+	EnableEntropy  bool                `alloy:"enable_entropy,attr,optional"`  // Enable entropy calculation for secrets (default: false)
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -116,6 +120,7 @@ type GitLeaksConfig struct {
 		ID          string
 		Regex       string
 		SecretGroup int
+		Entropy     float64
 
 		// Old format, kept for compatibility
 		Allowlist struct {
@@ -139,6 +144,9 @@ type metrics struct {
 	// Number of secrets redacted by specified labels
 	secretsRedactedByOrigin *prometheus.CounterVec
 
+	// Number of secrets that matched a given rule but whose entropy was too low to be redacted, by rule type
+	secretsSkippedByEntropy *prometheus.CounterVec
+
 	// Number of secrets that matched but were in allowlist
 	secretsAllowlistedTotal *prometheus.CounterVec
 
@@ -160,6 +168,12 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		Subsystem: "loki_secretfilter",
 		Name:      "secrets_redacted_by_rule_total",
 		Help:      "Number of secrets redacted, partitioned by rule name.",
+	}, []string{"rule"})
+
+	m.secretsSkippedByEntropy = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_skipped_entropy_by_rule_total",
+		Help:      "Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name.",
 	}, []string{"rule"})
 
 	if originLabel != "" {
@@ -190,6 +204,7 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
 		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
+		m.secretsSkippedByEntropy = util.MustRegisterOrGet(reg, m.secretsSkippedByEntropy).(*prometheus.CounterVec)
 		if originLabel != "" {
 			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
 		}
@@ -319,6 +334,17 @@ func (c *Component) processEntry(entry loki.Entry) loki.Entry {
 				// Record metric for secrets that were not redacted due to allowlist
 				c.metrics.secretsAllowlistedTotal.WithLabelValues(allowRule.Source).Inc()
 				continue
+			}
+
+			// Check for entropy
+			if c.args.EnableEntropy && r.entropy > 0 {
+				entropy := calculateEntropy(secret)
+				if entropy < r.entropy {
+					level.Debug(c.opts.Logger).Log("msg", "secret entropy too low, skipping redaction", "rule", r.name, "entropy", entropy, "required", r.entropy)
+					// Record metric for secrets that were not redacted due to low entropy
+					c.metrics.secretsSkippedByEntropy.WithLabelValues(r.name).Inc()
+					continue
+				}
 			}
 
 			// Redact the secret (redactLine replaces ALL instances of the secret in the line)
@@ -472,6 +498,7 @@ func (c *Component) Update(args component.Arguments) error {
 			name:        rule.ID,
 			regex:       re,
 			secretGroup: rule.SecretGroup,
+			entropy:     rule.Entropy,
 			allowlist:   allowlist,
 		}
 
@@ -514,6 +541,31 @@ func (c *Component) Update(args component.Arguments) error {
 	level.Info(c.opts.Logger).Log("Compiled regexes for secret detection", len(c.Rules))
 
 	return nil
+}
+
+// calculateEntropy computes the Shannon entropy of a given string.
+// This is based on the entropy calculation feature of the Gitleaks project by Zachary Rice, which is licensed under the MIT license.
+// https://github.com/gitleaks/gitleaks/blob/master/detect/utils.go
+// See the gitleaks.toml file for copyright and license details.
+func calculateEntropy(str string) float64 {
+	entropy := 0.0
+	// Create a map to store the frequency of each rune
+	frequences := make(map[rune]int)
+
+	// Calculate the frequency of each rune in the string
+	for _, char := range str {
+		frequences[char]++
+	}
+
+	invLength := 1.0 / float64(len(str))
+
+	// Calculate the entropy using the frequency of each rune
+	for _, freq := range frequences {
+		probability := float64(freq) * invLength
+		entropy -= probability * math.Log2(probability)
+	}
+
+	return entropy
 }
 
 func (c *Component) LiveDebugging() {}

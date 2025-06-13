@@ -44,6 +44,7 @@ You can use the following arguments with `loki.secretfilter`:
 | ----------------- | -------------------- | -------------------------------------------------------------- | ---------------------------------- | -------- |
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                                    | yes      |
 | `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets.     | `{}`                               | no       |
+| `enable_entropy`  | `bool`               | Enable entropy-based filtering.                                | `false`                            | no       |
 | `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                       | Embedded Gitleaks file             | no       |
 | `include_generic` | `bool`               | Include the generic API key rule.                              | `false`                            | no       |
 | `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. | `""`                               | no       |
@@ -51,13 +52,14 @@ You can use the following arguments with `loki.secretfilter`:
 | `redact_with`     | `string`             | String to use to redact secrets.                               | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
 | `types`           | `map(string)`        | Types of secret to look for.                                   | All types                          | no       |
 
+
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.
 
 {{< admonition type="note" >}}
 This component doesn't support all the features of the Gitleaks configuration file.
 It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`.
-Other features such as `keywords`, `entropy`, `paths`, and `stopwords` aren't supported.
+Other features such as `keywords`, `paths`, and `stopwords` aren't supported.
 The `extend` feature isn't supported.
 If you use a custom configuration file, you must include all the rules you want to use within the configuration file.
 Unsupported fields and values in the configuration file are ignored.
@@ -89,8 +91,9 @@ Currently, the secret types known to have this behavior are: `aws-access-token`.
 
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME`, replaced with the matching secret type, and `$SECRET_HASH`, replaced with the SHA1 hash of the secret.
 
-The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`.
+The `include_generic` argument is a boolean that enables the generic API key rule in the Gitleaks configuration file if set to `true`.
 It's disabled by default because it can generate false positives.
+Consider enabling entropy-based filtering if you enable this rule.
 
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret won't be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.
@@ -99,6 +102,11 @@ The `partial_mask` argument is the number of characters to show from the beginni
 If set to `0`, the entire secret is redacted.
 If a secret isn't at least 6 characters long, it's entirely redacted.
 For short secrets, at most half of the secret is shown.
+
+The `enable_entropy` argument enables entropy-based filtering.
+When you set this to `true`, the entropy of the detected potential secret is calculated and compared against the threshold provided for the matching rule in the configuration file.
+The secret is then redacted only if the entropy is above the threshold.
+This can help reduce false positives.
 
 The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
 This metric tracks how many secrets were redacted in logs from different sources or environments.
@@ -125,13 +133,14 @@ The following fields are exported and can be referenced by other components:
 
 `loki.secretfilter` exposes the following Prometheus metrics:
 
-| Name                                               | Type    | Description                                                                            |
-| -------------------------------------------------- | ------- | -------------------------------------------------------------------------------------- |
-| `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets that have been redacted.                                       |
-| `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                  |
-| `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label value.                         |
-| `loki_secretfilter_secrets_allowlisted_total`      | Counter | Number of secrets that matched a rule but were in an allowlist, partitioned by source. |
-| `loki_secretfilter_processing_duration_seconds`    | Summary | Summary of the time taken to process and redact logs in seconds.                       |
+| Name                                                      | Type    | Description                                                                                                   |
+| --------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `loki_secretfilter_processing_duration_seconds`           | Summary | Summary of the time taken to process and redact logs in seconds.                                              |
+| `loki_secretfilter_secrets_allowlisted_total`             | Counter | Number of secrets that matched a rule but were in an allowlist, partitioned by source.                        |
+| `loki_secretfilter_secrets_redacted_by_origin`            | Counter | Number of secrets redacted, partitioned by origin label value.                                                |
+| `loki_secretfilter_secrets_redacted_by_rule_total`        | Counter | Number of secrets redacted, partitioned by rule name.                                                         |
+| `loki_secretfilter_secrets_redacted_total`                | Counter | Total number of secrets that have been redacted.                                                              |
+| `loki_secretfilter_secrets_skipped_entropy_by_rule_total` | Counter | Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name. |
 
 The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
 This metric tracks how many secrets were redacted in logs from different sources or environments.
