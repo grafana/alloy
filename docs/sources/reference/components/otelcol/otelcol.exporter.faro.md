@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.faro/
-aliases:
-  - ../otelcol.exporter.faro/ # /docs/alloy/latest/reference/components/otelcol.exporter.faro/
 description: Learn about otelcol.exporter.faro
 labels:
   stage: general-availability
@@ -15,11 +13,13 @@ title: otelcol.exporter.faro
 `otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.faro` is a wrapper over the upstream OpenTelemetry Collector `faro` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.faro` is a wrapper over the upstream OpenTelemetry Collector [`faro`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`faro`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/faroexporter
 {{< /admonition >}}
 
-Multiple `otelcol.exporter.faro` components can be specified by giving them different labels.
+You can specify multiple `otelcol.exporter.faro` components by giving them different labels.
 
 ## Usage
 
@@ -30,6 +30,10 @@ otelcol.exporter.faro "<LABEL>" {
     }
 }
 ```
+
+## Arguments
+
+The `otelcol.exporter.faro` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -68,7 +72,7 @@ The `client` block configures the HTTP client used by the component.
 
 ### `compression_params`
 
-The `compression_params` block allows for configuration of advanced compression options.
+The `compression_params` block configures the advanced compression options.
 
 {{< docs/shared lookup="reference/components/otelcol-compression-params-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -137,6 +141,7 @@ otelcol.exporter.faro "default" {
     }
 }
 ```
+
 Replace the following:
 
 * _`<FARO_COLLECTOR_ADDRESS>`_: The address of the Faro-compatible server to send data to.
