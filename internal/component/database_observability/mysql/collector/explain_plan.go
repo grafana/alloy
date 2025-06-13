@@ -482,7 +482,7 @@ type ExplainPlan struct {
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	rs := args.DB.QueryRowContext(context.Background(), selectDbSchemaVersion)
+	rs := args.DB.QueryRowContext(context.Background(), selectDBSchemaVersion)
 	if rs.Err() != nil {
 		return nil, rs.Err()
 	}
@@ -621,7 +621,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			}
 		}
 
-		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlansPrefix+qi.queryText)
+		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
 
 		if err := rsExplain.Err(); err != nil {
 			level.Error(logger).Log("msg", "failed to run explain plan", "err", err)
