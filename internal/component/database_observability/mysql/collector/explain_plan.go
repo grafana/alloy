@@ -644,10 +644,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		level.Debug(logger).Log("msg", "explain plan output",
+		level.Debug(logger).Log("msg", "db native explain plan",
 			"op", OP_EXPLAIN_PLAN_OUTPUT,
 			"instance", c.instanceKey,
-			"explain_plan_output", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
+			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
 		generatedAt := time.Now().Format(time.RFC3339)
 
