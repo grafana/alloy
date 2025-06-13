@@ -7,6 +7,7 @@ import (
 	ae "github.com/Lusitaniae/apache_exporter/collector"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 )
 
@@ -38,7 +39,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the addr of the apache server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.ApacheAddr)
 	if err != nil {
 		return "", err
@@ -64,7 +65,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		Insecure:     c.ApacheInsecure,
 	}
 
-	//check scrape URI
+	// check scrape URI
 	_, err := url.ParseRequestURI(conf.ScrapeURI)
 	if err != nil {
 		level.Error(logger).Log("msg", "scrape_uri is invalid", "err", err)

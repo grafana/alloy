@@ -14,11 +14,12 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
+	promCfg "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/prometheus/client_golang/prometheus"
-	promCfg "github.com/prometheus/common/config"
 
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
@@ -101,7 +102,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the hostname:port of the elasticsearch node being queried.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.Address)
 	if err != nil {
 		return "", fmt.Errorf("could not parse url: %w", err)

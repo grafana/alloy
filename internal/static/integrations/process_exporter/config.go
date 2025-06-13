@@ -3,6 +3,7 @@ package process_exporter
 
 import (
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -43,9 +44,8 @@ func (c *Config) Name() string {
 	return "process_exporter"
 }
 
-// InstanceKey returns the hostname of the machine.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration converts this config into an instance of an integration.
