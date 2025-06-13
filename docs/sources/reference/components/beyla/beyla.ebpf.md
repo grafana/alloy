@@ -16,7 +16,7 @@ title: beyla.ebpf
 The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
 {{< /admonition >}}
 
-The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][[eBPF website]] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][eBPF website] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
