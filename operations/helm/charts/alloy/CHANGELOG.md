@@ -79,6 +79,7 @@ Unreleased
 - Change configReloader from jimmydyson/configmap-reload to prometheus-operator/prometheus-config-reloader (@dehaansa)
 - Update to Grafana Alloy v1.7.5. (@kimxogus)
 - Add `checksum/config` pod annotation (@kimxogus)
+- Add NetworkPolicy support. (@TheRealNoob)
 
 ### Other changes
 
