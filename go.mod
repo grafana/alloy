@@ -1038,7 +1038,7 @@ replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-773
 
 // Replace directives from Loki
 replace (
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v36.2.0+incompatible
+	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 	github.com/Azure/azure-storage-blob-go => github.com/MasslessParticle/azure-storage-blob-go v0.14.1-0.20220216145902-b5e698eff68e
 	github.com/bradfitz/gomemcache => github.com/themihai/gomemcache v0.0.0-20180902122335-24332e2d58ab
 	github.com/cloudflare/cloudflare-go => github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
