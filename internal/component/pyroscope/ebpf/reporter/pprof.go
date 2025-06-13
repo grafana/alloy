@@ -184,20 +184,26 @@ func (p *PPROFReporter) LookupFrame(frameID libpf.FrameID) (samples.SourceInfo, 
 }
 
 func (p *PPROFReporter) FrameMetadata(args *reporter2.FrameMetadataArgs) {
-	p.frameMetadata(args.FrameID, func() samples.SourceInfo {
-		return samples.SourceInfo{
-			Frames: []samples.SourceInfoFrame{
-				{
-					LineNumber:   args.SourceLine,
-					FunctionName: args.FunctionName,
-					FilePath:     args.SourceFile,
+	p.frameMetadata(
+		args.FrameID,
+		args.FileIDCacheSizeHint,
+		func() samples.SourceInfo {
+			return samples.SourceInfo{
+				Frames: []samples.SourceInfoFrame{
+					{
+						LineNumber:   args.SourceLine,
+						FunctionName: args.FunctionName,
+						FilePath:     args.SourceFile,
+					},
 				},
-			},
-		}
-	})
+			}
+		})
 }
 
-func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID, sif func() samples.SourceInfo) {
+func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID,
+	cacheSizeHint uint32,
+	sif func() samples.SourceInfo,
+) {
 	fileID := frameID.FileID()
 	addressOrLine := frameID.AddressOrLine()
 
@@ -210,8 +216,11 @@ func (p *PPROFReporter) frameMetadata(frameID libpf.FrameID, sif func() samples.
 		(*frameMap).AddWithLifetime(addressOrLine, si, FramesCacheLifetime)
 		return
 	}
-
-	frameMap, err := lru.New[libpf.AddressOrLineno, samples.SourceInfo](1024,
+	sz := uint32(1024)
+	if cacheSizeHint > 0 {
+		sz = cacheSizeHint
+	}
+	frameMap, err := lru.New[libpf.AddressOrLineno, samples.SourceInfo](sz,
 		func(k libpf.AddressOrLineno) uint32 { return uint32(k) })
 	if err != nil {
 		return
