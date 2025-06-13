@@ -43,7 +43,7 @@ const selectDigestsForExplainPlan = `
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
-const selectDbSchemaVersion = `SELECT VERSION()`
+const selectDBSchemaVersion = `SELECT VERSION()`
 
 type explainPlanOutputOperation string
 
