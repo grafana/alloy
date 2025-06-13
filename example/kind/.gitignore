@@ -1,2 +1,4 @@
 # Generated files
 build/
+# Environment variables for local development
+.envrc

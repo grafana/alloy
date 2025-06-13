@@ -1,0 +1,72 @@
+cluster:
+  name: "alloy-example"
+
+collectors:
+  # TODO: rename alloy-starter to alloy-daemon
+  alloy-starter: null
+  alloy-daemon:
+    image: # Need to use the one that understands the latest Beyla configs.
+      repository: "grafana/alloy-dev"
+      tag: "v1.10.0-devel-5126d5f"
+    alloy:
+      stabilityLevel: "experimental"
+      # TODO: lots of these settings will be derived from the grafanaCloud section
+      # TODO: set the storage path to /var/log/alloy/ ? we want storage to be persisted on the node?
+      extraEnv:
+        - name: GCLOUD_RW_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: grafana-cloud-credentials
+              key: GCLOUD_RW_API_KEY
+        - name: REMOTE_CFG_URL
+          valueFrom:
+            secretKeyRef:
+              name: grafana-cloud-credentials
+              key: REMOTE_CFG_URL
+        - name: REMOTE_CFG_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: grafana-cloud-credentials
+              key: REMOTE_CFG_USERNAME
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      configMap:
+        content: |
+          logging {
+            level = "info"
+          }
+          livedebugging {
+            enabled = true
+          }
+          remotecfg {
+              url = sys.env("REMOTE_CFG_URL")
+              basic_auth {
+                username = sys.env("REMOTE_CFG_USERNAME")
+                password = sys.env("GCLOUD_RW_API_KEY")
+              }
+              attributes = {
+                platform = "kubernetes",
+                deployment_type = "daemonset",
+                installation_source = "grafana-cloud-onboarding",
+              }
+          }
+      
+      mounts:
+        # Mount /var/log from the host into the container for log collection.
+        varlog: true
+        # Mount /var/lib/docker/containers from the host into the container for log
+        # collection. Set to true if your cluster puts log files inside this directory.
+        dockercontainers: true
+    controller:
+      securityContext:
+        # required for Beyla eBPF
+        privileged: true 
+
+    # required for Beyla eBPF
+    hostPID: true

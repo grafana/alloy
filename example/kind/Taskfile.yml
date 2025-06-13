@@ -7,7 +7,7 @@ vars:
   CLUSTERNAME: alloy-example  
 
 tasks:
-  create-cluster:
+  cluster:create:
     desc: Create a kind cluster
     run: once
     status:
@@ -16,7 +16,7 @@ tasks:
       - mkdir -p build
       - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
 
-  delete-cluster:
+  cluster:delete:
     desc: Delete the kind cluster
     run: once
     cmds:
@@ -30,11 +30,35 @@ tasks:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo update
 
+  deploy:namespace:
+    desc: Create grafana-cloud namespace
+    deps: [cluster:create]
+    run: once
+    status:
+      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} get namespace grafana-cloud &>/dev/null
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} create namespace grafana-cloud
+
+  deploy:secret:
+    desc: Create grafana-cloud-credentials secret
+    deps: [deploy:namespace]
+    run: once
+    status:
+      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} get secret grafana-cloud-credentials --namespace grafana-cloud &>/dev/null
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} create secret generic grafana-cloud-credentials --namespace grafana-cloud --from-literal=GCLOUD_RW_API_KEY='{{.GRAFANA_CLOUD_API_KEY}}' --from-literal=REMOTE_CFG_URL='{{.REMOTE_CFG_URL}}' --from-literal=REMOTE_CFG_USERNAME='{{.REMOTE_CFG_USERNAME}}'
+
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Collector helm chart using local checkout
-    deps: [create-cluster]
+    deps: [cluster:create, deploy:secret]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --wait
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml --wait
+
+  remove:cloud-onboarding:local:
+    desc: Remove Grafana Cloud Collector helm chart
+    deps: [cluster:create]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n grafana-cloud
 
   expose:
     desc: Expose all services on localhost via port-forward
