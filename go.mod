@@ -983,7 +983,10 @@ require (
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 )
 
-require github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+require (
+	github.com/buger/jsonparser v1.1.1
+	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+)
 
 require (
 	github.com/DataDog/datadog-agent/pkg/config/create v0.66.0 // indirect

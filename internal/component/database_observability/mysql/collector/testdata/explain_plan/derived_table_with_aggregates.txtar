@@ -1,0 +1,267 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    dept_salary_stats.dept_name,
+    dept_salary_stats.avg_salary,
+    e.first_name,
+    e.last_name,
+    s.salary
+FROM (
+    SELECT 
+        d.dept_no,
+        d.dept_name,
+        AVG(s.salary) as avg_salary
+    FROM departments d
+    JOIN dept_emp de ON d.dept_no = de.dept_no
+    JOIN salaries s ON de.emp_no = s.emp_no
+    WHERE de.to_date = '9999-01-01'
+    AND s.to_date = '9999-01-01'
+    GROUP BY d.dept_no, d.dept_name
+) dept_salary_stats
+JOIN dept_emp de ON dept_salary_stats.dept_no = de.dept_no
+JOIN employees e ON de.emp_no = e.emp_no
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE de.to_date = '9999-01-01'
+AND s.to_date = '9999-01-01'
+AND s.salary > dept_salary_stats.avg_salary\G
+```
+
+-- derived_table_with_aggregates.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "278020.69"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "de",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY",
+            "dept_no"
+          ],
+          "rows_examined_per_scan": 331143,
+          "rows_produced_per_join": 33114,
+          "filtered": "10.00",
+          "cost_info": {
+            "read_cost": "30539.87",
+            "eval_cost": "3311.43",
+            "prefix_cost": "33851.30",
+            "data_read_per_join": "1M"
+          },
+          "used_columns": [
+            "emp_no",
+            "dept_no",
+            "to_date"
+          ],
+          "attached_condition": "(`employees`.`de`.`to_date` = DATE'9999-01-01')"
+        }
+      },
+      {
+        "table": {
+          "table_name": "s",
+          "access_type": "ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.de.emp_no"
+          ],
+          "rows_examined_per_scan": 9,
+          "rows_produced_per_join": 31146,
+          "filtered": "10.00",
+          "cost_info": {
+            "read_cost": "33407.36",
+            "eval_cost": "3114.69",
+            "prefix_cost": "98405.51",
+            "data_read_per_join": "486K"
+          },
+          "used_columns": [
+            "emp_no",
+            "salary",
+            "to_date"
+          ],
+          "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+        }
+      },
+      {
+        "table": {
+          "table_name": "e",
+          "access_type": "eq_ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.de.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 31146,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "31120.49",
+            "eval_cost": "3114.69",
+            "prefix_cost": "132640.69",
+            "data_read_per_join": "4M"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name"
+          ]
+        }
+      },
+      {
+        "table": {
+          "table_name": "dept_salary_stats",
+          "access_type": "ref",
+          "possible_keys": [
+            "<auto_key1>"
+          ],
+          "key": "<auto_key1>",
+          "used_key_parts": [
+            "dept_no"
+          ],
+          "key_length": "16",
+          "ref": [
+            "employees.de.dept_no"
+          ],
+          "rows_examined_per_scan": 13,
+          "rows_produced_per_join": 138443,
+          "filtered": "33.33",
+          "cost_info": {
+            "read_cost": "103842.86",
+            "eval_cost": "13844.33",
+            "prefix_cost": "278020.70",
+            "data_read_per_join": "25M"
+          },
+          "used_columns": [
+            "dept_no",
+            "dept_name",
+            "avg_salary"
+          ],
+          "attached_condition": "(`employees`.`s`.`salary` > `dept_salary_stats`.`avg_salary`)",
+          "materialized_from_subquery": {
+            "using_temporary_table": true,
+            "dependent": false,
+            "cacheable": true,
+            "query_block": {
+              "select_id": 2,
+              "cost_info": {
+                "query_cost": "132667.05"
+              },
+              "grouping_operation": {
+                "using_temporary_table": true,
+                "using_filesort": false,
+                "nested_loop": [
+                  {
+                    "table": {
+                      "table_name": "de",
+                      "access_type": "ALL",
+                      "possible_keys": [
+                        "PRIMARY",
+                        "dept_no"
+                      ],
+                      "rows_examined_per_scan": 331143,
+                      "rows_produced_per_join": 33114,
+                      "filtered": "10.00",
+                      "cost_info": {
+                        "read_cost": "30539.87",
+                        "eval_cost": "3311.43",
+                        "prefix_cost": "33851.30",
+                        "data_read_per_join": "1M"
+                      },
+                      "used_columns": [
+                        "emp_no",
+                        "dept_no",
+                        "to_date"
+                      ],
+                      "attached_condition": "(`employees`.`de`.`to_date` = DATE'9999-01-01')"
+                    }
+                  },
+                  {
+                    "table": {
+                      "table_name": "s",
+                      "access_type": "ref",
+                      "possible_keys": [
+                        "PRIMARY"
+                      ],
+                      "key": "PRIMARY",
+                      "used_key_parts": [
+                        "emp_no"
+                      ],
+                      "key_length": "4",
+                      "ref": [
+                        "employees.de.emp_no"
+                      ],
+                      "rows_examined_per_scan": 9,
+                      "rows_produced_per_join": 31146,
+                      "filtered": "10.00",
+                      "cost_info": {
+                        "read_cost": "33407.36",
+                        "eval_cost": "3114.69",
+                        "prefix_cost": "98405.51",
+                        "data_read_per_join": "486K"
+                      },
+                      "used_columns": [
+                        "emp_no",
+                        "salary",
+                        "from_date",
+                        "to_date"
+                      ],
+                      "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+                    }
+                  },
+                  {
+                    "table": {
+                      "table_name": "d",
+                      "access_type": "eq_ref",
+                      "possible_keys": [
+                        "PRIMARY",
+                        "dept_name"
+                      ],
+                      "key": "PRIMARY",
+                      "used_key_parts": [
+                        "dept_no"
+                      ],
+                      "key_length": "16",
+                      "ref": [
+                        "employees.de.dept_no"
+                      ],
+                      "rows_examined_per_scan": 1,
+                      "rows_produced_per_join": 31146,
+                      "filtered": "100.00",
+                      "cost_info": {
+                        "read_cost": "31146.86",
+                        "eval_cost": "3114.69",
+                        "prefix_cost": "132667.05",
+                        "data_read_per_join": "5M"
+                      },
+                      "used_columns": [
+                        "dept_no",
+                        "dept_name"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

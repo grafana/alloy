@@ -1,0 +1,90 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT t.title, 
+       COUNT(*) as employee_count,
+       AVG(s.salary) as avg_salary,
+       MIN(s.salary) as min_salary,
+       MAX(s.salary) as max_salary
+FROM titles t
+JOIN salaries s ON t.emp_no = s.emp_no
+WHERE t.to_date = '9999-01-01'
+AND s.to_date = '9999-01-01'
+GROUP BY t.title
+HAVING avg_salary > 60000\G
+```
+
+-- multiple_aggregate_functions_with_having.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "131795.52"
+    },
+    "grouping_operation": {
+      "using_temporary_table": true,
+      "using_filesort": false,
+      "nested_loop": [
+        {
+          "table": {
+            "table_name": "t",
+            "access_type": "ALL",
+            "possible_keys": [
+              "PRIMARY"
+            ],
+            "rows_examined_per_scan": 442605,
+            "rows_produced_per_join": 44260,
+            "filtered": "10.00",
+            "cost_info": {
+              "read_cost": "41086.45",
+              "eval_cost": "4426.05",
+              "prefix_cost": "45512.50",
+              "data_read_per_join": "9M"
+            },
+            "used_columns": [
+              "emp_no",
+              "title",
+              "from_date",
+              "to_date"
+            ],
+            "attached_condition": "(`employees`.`t`.`to_date` = DATE'9999-01-01')"
+          }
+        },
+        {
+          "table": {
+            "table_name": "s",
+            "access_type": "ref",
+            "possible_keys": [
+              "PRIMARY"
+            ],
+            "key": "PRIMARY",
+            "used_key_parts": [
+              "emp_no"
+            ],
+            "key_length": "4",
+            "ref": [
+              "employees.t.emp_no"
+            ],
+            "rows_examined_per_scan": 9,
+            "rows_produced_per_join": 41630,
+            "filtered": "10.00",
+            "cost_info": {
+              "read_cost": "44652.20",
+              "eval_cost": "4163.08",
+              "prefix_cost": "131795.52",
+              "data_read_per_join": "650K"
+            },
+            "used_columns": [
+              "emp_no",
+              "salary",
+              "from_date",
+              "to_date"
+            ],
+            "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+          }
+        }
+      ]
+    }
+  }
+}

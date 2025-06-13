@@ -1,0 +1,39 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, e.last_name, e.hire_date,
+       DATE_ADD(e.hire_date, INTERVAL 1 YEAR) as first_anniversary
+FROM employees e
+WHERE MONTH(e.hire_date) = MONTH(CURDATE())
+AND e.hire_date < '1990-01-01'\G
+```
+
+-- date_manipulation_with_conditions.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "30884.60"
+    },
+    "table": {
+      "table_name": "e",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 299556,
+      "rows_produced_per_join": 99842,
+      "filtered": "33.33",
+      "cost_info": {
+        "read_cost": "20900.40",
+        "eval_cost": "9984.20",
+        "prefix_cost": "30884.60",
+        "data_read_per_join": "12M"
+      },
+      "used_columns": [
+        "first_name",
+        "last_name",
+        "hire_date"
+      ],
+      "attached_condition": "((month(`employees`.`e`.`hire_date`) = <cache>(month(curdate()))) and (`employees`.`e`.`hire_date` < DATE'1990-01-01'))"
+    }
+  }
+}
