@@ -11,13 +11,12 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector v0.51.0
-	github.com/IBM/sarama v1.45.1
-	github.com/KimMachineGun/automemlimit v0.6.1
+	github.com/IBM/sarama v1.45.2
+	github.com/KimMachineGun/automemlimit v0.7.1
 	github.com/Lusitaniae/apache_exporter v0.11.1-0.20220518131644-f9522724dab4
 	github.com/Masterminds/goutils v1.1.1
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/PuerkitoBio/rehttp v1.4.0
-	github.com/Shopify/sarama v1.38.1
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b
 	github.com/aws/aws-sdk-go-v2 v1.36.3
@@ -271,14 +270,14 @@ require (
 	go.uber.org/goleak v1.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.37.0
+	golang.org/x/crypto v0.38.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
-	golang.org/x/net v0.39.0
+	golang.org/x/net v0.40.0
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.24.0
+	golang.org/x/text v0.25.0
 	golang.org/x/time v0.11.0
 	golang.org/x/tools v0.32.0
 	google.golang.org/api v0.226.0
@@ -960,7 +959,7 @@ require (
 	golang.design/x/chann v0.1.2 // indirect
 	golang.org/x/arch v0.7.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
@@ -990,6 +989,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/config/create v0.0.0-20250407180930-ebfcfa2817ce // indirect
 	github.com/DataDog/datadog-agent/pkg/util/otel v0.66.0-devel // indirect
 	github.com/DefangLabs/secret-detector v0.0.0-20250403165618-22662109213e // indirect
+	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/apache/arrow-go/v18 v18.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/containerd/containerd/v2 v2.0.5 // indirect
