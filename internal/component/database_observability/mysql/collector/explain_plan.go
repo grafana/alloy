@@ -124,14 +124,14 @@ func newExplainPlanOutput(logger log.Logger, dbVersion string, digest string, ex
 
 	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get query block: %w", err)
+		return output, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	planNode, err := parseTopLevelPlanNode(logger, qblock)
-	if err != nil {
-		return nil, err
-	}
 	output.Plan = planNode
+	if err != nil {
+		return output, err
+	}
 
 	return output, nil
 }
@@ -140,7 +140,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if table, _, _, err := jsonparser.Get(topLevelPlanNode, "table"); err == nil {
 		tableDetails, err := parseTableNode(logger, table)
 		if err != nil {
-			return planNode{}, err
+			return tableDetails, err
 		}
 
 		return tableDetails, nil
@@ -150,7 +150,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if nestedLoopJoin, _, _, err := jsonparser.Get(topLevelPlanNode, "nested_loop"); err == nil {
 		pnode, err := parseNestedLoopJoinNode(logger, nestedLoopJoin)
 		if err != nil {
-			return planNode{}, err
+			return pnode, err
 		}
 		return pnode, nil
 	}
@@ -158,7 +158,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if groupingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "grouping_operation"); err == nil {
 		pnode, err := parseGroupingOperationNode(logger, groupingOperation)
 		if err != nil {
-			return planNode{}, err
+			return pnode, err
 		}
 		return pnode, nil
 	}
@@ -166,7 +166,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if orderingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "ordering_operation"); err == nil {
 		pnode, err := parseOrderingOperationNode(logger, orderingOperation)
 		if err != nil {
-			return planNode{}, err
+			return pnode, err
 		}
 		return pnode, nil
 	}
@@ -174,7 +174,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if duplicatesRemoval, _, _, err := jsonparser.Get(topLevelPlanNode, "duplicates_removal"); err == nil {
 		pnode, err := parseDuplicatesRemovalNode(logger, duplicatesRemoval)
 		if err != nil {
-			return planNode{}, err
+			return pnode, err
 		}
 		return pnode, nil
 	}
@@ -182,7 +182,7 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	if unionResult, _, _, err := jsonparser.Get(topLevelPlanNode, "union_result"); err == nil {
 		pnode, err := parseUnionResultNode(logger, unionResult)
 		if err != nil {
-			return planNode{}, err
+			return pnode, err
 		}
 		return pnode, nil
 	}
@@ -651,15 +651,19 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		generatedAt := time.Now().Format(time.RFC3339)
 
-		explainPlanOutput, err := newExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create explain plan output", "err", err)
-			continue
-		}
-
+		explainPlanOutput, genErr := newExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
+			continue
+		}
+
+		if genErr != nil {
+			level.Error(logger).Log(
+				"msg", "failed to create explain plan output",
+				"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+				"err", genErr,
+			)
 			continue
 		}
 
