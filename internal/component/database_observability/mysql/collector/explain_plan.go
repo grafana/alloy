@@ -589,10 +589,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	// Process up to batchSize queries from cache
 	processedCount := 0
 	for i, qi := range c.queryCache {
-		logger := log.With(c.logger, "digest", qi.digest)
 		if processedCount >= c.currentBatchSize {
 			break
 		}
+		logger := log.With(c.logger, "digest", qi.digest)
 
 		// Defer deletion of current item from cache and increment processed count
 		defer func(index int) {
