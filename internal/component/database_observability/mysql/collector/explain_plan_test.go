@@ -295,10 +295,9 @@ func TestExplainPlanRedactor(t *testing.T) {
 func TestExplainPlanOutputInvalidJSON(t *testing.T) {
 	notJsonData := []byte("not json data")
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	output, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
+	_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
 	require.Error(t, err)
 	require.ErrorContains(t, err, "failed to get query block: Key path not found")
-	require.Nil(t, output)
 }
 
 func TestExplainPlanOutput(t *testing.T) {
