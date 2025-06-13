@@ -25,6 +25,7 @@ const (
 			waiting_stmt_current.DIGEST waitingDigest,
 			waiting_stmt_current.DIGEST_TEXT waitingDigestText,
 			blocking_stmt_current.TIMER_WAIT blockingTimerWait,
+			blocking_stmt_current.LOCK_TIME blockingLockTime,
 			blocking_stmt_current.DIGEST blockingDigest,
 			blocking_stmt_current.DIGEST_TEXT blockingDigestText
 		FROM performance_schema.data_lock_waits lock_waits
@@ -63,9 +64,9 @@ type LockCollector struct {
 
 	// The minimum amount of time elapsed waiting due to a lock
 	// to be selected for scrape
-	lockTimerWaitThreshold time.Duration
-	running                *atomic.Bool
-	cancel                 context.CancelFunc
+	lockTimeThreshold time.Duration
+	running           *atomic.Bool
+	cancel            context.CancelFunc
 }
 
 func (c *LockCollector) Name() string {
@@ -86,13 +87,13 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 	}
 
 	return &LockCollector{
-		mySQLClient:            args.DB,
-		instanceKey:            args.InstanceKey,
-		collectInterval:        args.CollectInterval,
-		lockTimerWaitThreshold: args.LockWaitThreshold,
-		entryHandler:           args.EntryHandler,
-		logger:                 log.With(args.Logger, "collector", LocksName),
-		running:                &atomic.Bool{},
+		mySQLClient:       args.DB,
+		instanceKey:       args.InstanceKey,
+		collectInterval:   args.CollectInterval,
+		lockTimeThreshold: args.LockWaitThreshold,
+		entryHandler:      args.EntryHandler,
+		logger:            log.With(args.Logger, "collector", LocksName),
+		running:           &atomic.Bool{},
 	}, nil
 }
 
@@ -135,6 +136,7 @@ type dataLock struct {
 	WaitingDigest      string
 	WaitingDigestText  string
 	BlockingTimerWait  float64
+	BlockingLockTime   float64
 	BlockingDigest     string
 	BlockingDigestText string
 }
@@ -148,7 +150,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	defer rsdl.Close()
 
 	for rsdl.Next() {
-		var waitingTimerWait, waitingLockTime, blockingTimerWait float64
+		var waitingTimerWait, waitingLockTime, blockingTimerWait, blockingLockTime float64
 		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText string
 
 		err := rsdl.Scan(&waitingTimerWait, &waitingLockTime, &waitingDigest, &waitingDigestText,
@@ -159,11 +161,18 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		}
 
 		// only log if the lock has been waiting for more than the threshold
-		// TODO: which time should we compare? timer_wait or lock_time?
-		if waitingTimerWait > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) || waitingLockTime > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) {
+		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
-				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%f ms" blocking_timer_wait="%f ms"`,
-				waitingDigest, waitingDigestText, blockingDigest, blockingDigestText, picosecondsToMilliseconds(waitingTimerWait), picosecondsToMilliseconds(blockingTimerWait))
+				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%f ms" waiting_lock_time="%f ms" blocking_timer_wait="%f ms" blocking_lock_time="%f ms"`,
+				waitingDigest,
+				waitingDigestText,
+				blockingDigest,
+				blockingDigestText,
+				picosecondsToMilliseconds(waitingTimerWait),
+				picosecondsToMilliseconds(waitingLockTime),
+				picosecondsToMilliseconds(blockingTimerWait),
+				picosecondsToMilliseconds(blockingLockTime),
+			)
 
 			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
 		}
