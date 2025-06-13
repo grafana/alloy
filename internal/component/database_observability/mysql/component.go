@@ -69,8 +69,8 @@ var DefaultArguments = Arguments{
 	SetupConsumersCollectInterval: 1 * time.Hour,
 	ExplainPlanCollectInterval:    1 * time.Minute,
 	ExplainPlanPerCollectRatio:    1.0,
-	LocksCollectInterval:          10 * time.Second,
-	LocksThreshold:                100 * time.Millisecond,
+	LocksCollectInterval:          1 * time.Second,
+	LocksThreshold:                500 * time.Millisecond,
 }
 
 func (a *Arguments) SetToDefault() {
