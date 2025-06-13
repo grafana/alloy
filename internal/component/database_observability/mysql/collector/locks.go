@@ -154,13 +154,13 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText string
 
 		err := rsdl.Scan(&waitingTimerWait, &waitingLockTime, &waitingDigest, &waitingDigestText,
-			&blockingTimerWait, &blockingDigest, &blockingDigestText)
+			&blockingTimerWait, &blockingLockTime, &blockingDigest, &blockingDigestText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan data locks", "err", err)
 			continue
 		}
 
-		// only log if the lock has been waiting for more than the threshold
+		// only log if the lock_time is longer than the threshold
 		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
 				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%f ms" waiting_lock_time="%f ms" blocking_timer_wait="%f ms" blocking_lock_time="%f ms"`,
