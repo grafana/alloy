@@ -20,7 +20,7 @@ WORKDIR /src/alloy
 
 # Build the UI before building Alloy, which will then bake the final UI into
 # the binary.
-RUN --mount=type=cache,target=/src/alloy/web/ui/node_modules,sharing=locked \
+RUN --mount=type=cache,target=/src/alloy/internal/web/ui/node_modules,sharing=locked \
     make generate-ui
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
