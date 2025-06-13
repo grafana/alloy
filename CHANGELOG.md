@@ -36,6 +36,8 @@ Main (unreleased)
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
 
+- Add `User-Agent` header to remotecfg requests. (@tpaschalis)
+
 v1.9.1
 -----------------
 
