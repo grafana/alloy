@@ -137,7 +137,6 @@ func newExplainPlanOutput(logger log.Logger, dbVersion string, digest string, ex
 }
 
 func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode, error) {
-	// Table at top level
 	if table, _, _, err := jsonparser.Get(topLevelPlanNode, "table"); err == nil {
 		tableDetails, err := parseTableNode(logger, table)
 		if err != nil {
@@ -148,7 +147,6 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 	} // else we don't find the table at the top level. This is likely not an error because the NodeDetails may be for a different type of operation.
 	// We may have to check to see if no operation has been set after checking all known operation types.
 
-	// Nested Loop Join
 	if nestedLoopJoin, _, _, err := jsonparser.Get(topLevelPlanNode, "nested_loop"); err == nil {
 		pnode, err := parseNestedLoopJoinNode(logger, nestedLoopJoin)
 		if err != nil {
@@ -157,7 +155,6 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 		return pnode, nil
 	}
 
-	// Grouping Operation
 	if groupingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "grouping_operation"); err == nil {
 		pnode, err := parseGroupingOperationNode(logger, groupingOperation)
 		if err != nil {
@@ -166,7 +163,6 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 		return pnode, nil
 	}
 
-	// Ordering Operation
 	if orderingOperation, _, _, err := jsonparser.Get(topLevelPlanNode, "ordering_operation"); err == nil {
 		pnode, err := parseOrderingOperationNode(logger, orderingOperation)
 		if err != nil {
@@ -175,7 +171,6 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 		return pnode, nil
 	}
 
-	// Duplicates Removal
 	if duplicatesRemoval, _, _, err := jsonparser.Get(topLevelPlanNode, "duplicates_removal"); err == nil {
 		pnode, err := parseDuplicatesRemovalNode(logger, duplicatesRemoval)
 		if err != nil {
@@ -579,14 +574,12 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 }
 
 func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
-	// If cache is empty, fetch all available queries
 	if len(c.queryCache) == 0 {
 		if err := c.populateQueryCache(ctx); err != nil {
 			return err
 		}
 	}
 
-	// Process up to batchSize queries from cache
 	processedCount := 0
 	for i, qi := range c.queryCache {
 		if processedCount >= c.currentBatchSize {
@@ -594,27 +587,22 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 		logger := log.With(c.logger, "digest", qi.digest)
 
-		// Defer deletion of current item from cache and increment processed count
 		defer func(index int) {
 			c.queryCache = slices.Delete(c.queryCache, index, index+1)
 			processedCount++
 		}(i)
 
-		// Skip truncated queries
 		if strings.HasSuffix(qi.queryText, "...") {
 			level.Debug(logger).Log("msg", "skipping truncated query")
 			continue
 		}
 
-		// Skip non-select queries
 		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") {
 			continue
 		}
 
-		// Add schema context if available
 		if qi.schemaName != nil {
 			logger = log.With(logger, "schema_name", *qi.schemaName)
-			// First set the schema
 			if _, err := c.dbConnection.ExecContext(ctx, "USE "+*qi.schemaName); err != nil {
 				level.Error(logger).Log("msg", "failed to set schema", "err", err)
 				continue
@@ -635,13 +623,11 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		// Skip if byteExplainPlanJSON is nil or empty
 		if len(byteExplainPlanJSON) == 0 {
 			level.Error(logger).Log("msg", "explain plan json bytes is empty")
 			continue
 		}
 
-		// Validate that it's valid UTF-8 encoded JSON
 		if !utf8.Valid(byteExplainPlanJSON) {
 			level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
 			continue
