@@ -295,7 +295,7 @@ func TestExplainPlanRedactor(t *testing.T) {
 func TestExplainPlanOutputInvalidJSON(t *testing.T) {
 	notJsonData := []byte("not json data")
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	output, err := NewExplainPlanOutput(logger, "", "", notJsonData, "")
+	output, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
 	require.Error(t, err)
 	require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	require.Nil(t, output)
@@ -1510,7 +1510,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-			output, err := NewExplainPlanOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
+			output, err := newExplainPlanOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
 			// Override the generated at time to ensure the test is deterministic
 			output.Metadata.GeneratedAt = currentTime

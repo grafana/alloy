@@ -112,7 +112,7 @@ type nodeDetails struct {
 	Warning       *string                   `json:"warning,omitempty"`
 }
 
-func NewExplainPlanOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*explainPlanOutput, error) {
+func newExplainPlanOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*explainPlanOutput, error) {
 	output := &explainPlanOutput{
 		Metadata: metadataInfo{
 			DatabaseEngine:  "MySQL",
@@ -665,7 +665,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		generatedAt := time.Now().Format(time.RFC3339)
 
-		explainPlanOutput, err := NewExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, err := newExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to create explain plan output", "err", err)
 			continue
