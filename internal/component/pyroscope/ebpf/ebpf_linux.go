@@ -112,7 +112,7 @@ func NewDefaultArguments() Arguments {
 		RubyEnabled:          true,
 		V8Enabled:            true,
 		DotNetEnabled:        true,
-		GoEnabled:            true,
+		GoEnabled:            false,
 	}
 }
 
@@ -238,7 +238,7 @@ func tracersFromArgs(args Arguments) string {
 	if args.DotNetEnabled {
 		tracers = append(tracers, "dotnet")
 	}
-	if args.DotNetEnabled {
+	if args.GoEnabled {
 		tracers = append(tracers, "go")
 	}
 	return strings.Join(tracers, ",")

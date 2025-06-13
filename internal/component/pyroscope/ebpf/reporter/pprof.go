@@ -160,9 +160,6 @@ func (p *PPROFReporter) ExecutableKnown(fileID libpf.FileID) bool {
 
 func (p *PPROFReporter) ExecutableMetadata(args *reporter2.ExecutableMetadataArgs) {
 	lt := ExecutableCacheLifetime
-	if args.Interp == libpf.Kernel {
-		lt = 365 * 24 * time.Hour
-	}
 	p.Executables.AddWithLifetime(args.FileID, samples.ExecInfo{
 		FileName:   args.FileName,
 		GnuBuildID: args.GnuBuildID,
@@ -479,6 +476,6 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 }
 
 const (
-	ExecutableCacheLifetime = 8 * time.Hour
-	FramesCacheLifetime     = 8 * time.Hour
+	ExecutableCacheLifetime = 1 * time.Hour
+	FramesCacheLifetime     = 1 * time.Hour
 )

@@ -70,7 +70,6 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `v8_enabled`              | `bool`                   | A flag to enable/disable V8 profiling                                                                               | true    | no       |
 | `ruby_enabled`            | `bool`                   | A flag to enable/disable Ruby profiling                                                                             | true    | no       |
 | `dotnet_enabled`          | `bool`                   | A flag to enable/disable .NET profiling                                                                             | true    | no       |
-| `go_enabled`              | `bool`                   | A flag to enable/disable Go profiling                                                                               | true    | no       |
 | `same_file_cache_size`    | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache                       | 8       | no       |
 | `sample_rate`             | `int`                    | How many times per second to collect profile samples                                                                | 97      | no       |
 | `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of eBPF symbols map                                              | 16384   | no       |
