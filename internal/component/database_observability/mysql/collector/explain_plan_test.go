@@ -297,7 +297,7 @@ func TestExplainPlanOutputInvalidJSON(t *testing.T) {
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 	output, err := NewExplainPlanOutput(logger, "", "", notJsonData, "")
 	require.Error(t, err)
-	require.ErrorContains(t, err, "no query block found in explain plan: Key path not found")
+	require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	require.Nil(t, output)
 }
 

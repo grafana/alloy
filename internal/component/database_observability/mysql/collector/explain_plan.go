@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -123,13 +122,9 @@ func NewExplainPlanOutput(logger log.Logger, dbVersion string, digest string, ex
 		},
 	}
 
-	qblock, qblockType, _, err := jsonparser.Get(explainJson, "query_block")
-	if qblockType == jsonparser.NotExist {
-		errMsg := "no query block found in explain plan"
-		if err != nil {
-			errMsg += ": " + err.Error()
-		}
-		return nil, errors.New(errMsg)
+	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get query block: %w", err)
 	}
 
 	planNode, err := parseTopLevelPlanNode(logger, qblock)
