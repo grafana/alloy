@@ -54,7 +54,7 @@ type LockArguments struct {
 	Logger  log.Logger
 }
 
-type Lock struct {
+type LockCollector struct {
 	mySQLClient     *sql.DB
 	instanceKey     string
 	collectInterval time.Duration
@@ -68,15 +68,15 @@ type Lock struct {
 	cancel                 context.CancelFunc
 }
 
-func (c *Lock) Name() string {
+func (c *LockCollector) Name() string {
 	return LocksName
 }
 
-func (c *Lock) Stopped() bool {
+func (c *LockCollector) Stopped() bool {
 	return !c.running.Load()
 }
 
-func NewLock(args LockArguments) (*Lock, error) {
+func NewLock(args LockArguments) (*LockCollector, error) {
 	if args.DB == nil {
 		return nil, errors.New("nil DB connection")
 	}
@@ -85,7 +85,7 @@ func NewLock(args LockArguments) (*Lock, error) {
 		return nil, err
 	}
 
-	return &Lock{
+	return &LockCollector{
 		mySQLClient:            args.DB,
 		instanceKey:            args.InstanceKey,
 		collectInterval:        args.CollectInterval,
@@ -97,11 +97,11 @@ func NewLock(args LockArguments) (*Lock, error) {
 }
 
 // Stop should be kept idempotent
-func (c *Lock) Stop() {
+func (c *LockCollector) Stop() {
 	c.cancel()
 }
 
-func (c *Lock) Start(ctx context.Context) error {
+func (c *LockCollector) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	c.cancel = cancel
 	go func() {
@@ -115,7 +115,6 @@ func (c *Lock) Start(ctx context.Context) error {
 		for {
 			if err := c.fetchLocks(ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
-
 			}
 
 			select {
@@ -140,7 +139,7 @@ type dataLock struct {
 	BlockingDigestText string
 }
 
-func (c *Lock) fetchLocks(ctx context.Context) error {
+func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	rsdl, err := c.mySQLClient.QueryContext(ctx, selectDataLocks)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query data locks", "err", err)
@@ -148,14 +147,7 @@ func (c *Lock) fetchLocks(ctx context.Context) error {
 	}
 	defer rsdl.Close()
 
-	var dataLocks []dataLock
-
 	for rsdl.Next() {
-		if err := rsdl.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rows", "err", err)
-			break
-		}
-
 		var waitingTimerWait, waitingLockTime, blockingTimerWait float64
 		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText string
 
@@ -163,25 +155,23 @@ func (c *Lock) fetchLocks(ctx context.Context) error {
 			&blockingTimerWait, &blockingDigest, &blockingDigestText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan data locks", "err", err)
-			break
+			continue
 		}
 
-		dataLocks = append(dataLocks, dataLock{
-			WaitingTimerWait: waitingTimerWait, WaitingLockTime: waitingLockTime, WaitingDigest: waitingDigest, WaitingDigestText: waitingDigestText,
-			BlockingTimerWait: blockingTimerWait, BlockingDigest: blockingDigest, BlockingDigestText: blockingDigestText,
-		})
-	}
-
-	for _, lock := range dataLocks {
 		// only log if the lock has been waiting for more than the threshold
 		// TODO: which time should we compare? timer_wait or lock_time?
-		if lock.WaitingTimerWait > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) || lock.WaitingLockTime > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) {
+		if waitingTimerWait > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) || waitingLockTime > secondsToPicoseconds(c.lockTimerWaitThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
 				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%f ms" blocking_timer_wait="%f ms"`,
-				lock.WaitingDigest, lock.WaitingDigestText, lock.BlockingDigest, lock.BlockingDigestText, picosecondsToMilliseconds(lock.WaitingTimerWait), picosecondsToMilliseconds(lock.BlockingTimerWait))
+				waitingDigest, waitingDigestText, blockingDigest, blockingDigestText, picosecondsToMilliseconds(waitingTimerWait), picosecondsToMilliseconds(blockingTimerWait))
 
 			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
 		}
+	}
+
+	if err := rsdl.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over locks result set", "err", err)
+		return err
 	}
 
 	return nil
