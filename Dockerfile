@@ -4,6 +4,14 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.19 AS ui-build
+ARG BUILDPLATFORM
+COPY ./internal/web/ui /ui
+WORKDIR /ui
+RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
+    yarn --network-timeout=1200000                            \
+    && yarn run build
+
 FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.19 AS build
 
 ARG BUILDPLATFORM
@@ -18,10 +26,7 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-# Build the UI before building Alloy, which will then bake the final UI into
-# the binary.
-RUN --mount=type=cache,target=/src/alloy/internal/web/ui/node_modules,sharing=locked \
-    make generate-ui
+COPY --from=ui-build /ui/build /src/alloy/internal/web/ui/build
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
