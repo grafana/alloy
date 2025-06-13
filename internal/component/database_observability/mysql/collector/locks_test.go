@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -52,7 +51,7 @@ func Test_QueryLocks(t *testing.T) {
 			),
 		)
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
@@ -107,7 +106,7 @@ func Test_QueryLocks(t *testing.T) {
 			),
 		)
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
@@ -172,7 +171,7 @@ func Test_QueryLocks(t *testing.T) {
 			),
 		)
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 2
@@ -209,7 +208,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		mock.ExpectQuery(selectDataLocks).WillReturnError(fmt.Errorf("some error"))
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
@@ -270,7 +269,7 @@ func Test_QueryLocks(t *testing.T) {
 				"UPDATE users SET name = ? WHERE id = ?",
 			))
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 1
@@ -328,7 +327,7 @@ func Test_QueryLocks(t *testing.T) {
 				"UPDATE users SET name = ? WHERE id = ?",
 			).RowError(0, fmt.Errorf("some error")))
 
-		require.NoError(t, collector.Start(context.Background()))
+		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
 			return collector.Stopped()

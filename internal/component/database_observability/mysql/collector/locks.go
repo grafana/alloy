@@ -130,17 +130,6 @@ func (c *LockCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-type dataLock struct {
-	WaitingTimerWait   float64
-	WaitingLockTime    float64
-	WaitingDigest      string
-	WaitingDigestText  string
-	BlockingTimerWait  float64
-	BlockingLockTime   float64
-	BlockingDigest     string
-	BlockingDigestText string
-}
-
 func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	rsdl, err := c.mySQLClient.QueryContext(ctx, selectDataLocks)
 	if err != nil {
