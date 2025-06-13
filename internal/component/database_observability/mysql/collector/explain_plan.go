@@ -86,10 +86,10 @@ type explainPlanOutput struct {
 }
 
 type metadataInfo struct {
-	DatabaseEngine  string `json:"database_engine"`
-	DatabaseVersion string `json:"database_version"`
-	QueryIdentifier string `json:"query_identifier"`
-	GeneratedAt     string `json:"generated_at"`
+	DatabaseEngine  string `json:"databaseEngine"`
+	DatabaseVersion string `json:"databaseVersion"`
+	QueryIdentifier string `json:"queryIdentifier"`
+	GeneratedAt     string `json:"generatedAt"`
 }
 
 type planNode struct {
