@@ -41,7 +41,7 @@ const selectDigestsForExplainPlan = `
 	AND DIGEST IS NOT NULL
 	AND CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema');`
 
-const selectExplainPlansPrefix = `EXPLAIN FORMAT=JSON `
+const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
 const selectDbSchemaVersion = `SELECT VERSION()`
 
