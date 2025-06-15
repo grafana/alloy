@@ -51,8 +51,8 @@ Common labels
 {{- define "alloy.labels" -}}
 helm.sh/chart: {{ include "alloy.chart" . }}
 {{ include "alloy.selectorLabels" . }}
-{{- with .Values.controller.extraLabels }}
-{{- toYaml . }}
+{{- range $key, $value := .Values.controller.extraLabels }}
+{{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- if index .Values "$chart_tests" }}
 app.kubernetes.io/version: "vX.Y.Z"

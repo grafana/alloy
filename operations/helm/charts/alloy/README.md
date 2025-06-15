@@ -104,6 +104,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
+| controller.extraLabels | object | `{}` | Labels to add to controller.                                                                                                                                                                                                                                     |
 | controller.extraContainers | list | `[]` | Additional containers to run alongside the Alloy container and initContainers. |
 | controller.hostNetwork | bool | `false` | Configures Pods to use the host network. When set to true, the ports that will be used must be specified. |
 | controller.hostPID | bool | `false` | Configures Pods to use the host PID namespace. |
