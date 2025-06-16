@@ -33,9 +33,9 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |           | no       |
 | `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                        | `false`   | no       |
 | `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |           | no       |
-| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from database.        | `"1h"`    | no       |
 | `locks_collect_interval`           | `duration`           | How frequently to collect locks information from database.                                     | `"1s"`    | no       |
 | `locks_threshold`                  | `duration`           | Threshold for locks to be considered slow. If a lock exceeds this duration, it will be logged. | `"500ms"` | no       |
+| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from the database.    | `"1h"`    | no       |
 
 The following collectors are configurable:
 
