@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
@@ -97,8 +98,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: grpcProtocolArgs,
-			HTTP: httpProtocolArgs,
+			GRPC: configoptional.Some(*grpcProtocolArgs),
+			HTTP: configoptional.Some(*httpProtocolArgs),
 		},
 	}, nil
 }

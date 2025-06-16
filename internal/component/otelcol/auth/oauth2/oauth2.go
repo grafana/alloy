@@ -62,7 +62,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 		TokenURL:         args.TokenURL,
 		EndpointParams:   args.EndpointParams,
 		Scopes:           args.Scopes,
-		TLSSetting:       *args.TLSSetting.Convert(),
+		TLS:              *args.TLSSetting.Convert(),
 		Timeout:          args.Timeout,
 	}, nil
 }

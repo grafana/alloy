@@ -62,7 +62,7 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 			Transport: confignet.TransportType(args.Transport),
 		},
 
-		TLSSetting: args.TLS.Convert(),
+		TLS: args.TLS.Convert(),
 
 		MaxRecvMsgSizeMiB:    int(args.MaxRecvMsgSize / units.Mebibyte),
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
@@ -208,8 +208,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
-		Keepalive:  args.Keepalive.Convert(),
+		TLS:       *args.TLS.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 
 		ReadBufferSize:  int(args.ReadBufferSize),
 		WriteBufferSize: int(args.WriteBufferSize),

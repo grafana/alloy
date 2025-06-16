@@ -64,7 +64,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 
 	return &otelconfighttp.ServerConfig{
 		Endpoint:              args.Endpoint,
-		TLSSetting:            args.TLS.Convert(),
+		TLS:                   args.TLS.Convert(),
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
@@ -170,7 +170,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
+		TLS: *args.TLS.Convert(),
 
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
@@ -186,7 +186,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Auth: authentication,
 
-		Cookies: args.Cookies.Convert(),
+		Cookies: *args.Cookies.Convert(),
 	}
 
 	if args.CompressionParams != nil {
