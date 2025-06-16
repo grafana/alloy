@@ -62,9 +62,9 @@ You can monitor your cluster status using the {{< param "PRODUCT_NAME" >}} UI [c
 Refer to [Debug clustering issues][debugging] for additional troubleshooting information.
 
 [run]: ../../reference/cli/run/#clustering
-[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering-block
-[pyroscope.scrape]: ../../reference/components/pyroscope/pyroscope.scrape/#clustering-block
-[prometheus.operator.podmonitors]: ../../reference/components/prometheus/prometheus.operator.podmonitors/#clustering-block
-[prometheus.operator.servicemonitors]: ../../reference/components/prometheus/prometheus.operator.servicemonitors/#clustering-block
+[prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering
+[pyroscope.scrape]: ../../reference/components/pyroscope/pyroscope.scrape/#clustering
+[prometheus.operator.podmonitors]: ../../reference/components/prometheus/prometheus.operator.podmonitors/#clustering
+[prometheus.operator.servicemonitors]: ../../reference/components/prometheus/prometheus.operator.servicemonitors/#clustering
 [clustering page]: ../../troubleshoot/debug/#clustering-page
 [debugging]: ../../troubleshoot/debug/#debug-clustering-issues
