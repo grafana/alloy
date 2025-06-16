@@ -50,9 +50,7 @@ type LockArguments struct {
 	LockWaitThreshold time.Duration
 	EntryHandler      loki.EntryHandler
 
-	running *atomic.Bool
-	cancel  context.CancelFunc
-	Logger  log.Logger
+	Logger log.Logger
 }
 
 type LockCollector struct {
