@@ -54,7 +54,7 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
+			return len(lokiClient.Received()) == 0
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
