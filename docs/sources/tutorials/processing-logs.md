@@ -416,9 +416,9 @@ loki.write "local_loki" {
 
 [logs]: ../logs-and-relabeling-basics/
 [loki.source.api]: ../../reference/components/loki/loki.source.api/
-[loki.process#stage.drop]: ../../reference/components/loki/loki.process/#stagedrop-block
-[loki.process#stage.json]: ../../reference/components/loki/loki.process/#stagejson-block
-[loki.process#stage.labels]: ../../reference/components/loki/loki.process/#stagelabels-block
+[loki.process#stage.drop]: ../../reference/components/loki/loki.process/#stagedrop
+[loki.process#stage.json]: ../../reference/components/loki/loki.process/#stagejson
+[loki.process#stage.labels]: ../../reference/components/loki/loki.process/#stagelabels
 [discovery.docker]: ../../reference/components/discovery/discovery.docker/
 [loki.source.docker]: ../../reference/components/loki/loki.source.docker/
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
