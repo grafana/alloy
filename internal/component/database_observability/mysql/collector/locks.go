@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -66,6 +66,7 @@ type LockCollector struct {
 	// to be selected for scrape
 	lockTimeThreshold time.Duration
 	running           *atomic.Bool
+	ctx               context.Context
 	cancel            context.CancelFunc
 }
 
@@ -103,8 +104,11 @@ func (c *LockCollector) Stop() {
 }
 
 func (c *LockCollector) Start(ctx context.Context) error {
+	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
 	c.cancel = cancel
+
 	go func() {
 		defer func() {
 			c.Stop()
