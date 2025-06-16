@@ -39,6 +39,8 @@ Main (unreleased)
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.127.0 (@korniltsev)
 
+- Add `User-Agent` header to remotecfg requests. (@tpaschalis)
+
 v1.9.1
 -----------------
 
