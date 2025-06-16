@@ -155,6 +155,10 @@ func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 		Compression:       args.Compression,
 		ACL:               args.ACL,
 		StorageClass:      args.StorageClass,
+		// todo: allow configuring retries https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/39509
+		RetryMode:        awss3exporter.DefaultRetryMode,
+		RetryMaxAttempts: awss3exporter.DefaultRetryMaxAttempts,
+		RetryMaxBackoff:  awss3exporter.DefaultRetryMaxBackoff,
 	}
 }
 
