@@ -35,6 +35,7 @@ Main (unreleased)
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
+- Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.127.0 (@korniltsev)
 
 v1.9.1
 -----------------

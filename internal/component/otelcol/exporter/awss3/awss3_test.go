@@ -215,6 +215,9 @@ func TestConfig(t *testing.T) {
 					Region:            "us-east-1",
 					ACL:               "",
 					StorageClass:      "STANDARD",
+					RetryMode:         "standard",
+					RetryMaxAttempts:  3,
+					RetryMaxBackoff:   20 * time.Second,
 				},
 				MarshalerName: "otlp_json",
 				QueueSettings: exporterhelper.QueueBatchConfig{
@@ -259,6 +262,9 @@ func TestConfig(t *testing.T) {
 					Region:            "us-east-2",
 					ACL:               "",
 					StorageClass:      "STANDARD",
+					RetryMode:         "standard",
+					RetryMaxAttempts:  3,
+					RetryMaxBackoff:   20 * time.Second,
 				},
 				MarshalerName: "otlp_json",
 				QueueSettings: exporterhelper.QueueBatchConfig{
