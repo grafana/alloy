@@ -36,7 +36,7 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.receive_http",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))

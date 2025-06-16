@@ -13,6 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/multierr"
+	"gopkg.in/yaml.v2"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
@@ -38,8 +41,6 @@ import (
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
-	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
 
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 
@@ -714,11 +715,17 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 				"metrics_instance": c.SpanMetrics.MetricsInstance,
 			}
 		} else if len(c.SpanMetrics.MetricsInstance) == 0 && len(c.SpanMetrics.HandlerEndpoint) != 0 {
+			constLabels := map[string]string{}
+			if c.SpanMetrics.ConstLabels != nil {
+				// Temporary workaround for https://github.com/open-telemetry/opentelemetry-collector/issues/13117
+				// Remove after upgrade to otel 128
+				constLabels = *c.SpanMetrics.ConstLabels
+			}
 			exporterName = "prometheus"
 			exporters[exporterName] = map[string]interface{}{
 				"endpoint":     c.SpanMetrics.HandlerEndpoint,
 				"namespace":    namespace,
-				"const_labels": c.SpanMetrics.ConstLabels,
+				"const_labels": constLabels,
 			}
 		} else {
 			return nil, fmt.Errorf("must specify a prometheus instance or a metrics handler endpoint to export the metrics")
