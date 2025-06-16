@@ -234,9 +234,9 @@ require (
 	go.opentelemetry.io/collector/consumer v1.33.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.127.0
 	go.opentelemetry.io/collector/exporter v0.127.0
-	go.opentelemetry.io/collector/exporter/debugexporter v0.126.0
+	go.opentelemetry.io/collector/exporter/debugexporter v0.127.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.127.0
-	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.126.0
+	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.127.0
 	go.opentelemetry.io/collector/extension v1.33.0
 	go.opentelemetry.io/collector/extension/extensionauth v1.33.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.127.0
