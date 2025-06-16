@@ -74,10 +74,6 @@ func (c *LockCollector) Name() string {
 	return LocksName
 }
 
-func (c *LockCollector) Stopped() bool {
-	return !c.running.Load()
-}
-
 func NewLock(args LockArguments) (*LockCollector, error) {
 	if args.DB == nil {
 		return nil, errors.New("nil DB connection")
@@ -98,12 +94,9 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 	}, nil
 }
 
-// Stop should be kept idempotent
-func (c *LockCollector) Stop() {
-	c.cancel()
-}
-
 func (c *LockCollector) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "collector started")
+
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -114,7 +107,7 @@ func (c *LockCollector) Start(ctx context.Context) error {
 			c.Stop()
 			c.running.Store(false)
 		}()
-		level.Debug(c.logger).Log("msg", "collector started")
+
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
@@ -132,6 +125,15 @@ func (c *LockCollector) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+func (c *LockCollector) Stopped() bool {
+	return !c.running.Load()
+}
+
+// Stop should be kept idempotent
+func (c *LockCollector) Stop() {
+	c.cancel()
 }
 
 func (c *LockCollector) fetchLocks(ctx context.Context) error {

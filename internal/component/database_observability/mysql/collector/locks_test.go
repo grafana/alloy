@@ -29,7 +29,7 @@ func Test_QueryLocks(t *testing.T) {
 		collector, err := NewLock(LockArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
+			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -54,13 +54,12 @@ func Test_QueryLocks(t *testing.T) {
 		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return mock.ExpectationsWereMet() == nil
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
-		require.NoError(t, mock.ExpectationsWereMet())
 		lokiEntries := lokiClient.Received()
 		assert.Empty(t, lokiEntries, "Expected no log entries for no lock events")
 	})
@@ -189,7 +188,7 @@ func Test_QueryLocks(t *testing.T) {
 		assert.Equal(t, `level="info" waiting_digest="xyz789" waiting_digest_text="SELECT * FROM orders WHERE user_id = ?" blocking_digest="ghi012" blocking_digest_text="DELETE FROM sessions WHERE expired = ?" waiting_timer_wait="2500.000000 ms" waiting_lock_time="2000.000000 ms" blocking_timer_wait="3000.000000 ms" blocking_lock_time="2700.000000 ms"`, lokiEntries[1].Line)
 	})
 
-	t.Run("returns error when selectDataLocks query fails", func(t *testing.T) {
+	t.Run("recoverable sql error in selectDataLocks result set", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -199,7 +198,7 @@ func Test_QueryLocks(t *testing.T) {
 		collector, err := NewLock(LockArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
+			CollectInterval: 1 * time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -208,15 +207,43 @@ func Test_QueryLocks(t *testing.T) {
 
 		mock.ExpectQuery(selectDataLocks).WillReturnError(fmt.Errorf("some error"))
 
+		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows(
+				[]string{
+					"waitingTimerWait",
+					"waitingLockTime",
+					"waitingDigest",
+					"waitingDigestText",
+					"blockingTimerWait",
+					"blockingLockTime",
+					"blockingDigest",
+					"blockingDigestText",
+				},
+			).AddRow(
+				1500000000000,
+				1000000000000,
+				"abc123",
+				"SELECT * FROM users WHERE id = ?",
+				2000000000000,
+				1700000000000,
+				"def456",
+				"UPDATE users SET name = ? WHERE id = ?",
+			),
+		)
+
 		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return len(lokiClient.Received()) == 1
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
+		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATA_LOCKS, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000 ms" waiting_lock_time="1000.000000 ms" blocking_timer_wait="2000.000000 ms" blocking_lock_time="1700.000000 ms"`, lokiEntries[0].Line)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -286,8 +313,6 @@ func Test_QueryLocks(t *testing.T) {
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
-		// this test makes no assertion on the logs, expected log is: level=error collector=locks msg="collector error" err="some error"
-		// current behavior is that collector.Start() will not return an error, but will log the error and continue collecting data locks
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -297,14 +322,14 @@ func Test_QueryLocks(t *testing.T) {
 		collector, err := NewLock(LockArguments{
 			DB:              db,
 			InstanceKey:     "mysql-db",
-			CollectInterval: time.Second,
+			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows( // second query returns valid data and its 1 row produces 1 log line
+		mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
 			sqlmock.NewRows(
 				[]string{
 					"waitingTimerWait",
@@ -325,17 +350,35 @@ func Test_QueryLocks(t *testing.T) {
 				1700000000000,
 				"def456",
 				"UPDATE users SET name = ? WHERE id = ?",
-			).RowError(0, fmt.Errorf("some error")))
+			).AddRow(
+				2500000000000,
+				2000000000000,
+				"xyz789",
+				"SELECT * FROM orders WHERE user_id = ?",
+				3000000000000,
+				2700000000000,
+				"ghi012",
+				"DELETE FROM sessions WHERE expired = ?",
+			).RowError(1, fmt.Errorf("some error")), // error on second row
+		)
 
 		require.NoError(t, collector.Start(t.Context()))
 
 		require.Eventually(t, func() bool {
-			return collector.Stopped()
+			return len(lokiClient.Received()) == 1
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 2*time.Second, 50*time.Millisecond)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
+		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATA_LOCKS, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000 ms" waiting_lock_time="1000.000000 ms" blocking_timer_wait="2000.000000 ms" blocking_lock_time="1700.000000 ms"`, lokiEntries[0].Line)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
