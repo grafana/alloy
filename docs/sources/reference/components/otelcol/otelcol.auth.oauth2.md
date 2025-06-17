@@ -21,8 +21,10 @@ This component can fetch and refresh expired tokens automatically.
 Refer to the [OAuth 2.0 Authorization Framework](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) for more information about the Auth 2.0 Client Credentials flow.
 
 {{< admonition type="note" >}}
-`otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector `oauth2client` extension.
+`otelcol.auth.oauth2` is a wrapper over the upstream OpenTelemetry Collector [`oauth2client`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`oauth2client`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/oauth2clientauthextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.oauth2` components by giving them different labels.
@@ -68,8 +70,10 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | TLS settings for the token client.                                         | no       |
+| `tls` > [`tpm`][tpm]             | TPM settings for the TLS key_file.                                         | no       |
 
 [tls]: #tls
+[tpm]: #tpm
 [debug_metrics]: #debug_metrics
 
 ### `debug_metrics`
@@ -82,6 +86,12 @@ The `tls` block configures TLS settings used for connecting to the token client.
 If the `tls` block isn't provided, TLS won't be used for communication.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

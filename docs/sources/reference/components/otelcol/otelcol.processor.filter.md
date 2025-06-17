@@ -43,8 +43,10 @@ For example, the OTTL statement `attributes["grpc"] == true` is written in {{< p
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.filter` is a wrapper over the upstream OpenTelemetry Collector `filter` processor.
+`otelcol.processor.filter` is a wrapper over the upstream OpenTelemetry Collector [`filter`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`filter`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/filter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.filter` components by giving them different labels.

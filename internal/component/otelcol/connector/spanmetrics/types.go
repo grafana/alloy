@@ -57,6 +57,7 @@ func ConvertMetricUnit(unit string) (map[string]interface{}, error) {
 
 type HistogramConfig struct {
 	Disable     bool                        `alloy:"disable,attr,optional"`
+	Dimensions  []Dimension                 `alloy:"dimension,block,optional"`
 	Unit        string                      `alloy:"unit,attr,optional"`
 	Exponential *ExponentialHistogramConfig `alloy:"exponential,block,optional"`
 	Explicit    *ExplicitHistogramConfig    `alloy:"explicit,block,optional"`
@@ -117,6 +118,12 @@ func (hc HistogramConfig) Convert() (*spanmetricsconnector.HistogramConfig, erro
 	if hc.Explicit != nil {
 		result.Explicit = hc.Explicit.Convert()
 	}
+
+	dimensions := make([]spanmetricsconnector.Dimension, 0, len(hc.Dimensions))
+	for _, d := range hc.Dimensions {
+		dimensions = append(dimensions, d.Convert())
+	}
+	result.Dimensions = dimensions
 
 	result.Disable = hc.Disable
 	return &result, nil

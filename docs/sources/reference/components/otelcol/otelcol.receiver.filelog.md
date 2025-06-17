@@ -15,8 +15,10 @@ title: otelcol.receiver.filelog
 `otelcol.receiver.filelog` reads log entries from files and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector `filelog` receiver.
+`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector [`filelog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`filelog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.filelog` components by giving them different labels.
@@ -71,7 +73,8 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
 
-`compression` must be either `` or `gzip`.
+`compression` must be either `""`, `gzip`, or `auto`. `auto` automatically detects file compression type and ingests data.
+Currently, only gzip compressed files are auto detected. This allows for mix of compressed and uncompressed files to be ingested with the same filelogreceiver.
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
