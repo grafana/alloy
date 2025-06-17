@@ -11,6 +11,7 @@ title: otelcol.exporter.faro
 # `otelcol.exporter.faro`
 
 `otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
+Use this exporter to send telemetry data to Grafana Cloud Collector Endpoint for [Frontend Observability][Frontend Observability] or to any backend that supports Faro format, allowing you to gain insights into the end user experience of your web application.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.faro` is a wrapper over the upstream OpenTelemetry Collector [`faro`][] exporter.
@@ -162,3 +163,4 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [Faro]: https://grafana.com/oss/faro/
+[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
