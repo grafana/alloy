@@ -138,7 +138,7 @@ These groups provide the necessary read access without granting excessive privil
 Beyond the standard Windows groups, {{< param "PRODUCT_NAME" >}} requires some specific permissions for its operational functions:
 
 * Storage directory permissions: {{< param "PRODUCT_NAME" >}} needs read, write, and modify permissions to manage files and directories within its data storage location.
-  Default Location: %PROGRAMDATA%\GrafanaLabs\Alloy\data
+  The default location for the data storage is `%PROGRAMDATA%\GrafanaLabs\Alloy\data`.
 * Application log file read permissions: If you configure {{< param "PRODUCT_NAME" >}} to read application log files directly from disk, the user account you use to run {{< param "PRODUCT_NAME" >}} must have read access to those log files and their containing directories.
   You may need to modify the Access Control Lists for these resources or add the {{< param "PRODUCT_NAME" >}} service account to a custom group that has these permissions.
 * Network access for telemetry destinations: {{< param "PRODUCT_NAME" >}} needs network connectivity and, if applicable, proxy configuration, to communicate with its configured telemetry endpoints.
