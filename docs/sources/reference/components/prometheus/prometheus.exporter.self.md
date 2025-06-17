@@ -14,22 +14,22 @@ title: prometheus.exporter.self
 
 The `prometheus.exporter.self` component collects and exposes metrics about {{< param "PRODUCT_NAME" >}} itself.
 
+{{< admonition type="note" >}}
+Take care when using the `prometheus.exporter.self` component with [clustering](../../../../get-started/clustering/) enabled.
+
+The default instance label set by this exporter is the hostname of the machine running Alloy. Alloy clustering uses consistent hashing to distribute targets across instances, and the discovered targets must be the same (and have the same labels) across all cluster instances.
+
+Therefore, when using `prometheus.exporter.self` within a [cluster](../../../../get-started/clustering/) of Alloy instances,
+it is recommended to use a dedicated `prometheus.scrape` component that is used to scrape `prometheus.exporter.self`
+and does not have clustering enabled.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
 prometheus.exporter.self "<LABEL>" {
 }
 ```
-
-{{< admonition type="note" >}}
-Take care when using the `prometheus.exporter.self` component with [clustering](../../../../get-started/clustering/) enabled.
-
-The default instance label set by this exporter is the hostname of the machine running Alloy. Alloy clustering uses consistent hashing to distribute targets across instances, and the instance label must be same across all cluster instances.
-
-Therefore, when using `prometheus.exporter.self` within a [cluster](../../../../get-started/clustering/) of Alloy instances,
-it is recommended to use a dedicated `prometheus.scrape` component that is used to scrape `prometheus.exporter.self`
-and does not have clustering enabled.
-{{< /admonition >}}
 
 ## Arguments
 
