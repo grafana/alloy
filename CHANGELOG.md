@@ -16,6 +16,8 @@ v1.9.2
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
 
+- Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
+
 v1.9.1
 -----------------
 
