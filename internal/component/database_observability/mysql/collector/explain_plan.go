@@ -294,18 +294,11 @@ func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (plan
 			level.Error(logger).Log("msg", "failed to parse table node in nested loop join", "error", err)
 			return
 		}
-		if childDetails.Details.JoinAlgorithm == nil {
-			childDetails.Details.JoinAlgorithm = &algo // TODO:This is a duplicate from the parent node. Is that necessary?
-		}
 		if previousChild != nil {
 			thisLoop := planNode{
 				Operation: explainPlanOutputOperationNestedLoopJoin,
 				Details: nodeDetails{
 					JoinAlgorithm: &algo,
-				},
-				Children: []planNode{
-					*previousChild,
-					childDetails,
 				},
 			}
 			if childDetails.Details.JoinAlgorithm != nil && *childDetails.Details.JoinAlgorithm != algo {
@@ -318,6 +311,13 @@ func parseNestedLoopJoinNode(logger log.Logger, nestedLoopJoinNode []byte) (plan
 				default:
 					thisLoop.Operation = explainPlanOutputOperationNestedLoopJoin
 				}
+				// Remove join algorithm from child details since we've set it in the parent
+				childDetails.Details.JoinAlgorithm = nil
+			}
+
+			thisLoop.Children = []planNode{
+				*previousChild,
+				childDetails,
 			}
 			previousChild = &thisLoop
 		} else {
