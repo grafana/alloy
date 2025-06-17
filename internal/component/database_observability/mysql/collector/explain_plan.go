@@ -58,6 +58,7 @@ const (
 	explainPlanOutputOperationMaterializedSubquery explainPlanOutputOperation = "Materialized Subquery"
 	explainPlanOutputOperationAttachedSubquery     explainPlanOutputOperation = "Attached Subquery"
 	explainPlanOutputOperationUnion                explainPlanOutputOperation = "Union"
+	explainPlanOutputOperationUnknown              explainPlanOutputOperation = "Unknown"
 )
 
 type explainPlanAccessType string
@@ -186,7 +187,9 @@ func parseTopLevelPlanNode(logger log.Logger, topLevelPlanNode []byte) (planNode
 		return pnode, nil
 	}
 
-	return planNode{}, nil
+	return planNode{
+		Operation: explainPlanOutputOperationUnknown,
+	}, nil
 }
 
 func parseTableNode(logger log.Logger, tableNode []byte) (planNode, error) {

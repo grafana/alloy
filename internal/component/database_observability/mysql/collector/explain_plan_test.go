@@ -300,6 +300,13 @@ func TestExplainPlanOutputInvalidJSON(t *testing.T) {
 	require.ErrorContains(t, err, "failed to get query block: Key path not found")
 }
 
+func TestExplainPlanOutputUnknownOperation(t *testing.T) {
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+	require.NoError(t, err)
+	require.Equal(t, explainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
+}
+
 func TestExplainPlanOutput(t *testing.T) {
 	currentTime := time.Now().Format(time.RFC3339)
 	tests := []struct {
