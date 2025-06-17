@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	OP_EXPLAIN_PLAN        = "explain_plan"
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	OP_NATIVE_EXPLAIN_PLAN = "db_native_explain_plan"
 	ExplainPlanName        = "explain_plan"
 )
 
@@ -39,7 +39,7 @@ const selectDigestsForExplainPlan = `
 	WHERE TIMER_END > DATE_SUB(NOW(), INTERVAL 1 DAY)
 	AND SQL_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema');`
+	AND CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
@@ -645,7 +645,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 
 		level.Debug(logger).Log("msg", "db native explain plan",
-			"op", OP_EXPLAIN_PLAN_OUTPUT,
+			"op", OP_NATIVE_EXPLAIN_PLAN,
 			"instance", c.instanceKey,
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
