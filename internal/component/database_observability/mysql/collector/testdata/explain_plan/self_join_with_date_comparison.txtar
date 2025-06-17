@@ -1,0 +1,147 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    CONCAT(e1.first_name, ' ', e1.last_name) as employee_name,
+    e1.hire_date,
+    CONCAT(e2.first_name, ' ', e2.last_name) as colleague_name,
+    e2.hire_date
+FROM employees e1
+JOIN dept_emp de1 ON e1.emp_no = de1.emp_no
+JOIN dept_emp de2 ON de1.dept_no = de2.dept_no
+JOIN employees e2 ON de2.emp_no = e2.emp_no
+WHERE de1.to_date = '9999-01-01'
+AND de2.to_date = '9999-01-01'
+AND e1.hire_date = e2.hire_date
+AND e1.emp_no < e2.emp_no
+LIMIT 100\G
+```
+
+-- self_join_with_date_comparison.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "124053965.42"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "de1",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY",
+            "dept_no"
+          ],
+          "rows_examined_per_scan": 331143,
+          "rows_produced_per_join": 33114,
+          "filtered": "10.00",
+          "cost_info": {
+            "read_cost": "30539.87",
+            "eval_cost": "3311.43",
+            "prefix_cost": "33851.30",
+            "data_read_per_join": "1M"
+          },
+          "used_columns": [
+            "emp_no",
+            "dept_no",
+            "to_date"
+          ],
+          "attached_condition": "(`employees`.`de1`.`to_date` = DATE'9999-01-01')"
+        }
+      },
+      {
+        "table": {
+          "table_name": "e1",
+          "access_type": "eq_ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.de1.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 33114,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "33086.27",
+            "eval_cost": "3311.43",
+            "prefix_cost": "70249.00",
+            "data_read_per_join": "4M"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name",
+            "hire_date"
+          ]
+        }
+      },
+      {
+        "table": {
+          "table_name": "de2",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY",
+            "dept_no"
+          ],
+          "rows_examined_per_scan": 331143,
+          "rows_produced_per_join": 137069612,
+          "filtered": "1.25",
+          "using_join_buffer": "hash join",
+          "cost_info": {
+            "read_cost": "616929.71",
+            "eval_cost": "13706961.21",
+            "prefix_cost": "110342868.42",
+            "data_read_per_join": "4G"
+          },
+          "used_columns": [
+            "emp_no",
+            "dept_no",
+            "to_date"
+          ],
+          "attached_condition": "((`employees`.`de2`.`dept_no` = `employees`.`de1`.`dept_no`) and (`employees`.`de2`.`to_date` = DATE'9999-01-01') and (`employees`.`de1`.`emp_no` < `employees`.`de2`.`emp_no`))"
+        }
+      },
+      {
+        "table": {
+          "table_name": "e2",
+          "access_type": "eq_ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.de2.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 13706961,
+          "filtered": "10.00",
+          "cost_info": {
+            "read_cost": "4135.78",
+            "eval_cost": "1370696.14",
+            "prefix_cost": "124053965.42",
+            "data_read_per_join": "1G"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name",
+            "hire_date"
+          ],
+          "attached_condition": "(`employees`.`e2`.`hire_date` = `employees`.`e1`.`hire_date`)"
+        }
+      }
+    ]
+  }
+}

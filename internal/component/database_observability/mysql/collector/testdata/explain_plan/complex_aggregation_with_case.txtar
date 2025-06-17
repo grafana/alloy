@@ -1,0 +1,122 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    d.dept_name,
+    COUNT(*) as total_employees,
+    SUM(CASE WHEN e.gender = 'M' THEN 1 ELSE 0 END) as male_count,
+    SUM(CASE WHEN e.gender = 'F' THEN 1 ELSE 0 END) as female_count
+FROM departments d
+JOIN dept_emp de ON d.dept_no = de.dept_no
+JOIN employees e ON de.emp_no = e.emp_no
+WHERE de.to_date = '9999-01-01'
+GROUP BY d.dept_name\G
+```
+
+-- complex_aggregation_with_case.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "98133.43"
+    },
+    "grouping_operation": {
+      "using_filesort": false,
+      "nested_loop": [
+        {
+          "table": {
+            "table_name": "d",
+            "access_type": "index",
+            "possible_keys": [
+              "PRIMARY",
+              "dept_name"
+            ],
+            "key": "dept_name",
+            "used_key_parts": [
+              "dept_name"
+            ],
+            "key_length": "162",
+            "rows_examined_per_scan": 9,
+            "rows_produced_per_join": 9,
+            "filtered": "100.00",
+            "using_index": true,
+            "cost_info": {
+              "read_cost": "1.00",
+              "eval_cost": "0.90",
+              "prefix_cost": "1.90",
+              "data_read_per_join": "1K"
+            },
+            "used_columns": [
+              "dept_no",
+              "dept_name"
+            ]
+          }
+        },
+        {
+          "table": {
+            "table_name": "de",
+            "access_type": "ref",
+            "possible_keys": [
+              "PRIMARY",
+              "dept_no"
+            ],
+            "key": "dept_no",
+            "used_key_parts": [
+              "dept_no"
+            ],
+            "key_length": "16",
+            "ref": [
+              "employees.d.dept_no"
+            ],
+            "rows_examined_per_scan": 41392,
+            "rows_produced_per_join": 37253,
+            "filtered": "10.00",
+            "cost_info": {
+              "read_cost": "19899.00",
+              "eval_cost": "3725.36",
+              "prefix_cost": "57154.49",
+              "data_read_per_join": "1M"
+            },
+            "used_columns": [
+              "emp_no",
+              "dept_no",
+              "to_date"
+            ],
+            "attached_condition": "(`employees`.`de`.`to_date` = DATE'9999-01-01')"
+          }
+        },
+        {
+          "table": {
+            "table_name": "e",
+            "access_type": "eq_ref",
+            "possible_keys": [
+              "PRIMARY"
+            ],
+            "key": "PRIMARY",
+            "used_key_parts": [
+              "emp_no"
+            ],
+            "key_length": "4",
+            "ref": [
+              "employees.de.emp_no"
+            ],
+            "rows_examined_per_scan": 1,
+            "rows_produced_per_join": 37253,
+            "filtered": "100.00",
+            "cost_info": {
+              "read_cost": "37253.59",
+              "eval_cost": "3725.36",
+              "prefix_cost": "98133.43",
+              "data_read_per_join": "4M"
+            },
+            "used_columns": [
+              "emp_no",
+              "gender"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

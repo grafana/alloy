@@ -21,6 +21,8 @@ Main (unreleased)
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
 
 - Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - Add `explain_plan` collector to `database_observability.mysql` component. (@rgeyer)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
