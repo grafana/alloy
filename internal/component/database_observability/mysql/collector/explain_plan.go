@@ -26,7 +26,6 @@ import (
 
 const (
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	OP_NATIVE_EXPLAIN_PLAN = "db_native_explain_plan"
 	ExplainPlanName        = "explain_plan"
 )
 
@@ -645,8 +644,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 
 		level.Debug(logger).Log("msg", "db native explain plan",
-			"op", OP_NATIVE_EXPLAIN_PLAN,
-			"instance", c.instanceKey,
+			"digest", qi.digest,
 			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
 		generatedAt := time.Now().Format(time.RFC3339)
