@@ -603,12 +603,13 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		if qi.schemaName != nil {
-			logger = log.With(logger, "schema_name", *qi.schemaName)
-			if _, err := c.dbConnection.ExecContext(ctx, "USE "+*qi.schemaName); err != nil {
-				level.Error(logger).Log("msg", "failed to set schema", "err", err)
-				continue
-			}
+		if qi.schemaName == nil {
+			continue
+		}
+		logger = log.With(logger, "schema_name", *qi.schemaName)
+		if _, err := c.dbConnection.ExecContext(ctx, "USE "+*qi.schemaName); err != nil {
+			level.Error(logger).Log("msg", "failed to set schema", "err", err)
+			continue
 		}
 
 		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
@@ -633,11 +634,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		if !utf8.Valid(byteExplainPlanJSON) {
 			level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
 			continue
-		}
-
-		loggedSchemaName := "<nil>"
-		if qi.schemaName != nil {
-			loggedSchemaName = *qi.schemaName
 		}
 
 		redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
@@ -670,7 +666,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		logMessage := fmt.Sprintf(
 			`schema="%s" digest="%s" explain_plan_output="%s"`,
-			loggedSchemaName,
+			*qi.schemaName,
 			qi.digest,
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
