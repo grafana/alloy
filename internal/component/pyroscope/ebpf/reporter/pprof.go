@@ -356,6 +356,7 @@ func (p *PPROFReporter) createProfile(
 						Line:     lineNo,
 						Function: b.Function(funcName, filePath)},
 					}
+					location.Mapping.HasFunctions = true
 				}
 			}
 			if traceInfo.FrameTypes[i] == libpf.PythonFrame && len(location.Line) == 1 && location.Line[0].Function.Name == "<interpreter trampoline>" {
@@ -409,6 +410,9 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	frameID := libpf.NewFrameID(fileID, addr)
 
 	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, p.Frames, loc.Mapping.File, frameID, func(si samples.SourceInfo) {
+		if len(si.Frames) > 0 {
+			loc.Mapping.HasFunctions = true
+		}
 		for _, fn := range si.Frames {
 			line := profile.Line{Function: b.Function(fn.FunctionName, fn.FilePath)}
 			line.Line = int64(fn.LineNumber)
