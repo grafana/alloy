@@ -126,39 +126,42 @@ The exact permissions depend on your system's security configuration and the spe
 To collect common Windows telemetry, for example event logs and performance counters, the user account you use to run {{< param "PRODUCT_NAME" >}} should be a member of the following Windows security groups.
 These groups provide the necessary read access without granting excessive privileges.
 
-* `Event Log Readers`: This group allows members to read data from local event logs, including Application, System, Security, and other custom logs.
+* Event Log Readers
+  : This group allows members to read data from local event logs, including Application, System, Security, and other custom logs.
   This is essential for any Alloy configuration that collects Windows Event Log data.
-* `Performance Monitor Users`: This group allows non-administrator users to access performance counter data.
+* Performance Monitor Users
+  : This group allows non-administrator users to access performance counter data.
   This group is important for {{< param "PRODUCT_NAME" >}} components that collect Windows performance metrics, for example CPU, memory, disk I/O, and network usage.
-* `Performance Log Users`: This group is used to schedule logging of performance counter data and manage performance alerts.
-   Performance Log Users is necessary for advanced or historical data collection scenarios, particularly those that involve the Windows Data Collector Sets.
+* Performance Log Users
+  : This group is used to schedule logging of performance counter data and manage performance alerts.
+  Performance Log Users is necessary for advanced or historical data collection scenarios, particularly those that involve the Windows Data Collector Sets.
 
 ### File system and network permissions
 
 Beyond the standard Windows groups, {{< param "PRODUCT_NAME" >}} requires some specific permissions for its operational functions:
 
 * Storage directory permissions
-  * {{< param "PRODUCT_NAME" >}} needs read, write, and modify permissions to manage files and directories within its data storage location.
-    The default location for the data storage is `%PROGRAMDATA%\GrafanaLabs\Alloy\data`.
+  : {{< param "PRODUCT_NAME" >}} needs read, write, and modify permissions to manage files and directories within its data storage location.
+  The default location for the data storage is `%PROGRAMDATA%\GrafanaLabs\Alloy\data`.
 * Application log file read permissions
-  * If you configure {{< param "PRODUCT_NAME" >}} to read application log files directly from disk, the user account you use to run {{< param "PRODUCT_NAME" >}} must have read access to those log files and their containing directories.
-    You may need to modify the Access Control Lists for these resources or add the {{< param "PRODUCT_NAME" >}} service account to a custom group that has these permissions.
+  : If you configure {{< param "PRODUCT_NAME" >}} to read application log files directly from disk, the user account you use to run {{< param "PRODUCT_NAME" >}} must have read access to those log files and their containing directories.
+  You may need to modify the Access Control Lists for these resources or add the {{< param "PRODUCT_NAME" >}} service account to a custom group that has these permissions.
 * Network access for telemetry destinations
-  * {{< param "PRODUCT_NAME" >}} needs network connectivity and, if applicable, proxy configuration, to communicate with its configured telemetry endpoints.
+  : {{< param "PRODUCT_NAME" >}} needs network connectivity and, if applicable, proxy configuration, to communicate with its configured telemetry endpoints.
     This includes source endpoints for scraping metrics from Prometheus exporters and pulling logs from remote APIs and destination endpoints for writing metrics to Prometheus or Grafana Cloud, and sending logs to Loki.
     Make sure your firewall rules allow outbound connections from the {{< param "PRODUCT_NAME" >}} host to these destinations on the necessary ports.
 * Registry access
-  * The user account you use to run {{< param "PRODUCT_NAME" >}} may need access to the Windows Registry to configure things like [environment variables](https://grafana.com/docs/alloy/latest/configure/windows/#change-environment-variable-values).
+  : The user account you use to run {{< param "PRODUCT_NAME" >}} may need access to the Windows Registry to configure things like [environment variables](https://grafana.com/docs/alloy/latest/configure/windows/#change-environment-variable-values).
 * UI port listening permission
-  * If you want to enable the {{< param "PRODUCT_NAME" >}} UI, the user account you use to run {{< param "PRODUCT_NAME" >}} must have permission to listen on the configured UI port.
+  : If you want to enable the {{< param "PRODUCT_NAME" >}} UI, the user account you use to run {{< param "PRODUCT_NAME" >}} must have permission to listen on the configured UI port.
     The default port is `12345`.
-* `Run as a Service` permission
-  * By default, {{< param "PRODUCT_NAME" >}} is installed and run as a Windows Service.
-    The user account you use to run {{< param "PRODUCT_NAME" >}} must have the `Log on as a service` user right.
+* Run as a service permission
+  : By default, {{< param "PRODUCT_NAME" >}} is installed and run as a Windows Service.
+  The user account you use to run {{< param "PRODUCT_NAME" >}} must have the `Log on as a service` user right.
 * Temporary directory management
-  * Depending on how you configure components and data processing, {{< param "PRODUCT_NAME" >}} might require permissions to create, read, and write temporary files in the system's designated temporary directories.
+  : Depending on how you configure components and data processing, {{< param "PRODUCT_NAME" >}} might require permissions to create, read, and write temporary files in the system's designated temporary directories.
 * Process and service enumeration
-  * If you are using the process or service collectors within the integrated Windows Exporter, the user account you use to run {{< param "PRODUCT_NAME" >}} must have permissions to enumerate all running processes and services on the system.
+  : If you are using the process or service collectors within the integrated Windows Exporter, the user account you use to run {{< param "PRODUCT_NAME" >}} must have permissions to enumerate all running processes and services on the system.
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
 [environment]: ../../reference/cli/environment-variables/
