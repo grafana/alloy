@@ -27,12 +27,13 @@ prometheus.exporter.unix "<LABEL>" {
 ```
 
 {{< admonition type="note" >}}
-When using `prometheus.exporter.unix` within a [cluster](../../../../get-started/clustering/) of Alloy instances,
+Take care when using the `prometheus.exporter.unix` component with [clustering](../../../../get-started/clustering/) enabled.
+
+The default instance label set by this exporter is the hostname of the machine running Alloy. Alloy clustering uses consistent hashing to distribute targets across instances, and the instance label must be same across all cluster instances.
+
+Therefore, when using `prometheus.exporter.unix` within a [cluster](../../../../get-started/clustering/) of Alloy instances,
 it is recommended to use a dedicated `prometheus.scrape` component that is used to scrape `prometheus.exporter.unix`
 and does not have clustering enabled.
-
-This is because clustering uses consistent hashing to distribute targets across instances,
-and the instance label (which defaults to hostname) must be same across all cluster instances.
 {{< /admonition >}}
 
 ## Arguments
