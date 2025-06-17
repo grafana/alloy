@@ -31,6 +31,15 @@ prometheus.exporter.windows "<LABEL>" {
 }
 ```
 
+{{< admonition type="note" >}}
+When using `prometheus.exporter.windows` within a [cluster](../../../../get-started/clustering/) of Alloy instances,
+it is recommended to use a dedicated `prometheus.scrape` component that is used to scrape `prometheus.exporter.windows`
+and does not have clustering enabled.
+
+This is because clustering uses consistent hashing to distribute targets across instances,
+and the instance label (which defaults to hostname) must be same across all cluster instances.
+{{< /admonition >}}
+
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.windows`:
