@@ -2198,8 +2198,12 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancing
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.128.0/go.mod h1:aVt9oEcFZcx+YrPd7Aijs8LwxaSp4aJA1fFx12WdUCs=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.128.0 h1:h9sqKSGO+k0kQ57y+bM2cYxN33rSKh7noDXn3iwW4PQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.128.0/go.mod h1:nAeBFIHazIbnAQYdZtTQQkq0zF7cxHkN4karPHu6xyY=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0 h1:Q3tf6ckEZyZjSEucd/jaMdq7MruE5mfcxwMKKewITog=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0/go.mod h1:eYoc5Vqxtjcz8pokr7jeQ85vaZYyH/PXZMoQAs/qqg0=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.128.0 h1:bayVzSW+dGtAfcexuY1l1H7iyOYPFuQJWSNC7E2b96U=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.128.0/go.mod h1:ZLA/73/MJU1xQCahjnAYPKnfcZQWAx5kAldTHos7gzE=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.128.0 h1:nYebHHB2Hg1gQLfo83WV4RbdcqGDlvOfz75TnIr4qI8=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.128.0/go.mod h1:sDQnz3C/COO2KCxGxXnRn6FDeM4ueTe9BgzAeX8Im1g=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.128.0 h1:O+plOD+wtG5uci338rYBg/PD+xtb66Y4iwC5Muzf3KA=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.128.0/go.mod h1:gDkW4vL4fFj45t2t1cCCPyLQ9lLolODpiW/mRePmdAU=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.128.0 h1:VU7Tm78M+raJ4Xeqi5mYtoYQC2hHy1yH0oM49V5ol54=
@@ -2242,6 +2246,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.128.0/go.mod h1:ygBwt4WzmYXHfIQNMVZTRmI+Q85IJARXIM0mJ3W75WE=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.128.0 h1:d+zRkzV7lb6tRaa/uKy7kjOrSejz8mg0vjBM2+PvJeo=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.128.0/go.mod h1:190HSiJdIkkFYH/WizCxOq9MjbK7IPHXVszBkLGLynY=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.128.0 h1:lJfRHfnwJj1ZRl4uYW/jg03wu4AByJBDDjwMS3NL+Xs=
+github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.128.0/go.mod h1:9n6R//0g63XEE/coPYnCTyRRhSjnbsSF99hMlKswCnc=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.128.0 h1:a3g66OI6lp2ARrqAe7w3wJ+uNxTDMMed0uMehx+n+rE=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchperresourceattr v0.128.0/go.mod h1:cOum6i9/iaZ9xrw6VHFmVcJXZxMpmzNOpVqWwJN0CB0=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/batchpersignal v0.128.0 h1:Bc04XxtPg7CGkEjeG3m4wMXAM+fKt1Nme2uptlLKWyY=
@@ -2336,6 +2342,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusrec
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.128.0/go.mod h1:bWhM4HCg/Csi75RHmsjasoVXJI4ocpkucZAaM0wnbdo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.128.0 h1:rWBaQETkEZ1HLCo0f1NNF6pm6pU9TW/ev7xyMZ+mtb4=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.128.0/go.mod h1:UZ5lIHcX2lXm5weKVSQ7I2wsJrU2EJFrlc72PY9XkvA=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0 h1:GcaZPWsOwLO7k8xzFB9Upure5CXVDtHuvBohRrGtgxg=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0/go.mod h1:X1AwEiwKueIC/YnPLnJEf0MTms89nZ0r1OwFBizy+Qw=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.128.0 h1:xIsrM0ryEipoU549HFb4rSp/KokaPpUQkd7yo21w5Bo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver v0.128.0/go.mod h1:vwv8Ml6PJNq59H4ZHu3Fx7zJ1anOz9ANPZl8yJmIo2s=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.128.0 h1:nm7MW1E4i5+2yQET6ohdeU5Mc7LAMDYI+QOnoJ2s4is=
