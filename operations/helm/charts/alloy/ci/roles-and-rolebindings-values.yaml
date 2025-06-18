@@ -1,0 +1,6 @@
+# Specify the namespaces for Roles and RoleBindings
+rbac:
+  create: true
+  namespaces:
+    - alpha
+    - bravo

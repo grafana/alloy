@@ -13,83 +13,32 @@ metadata:
     app.kubernetes.io/component: rbac
 rules:
   # Rules which allow discovery.kubernetes to function.
-  - apiGroups:
-      - ""
-      - "discovery.k8s.io"
-      - "networking.k8s.io"
-    resources:
-      - endpoints
-      - endpointslices
-      - ingresses
-      - nodes
-      - nodes/proxy
-      - nodes/metrics
-      - pods
-      - services
-    verbs:
-      - get
-      - list
-      - watch
+  - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+    resources: ["endpoints", "endpointslices", "ingresses", "nodes", "nodes/proxy", "nodes/metrics", "pods", "services"]
+    verbs: ["get", "list", "watch"]
   # Rules which allow loki.source.kubernetes and loki.source.podlogs to work.
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - pods/log
-      - namespaces
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - "monitoring.grafana.com"
-    resources:
-      - podlogs
-    verbs:
-      - get
-      - list
-      - watch
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.grafana.com"]
+    resources: ["podlogs"]
+    verbs: ["get", "list", "watch"]
   # Rules which allow mimir.rules.kubernetes to work.
   - apiGroups: ["monitoring.coreos.com"]
-    resources:
-      - prometheusrules
-    verbs:
-      - get
-      - list
-      - watch
-  - nonResourceURLs:
-      - /metrics
-    verbs:
-      - get
+    resources: ["prometheusrules"]
+    verbs: ["get", "list", "watch"]
   # Rules for prometheus.kubernetes.*
   - apiGroups: ["monitoring.coreos.com"]
-    resources:
-      - podmonitors
-      - servicemonitors
-      - probes
-      - scrapeconfigs
-    verbs:
-      - get
-      - list
-      - watch
+    resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
+    verbs: ["get", "list", "watch"]
   # Rules which allow eventhandler to work.
-  - apiGroups:
-      - ""
-    resources:
-      - events
-    verbs:
-      - get
-      - list
-      - watch
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
   # needed for remote.kubernetes.*
   - apiGroups: [""]
-    resources:
-      - "configmaps"
-      - "secrets"
-    verbs:
-      - get
-      - list
-      - watch
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
   # needed for otelcol.processor.k8sattributes
   - apiGroups: ["apps"]
     resources: ["replicasets"]
@@ -97,6 +46,8 @@ rules:
   - apiGroups: ["extensions"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
 ---
 # Source: alloy/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
