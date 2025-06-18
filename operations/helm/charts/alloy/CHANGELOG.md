@@ -9,7 +9,7 @@ internal API changes are not present.
 
 Unreleased
 ----------
-
+- Add NetworkPolicy support. (@TheRealNoob)
 
 
 1.1.1 (2025-06-05)
