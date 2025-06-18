@@ -186,7 +186,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Auth: authentication,
 
-		Cookies: *args.Cookies.Convert(),
+		Cookies: args.Cookies.Convert(),
 	}
 
 	if args.CompressionParams != nil {
@@ -213,12 +213,14 @@ type Cookies struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
-func (c *Cookies) Convert() *otelconfighttp.CookiesConfig {
+func (c *Cookies) Convert() otelconfighttp.CookiesConfig {
 	if c == nil {
-		return nil
+		return otelconfighttp.CookiesConfig{
+			Enabled: false,
+		}
 	}
 
-	return &otelconfighttp.CookiesConfig{
+	return otelconfighttp.CookiesConfig{
 		Enabled: c.Enabled,
 	}
 }
