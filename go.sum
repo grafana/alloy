@@ -1431,8 +1431,8 @@ github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKt
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
 github.com/grafana/pyroscope/api v1.2.0/go.mod h1:CCWrMnwvTB5O+VBZfT+jO2RAvgm0GxdG2//kAWuMDhA=
-github.com/grafana/pyroscope/ebpf v0.4.10 h1:EnO8mcZ1uiYdi5HR8kiG0gQYFHLP5nIHQ03sNT6cquw=
-github.com/grafana/pyroscope/ebpf v0.4.10/go.mod h1:QxUq39zUwWG2MSzmReS81U3Jynf6mYy2nRJpsfvCc9A=
+github.com/grafana/pyroscope/ebpf v0.4.11 h1:QpXj3xIWveFy1Zx7M9YzCq7z+d70LQ2pF/qEzD/tXWo=
+github.com/grafana/pyroscope/ebpf v0.4.11/go.mod h1:LhmNuYZpxlmjsLK36j1nD+eJ/CNebBRDPCzRJPVHZbI=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
@@ -3724,8 +3724,8 @@ google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422 h1:6GUHKGv2huWOHKm
 google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422/go.mod h1:1NPAxoesyw/SgLPqaUp9u1f9PWCLAk/jVmhx7gJZStg=
 google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 h1:Kog3KlB4xevJlAcbbbzPfRG0+X9fdoGM+UBRKVz6Wr0=
 google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237/go.mod h1:ezi0AVyMKDWy5xAncvjLWH7UcLBB5n7y2fQ8MzjJcto=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 h1:cJfm9zPbe1e873mHJzmQ1nwVEeRDU/T1wXDK2kUSU34=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a h1:v2PbRU4K3llS09c7zodFpNePeamkAwG3mPrAery9VeE=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/grpc v0.0.0-20180920234847-8997b5fa0873/go.mod h1:0JHn/cJsOMiMfNA9+DeHDlAU7KAAB5GDlYFpa9MZMio=
 google.golang.org/grpc v1.0.5/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.8.0/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=

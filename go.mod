@@ -71,7 +71,7 @@ require (
 	github.com/grafana/loki/v3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
-	github.com/grafana/pyroscope/ebpf v0.4.10
+	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -965,7 +965,7 @@ require (
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
