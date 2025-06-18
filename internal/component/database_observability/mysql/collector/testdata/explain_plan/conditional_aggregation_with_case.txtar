@@ -1,0 +1,51 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    YEAR(hire_date) as hire_year,
+    COUNT(*) as total_hires,
+    SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) as male_hires,
+    SUM(CASE WHEN gender = 'F' THEN 1 ELSE 0 END) as female_hires
+FROM employees
+GROUP BY hire_year
+ORDER BY hire_year\G
+```
+
+-- conditional_aggregation_with_case.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "330440.60"
+    },
+    "ordering_operation": {
+      "using_filesort": false,
+      "grouping_operation": {
+        "using_temporary_table": true,
+        "using_filesort": true,
+        "cost_info": {
+          "sort_cost": "299556.00"
+        },
+        "table": {
+          "table_name": "employees",
+          "access_type": "ALL",
+          "rows_examined_per_scan": 299556,
+          "rows_produced_per_join": 299556,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "929.00",
+            "eval_cost": "29955.60",
+            "prefix_cost": "30884.60",
+            "data_read_per_join": "38M"
+          },
+          "used_columns": [
+            "emp_no",
+            "gender",
+            "hire_date"
+          ]
+        }
+      }
+    }
+  }
+}
