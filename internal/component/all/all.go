@@ -81,6 +81,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"                    // Import otelcol.exporter.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"                // Import otelcol.exporter.otlphttp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"              // Import otelcol.exporter.prometheus
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"               // Import otelcol.exporter.splunkhec
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/syslog"                  // Import otelcol.exporter.syslog
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
@@ -110,6 +111,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"                    // Import otelcol.receiver.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"              // Import otelcol.receiver.prometheus
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/solace"                  // Import otelcol.receiver.solace
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/splunkhec"               // Import otelcol.receiver.splunkhec
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/syslog"                  // Import otelcol.receiver.syslog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/tcplog"                  // Import otelcol.receiver.tcplog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter"                 // Import otelcol.receiver.vcenter
