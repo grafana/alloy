@@ -48,6 +48,6 @@ export GPG_TTY=$(tty)
 2. After a tag has been pushed, GitHub Tasks will create release assets and open a release draft for every pushed tag.
 
     - This will take ~20-40 minutes.
-    - You can monitor this by viewing the drone build on the commit for the release tag.
+    - You can monitor this by viewing the GitHub Actions log on the commit for the release tag.
 
     If the Homebrew Formula fails to update, close the existing open PR and re-run the failed CI.
