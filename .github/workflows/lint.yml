@@ -26,13 +26,13 @@ jobs:
       uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
       with:
         # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.1.1
+        version: v1.64.7
 
     - name: Lint syntax module
       uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
       with:
         # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.1.1
+        version: v1.64.7
         working-directory: ./syntax/
 
     - name: Run custom linters
