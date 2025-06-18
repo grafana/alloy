@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
+	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/export/prom"
 	"github.com/grafana/beyla/v2/pkg/filter"
 	"github.com/grafana/beyla/v2/pkg/kubeflags"
@@ -37,7 +38,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -160,17 +161,47 @@ func (args Services) Convert() (services.DefinitionCriteria, error) {
 			}
 			podLabels[k] = &label
 		}
+		// Convert pod annotations to attributes
+		podAnnotations := map[string]*services.RegexpAttr{}
+		for k, v := range s.Kubernetes.PodAnnotations {
+			annotation, err := stringToRegexpAttr(v)
+			if err != nil {
+				return nil, err
+			}
+			podAnnotations[k] = &annotation
+		}
 
 		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
 		})
 	}
 	return attrs, nil
+}
+
+func (args Services) Validate() error {
+	for i, svc := range args {
+		// Check if any Kubernetes fields are defined
+		hasKubernetes := svc.Kubernetes.Namespace != "" ||
+			svc.Kubernetes.PodName != "" ||
+			svc.Kubernetes.DeploymentName != "" ||
+			svc.Kubernetes.ReplicaSetName != "" ||
+			svc.Kubernetes.StatefulSetName != "" ||
+			svc.Kubernetes.DaemonSetName != "" ||
+			svc.Kubernetes.OwnerName != "" ||
+			len(svc.Kubernetes.PodLabels) > 0
+
+		if svc.OpenPorts == "" && svc.Path == "" && !hasKubernetes {
+			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, or kubernetes configuration", i)
+		}
+	}
+	return nil
 }
 
 func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
@@ -239,11 +270,51 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	return p
 }
 
-func (args Network) Convert() beyla.NetworkConfig {
-	networks := beyla.DefaultConfig.NetworkFlows
-	if args.Enable {
-		networks.Enable = true
+func (args Metrics) hasNetworkFeature() bool {
+	for _, feature := range args.Features {
+		if feature == "network" {
+			return true
+		}
 	}
+	return false
+}
+
+func (args Metrics) hasAppFeature() bool {
+	for _, feature := range args.Features {
+		switch feature {
+		case "application", "application_span", "application_service_graph", "application_process":
+			return true
+		}
+	}
+	return false
+}
+
+func (args Metrics) Validate() error {
+	validInstrumentations := map[string]struct{}{
+		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
+	}
+	for _, instrumentation := range args.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("metrics.instrumentations: invalid value %q", instrumentation)
+		}
+	}
+
+	validFeatures := map[string]struct{}{
+		"application": {}, "application_span": {},
+		"application_service_graph": {}, "application_process": {},
+		"network": {},
+	}
+	for _, feature := range args.Features {
+		if _, ok := validFeatures[feature]; !ok {
+			return fmt.Errorf("metrics.features: invalid value %q", feature)
+		}
+	}
+	return nil
+}
+
+func (args Network) Convert(enable bool) beyla.NetworkConfig {
+	networks := beyla.DefaultConfig.NetworkFlows
+	networks.Enable = enable
 	if args.Source != "" {
 		networks.Source = args.Source
 	}
@@ -276,17 +347,29 @@ func (args Network) Convert() beyla.NetworkConfig {
 	return networks
 }
 
-func (args EBPF) Convert() beylaCfg.EBPFTracer {
+func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	ebpf := beyla.DefaultConfig.EBPF
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+
+	if args.ContextPropagation == "" {
+		args.ContextPropagation = "disabled"
+	}
+	var contextPropagationMode beylaCfg.ContextPropagationMode
+	err := contextPropagationMode.UnmarshalText([]byte(args.ContextPropagation))
+	if err != nil {
+		return nil, err
+	}
+	ebpf.ContextPropagation = contextPropagationMode
+
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
-	return ebpf
+	ebpf.BpfDebug = args.BpfDebug
+	ebpf.ProtocolDebug = args.ProtocolDebug
+	return &ebpf, nil
 }
 
 func (args Filters) Convert() filter.AttributesConfig {
@@ -326,6 +409,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	// Add deprecation warnings at the start of Run
+	if c.args.Port != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'open_port' field is deprecated. Use 'discovery.services' instead.")
+	}
+	if c.args.ExecutableName != "" {
+		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
+	}
+
 	var cancel context.CancelFunc
 	for {
 		select {
@@ -430,14 +521,6 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if a.Output != nil {
 		cfg.TracesReceiver = convertTraceConsumers(a.Output.Traces)
 	}
-	cfg.Port, err = stringToPortEnum(a.Port)
-	if err != nil {
-		return nil, err
-	}
-	cfg.Exec, err = stringToRegexpAttr(a.ExecutableName)
-	if err != nil {
-		return nil, err
-	}
 	cfg.Routes = a.Routes.Convert()
 	cfg.Attributes = a.Attributes.Convert()
 	cfg.Discovery, err = a.Discovery.Convert()
@@ -445,10 +528,17 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 	cfg.Prometheus = a.Metrics.Convert()
-	cfg.NetworkFlows = a.Metrics.Network.Convert()
+	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
-	cfg.EBPF = a.EBPF.Convert()
+
+	ebpf, err := a.EBPF.Convert()
+	if err != nil {
+		return nil, err
+	}
+	cfg.EBPF = *ebpf
+
 	cfg.Filters = a.Filters.Convert()
+	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
@@ -458,34 +548,46 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 			Level: &lvl,
 		})).Handler(), a.Debug)
 	}
+
 	return &cfg, nil
 }
 
 func (args *Arguments) Validate() error {
-	if args.Port == "" && args.ExecutableName == "" && len(args.Discovery.Services) == 0 {
-		return fmt.Errorf("you need to define at least open_port, executable_name, or services in the discovery section")
+	hasNetworkFeature := args.Metrics.hasNetworkFeature()
+	hasAppFeature := args.Metrics.hasAppFeature()
+
+	isTracingEnabled := args.TracePrinter != "" && args.TracePrinter != string(debug.TracePrinterDisabled)
+	hasOutputConfig := args.Output != nil && args.Output.Traces != nil
+
+	if args.TracePrinter == "" {
+		args.TracePrinter = string(debug.TracePrinterDisabled)
+	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
+		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
 	}
-	validInstrumentations := map[string]struct{}{"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}}
-	for _, instrumentation := range args.Metrics.Instrumentations {
-		if _, ok := validInstrumentations[instrumentation]; !ok {
-			return fmt.Errorf("invalid prometheus.instrumentations entry: %s", instrumentation)
+
+	if err := args.Metrics.Validate(); err != nil {
+		return err
+	}
+
+	if hasAppFeature {
+		if len(args.Discovery.Services) == 0 {
+			return fmt.Errorf("discovery.services is required when application features are enabled")
+		}
+		if err := args.Discovery.Services.Validate(); err != nil {
+			return fmt.Errorf("invalid discovery configuration: %s", err.Error())
 		}
 	}
-	validFeatures := map[string]struct{}{
-		"application":               {},
-		"application_span":          {},
-		"application_service_graph": {},
-		"application_process":       {},
-		"network":                   {},
-	}
-	for _, feature := range args.Metrics.Features {
-		if _, ok := validFeatures[feature]; !ok {
-			return fmt.Errorf("invalid prometheus.features entry: %s", feature)
-		}
-		if feature == "network" && !args.Metrics.Network.Enable {
-			return fmt.Errorf("network feature can only be enabled if network is enabled")
+
+	if len(args.Discovery.ExcludeServices) > 0 {
+		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
+			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
+
+	if !hasNetworkFeature && !hasAppFeature && !isTracingEnabled && !hasOutputConfig {
+		return fmt.Errorf("either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled via trace_printer or output section")
+	}
+
 	return nil
 }
 

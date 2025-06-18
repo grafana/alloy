@@ -10,7 +10,6 @@ const dagreGraph = new dagre.graphlib.Graph({ multigraph: true }).setDefaultEdge
 // Arbitrary values chosen to fit an average config in the graph.
 const NODE_WIDTH = 155;
 const NODE_HEIGHT = 72;
-const COMPONENT_NAME_MAX_LENGTH = 25;
 
 const position = { x: 0, y: 0 };
 
@@ -20,17 +19,11 @@ export function buildGraph(components: ComponentInfo[]): [Node[], Edge[]] {
   const edgeCountMap: Record<string, number> = {};
 
   const nodes = components.map((component) => {
-    let cpNameTruncated = component.name;
-    if (cpNameTruncated.length > COMPONENT_NAME_MAX_LENGTH) {
-      const parts = cpNameTruncated.split('.');
-      parts.shift();
-      cpNameTruncated = parts.join('.');
-    }
     const node: Node = {
       id: component.localID,
       width: NODE_WIDTH,
       data: {
-        label: cpNameTruncated + ' "' + (component.label ?? '') + '"',
+        label: component.name + ' "' + (component.label ?? '') + '"',
         localID: component.localID,
         moduleID: component.moduleID,
       },

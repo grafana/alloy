@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.mongodb
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.mongodb
 ---
 
@@ -32,11 +34,26 @@ prometheus.exporter.mongodb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mongodb`:
 
-| Name                         | Type      | Description                                                                                                                            | Default | Required |
-| ---------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                | `secret`  | MongoDB node connection URI.                                                                                                           |         | yes      |
-| `direct_connect`             | `boolean` | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | false   | no       |
-| `discovering_mode`           | `boolean` | Whether or not to enable autodiscover collections.                                                                                     | false   | no       |
+| Name                           | Type     | Description                                                                                                                            | Default | Required |
+| ------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `mongodb_uri`                  | `secret` | MongoDB node connection URI.                                                                                                           |         | yes      |
+| `collect_all`                  | `bool`   | Enables all collectors.                                                                                                                | `true`  | no       |
+| `compatible_mode`              | `bool`   | Enables metric names compatible with `mongodb_exporter` <v0.20.0.                                                                      | `true`  | no       |
+| `direct_connect`               | `bool`   | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | `false` | no       |
+| `discovering_mode`             | `bool`   | Whether or not to enable autodiscover collections.                                                                                     | `false` | no       |
+| `enable_coll_stats`            | `bool`   | Enables collecting collection statistics.                                                                                              | `false` | no       |
+| `enable_currentop_metrics`     | `bool`   | Enables collecting current operation metrics.                                                                                          | `false` | no       |
+| `enable_db_stats_free_storage` | `bool`   | Enables collecting free storage statistics from `dbStats`.                                                                             | `false` | no       |
+| `enable_db_stats`              | `bool`   | Enables collecting database statistics.                                                                                                | `false` | no       |
+| `enable_diagnostic_data`       | `bool`   | Enables collecting diagnostic data.                                                                                                    | `false` | no       |
+| `enable_fcv`                   | `bool`   | Enables collecting Feature Compatibility Version (FCV) metrics.                                                                        | `false` | no       |
+| `enable_index_stats`           | `bool`   | Enables collecting index statistics.                                                                                                   | `false` | no       |
+| `enable_pbm_metrics`           | `bool`   | Enables collecting Percona Backup for MongoDB (PBM) metrics.                                                                           | `false` | no       |
+| `enable_profile`               | `bool`   | Enables collecting profile metrics.                                                                                                    | `false` | no       |
+| `enable_replicaset_config`     | `bool`   | Enables collecting replica set configuration.                                                                                          | `false` | no       |
+| `enable_replicaset_status`     | `bool`   | Enables collecting replica set status.                                                                                                 | `false` | no       |
+| `enable_shards`                | `bool`   | Enables collecting sharding information.                                                                                               | `false` | no       |
+| `enable_top_metrics`           | `bool`   | Enables collecting top metrics.                                                                                                        | `false` | no       |
 
 MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
 

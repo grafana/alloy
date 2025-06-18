@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.blackbox
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.blackbox
 ---
 
@@ -51,6 +53,8 @@ The `config` argument must be a YAML document as string defining which `blackbox
 * `local.file.LABEL.content`
 * `remote.http.LABEL.content`
 * `remote.s3.LABEL.content`
+
+The `timeout` attribute in `config` or `config_file` has an effective upper limit of 10 seconds. Refer to the Prometheus blackbox exporter [issue 751](https://github.com/prometheus/blackbox_exporter/issues/751) for more information.
 
 You can't use both the `targets` argument and the [target][] block in the same configuration file.
 The `targets` argument must be used when blackbox targets can't be passed as a target block because another component supplies them.
@@ -258,8 +262,8 @@ Replace the following:
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
-[disc]: ../discovery.file/
-[relabel]: ../discovery.relabel/
+[disc]: ../../discovery/discovery.file/
+[relabel]: ../../discovery/discovery.relabel/
 
 ### Set instance label to target URL
 

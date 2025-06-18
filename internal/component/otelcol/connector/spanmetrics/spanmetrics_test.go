@@ -40,12 +40,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
-				DimensionsCacheSize:      1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
 					Exponential: nil,
@@ -92,12 +93,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:      1000,
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160},
@@ -121,13 +123,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				name = "http.method"
 				default = "GET"
 			}
+			calls_dimension {
+				name = "http.something_else"
+				default = "default_value"
+			}
 			exclude_dimensions = ["test_exclude_dim1", "test_exclude_dim2"]
-			dimensions_cache_size = 333
 			aggregation_temporality = "DELTA"
 			resource_metrics_cache_size = 12345
 			metric_timestamp_cache_size = 12389
 			histogram {
 				disable = true
+				dimension {
+					name = "http.nonsense"
+				}
 				unit = "s"
 				explicit {
 					buckets = ["333ms", "777s", "999h"]
@@ -148,16 +156,21 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
+				CallsDimensions: []spanmetricsconnector.Dimension{
+					{Name: "http.something_else", Default: getStringPtr("default_value")},
+				},
 				Dimensions: []spanmetricsconnector.Dimension{
 					{Name: "http.status_code", Default: nil},
 					{Name: "http.method", Default: getStringPtr("GET")},
 				},
 				ExcludeDimensions:        []string{"test_exclude_dim1", "test_exclude_dim2"},
-				DimensionsCacheSize:      333,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_DELTA",
 				ResourceMetricsCacheSize: 12345,
 				TimestampCacheSize:       &timestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions: []spanmetricsconnector.Dimension{
+						{Name: "http.nonsense", Default: nil},
+					},
 					Disable:     true,
 					Unit:        1,
 					Exponential: nil,
@@ -196,12 +209,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				Dimensions:               []spanmetricsconnector.Dimension{},
-				DimensionsCacheSize:      1000,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
 					Explicit:    nil,
@@ -226,32 +240,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			errorMsg: `invalid aggregation_temporality: badVal`,
-		},
-		{
-			testName: "invalidDimensionCache1",
-			cfg: `
-			dimensions_cache_size = -1
-
-			histogram {
-				explicit {}
-			}
-
-			output {}
-			`,
-			errorMsg: `invalid cache size: -1, the maximum number of the items in the cache should be positive`,
-		},
-		{
-			testName: "invalidDimensionCache2",
-			cfg: `
-			dimensions_cache_size = 0
-
-			histogram {
-				explicit {}
-			}
-
-			output {}
-			`,
-			errorMsg: `invalid cache size: 0, the maximum number of the items in the cache should be positive`,
 		},
 		{
 			testName: "invalidMetricsFlushInterval1",
@@ -349,6 +337,20 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			errorMsg: `missing required block "histogram"`,
 		},
+		{
+			testName: "invalidMetricTimestampCacheSize",
+			cfg: `
+			metric_timestamp_cache_size = 0
+			aggregation_temporality = "DELTA"
+
+			histogram {
+				explicit {}
+			}
+
+			output {}
+			`,
+			errorMsg: `invalid metric_timestamp_cache_size: 0, the cache size should be positive`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -392,12 +394,13 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 	args.Output = testSignal.MakeOutput()
 
 	prc := processortest.ProcessorRunConfig{
-		Ctx:        ctx,
-		T:          t,
-		Args:       args,
-		TestSignal: testSignal,
-		Ctrl:       ctrl,
-		L:          l,
+		Ctx:                   ctx,
+		T:                     t,
+		Args:                  args,
+		TestSignal:            testSignal,
+		AdditionalSignalSends: 2,
+		Ctrl:                  ctrl,
+		L:                     l,
 	}
 	processortest.TestRunProcessor(prc)
 }
@@ -426,36 +429,14 @@ func Test_ComponentIO(t *testing.T) {
 					}]
 				}]
 			}]
-		},{
-			"resource": {
-				"attributes": [{
-					"key": "service.name",
-					"value": { "stringValue": "TestSvcName" }
-				},
-				{
-					"key": "res_attribute1",
-					"value": { "intValue": "11" }
-				}]
-			},
-			"scopeSpans": [{
-				"spans": [{
-					"trace_id": "7bba9f33312b3dbb8b2c2c62bb7abe2d",
-					"span_id": "086e83747d0e381b",
-					"name": "TestSpan",
-					"attributes": [{
-						"key": "attribute1",
-						"value": { "intValue": "78" }
-					}]
-				}]
-			}]
 		}]
 	}`
 
 	tests := []struct {
-		testName              string
-		cfg                   string
-		inputTraceJson        string
-		expectedOutputLogJson string
+		testName                 string
+		cfg                      string
+		inputTraceJson           string
+		expectedOutputMetricJson string
 	}{
 		{
 			testName: "Sum metric only",
@@ -471,7 +452,7 @@ func Test_ComponentIO(t *testing.T) {
 			}
 		`,
 			inputTraceJson: defaultInputTrace,
-			expectedOutputLogJson: `{
+			expectedOutputMetricJson: `{
 				"resourceMetrics": [{
 					"resource": {
 						"attributes": [{
@@ -482,115 +463,7 @@ func Test_ComponentIO(t *testing.T) {
 							"key": "res_attribute1",
 							"value": { "intValue": "11" }
 						}]
-					},		
-					"scopeMetrics": [{
-						"scope": {
-							"name": "spanmetricsconnector"
-						},
-						"metrics": [{
-							"name": "traces.span.metrics.calls",
-							"sum": {
-								"dataPoints": [{
-									"attributes": [{
-										"key": "service.name",
-										"value": { "stringValue": "TestSvcName" }
-									},
-									{
-										"key": "span.name",
-										"value": { "stringValue": "TestSpan" }
-									},
-									{
-										"key": "span.kind",
-										"value": { "stringValue": "SPAN_KIND_UNSPECIFIED" }
-									},
-									{
-										"key": "status.code",
-										"value": { "stringValue": "STATUS_CODE_UNSET" }
-									}],
-									"startTimeUnixNano": "0",
-									"timeUnixNano": "0",
-									"asInt": "2"
-								}],
-								"aggregationTemporality": 2,
-								"isMonotonic": true
-							}
-						}]
-					}]
-				}]
-			}`,
-		},
-		{
-			testName: "Sum metric only for two spans",
-			cfg: `
-			metrics_flush_interval = "1s"
-			histogram {
-				disable = true
-				explicit {}
-			}
-
-			output {
-				// no-op: will be overridden by test code.
-			}
-		`,
-			inputTraceJson: `{
-				"resourceSpans": [{
-					"resource": {
-						"attributes": [{
-							"key": "service.name",
-							"value": { "stringValue": "TestSvcName" }
-						},
-						{
-							"key": "k8s.pod.name",
-							"value": { "stringValue": "first" }
-						}]
 					},
-					"scopeSpans": [{
-						"spans": [{
-							"trace_id": "7bba9f33312b3dbb8b2c2c62bb7abe2d",
-							"span_id": "086e83747d0e381e",
-							"name": "TestSpan",
-							"attributes": [{
-								"key": "attribute1",
-								"value": { "intValue": "78" }
-							}]
-						}]
-					}]
-				},{
-					"resource": {
-						"attributes": [{
-							"key": "service.name",
-							"value": { "stringValue": "TestSvcName" }
-						},
-						{
-							"key": "k8s.pod.name",
-							"value": { "stringValue": "second" }
-						}]
-					},
-					"scopeSpans": [{
-						"spans": [{
-							"trace_id": "7bba9f33312b3dbb8b2c2c62bb7abe2d",
-							"span_id": "086e83747d0e381b",
-							"name": "TestSpan",
-							"attributes": [{
-								"key": "attribute1",
-								"value": { "intValue": "78" }
-							}]
-						}]
-					}]
-				}]
-			}`,
-			expectedOutputLogJson: `{
-				"resourceMetrics": [{
-					"resource": {
-						"attributes": [{
-							"key": "service.name",
-							"value": { "stringValue": "TestSvcName" }
-						},
-						{
-							"key": "k8s.pod.name",
-							"value": { "stringValue": "first" }
-						}]
-					},		
 					"scopeMetrics": [{
 						"scope": {
 							"name": "spanmetricsconnector"
@@ -617,52 +490,7 @@ func Test_ComponentIO(t *testing.T) {
 									}],
 									"startTimeUnixNano": "0",
 									"timeUnixNano": "0",
-									"asInt": "1"
-								}],
-								"aggregationTemporality": 2,
-								"isMonotonic": true
-							}
-						}]
-					}]
-				},
-				{
-					"resource": {
-						"attributes": [{
-							"key": "service.name",
-							"value": { "stringValue": "TestSvcName" }
-						},
-						{
-							"key": "k8s.pod.name",
-							"value": { "stringValue": "second" }
-						}]
-					},		
-					"scopeMetrics": [{
-						"scope": {
-							"name": "spanmetricsconnector"
-						},
-						"metrics": [{
-							"name": "traces.span.metrics.calls",
-							"sum": {
-								"dataPoints": [{
-									"attributes": [{
-										"key": "service.name",
-										"value": { "stringValue": "TestSvcName" }
-									},
-									{
-										"key": "span.name",
-										"value": { "stringValue": "TestSpan" }
-									},
-									{
-										"key": "span.kind",
-										"value": { "stringValue": "SPAN_KIND_UNSPECIFIED" }
-									},
-									{
-										"key": "status.code",
-										"value": { "stringValue": "STATUS_CODE_UNSET" }
-									}],
-									"startTimeUnixNano": "0",
-									"timeUnixNano": "0",
-									"asInt": "1"
+									"asInt": "3"
 								}],
 								"aggregationTemporality": 2,
 								"isMonotonic": true
@@ -687,94 +515,129 @@ func Test_ComponentIO(t *testing.T) {
 			}
 		`,
 			inputTraceJson: defaultInputTrace,
-			expectedOutputLogJson: `{
-				"resourceMetrics": [{
-					"resource": {
-						"attributes": [{
-							"key": "service.name",
-							"value": { "stringValue": "TestSvcName" }
-						},
-						{
-							"key": "res_attribute1",
-							"value": { "intValue": "11" }
-						}]
-					},		
-					"scopeMetrics": [{
-						"scope": {
-							"name": "spanmetricsconnector"
-						},
-						"metrics": [{
-							"name": "traces.span.metrics.calls",
-							"sum": {
-								"dataPoints": [{
-									"attributes": [{
-										"key": "service.name",
-										"value": { "stringValue": "TestSvcName" }
-									},
-									{
-										"key": "span.name",
-										"value": { "stringValue": "TestSpan" }
-									},
-									{
-										"key": "span.kind",
-										"value": { "stringValue": "SPAN_KIND_UNSPECIFIED" }
-									},
-									{
-										"key": "status.code",
-										"value": { "stringValue": "STATUS_CODE_UNSET" }
-									}],
-									"startTimeUnixNano": "0",
-									"timeUnixNano": "0",
-									"asInt": "2"
-								}],
-								"aggregationTemporality": 2,
-								"isMonotonic": true
-							}
-						},
-                        {
-                            "name": "traces.span.metrics.duration",
-                            "unit": "ms",
-                            "histogram": {
-                                "dataPoints": [
-                                    {
-                                        "attributes": [
-                                            {
-                                                "key": "service.name",
-                                                "value": {
-                                                    "stringValue": "TestSvcName"
-                                                }
-                                            },
-                                            {
-                                                "key": "span.name",
-                                                "value": {
-                                                    "stringValue": "TestSpan"
-                                                }
-                                            },
-                                            {
-                                                "key": "span.kind",
-                                                "value": {
-                                                    "stringValue": "SPAN_KIND_UNSPECIFIED"
-                                                }
-                                            },
-                                            {
-                                                "key": "status.code",
-                                                "value": {
-                                                    "stringValue": "STATUS_CODE_UNSET"
-                                                }
-                                            }
-                                        ],
-                                        "count": "2",
-                                        "sum": 0,
-                                        "bucketCounts": [ "2", "0", "0", "0" ],
-                                        "explicitBounds": [ 300000, 600000, 1800000 ]
-                                    }
-                                ],
-                                "aggregationTemporality": 2
-                            }
-                        }]
-					}]
-				}]
-			}`,
+			expectedOutputMetricJson: `{
+		    "resourceMetrics": [
+		        {
+		            "resource": {
+		                "attributes": [
+		                    {
+		                        "key": "service.name",
+		                        "value": {
+		                            "stringValue": "TestSvcName"
+		                        }
+		                    },
+		                    {
+		                        "key": "res_attribute1",
+		                        "value": {
+		                            "intValue": "11"
+		                        }
+		                    }
+		                ]
+		            },
+		            "scopeMetrics": [
+		                {
+		                    "scope": {
+		                        "name": "spanmetricsconnector"
+		                    },
+		                    "metrics": [
+		                        {
+		                            "name": "traces.span.metrics.calls",
+		                            "sum": {
+		                                "dataPoints": [
+		                                    {
+		                                        "attributes": [
+		                                            {
+		                                                "key": "service.name",
+		                                                "value": {
+		                                                    "stringValue": "TestSvcName"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "span.name",
+		                                                "value": {
+		                                                    "stringValue": "TestSpan"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "span.kind",
+		                                                "value": {
+		                                                    "stringValue": "SPAN_KIND_UNSPECIFIED"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "status.code",
+		                                                "value": {
+		                                                    "stringValue": "STATUS_CODE_UNSET"
+		                                                }
+		                                            }
+		                                        ],
+		                                        "startTimeUnixNano": "1747661522857194000",
+		                                        "timeUnixNano": "1747661536858260000",
+		                                        "asInt": "3"
+		                                    }
+		                                ],
+		                                "aggregationTemporality": 2,
+		                                "isMonotonic": true
+		                            }
+		                        },
+		                        {
+		                            "name": "traces.span.metrics.duration",
+		                            "unit": "ms",
+		                            "histogram": {
+		                                "dataPoints": [
+		                                    {
+		                                        "attributes": [
+		                                            {
+		                                                "key": "service.name",
+		                                                "value": {
+		                                                    "stringValue": "TestSvcName"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "span.name",
+		                                                "value": {
+		                                                    "stringValue": "TestSpan"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "span.kind",
+		                                                "value": {
+		                                                    "stringValue": "SPAN_KIND_UNSPECIFIED"
+		                                                }
+		                                            },
+		                                            {
+		                                                "key": "status.code",
+		                                                "value": {
+		                                                    "stringValue": "STATUS_CODE_UNSET"
+		                                                }
+		                                            }
+		                                        ],
+		                                        "startTimeUnixNano": "1747661522857194000",
+		                                        "timeUnixNano": "1747661536858260000",
+		                                        "count": "3",
+		                                        "sum": 0,
+		                                        "bucketCounts": [
+		                                            "3",
+		                                            "0",
+		                                            "0",
+		                                            "0"
+		                                        ],
+		                                        "explicitBounds": [
+		                                            300000,
+		                                            600000,
+		                                            1800000
+		                                        ]
+		                                    }
+		                                ],
+		                                "aggregationTemporality": 2
+		                            }
+		                        }
+		                    ]
+		                }
+		            ]
+		        }
+		    ]
+		}`,
 		},
 	}
 
@@ -783,7 +646,7 @@ func Test_ComponentIO(t *testing.T) {
 			var args spanmetrics.Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
 
-			testRunProcessor(t, tt.cfg, processortest.NewTraceToMetricSignal(tt.inputTraceJson, tt.expectedOutputLogJson))
+			testRunProcessor(t, tt.cfg, processortest.NewTraceToMetricSignal(tt.inputTraceJson, tt.expectedOutputMetricJson))
 		})
 	}
 }

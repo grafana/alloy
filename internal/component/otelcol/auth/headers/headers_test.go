@@ -15,7 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	extauth "go.opentelemetry.io/collector/extension/auth"
+	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 )
 
 // Test performs a basic integration test which runs the otelcol.auth.headers
@@ -66,7 +66,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ext.Extension, "handler extension is nil")
 
-	clientAuth, ok := ext.Extension.(extauth.Client)
+	clientAuth, ok := ext.Extension.(extauth.HTTPClient)
 	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
 	rt, err := clientAuth.RoundTripper(http.DefaultTransport)

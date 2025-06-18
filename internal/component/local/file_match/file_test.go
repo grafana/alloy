@@ -29,7 +29,7 @@ func TestFile(t *testing.T) {
 		os.RemoveAll(dir)
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -51,7 +51,7 @@ func TestDirectoryFile(t *testing.T) {
 		os.RemoveAll(dir)
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "**/")}, nil)
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -72,7 +72,7 @@ func TestFileIgnoreOlder(t *testing.T) {
 		os.RemoveAll(dir)
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 5*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -102,7 +102,7 @@ func TestAddingFile(t *testing.T) {
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "*.txt")}, nil)
 
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -124,7 +124,7 @@ func TestAddingFileInSubDir(t *testing.T) {
 		os.RemoveAll(dir)
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -155,7 +155,7 @@ func TestAddingFileInAnExcludedSubDir(t *testing.T) {
 	included := []string{path.Join(dir, "**", "*.txt")}
 	excluded := []string{path.Join(dir, "subdir", "*.txt")}
 	c := createComponent(t, dir, included, excluded)
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -191,7 +191,7 @@ func TestAddingRemovingFileInSubDir(t *testing.T) {
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, nil)
 
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -227,7 +227,7 @@ func TestExclude(t *testing.T) {
 		os.RemoveAll(dir)
 	})
 	c := createComponent(t, dir, []string{path.Join(dir, "**", "*.txt")}, []string{path.Join(dir, "**", "*.bad")})
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond
@@ -257,7 +257,7 @@ func TestMultiLabels(t *testing.T) {
 	tb := discovery.NewTargetBuilderFrom(c.args.PathTargets[0])
 	tb.Set("newlabel", "test")
 	c.args.PathTargets[0] = tb.Target()
-	ct := context.Background()
+	ct := t.Context()
 	ct, ccl := context.WithTimeout(ct, 40*time.Second)
 	defer ccl()
 	c.args.SyncPeriod = 10 * time.Millisecond

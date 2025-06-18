@@ -4,6 +4,21 @@ otelcol.receiver.kafka "default" {
 	session_timeout    = "11s"
 	heartbeat_interval = "4s"
 
+	logs {
+		topic    = "otlp_logs"
+		encoding = "otlp_proto"
+	}
+
+	metrics {
+		topic    = "otlp_metrics"
+		encoding = "otlp_proto"
+	}
+
+	traces {
+		topic    = "otlp_spans"
+		encoding = "otlp_proto"
+	}
+
 	authentication {
 		plaintext {
 			username = "fakeusername"
@@ -33,9 +48,21 @@ otelcol.receiver.kafka "default" {
 			password     = "fakepassword"
 		}
 	}
-	min_fetch_size     = 2
-	default_fetch_size = 1048575
-	max_fetch_size     = 2000000
+	min_fetch_size           = 2
+	default_fetch_size       = 1048575
+	max_fetch_size           = 2000000
+	max_fetch_wait           = "11s"
+	group_rebalance_strategy = "roundrobin"
+	group_instance_id        = "fakeinstanceid"
+
+	error_backoff {
+		enabled              = true
+		initial_interval     = "1s"
+		randomization_factor = 0.1
+		multiplier           = 1
+		max_interval         = "1s"
+		max_elapsed_time     = "1m0s"
+	}
 
 	output {
 		metrics = [otelcol.exporter.kafka.default.input]
@@ -50,10 +77,24 @@ otelcol.exporter.kafka "default" {
 	resolve_canonical_bootstrap_servers_only = true
 	client_id                                = "otelcol"
 	topic_from_attribute                     = "my_topic"
-	encoding                                 = "otlp_json"
 	partition_traces_by_id                   = true
 	partition_metrics_by_resource_attributes = true
 	timeout                                  = "11s"
+
+	logs {
+		topic    = "otlp_logs"
+		encoding = "otlp_proto"
+	}
+
+	metrics {
+		topic    = "otlp_metrics"
+		encoding = "otlp_proto"
+	}
+
+	traces {
+		topic    = "otlp_spans"
+		encoding = "otlp_proto"
+	}
 
 	authentication {
 		plaintext {
@@ -86,8 +127,12 @@ otelcol.exporter.kafka "default" {
 	}
 
 	producer {
-		max_message_bytes  = 1000001
-		compression        = "snappy"
+		max_message_bytes = 1000001
+		compression       = "gzip"
+
+		compression_params {
+			level = 9
+		}
 		flush_max_messages = 11
 	}
 }

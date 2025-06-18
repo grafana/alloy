@@ -29,7 +29,7 @@ func TestConfigConversion(t *testing.T) {
 		// from the official exporter; as such as need to init it all here
 		defaultExporterSettings = datadogOtelconfig.MetricsExporterConfig{
 			ResourceAttributesAsTags:           false,
-			InstrumentationScopeMetadataAsTags: false,
+			InstrumentationScopeMetadataAsTags: true,
 		}
 		defaultHistSettings = datadogOtelconfig.HistogramConfig{
 			Mode:             "distributions",
@@ -44,10 +44,11 @@ func TestConfigConversion(t *testing.T) {
 		}
 
 		defaultClient = confighttp.ClientConfig{
-			Timeout: defaultTimeout,
+			Timeout:         defaultTimeout,
+			MaxIdleConns:    100,
+			IdleConnTimeout: 90 * time.Second,
 		}
-		connsPerHost    = 10
-		connsPerHostPtr = &connsPerHost
+		connsPerHost = 10
 	)
 
 	tests := []struct {
@@ -83,6 +84,7 @@ func TestConfigConversion(t *testing.T) {
 					delta_ttl = 1200
 					exporter {
 						resource_attributes_as_tags = true
+						instrumentation_scope_metadata_as_tags = false
 					}
 					histograms {
 						mode = "counters"
@@ -96,7 +98,7 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHostPtr},
+				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second},
 				QueueSettings: defaultQueueConfig,
 				BackOffConfig: defaultRetrySettings,
 				TagsConfig:    datadogOtelconfig.TagsConfig{Hostname: "customhostname"},

@@ -14,6 +14,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -67,6 +68,7 @@ const (
 			index_name,
 			seq_in_index,
 			column_name,
+			expression,
 			nullable,
 			non_unique,
 			index_type
@@ -148,11 +150,12 @@ type columnSpec struct {
 }
 
 type indexSpec struct {
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Columns  []string `json:"columns"`
-	Unique   bool     `json:"unique"`
-	Nullable bool     `json:"nullable"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Columns     []string `json:"columns"`
+	Expressions []string `json:"expressions,omitempty"`
+	Unique      bool     `json:"unique"`
+	Nullable    bool     `json:"nullable"`
 }
 
 type foreignKey struct {
@@ -243,6 +246,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		schemas = append(schemas, schema)
 
 		c.entryHandler.Chan() <- buildLokiEntry(
+			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
 			c.instanceKey,
 			fmt.Sprintf(`schema="%s"`, schema),
@@ -287,6 +291,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			})
 
 			c.entryHandler.Chan() <- buildLokiEntry(
+				logging.LevelInfo,
 				OP_TABLE_DETECTION,
 				c.instanceKey,
 				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
@@ -329,6 +334,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 
 		c.entryHandler.Chan() <- buildLokiEntry(
+			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
 			c.instanceKey,
 			fmt.Sprintf(
@@ -432,30 +438,48 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName st
 	defer idxRS.Close()
 
 	for idxRS.Next() {
-		var indexName, columnName, indexType string
+		var indexName, indexType string
 		var seqInIndex, nonUnique int
-		var nullable sql.NullString
-		if err := idxRS.Scan(&indexName, &seqInIndex, &columnName, &nullable, &nonUnique, &indexType); err != nil {
+		var columnName, expression, nullable sql.NullString
+		if err := idxRS.Scan(&indexName, &seqInIndex, &columnName, &expression, &nullable, &nonUnique, &indexType); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan table indexes", "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
+		}
+
+		// mysql docs describe column and expression as mutually exclusive,
+		// but at least one of them must be present.
+		if !columnName.Valid && !expression.Valid {
+			level.Error(c.logger).Log("msg", "index without a column or expression", "schema", schemaName, "table", tableName, "index", indexName)
+			continue
 		}
 
 		// Append column to the last index if it's the same as the previous one (i.e. multi-column index)
 		if nIndexes := len(tblSpec.Indexes); nIndexes > 0 && tblSpec.Indexes[nIndexes-1].Name == indexName {
 			lastIndex := &tblSpec.Indexes[nIndexes-1]
-			if len(lastIndex.Columns) != seqInIndex-1 {
-				level.Error(c.logger).Log("msg", "unexpected index column sequence", "schema", schemaName, "table", tableName, "index", indexName, "column", columnName)
+			if len(lastIndex.Columns)+len(lastIndex.Expressions) != seqInIndex-1 {
+				level.Error(c.logger).Log("msg", "unexpected index ordinal position", "schema", schemaName, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns), "len_expressions", len(lastIndex.Expressions))
 				continue
 			}
-			lastIndex.Columns = append(lastIndex.Columns, columnName)
+
+			if columnName.Valid {
+				lastIndex.Columns = append(lastIndex.Columns, columnName.String)
+			} else if expression.Valid {
+				lastIndex.Expressions = append(lastIndex.Expressions, expression.String)
+			}
 		} else {
-			tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
+			idx := indexSpec{
 				Name:     indexName,
 				Type:     indexType,
-				Columns:  []string{columnName},
 				Unique:   nonUnique == 0,                             // 0 if the index cannot contain duplicates, 1 if it can
 				Nullable: nullable.Valid && nullable.String == "YES", // "YES" if the column may contain NULL values
-			})
+			}
+
+			if columnName.Valid {
+				idx.Columns = append(idx.Columns, columnName.String)
+			} else if expression.Valid {
+				idx.Expressions = append(idx.Expressions, expression.String)
+			}
+			tblSpec.Indexes = append(tblSpec.Indexes, idx)
 		}
 	}
 

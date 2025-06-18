@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/static/traces/pushreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/pipeline"
-	"gopkg.in/yaml.v2"
 )
 
 func tmpFile(t *testing.T, content string) (*os.File, func()) {
@@ -1534,7 +1535,7 @@ service:
 			sortService(actualConfig)
 			sortService(expectedConfig)
 
-			assert.Equal(t, expectedConfig, actualConfig)
+			require.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }
@@ -1742,10 +1743,13 @@ load_balancing:
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
 					var p pipeline.ID
+					signal := pipeline.Signal{}
+					err = signal.UnmarshalText([]byte(componentID.Type().String()))
+					require.NoError(t, err)
 					if componentID.Name() != "" {
-						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+						p = pipeline.NewIDWithName(signal, componentID.Name())
 					} else {
-						p = pipeline.MustNewID(componentID.Type().String())
+						p = pipeline.NewID(signal)
 					}
 
 					assert.NotNil(t, actualConfig.Service.Pipelines[p])

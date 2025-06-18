@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 description: Learn about otelcol.receiver.tcplog
 labels:
   stage: experimental
+  products:
+    - oss
 title: otelcol.receiver.tcplog
 ---
 
@@ -13,8 +15,10 @@ title: otelcol.receiver.tcplog
 `otelcol.receiver.tcplog` accepts log messages over a TCP connection and forwards them as logs to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector `tcplog` receiver.
+`otelcol.receiver.tcplog` is a wrapper over the upstream OpenTelemetry Collector [`tcplog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tcplog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/tcplogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.tcplog` components by giving them different labels.
@@ -43,9 +47,8 @@ You can use the following arguments with `otelcol.receiver.tcplog`:
 | `max_log_size`       | `string` | The maximum size of a log entry to read before failing.                                                     | `"1MiB"`  | no       |
 | `one_log_per_packet` | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false`   | no       |
 
-
 The `encoding` argument specifies the encoding of the incoming log messages.
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`. 
+`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 The `max_log_size` argument has a minimum value of `64KiB`.
@@ -54,7 +57,6 @@ The `max_log_size` argument has a minimum value of `64KiB`.
 
 You can use the following blocks with `otelcol.receiver.tcplog`:
 
-
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
@@ -62,8 +64,13 @@ You can use the following blocks with `otelcol.receiver.tcplog`:
 | [`multiline`][multiline]               | Configures rules for multiline parsing of incoming messages                                     | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | [`tls`][tls]                           | Configures TLS for the TCP server.                                                              | no       |
+| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS key_file.                                                   | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [multiline]: #multiline
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
@@ -103,9 +110,9 @@ The following arguments are supported:
 | Name               | Type       | Description                                                                                                               | Default | Required |
 | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `1s`    | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `5m`    | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `30s`   | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `"1s"`  | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `"5m"`  | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `"30s"` | no       |
 
 If `max_elapsed_time` is set to `0` data is never discarded.
 
@@ -115,6 +122,13 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Exported fields
 
 `otelcol.receiver.tcplog` doesn't export any fields.
@@ -146,7 +160,6 @@ otelcol.receiver.tcplog "default" {
 otelcol.exporter.debug "default" {}
 ```
 
-[exporter-examples]: ../otelcol.exporter.tcplog/#use-the-otelcolprocessortransform-component-to-format-logs-from-lokisourcetcplog
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/tcplogreceiver/README.md#supported-encodings
 [net-semconv]: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/attributes-registry/network.md#network-attributes
 

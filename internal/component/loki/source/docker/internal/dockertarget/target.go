@@ -41,6 +41,7 @@ type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
 	since         int64
+	last          int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -63,6 +64,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		return nil, err
 	}
 	var since int64
+	var last int64
 	if pos != 0 {
 		since = pos
 	}
@@ -71,6 +73,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		logger:        logger,
 		handler:       handler,
 		since:         since,
+		last:          last,
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
@@ -156,11 +159,11 @@ func (t *Target) processLoop(ctx context.Context) {
 func extractTs(line string) (time.Time, string, error) {
 	pair := strings.SplitN(line, " ", 2)
 	if len(pair) != 2 {
-		return time.Now(), line, fmt.Errorf("Could not find timestamp in '%s'", line)
+		return time.Now(), line, fmt.Errorf("could not find timestamp in '%s'", line)
 	}
 	ts, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", pair[0])
 	if err != nil {
-		return time.Now(), line, fmt.Errorf("Could not parse timestamp from '%s': %w", pair[0], err)
+		return time.Now(), line, fmt.Errorf("could not parse timestamp from '%s': %w", pair[0], err)
 	}
 	return ts, pair[1], nil
 }
@@ -221,6 +224,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
 		t.since = ts.Unix()
+		t.last = time.Now().Unix()
 	}
 }
 
@@ -267,6 +271,9 @@ func (t *Target) Hash() uint64 {
 func (t *Target) Path() string {
 	return t.containerName
 }
+
+// Last returns the unix timestamp of the target's last processing loop.
+func (t *Target) Last() int64 { return t.last }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {

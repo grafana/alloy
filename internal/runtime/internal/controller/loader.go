@@ -18,10 +18,12 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -65,10 +67,10 @@ type LoaderOptions struct {
 	// ComponentGlobals contains data to use when creating components.
 	ComponentGlobals ComponentGlobals
 
-	Services          []service.Service // Services to load into the DAG.
-	Host              service.Host      // Service host (when running services).
-	ComponentRegistry ComponentRegistry // Registry to search for components.
-	WorkerPool        worker.Pool       // Worker pool to use for async tasks.
+	Services          []service.Service  // Services to load into the DAG.
+	Host              service.Host       // Service host (when running services).
+	ComponentRegistry component.Registry // Registry to search for components.
+	WorkerPool        worker.Pool        // Worker pool to use for async tasks.
 }
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
@@ -84,7 +86,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	parent, id := splitPath(globals.ControllerID)
 
 	if reg == nil {
-		reg = NewDefaultComponentRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
+		reg = component.NewDefaultRegistry(opts.ComponentGlobals.MinStability, opts.ComponentGlobals.EnableCommunityComps)
 	}
 
 	l := &Loader{
@@ -964,7 +966,7 @@ func (l *Loader) collectCustomComponentReferences(stmts ast.Body, uniqueReferenc
 		)
 
 		switch {
-		case componentName == declareType || componentName == templateType:
+		case componentName == declareType || componentName == foreach.TypeTemplate:
 			l.collectCustomComponentReferences(blockStmt.Body, uniqueReferences)
 		case foundDeclare:
 			uniqueReferences[declareNode] = struct{}{}

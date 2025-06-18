@@ -55,6 +55,7 @@ type CustomComponentNode struct {
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed custom component
 
+	dataFlowEdgeMut  sync.RWMutex
 	dataFlowEdgeRefs []string
 }
 
@@ -330,19 +331,19 @@ func (cn *CustomComponentNode) ModuleIDs() []string {
 }
 
 func (cn *CustomComponentNode) AddDataFlowEdgeTo(nodeID string) {
-	cn.mut.Lock()
-	defer cn.mut.Unlock()
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
 	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
 }
 
 func (cn *CustomComponentNode) GetDataFlowEdgesTo() []string {
-	cn.mut.RLock()
-	defer cn.mut.RUnlock()
+	cn.dataFlowEdgeMut.RLock()
+	defer cn.dataFlowEdgeMut.RUnlock()
 	return cn.dataFlowEdgeRefs
 }
 
 func (cn *CustomComponentNode) ResetDataFlowEdgeTo() {
-	cn.mut.Lock()
-	defer cn.mut.Unlock()
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
 	cn.dataFlowEdgeRefs = []string{}
 }

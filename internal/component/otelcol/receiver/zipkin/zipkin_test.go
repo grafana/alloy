@@ -11,13 +11,12 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 )
 
 func TestRun(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -67,7 +66,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("grpc", func(t *testing.T) {
-		httpAddr := getFreeAddr(t)
+		httpAddr := componenttest.GetFreeAddr(t)
 		in := fmt.Sprintf(`
 		endpoint = "%s"
 		cors {
@@ -99,15 +98,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Equal(t, otelArgs.ServerConfig.CORS.AllowedOrigins[1], "https://test.com")
 		require.Equal(t, otelArgs.ParseStringTags, true)
 	})
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

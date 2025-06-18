@@ -5,6 +5,8 @@ aliases:
 description: Learn about remote.vault
 labels:
   stage: general-availability
+  products:
+    - oss
 title: remote.vault
 ---
 
@@ -39,9 +41,9 @@ You can use the following arguments with `remote.vault`:
 
 | Name               | Type       | Description                                                | Default | Required |
 | ------------------ | ---------- | ---------------------------------------------------------- | ------- | -------- |
+| `path`             | `string`   | The path to retrieve a secret from.                        |         | yes      |
 | `server`           | `string`   | The Vault server to connect to.                            |         | yes      |
 | `namespace`        | `string`   | The Vault namespace to connect to (Vault Enterprise only). |         | no       |
-| `path`             | `string`   | The path to retrieve a secret from.                        |         | yes      |
 | `key`              | `string`   | The key to retrieve a secret from.                         |         | no       |
 | `reread_frequency` | `duration` | Rate to re-read keys.                                      | `"0s"`  | no       |
 
@@ -83,14 +85,14 @@ Exactly one `auth.*` block **must** be provided, otherwise the component will fa
 
 ### `auth.approle`
 
-The `auth.token` block authenticates to Vault using the [AppRole auth method][AppRole].
+The `auth.approle` block authenticates to Vault using the [AppRole auth method][AppRole].
 
 | Name             | Type     | Description                      | Default     | Required |
 | ---------------- | -------- | -------------------------------- | ----------- | -------- |
 | `role_id`        | `string` | Role ID to authenticate as.      |             | yes      |
 | `secret`         | `secret` | Secret to authenticate with.     |             | yes      |
-| `wrapping_token` | `bool`   | Whether to [unwrap][] the token. | `false`     | no       |
 | `mount_path`     | `string` | Mount path for the login.        | `"approle"` | no       |
+| `wrapping_token` | `bool`   | Whether to [unwrap][] the token. | `false`     | no       |
 
 [AppRole]: https://www.vaultproject.io/docs/auth/approle
 [unwrap]: https://www.vaultproject.io/docs/concepts/response-wrapping
@@ -105,11 +107,11 @@ The environment variable `AWS_SHARED_CREDENTIALS_FILE` may be specified to use a
 | Name                   | Type     | Description                                       | Default       | Required |
 | ---------------------- | -------- | ------------------------------------------------- | ------------- | -------- |
 | `type`                 | `string` | Mechanism to authenticate against AWS with.       |               | yes      |
+| `ec2_signature_type`   | `string` | Signature to use when authenticating against EC2. | `"pkcs7"`     | no       |
+| `iam_server_id_header` | `string` | Configures a `X-Vault-AWS-IAM-Server-ID` header.  | `""`          | no       |
+| `mount_path`           | `string` | Mount path for the login.                         | `"aws"`       | no       |
 | `region`               | `string` | AWS region to connect to.                         | `"us-east-1"` | no       |
 | `role`                 | `string` | Overrides the inferred role name inferred.        | `""`          | no       |
-| `iam_server_id_header` | `string` | Configures a `X-Vault-AWS-IAM-Server-ID` header.  | `""`          | no       |
-| `ec2_signature_type`   | `string` | Signature to use when authenticating against EC2. | `"pkcs7"`     | no       |
-| `mount_path`           | `string` | Mount path for the login.                         | `"aws"`       | no       |
 
 The `type` argument must be set to one of `"ec2"` or `"iam"`.
 
@@ -143,13 +145,21 @@ The `auth.custom` blocks allows authenticating against Vault using an arbitrary 
 
 Using `auth.custom` is equivalent to calling `vault write PATH DATA` on the command line.
 
-| Name   | Type          | Description                                            | Default | Required |
-| ------ | ------------- | ------------------------------------------------------ | ------- | -------- |
-| `path` | `string`      | Path to write to for creating an authentication token. |         | yes      |
-| `data` | `map(secret)` | Authentication data.                                   |         | yes      |
+
+| Name         | Type            | Description                                            | Default | Required |
+|--------------|-----------------|--------------------------------------------------------| ------- |----------|
+| `path`       | `string`        | Path to write to for creating an authentication token. |         | yes      |
+| `data`       | `map(secret)`   | Authentication data.                                   |         | yes      |
+| `namespace`  | `string`        | The namespace to authenticate to.                      |         | no       |
 
 All values in the `data` attribute are considered secret, even if they contain nonsensitive information like usernames.
 
+With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace. 
+By specifying the namespace argument in `auth.custom`, you can authenticate to a namespace different from the one used to retrieve the secrets.
+
+You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} will automatically load. 
+This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
+Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
 ### `auth.gcp`
 
 The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
@@ -293,7 +303,7 @@ local.file "vault_token" {
 remote.vault "remote_write" {
   server = "https://prod-vault.corporate.internal"
   path   = "secret"
-  key    = "prometheus/remote_write
+  key    = "prometheus/remote_write"
 
   auth.token {
     token = local.file.vault_token.content

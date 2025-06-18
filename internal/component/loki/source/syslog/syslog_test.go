@@ -1,7 +1,6 @@
 package syslog
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -11,9 +10,9 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/regexp"
-	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -28,7 +27,7 @@ func Test(t *testing.T) {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	args := Arguments{}
-	tcpListenerAddr, udpListenerAddr := getFreeAddr(t), getFreeAddr(t)
+	tcpListenerAddr, udpListenerAddr := componenttest.GetFreeAddr(t), componenttest.GetFreeAddr(t)
 
 	l1 := DefaultListenerConfig
 	l1.ListenAddress = tcpListenerAddr
@@ -47,7 +46,7 @@ func Test(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.
@@ -109,7 +108,7 @@ func TestWithRelabelRules(t *testing.T) {
 
 	ch1 := loki.NewLogsReceiver()
 	args := Arguments{}
-	tcpListenerAddr := getFreeAddr(t)
+	tcpListenerAddr := componenttest.GetFreeAddr(t)
 
 	l := DefaultListenerConfig
 	l.ListenAddress = tcpListenerAddr
@@ -136,7 +135,7 @@ func TestWithRelabelRules(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 	time.Sleep(200 * time.Millisecond)
 
 	// Create and send a Syslog message over TCP to the first listener.
@@ -166,15 +165,6 @@ func TestWithRelabelRules(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for log line")
 	}
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("127.0.0.1:%d", portNumber)
 }
 
 func writeMessageToStream(w io.Writer, msg string, formatter formatFunc) error {

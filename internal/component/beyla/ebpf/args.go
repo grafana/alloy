@@ -9,9 +9,12 @@ import (
 
 // Arguments configures the Beyla component.
 type Arguments struct {
-	Port           string                     `alloy:"open_port,attr,optional"`
+	// Deprecated: Use discovery.services instead.
+	Port string `alloy:"open_port,attr,optional"`
+	// Deprecated: Use discovery.services instead.
 	ExecutableName string                     `alloy:"executable_name,attr,optional"`
 	Debug          bool                       `alloy:"debug,attr,optional"`
+	TracePrinter   string                     `alloy:"trace_printer,attr,optional"`
 	EnforceSysCaps bool                       `alloy:"enforce_sys_caps,attr,optional"`
 	Routes         Routes                     `alloy:"routes,block,optional"`
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
@@ -65,11 +68,12 @@ type Selection struct {
 type Services []Service
 
 type Service struct {
-	Name       string            `alloy:"name,attr,optional"`
-	Namespace  string            `alloy:"namespace,attr,optional"`
-	OpenPorts  string            `alloy:"open_ports,attr,optional"`
-	Path       string            `alloy:"exe_path,attr,optional"`
-	Kubernetes KubernetesService `alloy:"kubernetes,block,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 }
 
 type KubernetesService struct {
@@ -81,6 +85,7 @@ type KubernetesService struct {
 	DaemonSetName   string            `alloy:"daemonset_name,attr,optional"`
 	OwnerName       string            `alloy:"owner_name,attr,optional"`
 	PodLabels       map[string]string `alloy:"pod_labels,attr,optional"`
+	PodAnnotations  map[string]string `alloy:"pod_annotations,attr,optional"`
 }
 
 type Discovery struct {
@@ -99,7 +104,8 @@ type Metrics struct {
 }
 
 type Network struct {
-	Enable             bool          `alloy:"enable,attr"`
+	// Deprecated: Use Metrics.Features instead.
+	Enable             bool          `alloy:"enable,attr,optional"`
 	Source             string        `alloy:"source,attr,optional"`
 	AgentIP            string        `alloy:"agent_ip,attr,optional"`
 	AgentIPIface       string        `alloy:"agent_ip_iface,attr,optional"`
@@ -116,12 +122,14 @@ type Network struct {
 }
 
 type EBPF struct {
-	WakeupLen                 int           `alloy:"wakeup_len,attr,optional"`
-	TrackRequestHeaders       bool          `alloy:"track_request_headers,attr,optional"`
-	HTTPRequestTimeout        time.Duration `alloy:"http_request_timeout,attr,optional"`
-	ContextPropagationEnabled bool          `alloy:"enable_context_propagation,attr,optional"`
-	HighRequestVolume         bool          `alloy:"high_request_volume,attr,optional"`
-	HeuristicSQLDetect        bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	WakeupLen           int           `alloy:"wakeup_len,attr,optional"`
+	TrackRequestHeaders bool          `alloy:"track_request_headers,attr,optional"`
+	HTTPRequestTimeout  time.Duration `alloy:"http_request_timeout,attr,optional"`
+	ContextPropagation  string        `alloy:"context_propagation,attr,optional"`
+	HighRequestVolume   bool          `alloy:"high_request_volume,attr,optional"`
+	HeuristicSQLDetect  bool          `alloy:"heuristic_sql_detect,attr,optional"`
+	BpfDebug            bool          `alloy:"bpf_debug,attr,optional"`
+	ProtocolDebug       bool          `alloy:"protocol_debug_print,attr,optional"`
 }
 
 type Filters struct {

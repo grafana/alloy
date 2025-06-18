@@ -2,6 +2,7 @@
 package zapadapter
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -39,7 +40,7 @@ func (lc *loggerCore) Enabled(zapcore.Level) bool {
 // With implements zapcore.Core, returning a new logger core with ff appended
 // to the list of fields.
 func (lc *loggerCore) With(ff []zapcore.Field) zapcore.Core {
-	// Encode all of the fields so that they're go-kit compatible and create a
+	// Encode all the fields so that they're go-kit compatible and create a
 	// new logger from it.
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
@@ -131,16 +132,34 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	// TODO(rfratto): allow this to write the value of the array instead of
-	// placeholder text.
-	fe.fields = append(fe.fields, fe.keyName(key), "<array>")
+	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
+		enc := newArrayFieldEncoder()
+		err := marshaler.MarshalLogArray(enc)
+		if err != nil {
+			return err.Error()
+		}
+		b, err := enc.jsonMarshal()
+		if err != nil {
+			return err.Error()
+		}
+		return string(b)
+	}})
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	// TODO(rfratto): allow this to write the value of the object instead of
-	// placeholder text.
-	fe.fields = append(fe.fields, fe.keyName(key), "<object>")
+	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
+		enc := newObjectFieldEncoder()
+		err := marshaler.MarshalLogObject(enc)
+		if err != nil {
+			return err.Error()
+		}
+		b, err := enc.jsonMarshal()
+		if err != nil {
+			return err.Error()
+		}
+		return string(b)
+	}})
 	return nil
 }
 
@@ -256,4 +275,228 @@ func (k key) String() string {
 		return k[0]
 	}
 	return strings.Join(k, ".")
+}
+
+var _ zapcore.ObjectEncoder = (*objectFieldEncoder)(nil)
+
+type objectFieldEncoder struct {
+	obj       map[string]interface{}
+	namespace []string
+}
+
+func newObjectFieldEncoder() *objectFieldEncoder {
+	return &objectFieldEncoder{
+		obj: make(map[string]interface{}),
+	}
+}
+
+func (fe *objectFieldEncoder) key(key string) string {
+	if len(fe.namespace) == 0 {
+		return key
+	}
+	return strings.Join(append(fe.namespace, key), ".")
+}
+
+func (fe *objectFieldEncoder) jsonMarshal() ([]byte, error) {
+	return json.Marshal(fe.obj)
+}
+
+func (fe *objectFieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
+	subFieldEncoder := newArrayFieldEncoder()
+	err := marshaler.MarshalLogArray(subFieldEncoder)
+	if err != nil {
+		return err
+	}
+	fe.obj[key] = subFieldEncoder.arr
+	return nil
+}
+
+func (fe *objectFieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
+	subFieldEncoder := newObjectFieldEncoder()
+	err := marshaler.MarshalLogObject(subFieldEncoder)
+	if err != nil {
+		return err
+	}
+	fe.obj[key] = subFieldEncoder.obj
+	return nil
+}
+
+func (fe *objectFieldEncoder) AddBinary(key string, value []byte) {
+	fe.obj[fe.key(key)] = string(value)
+}
+func (fe *objectFieldEncoder) AddByteString(key string, value []byte) {
+	fe.obj[fe.key(key)] = string(value)
+}
+func (fe *objectFieldEncoder) AddBool(key string, value bool) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddComplex128(key string, value complex128) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddComplex64(key string, value complex64) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddDuration(key string, value time.Duration) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddFloat64(key string, value float64) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddFloat32(key string, value float32) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddInt(key string, value int) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddInt64(key string, value int64) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddInt32(key string, value int32) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddInt16(key string, value int16) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddInt8(key string, value int8) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddString(key, value string) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddTime(key string, value time.Time) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUint(key string, value uint) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUint64(key string, value uint64) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUint32(key string, value uint32) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUint16(key string, value uint16) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUint8(key string, value uint8) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddUintptr(key string, value uintptr) {
+	fe.obj[fe.key(key)] = value
+}
+func (fe *objectFieldEncoder) AddReflected(key string, value interface{}) error {
+	fe.obj[fe.key(key)] = value
+	return nil
+}
+func (fe *objectFieldEncoder) OpenNamespace(key string) {
+	fe.namespace = append(fe.namespace, key)
+}
+
+var _ zapcore.ArrayEncoder = (*arrayFieldEncoder)(nil)
+
+type arrayFieldEncoder struct {
+	arr []interface{}
+}
+
+func newArrayFieldEncoder() *arrayFieldEncoder {
+	return &arrayFieldEncoder{
+		arr: make([]interface{}, 0),
+	}
+}
+
+func (fe *arrayFieldEncoder) jsonMarshal() ([]byte, error) {
+	return json.Marshal(fe.arr)
+}
+
+func (fe *arrayFieldEncoder) AppendArray(marshaler zapcore.ArrayMarshaler) error {
+	subFieldEncoder := newArrayFieldEncoder()
+	err := marshaler.MarshalLogArray(subFieldEncoder)
+	if err != nil {
+		return err
+	}
+	fe.arr = append(fe.arr, subFieldEncoder.arr)
+	return nil
+}
+
+func (fe *arrayFieldEncoder) AppendObject(marshaler zapcore.ObjectMarshaler) error {
+	subFieldEncoder := newObjectFieldEncoder()
+	err := marshaler.MarshalLogObject(subFieldEncoder)
+	if err != nil {
+		return err
+	}
+	fe.arr = append(fe.arr, subFieldEncoder.obj)
+	return nil
+}
+
+func (fe *arrayFieldEncoder) AppendBool(value bool) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendByteString(value []byte) {
+	fe.arr = append(fe.arr, string(value))
+}
+func (fe *arrayFieldEncoder) AppendComplex128(value complex128) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendComplex64(value complex64) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendDuration(value time.Duration) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendFloat64(value float64) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendFloat32(value float32) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendInt(value int) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendInt64(value int64) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendInt32(value int32) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendInt16(value int16) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendInt8(value int8) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendString(value string) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendTime(value time.Time) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUint(value uint) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUint64(value uint64) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUint32(value uint32) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUint16(value uint16) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUint8(value uint8) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendUintptr(value uintptr) {
+	fe.arr = append(fe.arr, value)
+}
+func (fe *arrayFieldEncoder) AppendReflected(value interface{}) error {
+	fe.arr = append(fe.arr, value)
+	return nil
+}
+
+type lazyStringer struct {
+	f func() string
+}
+
+func (l lazyStringer) String() string {
+	return l.f()
 }

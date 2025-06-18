@@ -1,4 +1,4 @@
-package node_exporter //nolint:golint
+package node_exporter
 
 import (
 	"fmt"
@@ -496,11 +496,6 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 
 	cfg.Stat = collector.StatConfig{
 		Softirq: &blankBool,
-	}
-
-	cfg.HwMon = collector.HwMonConfig{
-		ChipInclude: &blankString,
-		ChipExclude: &blankString,
 	}
 
 	cfg.Qdisc = collector.QdiscConfig{

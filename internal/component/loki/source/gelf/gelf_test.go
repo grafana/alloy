@@ -2,7 +2,6 @@ package gelf
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strings"
 	"testing"
@@ -10,8 +9,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -26,13 +25,13 @@ func TestGelf(t *testing.T) {
 	testMsg := `{"version":"1.1","host":"example.org","short_message":"A short message","timestamp":1231231123,"level":5,"_some_extra":"extra"}`
 	ch1 := loki.NewLogsReceiver()
 
-	udpListenerAddr := getFreeAddr(t)
+	udpListenerAddr := componenttest.GetFreeAddr(t)
 	args := Arguments{
 		ListenAddress: udpListenerAddr,
 		Receivers:     []loki.LogsReceiver{ch1},
 	}
 	c, err := New(opts, args)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cancelFunc := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelFunc()
 	go c.Run(ctx)
@@ -51,13 +50,4 @@ func TestGelf(t *testing.T) {
 		found = true
 	}
 	require.True(t, found)
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("127.0.0.1:%d", portNumber)
 }

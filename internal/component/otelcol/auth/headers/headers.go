@@ -66,6 +66,10 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 			upstreamHeader.FromContext = h.FromContext
 		}
 
+		if h.FromAttribute != nil {
+			upstreamHeader.FromAttribute = h.FromAttribute
+		}
+
 		upstreamHeaders = append(upstreamHeaders, upstreamHeader)
 	}
 
@@ -157,10 +161,11 @@ func (a *Action) UnmarshalText(text []byte) error {
 
 // Header is an individual Header to send along with requests.
 type Header struct {
-	Key         string                     `alloy:"key,attr"`
-	Value       *alloytypes.OptionalSecret `alloy:"value,attr,optional"`
-	FromContext *string                    `alloy:"from_context,attr,optional"`
-	Action      Action                     `alloy:"action,attr,optional"`
+	Key           string                     `alloy:"key,attr"`
+	Value         *alloytypes.OptionalSecret `alloy:"value,attr,optional"`
+	FromContext   *string                    `alloy:"from_context,attr,optional"`
+	FromAttribute *string                    `alloy:"from_attribute,attr,optional"`
+	Action        Action                     `alloy:"action,attr,optional"`
 }
 
 var _ syntax.Defaulter = &Header{}
@@ -181,13 +186,24 @@ func (h *Header) Validate() error {
 		return err
 	}
 
+	sources := 0
+	if h.Value != nil {
+		sources++
+	}
+	if h.FromContext != nil {
+		sources++
+	}
+	if h.FromAttribute != nil {
+		sources++
+	}
+
 	switch {
 	case h.Key == "":
 		return fmt.Errorf("key must be set to a non-empty string")
-	case h.FromContext == nil && h.Value == nil:
-		return fmt.Errorf("either value or from_context must be provided")
-	case h.FromContext != nil && h.Value != nil:
-		return fmt.Errorf("either value or from_context must be provided, not both")
+	case sources == 0:
+		return fmt.Errorf("one of value, from_context, or from_attribute must be provided")
+	case sources > 1:
+		return fmt.Errorf("only one of value, from_context, or from_attribute may be provided")
 	}
 
 	return nil

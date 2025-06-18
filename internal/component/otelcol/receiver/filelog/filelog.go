@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/hashicorp/go-multierror"
@@ -63,6 +64,10 @@ type Arguments struct {
 
 	Operators     []otelcol.Operator             `alloy:"operators,attr,optional"`
 	ConsumerRetry otelcol.ConsumerRetryArguments `alloy:"retry_on_failure,block,optional"`
+
+	// Storage is a binding to an otelcol.storage.* component extension which handles
+	// reading and writing state.
+	Storage *extension.ExtensionHandler `alloy:"storage,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -222,12 +227,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
+	// Configure storage if args.Storage is set.
+	if args.Storage != nil {
+		if args.Storage.Extension == nil {
+			return nil, fmt.Errorf("missing storage extension")
+		}
+
+		cfg.StorageID = &args.Storage.ID
+	}
+
 	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Storage != nil {
+		m[args.Storage.ID] = args.Storage.Extension
+	}
+	return m
 }
 
 // Exporters implements receiver.Arguments.
@@ -262,7 +280,7 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, errors.New("'delete_after_read' cannot be used with 'start_at = end'"))
 	}
 
-	_, err := decode.LookupEncoding(args.Encoding)
+	_, err := decode.LookupEncoding(args.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
 	if err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("invalid 'encoding': %w", err))
 	}
@@ -279,7 +297,7 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	if args.Compression != "" && args.Compression != "gzip" {
+	if args.Compression != "" && args.Compression != "gzip" && args.Compression != "auto" {
 		errs = multierror.Append(errs, fmt.Errorf("invalid 'compression' type: %s", args.Compression))
 	}
 

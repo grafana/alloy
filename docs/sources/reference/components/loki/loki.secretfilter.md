@@ -4,15 +4,17 @@ description: Learn about loki.secretfilter
 title: loki.secretfilter
 labels:
   stage: experimental
+  products:
+    - oss
 ---
 
 # `loki.secretfilter`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.secretfilter` receives log entries and redacts sensitive information from them, such as secrets.
-The detection is based on regular expression patterns, defined in the [Gitleaks configuration file][gitleaks] embedded within the component.
-`loki.secretfilter` can also use a custom configuration file based on the Gitleaks configuration file structure.
+`loki.secretfilter` receives log entries and redacts detected secrets from the log lines.
+The detection relies on regular expression patterns, defined in the Gitleaks configuration file embedded within the component.
+`loki.secretfilter` can also use a [custom configuration file](#arguments) based on the [Gitleaks configuration file structure][gitleaks-config].
 
 {{< admonition type="caution" >}}
 Personally Identifiable Information (PII) isn't currently in scope and some secrets could remain undetected.
@@ -24,7 +26,7 @@ Don't rely solely on this component to redact sensitive information.
 This component operates on log lines and doesn't scan labels or other metadata.
 {{< /admonition >}}
 
-[gitleaks]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+[gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Usage
 
@@ -36,33 +38,41 @@ loki.secretfilter "<LABEL>" {
 
 ## Arguments
 
-`loki.secretfilter` supports the following arguments:
+You can use the following arguments with `loki.secretfilter`:
 
-| Name              | Type                 | Description                                                | Default                          | Required |
-| ----------------- | -------------------- | ---------------------------------------------------------- | -------------------------------- | -------- |
-| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                  |                                  | yes      |
-| `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets. | `{}`                             | no       |
-| `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                   | Embedded Gitleaks file           | no       |
-| `include_generic` | `bool`               | Include the generic API key rule.                          | `false`                          | no       |
-| `partial_mask`    | `number`             | Show the first N characters of the secret.                 | `0`                              | no       |
-| `redact_with`     | `string`             | String to use to redact secrets.                           | `<REDACTED-SECRET:$SECRET_NAME>` | no       |
-| `types`           | `map(string)`        | Types of secret to look for.                               | All types                        | no       |
+| Name              | Type                 | Description                                                    | Default                            | Required |
+| ----------------- | -------------------- | -------------------------------------------------------------- | ---------------------------------- | -------- |
+| `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                                    | yes      |
+| `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets.     | `{}`                               | no       |
+| `enable_entropy`  | `bool`               | Enable entropy-based filtering.                                | `false`                            | no       |
+| `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                       | Embedded Gitleaks file             | no       |
+| `include_generic` | `bool`               | Include the generic API key rule.                              | `false`                            | no       |
+| `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. | `""`                               | no       |
+| `partial_mask`    | `int`                | Show the first N characters of the secret.                     | `0`                                | no       |
+| `redact_with`     | `string`             | String to use to redact secrets.                               | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
+| `types`           | `map(string)`        | Types of secret to look for.                                   | All types                          | no       |
+
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
-The Gitleaks configuration file embedded in the component is used if you don't provide the path to a custom configuration file.
+If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.
 
 {{< admonition type="note" >}}
 This component doesn't support all the features of the Gitleaks configuration file.
 It only supports regular expression-based rules, `secretGroup`, and allowlist regular expressions. `regexTarget` only supports the default value `secret`.
-Other features such as `keywords`, `entropy`, `paths`, and `stopwords` aren't supported.
+Other features such as `keywords`, `paths`, and `stopwords` aren't supported.
 The `extend` feature isn't supported.
 If you use a custom configuration file, you must include all the rules you want to use within the configuration file.
 Unsupported fields and values in the configuration file are ignored.
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+The embedded configuration file may change between {{< param "PRODUCT_NAME" >}} versions.
+To ensure consistency, use an external configuration file.
+{{< /admonition >}}
+
 The `types` argument is a map of secret types to look for.
 The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
-For example,  providing the type `grafana` matches the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
+For example, providing the type `grafana` matches the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
 If you don't provide this argument, all rules are used.
 
 {{< admonition type="note" >}}
@@ -81,8 +91,9 @@ Currently, the secret types known to have this behavior are: `aws-access-token`.
 
 The `redact_with` argument is a string that can use variables such as `$SECRET_NAME`, replaced with the matching secret type, and `$SECRET_HASH`, replaced with the SHA1 hash of the secret.
 
-The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`.
+The `include_generic` argument is a boolean that enables the generic API key rule in the Gitleaks configuration file if set to `true`.
 It's disabled by default because it can generate false positives.
+Consider enabling entropy-based filtering if you enable this rule.
 
 The `allowlist` argument is a map of regular expressions to allow matching secrets.
 A secret won't be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.
@@ -91,6 +102,16 @@ The `partial_mask` argument is the number of characters to show from the beginni
 If set to `0`, the entire secret is redacted.
 If a secret isn't at least 6 characters long, it's entirely redacted.
 For short secrets, at most half of the secret is shown.
+
+The `enable_entropy` argument enables entropy-based filtering.
+When you set this to `true`, the entropy of the detected potential secret is calculated and compared against the threshold provided for the matching rule in the configuration file.
+The secret is then redacted only if the entropy is above the threshold.
+This can help reduce false positives.
+
+The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
+This metric tracks how many secrets were redacted in logs from different sources or environments.
+
+[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
 
 ## Blocks
 
@@ -110,7 +131,19 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-`loki.secretfilter` doesn't expose any component-specific debug information.
+`loki.secretfilter` exposes the following Prometheus metrics:
+
+| Name                                                      | Type    | Description                                                                                                   |
+| --------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `loki_secretfilter_processing_duration_seconds`           | Summary | Summary of the time taken to process and redact logs in seconds.                                              |
+| `loki_secretfilter_secrets_allowlisted_total`             | Counter | Number of secrets that matched a rule but were in an allowlist, partitioned by source.                        |
+| `loki_secretfilter_secrets_redacted_by_origin`            | Counter | Number of secrets redacted, partitioned by origin label value.                                                |
+| `loki_secretfilter_secrets_redacted_by_rule_total`        | Counter | Number of secrets redacted, partitioned by rule name.                                                         |
+| `loki_secretfilter_secrets_redacted_total`                | Counter | Total number of secrets that have been redacted.                                                              |
+| `loki_secretfilter_secrets_skipped_entropy_by_rule_total` | Counter | Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name. |
+
+The `origin_label` argument specifies which Loki label value to use for the `secrets_redacted_by_origin` metric.
+This metric tracks how many secrets were redacted in logs from different sources or environments.
 
 ## Example
 

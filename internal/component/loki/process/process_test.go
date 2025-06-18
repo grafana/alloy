@@ -101,7 +101,7 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	wgRun := sync.WaitGroup{}
 
 	wgRun.Add(1)
@@ -161,8 +161,8 @@ func TestJSONLabelsStage(t *testing.T) {
 	// The timestamp in "IN" is different from the one in "OUT".
 	// Even though there are two downstream components, we expect only one "OUT" line to be printed.
 	expectedLiveDebuggingLog := []string{
-		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}",
-		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}",
+		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}, structured_metadata: {}",
+		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
 	}
 	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
@@ -212,7 +212,7 @@ stage.label_keep {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -308,7 +308,7 @@ stage.labels {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -376,7 +376,7 @@ stage.static_labels {
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	ctx, ctxCancel := context.WithCancel(t.Context())
 	defer ctxCancel()
 
 	// Start the loki.process components.
@@ -466,7 +466,7 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 		stopReceiving: make(chan struct{}),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	res.keepSending.Store(true)
 	res.keepUpdating.Store(true)
@@ -646,9 +646,9 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
 		},
 	}
-	ld.SetServiceHost(host)
 	ld.SetEnabled(true)
 	ld.AddCallback(
+		host,
 		"callback1",
 		"",
 		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
@@ -838,7 +838,7 @@ func newTester(t *testing.T) *tester {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 
 	logTimestamp := time.Now()

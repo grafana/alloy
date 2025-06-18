@@ -8,6 +8,7 @@ type Parser interface {
 	StmtType(stmt any) StatementType
 	ParseTableName(t any) string
 	ExtractTableNames(logger log.Logger, digest string, stmt any) []string
+	CleanTruncatedText(sql string) (string, error)
 }
 
 type StatementType string
@@ -18,6 +19,5 @@ var (
 	StatementTypeUpdate StatementType = "update"
 	StatementTypeDelete StatementType = "delete"
 
-	_ Parser = (*XwbSqlParser)(nil)
 	_ Parser = (*TiDBSqlParser)(nil)
 )

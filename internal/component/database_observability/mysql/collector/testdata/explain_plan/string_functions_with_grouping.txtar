@@ -1,0 +1,45 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    LEFT(last_name, 1) as last_name_initial,
+    COUNT(*) as name_count
+FROM employees
+GROUP BY last_name_initial
+ORDER BY name_count DESC\G
+```
+
+-- string_functions_with_grouping.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "30884.60"
+    },
+    "ordering_operation": {
+      "using_filesort": true,
+      "grouping_operation": {
+        "using_temporary_table": true,
+        "using_filesort": false,
+        "table": {
+          "table_name": "employees",
+          "access_type": "ALL",
+          "rows_examined_per_scan": 299556,
+          "rows_produced_per_join": 299556,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "929.00",
+            "eval_cost": "29955.60",
+            "prefix_cost": "30884.60",
+            "data_read_per_join": "38M"
+          },
+          "used_columns": [
+            "emp_no",
+            "last_name"
+          ]
+        }
+      }
+    }
+  }
+}

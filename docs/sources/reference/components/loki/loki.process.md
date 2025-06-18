@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.process
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.process
 ---
 
@@ -65,7 +67,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
 | [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
-| [`stage.sampling`][stage.sampling]                       | Samples logs at a given rate.                                  | no       |
+| [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
 | [`stage.static_labels`][stage.static_labels]             | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata] | Configures a structured metadata processing stage.             | no       |
 | [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |
@@ -255,11 +257,11 @@ The `eventlogmessage` stage extracts data from the Message string that appears i
 
 The following arguments are supported:
 
-| Name                  | Type     | Description                                           | Default   | Required |
-| --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
-| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`   | no       |
-| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`   | no       |
-| `source`              | `string` | Name of the field in the extracted data to parse.     | `message` | no       |
+| Name                  | Type     | Description                                           | Default     | Required |
+| --------------------- | -------- | ----------------------------------------------------- | ----------- | -------- |
+| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`     | no       |
+| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`     | no       |
+| `source`              | `string` | Name of the field in the extracted data to parse.     | `"message"` | no       |
 
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
 If set to `false`, the stage automatically converts them into valid labels replacing invalid characters with underscores.
@@ -751,7 +753,7 @@ stage.labels {
 }
 
 stage.match {
-    selector = "{applbl=\"examplelabel\"}"
+    selector = "{applbl=\"example1\"}"
 
     stage.json {
         expressions = { "msg" = "message" }
@@ -766,7 +768,7 @@ stage.match {
 }
 
 stage.match {
-    selector = "{applbl=\"bar\"} |~ \".*noisy error.*\""
+    selector = "{applbl=\"example2\"} |~ \".*noisy error.*\""
     action   = "drop"
 
     drop_counter_reason = "discard_noisy_errors"
@@ -779,7 +781,7 @@ stage.output {
 
 The first two stages parse the log lines as JSON, decode the `app` value into the shared extracted map as `appname`, and use its value as the `applbl` label.
 
-The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="examplelabel"`.
+The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="example1"`.
 So, for the first line, the nested JSON stage adds `msg="app1 log line"` into the extracted map.
 
 The fourth stage uses the LogQL selector to only execute on lines where `applbl="qux"`. This means it won't match any of the input, and the nested JSON stage doesn't run.
@@ -864,7 +866,7 @@ The following arguments are supported:
 
 | Name                | Type          | Description                                                                         | Default                  | Required |
 | ------------------- | ------------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `buckets`           | `list(float)` | Predefined buckets                                                                    |                          | yes      |
+| `buckets`           | `list(float)` | Predefined buckets                                                                  |                          | yes      |
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as 'stale' and removed.   | `"5m"`                   | no       |
@@ -1125,16 +1127,21 @@ The `stage.regex` inner block configures a processing stage that parses log line
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                                        | Default | Required |
-| ------------ | -------- | ------------------------------------------------------------------ | ------- | -------- |
-| `expression` | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
-| `source`     | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| Name                 | Type     | Description                                                        | Default | Required |
+| -------------------- | -------- | ------------------------------------------------------------------ | ------- | -------- |
+| `expression`         | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
+| `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | `false` | no       |
+
 
 The `expression` field needs to be a RE2 regular expression string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
 The name of the capture group is then used as the key in the extracted map for the matched value.
 
 Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash, for example, `"\\w"` or `"\\S+"`.
+
+When `labels_from_groups` is set to true, any named capture groups from the regex expression are automatically added as labels in addition to being added to the extracted map.
+If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
 If it's set, the stage parses a previously extracted value with the same name.
@@ -1179,6 +1186,28 @@ time: 2022-01-01T01:00:00.000000001Z
 Then, the regular expression stage parses the value for time from the shared values and appends the subsequent key-value pair back into the extracted values map:
 
 ```text
+year: 2022
+```
+
+The following example demonstrates how `labels_from_groups` can automatically add the matched groups as labels:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.regex {
+    expression = "^(?P<year>\\d+)"
+    source = "time"
+    labels_from_groups = true   // Sets up an 'year' label, based on the 'year' capture group's value.
+}
+```
+
+This pipeline produces the same extracted values as before:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
 year: 2022
 ```
 

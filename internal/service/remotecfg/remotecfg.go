@@ -282,7 +282,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	s.fetch()
 	err := s.registerCollector()
-	if err != nil {
+	if err != nil && err != errNoopClient {
 		return err
 	}
 
@@ -302,7 +302,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		select {
 		case <-s.ticker.C:
 			err := s.fetchRemote()
-			if err != nil {
+			if err != nil && err != errNoopClient {
 				level.Error(s.opts.Logger).Log("msg", "failed to fetch remote configuration from the API", "err", err)
 			}
 		case <-s.updateTickerChan:
@@ -354,10 +354,15 @@ func (s *Service) Update(newConfig any) error {
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
 	err = s.registerCollector()
-	s.mut.Unlock()
 	if err != nil {
+		s.mut.Unlock()
 		return err
 	}
+
+	if s.metrics == nil {
+		s.registerMetrics()
+	}
+	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
 	// the updated Arguments, and/or fall back to the updated cache location.
@@ -546,11 +551,7 @@ func (s *Service) setLastLoadedCfgHash(h string) {
 func (s *Service) isEnabled() bool {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
-	enabled := s.args.URL != "" && s.asClient != nil
-	if enabled && s.metrics == nil {
-		s.registerMetrics()
-	}
-	return enabled
+	return s.args.URL != "" && s.asClient != nil
 }
 
 func (s *Service) setPollFrequency(t time.Duration) {

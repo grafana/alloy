@@ -52,12 +52,21 @@ receivers:
         - regex_key: 'severity'
           sort_type: 'numeric'
           ascending: true
+    storage: file_storage
 
 exporters:
   otlp:
     endpoint: database:4317
+
+extensions:
+  file_storage:
+    directory: /var/lib/otelcol/file_storage
+    compaction:
+      directory: /var/lib/otelcol/file_storage
+    fsync: true
     
 service:
+  extensions: [ file_storage ]
   pipelines:
     logs:
       receivers: [filelog]

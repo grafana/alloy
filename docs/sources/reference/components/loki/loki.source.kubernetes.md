@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.kubernetes
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.kubernetes
 ---
 
@@ -47,7 +49,7 @@ You can use the following arguments with `loki.source.kubernetes`:
 | Name         | Type                 | Description                               | Default | Required |
 | ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
-| `targets`    | `list(map(string))`  | List of files to read from.               |         | yes      |
+| `targets`    | `list(map(string))`  | List of targets to tail logs from.        |         | yes      |
 
 Each target in `targets` must have the following labels:
 
@@ -99,7 +101,7 @@ The following arguments are supported:
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |

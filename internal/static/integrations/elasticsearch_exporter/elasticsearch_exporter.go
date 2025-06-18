@@ -1,6 +1,6 @@
 // Package elasticsearch_exporter instantiates the exporter from github.com/justwatchcom/elasticsearch_exporter - replaced for github.com/prometheus-community/elasticsearch_exporter
 // Using the YAML config provided by the agent
-package elasticsearch_exporter //nolint:golint
+package elasticsearch_exporter
 
 import (
 	"context"

@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/filelog"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -32,6 +34,14 @@ func (filelogReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val interface{}) interface{} {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*filelogreceiver.FileLogConfig).StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
 	args := toOtelcolReceiverfilelog(cfg.(*filelogreceiver.FileLogConfig))
 
@@ -51,7 +61,7 @@ func (filelogReceiverConverter) ConvertAndAppend(state *State, id componentstatu
 		)
 	}
 
-	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "filelog"}, label, args)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "receiver", "filelog"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -81,6 +91,12 @@ func toOtelcolReceiverfilelog(cfg *filelogreceiver.FileLogConfig) *filelog.Argum
 		TrimConfig:              toOtelcolTrimConfig(cfg.InputConfig.TrimConfig),
 		Resolver:                filelog.Resolver(cfg.InputConfig.Resolver),
 		DebugMetrics:            common.DefaultValue[filelog.Arguments]().DebugMetrics,
+	}
+
+	if cfg.StorageID != nil {
+		args.Storage = &extension.ExtensionHandler{
+			ID: *cfg.StorageID,
+		}
 	}
 
 	if len(cfg.InputConfig.Attributes) > 0 {

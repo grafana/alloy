@@ -91,13 +91,25 @@ CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
 
+# Determine the golangci-lint binary path using Make functions where possible.
+# Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
+# Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
+# $(wildcard ...) checks for existence. PATH check still uses shell for practicality.
+# Allows override via environment/command line using ?=
+GOLANGCI_LINT_BINARY ?= $(or \
+    $(if $(shell go env GOBIN),$(wildcard $(shell go env GOBIN)/golangci-lint)), \
+    $(wildcard $(shell go env GOPATH)/bin/golangci-lint), \
+    $(shell command -v golangci-lint 2>/dev/null), \
+    golangci-lint \
+)
+
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
-    VERSION GO_TAGS GOEXPERIMENT
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
 
 #
 # Constants for targets
@@ -109,8 +121,10 @@ VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/stdlib
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
+				-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -133,7 +147,7 @@ endif
 
 .PHONY: lint
 lint: alloylint
-	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
+	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
 	$(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
@@ -143,11 +157,11 @@ run-alloylint: alloylint
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more without -race for packages that have known race detection issues. The
-# final command runs tests for all other submodules.
+# final command runs tests for syntax module.
 test:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
 	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
-	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
+	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)

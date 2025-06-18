@@ -1,5 +1,5 @@
 // Package redis_exporter embeds https://github.com/oliver006/redis_exporter
-package redis_exporter //nolint:golint
+package redis_exporter
 
 import (
 	"errors"
@@ -175,7 +175,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 	if c.RedisPasswordFile != "" {
 		password, err := os.ReadFile(c.RedisPasswordFile)
 		if err != nil {
-			return nil, fmt.Errorf("Error loading password file %s: %w", c.RedisPasswordFile, err)
+			return nil, fmt.Errorf("error loading password file %s: %w", c.RedisPasswordFile, err)
 		}
 		exporterConfig.Password = strings.TrimSpace(string(password))
 	}

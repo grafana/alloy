@@ -1,3 +1,16 @@
+otelcol.storage.file "default_fs" {
+	directory = "/var/lib/otelcol/file_storage"
+
+	compaction {
+		directory                     = "/var/lib/otelcol/file_storage"
+		rebound_needed_threshold_mib  = 100
+		rebound_trigger_threshold_mib = 10
+		max_transaction_size          = 65536
+		check_interval                = "5s"
+	}
+	create_directory = false
+}
+
 otelcol.receiver.otlp "default" {
 	grpc {
 		endpoint = "localhost:4317"
@@ -23,4 +36,12 @@ otelcol.exporter.loadbalancing "default" {
 		}
 	}
 	routing_key = "service"
+
+	sending_queue {
+		enabled       = false
+		num_consumers = 0
+		queue_size    = 0
+		sizer         = ""
+		storage       = otelcol.storage.file.default_fs.handler
+	}
 }

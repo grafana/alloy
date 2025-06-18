@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -12,11 +11,11 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	OP_QUERY_TABLES            = "query_tables"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 	QueryTablesName            = "query_tables"
 )
@@ -24,10 +23,9 @@ const (
 const selectQueryTablesSamples = `
 	SELECT
 		digest,
+		digest_text,
 		schema_name,
-		query_sample_text,
-		query_sample_seen,
-		query_sample_timer_wait
+		query_sample_text
 	FROM performance_schema.events_statements_summary_by_digest
 	WHERE schema_name NOT IN ('mysql', 'performance_schema', 'information_schema')
 	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
@@ -37,7 +35,6 @@ type QueryTablesArguments struct {
 	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
-	UseTiDBParser   bool
 
 	Logger log.Logger
 }
@@ -61,14 +58,9 @@ func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		sqlParser:       parser.NewTiDBSqlParser(),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
-	}
-
-	if args.UseTiDBParser {
-		c.sqlParser = parser.NewTiDBSqlParser()
-	} else {
-		c.sqlParser = parser.NewXwbSqlParser()
 	}
 
 	return c, nil
@@ -95,7 +87,7 @@ func (c *QueryTables) Start(ctx context.Context) error {
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.fetchQueryTables(c.ctx); err != nil {
+			if err := c.tablesFromEventsStatements(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
@@ -120,7 +112,7 @@ func (c *QueryTables) Stop() {
 	c.cancel()
 }
 
-func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
+func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
@@ -129,57 +121,25 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var digest, schemaName, sampleText, sampleSeen, sampleTimerWait string
-		err := rs.Scan(&digest, &schemaName, &sampleText, &sampleSeen, &sampleTimerWait)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "err", err)
+		var digest, digestText, schema, sampleText string
+		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schema, "err", err)
 			continue
 		}
 
-		if strings.HasSuffix(sampleText, "...") {
-			// best-effort attempt to detect truncated trailing comment
-			idx := strings.LastIndex(sampleText, "/*")
-			if idx < 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query", "schema", schemaName, "digest", digest)
-				continue
-			}
-
-			trailingText := sampleText[idx:]
-			if strings.LastIndex(trailingText, "*/") >= 0 {
-				level.Debug(c.logger).Log("msg", "skipping parsing truncated query with comment", "schema", schemaName, "digest", digest)
-				continue
-			}
-
-			sampleText = sampleText[:idx]
-		}
-
-		stmt, err := c.sqlParser.Parse(sampleText)
+		stmt, err := c.tryParse(schema, digest, sampleText, digestText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse sql query", "schema", schemaName, "digest", digest, "err", err)
+			// let tryParse log the error
 			continue
 		}
-
-		sampleRedactedText, err := c.sqlParser.Redact(sampleText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", schemaName, "digest", digest, "err", err)
-			continue
-		}
-
-		c.entryHandler.Chan() <- buildLokiEntry(
-			OP_QUERY_TABLES,
-			c.instanceKey,
-			fmt.Sprintf(
-				`schema="%s" digest="%s" query_type="%s" query_sample_seen="%s" query_sample_timer_wait="%s" query_sample_redacted="%s"`,
-				schemaName, digest, c.sqlParser.StmtType(stmt), sampleSeen, sampleTimerWait, sampleRedactedText,
-			),
-		)
 
 		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
+				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
-				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schemaName, digest, table),
+				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
 			)
 		}
 	}
@@ -190,4 +150,31 @@ func (c *QueryTables) fetchQueryTables(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *QueryTables) tryParse(schema, digest, sqlText, fallbackSqlText string) (any, error) {
+	sqlText, err := c.sqlParser.CleanTruncatedText(sqlText)
+	if err != nil {
+		sqlText, err = c.sqlParser.CleanTruncatedText(fallbackSqlText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to handle truncated sql text", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	stmt, err := c.sqlParser.Parse(sqlText)
+	if err != nil {
+		if fallbackSqlText == sqlText {
+			level.Warn(c.logger).Log("msg", "failed to parse sql text (without fallback)", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+
+		stmt, err = c.sqlParser.Parse(fallbackSqlText)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to parse sql text (fallback)", "schema", schema, "digest", digest, "err", err)
+			return nil, err
+		}
+	}
+
+	return stmt, nil
 }

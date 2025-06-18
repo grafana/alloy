@@ -2,6 +2,7 @@ package file
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -124,7 +125,13 @@ func TestTailer(t *testing.T) {
 		func() bool { return true },
 	)
 	require.NoError(t, err)
-	go tailer.Run()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(ctx)
+		close(done)
+	}()
 
 	_, err = logFile.Write([]byte("writing some text\n"))
 	require.NoError(t, err)
@@ -141,10 +148,17 @@ func TestTailer(t *testing.T) {
 		assert.Equal(c, int64(18), pos)
 	}, time.Second, 50*time.Millisecond)
 
-	tailer.Stop()
+	cancel()
+	<-done
 
 	// Run the tailer again
-	go tailer.Run()
+	ctx, cancel = context.WithCancel(t.Context())
+	done = make(chan struct{})
+	go func() {
+		tailer.Run(ctx)
+		close(done)
+	}()
+
 	select {
 	case <-ch1.Chan():
 		t.Fatal("no message should be sent because of the position file")
@@ -161,8 +175,7 @@ func TestTailer(t *testing.T) {
 		require.FailNow(t, "failed waiting for log line")
 	}
 
-	tailer.Stop()
-
+	cancel()
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(logFile.Name(), labels.String())
 		assert.NoError(c, err)
@@ -207,7 +220,8 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		func() bool { return false },
 	)
 	require.NoError(t, err)
-	go tailer.Run()
+	ctx, cancel := context.WithCancel(t.Context())
+	go tailer.Run(ctx)
 
 	_, err = logFile.Write([]byte("writing some text\n"))
 	require.NoError(t, err)
@@ -224,7 +238,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		assert.Equal(c, int64(18), pos)
 	}, time.Second, 50*time.Millisecond)
 
-	tailer.Stop()
+	cancel()
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(logFile.Name(), labels.String())
@@ -234,4 +248,57 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 
 	positionsFile.Stop()
 	require.NoError(t, logFile.Close())
+}
+
+func TestTailerDeleteFileInstant(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	l := util.TestLogger(t)
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+	logFile, err := os.CreateTemp(tempDir, "example")
+	require.NoError(t, err)
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	labels := model.LabelSet{
+		"filename": model.LabelValue(logFile.Name()),
+		"foo":      "bar",
+	}
+	tailer, err := newTailer(
+		newMetrics(nil),
+		l,
+		ch1,
+		positionsFile,
+		logFile.Name(),
+		labels,
+		"",
+		watch.PollingFileWatcherOptions{
+			MinPollFrequency: 25 * time.Millisecond,
+			MaxPollFrequency: 25 * time.Millisecond,
+		},
+		false,
+		func() bool { return true },
+	)
+	require.NoError(t, err)
+
+	// Close the file before running the tailer
+	require.NoError(t, logFile.Close())
+	require.NoError(t, os.Remove(logFile.Name()))
+
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(t.Context())
+		positionsFile.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer deadlocked")
+	}
 }

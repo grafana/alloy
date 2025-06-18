@@ -40,7 +40,7 @@ func Test_Extract(t *testing.T) {
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
 	authType := &otelObj.AuthType
-	require.True(t, "kubeConfig" == *authType)
+	require.Equal(t, string(*authType), "kubeConfig")
 
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
@@ -64,6 +64,8 @@ func Test_ExtractAnnotations(t *testing.T) {
 				"k8s.job.name",
 				"k8s.node.name",
 			]
+
+			otel_annotations = true
 		}
 	
 		output {
@@ -85,6 +87,8 @@ func Test_ExtractAnnotations(t *testing.T) {
 	require.Len(t, extract.Labels, 1)
 	require.Equal(t, extract.Labels[0].KeyRegex, "opentel.*")
 	require.Equal(t, extract.Labels[0].From, "pod")
+
+	require.Equal(t, extract.OtelAnnotations, true)
 }
 
 func Test_FilterNodeEnvironmentVariable(t *testing.T) {
