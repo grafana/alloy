@@ -44,11 +44,10 @@ func TestOTelConfig(t *testing.T) {
 
 	// tests!
 	tt := []struct {
-		name              string
-		cfg               string
-		expectedError     bool
-		expectedErrorText string
-		expectedConfig    string
+		name           string
+		cfg            string
+		expectedError  bool
+		expectedConfig string
 	}{
 		{
 			name:          "disabled",
