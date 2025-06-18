@@ -185,7 +185,7 @@ This example creates an exporter to send data to a locally running Grafana Tempo
 ```alloy
 otelcol.exporter.otlphttp "tempo" {
     client {
-        endpoint = "http://tempo:4317"
+        endpoint = "http://tempo:4318"
         tls {
             insecure             = true
             insecure_skip_verify = true
