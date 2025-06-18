@@ -15,7 +15,7 @@ func Test_collectSQLText(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
 		t.Parallel()
 
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 		disable_query_redaction = true
@@ -31,7 +31,7 @@ func Test_collectSQLText(t *testing.T) {
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
 		t.Parallel()
 
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 	`
@@ -46,7 +46,7 @@ func Test_collectSQLText(t *testing.T) {
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
 		t.Parallel()
 
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 		setup_consumers_collect_interval = "1h"
@@ -62,7 +62,7 @@ func Test_collectSQLText(t *testing.T) {
 
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 	`
@@ -79,14 +79,15 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    false,
+			collector.LocksName:          false,
 		}, actualCollectors)
 	})
 
 	t.Run("enable collectors", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
 	`
 
 		var args Arguments
@@ -101,11 +102,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    true,
+			collector.LocksName:          true,
 		}, actualCollectors)
 	})
 
 	t.Run("disable collectors", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
@@ -123,15 +125,16 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: false,
 			collector.ExplainPlanName:    false,
+			collector.LocksName:          false,
 		}, actualCollectors)
 	})
 
 	t.Run("enable collectors takes precedence over disable collectors", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
+		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
 	`
 
 		var args Arguments
@@ -146,14 +149,15 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    true,
+			collector.LocksName:          true,
 		}, actualCollectors)
 	})
 
 	t.Run("enabling one and disabling others", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		disable_collectors = ["schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
 		enable_collectors = ["query_tables"]
 	`
 
@@ -169,11 +173,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: false,
 			collector.ExplainPlanName:    false,
+			collector.LocksName:          false,
 		}, actualCollectors)
 	})
 
 	t.Run("unknown collectors are ignored", func(t *testing.T) {
-		var exampleDBO11yAlloyConfig = `
+		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
 		enable_collectors = ["some_string"]
@@ -192,6 +197,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySampleName:    false,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    false,
+			collector.LocksName:          false,
 		}, actualCollectors)
 	})
 }
