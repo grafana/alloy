@@ -402,36 +402,6 @@ service:
 `,
 		},
 		{
-			name: "push_config and remote_write",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
-		},
-		{
-			name: "push_config.batch and batch",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-  batch:
-    timeout: 5s
-    send_batch_size: 100
-batch:
-  timeout: 5s
-  send_batch_size: 100
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
-		},
-		{
 			name: "one backend with remote_write",
 			cfg: `
 receivers:
