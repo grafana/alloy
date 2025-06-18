@@ -46,6 +46,8 @@ Main (unreleased)
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.127.0 (@korniltsev)
 
+- Upgrade `otelcol` components from OpenTelemetry v0.127.0 to v0.128.0 (@korniltsev)
+
 v1.9.1
 -----------------
 
