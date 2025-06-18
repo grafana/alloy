@@ -154,6 +154,10 @@ rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
 
+  # -- If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and
+  # ClusterRoleBindings.
+  namespaces: []
+
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
   create: true

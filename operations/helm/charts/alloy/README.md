@@ -160,6 +160,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
 | networkPolicy.policyTypes[1] | string | `"Egress"` |  |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
+| rbac.namespaces | list | `[]` | If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and ClusterRoleBindings. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
