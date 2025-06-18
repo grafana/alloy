@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/beyla/v2/pkg/export/attributes"
 	"github.com/grafana/beyla/v2/pkg/export/debug"
 	"github.com/grafana/beyla/v2/pkg/filter"
+	"github.com/grafana/beyla/v2/pkg/kubeflags"
 	"github.com/grafana/beyla/v2/pkg/services"
 	"github.com/grafana/beyla/v2/pkg/transform"
 	"github.com/stretchr/testify/require"
