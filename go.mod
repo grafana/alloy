@@ -58,7 +58,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.10
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.2.4-alloy
+	github.com/grafana/beyla/v2 v2.2.5-alloy
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20250226083311-4f9f4aacabb5
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -1094,6 +1094,3 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
 // Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
 replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
-
-//todo DO NOT MERGE this, discuss with beyla the approach and a new tag
-replace github.com/grafana/beyla/v2 => github.com/grafana/beyla/v2 v2.2.5-0.20250616095936-3668103fdac7
