@@ -150,6 +150,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
 | namespaceOverride | string | `nil` | Overrides the chart's namespace. |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
+| rbac.namespaces | list | `[]` | If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and ClusterRoleBindings. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
