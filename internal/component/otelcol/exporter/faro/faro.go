@@ -15,13 +15,12 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelcol.exporter.faro",
-		Community: true,
-		Args:      Arguments{},
-		Exports:   otelcol.ConsumerExports{},
+		Name:    "otelcol.exporter.faro",
+		Args:    Arguments{},
+		Exports: otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := faroexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeLogs|exporter.TypeTraces))
 		},
 	})
 }
