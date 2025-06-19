@@ -30,29 +30,18 @@ tasks:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo update
 
-  deploy:namespace:
-    desc: Create grafana-cloud namespace
-    deps: [cluster:create]
-    run: once
-    status:
-      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} get namespace grafana-cloud &>/dev/null
-    cmds:
-      - kubectl --kubeconfig {{.KUBECONFIG}} create namespace grafana-cloud
-
-  deploy:secret:
-    desc: Create grafana-cloud-credentials secret
-    deps: [deploy:namespace]
-    run: once
-    status:
-      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} get secret grafana-cloud-credentials --namespace grafana-cloud &>/dev/null
-    cmds:
-      - kubectl --kubeconfig {{.KUBECONFIG}} create secret generic grafana-cloud-credentials --namespace grafana-cloud --from-literal=GCLOUD_RW_API_KEY='{{.GRAFANA_CLOUD_API_KEY}}' --from-literal=REMOTE_CFG_URL='{{.REMOTE_CFG_URL}}' --from-literal=REMOTE_CFG_USERNAME='{{.REMOTE_CFG_USERNAME}}'
-
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Collector helm chart using local checkout
-    deps: [cluster:create, deploy:secret]
+    deps: [cluster:create]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud -n grafana-cloud --create-namespace {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml --wait
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud 
+        -n grafana-cloud --create-namespace 
+        {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ 
+        --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml 
+        --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
+        --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
+        --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
+        --wait
 
   remove:cloud-onboarding:local:
     desc: Remove Grafana Cloud Collector helm chart
