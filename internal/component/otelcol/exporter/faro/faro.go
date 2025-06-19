@@ -17,7 +17,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.faro",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
