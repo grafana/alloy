@@ -7,6 +7,13 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.8.4
+-----------------
+
+### Bugfixes
+
+- Send profiles concurrently from `pyroscope.ebpf`. (@korniltsev)
+
 v1.8.3
 -----------------
 
