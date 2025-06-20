@@ -26,8 +26,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: grafana/writers-toolkit/publish-technical-documentation-release@8cc658b604c6e05c275af30163a1c7728dfe19b2 # publish-technical-documentation-release/v2
-        # This internal action's version is left as a tag instead of a pinned hash because renovate
-        # does not support this type of tag/version format without custom configuration.
         with:
           release_tag_regexp: "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           release_branch_regexp: "^release/v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
