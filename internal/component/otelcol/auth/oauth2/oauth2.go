@@ -38,9 +38,9 @@ type Arguments struct {
 	ClientSecretFile string                     `alloy:"client_secret_file,attr,optional"`
 	TokenURL         string                     `alloy:"token_url,attr"`
 	EndpointParams   url.Values                 `alloy:"endpoint_params,attr,optional"`
-	Scopes  []string                   `alloy:"scopes,attr,optional"`
-	TLS     otelcol.TLSClientArguments `alloy:"tls,block,optional"`
-	Timeout time.Duration              `alloy:"timeout,attr,optional"`
+	Scopes           []string                   `alloy:"scopes,attr,optional"`
+	TLS              otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
