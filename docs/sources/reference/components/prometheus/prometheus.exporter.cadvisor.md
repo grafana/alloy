@@ -14,6 +14,16 @@ title: prometheus.exporter.cadvisor
 
 The `prometheus.exporter.cadvisor` component collects container metrics using [cAdvisor](https://github.com/google/cadvisor).
 
+{{< admonition type="note" >}}
+Take care when using the `prometheus.exporter.cadvisor` component with [clustering](../../../../get-started/clustering/) enabled.
+
+The default `instance` label set by this exporter is the hostname of the machine running Alloy. Alloy clustering uses consistent
+hashing to distribute targets across the instances. This approach requires the discovered targets to be the same and have the same
+labels across all cluster instances. When using `prometheus.exporter.cadvisor` within a [cluster](../../../../get-started/clustering/)
+of Alloy instances, it is recommended to use a dedicated `prometheus.scrape` component that is used to
+scrape `prometheus.exporter.cadvisor` and does not have clustering enabled.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
