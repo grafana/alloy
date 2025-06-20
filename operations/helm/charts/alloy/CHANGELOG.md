@@ -26,6 +26,7 @@ Unreleased
 1.1.2 (2025-06-26)
 ----------
 - Add NetworkPolicy support. (@TheRealNoob)
+- Add option to not expose container port. (@kun98-liu)
 
 - Update to Grafana Alloy v1.9.2. (@ptodev)
 
