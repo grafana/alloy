@@ -72,6 +72,17 @@ You can see the other available constants in the [constants][] documentation.
 This example has one rule block, but you can have as many as you want.
 Each rule block is applied in order.
 
+> **Note:** Multiple `keep` rules are applied sequentially. If a target fails the first `keep`, it’s dropped immediately—so two separate `keep` rules act like a logical AND. To implement OR logic across multiple criteria, combine them in one rule using multiple `source_labels` and a compound regex.  
+> **Example (OR in one rule):**
+> ```alloy
+> rule {
+>   source_labels = ["__meta_kubernetes_pod_annotation_A", "__meta_kubernetes_pod_label_B"]
+>   regex         = "(true;.*|.*;true)"
+>   action        = "keep"
+> }
+> ```
+
+
 If you run {{< param "PRODUCT_NAME" >}} and navigate to [http://localhost:3000/explore][], you can see the `os` label on the metrics.
 Try querying for `node_context_switches_total` and look at the labels.
 
