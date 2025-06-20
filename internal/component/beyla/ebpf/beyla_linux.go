@@ -645,10 +645,11 @@ func (args *Arguments) Validate() error {
 		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
 			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
 		}
-		if err := args.Discovery.Services.Validate(); err != nil {
-			return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+		if len(args.Discovery.Services) > 0 {
+			if err := args.Discovery.Services.Validate(); err != nil {
+				return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+			}
 		}
-		// TODO: Wire validation for the rest of the Survey-related fields whenever applicable.
 		if len(args.Discovery.Survey) > 0 {
 			if err := args.Discovery.Survey.Validate(); err != nil {
 				return fmt.Errorf("invalid survey configuration: %s", err.Error())
