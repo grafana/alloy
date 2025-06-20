@@ -39,7 +39,7 @@ type Arguments struct {
 	TokenURL         string                     `alloy:"token_url,attr"`
 	EndpointParams   url.Values                 `alloy:"endpoint_params,attr,optional"`
 	Scopes           []string                   `alloy:"scopes,attr,optional"`
-	TLSSetting       otelcol.TLSClientArguments `alloy:"tls,block,optional"`
+	TLS              otelcol.TLSClientArguments `alloy:"tls,block,optional"`
 	Timeout          time.Duration              `alloy:"timeout,attr,optional"`
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -62,7 +62,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 		TokenURL:         args.TokenURL,
 		EndpointParams:   args.EndpointParams,
 		Scopes:           args.Scopes,
-		TLSSetting:       *args.TLSSetting.Convert(),
+		TLS:              *args.TLS.Convert(),
 		Timeout:          args.Timeout,
 	}, nil
 }

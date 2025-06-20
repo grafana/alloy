@@ -79,7 +79,7 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		Endpoint:        cfg.Endpoint,
 		ProxyUrl:        cfg.ProxyURL,
 		Compression:     otelcol.CompressionType(cfg.Compression),
-		TLS:             toTLSClientArguments(cfg.TLSSetting),
+		TLS:             toTLSClientArguments(cfg.TLS),
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
 
