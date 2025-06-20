@@ -7,6 +7,9 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
+  {{- if gt (len .Values.rbac.rules) 0 }}
+  {{- toYaml .Values.rbac.rules | nindent 2 }}
+  {{- else }}
   # Rules which allow discovery.kubernetes to function.
   - apiGroups:
       - ""
@@ -92,7 +95,7 @@ rules:
   - apiGroups: ["extensions"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
-
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

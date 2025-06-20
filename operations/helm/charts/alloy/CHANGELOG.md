@@ -10,6 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 - Add NetworkPolicy support. (@TheRealNoob)
+- Add rbac.rules to customize ClusterRole's rules. (@kun98-liu)
 
 
 1.1.1 (2025-06-05)

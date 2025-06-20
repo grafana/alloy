@@ -156,6 +156,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
 | networkPolicy.policyTypes[1] | string | `"Egress"` |  |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
+| rbac.rules | list | `[]` | Rules to add to ClusterRole for Alloy. If empty, default rules are used. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
