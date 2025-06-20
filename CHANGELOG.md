@@ -17,6 +17,8 @@ Main (unreleased)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
+- (_Experimental_) Added `prometheus.exporter.ssh` custom metrics via ssh for remote hosts. (@EHSchmitt4395)
+
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
