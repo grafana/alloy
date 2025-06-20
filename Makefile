@@ -263,7 +263,7 @@ generate-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./docs
+	go generate ./internal/tools/docs_generator/
 endif
 
 generate-winmanifest:
