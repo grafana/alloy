@@ -200,7 +200,7 @@ func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
 		MaxConnsPerHost:     args.MaxConnsPerHost,
 		IdleConnTimeout:     args.IdleConnTimeout,
 		DisableKeepAlives:   args.DisableKeepAlives,
-		TLSSetting: configtls.ClientConfig{
+		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},
 	}

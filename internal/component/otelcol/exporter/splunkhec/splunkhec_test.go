@@ -20,7 +20,7 @@ func TestConfigConversion(t *testing.T) {
 	expectedCustomise := splunkhecexporter.Config{
 		ClientConfig: confighttp.ClientConfig{
 			Endpoint: "http://localhost:8088", ProxyURL: "",
-			TLSSetting: configtls.ClientConfig{
+			TLS: configtls.ClientConfig{
 				Config: configtls.Config{
 					CAFile:                   "",
 					CAPem:                    "",
@@ -50,7 +50,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              (*confighttp.CookiesConfig)(nil),
+			Cookies:              confighttp.CookiesConfig{},
 		},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
@@ -110,7 +110,7 @@ func TestConfigConversion(t *testing.T) {
 		ClientConfig: confighttp.ClientConfig{
 			Endpoint: "http://localhost:8088",
 			ProxyURL: "",
-			TLSSetting: configtls.ClientConfig{
+			TLS: configtls.ClientConfig{
 				Config: configtls.Config{
 					CAFile:                   "",
 					CAPem:                    "",
@@ -140,7 +140,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              (*confighttp.CookiesConfig)(nil)},
+			Cookies:              confighttp.CookiesConfig{}},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,

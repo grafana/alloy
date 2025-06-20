@@ -74,7 +74,7 @@ func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_con
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     cfg.IdleConnTimeout,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLSSetting.Insecure,
+		InsecureSkipVerify:  cfg.TLS.Insecure,
 	}
 }
 
