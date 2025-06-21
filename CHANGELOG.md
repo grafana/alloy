@@ -49,7 +49,7 @@ Main (unreleased)
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
 
-- Update import path for [yet-another-cloudwatch-exporter](github.com/prometheus-community/yet-another-cloudwatch-exporter) - keeping version the same. (@boweflex)
+- Update import path(s) for [yet-another-cloudwatch-exporter](github.com/prometheus-community/yet-another-cloudwatch-exporter) - updating version to v0.62.0. (@boweflex)
 
 v1.9.1
 -----------------
