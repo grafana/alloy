@@ -23,6 +23,8 @@ type Options struct {
 
 	// Positions interface so tailers can save/restore offsets in log files.
 	Positions positions.Positions
+
+	TailFromEnd bool
 }
 
 // A Manager manages a set of running Tailers.
