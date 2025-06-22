@@ -39,12 +39,17 @@ The component starts a new reader for each of the given `targets` and fans out l
 
 You can use the following arguments with `loki.source.podlogs`:
 
-| Name         | Type                 | Description                               | Default | Required |
-| ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
-| `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
+| Name            | Type                 | Description                                                                       | Default | Required |
+| ------------    | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                         |         | yes      |
+| `tail_from_end` | `bool`               | Start reading from the end of the log stream for newly discovered pod containers. | `false` | no       |
 
 `loki.source.podlogs` searches for `PodLogs` resources on Kubernetes.
 Each `PodLogs` resource describes a set of pods to tail logs from.
+
+When `tail_from_end` is `false` (the default), the component reads all available logs from the Kubernetes API for newly discovered pod containers.
+For long-running pods, this can result in a large volume of logs being processed, which may be rejected by the downstream Loki instance if they are too old.
+Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer.
 
 ## `PodLogs` custom resource
 
