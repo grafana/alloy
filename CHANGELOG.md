@@ -33,6 +33,8 @@ Main (unreleased)
 
 - Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
 
+- Add `tail_from_end` argument to `loki.source.podlogs` to optionally start reading from the end of a log stream for newly discovered pods. (@harshrai654)
+
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
