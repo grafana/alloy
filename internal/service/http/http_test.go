@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
@@ -16,6 +18,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -213,6 +216,124 @@ func TestAuth(t *testing.T) {
 
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+}
+
+func TestMetricsComponentFiltering(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	metric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "my_metric",
+		Help: "test metric",
+	}, []string{"component"})
+	reg.MustRegister(metric)
+	metric.WithLabelValues("a").Set(1)
+	metric.WithLabelValues("b").Set(2)
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		components := r.URL.Query()["component"]
+		g := newFilteredGatherer(reg, components)
+		promhttp.HandlerFor(g, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	}
+
+	s := httptest.NewServer(http.HandlerFunc(handler))
+	defer s.Close()
+
+	cases := []struct {
+		query      string
+		expected   []string
+		unexpected []string
+	}{
+		{"", []string{"my_metric"}, nil},
+		{"?component=a", []string{"a"}, []string{"b"}},
+		{"?component=b", []string{"b"}, []string{"a"}},
+		{"?component=x", nil, []string{"a", "b"}},
+		{"?component=a&component=b", []string{"a", "b"}, nil},
+	}
+
+	for _, c := range cases {
+		t.Run(c.query, func(t *testing.T) {
+			resp, _ := http.Get(s.URL + "/metrics" + c.query)
+			body, _ := io.ReadAll(resp.Body)
+			bodyStr := string(body)
+			for _, want := range c.expected {
+				if want == "my_metric" {
+					if !strings.Contains(bodyStr, want) {
+						t.Errorf("Expected to find %q", want)
+					}
+				} else if !strings.Contains(bodyStr, fmt.Sprintf(`component="%s"`, want)) {
+					t.Errorf("Expected to find component label %q", want)
+				}
+			}
+			for _, avoid := range c.unexpected {
+				if strings.Contains(bodyStr, fmt.Sprintf(`component="%s"`, avoid)) {
+					t.Errorf("Expected component label %q to be filtered out", avoid)
+				}
+			}
+		})
+	}
+}
+
+func TestMetricsComponentFilteringEdgeCases(t *testing.T) {
+	reg := prometheus.NewRegistry()
+
+	// Create a metric without component label
+	metricNoComponent := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "metric_no_component",
+		Help: "metric without component label",
+	})
+	reg.MustRegister(metricNoComponent)
+	metricNoComponent.Set(42)
+
+	// Create a metric family with multiple components
+	multiCompMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "multi_component_metric",
+		Help: "metric with multiple components",
+	}, []string{"component", "other_label"})
+	reg.MustRegister(multiCompMetric)
+	multiCompMetric.WithLabelValues("comp1", "val1").Set(1)
+	multiCompMetric.WithLabelValues("comp2", "val1").Set(2)
+	multiCompMetric.WithLabelValues("comp1", "val2").Set(3)
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		components := r.URL.Query()["component"]
+		g := newFilteredGatherer(reg, components)
+		promhttp.HandlerFor(g, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	}
+
+	s := httptest.NewServer(http.HandlerFunc(handler))
+	defer s.Close()
+
+	cases := []struct {
+		query      string
+		expected   []string
+		unexpected []string
+	}{
+		// When no filter is applied, all metrics should be present
+		{"", []string{"metric_no_component", "multi_component_metric"}, nil},
+		// When filter is applied, metric without component should be excluded
+		{"?component=comp1", []string{`component="comp1"`}, []string{"metric_no_component", `component="comp2"`}},
+		// Multiple values of the same component should be included
+		{"?component=comp1", []string{`other_label="val1"`, `other_label="val2"`}, nil},
+		// Multiple components can be filtered
+		{"?component=comp1&component=comp2", []string{`component="comp1"`, `component="comp2"`}, nil},
+	}
+
+	for _, c := range cases {
+		t.Run(c.query, func(t *testing.T) {
+			resp, _ := http.Get(s.URL + "/metrics" + c.query)
+			body, _ := io.ReadAll(resp.Body)
+			bodyStr := string(body)
+			for _, want := range c.expected {
+				if !strings.Contains(bodyStr, want) {
+					t.Errorf("Expected to find %q in response", want)
+				}
+			}
+			for _, avoid := range c.unexpected {
+				if strings.Contains(bodyStr, avoid) {
+					t.Errorf("Expected %q to be filtered out from response", avoid)
+				}
+			}
+		})
+	}
 }
 
 func Test_Toggle_Auth(t *testing.T) {

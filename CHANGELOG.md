@@ -17,6 +17,8 @@ Main (unreleased)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
+- Added support for filtering `/metrics` output by `component` label via query parameters. This enables limiting the metrics output to selected components using the `?component=` query string. (@irateswami)
+
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
