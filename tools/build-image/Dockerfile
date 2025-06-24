@@ -77,19 +77,14 @@ RUN corepack enable
 #
 # NOTE(rfratto): musl is installed so the Docker binaries from alpine work
 # properly.
-ARG RUST_TOOLCHAIN=1.77
-RUN apt-get update                                                      \
- && apt-get install -qy                                                 \
-      build-essential file zip unzip gettext git                        \
-      musl libsystemd-dev nsis cmake                                    \
-      rpm ruby ruby-dev rubygems                                        \
-      protobuf-compiler libprotobuf-dev yamllint                        \
- && gem install --no-document fpm                                       \
- && rm -rf /var/lib/apt/lists/*                                         \
- && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs           \
-    | sh -s -- -y --profile minimal --default-toolchain $RUST_TOOLCHAIN \
- && /root/.cargo/bin/rustup target add aarch64-unknown-linux-musl       \
- && /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
+RUN apt-get update                                \
+ && apt-get install -qy                           \
+      build-essential file zip unzip gettext git  \
+      musl libsystemd-dev nsis                    \
+      rpm ruby ruby-dev rubygems                  \
+      protobuf-compiler libprotobuf-dev yamllint  \
+ && gem install --no-document fpm                 \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY --from=docker   /usr/bin/docker                     /usr/bin/docker
 COPY --from=docker   /usr/libexec/docker/cli-plugins     /usr/libexec/docker/cli-plugins
@@ -110,4 +105,4 @@ RUN git config --global --add safe.directory \*
 ENV CC viceroycc
 
 ENV GOPATH /go
-ENV PATH /usr/local/go/bin:/go/bin:/root/.cargo/bin/:$PATH
+ENV PATH /usr/local/go/bin:/go/bin:$PATH
