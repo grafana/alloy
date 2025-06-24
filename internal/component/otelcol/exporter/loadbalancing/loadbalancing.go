@@ -430,8 +430,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	return &otelconfiggrpc.ClientConfig{
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
-		Keepalive:  args.Keepalive.Convert(),
+		TLS:       *args.TLS.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 
 		ReadBufferSize:  int(args.ReadBufferSize),
 		WriteBufferSize: int(args.WriteBufferSize),

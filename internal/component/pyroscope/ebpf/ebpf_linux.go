@@ -245,16 +245,18 @@ func tracersFromArgs(args Arguments) string {
 }
 
 func (c *Component) ConsumePprofProfiles(ctx context.Context, pprofs []reporter.PPROF) {
-	for _, pprof := range pprofs {
-		if ctx.Err() != nil {
-			return
-		}
-		appender := c.appendable.Appender()
-		err := appender.Append(ctx, pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
-		if err != nil {
-			_ = level.Error(c.options.Logger).Log("msg", "pprof write", "err", err)
-		}
-	}
+	c.sendProfiles(ctx, pprofs)
+	//
+	//for _, pprof := range pprofs {
+	//	if ctx.Err() != nil {
+	//		return
+	//	}
+	//	appender := c.appendable.Appender()
+	//	err := appender.Append(ctx, pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
+	//	if err != nil {
+	//		_ = level.Error(c.options.Logger).Log("msg", "pprof write", "err", err)
+	//	}
+	//}
 }
 
 func (c *Component) reportUnhealthy(err error) {

@@ -82,7 +82,7 @@ func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.Da
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     cfg.IdleConnTimeout,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLSSetting.Insecure,
+		InsecureSkipVerify:  cfg.TLS.Insecure,
 	}
 }
 

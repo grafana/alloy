@@ -1,0 +1,105 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, e.last_name, s.salary
+FROM employees e
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE s.salary > (SELECT AVG(salary) * 1.5 FROM salaries)
+AND s.to_date = '9999-01-01'\G
+```
+
+-- subquery_with_aggregate.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "394027.81"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "s",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "rows_examined_per_scan": 2838426,
+          "rows_produced_per_join": 94604,
+          "filtered": "3.33",
+          "cost_info": {
+            "read_cost": "261578.34",
+            "eval_cost": "9460.47",
+            "prefix_cost": "289962.60",
+            "data_read_per_join": "1M"
+          },
+          "used_columns": [
+            "emp_no",
+            "salary",
+            "to_date"
+          ],
+          "attached_condition": "((`employees`.`s`.`to_date` = DATE'9999-01-01') and (`employees`.`s`.`salary` > (/* select#2 */ select (avg(`employees`.`salaries`.`salary`) * 1.5) from `employees`.`salaries`)))",
+          "attached_subqueries": [
+            {
+              "dependent": false,
+              "cacheable": true,
+              "query_block": {
+                "select_id": 2,
+                "cost_info": {
+                  "query_cost": "289962.60"
+                },
+                "table": {
+                  "table_name": "salaries",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 2838426,
+                  "rows_produced_per_join": 2838426,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "6120.00",
+                    "eval_cost": "283842.60",
+                    "prefix_cost": "289962.60",
+                    "data_read_per_join": "43M"
+                  },
+                  "used_columns": [
+                    "salary"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "table": {
+          "table_name": "e",
+          "access_type": "eq_ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.s.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 94604,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "94604.74",
+            "eval_cost": "9460.47",
+            "prefix_cost": "394027.81",
+            "data_read_per_join": "12M"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name"
+          ]
+        }
+      }
+    ]
+  }
+}

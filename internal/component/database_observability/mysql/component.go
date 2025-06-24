@@ -53,6 +53,10 @@ type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
 	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
+	ExplainPlanCollectInterval    time.Duration       `alloy:"explain_plan_collect_interval,attr,optional"`
+	ExplainPlanPerCollectRatio    float64             `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	LocksCollectInterval          time.Duration       `alloy:"locks_collect_interval,attr,optional"`
+	LocksThreshold                time.Duration       `alloy:"locks_threshold,attr,optional"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
@@ -63,6 +67,10 @@ type Arguments struct {
 var DefaultArguments = Arguments{
 	CollectInterval:               1 * time.Minute,
 	SetupConsumersCollectInterval: 1 * time.Hour,
+	ExplainPlanCollectInterval:    1 * time.Minute,
+	ExplainPlanPerCollectRatio:    1.0,
+	LocksCollectInterval:          30 * time.Second,
+	LocksThreshold:                1 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -215,6 +223,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SchemaTableName:    true,
 		collector.SetupConsumersName: true,
 		collector.QuerySampleName:    false,
+		collector.ExplainPlanName:    false,
+		collector.LocksName:          false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -328,6 +338,46 @@ func (c *Component) startCollectors() error {
 			return err
 		}
 		c.collectors = append(c.collectors, scCollector)
+	}
+
+	if collectors[collector.LocksName] {
+		locksCollector, err := collector.NewLock(collector.LockArguments{
+			DB:                dbConnection,
+			InstanceKey:       c.instanceKey,
+			CollectInterval:   c.args.LocksCollectInterval,
+			LockWaitThreshold: c.args.LocksThreshold,
+			Logger:            c.opts.Logger,
+			EntryHandler:      entryHandler,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create locks collector", "err", err)
+			return err
+		}
+		if err := locksCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start locks collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, locksCollector)
+	}
+
+	if collectors[collector.ExplainPlanName] {
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+			DB:             dbConnection,
+			InstanceKey:    c.instanceKey,
+			ScrapeInterval: c.args.ExplainPlanCollectInterval,
+			PerScrapeRatio: c.args.ExplainPlanPerCollectRatio,
+			Logger:         c.opts.Logger,
+			EntryHandler:   entryHandler,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
+			return err
+		}
+		if err := epCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start ExplainPlan collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, epCollector)
 	}
 
 	// Connection Info collector is always enabled
