@@ -1,13 +1,10 @@
 package ebpf
 
 import (
-	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 )
 
 type Arguments struct {
@@ -47,67 +44,6 @@ type DeprecatedArguments struct {
 }
 
 // Validate implements syntax.Validator.
-func (arg *Arguments) Validate() error {
+func (args *Arguments) Validate() error {
 	return nil
-}
-
-func (args *Arguments) Convert() (*controller.Config, error) {
-	cfgProtoType, err := controller.ParseArgs()
-	if err != nil {
-		return nil, err
-	}
-
-	if err = cfgProtoType.Validate(); err != nil {
-		return nil, err
-	}
-
-	cfg := new(controller.Config)
-	*cfg = *cfgProtoType
-	cfg.ReporterInterval = args.CollectInterval
-	cfg.SamplesPerSecond = args.SampleRate
-	cfg.Tracers = args.tracers()
-	return cfg, nil
-}
-
-func (args *Arguments) tracers() string {
-	var tracers []string
-	if args.PythonEnabled {
-		tracers = append(tracers, "python")
-	}
-	if args.PerlEnabled {
-		tracers = append(tracers, "perl")
-	}
-	if args.PHPEnabled {
-		tracers = append(tracers, "php")
-	}
-	if args.HotspotEnabled {
-		tracers = append(tracers, "hotspot")
-	}
-	if args.V8Enabled {
-		tracers = append(tracers, "v8")
-	}
-	if args.RubyEnabled {
-		tracers = append(tracers, "ruby")
-	}
-	if args.DotNetEnabled {
-		tracers = append(tracers, "dotnet")
-	}
-	if args.GoEnabled {
-		tracers = append(tracers, "go")
-	}
-	return strings.Join(tracers, ",")
-}
-
-func (args Arguments) targetsOptions(dynamicProfilingPolicy bool) discovery2.TargetsOptions {
-	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
-	for _, t := range args.Targets {
-		targets = append(targets, t.AsMap())
-	}
-	return discovery2.TargetsOptions{
-		Targets:     targets,
-		TargetsOnly: dynamicProfilingPolicy,
-		DefaultTarget: discovery2.DiscoveredTarget{
-			"service_name": "ebpf/unspecified",
-		},
-	}
 }

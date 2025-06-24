@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -95,31 +96,6 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	}
 
 	return res, nil
-}
-
-// NewDefaultArguments create the default settings for a scrape job.
-func NewDefaultArguments() Arguments {
-	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		CollectUserProfile:   true,
-		CollectKernelProfile: true,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		GoEnabled:            false,
-	}
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (arg *Arguments) SetToDefault() {
-	*arg = NewDefaultArguments()
 }
 
 type Component struct {
@@ -231,5 +207,91 @@ func (c *Component) checkTraceFS() {
 		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
 	} else {
 		level.Debug(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
+	}
+}
+
+// NewDefaultArguments create the default settings for a scrape job.
+func NewDefaultArguments() Arguments {
+	return Arguments{
+		CollectInterval:      15 * time.Second,
+		SampleRate:           19,
+		ContainerIDCacheSize: 1024,
+		CollectUserProfile:   true,
+		CollectKernelProfile: true,
+		Demangle:             "none",
+		PythonEnabled:        true,
+		PerlEnabled:          true,
+		PHPEnabled:           true,
+		HotspotEnabled:       true,
+		RubyEnabled:          true,
+		V8Enabled:            true,
+		DotNetEnabled:        true,
+		GoEnabled:            false,
+	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	*args = NewDefaultArguments()
+}
+
+func (args *Arguments) Convert() (*controller.Config, error) {
+	cfgProtoType, err := controller.ParseArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfgProtoType.Validate(); err != nil {
+		return nil, err
+	}
+
+	cfg := new(controller.Config)
+	*cfg = *cfgProtoType
+	cfg.ReporterInterval = args.CollectInterval
+	cfg.SamplesPerSecond = args.SampleRate
+	cfg.Tracers = args.tracers()
+	return cfg, nil
+}
+
+func (args *Arguments) tracers() string {
+	var tracers []string
+	if args.PythonEnabled {
+		tracers = append(tracers, "python")
+	}
+	if args.PerlEnabled {
+		tracers = append(tracers, "perl")
+	}
+	if args.PHPEnabled {
+		tracers = append(tracers, "php")
+	}
+	if args.HotspotEnabled {
+		tracers = append(tracers, "hotspot")
+	}
+	if args.V8Enabled {
+		tracers = append(tracers, "v8")
+	}
+	if args.RubyEnabled {
+		tracers = append(tracers, "ruby")
+	}
+	if args.DotNetEnabled {
+		tracers = append(tracers, "dotnet")
+	}
+	if args.GoEnabled {
+		tracers = append(tracers, "go")
+	}
+	return strings.Join(tracers, ",")
+}
+
+func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) discovery2.TargetsOptions {
+	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
+	for _, t := range args.Targets {
+		targets = append(targets, t.AsMap())
+	}
+	return discovery2.TargetsOptions{
+		Targets:     targets,
+		TargetsOnly: dynamicProfilingPolicy,
+		DefaultTarget: discovery2.DiscoveredTarget{
+			"service_name": "ebpf/unspecified",
+		},
 	}
 }
