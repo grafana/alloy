@@ -13,11 +13,11 @@ import (
 
 const maxSendConcurrency = 32
 
-func (c *Component) sendProfiles(ctx context.Context, pprofs []reporter.PPROF) {
+func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 	var err error
 	start := time.Now()
 	pool := workerPool{}
-	n := len(pprofs)
+	n := len(ps)
 	pool.run(min(maxSendConcurrency, n))
 	queued := 0
 	ctx, cancel := context.WithTimeout(ctx, c.args.CollectInterval)
@@ -27,7 +27,7 @@ func (c *Component) sendProfiles(ctx context.Context, pprofs []reporter.PPROF) {
 		level.Debug(c.options.Logger).Log("msg", "sent profiles", "duration", time.Since(start), "queued", queued)
 	}()
 	j := 0
-	for _, p := range pprofs {
+	for _, p := range ps {
 		serviceName := p.Labels.Get("service_name")
 		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
 		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(p.Raw)))

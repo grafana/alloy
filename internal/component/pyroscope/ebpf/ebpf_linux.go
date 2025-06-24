@@ -6,7 +6,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -41,7 +40,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	cfg, err := createConfigFromArguments(args)
+	cfg, err := args.Convert()
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		return nil, err
 	}
 	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery := discovery2.NewTargetProducer(cgroups, targetsOptions(dynamicProfilingPolicy, args))
+	discovery := discovery2.NewTargetProducer(cgroups, args.targetsOptions(dynamicProfilingPolicy))
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
@@ -85,7 +84,9 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, res)
+	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+		res.sendProfiles(ctx, ps)
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func (c *Component) Run(ctx context.Context) error {
 				return nil
 			case newArgs := <-c.argsUpdate:
 				c.args = newArgs
-				c.targetFinder.Update(targetsOptions(c.dynamicProfilingPolicy, c.args))
+				c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
 			}
 		}
@@ -181,82 +182,6 @@ func (c *Component) Update(args component.Arguments) error {
 		_ = level.Debug(c.options.Logger).Log("msg", "dropped args update")
 	}
 	return nil
-}
-
-func targetsOptions(dynamicProfilingPolicy bool, args Arguments) discovery2.TargetsOptions {
-	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
-	for _, t := range args.Targets {
-		targets = append(targets, t.AsMap())
-	}
-	return discovery2.TargetsOptions{
-		Targets:     targets,
-		TargetsOnly: dynamicProfilingPolicy,
-		DefaultTarget: discovery2.DiscoveredTarget{
-			"service_name": "unspecified",
-		},
-	}
-}
-
-func createConfigFromArguments(args Arguments) (*controller.Config, error) {
-	cfgProtoType, err := controller.ParseArgs()
-	if err != nil {
-		return nil, err
-	}
-
-	if err = cfgProtoType.Validate(); err != nil {
-		return nil, err
-	}
-
-	cfg := new(controller.Config)
-	*cfg = *cfgProtoType
-	cfg.ReporterInterval = args.CollectInterval
-	cfg.SamplesPerSecond = args.SampleRate
-	cfg.Tracers = tracersFromArgs(args)
-	return cfg, nil
-}
-
-func tracersFromArgs(args Arguments) string {
-	var tracers []string
-	if args.PythonEnabled {
-		tracers = append(tracers, "python")
-	}
-	if args.PerlEnabled {
-		tracers = append(tracers, "perl")
-	}
-	if args.PHPEnabled {
-		tracers = append(tracers, "php")
-	}
-	if args.HotspotEnabled {
-		tracers = append(tracers, "hotspot")
-	}
-	if args.V8Enabled {
-		tracers = append(tracers, "v8")
-	}
-	if args.RubyEnabled {
-		tracers = append(tracers, "ruby")
-	}
-	if args.DotNetEnabled {
-		tracers = append(tracers, "dotnet")
-	}
-	if args.GoEnabled {
-		tracers = append(tracers, "go")
-	}
-	return strings.Join(tracers, ",")
-}
-
-func (c *Component) ConsumePprofProfiles(ctx context.Context, pprofs []reporter.PPROF) {
-	c.sendProfiles(ctx, pprofs)
-	//
-	//for _, pprof := range pprofs {
-	//	if ctx.Err() != nil {
-	//		return
-	//	}
-	//	appender := c.appendable.Appender()
-	//	err := appender.Append(ctx, pprof.Labels, []*pyroscope.RawSample{{RawProfile: pprof.Raw}})
-	//	if err != nil {
-	//		_ = level.Error(c.options.Logger).Log("msg", "pprof write", "err", err)
-	//	}
-	//}
 }
 
 func (c *Component) reportUnhealthy(err error) {
@@ -305,6 +230,6 @@ func (c *Component) checkTraceFS() {
 	if err != nil {
 		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
 	} else {
-		level.Error(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
+		level.Debug(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
 	}
 }

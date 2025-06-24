@@ -35,6 +35,12 @@ type PPROFConsumer interface {
 	ConsumePprofProfiles(ctx context.Context, p []PPROF)
 }
 
+type PPROFConsumerFunc func(ctx context.Context, p []PPROF)
+
+func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) {
+	f(ctx, p)
+}
+
 type Config struct {
 	CGroupCacheElements      uint32
 	ReportInterval           time.Duration
