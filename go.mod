@@ -1108,4 +1108,4 @@ require (
 	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
 )
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250617081732-9ffecf0667b1
+replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc

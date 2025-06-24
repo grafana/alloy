@@ -45,7 +45,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize, cfg)
+	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize)
 	if err != nil {
 		return nil, err
 	}
