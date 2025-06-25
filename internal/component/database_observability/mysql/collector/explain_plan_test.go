@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -1525,7 +1524,7 @@ func TestExplainPlan(t *testing.T) {
 				nextSeen,
 			))
 			lastSeen = nextSeen
-			err := c.fetchExplainPlans(context.Background())
+			err := c.fetchExplainPlans(t.Context())
 			require.NoError(t, err)
 		})
 
@@ -1541,7 +1540,7 @@ func TestExplainPlan(t *testing.T) {
 				"some_query_text",
 				lastSeen.Add(time.Second*5),
 			))
-			err := c.fetchExplainPlans(context.Background())
+			err := c.fetchExplainPlans(t.Context())
 			require.NoError(t, err)
 		})
 	})
