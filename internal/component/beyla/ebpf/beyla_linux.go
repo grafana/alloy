@@ -154,6 +154,7 @@ func serviceConvert[Attr any](
 	s Service,
 	convertFunc func(string) (Attr, error),
 	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, error) {
+
 	var paths Attr
 	var kubernetes map[string]*Attr
 	var podLabels map[string]*Attr
@@ -269,6 +270,7 @@ func convertKubernetesAttributes[T any, Attr any](
 	getters []func(T) (string, string),
 	convertFunc func(string) (Attr, error),
 ) (map[string]*Attr, error) {
+
 	metadata := map[string]*Attr{}
 	for _, getter := range getters {
 		alloyAttr, beylaAttr := getter(args)
