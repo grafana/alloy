@@ -90,13 +90,13 @@ func (a *Arguments) logDeprecatedFields(logger log.Logger) {
 		level.Warn(logger).Log("msg", "the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.UseApi != nil {
-		level.Warn(logger).Log("msg", "the `use_api` inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		level.Warn(logger).Log("msg", "the `use_api` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.Where != nil {
-		level.Warn(logger).Log("msg", "the `where_clause` inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		level.Warn(logger).Log("msg", "the `where_clause` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.V2 != nil {
-		level.Warn(logger).Log("msg", "the `enable_v2_collector` inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		level.Warn(logger).Log("msg", "the `enable_v2_collector` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 }
 

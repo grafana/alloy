@@ -72,9 +72,9 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
 {{< admonition type="note" >}}
-In previous versions of Alloy there used to be a `msmq` block.
-It is still allowed in Alloy confguration files but its usage now is a no-op.
-Users are advised to remove it from their confguration files because it will be removed completely in upcoming Alloy releases.
+Starting with release 1.9.0, the `msmq` block is deprecated.
+It will be removed in a future release.
+You can still include this block in your configuration files. However, its usage is now a no-op.
 {{< /admonition >}}
 
 [dfsr]: #dfsr
@@ -283,9 +283,9 @@ For a service to be included, it must match the regular expression specified by 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 {{< admonition type="note" >}}
-In previous versions of Alloy there used to be `use_api`, `where_clause`, and `enable_v2_collector` attributes.
-They are still allowed in Alloy confguration files but their usage is now a no-op.
-Users are advised to remove them from their confguration files because they will be removed completely in upcoming Alloy releases.
+Starting with release 1.9.0, the `use_api`, `where_clause`, and `enable_v2_collector` attributes are deprecated.
+They will be removed in a future release.
+You can still include these attributes in your configuration files. However, their usage is now a no-op.
 {{< /admonition >}}
 
 ### `smb`
