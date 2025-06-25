@@ -4,7 +4,7 @@ go 1.24.3
 
 require (
 	cloud.google.com/go/pubsub v1.45.3
-	connectrpc.com/connect v1.16.2
+	connectrpc.com/connect v1.18.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.9.0
 	github.com/Azure/go-autorest/autorest v0.11.29
@@ -52,7 +52,7 @@ require (
 	github.com/google/cadvisor v0.47.0
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.7.0
-	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db
+	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -71,7 +71,7 @@ require (
 	github.com/grafana/loki/v3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
-	github.com/grafana/pyroscope/ebpf v0.4.9
+	github.com/grafana/pyroscope/ebpf v0.4.10
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -187,7 +187,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.16.1
-	github.com/prometheus/prometheus v0.300.1 // replaced by a fork of v2.54.1 further down this file
+	github.com/prometheus/prometheus v0.302.1 // replaced by a fork of v2.54.1 further down this file
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.28.0
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3
