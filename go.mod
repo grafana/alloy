@@ -187,7 +187,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.6.0
 	github.com/prometheus/procfs v0.16.1
-	github.com/prometheus/prometheus v0.300.1 // replaced by a fork of v2.54.1 further down this file
+	github.com/prometheus/prometheus v0.302.1 // replaced by a fork of v2.54.1 further down this file
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.28.0
 	github.com/richardartoul/molecule v1.0.1-0.20240531184615-7ca0df43c0b3
