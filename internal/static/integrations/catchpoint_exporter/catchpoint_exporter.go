@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
@@ -34,8 +35,7 @@ func (c *Config) exporterConfig() *collector.Config {
 	}
 }
 
-// Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.Port, nil
 }
 
