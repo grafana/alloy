@@ -3,7 +3,6 @@
 package ebpf
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -239,36 +238,7 @@ func (c *Component) collectProfiles(ctx context.Context) error {
 		return fmt.Errorf("ebpf session collectProfiles %w", err)
 	}
 	level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-	bytesSent := 0
-	for _, builder := range builders.Builders {
-		// check if the context is done
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		serviceName := builder.Labels.Get("service_name")
-		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
-
-		buf := bytes.NewBuffer(nil)
-		_, err := builder.Write(buf)
-		if err != nil {
-			return fmt.Errorf("ebpf profile encode %w", err)
-		}
-		rawProfile := buf.Bytes()
-
-		appender := c.appendable.Appender()
-		bytesSent += len(rawProfile)
-		c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
-
-		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err = appender.Append(ctx, builder.Labels, samples)
-		if err != nil {
-			level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
-			continue
-		}
-	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
+	c.sendProfiles(ctx, builders)
 	return nil
 }
 
