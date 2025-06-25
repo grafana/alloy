@@ -3,6 +3,7 @@ package windows
 import (
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -135,7 +136,7 @@ func TestConvert(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	conf := args.Convert()
+	conf := args.Convert(log.NewNopLogger())
 
 	require.Equal(t, "textfile,cpu", conf.EnabledCollectors)
 	require.Equal(t, "example", conf.Exchange.EnabledList)
