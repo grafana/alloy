@@ -1493,6 +1493,7 @@ func TestExplainPlan(t *testing.T) {
 
 		lastSeen := time.Now().Add(-time.Hour)
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		c, err := NewExplainPlan(ExplainPlanArguments{
 			DB:             db,
@@ -1524,7 +1525,7 @@ func TestExplainPlan(t *testing.T) {
 				nextSeen,
 			))
 			lastSeen = nextSeen
-			err := c.fetchExplainPlans(t.Context())
+			err := c.populateQueryCache(t.Context())
 			require.NoError(t, err)
 		})
 
@@ -1540,7 +1541,7 @@ func TestExplainPlan(t *testing.T) {
 				"some_query_text",
 				lastSeen.Add(time.Second*5),
 			))
-			err := c.fetchExplainPlans(t.Context())
+			err := c.populateQueryCache(t.Context())
 			require.NoError(t, err)
 		})
 	})
