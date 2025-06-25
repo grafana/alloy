@@ -76,6 +76,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no       |
 | `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no       |
 | `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no       |
+| `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
+| `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -237,9 +239,10 @@ In some scenarios, Beyla instruments a wide variety of services, such as a Kuber
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-The same properties are available for both `services` and `exclude_services` blocks.
+The same properties are available for both `services`, `exclude_services`, and `survey` blocks.
 The `services` block configures the services to discover for the component.
 The `exclude_services` block configures the services to exclude for the component.
+The `survey` block configures the services that the component will emit information for.
 
 | Name              | Type     | Description                                                                     | Default | Required |
 | ----------------- | -------- | ------------------------------------------------------------------------------- | ------- | -------- |
@@ -256,6 +259,9 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
+
+If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
+This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
 
 #### `default_exclude_services`
 
