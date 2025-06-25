@@ -671,10 +671,11 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 				Discovery: Discovery{
-					Services: Services{}, // Empty services
+					Services: Services{}, // Empty services and
+					Survey:   Services{}, // survey blocks.
 				},
 			},
-			wantErr: "discovery.services is required when application features are enabled",
+			wantErr: "discovery.services or discovery.survey is required when application features are enabled",
 		},
 		{
 			name: "valid application configuration",
