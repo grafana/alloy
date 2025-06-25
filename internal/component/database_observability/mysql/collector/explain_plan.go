@@ -31,14 +31,15 @@ const (
 
 const selectDigestsForExplainPlan = `
 	SELECT
-		CURRENT_SCHEMA,
+		SCHEMA_NAME,
 		DIGEST,
-		SQL_TEXT
-	FROM performance_schema.events_statements_history
-	WHERE TIMER_END > DATE_SUB(NOW(), INTERVAL 1 DAY)
-	AND SQL_TEXT IS NOT NULL
+		QUERY_SAMPLE_TEXT,
+		LAST_SEEN
+	FROM performance_schema.events_statements_summary_by_digest
+	WHERE LAST_SEEN > ?
+	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
+	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
@@ -458,6 +459,7 @@ type ExplainPlanArguments struct {
 	ScrapeInterval time.Duration
 	PerScrapeRatio float64
 	EntryHandler   loki.EntryHandler
+	LastSeen       time.Time
 
 	Logger log.Logger
 }
@@ -471,6 +473,7 @@ type ExplainPlan struct {
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
+	lastSeen         time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -497,6 +500,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		queryCache:     make([]queryInfo, 0),
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
+		lastSeen:       args.LastSeen,
 		logger:         log.With(args.Logger, "collector", ExplainPlanName),
 		running:        atomic.NewBool(false),
 	}, nil
@@ -548,7 +552,7 @@ func (c *ExplainPlan) Stop() {
 }
 
 func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan)
+	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan, c.lastSeen)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return err
@@ -563,11 +567,15 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		}
 
 		var qi queryInfo
-		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText); err != nil {
+		var ls time.Time
+		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
 		c.queryCache = append(c.queryCache, qi)
+		if ls.After(c.lastSeen) {
+			c.lastSeen = ls
+		}
 	}
 	// Calculate batch size based on current cache size
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))

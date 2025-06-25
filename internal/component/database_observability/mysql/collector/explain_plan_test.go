@@ -1,14 +1,18 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func stringPtr(s string) *string {
@@ -1474,4 +1478,71 @@ func TestExplainPlanOutput(t *testing.T) {
 			require.Equal(t, test.result, output)
 		})
 	}
+}
+
+func TestExplainPlan(t *testing.T) {
+	t.Run("last seen", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
+			"version",
+		}).AddRow(
+			"8.0.32",
+		))
+
+		lastSeen := time.Now().Add(-time.Hour)
+		lokiClient := loki_fake.NewClient(func() {})
+
+		c, err := NewExplainPlan(ExplainPlanArguments{
+			DB:             db,
+			Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+			InstanceKey:    "mysql-db",
+			ScrapeInterval: time.Second,
+			PerScrapeRatio: 1,
+			EntryHandler:   lokiClient,
+			LastSeen:       lastSeen,
+		})
+		require.NoError(t, err)
+
+		t.Run("uses argument value on first request", func(t *testing.T) {
+			nextSeen := lastSeen.Add(time.Second * 45)
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				lastSeen.Add(time.Second*5),
+			).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				nextSeen,
+			))
+			lastSeen = nextSeen
+			err := c.fetchExplainPlans(context.Background())
+			require.NoError(t, err)
+		})
+
+		t.Run("uses oldest last seen value on subsequent requests", func(t *testing.T) {
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				lastSeen.Add(time.Second*5),
+			))
+			err := c.fetchExplainPlans(context.Background())
+			require.NoError(t, err)
+		})
+	})
 }

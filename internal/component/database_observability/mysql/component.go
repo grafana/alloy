@@ -55,6 +55,7 @@ type Arguments struct {
 	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
 	ExplainPlanCollectInterval    time.Duration       `alloy:"explain_plan_collect_interval,attr,optional"`
 	ExplainPlanPerCollectRatio    float64             `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	ExplainPlanInitialLookback    time.Duration       `alloy:"explain_plan_initial_lookback,attr,optional"`
 	LocksCollectInterval          time.Duration       `alloy:"locks_collect_interval,attr,optional"`
 	LocksThreshold                time.Duration       `alloy:"locks_threshold,attr,optional"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
@@ -69,6 +70,7 @@ var DefaultArguments = Arguments{
 	SetupConsumersCollectInterval: 1 * time.Hour,
 	ExplainPlanCollectInterval:    1 * time.Minute,
 	ExplainPlanPerCollectRatio:    1.0,
+	ExplainPlanInitialLookback:    24 * time.Hour,
 	LocksCollectInterval:          30 * time.Second,
 	LocksThreshold:                1 * time.Second,
 }
@@ -368,6 +370,7 @@ func (c *Component) startCollectors() error {
 			PerScrapeRatio: c.args.ExplainPlanPerCollectRatio,
 			Logger:         c.opts.Logger,
 			EntryHandler:   entryHandler,
+			LastSeen:       time.Now().Add(-c.args.ExplainPlanInitialLookback),
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
