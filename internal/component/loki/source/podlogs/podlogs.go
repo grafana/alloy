@@ -47,6 +47,7 @@ type Arguments struct {
 
 	Selector          config.LabelSelector `alloy:"selector,block,optional"`
 	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
+	TailFromEnd       bool                 `alloy:"tail_from_end,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -240,9 +241,10 @@ func (c *Component) updateTailer(args Arguments) error {
 	}
 
 	managerOpts := &kubetail.Options{
-		Client:    clientSet,
-		Handler:   loki.NewEntryHandler(c.handler.Chan(), func() {}),
-		Positions: c.positions,
+		Client:      clientSet,
+		Handler:     loki.NewEntryHandler(c.handler.Chan(), func() {}),
+		Positions:   c.positions,
+		TailFromEnd: args.TailFromEnd,
 	}
 	c.lastOptions = managerOpts
 
