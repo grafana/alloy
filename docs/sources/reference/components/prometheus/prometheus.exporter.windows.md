@@ -71,6 +71,12 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
 | [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
+{{< admonition type="note" >}}
+In previous versions of Alloy there used to be a `msmq` block.
+It is still allowed in Alloy confguration files but its usage now is a no-op.
+Users are advised to remove it from their confguration files because it will be removed completely in upcoming Alloy releases.
+{{< /admonition >}}
+
 [dfsr]: #dfsr
 [dns]: #dns
 [exchange]: #exchange
@@ -275,6 +281,12 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 For a service to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+
+{{< admonition type="note" >}}
+In previous versions of Alloy there used to be `use_api`, `where_clause`, and `enable_v2_collector` attributes.
+They are still allowed in Alloy confguration files but their usage is now a no-op.
+Users are advised to remove them from their confguration files because they will be removed completely in upcoming Alloy releases.
+{{< /admonition >}}
 
 ### `smb`
 
