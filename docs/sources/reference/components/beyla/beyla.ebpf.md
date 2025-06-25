@@ -501,13 +501,13 @@ You can set `direction` to `ingress`, `egress`, or `both` (default).
 
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
-| Name              | Type           | Description                                                                              | Default       | Required |
-| ----------------- | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
-| `ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
-| `ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
-| `patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
-| `unmatched`       | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
-| `wildcard_char`   | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
+| Name               | Type           | Description                                                                              | Default       | Required |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
+| `ignore_mode`      | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
+| `ignored_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
+| `patterns`         | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
+| `unmatched`        | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
+| `wildcard_char`    | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
 
 `ignore_mode` properties are:
 
@@ -515,7 +515,7 @@ The `routes` block configures the routes to match HTTP paths into user-provided 
 * `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
 * `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
 
-`patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
+`patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:
