@@ -292,22 +292,22 @@ func TestExplainPlanRedactor(t *testing.T) {
 	}
 }
 
-func TestExplainPlanOutputInvalidJSON(t *testing.T) {
-	notJsonData := []byte("not json data")
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
-	require.Error(t, err)
-	require.ErrorContains(t, err, "failed to get query block: Key path not found")
-}
-
-func TestExplainPlanOutputUnknownOperation(t *testing.T) {
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
-	require.NoError(t, err)
-	require.Equal(t, explainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
-}
-
 func TestExplainPlanOutput(t *testing.T) {
+	t.Run("invalid json", func(t *testing.T) {
+		notJsonData := []byte("not json data")
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get query block: Key path not found")
+	})
+
+	t.Run("unknown operation", func(t *testing.T) {
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+		require.NoError(t, err)
+		require.Equal(t, explainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
+	})
+
 	currentTime := time.Now().Format(time.RFC3339)
 	tests := []struct {
 		dbVersion string
