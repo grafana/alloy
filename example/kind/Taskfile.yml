@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   KUBECONFIG: build/kubeconfig.yaml
-  CLUSTERNAME: alloy-example  
+  CLUSTERNAME: alloy-example
 
 tasks:
   cluster:create:
@@ -34,10 +34,11 @@ tasks:
     desc: Deploy Grafana Cloud Collector helm chart using local checkout
     deps: [cluster:create]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud 
-        -n grafana-cloud --create-namespace 
-        {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-collector/ 
-        --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml 
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
+        -n monitoring --create-namespace
+        {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-onboarding/
+        --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml
+        --set "cluster.name=$(kubectl config current-context)"
         --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
         --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
         --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
@@ -45,9 +46,8 @@ tasks:
 
   remove:cloud-onboarding:local:
     desc: Remove Grafana Cloud Collector helm chart
-    deps: [cluster:create]
     cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n grafana-cloud
+      - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
 
   expose:
     desc: Expose all services on localhost via port-forward
