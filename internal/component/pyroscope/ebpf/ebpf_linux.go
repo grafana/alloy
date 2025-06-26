@@ -126,13 +126,18 @@ func (c *Component) Run(ctx context.Context) error {
 			time.Sleep(c.cfg.ReporterInterval)
 			continue
 		}
-		defer ctlr.Shutdown()
-		c.reportHealthy()
 		break
 	}
 	if err != nil {
 		return err
 	}
+	c.reportHealthy()
+	defer func() {
+		ctlr.Shutdown()
+		if c.cfg.FileObserver != nil {
+			c.cfg.FileObserver.Cleanup()
+		}
+	}()
 
 	var g run.Group
 	g.Add(func() error {
