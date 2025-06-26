@@ -52,6 +52,13 @@ Main (unreleased)
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
 
+### Other changes
+
+-  Add no-op blocks and attributes to the `prometheus.exporter.windows` component (@ptodev).
+   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`, 
+   `where_clause`, and `use_api` attributes in the `service` block. 
+   This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
+
 v1.9.1
 -----------------
 
