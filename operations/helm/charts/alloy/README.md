@@ -166,7 +166,10 @@ useful if just using the default DaemonSet isn't sufficient.
 | rbac.rules[1] | object | `{"apiGroups":[""],"resources":["pods","pods/log","namespaces"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.kubernetes` component. |
 | rbac.rules[2] | object | `{"apiGroups":["monitoring.grafana.com"],"resources":["podlogs"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.podlogs` component. |
 | rbac.rules[3] | object | `{"apiGroups":["monitoring.coreos.com"],"resources":["prometheusrules"],"verbs":["get","list","watch"]}` | Rules required for the `mimir.rules.kubernetes` component. |
+| rbac.rules[4] | object | `{"apiGroups":["monitoring.coreos.com"],"resources":["podmonitors","servicemonitors","probes","scrapeconfigs"],"verbs":["get","list","watch"]}` | Rules required for the `prometheus.operator.*` components. |
 | rbac.rules[5] | object | `{"apiGroups":[""],"resources":["events"],"verbs":["get","list","watch"]}` | Rules required for the `loki.source.kubernetes_events` component. |
+| rbac.rules[6] | object | `{"apiGroups":[""],"resources":["configmaps","secrets"],"verbs":["get","list","watch"]}` | Rules required for the `remote.kubernetes.*` components. |
+| rbac.rules[7] | object | `{"apiGroups":["apps","extensions"],"resources":["replicasets"],"verbs":["get","list","watch"]}` | Rules required for the `otelcol.processor.k8sattributes` component. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |

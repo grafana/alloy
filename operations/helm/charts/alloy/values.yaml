@@ -176,7 +176,7 @@ rbac:
     - apiGroups: ["monitoring.coreos.com"]
       resources: ["prometheusrules"]
       verbs: ["get", "list", "watch"]
-    # Rules for the `prometheus.operator.*` components.
+    # -- Rules required for the `prometheus.operator.*` components.
     - apiGroups: ["monitoring.coreos.com"]
       resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
       verbs: ["get", "list", "watch"]
@@ -184,11 +184,11 @@ rbac:
     - apiGroups: [""]
       resources: ["events"]
       verbs: ["get", "list", "watch"]
-    # needed for the `remote.kubernetes.*` components.
+    # -- Rules required for the `remote.kubernetes.*` components.
     - apiGroups: [""]
       resources: ["configmaps", "secrets"]
       verbs: ["get", "list", "watch"]
-    # needed for the `otelcol.processor.k8sattributes` component.
+    # -- Rules required for the `otelcol.processor.k8sattributes` component.
     - apiGroups: ["apps", "extensions"]
       resources: ["replicasets"]
       verbs: ["get", "list", "watch"]
