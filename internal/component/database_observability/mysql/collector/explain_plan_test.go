@@ -1496,13 +1496,13 @@ func TestExplainPlan(t *testing.T) {
 		defer lokiClient.Stop()
 
 		c, err := NewExplainPlan(ExplainPlanArguments{
-			DB:             db,
-			Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
-			InstanceKey:    "mysql-db",
-			ScrapeInterval: time.Second,
-			PerScrapeRatio: 1,
-			EntryHandler:   lokiClient,
-			LastSeen:       lastSeen,
+			DB:              db,
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+			InstanceKey:     "mysql-db",
+			ScrapeInterval:  time.Second,
+			PerScrapeRatio:  1,
+			EntryHandler:    lokiClient,
+			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
 

@@ -364,13 +364,13 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.ExplainPlanName] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:             dbConnection,
-			InstanceKey:    c.instanceKey,
-			ScrapeInterval: c.args.ExplainPlanCollectInterval,
-			PerScrapeRatio: c.args.ExplainPlanPerCollectRatio,
-			Logger:         c.opts.Logger,
-			EntryHandler:   entryHandler,
-			LastSeen:       time.Now().Add(-c.args.ExplainPlanInitialLookback),
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			ScrapeInterval:  c.args.ExplainPlanCollectInterval,
+			PerScrapeRatio:  c.args.ExplainPlanPerCollectRatio,
+			Logger:          c.opts.Logger,
+			EntryHandler:    entryHandler,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlanInitialLookback),
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)

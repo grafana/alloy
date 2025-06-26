@@ -454,12 +454,12 @@ type queryInfo struct {
 }
 
 type ExplainPlanArguments struct {
-	DB             *sql.DB
-	InstanceKey    string
-	ScrapeInterval time.Duration
-	PerScrapeRatio float64
-	EntryHandler   loki.EntryHandler
-	LastSeen       time.Time
+	DB              *sql.DB
+	InstanceKey     string
+	ScrapeInterval  time.Duration
+	PerScrapeRatio  float64
+	EntryHandler    loki.EntryHandler
+	InitialLookback time.Time
 
 	Logger log.Logger
 }
@@ -500,7 +500,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		queryCache:     make([]queryInfo, 0),
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
-		lastSeen:       args.LastSeen,
+		lastSeen:       args.InitialLookback,
 		logger:         log.With(args.Logger, "collector", ExplainPlanName),
 		running:        atomic.NewBool(false),
 	}, nil
