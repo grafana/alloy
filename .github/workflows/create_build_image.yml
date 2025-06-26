@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         build:
-          - runtime: golang:1.24.3-alpine3.21
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.24.3-bookworm
+          - runtime: golang:1.24.4-alpine3.21
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.24.4-bookworm
             suffix: "-boringcrypto"
     runs-on: ubuntu-latest
     steps:
