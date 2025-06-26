@@ -57,8 +57,8 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`     | no       |
 | `cache_rounds`            | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |          | no       |
 | `collect_interval`        | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`  | no       |
-| `collect_kernel_profile`  | `bool`                   | A flag to enable or disable collection of kernelspace profiles.                                                      | `true`   | no       |
-| `collect_user_profile`    | `bool`                   | A flag to enable or disable collection of userspace profiles.                                                        | `true`   | no       |
+| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernelspace profiles.                                           | `true`   | no       |
+| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of userspace profiles.                                             | `true`   | no       |
 | `container_id_cache_size` | `int`                    | The size of the PID -> container ID table LRU cache.                                                                 | `1024`   | no       |
 | `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, or `full`.                              | `"none"` | no       |
 | `dotnet_enabled`          | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`   | no       |

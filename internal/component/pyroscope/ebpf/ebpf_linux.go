@@ -216,8 +216,6 @@ func NewDefaultArguments() Arguments {
 		CollectInterval:      15 * time.Second,
 		SampleRate:           19,
 		ContainerIDCacheSize: 1024,
-		CollectUserProfile:   true,
-		CollectKernelProfile: true,
 		Demangle:             "none",
 		PythonEnabled:        true,
 		PerlEnabled:          true,

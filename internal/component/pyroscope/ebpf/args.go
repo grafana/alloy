@@ -12,8 +12,6 @@ type Arguments struct {
 	Targets              []discovery.Target     `alloy:"targets,attr,optional"`
 	CollectInterval      time.Duration          `alloy:"collect_interval,attr,optional"`
 	SampleRate           int                    `alloy:"sample_rate,attr,optional"`
-	CollectUserProfile   bool                   `alloy:"collect_user_profile,attr,optional"`
-	CollectKernelProfile bool                   `alloy:"collect_kernel_profile,attr,optional"`
 	PythonEnabled        bool                   `alloy:"python_enabled,attr,optional"`
 	PerlEnabled          bool                   `alloy:"perl_enabled,attr,optional"`
 	PHPEnabled           bool                   `alloy:"php_enabled,attr,optional"`
@@ -42,6 +40,10 @@ type DeprecatedArguments struct {
 	SymbolsMapSize int `alloy:"symbols_map_size,attr,optional"`
 	// deprecated
 	PIDMapSize int `alloy:"pid_map_size,attr,optional"`
+	// deprecated
+	CollectUserProfile bool `alloy:"collect_user_profile,attr,optional"`
+	// deprecated
+	CollectKernelProfile bool `alloy:"collect_kernel_profile,attr,optional"`
 }
 
 // Validate implements syntax.Validator.
