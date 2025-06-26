@@ -41,6 +41,7 @@ Main (unreleased)
 
 - Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
 
+- Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
 
 ### Bugfixes
 
