@@ -8,9 +8,12 @@ changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
 Unreleased
-----------
-- Add NetworkPolicy support. (@TheRealNoob)
 
+### Enhancements
+
+- Add NetworkPolicy support. (@TheRealNoob)
+- Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
+- Allow for customizing the specific RBAC rules being created. (@petewall)
 
 1.1.1 (2025-06-05)
 ----------
