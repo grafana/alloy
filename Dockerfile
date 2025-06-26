@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.19 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.20 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
