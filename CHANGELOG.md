@@ -46,6 +46,8 @@ Main (unreleased)
 
 - Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
 
+- Fix path for correct injection of version into constants at build time
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
