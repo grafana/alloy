@@ -1,45 +1,3 @@
-{{- define "alloy.rbac.rules.resourced" -}}
-# Rules which allow discovery.kubernetes to function.
-- apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
-  resources: ["endpoints", "endpointslices", "ingresses", "nodes", "nodes/proxy", "nodes/metrics", "pods", "services"]
-  verbs: ["get", "list", "watch"]
-# Rules which allow loki.source.kubernetes and loki.source.podlogs to work.
-- apiGroups: [""]
-  resources: ["pods", "pods/log", "namespaces"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["monitoring.grafana.com"]
-  resources: ["podlogs"]
-  verbs: ["get", "list", "watch"]
-# Rules which allow mimir.rules.kubernetes to work.
-- apiGroups: ["monitoring.coreos.com"]
-  resources: ["prometheusrules"]
-  verbs: ["get", "list", "watch"]
-# Rules for prometheus.kubernetes.*
-- apiGroups: ["monitoring.coreos.com"]
-  resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
-  verbs: ["get", "list", "watch"]
-# Rules which allow eventhandler to work.
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["get", "list", "watch"]
-# needed for remote.kubernetes.*
-- apiGroups: [""]
-  resources: ["configmaps", "secrets"]
-  verbs: ["get", "list", "watch"]
-# needed for otelcol.processor.k8sattributes
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["extensions"]
-  resources: ["replicasets"]
-  verbs: ["get", "list", "watch"]
-{{- end }}
-
-{{- define "alloy.rbac.rules.nonResourced" -}}
-- nonResourceURLs: ["/metrics"]
-  verbs: ["get"]
-{{- end }}
-
 {{- if .Values.rbac.create }}
   {{- if .Values.rbac.namespaces }}
     {{- range $namespace := .Values.rbac.namespaces }}
@@ -53,7 +11,7 @@ metadata:
     {{- include "alloy.labels" $ | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
-{{ include "alloy.rbac.rules.resourced" $ | indent 2 }}
+  {{- $.Values.rbac.rules | toYaml | nindent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -82,8 +40,9 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
-{{ include "alloy.rbac.rules.resourced" . | indent 2 }}
-{{ include "alloy.rbac.rules.nonResourced" . | indent 2 }}
+  {{- .Values.rbac.rules | toYaml | nindent 2 }}
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
