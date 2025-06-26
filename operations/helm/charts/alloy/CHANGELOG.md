@@ -8,6 +8,7 @@ changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
 Unreleased
+----------
 
 ### Enhancements
 
