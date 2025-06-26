@@ -22,7 +22,6 @@ type Arguments struct {
 	V8Enabled            bool                   `alloy:"v8_enabled,attr,optional"`
 	DotNetEnabled        bool                   `alloy:"dotnet_enabled,attr,optional"`
 	GoEnabled            bool                   `alloy:"go_enabled,attr,optional"`
-	PIDMapSize           int                    `alloy:"pid_map_size,attr,optional"`
 	Demangle             string                 `alloy:"demangle,attr,optional"`
 	ContainerIDCacheSize uint32                 `alloy:"container_id_cache_size,attr,optional"`
 	DeprecatedArguments  DeprecatedArguments    `alloy:",squash"`
@@ -41,6 +40,8 @@ type DeprecatedArguments struct {
 	GoTableFallback bool `alloy:"go_table_fallback,attr,optional"`
 	// deprecated
 	SymbolsMapSize int `alloy:"symbols_map_size,attr,optional"`
+	// deprecated
+	PIDMapSize int `alloy:"pid_map_size,attr,optional"`
 }
 
 // Validate implements syntax.Validator.

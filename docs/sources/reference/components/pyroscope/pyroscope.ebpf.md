@@ -51,7 +51,7 @@ The component configures and starts a new eBPF profiling job to collect performa
 You can use the following arguments with `pyroscope.ebpf`:
 
 | Name                      | Type                     | Description                                                                                                          | Default  | Required |
-| ------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+|---------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------|----------|----------|
 | `forward_to`              | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |          | yes      |
 | `targets`                 | `list(map(string))`      | List of targets to group profiles by container ID.                                                                   |          | yes      |
 | `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`     | no       |
@@ -67,11 +67,11 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
 | `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
 | `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
-| `pid_map_size`            | `int`                    | The size of eBPF PID map.                                                                                            | `2048`   | no       |
+| `pid_map_size`            | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`   | no       |
 | `python_enabled`          | `bool`                   | A flag to enable or disable python profiling.                                                                        | `true`   | no       |
 | `ruby_enabled`            | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`   | no       |
 | `same_file_cache_size`    | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache.                       | `8`      | no       |
-| `sample_rate`             | `int`                    | How many times per second to collect profile samples.                                                                | `97`     | no       |
+| `sample_rate`             | `int`                    | How many times per second to collect profile samples.                                                                | `19`     | no       |
 | `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of eBPF symbols map .                                             | `16384`  | no       |
 | `v8_enabled`              | `bool`                   | A flag to enable/disable V8 profiling.                                                                               | `true`   | no       |
 
