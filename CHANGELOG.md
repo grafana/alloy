@@ -319,8 +319,6 @@ v1.10.0
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
-- Add the ability to use Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings (@petewall)
-
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
