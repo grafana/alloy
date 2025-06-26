@@ -25,6 +25,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: awscloudwatchreceiver.Config{
 				Region: "us-west-2",
 				Logs: &awscloudwatchreceiver.LogsConfig{
+					StartFrom:           "",
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
 					Groups: awscloudwatchreceiver.GroupConfig{
@@ -156,6 +157,32 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 		},
+		{
+			testName: "start_from configuration set",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					poll_interval = "1m"
+					start_from = "2025-06-25T00:00:00Z"
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs: &awscloudwatchreceiver.LogsConfig{
+					StartFrom:           "2025-06-25T00:00:00Z",
+					PollInterval:        time.Minute,
+					MaxEventsPerRequest: 1000,
+					Groups: awscloudwatchreceiver.GroupConfig{
+						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+							Limit:   50,
+							Streams: awscloudwatchreceiver.StreamConfig{},
+						},
+						NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -232,6 +259,18 @@ func TestArguments_Validate(t *testing.T) {
 				output {}
 			`,
 			expectedError: "both autodiscover and named configs are configured, Only one or the other is permitted",
+		},
+		{
+			testName: "invalid start_from configuration set",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					poll_interval = "1m"
+					start_from = "earliest"
+				}
+				output {}
+			`,
+			expectedError: "invalid start_from time format",
 		},
 	}
 

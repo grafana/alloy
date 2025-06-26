@@ -33,6 +33,8 @@ Main (unreleased)
 
 - Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
 
+- Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
+
 ### Bugfixes
 
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
