@@ -42,4 +42,4 @@ extract {
 
 These rules add the `component` and `version` tags to the spans or metrics.
 
-You can set the `from` attribute to either `"pod"` or `"namespace"`.
+You can set the `from` attribute to `"pod"`, `"namespace"`, `"node"`, or `"deployment"`.
