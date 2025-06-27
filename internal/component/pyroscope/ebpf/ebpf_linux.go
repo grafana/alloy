@@ -128,6 +128,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 			// update targets
 			c.args = newArgs
+			for _, tt := range newArgs.Targets {
+				c.options.Logger.Log("target_update", tt.String())
+			}
 			c.session.UpdateTargets(targetsOptionFromArgs(c.args))
 			c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
 			err := c.session.Update(convertSessionOptions(c.args, c.metrics))
@@ -294,8 +297,11 @@ func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
 	}
 	return sd.TargetsOptions{
 		Targets:            targets,
-		TargetsOnly:        true,
+		TargetsOnly:        false,
 		ContainerCacheSize: args.ContainerIDCacheSize,
+		DefaultTarget: map[string]string{
+			"service_name": "ebpf/default_target",
+		},
 	}
 }
 
