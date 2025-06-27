@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-2022, windows-2019]
-    runs-on: ${{ matrix.os }}
+    runs-on: github-hosted-windows-x64-large
     steps:
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.

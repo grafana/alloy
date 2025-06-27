@@ -87,6 +87,7 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       -f ./Dockerfile.windows                \
+      --isolation=hyperv                     \
       .
 
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
