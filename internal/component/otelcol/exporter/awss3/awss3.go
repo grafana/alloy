@@ -128,6 +128,10 @@ type S3Uploader struct {
 	Compression       configcompression.Type `alloy:"compression,attr,optional"`
 	ACL               string                 `alloy:"acl,attr,optional"`
 	StorageClass      string                 `alloy:"storage_class,attr,optional"`
+
+	RetryMode        string        `alloy:"retry_mode,attr,optional"`
+	RetryMaxAttempts int           `alloy:"retry_max_attempts,attr,optional"`
+	RetryMaxBackoff  time.Duration `alloy:"retry_max_backoff,attr,optional"`
 }
 
 func (args *S3Uploader) SetToDefault() {
@@ -138,6 +142,9 @@ func (args *S3Uploader) SetToDefault() {
 		S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
 		Compression:       "none",
 		StorageClass:      "STANDARD",
+		RetryMode:         awss3exporter.DefaultRetryMode,
+		RetryMaxAttempts:  awss3exporter.DefaultRetryMaxAttempts,
+		RetryMaxBackoff:   awss3exporter.DefaultRetryMaxBackoff,
 	}
 }
 
@@ -155,10 +162,9 @@ func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 		Compression:       args.Compression,
 		ACL:               args.ACL,
 		StorageClass:      args.StorageClass,
-		// todo: allow configuring retries https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/39509
-		RetryMode:        awss3exporter.DefaultRetryMode,
-		RetryMaxAttempts: awss3exporter.DefaultRetryMaxAttempts,
-		RetryMaxBackoff:  awss3exporter.DefaultRetryMaxBackoff,
+		RetryMode:         args.RetryMode,
+		RetryMaxAttempts:  args.RetryMaxAttempts,
+		RetryMaxBackoff:   args.RetryMaxBackoff,
 	}
 }
 
