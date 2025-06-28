@@ -17,6 +17,7 @@ import (
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/web/api"
 	"github.com/grafana/alloy/internal/web/ui"
+	"github.com/grafana/alloy/modules/graphql"
 )
 
 // ServiceName defines the name used for the UI service.
@@ -83,6 +84,7 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 
 	fa := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
 	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
+	graphql.RegisterRoutes(s.opts.UIPrefix, r)
 	ui.RegisterRoutes(s.opts.UIPrefix, r)
 
 	return s.opts.UIPrefix, r

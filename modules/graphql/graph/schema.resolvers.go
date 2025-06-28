@@ -16,6 +16,11 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
 }
 
+// Components is the resolver for the components field.
+func (r *queryResolver) Components(ctx context.Context) ([]*model.Component, error) {
+	panic(fmt.Errorf("not implemented: Components - components"))
+}
+
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	return r.todos, nil

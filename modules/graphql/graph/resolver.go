@@ -2,7 +2,9 @@
 
 package graph
 
-import "github.com/grafana/alloy/modules/graphql/graph/model"
+import (
+	"github.com/grafana/alloy/modules/graphql/graph/model"
+)
 
 // This file will not be regenerated automatically.
 //

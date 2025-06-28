@@ -2,6 +2,19 @@
 #
 # https://gqlgen.com/getting-started/
 
+type Query {
+  components: [Component!]!
+  todos: [Todo!]!
+}
+
+type Component {
+  id: ID!
+  name: String!
+  description: String!
+}
+
+# ========================= EXAMPLE STUFF =========================
+
 type Todo {
   id: ID!
   text: String!
@@ -12,10 +25,6 @@ type Todo {
 type User {
   id: ID!
   name: String!
-}
-
-type Query {
-  todos: [Todo!]!
 }
 
 input NewTodo {
