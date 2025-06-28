@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && (arm64 || amd64) && pyroscope_ebpf
 
 // the build tag is to avoid unnecessary compilation of symtab
 
