@@ -2,6 +2,7 @@
 package basic
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
@@ -13,6 +14,11 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/pipeline"
+)
+
+var (
+	errNoCredentialSource = errors.New("no credential source provided") //nolint:gofmt
+	errNoPasswordProvided = errors.New("no password provided")
 )
 
 func init() {
@@ -31,8 +37,10 @@ func init() {
 
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
-	Username string            `alloy:"username,attr"`
-	Password alloytypes.Secret `alloy:"password,attr"`
+	Username string            `alloy:"username,attr,optional"`
+	Password alloytypes.Secret `alloy:"password,attr,optional"`
+
+	HtpasswdFile string `alloy:"htpasswd_file,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -43,6 +51,24 @@ var _ auth.Arguments = Arguments{}
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
+}
+
+// Validate implements syntax.Validator
+func (args Arguments) Validate() error {
+	// check if no argument was provided
+	if args.Username == "" && args.Password == "" && args.HtpasswdFile == "" {
+		return errNoCredentialSource
+	}
+	// the downstream basicauthextension package supports having both inline
+	// and htpasswd files, so we should not error out in case both are
+	// provided
+
+	// check if password was not provided when username is provided
+	if args.Username != "" && args.Password == "" {
+		return errNoPasswordProvided
+	}
+
+	return nil
 }
 
 // ConvertClient implements auth.Arguments.
@@ -57,11 +83,17 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 
 // ConvertServer implements auth.Arguments.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
-	return &basicauthextension.Config{
-		Htpasswd: &basicauthextension.HtpasswdSettings{
-			Inline: fmt.Sprintf("%s:%s", args.Username, args.Password),
-		},
-	}, nil
+	c := &basicauthextension.Config{
+		Htpasswd: &basicauthextension.HtpasswdSettings{},
+	}
+	if args.HtpasswdFile != "" {
+		c.Htpasswd.File = args.HtpasswdFile
+	}
+	if args.Username != "" && args.Password != "" {
+		c.Htpasswd.Inline = fmt.Sprintf("%s:%s", args.Username, args.Password)
+	}
+
+	return c, nil
 }
 
 // AuthFeatures implements auth.Arguments.

@@ -16,6 +16,7 @@ Main (unreleased)
 - Add the `otelcol.exporter.faro` exporter to export traces and logs to Faro endpoint. (@mar4uk)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal) 
 
 ### Enhancements
 
