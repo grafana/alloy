@@ -355,6 +355,7 @@ v1.10.0
 - Add the `otelcol.receiver.faro` receiver to receive traces and logs from the Grafana Faro Web SDK. (@mar4uk)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
+- Add htpasswd file based authentication for `otelcol.auth.basic` (@pkarakal) 
 
 ### Enhancements
 
