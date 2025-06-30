@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-kit/log"
@@ -180,7 +179,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	}
 
 	c.lastUptime = uptime
-	c.timerBookmark = uptimeSinceOverflow(uptime)
+	c.timerBookmark = UptimeSinceOverflow(uptime)
 	return nil
 }
 
@@ -293,7 +292,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = c.calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64)
+		row.TimestampMilliseconds = CalculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -307,8 +306,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			continue
 		}
 
-		cpuTime := picosecondsToMilliseconds(row.CPUTime)
-		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
+		cpuTime := PicosecondsToMilliseconds(row.CPUTime)
+		elapsedTime := PicosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
 		logMessage := fmt.Sprintf(
 			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
@@ -339,12 +338,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				OP_QUERY_SAMPLE,
 				c.instanceKey,
 				logMessage,
-				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				int64(MillisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}
 
 		if row.WaitEventID.Valid {
-			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			waitTime := PicosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
 				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
@@ -369,7 +368,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				OP_WAIT_EVENT,
 				c.instanceKey,
 				waitLogMessage,
-				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				int64(MillisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}
 	}
@@ -382,30 +381,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 {
-	// timer indicates event timing since server startup.
-	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
-	// We need to account for this overflow when calculating the timestamp.
-
-	// Knowing the number of overflows that occurred, we can calculate how much overflow time to compensate.
-	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
-	overflowTime := float64(previousOverflows) * picosecondsOverflowInSeconds
-	// We then add this overflow compensation to the server start time, and also add the timer value (remember this is counted from server start).
-	// The resulting value is the timestamp in seconds at which an event happened.
-	timerSeconds := picosecondsToSeconds(timer)
-	timestampSeconds := serverStartTime + overflowTime + timerSeconds
-
-	return secondsToMilliseconds(timestampSeconds)
-}
-
-func calculateNumberOfOverflows(uptime float64) int {
-	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
-}
-
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline
-	currentOverflows := calculateNumberOfOverflows(uptime)
-	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
+	currentOverflows := CalculateNumberOfOverflows(uptime)
+	previousOverflows := CalculateNumberOfOverflows(c.lastUptime)
 	switch {
 	case currentOverflows > previousOverflows:
 		// if we have just overflowed, collect both the beginning and end of the timeline
@@ -415,43 +394,7 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 		c.timerBookmark = 0
 	}
 
-	limit := uptimeSinceOverflow(uptime)
+	limit := UptimeSinceOverflow(uptime)
 
 	return timerClause, limit
-}
-
-// uptimeSinceOverflow calculates the uptime "modulo" overflows (if any): it returns the remainder of the uptime value with any
-// overflowed time removed
-func uptimeSinceOverflow(uptime float64) float64 {
-	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
-	return secondsToPicoseconds(uptime - overflowAdjustment)
-}
-
-var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
-
-const (
-	picosecondsPerSecond      float64 = 1e12
-	millisecondsPerSecond     float64 = 1e3
-	millisecondsPerPicosecond float64 = 1e9
-	nanosecondsPerMillisecond float64 = 1e6
-)
-
-func picosecondsToSeconds(picoseconds float64) float64 {
-	return picoseconds / picosecondsPerSecond
-}
-
-func picosecondsToMilliseconds(picoseconds float64) float64 {
-	return picoseconds / millisecondsPerPicosecond
-}
-
-func millisecondsToNanoseconds(milliseconds float64) float64 {
-	return milliseconds * nanosecondsPerMillisecond
-}
-
-func secondsToPicoseconds(seconds float64) float64 {
-	return seconds * picosecondsPerSecond
-}
-
-func secondsToMilliseconds(seconds float64) float64 {
-	return seconds * millisecondsPerSecond
 }

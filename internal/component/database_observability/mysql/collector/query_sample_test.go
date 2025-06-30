@@ -1625,7 +1625,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 		mock.ExpectQuery(selectUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
 			"uptime",
 		}).AddRow(
-			picosecondsToSeconds(math.MaxUint64) + 5,
+			PicosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
 		c, err := NewQuerySample(QuerySampleArguments{DB: db})
@@ -1832,8 +1832,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				"now",
 				"uptime",
 			}).AddRow(
-				picosecondsToSeconds(math.MaxUint64)+15,
-				picosecondsToSeconds(math.MaxUint64)+10,
+				PicosecondsToSeconds(math.MaxUint64)+15,
+				PicosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
@@ -1869,7 +1869,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
 
-		assert.EqualValues(t, picosecondsToSeconds(math.MaxUint64)+10, c.lastUptime)
+		assert.EqualValues(t, PicosecondsToSeconds(math.MaxUint64)+10, c.lastUptime)
 		assert.Equal(t, 10e12, c.timerBookmark)
 	})
 
@@ -1883,8 +1883,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				"now",
 				"uptime",
 			}).AddRow(
-				picosecondsToSeconds(math.MaxUint64)+15,
-				picosecondsToSeconds(math.MaxUint64)+10,
+				PicosecondsToSeconds(math.MaxUint64)+15,
+				PicosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs(
@@ -1925,8 +1925,8 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				"now",
 				"uptime",
 			}).AddRow(
-				picosecondsToSeconds(math.MaxUint64)+18,
-				picosecondsToSeconds(math.MaxUint64)+13,
+				PicosecondsToSeconds(math.MaxUint64)+18,
+				PicosecondsToSeconds(math.MaxUint64)+13,
 			),
 		)
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
@@ -1955,7 +1955,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		}))
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
 
-		assert.Equal(t, picosecondsToSeconds(math.MaxUint64)+13, c.lastUptime)
+		assert.Equal(t, PicosecondsToSeconds(math.MaxUint64)+13, c.lastUptime)
 		assert.Equal(t, 13e12, c.timerBookmark)
 	})
 
@@ -1968,7 +1968,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				"now",
 				"uptime",
 			}).AddRow(
-				picosecondsToSeconds(math.MaxUint64)+15,
+				PicosecondsToSeconds(math.MaxUint64)+15,
 				10,
 			),
 		)
@@ -2072,7 +2072,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(PicosecondsToSeconds(math.MaxUint64)+15, 10))
 
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
@@ -2090,7 +2090,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
-		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(PicosecondsToSeconds(math.MaxUint64)+15, 10))
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
 			2e12,
 			10e12,
@@ -2152,54 +2152,6 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	})
 }
 
-func TestQuerySample_calculateWallTime(t *testing.T) {
-	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
-		c := &QuerySample{}
-		serverStartTime := float64(2)
-		timer := 2e12 // Timer indicates event timing, counted since server startup. 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-		assert.Equalf(t, float64(4000), result, "got %f, want 4000", result)
-	})
-
-	t.Run("calculates the timestamp, taking into account the overflows", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := 2e12 // 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 18446749073.709553, result, "got %f, want 18446749073.709553", result)
-	})
-
-	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := float64(math.MaxUint64 - 5)
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 3.6893491147419106e+10, result, "got %f, want 3.6893491147419106e+10", result)
-	})
-}
-
-func TestQuerySample_calculateNumberOfOverflows(t *testing.T) {
-	testCases := map[string]struct {
-		expected uint64
-		uptime   float64
-	}{
-		"0 overflows": {0, 5},
-		"1 overflow":  {1, picosecondsToSeconds(math.MaxUint64) + 5},
-		"2 overflows": {2, picosecondsToSeconds(math.MaxUint64)*2 + 5},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert.EqualValues(t, tc.expected, calculateNumberOfOverflows(tc.uptime))
-		})
-	}
-}
-
 func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 	tests := map[string]struct {
 		lastUptime          float64
@@ -2211,25 +2163,25 @@ func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 			lastUptime:          99,
 			uptime:              1000,
 			expectedTimerClause: endOfTimeline,
-			expectedLimit:       secondsToPicoseconds(1000),
+			expectedLimit:       SecondsToPicoseconds(1000),
 		},
 		"just overflowed": {
 			lastUptime:          99,
-			uptime:              picosecondsToSeconds(float64(math.MaxUint64)) + 10,
+			uptime:              PicosecondsToSeconds(float64(math.MaxUint64)) + 10,
 			expectedTimerClause: beginningAndEndOfTimeline, // switches clause
-			expectedLimit:       secondsToPicoseconds(10),  // uptime "modulo" overflows
+			expectedLimit:       SecondsToPicoseconds(10),  // uptime "modulo" overflows
 		},
 		"already overflowed once": {
-			lastUptime:          picosecondsToSeconds(float64(math.MaxUint64)) + 5,
-			uptime:              picosecondsToSeconds(float64(math.MaxUint64)) + 10,
+			lastUptime:          PicosecondsToSeconds(float64(math.MaxUint64)) + 5,
+			uptime:              PicosecondsToSeconds(float64(math.MaxUint64)) + 10,
 			expectedTimerClause: endOfTimeline,
-			expectedLimit:       secondsToPicoseconds(10),
+			expectedLimit:       SecondsToPicoseconds(10),
 		},
 		"second overflow occurs": {
-			lastUptime:          picosecondsToSeconds(float64(math.MaxUint64)) + 5,
-			uptime:              picosecondsToSeconds(float64(math.MaxUint64)*2) + 50.0,
+			lastUptime:          PicosecondsToSeconds(float64(math.MaxUint64)) + 5,
+			uptime:              PicosecondsToSeconds(float64(math.MaxUint64)*2) + 50.0,
 			expectedTimerClause: beginningAndEndOfTimeline,
-			expectedLimit:       secondsToPicoseconds(50.0), // uptime "modulo" overflows
+			expectedLimit:       SecondsToPicoseconds(50.0), // uptime "modulo" overflows
 		},
 	}
 

@@ -154,17 +154,17 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		}
 
 		// only log if the lock_time is longer than the threshold
-		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
+		if waitingLockTime > SecondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
 				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
 				waitingDigest,
 				waitingDigestText,
 				blockingDigest,
 				blockingDigestText,
-				picosecondsToMilliseconds(waitingTimerWait),
-				picosecondsToMilliseconds(waitingLockTime),
-				picosecondsToMilliseconds(blockingTimerWait),
-				picosecondsToMilliseconds(blockingLockTime),
+				PicosecondsToMilliseconds(waitingTimerWait),
+				PicosecondsToMilliseconds(waitingLockTime),
+				PicosecondsToMilliseconds(blockingTimerWait),
+				PicosecondsToMilliseconds(blockingLockTime),
 			)
 
 			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
