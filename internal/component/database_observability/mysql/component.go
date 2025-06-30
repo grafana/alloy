@@ -50,11 +50,12 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	// collector: 'setup_consumers'
 	SetupConsumersCollectInterval time.Duration `alloy:"setup_consumers_collect_interval,attr,optional"`
@@ -69,11 +70,13 @@ type Arguments struct {
 	LocksThreshold       time.Duration `alloy:"locks_threshold,attr,optional"`
 
 	// collector: 'query_sample'
-	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
+	DisableQueryRedaction    bool `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers bool `alloy:"query_sample_auto_enable_setup_consumers,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 1 * time.Minute,
+	CollectInterval:               1 * time.Minute,
+	AllowUpdatePerfSchemaSettings: false,
 
 	// collector: 'setup_consumers'
 	SetupConsumersCollectInterval: 1 * time.Hour,
@@ -88,7 +91,8 @@ var DefaultArguments = Arguments{
 	LocksThreshold:       1 * time.Second,
 
 	// collector: 'query_sample'
-	DisableQueryRedaction: false,
+	DisableQueryRedaction:    false,
+	AutoEnableSetupConsumers: false,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -322,12 +326,13 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:                    dbConnection,
-			InstanceKey:           c.instanceKey,
-			CollectInterval:       c.args.CollectInterval,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.DisableQueryRedaction,
+			DB:                       dbConnection,
+			InstanceKey:              c.instanceKey,
+			CollectInterval:          c.args.CollectInterval,
+			EntryHandler:             entryHandler,
+			Logger:                   c.opts.Logger,
+			DisableQueryRedaction:    c.args.DisableQueryRedaction,
+			AutoEnableSetupConsumers: c.args.AllowUpdatePerfSchemaSettings && c.args.AutoEnableSetupConsumers,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
