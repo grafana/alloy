@@ -35,6 +35,10 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+### Bugfixes
+
+- Fix path for correct injection of version into constants at build time. (@adlotsof)
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
