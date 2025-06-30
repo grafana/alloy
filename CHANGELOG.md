@@ -48,7 +48,8 @@ v1.10.0-rc.0
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - Add `explain_plan` collector to `database_observability.mysql` component. (@rgeyer)
   - `locks`: addition of data locks collector (@gaantunes @fridgepoet)
-  - Query sample collector is now enabled by default (@matthewnolf)
+  - `query_sample` collector is now enabled by default (@matthewnolf)
+  - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
@@ -108,8 +109,8 @@ v1.9.2
 ### Other changes
 
 -  Add no-op blocks and attributes to the `prometheus.exporter.windows` component (@ptodev).
-   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`, 
-   `where_clause`, and `use_api` attributes in the `service` block. 
+   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`,
+   `where_clause`, and `use_api` attributes in the `service` block.
    This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
 
 v1.9.1
