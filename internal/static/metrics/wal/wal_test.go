@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/util"
+	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -18,6 +18,8 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestStorage_InvalidSeries(t *testing.T) {
@@ -337,6 +339,75 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
+func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
+	walDir := t.TempDir()
+
+	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	app := s.Appender(t.Context())
+
+	var payload seriesList
+	for i, metricName := range []string{"foo", "bar", "baz", "blerg"} {
+		payload = append(payload, &series{
+			name: metricName,
+			samples: []sample{
+				{int64(i), float64(i * 10.0)},
+				{int64(i * 10), float64(i * 100.0)},
+			},
+		})
+	}
+
+	for _, metric := range payload {
+		metric.Write(t, app)
+	}
+	require.NoError(t, app.Commit())
+
+	// Forcefully create a bunch of new segments so when we truncate
+	// there's enough segments to be considered for truncation.
+	for i := 0; i < 3; i++ {
+		_, err := s.wal.NextSegmentSync()
+		require.NoError(t, err)
+	}
+
+	// Force GC of all the series, but they will stay in the checkpoint
+	keepTs := payload[len(payload)-1].samples[1].ts + 1
+	err = s.Truncate(keepTs)
+	require.NoError(t, err)
+
+	// Publish new samples that will create new RefIDs
+	for _, metric := range payload {
+		// Write a new sample for the same metric and see what happens
+		metric.samples = metric.samples[1:]
+		metric.samples[0].ts = metric.samples[0].ts * 10
+		metric.Write(t, app)
+	}
+	require.NoError(t, app.Commit())
+
+	// Close the WAL before we have a chance to remove the first RefIDs
+	err = s.Close()
+	require.NoError(t, err)
+
+	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	// Force multiple GC's that should purge all active series
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			_, err := s.wal.NextSegmentSync()
+			require.NoError(t, err)
+		}
+		keepTs := payload[len(payload)-1].samples[0].ts + 1 + int64(i*10)
+		err = s.Truncate(keepTs)
+		require.NoError(t, err)
+	}
+	// We should 0 active series but will have 4 instead because the first 4 RefIDs are lost in the WAL
+	var metric io_prometheus_client.Metric
+	err = s.metrics.numActiveSeries.Write(&metric)
+	require.NoError(t, err)
+	require.Equal(t, 0.0, metric.Gauge.GetValue())
+}
+
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
 	walDir := t.TempDir()
 
@@ -519,7 +590,11 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	// Write other data points with AddFast
 	for _, sample := range s.samples[offset:] {
-		_, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		ref, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		// The ref we had changed stop using the old value
+		if *s.ref != ref {
+			s.ref = &ref
+		}
 		require.NoError(t, err)
 	}
 
