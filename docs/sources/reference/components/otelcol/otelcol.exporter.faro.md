@@ -1,55 +1,46 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.otlphttp/
-aliases:
-  - ../otelcol.exporter.otlphttp/ # /docs/alloy/latest/reference/components/otelcol.exporter.otlphttp/
-description: Learn about otelcol.exporter.otlphttp
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.faro/
+description: Learn about otelcol.exporter.faro
 labels:
-  stage: general-availability
+  stage: experimental
   products:
     - oss
-title: otelcol.exporter.otlphttp
+title: otelcol.exporter.faro
 ---
 
-# `otelcol.exporter.otlphttp`
+# `otelcol.exporter.faro`
 
-`otelcol.exporter.otlphttp` accepts telemetry data from other `otelcol` components and writes them over the network using the OTLP HTTP protocol.
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
+Use this exporter to send telemetry data to Grafana Cloud Collector Endpoint for [Frontend Observability][Frontend Observability] or to any backend that supports Faro format, allowing you to gain insights into the end user experience of your web application.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlphttp` is a wrapper over the upstream OpenTelemetry Collector [`otlphttp`][] exporter.
+`otelcol.exporter.faro` is a wrapper over the upstream OpenTelemetry Collector [`faro`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 
-[`otlphttp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlphttpexporter
+[`faro`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/faroexporter
 {{< /admonition >}}
 
-You can specify multiple `otelcol.exporter.otlphttp` components by giving them different labels.
+You can specify multiple `otelcol.exporter.faro` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.exporter.otlphttp "<LABEL>" {
-  client {
-    endpoint = "<HOST>:<PORT>"
-  }
+otelcol.exporter.faro "<LABEL>" {
+    client {
+        endpoint = "<HOST>:<PORT>"
+    }
 }
 ```
 
 ## Arguments
 
-You can use the following arguments with `otelcol.exporter.otlphttp`:
-
-| Name               | Type     | Description                                                               | Default                           | Required |
-| ------------------ | -------- | ------------------------------------------------------------------------- | --------------------------------- | -------- |
-| `encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no       |
-| `logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no       |
-| `metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no       |
-| `traces_endpoint`  | `string` | The endpoint to send traces to.                                           | `client.endpoint + "/v1/traces"`  | no       |
-
-The default value depends on the `endpoint` field set in the required `client` block.
-If set, these arguments override the `client.endpoint` field for the corresponding signal.
+The `otelcol.exporter.faro` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
-You can use the following blocks with `otelcol.exporter.otlphttp`:
+You can use the following blocks with `otelcol.exporter.faro`:
 
 | Block                                                 | Description                                                                | Required |
 | ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
@@ -84,7 +75,7 @@ The `client` block configures the HTTP client used by the component.
 
 ### `compression_params`
 
-The `compression_params` block allows for configuration of advanced compression options.
+The `compression_params` block configures the advanced compression options.
 
 {{< docs/shared lookup="reference/components/otelcol-compression-params-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -132,36 +123,37 @@ The following fields are exported and can be referenced by other components:
 | ------- | ------------------ | ---------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+`input` accepts `otelcol.Consumer` data for logs and traces.
 
 ## Component health
 
-`otelcol.exporter.otlphttp` is only reported as unhealthy if given an invalid configuration.
+`otelcol.exporter.faro` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.exporter.otlphttp` doesn't expose any component-specific debug information.
+`otelcol.exporter.faro` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example creates an exporter to send data to a locally running Grafana Tempo without TLS:
+This example creates an exporter to send data to a [Faro][Faro] endpoint.
 
 ```alloy
-otelcol.exporter.otlphttp "tempo" {
+otelcol.exporter.faro "default" {
     client {
-        endpoint = "http://tempo:4318"
-        tls {
-            insecure             = true
-            insecure_skip_verify = true
-        }
+        endpoint = "<FARO_COLLECTOR_ADDRESS>"
     }
 }
 ```
+
+Replace the following:
+
+* _`<FARO_COLLECTOR_ADDRESS>`_: The address of the Faro-compatible server to send data to.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
-`otelcol.exporter.otlphttp` has exports that can be consumed by the following components:
+`otelcol.exporter.faro` has exports that can be consumed by the following components:
 
 - Components that consume [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-consumers)
 
@@ -171,3 +163,6 @@ Refer to the linked documentation for more details.
 {{< /admonition >}}
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
+
+[Faro]: https://grafana.com/oss/faro/
+[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/

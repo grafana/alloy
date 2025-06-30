@@ -119,10 +119,10 @@ VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
-VPREFIXSYNTAX := github.com/grafana/alloy/syntax/stdlib
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
-				-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
+		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -263,7 +263,7 @@ generate-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./docs
+	go generate ./internal/tools/docs_generator/
 endif
 
 generate-winmanifest:

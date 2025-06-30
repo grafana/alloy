@@ -71,6 +71,12 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
 | [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
 
+{{< admonition type="note" >}}
+Starting with release 1.9.0, the `msmq` block is deprecated.
+It will be removed in a future release.
+You can still include this block in your configuration files. However, its usage is now a no-op.
+{{< /admonition >}}
+
 [dfsr]: #dfsr
 [dns]: #dns
 [exchange]: #exchange
@@ -275,6 +281,12 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 For a service to be included, it must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude`.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
+
+{{< admonition type="note" >}}
+Starting with release 1.9.0, the `use_api`, `where_clause`, and `enable_v2_collector` attributes are deprecated.
+They will be removed in a future release.
+You can still include these attributes in your configuration files. However, their usage is now a no-op.
+{{< /admonition >}}
 
 ### `smb`
 

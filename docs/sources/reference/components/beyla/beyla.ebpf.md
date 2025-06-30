@@ -76,6 +76,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no       |
 | `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no       |
 | `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no       |
+| `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
+| `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -237,9 +239,10 @@ In some scenarios, Beyla instruments a wide variety of services, such as a Kuber
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-The same properties are available for both `services` and `exclude_services` blocks.
+The same properties are available for both `services`, `exclude_services`, and `survey` blocks.
 The `services` block configures the services to discover for the component.
 The `exclude_services` block configures the services to exclude for the component.
+The `survey` block configures the services that the component will emit information for.
 
 | Name              | Type     | Description                                                                     | Default | Required |
 | ----------------- | -------- | ------------------------------------------------------------------------------- | ------- | -------- |
@@ -256,6 +259,9 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
+
+If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
+This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
 
 #### `default_exclude_services`
 
@@ -495,13 +501,13 @@ You can set `direction` to `ingress`, `egress`, or `both` (default).
 
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
-| Name              | Type           | Description                                                                              | Default       | Required |
-| ----------------- | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
-| `ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
-| `ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
-| `patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
-| `unmatched`       | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
-| `wildcard_char`   | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
+| Name               | Type           | Description                                                                              | Default       | Required |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
+| `ignore_mode`      | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
+| `ignored_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
+| `patterns`         | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
+| `unmatched`        | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
+| `wildcard_char`    | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
 
 `ignore_mode` properties are:
 
@@ -509,7 +515,7 @@ The `routes` block configures the routes to match HTTP paths into user-provided 
 * `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
 * `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
 
-`patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
+`patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:

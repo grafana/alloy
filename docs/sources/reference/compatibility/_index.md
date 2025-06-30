@@ -304,6 +304,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
+- [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)

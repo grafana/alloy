@@ -661,6 +661,8 @@ github.com/axiomhq/hyperloglog v0.0.0-20240507144631-af9851f82b27 h1:60m4tnanN1c
 github.com/axiomhq/hyperloglog v0.0.0-20240507144631-af9851f82b27/go.mod h1:k08r+Yj1PRAmuayFiRK6MYuR5Ve4IuZtTfxErMIh0+c=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 h1:0NmehRCgyk5rljDQLKUO+cRJCnduDyn11+zGZIc9Z48=
 github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0/go.mod h1:6L7zgvqo0idzI7IO8de6ZC051AfXb5ipkIJ7bIA2tGA=
+github.com/bahlo/generic-list-go v0.2.0 h1:5sz/EEAK+ls5wF+NeqDpk5+iNdMDXrh3z3nPnH1Wvgk=
+github.com/bahlo/generic-list-go v0.2.0/go.mod h1:2KvAjgMlE5NNynlg/5iLrrCCZ2+5xWbdbCW3pNTGyYg=
 github.com/basgys/goxml2json v1.1.0 h1:4ln5i4rseYfXNd86lGEB+Vi652IsIXIvggKM/BhUKVw=
 github.com/basgys/goxml2json v1.1.0/go.mod h1:wH7a5Np/Q4QoECFIU8zTQlZwZkrilY0itPfecMw41Dw=
 github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 h1:6df1vn4bBlDDo4tARvBm7l6KA9iVMnE3NWizDeWSrps=
@@ -763,8 +765,8 @@ github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec/go.mod h1:jMjuTZXRI4
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004 h1:lkAMpLVBDaj17e85keuznYcH5rqI438v41pKcBl4ZxQ=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004/go.mod h1:yMWuSON2oQp+43nFtAV/uvKQIFpSPerB57DCt9t8sSA=
-github.com/cloudflare/circl v1.3.7 h1:qlCDlTPz2n9fu58M0Nh1J/JzcFpfgkFHHX3O35r5vcU=
-github.com/cloudflare/circl v1.3.7/go.mod h1:sRTcRWXGLrKw6yIGJ+l7amYJFfAXbZG0kBSc8r4zxgA=
+github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
+github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
 github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 h1:F1EaeKL/ta07PY/k9Os/UFtwERei2/XzGemhpGnBKNg=
 github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58/go.mod h1:EOBUe0h4xcZ5GoxqC5SDxFQ8gwyZPKQoEzownBlhI80=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
@@ -1384,8 +1386,8 @@ github.com/gosnmp/gosnmp v1.39.0/go.mod h1:CxVS6bXqmWZlafUj9pZUnQX5e4fAltqPcijxW
 github.com/gotestyourself/gotestyourself v2.2.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/grafana/alloy-remote-config v0.0.10 h1:1Ge7lz2mjXI1rd6SmiZpFHyXeLehBuCi43+XTkdqgV4=
 github.com/grafana/alloy-remote-config v0.0.10/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
-github.com/grafana/beyla/v2 v2.2.5-alloy h1:X9cocvwEgVmH/Ggcv8DliVEZCel3YcI+jaB58D98L1Q=
-github.com/grafana/beyla/v2 v2.2.5-alloy/go.mod h1:f9voufRxhDpwIi+MwB/hB6II+RKolln8V+KK5w4YOF4=
+github.com/grafana/beyla/v2 v2.4.3-alloy h1:21OzDBCsTbbsLzbTgsEyBqZdH0AOC/0PNfcNt0oHT5Y=
+github.com/grafana/beyla/v2 v2.4.3-alloy/go.mod h1:CYYhU1lLPfVQsNB+edeX9+fT8bWF6ofPHe6W6yklvMU=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg185ETtFCKj5WzaQ48qfkbsSRRQrF4=
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
@@ -1396,6 +1398,8 @@ github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/dskit v0.0.0-20250131191929-eab36484cec2 h1:9xJDVoTFhzJZzvghXGDDQJapDQfYvVM+/TcWySUZ1VE=
 github.com/grafana/dskit v0.0.0-20250131191929-eab36484cec2/go.mod h1:SPLNCARd4xdjCkue0O6hvuoveuS1dGJjDnfxYe405YQ=
+github.com/grafana/faro/pkg/go v0.0.0-20250314155512-06a06da3b8bc h1:o8BraeLtggPjb/n91jvQT4SgGn8j0jxOyIGEQSoIXwU=
+github.com/grafana/faro/pkg/go v0.0.0-20250314155512-06a06da3b8bc/go.mod h1:4CP5sfwz5+uVfNgCeA5/N6csXnzOgnkgT1jh57ASaK4=
 github.com/grafana/go-gelf/v2 v2.0.1 h1:BOChP0h/jLeD+7F9mL7tq10xVkDG15he3T1zHuQaWak=
 github.com/grafana/go-gelf/v2 v2.0.1/go.mod h1:lexHie0xzYGwCgiRGcvZ723bSNyNI8ZRD4s0CLobh90=
 github.com/grafana/go-offsets-tracker v0.1.7 h1:2zBQ7iiGzvyXY7LA8kaaSiEqH/Yx82UcfRabbY5aOG4=
@@ -2133,8 +2137,8 @@ github.com/npillmayer/nestext v0.1.3/go.mod h1:h2lrijH8jpicr25dFY+oAJLyzlya6jhnu
 github.com/nsqio/go-nsq v1.0.7/go.mod h1:XP5zaUs3pqf+Q71EqUJs3HYfBIqfK6G83WQMdNN+Ito=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
-github.com/oapi-codegen/runtime v1.0.0 h1:P4rqFX5fMFWqRzY9M/3YF9+aPSPPB06IzP2P7oOxrWo=
-github.com/oapi-codegen/runtime v1.0.0/go.mod h1:LmCUMQuPB4M/nLXilQXhHw+BLZdDb18B34OO356yJ/A=
+github.com/oapi-codegen/runtime v1.1.1 h1:EXLHh0DXIJnWhdRPN2w4MXAzFyE4CskzhNLUmtpMYro=
+github.com/oapi-codegen/runtime v1.1.1/go.mod h1:SK9X900oXmPWilYR5/WKPzt3Kqxn/uS/+lbpREv+eCg=
 github.com/ohler55/ojg v1.20.1 h1:Io65sHjMjYPI7yuhUr8VdNmIQdYU6asKeFhOs8xgBnY=
 github.com/ohler55/ojg v1.20.1/go.mod h1:uHcD1ErbErC27Zhb5Df2jUjbseLLcmOCo6oxSr3jZxo=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
@@ -2182,6 +2186,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.128.0/go.mod h1:Sg7mSxurU8mX4UpSrpO7PnoeVclJkgO7S7ebO/3njnI=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.128.0 h1:k6IuoAEyDoVM0AxV0UxL1CskJA5htImBYxaLwUCjQc0=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.128.0/go.mod h1:pDFpEtn2HQ4+w2bSd3aankEiW5HFXlrqwjpBoSAsSkQ=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.128.0 h1:4QlqnIH2/sMrLJrnfeo5xuvEvocMHCq4cLgQ/VREi/g=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.128.0/go.mod h1:Wg+zWHHuGijc6XWZ1HShVsmZhgAwOQwRqECQYuF0yJw=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.128.0 h1:8I//3S2y8EiFsBiKMvhDaqim7H4ET+KG1l7TYLcFjU8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.128.0/go.mod h1:600F3MYmvvNJSgNGUa1aH34Rz0LJk1JRFzU83ZB+OzE=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.128.0 h1:TVXRCMdYQ/mwiPfOdgmvxsmrBA8hjCaprO4yTQgY5Ao=
@@ -2270,6 +2276,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.128.0 h1
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.128.0/go.mod h1:xnkKFIXJEf2W2Pf1Cg5B1HxPnzPW0c4Zx7nYC1hZU1k=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.128.0 h1:/zhhot5KcXKFyoeLfbLk8Kr/gG6VTjQJpa5OIrMiYgs=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.128.0/go.mod h1:beEGZpi88/fHEnNfmEplHKsQ52NpdIw05Jij1nI2yCo=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.128.0 h1:ikpMpOzwKR3pLBxOsKAXEtflHJdjaUzwuGbVsaitUrA=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.128.0/go.mod h1:HlSY452yYF8qqGGzPoRjAsmGSWuFbtXZ7XEumaaVg44=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.128.0 h1:n5qd63qQv9Br457T5mniyTmFs2kJcmalOoGP89tIEQw=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.128.0/go.mod h1:lBu1hhx7Kc2P4u8phVoAgVanldFyaZK7ZFnpyRC/cdU=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.128.0 h1:gihsUUq+zyq8ogQVE4phSNzO6vTZ8rFDc2Nj9p+vd2w=
@@ -2891,6 +2899,8 @@ github.com/willf/bloom v2.0.3+incompatible h1:QDacWdqcAUI1MPOwIQZRy9kOR7yxfyEmxX
 github.com/willf/bloom v2.0.3+incompatible/go.mod h1:MmAltL9pDMNTrvUkxdg0k0q5I0suxmuwp3KbyrZLOZ8=
 github.com/wk8/go-ordered-map v0.2.0 h1:KlvGyHstD1kkGZkPtHCyCfRYS0cz84uk6rrW/Dnhdtk=
 github.com/wk8/go-ordered-map v0.2.0/go.mod h1:9ZIbRunKbuvfPKyBP1SIKLcXNlv74YCOZ3t3VTS6gRk=
+github.com/wk8/go-ordered-map/v2 v2.1.8 h1:5h/BUHu93oj4gIdvHHHGsScSTMijfx5PeYkE/fJgbpc=
+github.com/wk8/go-ordered-map/v2 v2.1.8/go.mod h1:5nJHM5DyteebpVlHnWMV0rPz6Zp7+xBAnxjb1X5vnTw=
 github.com/wvanbergen/kafka v0.0.0-20171203153745-e2edea948ddf/go.mod h1:nxx7XRXbR9ykhnC8lXqQyJS0rfvJGxKyKw/sT1YOttg=
 github.com/wvanbergen/kazoo-go v0.0.0-20180202103751-f72d8611297a/go.mod h1:vQQATAGxVK20DC1rRubTJbZDDhhpA4QfU02pMdPxGO4=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
