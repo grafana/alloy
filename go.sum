@@ -2175,8 +2175,8 @@ github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNH
 github.com/pelletier/go-toml/v2 v2.2.3/go.mod h1:MfCQTFTvCcUyyvvwm1+G6H/jORL20Xlb6rzQu9GuUkc=
 github.com/percona/exporter_shared v0.7.6 h1:+IatWDIjkuAxAmJAU3oVvVGyOYI5E2/cz9p/WZ5BiuQ=
 github.com/percona/exporter_shared v0.7.6/go.mod h1:ia54ZOkbuIbN3KRkz98p6InhDTwPaJuqkBuD15YsI5g=
-github.com/percona/mongodb_exporter v0.44.0 h1:5yaOvo8lTfffiiBdLbsMMwf0RLK9P560cIJLmQHuDJA=
-github.com/percona/mongodb_exporter v0.44.0/go.mod h1:97DfOPTJ58dIVSPQrCDMdbEwFSdK6ubsGQQD7STSlTo=
+github.com/percona/mongodb_exporter v0.45.1-0.20250630080259-d761c954bba6 h1:y+VYKF8/iQWcp0bsQ//63BDptcOsbegbKw7d8SIWLDs=
+github.com/percona/mongodb_exporter v0.45.1-0.20250630080259-d761c954bba6/go.mod h1:nPxDTzLRQi+IMVJ/KyfxUVXa7LuvSl+iXsXp0BSBoCk=
 github.com/percona/percona-backup-mongodb v1.8.1-0.20250218045950-7e9f38fe06ab h1:PtSaYWf4AYpVjzn2+IX8aGu1FCQkx7GeRFXiUqFButw=
 github.com/percona/percona-backup-mongodb v1.8.1-0.20250218045950-7e9f38fe06ab/go.mod h1:HRKf8nO4SqtNJ1oNzfY3THcwIsjGTWGBF3rNz1TwA9c=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
@@ -2694,8 +2694,8 @@ go.etcd.io/etcd/client/pkg/v3 v3.5.16/go.mod h1:V8acl8pcEK0Y2g19YlOV9m9ssUe6MgiD
 go.etcd.io/etcd/client/v3 v3.5.4/go.mod h1:ZaRkVgBZC+L+dLCjTcF1hRXpgZXQPOvnA/Ak/gq3kiY=
 go.etcd.io/etcd/client/v3 v3.5.16 h1:sSmVYOAHeC9doqi0gv7v86oY/BTld0SEFGaxsU9eRhE=
 go.etcd.io/etcd/client/v3 v3.5.16/go.mod h1:X+rExSGkyqxvu276cr2OwPLBaeqFu1cIl4vmRjAD/50=
-go.mongodb.org/mongo-driver v1.17.3 h1:TQyXhnsWfWtgAhMtOgtYHMTkZIfBTpMTsMnd9ZBeHxQ=
-go.mongodb.org/mongo-driver v1.17.3/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
+go.mongodb.org/mongo-driver v1.17.4 h1:jUorfmVzljjr0FLzYQsGP8cgN/qzzxlY9Vh0C9KFXVw=
+go.mongodb.org/mongo-driver v1.17.4/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=

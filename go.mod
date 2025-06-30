@@ -164,7 +164,7 @@ require (
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/oschwald/geoip2-golang v1.11.0
 	github.com/oschwald/maxminddb-golang v1.13.0
-	github.com/percona/mongodb_exporter v0.44.0
+	github.com/percona/mongodb_exporter v0.45.1-0.20250630080259-d761c954bba6
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba
 	github.com/pkg/errors v0.9.1
@@ -890,7 +890,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.16 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.16 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.16 // indirect
-	go.mongodb.org/mongo-driver v1.17.3 // indirect
+	go.mongodb.org/mongo-driver v1.17.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector v0.128.0 // indirect
@@ -974,6 +974,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+	github.com/prometheus/sigv4 v0.2.0
 	go.opentelemetry.io/collector/config/configoptional v0.128.0
 )
 
@@ -1011,7 +1012,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.128.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.128.0 // indirect
 	github.com/prometheus/otlptranslator v0.0.0-20250414121140-35db323fe9fb // indirect
-	github.com/prometheus/sigv4 v0.2.0 // indirect
 	github.com/redis/go-redis/v9 v9.10.0 // indirect
 	github.com/sercand/kuberesolver/v6 v6.0.0 // indirect
 	github.com/sony/gobreaker/v2 v2.1.0 // indirect
@@ -1106,8 +1106,3 @@ exclude (
 )
 
 replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
-
-// TODO(thampiotr): This now blocks the prometheus update as the prometheus/prometheus requires prometheus/common.
-// 					We either fork mongodb_exporter or we make some further changes to our prometheus/prometheus fork.
-// Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
-//replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
