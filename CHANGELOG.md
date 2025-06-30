@@ -36,6 +36,9 @@ Main (unreleased)
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)

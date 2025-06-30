@@ -71,23 +71,30 @@ WHERE
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
+const updateSetupConsumers = `
+	UPDATE performance_schema.setup_consumers
+		SET enabled = 'yes'
+		WHERE name = 'events_statements_cpu'`
+
 type QuerySampleArguments struct {
-	DB                    *sql.DB
-	InstanceKey           string
-	CollectInterval       time.Duration
-	EntryHandler          loki.EntryHandler
-	DisableQueryRedaction bool
+	DB                       *sql.DB
+	InstanceKey              string
+	CollectInterval          time.Duration
+	EntryHandler             loki.EntryHandler
+	DisableQueryRedaction    bool
+	AutoEnableSetupConsumers bool
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection          *sql.DB
-	instanceKey           string
-	collectInterval       time.Duration
-	entryHandler          loki.EntryHandler
-	sqlParser             parser.Parser
-	disableQueryRedaction bool
+	dbConnection             *sql.DB
+	instanceKey              string
+	collectInterval          time.Duration
+	entryHandler             loki.EntryHandler
+	sqlParser                parser.Parser
+	disableQueryRedaction    bool
+	autoEnableSetupConsumers bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -100,14 +107,15 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:          args.DB,
-		instanceKey:           args.InstanceKey,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		sqlParser:             parser.NewTiDBSqlParser(),
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySampleName),
-		running:               &atomic.Bool{},
+		dbConnection:             args.DB,
+		instanceKey:              args.InstanceKey,
+		collectInterval:          args.CollectInterval,
+		entryHandler:             args.EntryHandler,
+		sqlParser:                parser.NewTiDBSqlParser(),
+		disableQueryRedaction:    args.DisableQueryRedaction,
+		autoEnableSetupConsumers: args.AutoEnableSetupConsumers,
+		logger:                   log.With(args.Logger, "collector", QuerySampleName),
+		running:                  &atomic.Bool{},
 	}
 
 	return c, nil
@@ -185,6 +193,12 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 }
 
 func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
+	if c.autoEnableSetupConsumers {
+		if err := c.updateSetupConsumersSettings(ctx); err != nil {
+			return err
+		}
+	}
+
 	timeRow := c.dbConnection.QueryRowContext(ctx, selectNowAndUptime)
 
 	var now, uptime float64
@@ -378,6 +392,23 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
 		return err
 	}
+
+	return nil
+}
+
+func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
+	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to update performance_schema.setup_consumers", "err", err)
+		return err
+	}
+
+	rowsAffected, err := rs.RowsAffected()
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to get rows affected from performance_schema.setup_consumers", "err", err)
+		return err
+	}
+	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
 	return nil
 }
