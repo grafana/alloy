@@ -13,11 +13,7 @@ or
 make generate-graphql-stubs
 ```
 
-From here, you can run the built-in playground via:
+From here, you can start Alloy like normal and connect to the playground at
+http://localhost/graphql/playground
 
-```
-cd modules/graphql
-go run server.go
-```
-
-This runs the graphql playground on port 8080.
+The GraphQL API itself is located at http://localhost/graphql
