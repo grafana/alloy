@@ -17,7 +17,7 @@ The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-e
 This component lets you scrape CloudWatch metrics in a set of configurations called _jobs_.
 There are two kinds of jobs: [discovery][] and [static][].
 
-[`yet-another-cloudwatch-exporter`]: https://github.com/nerdswords/yet-another-cloudwatch-exporter
+[`yet-another-cloudwatch-exporter`]: https://github.com/prometheus-community/yet-another-cloudwatch-exporter
 [Amazon CloudWatch metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html
 
 ## Authentication

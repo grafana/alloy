@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/grafana/regexp"
-	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
