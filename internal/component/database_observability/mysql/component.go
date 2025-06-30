@@ -50,29 +50,45 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
-	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
-	ExplainPlanCollectInterval    time.Duration       `alloy:"explain_plan_collect_interval,attr,optional"`
-	ExplainPlanPerCollectRatio    float64             `alloy:"explain_plan_per_collect_ratio,attr,optional"`
-	ExplainPlanInitialLookback    time.Duration       `alloy:"explain_plan_initial_lookback,attr,optional"`
-	LocksCollectInterval          time.Duration       `alloy:"locks_collect_interval,attr,optional"`
-	LocksThreshold                time.Duration       `alloy:"locks_threshold,attr,optional"`
-	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
+	// collector: 'setup_consumers'
+	SetupConsumersCollectInterval time.Duration `alloy:"setup_consumers_collect_interval,attr,optional"`
+
+	// collector: 'explain_plan'
+	ExplainPlanCollectInterval time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
+	ExplainPlanPerCollectRatio float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	ExplainPlanInitialLookback time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
+
+	// collector: 'locks'
+	LocksCollectInterval time.Duration `alloy:"locks_collect_interval,attr,optional"`
+	LocksThreshold       time.Duration `alloy:"locks_threshold,attr,optional"`
+
+	// collector: 'query_sample'
 	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:               1 * time.Minute,
+	CollectInterval: 1 * time.Minute,
+
+	// collector: 'setup_consumers'
 	SetupConsumersCollectInterval: 1 * time.Hour,
-	ExplainPlanCollectInterval:    1 * time.Minute,
-	ExplainPlanPerCollectRatio:    1.0,
-	ExplainPlanInitialLookback:    24 * time.Hour,
-	LocksCollectInterval:          30 * time.Second,
-	LocksThreshold:                1 * time.Second,
+
+	// collector: 'explain_plan'
+	ExplainPlanCollectInterval: 1 * time.Minute,
+	ExplainPlanPerCollectRatio: 1.0,
+	ExplainPlanInitialLookback: 24 * time.Hour,
+
+	// collector: 'locks'
+	LocksCollectInterval: 30 * time.Second,
+	LocksThreshold:       1 * time.Second,
+
+	// collector: 'query_sample'
+	DisableQueryRedaction: false,
 }
 
 func (a *Arguments) SetToDefault() {
