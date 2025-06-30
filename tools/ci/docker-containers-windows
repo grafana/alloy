@@ -25,11 +25,9 @@ fi
 
 WINDOWS_VERSION=${WINDOWS_VERSION:-}
 if [ "$WINDOWS_VERSION" = "windows-2022" ]; then
-  export BASE_IMAGE_GO="library/golang:${ALLOY_GO_VERSION}-windowsservercore-ltsc2022"
   export BASE_IMAGE_WINDOWS="mcr.microsoft.com/windows/nanoserver:ltsc2022"
   IMAGE_NAME_SUFFIX="windowsservercore-ltsc2022"
 else
-  export BASE_IMAGE_GO="library/golang:${ALLOY_GO_VERSION}-windowsservercore-1809"
   export BASE_IMAGE_WINDOWS="mcr.microsoft.com/windows/nanoserver:ltsc2019"
   # We aren't calling this windows-2019 for backwards compatibility reasons.
   # Alloy used to always call this nanoserver-1809.
