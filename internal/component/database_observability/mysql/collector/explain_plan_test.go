@@ -6,9 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func stringPtr(s string) *string {
@@ -292,22 +295,22 @@ func TestExplainPlanRedactor(t *testing.T) {
 	}
 }
 
-func TestExplainPlanOutputInvalidJSON(t *testing.T) {
-	notJsonData := []byte("not json data")
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
-	require.Error(t, err)
-	require.ErrorContains(t, err, "failed to get query block: Key path not found")
-}
-
-func TestExplainPlanOutputUnknownOperation(t *testing.T) {
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
-	require.NoError(t, err)
-	require.Equal(t, explainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
-}
-
 func TestExplainPlanOutput(t *testing.T) {
+	t.Run("invalid json", func(t *testing.T) {
+		notJsonData := []byte("not json data")
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
+		require.Error(t, err)
+		require.ErrorContains(t, err, "failed to get query block: Key path not found")
+	})
+
+	t.Run("unknown operation", func(t *testing.T) {
+		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+		require.NoError(t, err)
+		require.Equal(t, explainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
+	})
+
 	currentTime := time.Now().Format(time.RFC3339)
 	tests := []struct {
 		dbVersion string
@@ -1474,4 +1477,72 @@ func TestExplainPlanOutput(t *testing.T) {
 			require.Equal(t, test.result, output)
 		})
 	}
+}
+
+func TestExplainPlan(t *testing.T) {
+	t.Run("last seen", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
+			"version",
+		}).AddRow(
+			"8.0.32",
+		))
+
+		lastSeen := time.Now().Add(-time.Hour)
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlan(ExplainPlanArguments{
+			DB:              db,
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+			InstanceKey:     "mysql-db",
+			ScrapeInterval:  time.Second,
+			PerScrapeRatio:  1,
+			EntryHandler:    lokiClient,
+			InitialLookback: lastSeen,
+		})
+		require.NoError(t, err)
+
+		t.Run("uses argument value on first request", func(t *testing.T) {
+			nextSeen := lastSeen.Add(time.Second * 45)
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				lastSeen.Add(time.Second*5),
+			).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				nextSeen,
+			))
+			lastSeen = nextSeen
+			err := c.populateQueryCache(t.Context())
+			require.NoError(t, err)
+		})
+
+		t.Run("uses oldest last seen value on subsequent requests", func(t *testing.T) {
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"some_query_text",
+				lastSeen.Add(time.Second*5),
+			))
+			err := c.populateQueryCache(t.Context())
+			require.NoError(t, err)
+		})
+	})
 }

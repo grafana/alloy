@@ -9,8 +9,12 @@ internal API changes are not present.
 
 Unreleased
 ----------
+
+1.1.2 (2025-06-26)
+----------
 - Add NetworkPolicy support. (@TheRealNoob)
 
+- Update to Grafana Alloy v1.9.2. (@ptodev)
 
 1.1.1 (2025-06-05)
 ----------
