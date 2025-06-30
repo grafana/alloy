@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/graphql/graph"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -23,16 +24,18 @@ type AlloyGraphQLProvider struct {
 	playground http.Handler
 }
 
-func RegisterRoutes(urlPrefix string, r *mux.Router) {
-	provider := NewAlloyGraphQLProvider()
+func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host) {
+	provider := NewAlloyGraphQLProvider(host)
 
 	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
 	// TODO: Only register the playground in development mode (or similar)
 	r.Handle(path.Join(urlPrefix, "/graphql/playground"), provider.playground)
 }
 
-func NewAlloyGraphQLProvider() *AlloyGraphQLProvider {
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
+func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
+		Host: host,
+	}}))
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})

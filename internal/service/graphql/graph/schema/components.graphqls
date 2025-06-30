@@ -1,0 +1,9 @@
+extend type Query {
+  components: [Component!]!
+}
+
+type Component {
+  id: ID!
+  name: String!
+  description: String!
+}
