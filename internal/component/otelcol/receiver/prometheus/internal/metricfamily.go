@@ -386,6 +386,9 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 	if mg.ts != t {
 		return fmt.Errorf("inconsistent timestamps on metric points for metric %v", metricName)
 	}
+	if mg.mtype != mf.mtype {
+		return fmt.Errorf("metric type mismatch for metric %v type %s", metricName, mg.mtype.String())
+	}
 	switch mf.mtype {
 	case pmetric.MetricTypeHistogram, pmetric.MetricTypeSummary:
 		switch {
@@ -397,7 +400,7 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 			mg.ts = t
 			mg.count = v
 			mg.hasCount = true
-		case metricName == mf.metadata.Metric+metricSuffixCreated:
+		case metricName == mf.name+metricSuffixCreated:
 			mg.created = v
 		default:
 			boundary, err := getBoundary(mf.mtype, ls)
@@ -407,11 +410,11 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 			mg.complexValue = append(mg.complexValue, &dataPoint{value: v, boundary: boundary})
 		}
 	case pmetric.MetricTypeExponentialHistogram:
-		if metricName == mf.metadata.Metric+metricSuffixCreated {
+		if metricName == mf.name+metricSuffixCreated {
 			mg.created = v
 		}
 	case pmetric.MetricTypeSum:
-		if metricName == mf.metadata.Metric+metricSuffixCreated {
+		if metricName == mf.name+metricSuffixCreated {
 			mg.created = v
 		} else {
 			mg.value = v

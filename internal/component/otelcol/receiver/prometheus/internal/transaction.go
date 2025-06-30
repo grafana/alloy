@@ -65,6 +65,11 @@ type transaction struct {
 	bufBytes []byte
 }
 
+func (t *transaction) SetOptions(_ *storage.AppendOptions) {
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
+	//       it in Alloy.
+}
+
 var emptyScopeID scopeID
 
 type scopeID struct {
@@ -451,7 +456,7 @@ func getScopeID(ls labels.Labels) scopeID {
 	return scope
 }
 
-func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error) {
+func (t *transaction) initTransaction(ls labels.Labels) (*resourceKey, error) {
 	target, ok := scrape.TargetFromContext(t.ctx)
 	if !ok {
 		return nil, errors.New("unable to find target in context")
@@ -461,12 +466,12 @@ func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error
 		return nil, errors.New("unable to find MetricMetadataStore in context")
 	}
 
-	rKey, err := t.getJobAndInstance(labels)
+	rKey, err := t.getJobAndInstance(ls)
 	if err != nil {
 		return nil, err
 	}
 	if _, ok := t.nodeResources[*rKey]; !ok {
-		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels())
+		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels(labels.NewBuilder(labels.EmptyLabels())))
 	}
 
 	t.isNew = false

@@ -102,6 +102,11 @@ type appender struct {
 	fanout            *Fanout
 }
 
+func (a *appender) SetOptions(_ *storage.AppendOptions) {
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
+	//       it in Alloy.
+}
+
 var _ storage.Appender = (*appender)(nil)
 
 // Append satisfies the Appender interface.
@@ -234,6 +239,23 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendCTZeroSample(ref, l, t, ct)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return ref, multiErr
+}
+
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
+	}
+	var multiErr error
+	for _, x := range a.children {
+		_, err := x.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}

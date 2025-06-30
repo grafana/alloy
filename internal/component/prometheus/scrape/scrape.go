@@ -3,13 +3,12 @@ package scrape
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"reflect"
 	"slices"
 	"sync"
 	"time"
-
-	go_kit_log "github.com/go-kit/log"
 
 	"github.com/alecthomas/units"
 	client_prometheus "github.com/prometheus/client_golang/prometheus"
@@ -22,11 +21,16 @@ import (
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/metadata"
+	promlogging "github.com/prometheus/prometheus/util/logging"
+
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
@@ -34,9 +38,6 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/util/logging"
 )
 
 func init() {
@@ -75,6 +76,7 @@ type Arguments struct {
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `alloy:"params,attr,optional"`
 	// Whether to scrape a classic histogram that is also exposed as a native histogram.
+	// TODO(thampiotr): deprecated, make this a no-op
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
@@ -276,8 +278,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	scraper, err := scrape.NewManager(
 		scrapeOptions,
-		o.Logger,
-		func(s string) (go_kit_log.Logger, error) { return logging.NewJSONFileLogger(s) },
+		slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)),
+		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
 		interceptor,
 		unregisterer)
 	if err != nil {
@@ -436,7 +438,6 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
-	dec.ScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
 	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
@@ -488,12 +489,12 @@ func BuildTargetStatuses(targets map[string][]*scrape.Target) []TargetStatus {
 				lastError = st.LastError().Error()
 			}
 			if st != nil {
-				lb := labels.NewScratchBuilder(0)
+				lb := labels.NewBuilder(labels.EmptyLabels())
 				res = append(res, TargetStatus{
 					JobName:            job,
 					URL:                st.URL().String(),
 					Health:             string(st.Health()),
-					Labels:             st.Labels(&lb).Map(),
+					Labels:             st.Labels(lb).Map(),
 					LastError:          lastError,
 					LastScrape:         st.LastScrape(),
 					LastScrapeDuration: st.LastScrapeDuration(),
@@ -520,7 +521,6 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 			promTargets, errs := scrape.TargetsFromGroup(
 				tg,
 				getPromScrapeConfigs(jobName, args),
-				false,                                /* noDefaultScrapePort - always false in this component */
 				make([]*scrape.Target, len(targets)), /* targets slice to reuse */
 				labels.NewBuilder(labels.EmptyLabels()),
 			)

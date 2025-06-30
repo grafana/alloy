@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal/internal"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -205,7 +207,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(w.logger, nil, segment)
+	reader := wlog.NewLiveReader(slog.New(logging.NewSlogGoKitHandler(w.logger)), nil, segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 
@@ -321,7 +323,7 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 			return readData, fmt.Errorf("error decoding record: %w", err)
 		}
 	}
-	return readData, fmt.Errorf("segment %d: %w", segmentNum, r.Err())
+	return readData, r.Err()
 }
 
 // decodeAndDispatch first decodes a WAL record. Upon reading either Series or Entries from the WAL record, call the

@@ -15,11 +15,11 @@ import (
 	"github.com/grafana/regexp"
 	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	promsigv4 "github.com/prometheus/common/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	promsigv4 "github.com/prometheus/sigv4"
 )
 
 // Defaults for config blocks.
@@ -244,7 +244,7 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
 
-			//TODO: Make this configurable when we upgrade to Prometheus v3?
+			// TODO: Make this configurable when we upgrade to Prometheus v3?
 			ProtobufMessage: config.RemoteWriteProtoMsgV1,
 
 			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
@@ -308,7 +308,7 @@ func (c *OAuthConfig) toPrometheusType() *azuread.OAuthConfig {
 
 	return &azuread.OAuthConfig{
 		ClientID: c.ClientID,
-		//TODO(ptodev): Upstream a change to make this an opaque string.
+		// TODO(ptodev): Upstream a change to make this an opaque string.
 		ClientSecret: string(c.ClientSecret),
 		TenantID:     c.TenantID,
 	}

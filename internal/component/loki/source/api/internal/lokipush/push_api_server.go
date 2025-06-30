@@ -156,14 +156,18 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	tenantID, _ := tenant.TenantID(r.Context())
-	req, err := push.ParseRequest(
+	req, _, err := push.ParseRequest(
 		logger,
 		tenantID,
+		// TODO(thampiotr): expose max send message size
+		100<<20,
 		r,
-		nil, // tenants retention
 		push.EmptyLimits{},
+		nil,
 		push.ParseLokiRequest,
 		nil, // usage tracker
+		nil,
+		"",
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
