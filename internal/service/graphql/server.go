@@ -12,7 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/modules/graphql/graph"
+	"github.com/grafana/alloy/internal/service/graphql/graph"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 

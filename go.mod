@@ -981,16 +981,16 @@ require (
 )
 
 require (
+	github.com/99designs/gqlgen v0.17.75
 	github.com/buger/jsonparser v1.1.1
-	github.com/grafana/alloy/modules/graphql v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
+	github.com/vektah/gqlparser/v2 v2.5.28
 	go.opentelemetry.io/collector/config/configoptional v0.128.0
 )
 
 require (
-	github.com/99designs/gqlgen v0.17.75 // indirect
 	github.com/DataDog/datadog-agent/pkg/config/create v0.66.1 // indirect
 	github.com/DataDog/datadog-agent/pkg/template v0.66.1 // indirect
 	github.com/DataDog/datadog-agent/pkg/util/otel v0.66.1 // indirect
@@ -1022,7 +1022,6 @@ require (
 	github.com/twmb/franz-go/pkg/sasl/kerberos v1.1.0 // indirect
 	github.com/twmb/franz-go/plugin/kzap v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.28 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/zclconf/go-cty v1.16.0 // indirect
@@ -1096,8 +1095,6 @@ replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.202
 
 // Submodules.
 replace github.com/grafana/alloy/syntax => ./syntax
-
-replace github.com/grafana/alloy/modules/graphql => ./modules/graphql
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
 // versions.

@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/alloy/modules/graphql/graph/model"
+	"github.com/grafana/alloy/internal/service/graphql/graph/model"
 )
 
 // CreateTodo is the resolver for the createTodo field.

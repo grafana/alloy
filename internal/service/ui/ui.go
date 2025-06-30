@@ -12,12 +12,12 @@ import (
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/graphql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/web/api"
 	"github.com/grafana/alloy/internal/web/ui"
-	"github.com/grafana/alloy/modules/graphql"
 )
 
 // ServiceName defines the name used for the UI service.

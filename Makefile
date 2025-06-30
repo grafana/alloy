@@ -236,7 +236,7 @@ generate-graphql-stubs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./modules/graphql && go generate ./...
+	cd ./internal/service/graphql && go generate ./...
 endif
 
 generate-helm-docs:

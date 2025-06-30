@@ -27,8 +27,8 @@ node_modules
 *.syso
 
 # GraphQL generated files
-modules/graphql/graph/generated.go
-modules/graphql/graph/model/models_gen.go
+internal/service/graphql/graph/generated.go
+internal/service/graphql/graph/model/models_gen.go
 
 /docs/variables.mk.local
 
