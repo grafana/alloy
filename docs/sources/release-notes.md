@@ -31,6 +31,40 @@ The previously undocumented argument `custom_metrics` is now expecting a list of
 
 Set `enable_context_propagation` to `all` to get the same behaviour as `enable_context_propagation` being set to `true`.
 
+### Breaking change: In `prometheus.exporter.windows`, the `service` and `msmq` collectors no longer work with WMI
+
+The `msmq` block has been removed. The `enable_v2_collector`, `where_clause`, and `use_api` attributes in the `service` block are also removed.
+
+Prior to Alloy v1.9.0, the `service` collector exists in 2 different versions. 
+Version 1 used WMI (Windows Management Instrumentation) to query all services and was able to provide additional information. 
+Version 2 is a more efficient solution by directly connecting to the service manager, 
+but is not able to provide additional information like run_as or start configuration.
+
+In Alloy v1.9.0 the Version 1 collector was removed, hence why some arguments and blocks were removed.
+In Alloy v1.9.2 those arguments and blocks were re-introduced as a no-op in order to make migrations easier for customers.
+
+Due to this change, the metrics produced by `service` collector are different in v1.9.0 and above.
+The `msmq` collector metrics are unchanged.
+
+Example V2 `service` metrics:
+
+```
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="continue pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="pause pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="paused"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="running"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="start pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="stop pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="stopped"} 1
+```
+
+For more information on V1 and V2 `service` metrics, see the upstream exporter documentation for [version 0.27.3 of the Windows Exporter][win-exp-svc-0-27-3],
+which is the version used in Alloy v1.8.3. 
+Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-27-3].
+
+[win-exp-svc-0-27-3]: https://github.com/prometheus-community/windows_exporter/blob/v0.27.3/docs/collector.service.md
+[win-exp-svc-0-30-7]: https://github.com/prometheus-community/windows_exporter/blob/v0.30.7/docs/collector.service.md
+
 ## v1.6
 
 ### Breaking change: The `topics` argument in the component `loki.source.kafka` does not use regex by default anymore
