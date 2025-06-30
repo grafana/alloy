@@ -125,7 +125,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 
 		Compression: otelcol.CompressionType(cfg.Compression),
 
-		TLS:       toTLSClientArguments(cfg.TLSSetting),
+		TLS:       toTLSClientArguments(cfg.TLS),
 		Keepalive: toKeepaliveClientArguments(cfg.Keepalive),
 
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"gotest.tools/assert"
+
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
@@ -21,9 +23,9 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
-	"gotest.tools/assert"
 )
 
 // Test performs a basic integration test which runs the otelcol.receiver.otlp
@@ -133,7 +135,7 @@ func TestUnmarshalDefault(t *testing.T) {
 
 	expected := otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: &configgrpc.ServerConfig{
+			GRPC: configoptional.Some[configgrpc.ServerConfig](configgrpc.ServerConfig{
 				NetAddr: confignet.AddrConfig{
 					Endpoint:  "0.0.0.0:4317",
 					Transport: "tcp",
@@ -143,8 +145,8 @@ func TestUnmarshalDefault(t *testing.T) {
 					ServerParameters:  &configgrpc.KeepaliveServerParameters{},
 					EnforcementPolicy: &configgrpc.KeepaliveEnforcementPolicy{},
 				},
-			},
-			HTTP: &otlpreceiver.HTTPConfig{
+			}),
+			HTTP: configoptional.Some[otlpreceiver.HTTPConfig](otlpreceiver.HTTPConfig{
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint:              "0.0.0.0:4318",
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
@@ -153,7 +155,7 @@ func TestUnmarshalDefault(t *testing.T) {
 				TracesURLPath:  "/v1/traces",
 				MetricsURLPath: "/v1/metrics",
 				LogsURLPath:    "/v1/logs",
-			},
+			}),
 		},
 	}
 

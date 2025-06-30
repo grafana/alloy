@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.1.1](https://img.shields.io/badge/Version-1.1.1-informational?style=flat-square) ![AppVersion: v1.9.1](https://img.shields.io/badge/AppVersion-v1.9.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.1.2](https://img.shields.io/badge/Version-1.1.2-informational?style=flat-square) ![AppVersion: v1.9.2](https://img.shields.io/badge/AppVersion-v1.9.2-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -150,6 +150,12 @@ useful if just using the default DaemonSet isn't sufficient.
 | ingress.tls | list | `[]` |  |
 | nameOverride | string | `nil` | Overrides the chart's name. Used to change the infix in the resource names. |
 | namespaceOverride | string | `nil` | Overrides the chart's namespace. |
+| networkPolicy.egress[0] | object | `{}` |  |
+| networkPolicy.enabled | bool | `false` |  |
+| networkPolicy.flavor | string | `"kubernetes"` |  |
+| networkPolicy.ingress[0] | object | `{}` |  |
+| networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
+| networkPolicy.policyTypes[1] | string | `"Egress"` |  |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |

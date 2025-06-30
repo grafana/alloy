@@ -25,24 +25,31 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
-| Name                               | Type                 | Description                                                                             | Default | Required |
-|------------------------------------|----------------------|-----------------------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                |         | yes      |
-| `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                          |         | yes      |
-| `collect_interval`                 | `duration`           | How frequently to collect information from database.                                    | `"1m"`  | no       |
-| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                   |         | no       |
-| `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                 | `false` | no       |
-| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                               |         | no       |
-| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from database. | `"1h"`  | no       |
+| Name                               | Type                 | Description                                                                                    | Default | Required |
+|------------------------------------|----------------------|------------------------------------------------------------------------------------------------|---------|----------|
+| `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                       |         | yes      |
+| `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
+| `collect_interval`                 | `duration`           | How frequently to collect information from database.                                           | `"1m"`  | no       |
+| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
+| `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                        | `false` | no       |
+| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
+| `explain_plan_collect_interval`    | `duration`           | How frequently to collect explain plan information from database.                              | `"1m"`  | no       |
+| `explain_plan_per_collect_ratio`   | `float`              | Ratio of explain plan queries to collect per collect interval.                                 | `1.0`   | no       |
+| `explain_plan_initial_lookback`    | `duration`           | How far back to look for explain plan queries on the first collection interval.                | `"24h"` | no       |
+| `locks_collect_interval`           | `duration`           | How frequently to collect locks information from database.                                     | `"30s"` | no       |
+| `locks_threshold`                  | `duration`           | Threshold for locks to be considered slow. If a lock exceeds this duration, it will be logged. | `"1s"`  | no       |
+| `setup_consumers_collect_interval` | `duration`           | How frequently to collect performance_schema.setup_consumers information from the database.    | `"1h"`  | no       |
 
 The following collectors are configurable:
 
-| Name              | Description                                           | Enabled by default |
-|-------------------|-------------------------------------------------------|--------------------|
-| `query_tables`    | Collect query table information.                      | yes                |
-| `schema_table`    | Collect schemas and tables from `information_schema`. | yes                |
-| `query_sample`    | Collect query samples.                                | no                 |
-| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`. | yes                |
+| Name              | Description                                              | Enabled by default |
+|-------------------|----------------------------------------------------------|--------------------|
+| `query_tables`    | Collect query table information.                         | yes                |
+| `schema_table`    | Collect schemas and tables from `information_schema`.    | yes                |
+| `query_sample`    | Collect query samples.                                   | no                 |
+| `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
+| `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
+| `explain_plan`    | Collect explain plan information.                        | no                 |
 
 ## Blocks
 

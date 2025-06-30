@@ -5,7 +5,6 @@ This directory contains documentation for Grafana Alloy. It is split into the fo
 * `sources/`: Source of user-facing documentation.
   This directory is hosted on [grafana.com/docs/alloy](https://grafana.com/docs/alloy/latest/), and we recommend viewing it there instead of the markdown on GitHub.
 * `developer/`: Documentation for contributors and maintainers.
-* `generator/`: Code for generating some parts of the documentation.
 
 ## Preview the website
 

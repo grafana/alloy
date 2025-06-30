@@ -13,11 +13,19 @@ Main (unreleased)
 ### Features
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
+- Add the `otelcol.exporter.faro` exporter to export traces and logs to Faro endpoint. (@mar4uk)
+
+- Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
 ### Enhancements
 
 - Add `hash_string_id` argument to `foreach` block to hash the string representation of the pipeline id instead of using the string itself. (@wildum)
+
 - Update `async-profiler` binaries for `pyroscope.java` to 4.0-87b7b42 (@github-hamza-bouqal)
+
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - Add `explain_plan` collector to `database_observability.mysql` component. (@rgeyer)
+  - `locks`: addition of data locks collector (@gaantunes @fridgepoet)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
@@ -25,12 +33,35 @@ Main (unreleased)
 
 - Update secret-filter gitleaks.toml from v8.19.0 to v8.26.0 (@andrejshapal)
 
+- Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
+
+### Other changes
+
+- Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
+
+- Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
+
+v1.9.2
+-----------------
+
 ### Bugfixes
 
+- Send profiles concurrently from `pyroscope.ebpf`. (@korniltsev)
+
 - Fix the `validate` command not understanding the `livedebugging` block. (@dehaansa)
+
 - Fix invalid class names in python profiles obtained with `pyroscope.ebpf`. (@korniltsev)
 
+- Fixed a bug which prevented non-secret optional secrets to be passed in as `number` arguments. (@ptodev)
+
 - For CRD-based components (`prometheus.operator.*`), retry initializing informers if the apiserver request fails. This rectifies issues where the apiserver is not reachable immediately after node restart. (@dehaansa)
+
+### Other changes
+
+-  Add no-op blocks and attributes to the `prometheus.exporter.windows` component (@ptodev).
+   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`, 
+   `where_clause`, and `use_api` attributes in the `service` block. 
+   This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
 
 v1.9.1
 -----------------
@@ -122,7 +153,7 @@ v1.9.0
 - Reduced the lag time during targets handover in a cluster in `prometheus.scrape` components by reducing thread contention. (@thampiotr)
 
 - Pretty print diagnostic errors when using `alloy run` (@kalleep)
-  
+
 - Add `labels_from_groups` attribute to `stage.regex` in `loki.process` to automatically add named capture groups as labels. (@harshrai654)
 
 - The `loki.rules.kubernetes` component now supports adding extra label matchers
@@ -143,7 +174,7 @@ v1.9.0
   - [0.26.0] Add option to honor original labels from event tags over labels specified in mapping configuration.
   - [0.27.1] Support dogstatsd extended aggregation
   - [0.27.2] Fix panic on certain invalid lines
-  
+
 - Upgrade `beyla.ebpf` to v2.2.4-alloy. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.2.4-alloy). (@grcevski)
 
 ### Bugfixes
@@ -187,10 +218,10 @@ v1.9.0
   - [`otelcol.exporter.awss3`] Fixes an issue where the AWS S3 Exporter was forcing an ACL to be set, leading to unexpected behavior in S3 bucket permissions.
   - [`otelcol.connector.spanmetrics`] A new `include_instrumentation_scope` configuration argument.
   - [`otelcol.connector.spanmetrics`] Initialise new `calls_total` metrics at 0.
-  - [`otelcol.connector.spanmetrics`] A new `aggregation_cardinality_limit` configuration argument 
+  - [`otelcol.connector.spanmetrics`] A new `aggregation_cardinality_limit` configuration argument
     to limit the number of unique combinations of dimensions that will be tracked for metrics aggregation.
   - [`otelcol.connector.spanmetrics`] Deprecate the unused argument `dimensions_cache_size`.
-  - [`otelcol.connector.spanmetrics`] Moving the start timestamp (and last seen timestamp) from the resourceMetrics level to the individual metrics level. 
+  - [`otelcol.connector.spanmetrics`] Moving the start timestamp (and last seen timestamp) from the resourceMetrics level to the individual metrics level.
     This will ensure that each metric has its own accurate start and last seen timestamps, regardless of its relationship to other spans.
   - [`otelcol.processor.k8sattributes`] Add option to configure automatic resource attributes - with annotation prefix.
     Implements [Specify resource attributes using Kubernetes annotations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/k8s-attributes.md#specify-resource-attributes-using-kubernetes-annotations).
@@ -199,7 +230,7 @@ v1.9.0
   - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecating the `topic` argument. Use `logs` > `topic`, `metrics` > `topic`, or `traces` > `topic` instead.
   - [`otelcol.exporter.kafka`, `otelcol.receiver.kafka`] Deprecate the `auth` > `tls` block. Use the top-level `tls` block instead.
   - [`otelcol.receiver.kafka`] Add max_fetch_wait config setting.
-    This setting allows you to specify the maximum time that the broker will wait for min_fetch_size bytes of data 
+    This setting allows you to specify the maximum time that the broker will wait for min_fetch_size bytes of data
     to be available before sending a response to the client.
   - [ `otelcol.receiver.kafka`] Add support for configuring Kafka consumer rebalance strategy and group instance ID.
 

@@ -203,6 +203,11 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 func TestStdlibCoalesce(t *testing.T) {
 	t.Setenv("TEST_VAR2", "Hello!")
 
+	scope := vm.NewScope(map[string]any{
+		"optionalSecretStr": alloytypes.OptionalSecret{Value: "bar"},
+		"optionalSecretInt": alloytypes.OptionalSecret{Value: "123", IsSecret: false},
+	})
+
 	tt := []struct {
 		name   string
 		input  string
@@ -221,6 +226,10 @@ func TestStdlibCoalesce(t *testing.T) {
 		{"coalesce(object, true) and return true", `coalesce(encoding.from_json("{}"), true)`, true},
 		{"coalesce(object, false) and return false", `coalesce(encoding.from_json("{}"), false)`, false},
 		{"coalesce(list, nil)", `coalesce([],null)`, value.Null},
+		{"optional secret str first in coalesce", `coalesce(optionalSecretStr, 1)`, string("bar")},
+		{"optional secret str second in coalesce", `coalesce("foo", optionalSecretStr)`, string("foo")},
+		{"optional secret int first in coalesce", `coalesce(optionalSecretInt, 1)`, int(123)},
+		{"optional secret int second in coalesce", `coalesce(1, optionalSecretInt)`, int(1)},
 	}
 
 	for _, tc := range tt {
@@ -231,7 +240,7 @@ func TestStdlibCoalesce(t *testing.T) {
 			eval := vm.New(expr)
 
 			rv := reflect.New(reflect.TypeOf(tc.expect))
-			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
+			require.NoError(t, eval.Evaluate(scope, rv.Interface()))
 			require.Equal(t, tc.expect, rv.Elem().Interface())
 		})
 	}

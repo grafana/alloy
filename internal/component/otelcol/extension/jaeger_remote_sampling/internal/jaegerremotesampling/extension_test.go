@@ -12,6 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,8 +22,6 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 func TestNewExtension(t *testing.T) {
@@ -102,7 +103,7 @@ func TestRemote(t *testing.T) {
 			cfg.Source.ReloadInterval = tc.reloadInterval
 			cfg.Source.Remote = &configgrpc.ClientConfig{
 				Endpoint: fmt.Sprintf("127.0.0.1:%d", lis.Addr().(*net.TCPAddr).Port),
-				TLSSetting: configtls.ClientConfig{
+				TLS: configtls.ClientConfig{
 					Insecure: true, // test only
 				},
 				WaitForReady: true,
