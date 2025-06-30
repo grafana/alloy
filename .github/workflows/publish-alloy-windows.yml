@@ -66,6 +66,10 @@ jobs:
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: make alloy
 
+    # TODO: Remove this later
+    - run: pwd
+    - run: ls
+
     - name: Build and publish the container
       # TODO: Run "make alloy-image-windows" instead?
       run: |

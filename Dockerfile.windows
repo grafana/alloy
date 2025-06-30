@@ -3,8 +3,8 @@ ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022
 # Use the smallest container possible for the final image
 FROM ${BASE_IMAGE_WINDOWS}
 
-COPY ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
-COPY ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
+COPY ["./build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
+COPY ["./example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
 
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
