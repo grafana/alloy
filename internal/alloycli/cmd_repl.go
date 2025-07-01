@@ -8,10 +8,9 @@ import (
 	"github.com/c-bata/go-prompt"
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy/internal/alloycli/repl"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/graphql"
-	// Install Components
-	// _ "github.com/grafana/alloy/internal/component/all"
 )
 
 type alloyRepl struct {
@@ -29,7 +28,8 @@ type executor struct {
 }
 
 type completer struct {
-	cfg *alloyRepl
+	cfg       *alloyRepl
+	gqlClient *graphql.GraphQlClient
 }
 
 func replCommand() *cobra.Command {
@@ -78,9 +78,11 @@ func replCommand() *cobra.Command {
 }
 
 func (fr *alloyRepl) Run(cmd *cobra.Command) error {
+	client := graphql.NewGraphQlClient(fr.httpAddr)
+
 	p := prompt.New(
-		NewExecutor(fr).Execute,
-		NewCompleter(fr).Complete,
+		NewExecutor(fr, client).Execute,
+		NewCompleter(fr, client).Complete,
 		prompt.OptionTitle("alloy-repl: interactive alloy diagnostics"),
 		prompt.OptionPrefix("alloy >> "),
 		prompt.OptionInputTextColor(prompt.Green),
@@ -90,10 +92,10 @@ func (fr *alloyRepl) Run(cmd *cobra.Command) error {
 	return nil
 }
 
-func NewExecutor(cfg *alloyRepl) *executor {
+func NewExecutor(cfg *alloyRepl, gqlClient *graphql.GraphQlClient) *executor {
 	return &executor{
 		cfg:       cfg,
-		gqlClient: graphql.NewGraphQLClient(cfg.httpAddr),
+		gqlClient: gqlClient,
 	}
 }
 
@@ -108,7 +110,7 @@ func (e executor) Execute(line string) {
 		os.Exit(0)
 	}
 
-	// Wrap the query in query {...} for convenience if not already present
+	// Wrap the query in query {...} for convenience
 	if !strings.HasPrefix(line, "query") {
 		line = "query { " + line + " }"
 	}
@@ -119,16 +121,26 @@ func (e executor) Execute(line string) {
 		return
 	}
 
-	fmt.Println(response)
+	repl.PrintGraphQlResponse(response)
 }
 
-func NewCompleter(cfg *alloyRepl) *completer {
-	return &completer{cfg: cfg}
+func NewCompleter(cfg *alloyRepl, gqlClient *graphql.GraphQlClient) *completer {
+	return &completer{cfg: cfg, gqlClient: gqlClient}
 }
 
 func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
-	s := []prompt.Suggest{
-		{Text: "components"},
+	response, err := repl.IntrospectQueryFields(c.gqlClient)
+	if err != nil {
+		fmt.Printf("Error introspecting schema: %v\n", err)
+		return []prompt.Suggest{}
 	}
-	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
+
+	fields := make([]prompt.Suggest, len(response))
+	for i, field := range response {
+		fields[i] = prompt.Suggest{
+			Text: field.Name,
+		}
+	}
+
+	return prompt.FilterHasPrefix(fields, d.GetWordBeforeCursor(), true)
 }
