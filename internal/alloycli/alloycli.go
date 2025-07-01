@@ -27,6 +27,7 @@ func Run() {
 		convertCommand(),
 		fmtCommand(),
 		runCommand(),
+		replCommand(),
 		toolsCommand(),
 		validateCommand(),
 	)
