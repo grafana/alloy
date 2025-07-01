@@ -983,6 +983,7 @@ require (
 require (
 	github.com/99designs/gqlgen v0.17.75
 	github.com/buger/jsonparser v1.1.1
+	github.com/c-bata/go-prompt v0.2.6
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
@@ -1007,12 +1008,14 @@ require (
 	github.com/grafana/faro/pkg/go v0.0.0-20250314155512-06a06da3b8bc // indirect
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf // indirect
 	github.com/mariomac/guara v0.0.0-20250408105519-1e4dbdfb7136 // indirect
+	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.128.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/splunk v0.128.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.128.0 // indirect
+	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/tonistiigi/dchapes-mode v0.0.0-20250318174251-73d941a28323 // indirect
