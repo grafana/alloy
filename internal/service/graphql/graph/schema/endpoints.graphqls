@@ -6,8 +6,8 @@ extend type Query {
 }
 
 type Endpoint {
-  host: String!
-  port: Int!
+  host:   String!
+  port:   Int!
   status: EndpointStatus!
 }
 
@@ -19,5 +19,5 @@ type EndpointStatus {
 
 type EndpointStatusDns {
   hostname: String
-  ip: String
+  ip:       String
 }

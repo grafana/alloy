@@ -3,12 +3,12 @@ extend type Query {
 }
 
 type Component {
-  id: ID!
-  name: String!
+  id:     ID!
+  name:   String!
   health: Health!
 }
 
 type Health {
-  message: String!
+  message:     String!
   lastUpdated: Time!
 }
