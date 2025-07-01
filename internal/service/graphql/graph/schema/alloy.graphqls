@@ -6,6 +6,6 @@ type Alloy {
   version:    String!
   revision:   String!
   branch:     String!
-  build_user: String!
-  build_date: String!
+  buildUser:  String!
+  buildDate:  String!
 }
