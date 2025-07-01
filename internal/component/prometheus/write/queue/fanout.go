@@ -107,5 +107,4 @@ func (f *fanout) SetOptions(opts *storage.AppendOptions) {
 	for _, x := range f.children {
 		x.SetOptions(opts)
 	}
-	return
 }

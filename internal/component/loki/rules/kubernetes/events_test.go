@@ -122,7 +122,7 @@ func TestEventLoop(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,
@@ -236,7 +236,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,

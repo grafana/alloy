@@ -215,7 +215,7 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 	return diags
 }
 
-func validateTraces(tracesConfig traces.Config) diag.Diagnostics {
+func validateTraces(_ traces.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	return diags
@@ -223,7 +223,7 @@ func validateTraces(tracesConfig traces.Config) diag.Diagnostics {
 
 // validateLogs validates the logs config for anything not already covered
 // by appendStaticPromtail.
-func validateLogs(logsConfig *logs.Config) diag.Diagnostics {
+func validateLogs(_ *logs.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	return diags

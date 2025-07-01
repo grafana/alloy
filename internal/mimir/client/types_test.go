@@ -28,23 +28,11 @@ func TestRuleGroup_Marshal(t *testing.T) {
 					Name:     "group",
 					Interval: 0,
 					Limit:    0,
-					Rules: []rulefmt.RuleNode{
+					Rules: []rulefmt.Rule{
 						{
-							Record: yaml.Node{},
-							Alert: yaml.Node{
-								Kind:   8,
-								Tag:    "!!str",
-								Value:  "alert",
-								Line:   4,
-								Column: 12,
-							},
-							Expr: yaml.Node{
-								Kind:   8,
-								Tag:    "!!str",
-								Value:  "expr",
-								Line:   5,
-								Column: 11,
-							},
+							Record: "record",
+							Alert:  "alert",
+							Expr:   "expr",
 						},
 					},
 				},
