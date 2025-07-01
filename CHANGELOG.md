@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
