@@ -981,7 +981,7 @@ func TestMetricBuilderCounters(t *testing.T) {
 		for _, tt := range tests {
 			for _, enableNativeHistograms := range []bool{true, false} {
 				t.Run(fmt.Sprintf("%s/enableNativeHistograms=%v/disableMetricAdjustment=%v", tt.name, enableNativeHistograms, disableMetricAdjustment), func(t *testing.T) {
-					// defer testutil.SetFeatureGateForTest(t, removeStartTimeAdjustment, disableMetricAdjustment)()
+					defer SetFeatureGateForTest(t, removeStartTimeAdjustment, disableMetricAdjustment)()
 					tt.run(t, enableNativeHistograms)
 				})
 			}

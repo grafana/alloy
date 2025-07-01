@@ -214,7 +214,7 @@ func TestStartTimeMetricFallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// testutil.SetFeatureGateForTest(t, useCollectorStartTimeFallbackGate, true)
+			SetFeatureGateForTest(t, useCollectorStartTimeFallbackGate, true)
 			gcInterval := 10 * time.Millisecond
 			stma := NewStartTimeMetricAdjuster(zap.NewNop(), tt.startTimeMetricRegex, gcInterval)
 			if tt.expectedErr != nil {
@@ -459,7 +459,7 @@ func TestFallbackAndReset(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// testutil.SetFeatureGateForTest(t, useCollectorStartTimeFallbackGate, tt.useFallback)
+			SetFeatureGateForTest(t, useCollectorStartTimeFallbackGate, tt.useFallback)
 			gcInterval := 10 * time.Millisecond
 			stma := NewStartTimeMetricAdjuster(zap.NewNop(), nil, gcInterval)
 			// To test that the adjuster is using the fallback correctly, override the fallback time to use
