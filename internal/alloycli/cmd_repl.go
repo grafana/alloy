@@ -9,26 +9,44 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/graphql"
 	// Install Components
 	// _ "github.com/grafana/alloy/internal/component/all"
 )
 
+type alloyRepl struct {
+	httpAddr string
+	// storagePath          string
+	minStability featuregate.Stability
+	// uiPrefix     string
+	// configFormat         string
+	enableCommunityComps bool
+}
+
+type executor struct {
+	cfg       *alloyRepl
+	gqlClient *graphql.GraphQlClient
+}
+
+type completer struct {
+	cfg *alloyRepl
+}
+
 func replCommand() *cobra.Command {
 	r := &alloyRepl{
-		httpAddr: "127.0.0.1:12345",
+		httpAddr: "http://127.0.0.1:12345/graphql",
 		// storagePath:    "data-alloy/",
 		minStability: featuregate.StabilityGenerallyAvailable,
-		uiPrefix:     "/",
+		// uiPrefix:     "/",
 		// configFormat: "alloy",
 	}
 
 	cmd := &cobra.Command{
-		Use:   "repl [flags] path",
-		Short: "Run Grafana Alloy REPL",
-		Long: `The repl subcommand allows for diagnostics and data collection from a running Alloy instance.
-`,
+		Use:          "repl [flags]",
+		Short:        "Run Grafana Alloy REPL",
+		Long:         "The repl subcommand allows for interactive diagnostics and data collection from a running Alloy instance.",
 		Args:         cobra.NoArgs,
-		Example:      "alloy repl --server.http.addr 127.0.0.1:12345",
+		Example:      "alloy repl",
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,8 +56,13 @@ func replCommand() *cobra.Command {
 
 	// Server flags
 	cmd.Flags().
-		StringVar(&r.httpAddr, "server.http.addr", r.httpAddr, "Address to use to locate the graphQL endpoints")
-	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to discover the HTTP UI at")
+		StringVar(
+			&r.httpAddr,
+			"server.graphql.endpoint",
+			r.httpAddr,
+			"Address of the GraphQL endpoint",
+		)
+	// cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to discover the HTTP UI at")
 
 	// Config flags
 	// cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -49,18 +72,9 @@ func replCommand() *cobra.Command {
 	// Misc flags
 	// cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	// cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 
 	return cmd
-}
-
-type alloyRepl struct {
-	httpAddr string
-	// storagePath          string
-	minStability featuregate.Stability
-	uiPrefix     string
-	// configFormat         string
-	enableCommunityComps bool
 }
 
 func (fr *alloyRepl) Run(cmd *cobra.Command) error {
@@ -76,12 +90,11 @@ func (fr *alloyRepl) Run(cmd *cobra.Command) error {
 	return nil
 }
 
-type executor struct {
-	cfg *alloyRepl
-}
-
 func NewExecutor(cfg *alloyRepl) *executor {
-	return &executor{cfg: cfg}
+	return &executor{
+		cfg:       cfg,
+		gqlClient: graphql.NewGraphQLClient(cfg.httpAddr),
+	}
 }
 
 func (e executor) Execute(line string) {
@@ -94,10 +107,19 @@ func (e executor) Execute(line string) {
 		fmt.Println("Exiting Alloy REPL.")
 		os.Exit(0)
 	}
-}
 
-type completer struct {
-	cfg *alloyRepl
+	// Wrap the query in query {...} for convenience if not already present
+	if !strings.HasPrefix(line, "query") {
+		line = "query { " + line + " }"
+	}
+
+	response, err := e.gqlClient.Execute(line)
+	if err != nil {
+		fmt.Printf("Error executing query: %v\n", err)
+		return
+	}
+
+	fmt.Println(response)
 }
 
 func NewCompleter(cfg *alloyRepl) *completer {
@@ -106,7 +128,7 @@ func NewCompleter(cfg *alloyRepl) *completer {
 
 func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
 	s := []prompt.Suggest{
-		{Text: "components", Description: "components list"},
+		{Text: "components"},
 	}
 	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
 }
