@@ -3,5 +3,9 @@ extend type Query {
 }
 
 type Alloy {
-  version: String!
+  version:    String!
+  revision:   String!
+  branch:     String!
+  build_user: String!
+  build_date: String!
 }

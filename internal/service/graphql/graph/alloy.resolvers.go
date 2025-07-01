@@ -7,13 +7,17 @@ package graph
 import (
 	"context"
 
+	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
 )
 
 // Alloy is the resolver for the alloy field.
 func (r *queryResolver) Alloy(ctx context.Context) (model.Alloy, error) {
 	return model.Alloy{
-		// TODO: fill me in with the real version
-		Version: "1.2.3 TODO fill me in with the real version",
+		Version:   build.Version,
+		Revision:  build.Revision,
+		Branch:    build.Branch,
+		BuildUser: build.BuildUser,
+		BuildDate: build.BuildDate,
 	}, nil
 }
