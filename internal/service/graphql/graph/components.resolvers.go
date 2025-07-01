@@ -12,7 +12,7 @@ import (
 )
 
 // Components is the resolver for the components field.
-func (r *queryResolver) Components(ctx context.Context) ([]*model.Component, error) {
+func (r *queryResolver) Components(ctx context.Context) ([]model.Component, error) {
 	components, err := r.Host.ListComponents("", component.InfoOptions{
 		GetHealth: true,
 	})
@@ -20,12 +20,15 @@ func (r *queryResolver) Components(ctx context.Context) ([]*model.Component, err
 		return nil, err
 	}
 
-	result := make([]*model.Component, len(components))
+	result := make([]model.Component, len(components))
 	for i, comp := range components {
-		result[i] = &model.Component{
-			ID:          comp.ID.String(),
-			Name:        comp.ComponentName,
-			Description: comp.ComponentName, // Using component name as description for now
+		result[i] = model.Component{
+			ID:   comp.ID.String(),
+			Name: comp.ComponentName,
+			Health: model.Health{
+				Message:     comp.Health.Message,
+				LastUpdated: comp.Health.UpdateTime,
+			},
 		}
 	}
 

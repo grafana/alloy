@@ -2,4 +2,6 @@
 # Root types that other schemas extend
 
 type Query
-type Mutation
+# type Mutation
+
+scalar Time

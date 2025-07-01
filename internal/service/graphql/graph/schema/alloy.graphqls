@@ -1,0 +1,7 @@
+extend type Query {
+  alloy: Alloy!
+}
+
+type Alloy {
+  version: String!
+}

@@ -1,0 +1,23 @@
+extend type Query {
+  # TODO: does this make sense to query *all* endpoints? What does that even mean in this context?
+  endpoints: [Endpoint!]!
+
+  endpoint(host: String!, port: Int!): Endpoint!
+}
+
+type Endpoint {
+  host: String!
+  port: Int!
+  status: EndpointStatus!
+}
+
+type EndpointStatus {
+  dns: EndpointStatusDns!
+  tcp: String!
+  tls: String!
+}
+
+type EndpointStatusDns {
+  hostname: String
+  ip: String
+}

@@ -5,5 +5,10 @@ extend type Query {
 type Component {
   id: ID!
   name: String!
-  description: String!
+  health: Health!
+}
+
+type Health {
+  message: String!
+  lastUpdated: Time!
 }
