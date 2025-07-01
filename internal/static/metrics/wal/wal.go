@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -29,6 +28,8 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 // ErrWALClosed is an error returned when a WAL operation can't run because the
@@ -197,6 +198,10 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 			return nil, fmt.Errorf("repair corrupted WAL: %w", err)
 		}
 	}
+
+	inactiveSeriesRemoved, _ := storage.series.RemoveInactiveSeries()
+	storage.metrics.numActiveSeries.Sub(float64(inactiveSeriesRemoved))
+	storage.series.MarkInitialized()
 
 	return storage, nil
 }

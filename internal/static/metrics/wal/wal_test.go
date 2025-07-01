@@ -363,6 +363,12 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 	}
 	require.NoError(t, app.Commit())
 
+	// Make sure we have 4 active series left on the WAL
+	var activeSeries io_prometheus_client.Metric
+	err = s.metrics.numActiveSeries.Write(&activeSeries)
+	require.NoError(t, err)
+	require.Equal(t, 4.0, activeSeries.Gauge.GetValue())
+
 	// Forcefully create a bunch of new segments so when we truncate
 	// there's enough segments to be considered for truncation.
 	for i := 0; i < 3; i++ {
@@ -375,14 +381,23 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 	err = s.Truncate(keepTs)
 	require.NoError(t, err)
 
+	// Make sure we have no active series left on the WAL
+	err = s.metrics.numActiveSeries.Write(&activeSeries)
+	require.NoError(t, err)
+	require.Equal(t, 0.0, activeSeries.Gauge.GetValue())
+
 	// Publish new samples that will create new RefIDs
 	for _, metric := range payload {
-		// Write a new sample for the same metric and see what happens
 		metric.samples = metric.samples[1:]
 		metric.samples[0].ts = metric.samples[0].ts * 10
 		metric.Write(t, app)
 	}
 	require.NoError(t, app.Commit())
+
+	// Make sure we have 4 active series left on the WAL
+	err = s.metrics.numActiveSeries.Write(&activeSeries)
+	require.NoError(t, err)
+	require.Equal(t, 4.0, activeSeries.Gauge.GetValue())
 
 	// Close the WAL before we have a chance to remove the first RefIDs
 	err = s.Close()
@@ -401,11 +416,11 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 		err = s.Truncate(keepTs)
 		require.NoError(t, err)
 	}
-	// We should 0 active series but will have 4 instead because the first 4 RefIDs are lost in the WAL
-	var metric io_prometheus_client.Metric
-	err = s.metrics.numActiveSeries.Write(&metric)
+
+	// Make sure we have no active series left on the WAL
+	err = s.metrics.numActiveSeries.Write(&activeSeries)
 	require.NoError(t, err)
-	require.Equal(t, 0.0, metric.Gauge.GetValue())
+	require.Equal(t, 0.0, activeSeries.Gauge.GetValue())
 }
 
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
