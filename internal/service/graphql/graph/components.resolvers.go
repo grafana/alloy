@@ -6,7 +6,6 @@ package graph
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
@@ -44,12 +43,12 @@ func (r *componentResolver) TestConnection(ctx context.Context, obj *model.Compo
 	if tc, ok := comp.Component.(component.TestConnectionComponent); ok {
 		err := tc.TestConnection(ctx, true)
 		if err != nil {
-			return "", fmt.Errorf("error testing connection for component %s: %w", comp.ComponentName, err)
+			return fmt.Sprintf("Connection to component %s failed: %v", comp.ComponentName, err), nil
 		}
 		return fmt.Sprintf("Connection to component %s is successful", comp.ComponentName), nil
 	}
 
-	return "", errors.New("component does not support test connection")
+	return "Component does not support test connection", nil
 }
 
 // Components is the resolver for the components field.
