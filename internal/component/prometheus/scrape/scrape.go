@@ -16,13 +16,12 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
-
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/metadata"
 	promlogging "github.com/prometheus/prometheus/util/logging"
 
 	"github.com/grafana/alloy/internal/component"
@@ -387,10 +386,13 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 
+	promConfig, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)))
+	if err != nil {
+		return fmt.Errorf("error loading blank prometheus config: %w", err)
+	}
 	sc := getPromScrapeConfigs(c.opts.ID, newArgs)
-	err := c.scraper.ApplyConfig(&config.Config{
-		ScrapeConfigs: []*config.ScrapeConfig{sc},
-	})
+	promConfig.ScrapeConfigs = []*config.ScrapeConfig{sc}
+	err = c.scraper.ApplyConfig(promConfig)
 	if err != nil {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
@@ -459,6 +461,12 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 
 	// HTTP scrape client settings
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
+
+	// Validation schemes
+	// TODO(thampiotr): expose these
+	dec.MetricNameValidationScheme = config.UTF8ValidationConfig
+	dec.MetricNameEscapingScheme = model.AllowUTF8
+
 	return &dec
 }
 
