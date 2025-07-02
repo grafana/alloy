@@ -114,6 +114,19 @@ type DebugComponent interface {
 	DebugInfo() interface{}
 }
 
+// TestConnectionComponent is an extension interface for components which can
+// test their connection to a remote service.
+type TestConnectionComponent interface {
+	Component
+
+	// TestConnection tests the connection to a remote service. The component
+	// must return an error if the connection is not healthy, or nil if the
+	// connection is healthy.
+	//
+	// Must be safe to call concurrently.
+	TestConnection(ctx context.Context, allowTestPayload bool) error
+}
+
 // LiveDebugging is a marker interface to check if a component supports live debugging.
 type LiveDebugging interface {
 	LiveDebugging() // This function is never called.

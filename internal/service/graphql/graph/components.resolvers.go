@@ -6,10 +6,51 @@ package graph
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
 	"github.com/grafana/alloy/internal/service/graphql/utils"
 )
+
+// TestConnection is the resolver for the testConnection field.
+func (r *componentResolver) TestConnection(ctx context.Context, obj *model.Component) (string, error) {
+	if obj == nil {
+		return "", fmt.Errorf("component is nil")
+	}
+
+	allComponents, err := utils.GetAllComponents(r.Host)
+	if err != nil {
+		return "", err
+	}
+
+	var comp *component.Info
+	for _, c := range allComponents {
+		if c.ID.String() == obj.ID {
+			comp = c
+			break
+		}
+	}
+
+	if comp == nil {
+		return "", fmt.Errorf("component with ID %s not found", obj.ID)
+	}
+
+	if comp.Component == nil {
+		return "", fmt.Errorf("component with ID %s is not yet running", obj.ID)
+	}
+
+	if tc, ok := comp.Component.(component.TestConnectionComponent); ok {
+		err := tc.TestConnection(ctx, true)
+		if err != nil {
+			return "", fmt.Errorf("error testing connection for component %s: %w", comp.ComponentName, err)
+		}
+		return fmt.Sprintf("Connection to component %s is successful", comp.ComponentName), nil
+	}
+
+	return "", errors.New("component does not support test connection")
+}
 
 // Components is the resolver for the components field.
 func (r *queryResolver) Components(ctx context.Context) ([]model.Component, error) {
@@ -43,3 +84,8 @@ func (r *queryResolver) Component(ctx context.Context, id string) (*model.Compon
 	// Component not found
 	return nil, nil
 }
+
+// Component returns ComponentResolver implementation.
+func (r *Resolver) Component() ComponentResolver { return &componentResolver{r} }
+
+type componentResolver struct{ *Resolver }

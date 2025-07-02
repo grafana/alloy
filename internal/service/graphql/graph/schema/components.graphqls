@@ -7,6 +7,7 @@ type Component {
   id:     ID!
   name:   String!
   health: Health!
+  testConnection: String!
 }
 
 type Health {
