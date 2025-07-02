@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add `enable_tracing` attribute to `prometheus.exporter.snowflake` component to support debugging issues. (@dehaansa)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
