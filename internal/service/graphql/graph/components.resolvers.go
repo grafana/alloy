@@ -41,7 +41,7 @@ func (r *componentResolver) TestConnection(ctx context.Context, obj *model.Compo
 	}
 
 	if tc, ok := comp.Component.(component.TestConnectionComponent); ok {
-		err := tc.TestConnection(ctx, true)
+		err := tc.TestConnection(ctx)
 		if err != nil {
 			return fmt.Sprintf("Connection to component %s failed: %v", comp.ComponentName, err), nil
 		}

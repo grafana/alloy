@@ -334,7 +334,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 func (c *Component) LiveDebugging() {}
 
-func (c *Component) TestConnection(ctx context.Context, allowTestPayload bool) error {
+func (c *Component) TestConnection(ctx context.Context) error {
 	if c.exited.Load() {
 		return fmt.Errorf("%s has exited", c.opts.ID)
 	}

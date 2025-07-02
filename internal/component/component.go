@@ -124,7 +124,7 @@ type TestConnectionComponent interface {
 	// connection is healthy.
 	//
 	// Must be safe to call concurrently.
-	TestConnection(ctx context.Context, allowTestPayload bool) error
+	TestConnection(ctx context.Context) error
 }
 
 // LiveDebugging is a marker interface to check if a component supports live debugging.
