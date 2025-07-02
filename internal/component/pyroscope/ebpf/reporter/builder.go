@@ -145,6 +145,7 @@ func (p *ProfileBuilder) Function(function, file string) *profile.Function {
 	f = p.p.functions.pop()
 	f.ID = id
 	f.Name = function
+	f.Filename = file
 
 	p.Profile.Function = append(p.Profile.Function, f)
 	p.functions[k] = f

@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/table"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
 
@@ -57,7 +58,12 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 
 	var nfs samples.NativeSymbolResolver
 	if cfg.SymbolizeNativeFrames {
-		tf := irsymcache.NewTableFactory()
+		tf := irsymcache.TableTableFactory{
+			Options: []table.Option{
+				table.WithFiles(),
+				table.WithLines(),
+			},
+		}
 		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
 			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
 			Path:        cfg.SymbCachePath,
