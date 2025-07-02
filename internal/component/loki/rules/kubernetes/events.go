@@ -222,13 +222,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	}
 
 	var errs error
-	groups, parseErrors := rulefmt.Parse(buf, false)
-	if len(parseErrors) > 0 {
-		for _, err := range parseErrors {
-			errs = multierror.Append(errs, err)
-		}
-		return nil, errs
-	}
+	groups, _ := rulefmt.Parse(buf, false)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr); err != nil {

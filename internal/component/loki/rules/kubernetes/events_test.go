@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -22,6 +21,8 @@ import (
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 )
