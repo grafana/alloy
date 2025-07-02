@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/sigv4"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func expectedCfg(transform func(c *config.Config)) *config.Config {
