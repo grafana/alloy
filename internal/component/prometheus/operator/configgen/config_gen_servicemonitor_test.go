@@ -100,6 +100,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -171,6 +174,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -242,6 +248,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -313,6 +322,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -493,6 +505,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelLimit:            103,
 				LabelNameLengthLimit:  104,
 				LabelValueLengthLimit: 105,
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -569,6 +584,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 	}
