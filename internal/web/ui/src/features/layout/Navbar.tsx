@@ -29,6 +29,9 @@ function Navbar() {
           </NavLink>
         </li>
         <li>
+          <a href="/-/support">Generate support bundle</a>
+        </li>
+        <li>
           <a href="https://grafana.com/docs/alloy/latest">Help</a>
         </li>
       </ul>
