@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestTargetServer(t *testing.T) {
@@ -37,7 +39,7 @@ func TestTargetServer(t *testing.T) {
 	metrics, err := reg.Gather()
 	require.NoError(t, err)
 	for _, m := range metrics {
-		require.True(t, strings.HasPrefix(m.GetName(), "test_namespace"))
+		assert.True(t, strings.HasPrefix(m.GetName(), "test_namespace"), "expected %q to start with %q", m.GetName(), "test_namespace")
 	}
 }
 
