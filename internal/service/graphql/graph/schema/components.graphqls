@@ -10,6 +10,7 @@ type Component {
   arguments: String!
   exports: String!
   debugInfo: String!
+  testConnection: String!
 }
 
 type Health {
