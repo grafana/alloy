@@ -72,7 +72,7 @@ require (
 	github.com/grafana/loki/v3 v3.0.0-20250218135905-f078e0e3f9b6 // k217-alloy-v1.7-fork branch
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
-	github.com/grafana/pyroscope/ebpf v0.4.12-0.20250627035724-4110513a14dd
+	github.com/grafana/pyroscope/ebpf v0.4.12-0.20250702072052-7ece7bd49ad7
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
