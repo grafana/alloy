@@ -30,6 +30,15 @@ type executor struct {
 type completer struct {
 	cfg       *alloyRepl
 	gqlClient *graphql.GraphQlClient
+	lastError string
+}
+
+var controlChars = map[rune]bool{
+	'"': true,
+	'(': true,
+	')': true,
+	'{': true,
+	'}': true,
 }
 
 func replCommand() *cobra.Command {
@@ -86,10 +95,29 @@ func (fr *alloyRepl) Run(cmd *cobra.Command) error {
 		prompt.OptionTitle("alloy-repl: interactive alloy diagnostics"),
 		prompt.OptionPrefix("alloy >> "),
 		prompt.OptionInputTextColor(prompt.Green),
+		prompt.OptionAddASCIICodeBind(prompt.ASCIICodeBind{
+			ASCIICode: []byte{'('},
+			Fn:        insertCharPair("(  )"),
+		}),
+		prompt.OptionAddASCIICodeBind(prompt.ASCIICodeBind{
+			ASCIICode: []byte{'{'},
+			Fn:        insertCharPair("{  }"),
+		}),
+		prompt.OptionAddASCIICodeBind(prompt.ASCIICodeBind{
+			ASCIICode: []byte{'"'},
+			Fn:        insertCharPair("\"\""),
+		}),
 	)
 	p.Run()
 
 	return nil
+}
+
+func insertCharPair(pair string) func(buf *prompt.Buffer) {
+	return func(buf *prompt.Buffer) {
+		buf.InsertText(pair, false, false)
+		buf.CursorRight(len(pair) / 2)
+	}
 }
 
 func NewExecutor(cfg *alloyRepl, gqlClient *graphql.GraphQlClient) *executor {
@@ -99,7 +127,7 @@ func NewExecutor(cfg *alloyRepl, gqlClient *graphql.GraphQlClient) *executor {
 	}
 }
 
-func (e executor) Execute(line string) {
+func (e *executor) Execute(line string) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return
@@ -129,18 +157,147 @@ func NewCompleter(cfg *alloyRepl, gqlClient *graphql.GraphQlClient) *completer {
 }
 
 func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
-	response, err := repl.IntrospectQueryFields(c.gqlClient)
-	if err != nil {
-		fmt.Printf("Error introspecting schema: %v\n", err)
+	// Find the nearest control character to the right of cursor
+	nearestControlChar := findNearestControlChar(d)
+
+	// If nearest control character is a quote, don't suggest anything
+	if nearestControlChar == '"' {
 		return []prompt.Suggest{}
 	}
+
+	// Determine if the cursor is inside a parentheses pair
+	if nearestControlChar == '(' {
+		return []prompt.Suggest{
+			{
+				Text: "we are in a parentheses!",
+			},
+		}
+	}
+
+	// Determine if the cursor is inside a curly brace pair
+	if nearestControlChar == '{' {
+		suggestions := []prompt.Suggest{
+			// {
+			// 	Text: strings.Join(parseGraphQLFieldPath(d.TextBeforeCursor()), "->"),
+			// },
+			{Text: "suggestion1"},
+			{Text: "suggestion2"},
+			{Text: "suggestion3"},
+		}
+		return prompt.FilterHasPrefix(suggestions, d.GetWordBeforeCursor(), true)
+	}
+
+	// Assume we are not inside a bracket of some sort
+	response, err := repl.IntrospectQueryFields(c.gqlClient)
+	if err != nil {
+		errorMsg := fmt.Sprintf("%v", err)
+
+		// Only display error if it's different from the last one
+		if errorMsg != c.lastError {
+			fmt.Println("Error introspecting schema. Is Alloy running?")
+			fmt.Println(errorMsg)
+			c.lastError = errorMsg
+		}
+		return []prompt.Suggest{}
+	}
+
+	// Reset error state on successful introspection
+	c.lastError = ""
 
 	fields := make([]prompt.Suggest, len(response))
 	for i, field := range response {
 		fields[i] = prompt.Suggest{
-			Text: field.Name,
+			Text:        field.Name,
+			Description: field.Description,
 		}
 	}
 
 	return prompt.FilterHasPrefix(fields, d.GetWordBeforeCursor(), true)
+}
+
+// parseGraphQLFieldPath parses a GraphQL query fragment and returns the field path
+// representing the current cursor context. For example:
+// - "components{" -> ["components"]
+// - "components{name, config{" -> ["components", "config"]
+// - "components(id: 123){config{" -> ["components", "config"]
+func parseGraphQLFieldPath(textBeforeCursor string) []string {
+	// Remove query wrapper if present
+	text := strings.TrimSpace(textBeforeCursor)
+
+	if text == "" {
+		return []string{}
+	}
+
+	// Remove all whitespace characters
+	text = removeWhitespace(text)
+
+	// Remove parentheses groups (field arguments)
+	text = removeParenGroups(text)
+
+	// Split on opening curly braces
+	parts := strings.Split(text, "{")
+
+	var fieldPath []string
+	for i, part := range parts {
+		// Skip the last empty part if it exists
+		if i == len(parts)-1 && part == "" {
+			continue
+		}
+
+		// Extract the field name (last field after comma)
+		fields := strings.Split(part, ",")
+		if len(fields) > 0 {
+			fieldName := fields[len(fields)-1]
+			if fieldName != "" {
+				fieldPath = append(fieldPath, fieldName)
+			}
+		}
+	}
+
+	return fieldPath
+}
+
+// removeWhitespace removes all whitespace characters from the text
+func removeWhitespace(text string) string {
+	var result strings.Builder
+	for _, char := range text {
+		if char != ' ' && char != '\t' && char != '\n' && char != '\r' {
+			result.WriteRune(char)
+		}
+	}
+	return result.String()
+}
+
+// removeParenGroups removes parentheses groups like (arg: value) from the text
+func removeParenGroups(text string) string {
+	var result strings.Builder
+	parenDepth := 0
+
+	for _, char := range text {
+		if char == '(' {
+			parenDepth++
+		} else if char == ')' {
+			parenDepth--
+		} else if parenDepth == 0 {
+			result.WriteRune(char)
+		}
+	}
+
+	return result.String()
+}
+
+// findNearestControlChar finds the nearest control character (quote, curly brace, or paren)
+// to the left of the current cursor position
+func findNearestControlChar(d prompt.Document) rune {
+	textBeforeCursor := d.TextBeforeCursor()
+
+	for i := len(textBeforeCursor) - 1; i >= 0; i-- {
+		char := rune(textBeforeCursor[i])
+		if controlChars[char] {
+			return char
+		}
+	}
+
+	// Return null rune if no control character found
+	return 0
 }

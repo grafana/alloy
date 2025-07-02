@@ -7,6 +7,9 @@ type Component {
   id:     ID!
   name:   String!
   health: Health!
+  arguments: String!
+  exports: String!
+  debugInfo: String!
 }
 
 type Health {

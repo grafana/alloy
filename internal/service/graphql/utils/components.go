@@ -22,7 +22,10 @@ func GetAllComponents(host service.Host) ([]*component.Info, error) {
 
 func GetLocalComponents(host service.Host) ([]*component.Info, error) {
 	components, err := host.ListComponents("", component.InfoOptions{
-		GetHealth: true,
+		GetHealth:    true,
+		GetArguments: true,
+		GetExports:   true,
+		GetDebugInfo: true,
 	})
 
 	return components, err
@@ -35,7 +38,10 @@ func GetRemoteComponents(host service.Host) ([]*component.Info, error) {
 	}
 
 	components, err := remoteHost.ListComponents("", component.InfoOptions{
-		GetHealth: true,
+		GetHealth:    true,
+		GetArguments: true,
+		GetExports:   true,
+		GetDebugInfo: true,
 	})
 
 	return components, err

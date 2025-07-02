@@ -2,7 +2,6 @@ package repl
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/grafana/alloy/internal/service/graphql"
 )
@@ -18,9 +17,11 @@ type IntrospectionQuery struct {
 }
 
 type IntrospectionQueryField struct {
-	Name string `json:"name"`
-	Args []struct {
-		Name string `json:"name"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Args        []struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
 	} `json:"args"`
 }
 
@@ -31,8 +32,10 @@ func IntrospectQueryFields(gqlClient *graphql.GraphQlClient) ([]IntrospectionQue
 				queryType {
 					fields {
 						name
+						description
 						args {
 							name
+							description
 						}
 					}
 				}
@@ -40,14 +43,12 @@ func IntrospectQueryFields(gqlClient *graphql.GraphQlClient) ([]IntrospectionQue
 		}
 	`)
 	if err != nil {
-		fmt.Printf("Error introspecting schema: %v\n", err)
 		return []IntrospectionQueryField{}, err
 	}
 
 	var introspectionQueryResponse IntrospectionQuery
 	err = json.Unmarshal(response.Raw, &introspectionQueryResponse)
 	if err != nil {
-		fmt.Printf("Error unmarshaling response: %v\n", err)
 		return []IntrospectionQueryField{}, err
 	}
 
