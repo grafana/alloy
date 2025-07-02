@@ -33,7 +33,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine"})
 
 	args.Registry.MustRegister(infoMetric)
 
@@ -61,6 +61,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerName         = "unknown"
 		providerRegion       = "unknown"
 		dbInstanceIdentifier = "unknown"
+		engine               = "mysql"
 	)
 
 	host, _, err := net.SplitHostPort(cfg.Addr)
@@ -75,7 +76,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine).Set(1)
 	return nil
 }
 
