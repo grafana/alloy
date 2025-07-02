@@ -6,18 +6,8 @@ extend type Query {
 }
 
 type Endpoint {
-  host:   String!
-  port:   Int!
-  status: EndpointStatus!
-}
-
-type EndpointStatus {
-  dns: EndpointStatusDns!
-  tcp: String!
-  tls: String!
-}
-
-type EndpointStatusDns {
-  hostname: String
-  ip:       String
+  hostname:    String
+  ip:          String
+  port:        Int!
+  status:      String!
 }

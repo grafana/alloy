@@ -1,5 +1,6 @@
 extend type Query {
   components: [Component!]!
+  component(id: ID!): Component
 }
 
 type Component {

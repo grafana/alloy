@@ -7,30 +7,39 @@ package graph
 import (
 	"context"
 
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
+	"github.com/grafana/alloy/internal/service/graphql/utils"
 )
 
 // Components is the resolver for the components field.
 func (r *queryResolver) Components(ctx context.Context) ([]model.Component, error) {
-	components, err := r.Host.ListComponents("", component.InfoOptions{
-		GetHealth: true,
-	})
+	allComponents, err := utils.GetAllComponents(r.Host)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]model.Component, len(components))
-	for i, comp := range components {
-		result[i] = model.Component{
-			ID:   comp.ID.String(),
-			Name: comp.ComponentName,
-			Health: model.Health{
-				Message:     comp.Health.Message,
-				LastUpdated: comp.Health.UpdateTime,
-			},
-		}
+	result := make([]model.Component, len(allComponents))
+	for i, comp := range allComponents {
+		result[i] = model.NewComponent(comp)
 	}
 
 	return result, nil
+}
+
+// Component is the resolver for the component field.
+func (r *queryResolver) Component(ctx context.Context, id string) (*model.Component, error) {
+	allComponents, err := utils.GetAllComponents(r.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, comp := range allComponents {
+		if comp.ID.String() == id {
+			result := model.NewComponent(comp)
+			return &result, nil
+		}
+	}
+
+	// Component not found
+	return nil, nil
 }

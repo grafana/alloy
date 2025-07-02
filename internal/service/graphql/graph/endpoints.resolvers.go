@@ -28,9 +28,5 @@ func (r *queryResolver) Endpoint(ctx context.Context, host string, port int32) (
 		return model.Endpoint{}, fmt.Errorf("Endpoint port must be 0 <= N < 65535")
 	}
 
-	return model.Endpoint{
-		Host:   host,
-		Port:   port,
-		Status: model.NewEndpointStatus(host, port),
-	}, nil
+	return model.NewEndpoint(host, port), nil
 }

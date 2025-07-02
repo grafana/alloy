@@ -60,7 +60,7 @@ func (a *AlloyAPI) RegisterRoutes(urlPrefix string, r *mux.Router) {
 	r.Handle(path.Join(urlPrefix, "/graph/{moduleID:.+}"), graph(a.alloy, a.CallbackManager, a.logger))
 }
 
-func getRemoteCfgHost(host service.Host) (service.Host, error) {
+func GetRemoteCfgHost(host service.Host) (service.Host, error) {
 	svc, found := host.GetService(remotecfg.ServiceName)
 	if !found {
 		return nil, fmt.Errorf("remote config service not available")
@@ -81,7 +81,7 @@ func listComponentsHandler(host service.Host) http.HandlerFunc {
 
 func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remoteCfgHost, err := getRemoteCfgHost(host)
+		remoteCfgHost, err := GetRemoteCfgHost(host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -122,7 +122,7 @@ func getComponentHandler(host service.Host) http.HandlerFunc {
 
 func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remoteCfgHost, err := getRemoteCfgHost(host)
+		remoteCfgHost, err := GetRemoteCfgHost(host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -353,7 +353,7 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 
 func resolveServiceHost(host service.Host, id string) (service.Host, error) {
 	if strings.HasPrefix(id, "remotecfg/") {
-		remoteCfgHost, err := getRemoteCfgHost(host)
+		remoteCfgHost, err := GetRemoteCfgHost(host)
 		if err != nil {
 			return nil, err
 		}
