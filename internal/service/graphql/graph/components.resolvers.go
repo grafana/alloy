@@ -13,8 +13,8 @@ import (
 	"github.com/grafana/alloy/internal/service/graphql/utils"
 )
 
-// TestConnection is the resolver for the testConnection field.
-func (r *componentResolver) TestConnection(ctx context.Context, obj *model.Component) (string, error) {
+// ConnectionStatus is the resolver for the connectionStatus field.
+func (r *componentResolver) ConnectionStatus(ctx context.Context, obj *model.Component) (string, error) {
 	if obj == nil {
 		return "", fmt.Errorf("component is nil")
 	}

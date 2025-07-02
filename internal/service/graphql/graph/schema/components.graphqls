@@ -4,16 +4,16 @@ extend type Query {
 }
 
 type Component {
-  id:     ID!
-  name:   String!
+  id: ID!
+  name: String!
   health: Health!
   arguments: String!
   exports: String!
   debugInfo: String!
-  testConnection: String!
+  connectionStatus: String!
 }
 
 type Health {
-  message:     String!
+  message: String!
   lastUpdated: Time!
 }
