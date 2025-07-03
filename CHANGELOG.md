@@ -35,7 +35,10 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add `enable_tracing` attribute to `prometheus.exporter.snowflake` component to support debugging issues. (@dehaansa)
+
 - Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
+
 
 ### Bugfixes
 
