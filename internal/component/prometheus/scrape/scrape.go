@@ -74,9 +74,6 @@ type Arguments struct {
 	TrackTimestampsStaleness bool `alloy:"track_timestamps_staleness,attr,optional"`
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `alloy:"params,attr,optional"`
-	// Whether to scrape a classic histogram that is also exposed as a native histogram.
-	// TODO(thampiotr): deprecated, make this a no-op
-	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
 	// File to which scrape failures are logged.
