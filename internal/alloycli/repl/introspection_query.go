@@ -1,9 +1,9 @@
-package graphql
+package repl
 
 const introspectionQuery = `
   query IntrospectionQuery {
     __schema {
-      queryType { name }
+      queryType {name }
       mutationType { name }
       subscriptionType { name }
       types {

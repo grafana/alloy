@@ -1,9 +1,7 @@
 package graphql
 
 import (
-	"log"
 	"net/http"
-	"os"
 	"path"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -52,31 +50,4 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 		srv:        srv,
 		playground: playground.Handler("GraphQL playground", "/graphql"),
 	}
-}
-
-// Runs just the graphql server without the rest of Alloy.
-func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
-
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
-
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
-
-	srv.Use(extension.Introspection{})
-	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
-	})
-
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
-
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
