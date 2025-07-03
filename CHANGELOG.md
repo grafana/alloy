@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes (Prom upgrade) WIP
+
+- Regex change - added `s:` modifier.
+- remote write default to http2 changed to false
+- scrape_classic_histograms removed?
+
+
 ### Features
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)

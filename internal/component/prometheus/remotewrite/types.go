@@ -87,10 +87,12 @@ type EndpointOptions struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
+	defaultHTTPClientConfig := types.CloneDefaultHTTPClientConfig()
+	defaultHTTPClientConfig.EnableHTTP2 = false // This has changed to false when we upgraded to Prometheus v3.4.2
 	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
-		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		HTTPClientConfig: defaultHTTPClientConfig,
 	}
 }
 
