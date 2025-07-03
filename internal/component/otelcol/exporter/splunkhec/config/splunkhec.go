@@ -13,6 +13,29 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
+// OtelAttrsToHecArguments defines the mapping of attributes to HEC specific metadata.
+// This follows the same pattern as HecToOtelAttrsArguments in the receiver.
+type OtelAttrsToHecArguments struct {
+	// Source indicates the mapping of a specific unified model attribute value to the standard source field of a HEC event. Optional.
+	Source string `alloy:"source,attr,optional"`
+	// SourceType indicates the mapping of a specific unified model attribute value to the standard sourcetype field of a HEC event. Optional.
+	SourceType string `alloy:"sourcetype,attr,optional"`
+	// Index indicates the mapping of a specific unified model attribute value to the standard index field of a HEC event. Optional.
+	Index string `alloy:"index,attr,optional"`
+	// Host indicates the mapping of a specific unified model attribute value to the standard host field of a HEC event. Optional.
+	Host string `alloy:"host,attr,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (a *OtelAttrsToHecArguments) SetToDefault() {
+	*a = OtelAttrsToHecArguments{
+		Source:     "com.splunk.source",
+		SourceType: "com.splunk.sourcetype",
+		Index:      "com.splunk.index",
+		Host:       "host.name",
+	}
+}
+
 type SplunkHecClientArguments struct {
 	// Endpoint is the Splunk HEC endpoint to send data to.
 	Endpoint string `alloy:"endpoint,attr"`
@@ -184,6 +207,9 @@ type SplunkHecArguments struct {
 	QueueSettings            exporterhelper.QueueBatchConfig `alloy:"queue,block,optional"`
 	RetrySettings            configretry.BackOffConfig       `alloy:"retry_on_failure,block,optional"`
 	Splunk                   SplunkConf                      `alloy:"splunk,block"`
+
+	// OtelAttrsToHec creates a mapping from attributes to HEC specific metadata: source, sourcetype, index and host. Optional.
+	OtelAttrsToHec OtelAttrsToHecArguments `alloy:"otel_attrs_to_hec_metadata,block,optional"`
 }
 
 func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
@@ -275,7 +301,7 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 	if args == nil {
 		return nil
 	}
-	return &splunkhecexporter.Config{
+	config := &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
 		QueueSettings:           args.QueueSettings,
 		BackOffConfig:           args.RetrySettings,
@@ -301,6 +327,13 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 		Heartbeat:               *args.Splunk.Heartbeat.Convert(),
 		Telemetry:               *args.Splunk.Telemetry.Convert(),
 	}
+
+	config.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
+	config.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
+	config.OtelAttrsToHec.Index = args.OtelAttrsToHec.Index
+	config.OtelAttrsToHec.Host = args.OtelAttrsToHec.Host
+
+	return config
 }
 
 func (args *SplunkHecArguments) SetToDefault() {
@@ -308,4 +341,5 @@ func (args *SplunkHecArguments) SetToDefault() {
 	args.QueueSettings = exporterhelper.NewDefaultQueueConfig()
 	args.RetrySettings = configretry.NewDefaultBackOffConfig()
 	args.Splunk.SetToDefault()
+	args.OtelAttrsToHec.SetToDefault()
 }
