@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -74,10 +76,15 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
 	// code from the prometheusreceiver which expects the Appender context to
-	// be contain both a scrape target and a metadata store, and fails the
+	// contain both a scrape target and a metadata store, and fails the
 	// conversion if they are missing. We should find a way around this as both
 	// Targets and Metadata will be handled in a different way in Alloy.
-	ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
+	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
 	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 
 	app := &appender{
