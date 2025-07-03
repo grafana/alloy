@@ -5,11 +5,17 @@ package exporter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporter "go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -101,8 +107,9 @@ type Exporter struct {
 }
 
 var (
-	_ component.Component       = (*Exporter)(nil)
-	_ component.HealthComponent = (*Exporter)(nil)
+	_ component.Component               = (*Exporter)(nil)
+	_ component.HealthComponent         = (*Exporter)(nil)
+	_ component.TestConnectionComponent = (*Exporter)(nil)
 )
 
 // New creates a new component which encapsulates an OpenTelemetry Collector
@@ -250,4 +257,55 @@ func (e *Exporter) Update(args component.Arguments) error {
 // CurrentHealth implements component.HealthComponent.
 func (e *Exporter) CurrentHealth() component.Health {
 	return e.sched.CurrentHealth()
+}
+
+func (e *Exporter) TestConnection(ctx context.Context) error {
+	if e.consumer == nil {
+		return errors.New("consumer is not set")
+	}
+
+	if e.consumer.IsPaused() {
+		// If the consumer is paused we should not attempt to test the connection,
+		// as it will not be able to send any data.
+		return errors.New("component is paused")
+	}
+
+	var errs error
+
+	p := ptrace.NewTraces()
+	rp := p.ResourceSpans().AppendEmpty()
+	rp.Resource().Attributes().PutStr("test_connection", "true")
+	// Add a dummy span to ensure that the traces are not empty.
+	span := rp.ScopeSpans().AppendEmpty().Spans().AppendEmpty()
+	span.SetName("test_connection")
+	span.SetStartTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+	if err := e.consumer.ConsumeTraces(ctx, p); err != nil && err != pipeline.ErrSignalNotSupported {
+		errs = errors.Join(errs, fmt.Errorf("failed to consume traces: %w", err))
+	}
+
+	l := plog.NewLogs()
+	rl := l.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("test_connection", "true")
+	// Add a dummy log record to ensure that the logs are not empty.
+	logRecord := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	logRecord.SetSeverityText("INFO")
+	logRecord.SetSeverityNumber(plog.SeverityNumberInfo)
+	logRecord.Body().SetStr("test_connection")
+	if err := e.consumer.ConsumeLogs(ctx, l); err != nil && err != pipeline.ErrSignalNotSupported {
+		errs = errors.Join(errs, fmt.Errorf("failed to consume logs: %w", err))
+	}
+
+	m := pmetric.NewMetrics()
+	rm := m.ResourceMetrics().AppendEmpty()
+	rm.Resource().Attributes().PutStr("test_connection", "true")
+	// Add a dummy metric to ensure that the metrics are not empty.
+	metric := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	metric.SetName("test_metric")
+	metric.SetEmptyGauge().DataPoints().AppendEmpty().SetDoubleValue(1.0)
+	if err := e.consumer.ConsumeMetrics(ctx, m); err != nil && err != pipeline.ErrSignalNotSupported {
+		errs = errors.Join(errs, fmt.Errorf("failed to consume metrics: %w", err))
+	}
+
+	return errs
+
 }
