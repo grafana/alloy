@@ -69,6 +69,8 @@ v1.9.2
    `where_clause`, and `use_api` attributes in the `service` block. 
    This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
 
+- Update import path(s) for [yet-another-cloudwatch-exporter](github.com/prometheus-community/yet-another-cloudwatch-exporter) - updating version to v0.62.0. (@boweflex)
+
 v1.9.1
 -----------------
 
