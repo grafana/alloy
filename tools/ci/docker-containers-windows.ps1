@@ -1,7 +1,1 @@
-    docker build                           \
-      -t "grafana//alloy-dev" \
-      --build-arg VERSION="paulintest"       \
-      --build-arg RELEASE_BUILD=1          \
-      --build-arg BASE_IMAGE_WINDOWS="mcr.microsoft.com/windows/nanoserver:ltsc2022" \
-      -f ./Dockerfile.windows              \
-      --isolation=hyperv                   \
+docker build -t "grafana//alloy-dev" --build-arg VERSION="paulintest" --build-arg RELEASE_BUILD=1 --build-arg BASE_IMAGE_WINDOWS="mcr.microsoft.com/windows/nanoserver:ltsc2022" -f ./Dockerfile.windows --isolation=hyperv
