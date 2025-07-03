@@ -39,7 +39,8 @@ func TestRuleGroup_Marshal(t *testing.T) {
 			},
 			want: `name: group
 rules:
-    - alert: alert
+    - record: record
+      alert: alert
       expr: expr
 source_tenants:
     - tenant1
