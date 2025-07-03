@@ -37,7 +37,7 @@ func expectedCfg(transform func(c *config.Config)) *config.Config {
 				SendExemplars:       true,
 				HTTPClientConfig: commonconfig.HTTPClientConfig{
 					FollowRedirects: true,
-					EnableHTTP2:     true,
+					EnableHTTP2:     false,
 				},
 				QueueConfig: config.QueueConfig{
 					Capacity:          10000,
