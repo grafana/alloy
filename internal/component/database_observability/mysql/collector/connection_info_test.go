@@ -35,6 +35,11 @@ func TestConnectionInfo(t *testing.T) {
 			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/schema",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "aws", "us-east-1"),
 		},
+		{
+			name:            "Azure flexibleservers dsn",
+			dsn:             "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "azure", "unknown"),
+		},
 	}
 
 	for _, tc := range testCases {

@@ -13,7 +13,10 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
-var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+var (
+	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
+)
 
 type ConnectionInfoArguments struct {
 	DSN      string
@@ -72,6 +75,12 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			if len(matches) > 3 {
 				dbInstanceIdentifier = matches[1]
 				providerRegion = matches[3]
+			}
+		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
+			providerName = "azure"
+			matches := azureRegex.FindStringSubmatch(host)
+			if len(matches) > 1 {
+				dbInstanceIdentifier = matches[1]
 			}
 		}
 	}

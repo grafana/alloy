@@ -37,6 +37,9 @@ Main (unreleased)
 
 - Add `enable_tracing` attribute to `prometheus.exporter.snowflake` component to support debugging issues. (@dehaansa)
 
+- Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
+
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
