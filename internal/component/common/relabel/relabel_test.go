@@ -573,8 +573,8 @@ func TestRelabel(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("test"), func(t *testing.T) {
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
 			// Setting default fields, mimicking the behaviour in Prometheus.
 			for _, cfg := range test.relabel {
 				if cfg.Action == "" {
