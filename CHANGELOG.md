@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
