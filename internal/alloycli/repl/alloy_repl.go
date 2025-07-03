@@ -45,7 +45,12 @@ func (fr *AlloyRepl) Run(cmd *cobra.Command) error {
 
 func insertCharPair(pair string) func(buf *prompt.Buffer) {
 	return func(buf *prompt.Buffer) {
-		buf.InsertText(pair, false, false)
-		buf.CursorRight(len(pair) / 2)
+		if buf.Document().CurrentLineAfterCursor() == "" || buf.Document().CurrentLineAfterCursor()[:1] == " " {
+			buf.InsertText(pair, false, false)
+			buf.CursorRight(len(pair) / 2)
+		} else {
+			buf.InsertText(pair[:1], false, false)
+			buf.CursorRight(1)
+		}
 	}
 }
