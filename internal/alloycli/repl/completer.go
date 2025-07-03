@@ -13,6 +13,21 @@ type completer struct {
 	lastError string
 }
 
+var topLevelCommands = []prompt.Suggest{
+	{
+		Text:        "exit",
+		Description: "Exit the REPL",
+	},
+	{
+		Text:        "quit",
+		Description: "Quit the REPL",
+	},
+	{
+		Text:        "help",
+		Description: "Show help",
+	},
+}
+
 var brackets = map[rune]bool{
 	'(': true,
 	')': true,
@@ -73,6 +88,10 @@ func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
 				Text: field.Name,
 			}
 		}
+	}
+
+	if len(parentPath) == 0 {
+		fieldSuggestions = append(fieldSuggestions, topLevelCommands...)
 	}
 
 	return prompt.FilterHasPrefix(fieldSuggestions, d.GetWordBeforeCursor(), true)
