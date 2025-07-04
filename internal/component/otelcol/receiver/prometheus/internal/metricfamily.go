@@ -441,6 +441,8 @@ func (mf *metricFamily) addExponentialHistogramSeries(seriesRef uint64, metricNa
 	if mg.ts != t {
 		return fmt.Errorf("inconsistent timestamps on metric points for metric %v", metricName)
 	}
+	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
+	// As a result, the type here is set to Gauge (the default) and thus will always fail here.
 	if mg.mtype != pmetric.MetricTypeExponentialHistogram {
 		return fmt.Errorf("metric type mismatch for exponential histogram metric %v type %s", metricName, mg.mtype.String())
 	}

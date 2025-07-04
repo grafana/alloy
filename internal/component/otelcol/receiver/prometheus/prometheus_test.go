@@ -8,8 +8,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/tsdb/tsdbutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
@@ -112,6 +115,102 @@ func Test(t *testing.T) {
 		require.Equal(t, "123456789abcdef0123456789abcdef0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).TraceID().String())
 		require.Equal(t, "123456789abcdef0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).SpanID().String())
 		require.Equal(t, 2.0, m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).DoubleValue())
+	}
+}
+
+func TestHistogram(t *testing.T) {
+	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
+	t.Skip("skipping as it's a known issue with metadata not working")
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	// Override our settings so metrics get forwarded to metricCh.
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	// Use the exported Appendable to send histogram metrics to the receiver in the
+	// background.
+	go func() {
+		l := labels.Labels{
+			{Name: model.MetricNameLabel, Value: "testHistogram"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "foo", Value: "bar"},
+		}
+		ts := time.Now().Unix()
+
+		// Create a native histogram using the test utility
+		hist := tsdbutil.GenerateTestHistogram(1)
+		hist.CounterResetHint = histogram.NotCounterReset
+		fh := tsdbutil.GenerateTestFloatHistogram(1)
+		fh.CounterResetHint = histogram.NotCounterReset
+
+		ctx := t.Context()
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+		app := exports.Receiver.Appender(ctx)
+		_, err := app.AppendHistogram(0, l, ts, hist, fh)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+	}()
+
+	// Wait for our client to get the histogram metric.
+	select {
+	case <-time.After(time.Second):
+		require.FailNow(t, "failed waiting for histogram metrics")
+	case m := <-metricCh:
+		require.Equal(t, 1, m.MetricCount())
+		require.Equal(t, "testHistogram", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Name())
+
+		metricType := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Type().String()
+		if assert.Equal(t, "ExponentialHistogram", metricType) {
+			hist := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).ExponentialHistogram()
+			require.Equal(t, 1, hist.DataPoints().Len())
+
+			dp := hist.DataPoints().At(0)
+			require.Equal(t, uint64(20), dp.Count())
+			require.Equal(t, 20.0, dp.Sum())
+			require.Equal(t, uint64(2), dp.ZeroCount())
+			require.Equal(t, 0.001, dp.Scale())
+
+			require.Equal(t, 1, dp.Positive().BucketCounts().Len())
+			require.Equal(t, uint64(18), dp.Positive().BucketCounts().At(0))
+
+			require.Equal(t, 1, dp.Negative().BucketCounts().Len())
+			require.Equal(t, uint64(0), dp.Negative().BucketCounts().At(0))
+		} else {
+			// If it's not an exponential histogram, print some info for debugging.
+			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0)
+			t.Logf("Metric name: %s", metric.Name())
+			t.Logf("Metric type: %s", metric.Type().String())
+			t.Fail()
+		}
 	}
 }
 

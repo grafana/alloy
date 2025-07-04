@@ -15,7 +15,8 @@ Main (unreleased)
 - Regex change - added `s:` modifier.
 - remote write default to http2 changed to false
 - scrape_classic_histograms removed?
-
+- enabling native histograms by default in otelcol.receiver.prometheus
+- known issue that histograms are not working in `otelcol.receiver.prometheus` because metadata is not working either
 
 ### Features
 
