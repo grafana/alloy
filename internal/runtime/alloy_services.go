@@ -73,14 +73,15 @@ func (f *Runtime) NewController(id string) service.Controller {
 	return ServiceController{
 		f: newController(controllerOptions{
 			Options: Options{
-				ControllerID:    id,
-				Logger:          f.opts.Logger,
-				Tracer:          f.opts.Tracer,
-				DataPath:        f.opts.DataPath,
-				MinStability:    f.opts.MinStability,
-				Reg:             f.opts.Reg,
-				Services:        f.opts.Services,
-				OnExportsChange: nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
+				ControllerID:         id,
+				Logger:               f.opts.Logger,
+				Tracer:               f.opts.Tracer,
+				DataPath:             f.opts.DataPath,
+				MinStability:         f.opts.MinStability,
+				Reg:                  f.opts.Reg,
+				Services:             f.opts.Services,
+				EnableCommunityComps: f.opts.EnableCommunityComps,
+				OnExportsChange:      nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
 			},
 			IsModule:       true,
 			ModuleRegistry: newModuleRegistry(),
