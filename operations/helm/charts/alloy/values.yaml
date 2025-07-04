@@ -144,6 +144,12 @@ image:
 rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
+  
+  # -- Rules to add to ClusterRole for Alloy. If empty, default rules are used.
+  rules: []
+    # - apiGroups: [""]
+    #   resources: ["pods"]
+    #   verbs: ["get", "list", "watch"]
 
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
