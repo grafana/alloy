@@ -46,6 +46,7 @@ The following components, grouped by namespace, _export_ Targets.
 
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -245,6 +246,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="faro" >}}
