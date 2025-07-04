@@ -179,7 +179,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	}
 
 	c.lastUptime = uptime
-	c.timerBookmark = UptimeSinceOverflow(uptime)
+	c.timerBookmark = uptimeSinceOverflow(uptime)
 	return nil
 }
 
@@ -292,7 +292,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = CalculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
+		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -306,8 +306,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			continue
 		}
 
-		cpuTime := PicosecondsToMilliseconds(row.CPUTime)
-		elapsedTime := PicosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
+		cpuTime := picosecondsToMilliseconds(row.CPUTime)
+		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
 		logMessage := fmt.Sprintf(
 			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
@@ -338,12 +338,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				OP_QUERY_SAMPLE,
 				c.instanceKey,
 				logMessage,
-				int64(MillisecondsToNanoseconds(row.TimestampMilliseconds)),
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}
 
 		if row.WaitEventID.Valid {
-			waitTime := PicosecondsToMilliseconds(row.WaitTime.Float64)
+			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
 				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
@@ -368,7 +368,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				OP_WAIT_EVENT,
 				c.instanceKey,
 				waitLogMessage,
-				int64(MillisecondsToNanoseconds(row.TimestampMilliseconds)),
+				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
 		}
 	}
@@ -383,8 +383,8 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline
-	currentOverflows := CalculateNumberOfOverflows(uptime)
-	previousOverflows := CalculateNumberOfOverflows(c.lastUptime)
+	currentOverflows := calculateNumberOfOverflows(uptime)
+	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
 	switch {
 	case currentOverflows > previousOverflows:
 		// if we have just overflowed, collect both the beginning and end of the timeline
@@ -394,7 +394,7 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 		c.timerBookmark = 0
 	}
 
-	limit := UptimeSinceOverflow(uptime)
+	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
 }
