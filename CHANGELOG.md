@@ -13,8 +13,14 @@ Main (unreleased)
 ### Breaking changes (Prom upgrade) WIP
 
 - Regex change - added `s:` modifier.
-- remote write default to http2 changed to false
-- scrape_classic_histograms removed?
+- remote write default to http2 changed to false:
+
+> The http_config.enable_http2 in remote_write items default has been changed to false. In Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set http_config.enable_http2: true in your remote_write configuration section.
+
+- scrape_classic_histograms renamed to always_scrape_classic_histograms <- should we add an alias?
+  
+> The scrape job level configuration option scrape_classic_histograms has been renamed to always_scrape_classic_histograms. If you use the --enable-feature=native-histograms feature flag to ingest native histograms and you also want to ingest classic histograms that an endpoint might expose along with native histograms, be sure to add this configuration or change your configuration from the old name.
+
 - enabling native histograms by default in otelcol.receiver.prometheus
 - known issue that histograms are not working in `otelcol.receiver.prometheus` because metadata is not working either
 

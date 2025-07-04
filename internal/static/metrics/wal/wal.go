@@ -878,8 +878,7 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m meta
 
 func (a *appender) SetOptions(_ *storage.AppendOptions) {
 	// TODO: implement this later
-	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
-	//       it in Alloy.
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
 }
 
 func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {

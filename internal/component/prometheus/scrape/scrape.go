@@ -74,6 +74,8 @@ type Arguments struct {
 	TrackTimestampsStaleness bool `alloy:"track_timestamps_staleness,attr,optional"`
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `alloy:"params,attr,optional"`
+	// Whether to scrape a classic histogram that is also exposed as a native histogram.
+	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
 	// File to which scrape failures are logged.
@@ -437,6 +439,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
+	dec.AlwaysScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
 	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile

@@ -40,6 +40,7 @@ scrape_configs:
   - job_name: "prometheus2"
     static_configs:
       - targets: ["localhost:9091"]
+    always_scrape_classic_histograms: true
     native_histogram_bucket_limit: 2
     keep_dropped_targets: 1000
 
