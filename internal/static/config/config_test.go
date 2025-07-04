@@ -13,11 +13,11 @@ import (
 	"github.com/prometheus/common/model"
 	promCfg "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/static/config/encoder"
-	"github.com/grafana/alloy/internal/static/metrics"
 	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -181,8 +181,11 @@ func TestConfig_Defaults(t *testing.T) {
 	err := LoadBytes([]byte(`{}`), false, &c)
 	require.NoError(t, err)
 
-	require.Equal(t, metrics.DefaultConfig, c.Metrics)
-	require.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
+	defaultConfig := DefaultConfig()
+	util.DefaultConfigFromFlags(&defaultConfig)
+
+	assert.Equal(t, defaultConfig.Metrics, c.Metrics)
+	assert.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
 }
 
 func TestConfig_TracesLokiValidates(t *testing.T) {

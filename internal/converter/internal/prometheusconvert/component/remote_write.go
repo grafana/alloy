@@ -10,9 +10,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/sigv4"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/sigv4"
 )
 
 func AppendPrometheusRemoteWrite(pb *build.PrometheusBlocks, globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig, label string) *remotewrite.Exports {

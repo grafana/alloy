@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -100,6 +101,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -189,6 +193,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -280,6 +287,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 	}

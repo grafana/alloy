@@ -10,6 +10,52 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes (Prom upgrade) WIP
+
+- Regex change - added `s:` modifier.
+- remote write default to http2 changed to false:
+
+> The http_config.enable_http2 in remote_write items default has been changed to false. In Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set http_config.enable_http2: true in your remote_write configuration section.
+
+- scrape_classic_histograms renamed to always_scrape_classic_histograms <- should we add an alias?
+  
+> The scrape job level configuration option scrape_classic_histograms has been renamed to always_scrape_classic_histograms. If you use the --enable-feature=native-histograms feature flag to ingest native histograms and you also want to ingest classic histograms that an endpoint might expose along with native histograms, be sure to add this configuration or change your configuration from the old name.
+
+- enabling native histograms by default in otelcol.receiver.prometheus
+- known issue that histograms are not working in `otelcol.receiver.prometheus` because metadata is not working either
+- more strict protocols validation in `prometheus.scrape`
+
+> Prometheus v3 is more strict concerning the Content-Type header received when scraping. Prometheus v2 would default to the standard Prometheus text protocol if the target being scraped did not specify a Content-Type header or if the header was unparsable or unrecognised. This could lead to incorrect data being parsed in the scrape. Prometheus v3 will now fail the scrape in such cases.
+>
+> If a scrape target is not providing the correct Content-Type header the fallback protocol can be specified using the fallback_scrape_protocol parameter. See Prometheus scrape_config documentation.
+>
+> This is a breaking change as scrapes that may have succeeded with Prometheus v2 may now fail if this fallback protocol is not specified.
+
+- UTF-8 metric names
+
+> Prometheus v3 supports UTF-8 in metric and label names. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be.
+>
+> Users wishing to preserve the original validation behavior can update their Prometheus yaml configuration to specify the legacy validation scheme:
+>
+> ```yaml
+> global:
+>   metric_name_validation_scheme: legacy
+> ```
+>
+> Or on a per-scrape basis:
+>
+> ```yaml
+> scrape_configs:
+>   - job_name: job1
+>     metric_name_validation_scheme: utf8
+>   - job_name: job2
+>     metric_name_validation_scheme: legacy
+> ```
+
+- Log message format: TODO
+- le and quantile label values: TODO
+- Alertmanager v1: the alert rules may be impacted? TODO
+
 ### Features
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)

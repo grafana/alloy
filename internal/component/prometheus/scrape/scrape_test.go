@@ -76,6 +76,7 @@ func TestDefaults(t *testing.T) {
 	require.Equal(t, []string{
 		"OpenMetricsText1.0.0",
 		"OpenMetricsText0.0.1",
+		"PrometheusText1.0.0",
 		"PrometheusText0.0.4",
 	}, args.ScrapeProtocols)
 }
@@ -98,6 +99,7 @@ func TestDefaultsWithNativeHistograms(t *testing.T) {
 		"PrometheusProto",
 		"OpenMetricsText1.0.0",
 		"OpenMetricsText0.0.1",
+		"PrometheusText1.0.0",
 		"PrometheusText0.0.4",
 	}, args.ScrapeProtocols)
 }

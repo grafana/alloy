@@ -111,6 +111,11 @@ type interceptappender struct {
 	stalenessTrackers []labelstore.StalenessTracker
 }
 
+func (a *interceptappender) SetOptions(_ *storage.AppendOptions) {
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
+	//       it in Alloy.
+}
+
 var _ storage.Appender = (*interceptappender)(nil)
 
 // Append satisfies the Appender interface.
@@ -231,4 +236,22 @@ func (a *interceptappender) AppendCTZeroSample(
 		return 0, nil
 	}
 	return a.child.AppendCTZeroSample(ref, l, t, ct)
+}
+
+func (a *interceptappender) AppendHistogramCTZeroSample(
+	ref storage.SeriesRef,
+	l labels.Labels,
+	t, ct int64,
+	h *histogram.Histogram,
+	fh *histogram.FloatHistogram,
+) (storage.SeriesRef, error) {
+
+	if ref == 0 {
+		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+	}
+
+	if a.child == nil {
+		return 0, nil
+	}
+	return a.child.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
 }
