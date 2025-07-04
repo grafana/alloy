@@ -25,6 +25,18 @@ For example, component-specific metrics for a `prometheus.remote_write` componen
 The [reference documentation][] for each component described the list of component-specific metrics that the component exposes.
 Not all components expose metrics.
 
+## Filter metrics by component label
+
+You can use the `component` query parameter to filter the `/metrics` output.
+
+This parameter allows you to retrieve only metrics emitted by specific components.
+You can pass the `component` parameter multiple times.
+For example, `http://localhost:12345/metrics?component=prometheus.scrape&component=otelcol.receiverz`.
+
+The endpoint will only return metrics that contain a `component` label with one of the provided values.
+
+If you don't provide a `component` filter, the default behavior is unchanged, and the endpoint returns all metrics.
+
 [components]: ../../get-started/components/
 [alloy run]: ../../reference/cli/run/
 [reference documentation]: ../../reference/components/

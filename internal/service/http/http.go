@@ -239,8 +239,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	r.Handle(
 		"/metrics",
-		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			components := r.URL.Query()["component"]
+			currentGatherer := s.gatherer
+			if len(components) > 0 {
+				currentGatherer = newFilteredGatherer(s.gatherer, components)
+			}
+			promhttp.HandlerFor(currentGatherer, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+		}),
 	)
+
 	if s.opts.EnablePProf {
 		r.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 	}
