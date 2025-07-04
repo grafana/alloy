@@ -96,5 +96,9 @@ func (a *Arguments) SetToDefault() {
 		DNS: DNSConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.DNS.CollectorsEnabled),
 		},
+		Update: UpdateConfig{
+			Online:         col.ConfigDefaults.Update.Online,
+			ScrapeInterval: col.ConfigDefaults.Update.ScrapeInterval,
+		},
 	}
 }

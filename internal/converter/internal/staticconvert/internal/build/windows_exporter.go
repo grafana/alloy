@@ -111,6 +111,9 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		DNS: windows.DNSConfig{
 			EnabledList: split(config.DNS.EnabledList),
 		},
-		// add update collector settings
+		Update: windows.UpdateConfig{
+			Online:         config.Update.Online,
+			ScrapeInterval: config.Update.ScrapeInterval,
+		},
 	}
 }
