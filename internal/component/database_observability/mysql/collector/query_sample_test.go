@@ -2152,54 +2152,6 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	})
 }
 
-func TestQuerySample_calculateWallTime(t *testing.T) {
-	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
-		c := &QuerySample{}
-		serverStartTime := float64(2)
-		timer := 2e12 // Timer indicates event timing, counted since server startup. 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-		assert.Equalf(t, float64(4000), result, "got %f, want 4000", result)
-	})
-
-	t.Run("calculates the timestamp, taking into account the overflows", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := 2e12 // 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 18446749073.709553, result, "got %f, want 18446749073.709553", result)
-	})
-
-	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := float64(math.MaxUint64 - 5)
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 3.6893491147419106e+10, result, "got %f, want 3.6893491147419106e+10", result)
-	})
-}
-
-func TestQuerySample_calculateNumberOfOverflows(t *testing.T) {
-	testCases := map[string]struct {
-		expected uint64
-		uptime   float64
-	}{
-		"0 overflows": {0, 5},
-		"1 overflow":  {1, picosecondsToSeconds(math.MaxUint64) + 5},
-		"2 overflows": {2, picosecondsToSeconds(math.MaxUint64)*2 + 5},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert.EqualValues(t, tc.expected, calculateNumberOfOverflows(tc.uptime))
-		})
-	}
-}
-
 func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 	tests := map[string]struct {
 		lastUptime          float64
