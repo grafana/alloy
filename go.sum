@@ -1441,8 +1441,6 @@ github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrR
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3/go.mod h1:iZiiwNT4HbtGRVqCQu7uJPEZCuEE5sfSSttcnePkDl4=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04 h1:5tc0sUd4Py49jkO3H2e4g5D9bnu+K70lB+/5bLTM4is=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
 github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700 h1:2WcTPnt3H8OEPJvA5fDQk7dgIPWSAGr8xBBlm0zXm4w=
 github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPFYJmAmJNrWPgnVjuSdYJGHmtFU=
@@ -2326,6 +2324,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiv
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.128.0/go.mod h1:9E4yQE/47tHPZlhSk4pXwf6VpJD2HwA1iAzyW7BeN0U=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.128.0 h1:AYYqJhpspKMgYS1myj/2IwP1Y8yXmwjXK1iFi2JIGZI=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.128.0/go.mod h1:+1BcCEr9SBF92LoMFKhRtqk6XHIuU4t7HlTP/gW4+BA=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0 h1:PZ1PdK/9uoZH8vRk+vh02osnzZT/8kaBY5Ej8gRm1Nc=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0/go.mod h1:PBf5eKf4R+jXyhI99+xmFnNY/RUgQvC28VfJ3DA6y3g=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0 h1:xeMeDrSA9y0ors9z1tiyFF/8MAzHTOJKlD/R2n4kZyo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0/go.mod h1:cVKK4o+7i0w1yD36ojYC+KwSj4WFBHG0TazYQu5lC/A=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0 h1:cHUha259kwbefs3KebyKHVedGqMP75wwPBPNUwFOtKY=

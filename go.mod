@@ -983,6 +983,7 @@ require (
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
 	go.opentelemetry.io/collector/config/configoptional v0.128.0
