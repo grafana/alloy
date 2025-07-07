@@ -128,7 +128,7 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 
 `otelcol.receiver.faro` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
 
 This example forwards received telemetry through a batch processor before finally sending it to an OTLP-capable endpoint:
 
@@ -158,7 +158,7 @@ Replace the following:
 
 * _`<FARO_COLLECTOR_ADDRESS>`_: The address of the Faro-compatible server to send data to.
 
-## Enable TLS
+### Enable TLS
 
 You can configure `otelcol.receiver.faro` to use TLS for added security:
 
@@ -178,7 +178,7 @@ otelcol.receiver.faro "default" {
 }
 ```
 
-## Enable authentication
+### Enable authentication
 
 You can create a `otelcol.receiver.faro` component that requires authentication for requests.
 This is useful for limiting who can push data to the server.
@@ -204,7 +204,7 @@ otelcol.auth.basic "creds" {
 }
 ```
 
-## Configure CORS
+### Configure CORS
 
 You can configure CORS settings to allow web applications to send telemetry data from browsers:
 
