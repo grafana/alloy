@@ -8,9 +8,15 @@ otelcol.receiver.otlp "default" {
 	}
 
 	output {
-		metrics = [otelcol.exporter.faro.default.input]
-		logs    = [otelcol.exporter.faro.default.input]
-		traces  = [otelcol.exporter.faro.default.input]
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
+	}
+}
+
+otelcol.receiver.faro "default" {
+	output {
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
 	}
 }
 

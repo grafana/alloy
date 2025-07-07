@@ -1183,8 +1183,8 @@ github.com/go-test/deep v1.0.2-0.20181118220953-042da051cf31/go.mod h1:wGDj63lr6
 github.com/go-test/deep v1.0.2/go.mod h1:wGDj63lr65AM2AQyKZd/NYHGb0R+1RLqB8NKt3aSFNA=
 github.com/go-test/deep v1.1.1 h1:0r/53hagsehfO4bzD2Pgr/+RgHqhmf+k1Bpse2cTu1U=
 github.com/go-test/deep v1.1.1/go.mod h1:5C2ZWiW0ErCdrYzpqxLbTX7MG14M9iiw8DgHncVwcsE=
-github.com/go-viper/mapstructure/v2 v2.2.1 h1:ZAaOCxANMuZx5RCeg0mBdEZk7DZasvvZIxtHqx8aGss=
-github.com/go-viper/mapstructure/v2 v2.2.1/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
+github.com/go-viper/mapstructure/v2 v2.3.0 h1:27XbWsHIqhbdR5TIC911OfYvgSaW93HM+dX7970Q7jk=
+github.com/go-viper/mapstructure/v2 v2.3.0/go.mod h1:oJDH3BJKyqBA2TXFhDsKDGDTlndYOZ6rGS0BRZIxGhM=
 github.com/go-zookeeper/zk v1.0.4 h1:DPzxraQx7OrPyXq2phlGlNSIyWEsAox0RJmjTseMV6I=
 github.com/go-zookeeper/zk v1.0.4/go.mod h1:nOB03cncLtlp4t+UAkGSV+9beXP/akpekBwL+UX1Qcw=
 github.com/goburrow/modbus v0.1.0/go.mod h1:Kx552D5rLIS8E7TyUwQ/UdHEqvX5T8tyiGBTlzMcZBg=
@@ -1441,8 +1441,8 @@ github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrR
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3/go.mod h1:iZiiwNT4HbtGRVqCQu7uJPEZCuEE5sfSSttcnePkDl4=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04 h1:5tc0sUd4Py49jkO3H2e4g5D9bnu+K70lB+/5bLTM4is=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
+github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700 h1:2WcTPnt3H8OEPJvA5fDQk7dgIPWSAGr8xBBlm0zXm4w=
+github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPFYJmAmJNrWPgnVjuSdYJGHmtFU=
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
@@ -2324,6 +2324,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiv
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.128.0/go.mod h1:9E4yQE/47tHPZlhSk4pXwf6VpJD2HwA1iAzyW7BeN0U=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.128.0 h1:AYYqJhpspKMgYS1myj/2IwP1Y8yXmwjXK1iFi2JIGZI=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.128.0/go.mod h1:+1BcCEr9SBF92LoMFKhRtqk6XHIuU4t7HlTP/gW4+BA=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0 h1:PZ1PdK/9uoZH8vRk+vh02osnzZT/8kaBY5Ej8gRm1Nc=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0/go.mod h1:PBf5eKf4R+jXyhI99+xmFnNY/RUgQvC28VfJ3DA6y3g=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0 h1:xeMeDrSA9y0ors9z1tiyFF/8MAzHTOJKlD/R2n4kZyo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0/go.mod h1:cVKK4o+7i0w1yD36ojYC+KwSj4WFBHG0TazYQu5lC/A=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0 h1:cHUha259kwbefs3KebyKHVedGqMP75wwPBPNUwFOtKY=
@@ -2488,8 +2490,8 @@ github.com/prometheus-community/prom-label-proxy v0.11.0 h1:IO02WiiFMfcIqvjhwMbC
 github.com/prometheus-community/prom-label-proxy v0.11.0/go.mod h1:lfvrG70XqsxWDrSh1843QXBG0fSg8EbIXmAo8xGsvw8=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
-github.com/prometheus-community/windows_exporter v0.30.7 h1:p+T2O7XthamlSpeQtKmBylA2sQVGcWKMCwD+qnkZwcE=
-github.com/prometheus-community/windows_exporter v0.30.7/go.mod h1:qn12efWBV5wguLBvQ2soKdgP5pTgVHx3ec4Di0bWb7M=
+github.com/prometheus-community/windows_exporter v0.30.8 h1:CpOyBE5PFR3utnufJPOIgGwylNyoCR2lJ4Gf4ni03Mw=
+github.com/prometheus-community/windows_exporter v0.30.8/go.mod h1:qn12efWBV5wguLBvQ2soKdgP5pTgVHx3ec4Di0bWb7M=
 github.com/prometheus-operator/prometheus-operator v0.82.2 h1:qalPLM8wkvCtu9aHcoSKGDpCZR3aWRMKeHev5WomTBQ=
 github.com/prometheus-operator/prometheus-operator v0.82.2/go.mod h1:y3t/ppLWBbUYDB9SLuLb8ShcJjdzXSV6eEmnsG4kLbk=
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2 h1:XXoaK87apyXqLm7xVEQ63pk8+GDupbVtHaBiW8IxPow=

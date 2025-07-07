@@ -76,7 +76,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName:    true,
 			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    false,
+			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    false,
 			collector.LocksName:          false,
@@ -194,7 +194,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName:    true,
 			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    false,
+			collector.QuerySampleName:    true,
 			collector.SetupConsumersName: true,
 			collector.ExplainPlanName:    false,
 			collector.LocksName:          false,

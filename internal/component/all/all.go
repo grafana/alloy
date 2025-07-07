@@ -4,6 +4,7 @@ package all
 import (
 	_ "github.com/grafana/alloy/internal/component/beyla/ebpf"                               // Import beyla.ebpf
 	_ "github.com/grafana/alloy/internal/component/database_observability/mysql"             // Import database_observability.mysql
+	_ "github.com/grafana/alloy/internal/component/database_observability/postgres"          // Import database_observability.postgres
 	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws.ec2 and discovery.aws.lightsail
 	_ "github.com/grafana/alloy/internal/component/discovery/azure"                          // Import discovery.azure
 	_ "github.com/grafana/alloy/internal/component/discovery/consul"                         // Import discovery.consul
@@ -101,6 +102,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch"           // Import otelcol.receiver.awscloudwatch
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/faro"                    // Import otelcol.receiver.faro
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/filelog"                 // Import otelcol.receiver.filelog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
