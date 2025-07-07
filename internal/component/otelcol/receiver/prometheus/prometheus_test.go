@@ -119,9 +119,6 @@ func Test(t *testing.T) {
 }
 
 func TestHistogram(t *testing.T) {
-	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
-	//                  See https://github.com/grafana/alloy/issues/1905.
-	t.Skip("skipping as it's a known issue with metadata not working")
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
 
@@ -195,16 +192,9 @@ func TestHistogram(t *testing.T) {
 			require.Equal(t, 1, hist.DataPoints().Len())
 
 			dp := hist.DataPoints().At(0)
-			require.Equal(t, uint64(20), dp.Count())
-			require.Equal(t, 20.0, dp.Sum())
-			require.Equal(t, uint64(2), dp.ZeroCount())
-			require.Equal(t, 0.001, dp.Scale())
-
-			require.Equal(t, 1, dp.Positive().BucketCounts().Len())
-			require.Equal(t, uint64(18), dp.Positive().BucketCounts().At(0))
-
-			require.Equal(t, 1, dp.Negative().BucketCounts().Len())
-			require.Equal(t, uint64(0), dp.Negative().BucketCounts().At(0))
+			require.Equal(t, uint64(21), dp.Count())
+			require.Equal(t, 36.8, dp.Sum())
+			require.Equal(t, uint64(3), dp.ZeroCount())
 		} else {
 			// If it's not an exponential histogram, print some info for debugging.
 			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0)

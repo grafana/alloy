@@ -36,22 +36,19 @@ type metricFamily struct {
 // a couple data complexValue (buckets and count/sum), a group of a metric family always share a same set of tags. for
 // simple types like counter and gauge, each data point is a group of itself
 type metricGroup struct {
-	mtype    pmetric.MetricType
-	ts       int64
-	ls       labels.Labels
-	count    float64
-	hasCount bool
-	sum      float64
-	hasSum   bool
-	// This corresponds to the `_created` sample found from the metric parsing.
-	// - https://github.com/prometheus/OpenMetrics/blob/main/specification/OpenMetrics.md#timestamps
-	// - https://github.com/prometheus/OpenMetrics/blob/main/specification/OpenMetrics.md#counter-1
-	createdSeconds float64
-	value          float64
-	hValue         *histogram.Histogram
-	fhValue        *histogram.FloatHistogram
-	complexValue   []*dataPoint
-	exemplars      pmetric.ExemplarSlice
+	mtype        pmetric.MetricType
+	ts           int64
+	ls           labels.Labels
+	count        float64
+	hasCount     bool
+	sum          float64
+	hasSum       bool
+	created      float64
+	value        float64
+	hValue       *histogram.Histogram
+	fhValue      *histogram.FloatHistogram
+	complexValue []*dataPoint
+	exemplars    pmetric.ExemplarSlice
 }
 
 func newMetricFamily(metricName string, mc scrape.MetricMetadataStore, logger *zap.Logger) *metricFamily {
@@ -146,8 +143,8 @@ func (mg *metricGroup) toDistributionPoint(dest pmetric.HistogramDataPointSlice)
 
 	// The timestamp MUST be in retrieved from milliseconds and converted to nanoseconds.
 	tsNanos := timestampFromMs(mg.ts)
-	if mg.createdSeconds != 0 {
-		point.SetStartTimestamp(timestampFromFloat64(mg.createdSeconds))
+	if mg.created != 0 {
+		point.SetStartTimestamp(timestampFromFloat64(mg.created))
 	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
@@ -224,8 +221,8 @@ func (mg *metricGroup) toExponentialHistogramDataPoints(dest pmetric.Exponential
 	}
 
 	tsNanos := timestampFromMs(mg.ts)
-	if mg.createdSeconds != 0 {
-		point.SetStartTimestamp(timestampFromFloat64(mg.createdSeconds))
+	if mg.created != 0 {
+		point.SetStartTimestamp(timestampFromFloat64(mg.created))
 	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
@@ -318,8 +315,8 @@ func (mg *metricGroup) toSummaryPoint(dest pmetric.SummaryDataPointSlice) {
 	// The timestamp MUST be in retrieved from milliseconds and converted to nanoseconds.
 	tsNanos := timestampFromMs(mg.ts)
 	point.SetTimestamp(tsNanos)
-	if mg.createdSeconds != 0 {
-		point.SetStartTimestamp(timestampFromFloat64(mg.createdSeconds))
+	if mg.created != 0 {
+		point.SetStartTimestamp(timestampFromFloat64(mg.created))
 	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
@@ -332,8 +329,8 @@ func (mg *metricGroup) toNumberDataPoint(dest pmetric.NumberDataPointSlice) {
 	point := dest.AppendEmpty()
 	// gauge/undefined types have no start time.
 	if mg.mtype == pmetric.MetricTypeSum {
-		if mg.createdSeconds != 0 {
-			point.SetStartTimestamp(timestampFromFloat64(mg.createdSeconds))
+		if mg.created != 0 {
+			point.SetStartTimestamp(timestampFromFloat64(mg.created))
 		} else if !removeStartTimeAdjustment.IsEnabled() {
 			// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 			point.SetStartTimestamp(tsNanos)
@@ -401,7 +398,7 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 			mg.count = v
 			mg.hasCount = true
 		case metricName == mf.metadata.MetricFamily+metricSuffixCreated:
-			mg.createdSeconds = v
+			mg.created = v
 		default:
 			boundary, err := getBoundary(mf.mtype, ls)
 			if err != nil {
@@ -411,11 +408,11 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 		}
 	case pmetric.MetricTypeExponentialHistogram:
 		if metricName == mf.metadata.MetricFamily+metricSuffixCreated {
-			mg.createdSeconds = v
+			mg.created = v
 		}
 	case pmetric.MetricTypeSum:
 		if metricName == mf.metadata.MetricFamily+metricSuffixCreated {
-			mg.createdSeconds = v
+			mg.created = v
 		} else {
 			mg.value = v
 		}
@@ -428,12 +425,9 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 	return nil
 }
 
-// addCreationTimestamp updates the metric group cache with the created timestamp for the group.
-// The parser gets the created time in ms however and we must convert it to seconds here.
-// - https://github.com/prometheus/prometheus/blob/2bf6f4c9dcbb1ad2e8fef70c6a48d8fc44a7f57c/model/textparse/interface.go#L77-L80
-func (mf *metricFamily) addCreationTimestamp(seriesRef uint64, ls labels.Labels, atMs, ctMs int64) {
+func (mf *metricFamily) addCreationTimestamp(seriesRef uint64, ls labels.Labels, atMs, created int64) {
 	mg := mf.loadMetricGroupOrCreate(seriesRef, ls, atMs)
-	mg.createdSeconds = float64(ctMs) / 1000.0
+	mg.created = float64(created)
 }
 
 func (mf *metricFamily) addExponentialHistogramSeries(seriesRef uint64, metricName string, ls labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) error {
@@ -441,9 +435,6 @@ func (mf *metricFamily) addExponentialHistogramSeries(seriesRef uint64, metricNa
 	if mg.ts != t {
 		return fmt.Errorf("inconsistent timestamps on metric points for metric %v", metricName)
 	}
-	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
-	//                  As a result, the type here is set to Gauge (the default) and thus will always fail here.
-	//                  See https://github.com/grafana/alloy/issues/1905.
 	if mg.mtype != pmetric.MetricTypeExponentialHistogram {
 		return fmt.Errorf("metric type mismatch for exponential histogram metric %v type %s", metricName, mg.mtype.String())
 	}

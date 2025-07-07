@@ -9,14 +9,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/storage"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	otelreceiver "go.opentelemetry.io/collector/receiver"
-	metricNoop "go.opentelemetry.io/otel/metric/noop"
-	traceNoop "go.opentelemetry.io/otel/trace/noop"
-
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -28,6 +20,13 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	otelreceiver "go.opentelemetry.io/collector/receiver"
+	metricNoop "go.opentelemetry.io/otel/metric/noop"
+	traceNoop "go.opentelemetry.io/otel/trace/noop"
 )
 
 func init() {
@@ -134,8 +133,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
 
-		// With upgrade of Prometheus to v3.4.2, we enabled the native histograms by default.
-		enableNativeHistograms = true
+		enableNativeHistograms = c.opts.MinStability.Permits(featuregate.StabilityPublicPreview)
 
 		gcInterval = 5 * time.Minute
 	)

@@ -10,7 +10,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
 	"go.uber.org/zap"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
@@ -128,12 +128,13 @@ func (tsm *timeseriesMap) get(metric pmetric.Metric, kv pcommon.Map) (*timeserie
 // Create a unique string signature for attributes values sorted by attribute keys.
 func getAttributesSignature(m pcommon.Map) [16]byte {
 	clearedMap := pcommon.NewMap()
-	for k, attrValue := range m.All() {
+	m.Range(func(k string, attrValue pcommon.Value) bool {
 		value := attrValue.Str()
 		if value != "" {
 			clearedMap.PutStr(k, value)
 		}
-	}
+		return true
+	})
 	return pdatautil.MapHash(clearedMap)
 }
 
@@ -264,12 +265,12 @@ func (a *initialPointAdjuster) AdjustMetrics(metrics pmetric.Metrics) error {
 	}
 	for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
 		rm := metrics.ResourceMetrics().At(i)
-		_, found := rm.Resource().Attributes().Get(string(semconv.ServiceNameKey))
+		_, found := rm.Resource().Attributes().Get(semconv.AttributeServiceName)
 		if !found {
 			return errors.New("adjusting metrics without job")
 		}
 
-		_, found = rm.Resource().Attributes().Get(string(semconv.ServiceInstanceIDKey))
+		_, found = rm.Resource().Attributes().Get(semconv.AttributeServiceInstanceID)
 		if !found {
 			return errors.New("adjusting metrics without instance")
 		}
@@ -277,8 +278,8 @@ func (a *initialPointAdjuster) AdjustMetrics(metrics pmetric.Metrics) error {
 
 	for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
 		rm := metrics.ResourceMetrics().At(i)
-		job, _ := rm.Resource().Attributes().Get(string(semconv.ServiceNameKey))
-		instance, _ := rm.Resource().Attributes().Get(string(semconv.ServiceInstanceIDKey))
+		job, _ := rm.Resource().Attributes().Get(semconv.AttributeServiceName)
+		instance, _ := rm.Resource().Attributes().Get(semconv.AttributeServiceInstanceID)
 		tsm := a.jobsMap.get(job.Str(), instance.Str())
 
 		// The lock on the relevant timeseriesMap is held throughout the adjustment process to ensure that
