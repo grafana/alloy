@@ -10,7 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-### Breaking changes (Prom upgrade) WIP
+### Breaking changes
 
 - The `.` pattern in regular expressions in PromQL matches newline characters now. With this change a regular expressions like `.*` matches strings that include `\n`. This applies to matchers in queries and relabel configs in Prometheus and Loki components.
 
