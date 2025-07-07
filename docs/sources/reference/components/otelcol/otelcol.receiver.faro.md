@@ -16,6 +16,8 @@ title: otelcol.receiver.faro
 
 You can specify multiple `otelcol.receiver.faro` components by giving them different labels.
 
+{{< docs/shared lookup="reference/components/otelcol-faro-component-note.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 {{< admonition type="note" >}}
 `otelcol.receiver.faro` is a wrapper over the upstream OpenTelemetry Collector [`faro`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.

@@ -16,6 +16,13 @@ title: faro.receiver
 
 [faro-sdk]: https://github.com/grafana/faro-web-sdk
 
+{{< admonition type="note" >}}
+Refer to the [Frontend Telemetry][frontend-telemetry] section in the choose component guide for more details on when to use `faro.receiver` or `otelcol.receiver.faro`.
+
+[frontend-telemetry]: ../../../../collect/choose-component/#frontend-telemetry
+
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
