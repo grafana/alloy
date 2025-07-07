@@ -171,10 +171,10 @@ The supported `metadata` keys are:
 * `k8s.replicaset.uid`
 * `k8s.statefulset.name`
 * `k8s.statefulset.uid`
-* `service.instance.id` *
-* `service.name` *
-* `service.namespace` *
-* `service.version` *
+* `service.instance.id`
+* `service.name`
+* `service.namespace`
+* `service.version`
 
 The `service.*` metadata are calculated following the OpenTelemetry [semantic conventions][].
 
