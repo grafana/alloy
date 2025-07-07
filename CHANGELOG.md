@@ -54,6 +54,8 @@ Main (unreleased)
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
 
+- Upgrade `otelcol.exporter.windows` to v0.30.8 to get bugfixes and fix `update` collector support. (@dehaansa)
+
 v1.9.2
 -----------------
 
