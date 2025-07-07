@@ -72,11 +72,9 @@ Use `pyroscope.*` components to collect profiles.
 
 ## Frontend telemetry
 
-Use `otelcol.receiver.faro` and `otelcol.exporter.faro` components to process telemetry data collected with the [Grafana Faro Web SDK][faro-sdk] before sending it to Grafana Cloud.
-This approach is particularly useful for [Frontend Observability][frontend-observability] users who want full control over their data processing pipeline.
-This allows you to remove sensitive information, filter out specific signals, and apply custom processing rules.
+Suggested change
+In order to use [Frontend Observability][frontend-observability], you have to collect and forward frontend telemetry using `otelcol.receiver.faro` and `otelcol.exporter.faro`.
+You can also gather frontend telemetry using `faro.receiver` and send it to Grafana Cloud, but [Frontend Observability][frontend-observability] will not work and you will need to create your own dashboards.
+`faro.receiver` is recommended only for a self-hosted Grafana setup.
 
-Use `faro.receiver` component for the self-hosted Grafana setup.
-
-[faro-sdk]: https://github.com/grafana/faro-web-sdk
 [frontend-observability]: https://grafana.com/docs/grafana-cloud/monitor-applications/frontend-observability/
