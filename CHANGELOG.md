@@ -45,6 +45,9 @@ Main (unreleased)
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
 
+- Propagate the `-feature.community-components.enabled` flag for remote
+  configuration components. (@tpaschalis)
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
