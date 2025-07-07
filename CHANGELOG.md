@@ -14,6 +14,7 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 - Add the `otelcol.exporter.faro` exporter to export traces and logs to Faro endpoint. (@mar4uk)
+- Add the `otelcol.receiver.faro` receiver to receive traces and logs from the Grafana Faro Web SDK. (@mar4uk)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
