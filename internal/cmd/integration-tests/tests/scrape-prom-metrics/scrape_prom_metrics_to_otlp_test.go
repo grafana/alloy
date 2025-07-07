@@ -9,9 +9,5 @@ import (
 )
 
 func TestScrapePromMetricsToOtlp(t *testing.T) {
-	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
-	//                  Removing the check for common.PromDefaultHistogramMetric until it's fixed.
-	//                  See https://github.com/grafana/alloy/issues/1905.
-	// common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultHistogramMetric, "scrape_prom_metrics_to_otlp")
-	common.MimirMetricsTest(t, common.PromDefaultMetrics, []string{}, "scrape_prom_metrics_to_otlp")
+	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultHistogramMetric, "scrape_prom_metrics_to_otlp")
 }
