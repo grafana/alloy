@@ -120,6 +120,7 @@ func Test(t *testing.T) {
 
 func TestHistogram(t *testing.T) {
 	// TODO(thampiotr): Histograms are not working in `otelcol.receiver.prometheus` because metadata is not implemented.
+	//                  See https://github.com/grafana/alloy/issues/1905.
 	t.Skip("skipping as it's a known issue with metadata not working")
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)

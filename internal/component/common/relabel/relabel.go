@@ -88,7 +88,6 @@ type Regexp struct {
 }
 
 func newRegexp(s string) (Regexp, error) {
-	// TODO(thampiotr): The s modifiere was added upstream. Do we need to document this change as breaking?
 	regex, err := regexp.Compile("^(?s:" + s + ")$")
 	return Regexp{regex}, err
 }

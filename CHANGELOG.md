@@ -12,17 +12,12 @@ Main (unreleased)
 
 ### Breaking changes (Prom upgrade) WIP
 
-- Regex change - added `s:` modifier.
-- remote write default to http2 changed to false:
+- The `.` pattern in regular expressions in PromQL matches newline characters now. With this change a regular expressions like `.*` matches strings that include `\n`. This applies to matchers in queries and relabel configs in Prometheus and Loki components.
 
-> The http_config.enable_http2 in remote_write items default has been changed to false. In Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set http_config.enable_http2: true in your remote_write configuration section.
+- The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to false by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
 
-- scrape_classic_histograms renamed to always_scrape_classic_histograms <- should we add an alias?
-  
-> The scrape job level configuration option scrape_classic_histograms has been renamed to always_scrape_classic_histograms. If you use the --enable-feature=native-histograms feature flag to ingest native histograms and you also want to ingest classic histograms that an endpoint might expose along with native histograms, be sure to add this configuration or change your configuration from the old name.
+- Native histograms are now enabled by default in `otelcol.receiver.prometheus`. Previously, they were enabled only when the stability level was set to public preview via `--stability.level=public-preview` flag.
 
-- enabling native histograms by default in otelcol.receiver.prometheus
-- known issue that histograms are not working in `otelcol.receiver.prometheus` because metadata is not working either
 - more strict protocols validation in `prometheus.scrape`
 
 > Prometheus v3 is more strict concerning the Content-Type header received when scraping. Prometheus v2 would default to the standard Prometheus text protocol if the target being scraped did not specify a Content-Type header or if the header was unparsable or unrecognised. This could lead to incorrect data being parsed in the scrape. Prometheus v3 will now fail the scrape in such cases.

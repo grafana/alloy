@@ -244,7 +244,7 @@ prometheus.scrape "prometheus" {
 }
 ```
 
-The`scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present.
+The`scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present. It's an equivalent to the `always_scrape_classic_histograms` argument in Prometheus v3.
 
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
