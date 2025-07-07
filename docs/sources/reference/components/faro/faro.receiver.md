@@ -17,10 +17,11 @@ title: faro.receiver
 [faro-sdk]: https://github.com/grafana/faro-web-sdk
 
 {{< admonition type="note" >}}
-Refer to the [Frontend Telemetry][frontend-telemetry] section in the choose component guide for more details on when to use `faro.receiver` or `otelcol.receiver.faro`.
+This component does not work with [Grafana Cloud Frontend Observability][frontend-observability].
+For more information, refer to the [Choose a component][frontend-telemetry] guide.
 
 [frontend-telemetry]: ../../../../collect/choose-component/#frontend-telemetry
-
+[frontend-observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
 {{< /admonition >}}
 
 ## Usage
