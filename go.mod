@@ -73,7 +73,7 @@ require (
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
-	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250507154309-83bcbaac6b04
+	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
 	github.com/grafana/walqueue v0.0.0-20250606153244-9d2294b26901
@@ -172,7 +172,7 @@ require (
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.11.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
-	github.com/prometheus-community/windows_exporter v0.30.7 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
+	github.com/prometheus-community/windows_exporter v0.30.8 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-operator/prometheus-operator v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.2
@@ -596,7 +596,7 @@ require (
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/go-zookeeper/zk v1.0.4 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
@@ -983,6 +983,7 @@ require (
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.128.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.128.0
 	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20250516154730-1d8025fde3b0
 	go.opentelemetry.io/collector/config/configoptional v0.128.0

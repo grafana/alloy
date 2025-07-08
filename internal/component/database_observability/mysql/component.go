@@ -240,7 +240,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryTablesName:    true,
 		collector.SchemaTableName:    true,
 		collector.SetupConsumersName: true,
-		collector.QuerySampleName:    false,
+		collector.QuerySampleName:    true,
 		collector.ExplainPlanName:    false,
 		collector.LocksName:          false,
 	}

@@ -615,7 +615,9 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 		logger = log.With(logger, "schema_name", *qi.schemaName)
-		if _, err := c.dbConnection.ExecContext(ctx, "USE "+*qi.schemaName); err != nil {
+
+		useStatement := fmt.Sprintf("USE `%s`", *qi.schemaName)
+		if _, err := c.dbConnection.ExecContext(ctx, useStatement); err != nil {
 			level.Error(logger).Log("msg", "failed to set schema", "err", err)
 			continue
 		}

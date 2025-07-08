@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
@@ -157,7 +156,7 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
-			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
+			got := p.ExtractTableNames(stmt)
 			require.ElementsMatch(t, tc.tables, got)
 		})
 	}

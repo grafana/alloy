@@ -2,11 +2,9 @@ package collector
 
 import (
 	"context"
-	"net"
 	"regexp"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 )
@@ -15,7 +13,7 @@ const ConnectionInfoName = "connection_info"
 
 var (
 	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
 )
 
 type ConnectionInfoArguments struct {
@@ -53,22 +51,21 @@ func (c *ConnectionInfo) Name() string {
 }
 
 func (c *ConnectionInfo) Start(ctx context.Context) error {
-	cfg, err := mysql.ParseDSN(c.DSN)
-	if err != nil {
-		return err
-	}
-
 	c.running.Store(true)
 
 	var (
 		providerName         = "unknown"
 		providerRegion       = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = "mysql"
+		engine               = "postgres"
 	)
 
-	host, _, err := net.SplitHostPort(cfg.Addr)
-	if err == nil && host != "" {
+	parts, err := ParseURL(c.DSN)
+	if err != nil {
+		return err
+	}
+
+	if host, ok := parts["host"]; ok {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
 			providerName = "aws"
 			matches := rdsRegex.FindStringSubmatch(host)
@@ -76,7 +73,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 				dbInstanceIdentifier = matches[1]
 				providerRegion = matches[3]
 			}
-		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
+		} else if strings.HasSuffix(host, "postgres.database.azure.com") {
 			providerName = "azure"
 			matches := azureRegex.FindStringSubmatch(host)
 			if len(matches) > 1 {
@@ -84,7 +81,6 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			}
 		}
 	}
-
 	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine).Set(1)
 	return nil
 }

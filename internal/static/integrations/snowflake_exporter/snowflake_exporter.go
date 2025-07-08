@@ -16,14 +16,15 @@ var DefaultConfig = Config{
 
 // Config is the configuration for the snowflake integration
 type Config struct {
-	AccountName          string             `yaml:"account_name,omitempty"`
-	Username             string             `yaml:"username,omitempty"`
-	Password             config_util.Secret `yaml:"password,omitempty"`
-	PrivateKeyPath       string             `yaml:"private_key_path,omitempty"`
-	PrivateKeyPassword   config_util.Secret `yaml:"private_key_password,omitempty"`
-	Role                 string             `yaml:"role,omitempty"`
-	Warehouse            string             `yaml:"warehouse,omitempty"`
-	ExcludeDeletedTables bool               `yaml:"exclude_deleted_tables,omitempty"`
+	AccountName           string             `yaml:"account_name,omitempty"`
+	Username              string             `yaml:"username,omitempty"`
+	Password              config_util.Secret `yaml:"password,omitempty"`
+	PrivateKeyPath        string             `yaml:"private_key_path,omitempty"`
+	PrivateKeyPassword    config_util.Secret `yaml:"private_key_password,omitempty"`
+	Role                  string             `yaml:"role,omitempty"`
+	Warehouse             string             `yaml:"warehouse,omitempty"`
+	ExcludeDeletedTables  bool               `yaml:"exclude_deleted_tables,omitempty"`
+	EnableDriverTraceLogs bool               `yaml:"enable_tracing,omitempty"`
 }
 
 func (c *Config) exporterConfig() *collector.Config {
@@ -36,6 +37,7 @@ func (c *Config) exporterConfig() *collector.Config {
 		Role:               c.Role,
 		Warehouse:          c.Warehouse,
 		ExcludeDeleted:     c.ExcludeDeletedTables,
+		EnableTracing:      c.EnableDriverTraceLogs,
 	}
 }
 

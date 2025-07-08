@@ -52,7 +52,7 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Restart {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew services restart alloy
+   brew services restart grafana/grafana/alloy
    ```
 
 ## Uninstall

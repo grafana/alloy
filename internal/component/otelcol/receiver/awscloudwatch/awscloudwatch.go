@@ -2,9 +2,12 @@
 package awscloudwatch
 
 import (
+	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver"
@@ -29,10 +32,11 @@ func init() {
 
 // Arguments configures the otelcol.receiver.awscloudwatch component.
 type Arguments struct {
-	Region       string     `alloy:"region,attr"`
-	Profile      string     `alloy:"profile,attr,optional"`
-	IMDSEndpoint string     `alloy:"imds_endpoint,attr,optional"`
-	Logs         LogsConfig `alloy:"logs,block,optional"`
+	Region       string                      `alloy:"region,attr"`
+	Profile      string                      `alloy:"profile,attr,optional"`
+	IMDSEndpoint string                      `alloy:"imds_endpoint,attr,optional"`
+	Logs         LogsConfig                  `alloy:"logs,block,optional"`
+	Storage      *extension.ExtensionHandler `alloy:"storage,attr,optional"`
 
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -79,12 +83,25 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		otelConfig.Logs.Groups.AutodiscoverConfig.Limit = defaultLogGroupLimit
 	}
 
+	// Configure storage if args.Storage is set.
+	if args.Storage != nil {
+		if args.Storage.Extension == nil {
+			return nil, fmt.Errorf("missing storage extension")
+		}
+
+		otelConfig.StorageID = &args.Storage.ID
+	}
+
 	return otelConfig, nil
 }
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Storage != nil {
+		m[args.Storage.ID] = args.Storage.Extension
+	}
+	return m
 }
 
 // Exporters implements receiver.Arguments.

@@ -14,10 +14,14 @@ func (b *ConfigBuilder) appendSnowflakeExporter(config *snowflake_exporter.Confi
 
 func toSnowflakeExporter(config *snowflake_exporter.Config) *snowflake.Arguments {
 	return &snowflake.Arguments{
-		AccountName: config.AccountName,
-		Username:    config.Username,
-		Password:    alloytypes.Secret(config.Password),
-		Role:        config.Role,
-		Warehouse:   config.Warehouse,
+		AccountName:           config.AccountName,
+		Username:              config.Username,
+		Password:              alloytypes.Secret(config.Password),
+		PrivateKeyPath:        config.PrivateKeyPath,
+		PrivateKeyPassword:    alloytypes.Secret(config.PrivateKeyPassword),
+		Role:                  config.Role,
+		Warehouse:             config.Warehouse,
+		ExcludeDeletedTables:  config.ExcludeDeletedTables,
+		EnableDriverTraceLogs: config.EnableDriverTraceLogs,
 	}
 }

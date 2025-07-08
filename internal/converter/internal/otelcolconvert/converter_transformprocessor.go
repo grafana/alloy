@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -71,6 +72,8 @@ func toContextStatements(in []map[string]any) []transform.ContextStatements {
 		res = append(res, transform.ContextStatements{
 			Context:    transform.ContextID(encodeString(s["context"])),
 			Statements: s["statements"].([]string),
+			Conditions: s["conditions"].([]string),
+			ErrorMode:  s["error_mode"].(ottl.ErrorMode),
 		})
 	}
 

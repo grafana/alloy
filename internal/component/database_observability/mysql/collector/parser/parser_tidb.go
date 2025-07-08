@@ -8,7 +8,6 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/go-kit/log"
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
 	"github.com/pingcap/tidb/pkg/parser/mysql"
@@ -21,7 +20,7 @@ func NewTiDBSqlParser() *TiDBSqlParser {
 	return &TiDBSqlParser{}
 }
 
-func (p *TiDBSqlParser) Parse(sql string) (any, error) {
+func (p *TiDBSqlParser) Parse(sql string) (StatementAstNode, error) {
 	// mysql will redact auth details with <secret> but the tidb parser
 	// will fail to parse it so we replace it with '<secret>'
 	sql = strings.ReplaceAll(sql, "IDENTIFIED BY <secret>", "IDENTIFIED BY '<secret>'")
@@ -48,7 +47,7 @@ func (p *TiDBSqlParser) Parse(sql string) (any, error) {
 		return nil, fmt.Errorf("no statements parsed")
 	}
 
-	return &stmtNodes[0], nil
+	return stmtNodes[0], nil
 }
 
 func (p *TiDBSqlParser) Redact(sql string) (string, error) {
@@ -59,34 +58,14 @@ func (p *TiDBSqlParser) Redact(sql string) (string, error) {
 	return res, nil
 }
 
-func (p *TiDBSqlParser) StmtType(stmt any) StatementType {
-	s := stmt.(*ast.StmtNode)
-	switch (*s).(type) {
-	case *ast.SelectStmt:
-		return StatementTypeSelect
-	case *ast.InsertStmt:
-		return StatementTypeInsert
-	case *ast.UpdateStmt:
-		return StatementTypeUpdate
-	case *ast.DeleteStmt:
-		return StatementTypeDelete
-	default:
-		return ""
-	}
-}
-
-func (p *TiDBSqlParser) ExtractTableNames(_ log.Logger, _ string, stmt any) []string {
+func (p *TiDBSqlParser) ExtractTableNames(stmt StatementAstNode) []string {
 	v := &tableNameVisitor{
 		tables: map[string]struct{}{},
 	}
-	(*stmt.(*ast.StmtNode)).Accept(v)
+	stmt.Accept(v)
 	keys := maps.Keys(v.tables)
 	slices.Sort(keys)
 	return keys
-}
-
-func (p *TiDBSqlParser) ParseTableName(t any) string {
-	return parseTableName(t.(*ast.TableName))
 }
 
 type tableNameVisitor struct {

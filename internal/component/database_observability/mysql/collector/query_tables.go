@@ -133,7 +133,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 			continue
 		}
 
-		tables := c.sqlParser.ExtractTableNames(c.logger, digest, stmt)
+		tables := c.sqlParser.ExtractTableNames(stmt)
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
 				logging.LevelInfo,
@@ -152,7 +152,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	return nil
 }
 
-func (c *QueryTables) tryParse(schema, digest, sqlText, fallbackSqlText string) (any, error) {
+func (c *QueryTables) tryParse(schema, digest, sqlText, fallbackSqlText string) (parser.StatementAstNode, error) {
 	sqlText, err := c.sqlParser.CleanTruncatedText(sqlText)
 	if err != nil {
 		sqlText, err = c.sqlParser.CleanTruncatedText(fallbackSqlText)
