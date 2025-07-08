@@ -35,12 +35,28 @@ func init() {
 	})
 }
 
+type HtpasswdConfig struct {
+	File   string `alloy:"file,attr,optional"`
+	Inline string `alloy:"inline,attr,optional"`
+}
+
+func (c HtpasswdConfig) convert() *basicauthextension.HtpasswdSettings {
+	settings := &basicauthextension.HtpasswdSettings{}
+	if c.File != "" {
+		settings.File = c.File
+	}
+	if c.Inline != "" {
+		settings.Inline = c.Inline
+	}
+	return settings
+}
+
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
 	Username string            `alloy:"username,attr,optional"`
 	Password alloytypes.Secret `alloy:"password,attr,optional"`
 
-	HtpasswdFile string `alloy:"htpasswd_file,attr,optional"`
+	Htpasswd *HtpasswdConfig `alloy:"htpasswd,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -56,7 +72,7 @@ func (args *Arguments) SetToDefault() {
 // Validate implements syntax.Validator
 func (args Arguments) Validate() error {
 	// check if no argument was provided
-	if args.Username == "" && args.Password == "" && args.HtpasswdFile == "" {
+	if args.Username == "" && args.Password == "" && args.Htpasswd == nil {
 		return errNoCredentialSource
 	}
 	// the downstream basicauthextension package supports having both inline
@@ -86,11 +102,11 @@ func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	c := &basicauthextension.Config{
 		Htpasswd: &basicauthextension.HtpasswdSettings{},
 	}
-	if args.HtpasswdFile != "" {
-		c.Htpasswd.File = args.HtpasswdFile
+	if args.Htpasswd != nil {
+		c.Htpasswd = args.Htpasswd.convert()
 	}
 	if args.Username != "" && args.Password != "" {
-		c.Htpasswd.Inline = fmt.Sprintf("%s:%s", args.Username, args.Password)
+		c.Htpasswd.Inline += fmt.Sprintf("\n%s:%s", args.Username, args.Password)
 	}
 
 	return c, nil

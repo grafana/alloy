@@ -32,7 +32,10 @@ otelcol.auth.basic "<LABEL>" {
   username = "<USERNAME>"
   password = "<PASSWORD>"
   
-  htpasswd_file = "/etc/alloy/.htpasswd"
+  htpasswd {
+    file = "/etc/alloy/.htpasswd"
+    inline = "<USERNAME>:<PASSWORD>"
+  }
 }
 ```
 
@@ -40,11 +43,10 @@ otelcol.auth.basic "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.basic`:
 
-| Name            | Type     | Description                                                                     | Default | Required |
-|-----------------|----------|---------------------------------------------------------------------------------|---------|----------|
-| `password`      | `secret` | Password to use for basic authentication requests.                              |         | no       |
-| `username`      | `string` | Username to use for basic authentication requests.                              |         | no       |
-| `htpasswd_file` | `string` | File to use for basic authentication requests. It can be used in receivers only |         | no       |
+| Name       | Type     | Description                                                                     | Default | Required |
+|------------|----------|---------------------------------------------------------------------------------|---------|----------|
+| `password` | `secret` | Password to use for basic authentication requests.                              |         | no       |
+| `username` | `string` | Username to use for basic authentication requests.                              |         | no       |
 
 
 ## Blocks
@@ -52,14 +54,25 @@ You can use the following arguments with `otelcol.auth.basic`:
 You can use the following block with `otelcol.auth.basic`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`htpasswd`][htpasswd]           | Configures the service authentication for a receiver                       | no       |
 
 [debug_metrics]: #debug_metrics
+[htpasswd]: #htpasswd
 
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `htpasswd`
+
+The `htpasswd` block configures how the server extensions will authenticate calls.
+
+| Name     | Type     | Description                                                        | Default | Required |
+|----------|----------|--------------------------------------------------------------------|---------|----------|
+| `file`   | `string` | Path to the htpasswd file to use for basic authentication requests | `""`    | no       |
+| `inline` | `string` | The htpasswd file inline content                                   | `""`    | no       |
 
 ## Exported fields
 
@@ -148,7 +161,9 @@ otelcol.receiver.otlp "example" {
 otelcol.exporter.debug "default" {}
 
 otelcol.auth.basic "creds" {
-  htpasswd_file = "/etc/alloy/.htpasswd"
+  htpasswd {
+    file = "/etc/alloy/.htpasswd"
+  }
 }
 ```
 
@@ -178,7 +193,9 @@ otelcol.auth.basic "creds" {
   username = "demo"
   password = sys.env("API_KEY")
   
-  htpasswd_file = "/etc/alloy/.htpasswd"
+  htpasswd {
+    file = "/etc/alloy/.htpasswd"
+  }
 }
 ```
 

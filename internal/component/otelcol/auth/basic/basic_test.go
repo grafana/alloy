@@ -35,7 +35,9 @@ var (
 	cfg = fmt.Sprintf(`
 		username = "%s"
 		password = "%s"
-		htpasswd_file = "%s"
+		htpasswd = {
+			file = "%s"
+		}
 	`, actualUsername, actualPassword, htpasswdPath)
 )
 
