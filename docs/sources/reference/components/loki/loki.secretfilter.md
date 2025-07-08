@@ -43,13 +43,13 @@ You can use the following arguments with `loki.secretfilter`:
 | Name              | Type                 | Description                                                    | Default                            | Required |
 | ----------------- | -------------------- | -------------------------------------------------------------- | ---------------------------------- | -------- |
 | `forward_to`      | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                                    | yes      |
-| `allowlist`       | `map(string)`        | List of regular expressions to allowlist matching secrets.     | `{}`                               | no       |
+| `allowlist`       | `list(string)`       | List of regular expressions to allowlist matching secrets.     | `[]`                               | no       |
 | `gitleaks_config` | `string`             | Path to the custom `gitleaks.toml` file.                       | Embedded Gitleaks file             | no       |
 | `include_generic` | `bool`               | Include the generic API key rule.                              | `false`                            | no       |
 | `origin_label`    | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. | `""`                               | no       |
 | `partial_mask`    | `int`                | Show the first N characters of the secret.                     | `0`                                | no       |
 | `redact_with`     | `string`             | String to use to redact secrets.                               | `"<REDACTED-SECRET:$SECRET_NAME>"` | no       |
-| `types`           | `map(string)`        | Types of secret to look for.                                   | All types                          | no       |
+| `types`           | `list(string)`       | List of secret types to look for.                              | All types                          | no       |
 
 The `gitleaks_config` argument is the path to the custom `gitleaks.toml` file.
 If you don't provide the path to a custom configuration file, the Gitleaks configuration file [embedded in the component][embedded-config] is used.
@@ -68,7 +68,7 @@ The embedded configuration file may change between {{< param "PRODUCT_NAME" >}} 
 To ensure consistency, use an external configuration file.
 {{< /admonition >}}
 
-The `types` argument is a map of secret types to look for.
+The `types` argument is a list of secret types to look for.
 The values provided are used as prefixes to match rules IDs in the Gitleaks configuration.
 For example, providing the type `grafana` matches the rules `grafana-api-key`, `grafana-cloud-api-token`, and `grafana-service-account-token`.
 If you don't provide this argument, all rules are used.
@@ -92,7 +92,7 @@ The `redact_with` argument is a string that can use variables such as `$SECRET_N
 The `include_generic` argument is a boolean that includes the generic API key rule in the Gitleaks configuration file if set to `true`.
 It's disabled by default because it can generate false positives.
 
-The `allowlist` argument is a map of regular expressions to allow matching secrets.
+The `allowlist` argument is a list of regular expressions to allow matching secrets.
 A secret won't be redacted if it matches any of the regular expressions. The allowlist in the Gitleaks configuration file is also applied.
 
 The `partial_mask` argument is the number of characters to show from the beginning of the secret before the redact string is added.
