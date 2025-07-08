@@ -50,6 +50,8 @@ Main (unreleased)
 - Propagate the `-feature.community-components.enabled` flag for remote
   configuration components. (@tpaschalis)
 
+- Fix extension registration for `otelcol.receiver.splunkhec` auth extensions. (@dehaansa)
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
