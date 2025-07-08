@@ -280,3 +280,207 @@ func TestValidateScrapeConfig(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "scrape_timeout (20s) greater than scrape_interval (10s) for scrape config with job name \"local\"")
 }
+
+func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        string
+		expectError   bool
+		errorContains string
+		assertions    func(t *testing.T, args Arguments)
+	}{
+		{
+			name: "no validation scheme specified",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "valid utf8 with allow-utf-8",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "utf8"
+				metric_name_escaping_scheme = "allow-utf-8"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "valid legacy with underscores",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "legacy"
+				metric_name_escaping_scheme = "underscores"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "invalid combination - allow-utf-8 with legacy validation",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "legacy"
+				metric_name_escaping_scheme = "allow-utf-8"
+			`,
+			expectError:   true,
+			errorContains: "metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'",
+		},
+		{
+			name: "invalid validation scheme in config",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "invalid"
+			`,
+			expectError:   true,
+			errorContains: "invalid metric_name_validation_scheme",
+		},
+		{
+			name: "invalid escaping scheme in config",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_escaping_scheme = "invalid"
+			`,
+			expectError:   true,
+			errorContains: "invalid metric_name_escaping_scheme",
+		},
+		{
+			name: "utf8 validation with dots escaping",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "utf8"
+				metric_name_escaping_scheme = "dots"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "dots", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "utf8 validation only - escaping scheme should default to allow-utf-8",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "utf8"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "legacy validation only - escaping scheme should default to underscores",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = "legacy"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "escaping scheme only - validation scheme should default to utf8",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_escaping_scheme = "allow-utf-8"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "empty string validation scheme",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_validation_scheme = ""
+			`,
+			expectError:   true,
+			errorContains: "invalid metric_name_validation_scheme",
+		},
+		{
+			name: "empty string escaping scheme",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				metric_name_escaping_scheme = ""
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "utf8", args.MetricNameValidationScheme)
+				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+			},
+		},
+		{
+			name: "invalid scrape fallback protocol",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				scrape_fallback_protocol = "invalid"
+			`,
+			expectError:   true,
+			errorContains: "invalid scrape_fallback_protocol",
+		},
+		{
+			name: "valid scrape fallback protocol",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				scrape_fallback_protocol = "PrometheusProto"
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "PrometheusProto", args.ScrapeFallbackProtocol)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.config), &args)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.ErrorContains(t, err, tt.errorContains)
+				}
+			} else {
+				require.NoError(t, err)
+				// Validate that the config was parsed correctly
+				err = args.Validate()
+				require.NoError(t, err)
+
+				// Check default values if validation function is provided
+				if tt.assertions != nil {
+					tt.assertions(t, args)
+				}
+			}
+		})
+	}
+}

@@ -122,6 +122,13 @@ type Arguments struct {
 	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
 
+	// The validation scheme to use for metric names.
+	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
+	// The escaping scheme to use for metric names.
+	MetricNameEscapingScheme string `alloy:"metric_name_escaping_scheme,attr,optional"`
+	// The fallback protocol to use if the target does not provide a valid Content-Type header.
+	ScrapeFallbackProtocol string `alloy:"scrape_fallback_protocol,attr,optional"`
+
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
@@ -138,6 +145,8 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
 		ScrapeNativeHistograms:   true,
+		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
+		MetricNameValidationScheme: config.UTF8ValidationConfig,
 	}
 }
 
@@ -169,6 +178,36 @@ func (arg *Arguments) Validate() error {
 			return fmt.Errorf("invalid scrape protocol %q: %w", p, err)
 		}
 		existing[p] = struct{}{}
+	}
+
+	if arg.ScrapeFallbackProtocol != "" {
+		promSP := config.ScrapeProtocol(arg.ScrapeFallbackProtocol)
+		if err := promSP.Validate(); err != nil {
+			return fmt.Errorf("invalid scrape_fallback_protocol %q: %w", arg.ScrapeFallbackProtocol, err)
+		}
+	}
+
+	switch arg.MetricNameValidationScheme {
+	case config.UTF8ValidationConfig, config.LegacyValidationConfig:
+	default:
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, config.UTF8ValidationConfig, config.LegacyValidationConfig)
+	}
+
+	switch arg.MetricNameEscapingScheme {
+	case "":
+		if arg.MetricNameValidationScheme == config.LegacyValidationConfig {
+			arg.MetricNameEscapingScheme = model.EscapeUnderscores
+		} else {
+			arg.MetricNameEscapingScheme = model.AllowUTF8
+		}
+	case model.AllowUTF8, model.EscapeUnderscores, model.EscapeDots, model.EscapeValues:
+	default:
+		supportedValues := []string{model.AllowUTF8, model.EscapeUnderscores, model.EscapeDots, model.EscapeValues}
+		return fmt.Errorf("invalid metric_name_escaping_scheme: %q, supported values: %v", arg.MetricNameEscapingScheme, supportedValues)
+	}
+
+	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != config.UTF8ValidationConfig {
+		return fmt.Errorf("metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'")
 	}
 
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
@@ -463,9 +502,14 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
 
 	// Validation schemes
+	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
+	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
+	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
 	// TODO(thampiotr): expose these
-	dec.MetricNameValidationScheme = config.UTF8ValidationConfig
-	dec.MetricNameEscapingScheme = model.AllowUTF8
+	dec.ConvertClassicHistogramsToNHCB = nil
+	dec.EnableCompression = false
+	dec.NativeHistogramBucketLimit = 0
+	dec.NativeHistogramMinBucketFactor = 0
 
 	return &dec
 }

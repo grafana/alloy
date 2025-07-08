@@ -89,11 +89,11 @@ You can define multiple `endpoint` blocks to send metrics to multiple locations.
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
-| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ |---------| -------- |
 | `url`                    | `string`            | Full URL to send metrics to.                                                                     |         | yes      |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `false` | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |         | no       |

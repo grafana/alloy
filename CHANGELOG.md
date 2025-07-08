@@ -14,38 +14,11 @@ Main (unreleased)
 
 - The `.` pattern in regular expressions in PromQL matches newline characters now. With this change a regular expressions like `.*` matches strings that include `\n`. This applies to matchers in queries and relabel configs in Prometheus and Loki components.
 
-- The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to false by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
+- The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to `false` by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
 
-- Native histograms are now enabled by default in `otelcol.receiver.prometheus`. Previously, they were enabled only when the stability level was set to public preview via `--stability.level=public-preview` flag.
+- `prometheus.scrape` is now more strict concerning the `Content-Type` header received when scraping. Prometheus v2 would default to the standard Prometheus text protocol if the target being scraped did not specify a `Content-Type` header or if the header was unparsable or unrecognised. This could lead to incorrect data being parsed in the scrape. `prometheus.scrape` will now fail the scrape in such cases. If a scrape target is not providing the correct `Content-Type` header the fallback protocol can be specified using the `fallback_scrape_protocol` parameter. See `promethues.scrape` documentation. This is a breaking change as scrapes that may have succeeded with Prometheus v2 may now fail if this fallback protocol is not specified.
 
-- more strict protocols validation in `prometheus.scrape`
-
-> Prometheus v3 is more strict concerning the Content-Type header received when scraping. Prometheus v2 would default to the standard Prometheus text protocol if the target being scraped did not specify a Content-Type header or if the header was unparsable or unrecognised. This could lead to incorrect data being parsed in the scrape. Prometheus v3 will now fail the scrape in such cases.
->
-> If a scrape target is not providing the correct Content-Type header the fallback protocol can be specified using the fallback_scrape_protocol parameter. See Prometheus scrape_config documentation.
->
-> This is a breaking change as scrapes that may have succeeded with Prometheus v2 may now fail if this fallback protocol is not specified.
-
-- UTF-8 metric names
-
-> Prometheus v3 supports UTF-8 in metric and label names. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be.
->
-> Users wishing to preserve the original validation behavior can update their Prometheus yaml configuration to specify the legacy validation scheme:
->
-> ```yaml
-> global:
->   metric_name_validation_scheme: legacy
-> ```
->
-> Or on a per-scrape basis:
->
-> ```yaml
-> scrape_configs:
->   - job_name: job1
->     metric_name_validation_scheme: utf8
->   - job_name: job2
->     metric_name_validation_scheme: legacy
-> ```
+- Prometheus components now support UTF-8 in metric and label names. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"`.
 
 - Log message format: TODO
 - le and quantile label values: TODO
