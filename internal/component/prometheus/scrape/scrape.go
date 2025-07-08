@@ -121,13 +121,23 @@ type Arguments struct {
 	// It is invalid to set both EnableProtobufNegotiation and ScrapeProtocols.
 	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
-
 	// The validation scheme to use for metric names.
 	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
 	// The escaping scheme to use for metric names.
 	MetricNameEscapingScheme string `alloy:"metric_name_escaping_scheme,attr,optional"`
 	// The fallback protocol to use if the target does not provide a valid Content-Type header.
 	ScrapeFallbackProtocol string `alloy:"scrape_fallback_protocol,attr,optional"`
+	// Whether to convert classic histograms with buckets to native histograms
+	// with custom buckets (NHCB). False by default.
+	ConvertClassicHistogramsToNHCB bool `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
+	// Whether compression is enabled for the scrape. True by default.
+	EnableCompression bool `alloy:"enable_compression,attr,optional"`
+	// If there are more than this many buckets in a native histogram,
+	// buckets will be merged to stay within the limit. Disabled when set to zero.
+	NativeHistogramBucketLimit uint `alloy:"native_histogram_bucket_limit,attr,optional"`
+	// If the growth factor of one bucket to the next is smaller than this,
+	// buckets will be merged to stay within the limit. Disabled when set zero.
+	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -146,7 +156,11 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
 		ScrapeNativeHistograms:   true,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme: config.UTF8ValidationConfig,
+		MetricNameValidationScheme:     config.UTF8ValidationConfig,
+		ConvertClassicHistogramsToNHCB: false,
+		EnableCompression:              true,
+		NativeHistogramBucketLimit:     0,
+		NativeHistogramMinBucketFactor: 0,
 	}
 }
 
@@ -505,11 +519,10 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
 	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
 	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
-	// TODO(thampiotr): expose these
-	dec.ConvertClassicHistogramsToNHCB = nil
-	dec.EnableCompression = false
-	dec.NativeHistogramBucketLimit = 0
-	dec.NativeHistogramMinBucketFactor = 0
+	dec.ConvertClassicHistogramsToNHCB = &c.ConvertClassicHistogramsToNHCB
+	dec.EnableCompression = c.EnableCompression
+	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
+	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
 
 	return &dec
 }

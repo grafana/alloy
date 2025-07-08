@@ -458,6 +458,62 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 				require.Equal(t, "PrometheusProto", args.ScrapeFallbackProtocol)
 			},
 		},
+		{
+			name: "native histogram defaults",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.False(t, args.ConvertClassicHistogramsToNHCB)
+				require.True(t, args.EnableCompression)
+				require.Equal(t, uint(0), args.NativeHistogramBucketLimit)
+				require.Equal(t, 0.0, args.NativeHistogramMinBucketFactor)
+			},
+		},
+		{
+			name: "valid native histogram config",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				convert_classic_histograms_to_nhcb = true
+				enable_compression = true
+				native_histogram_bucket_limit = 160
+				native_histogram_min_bucket_factor = 1.1
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.True(t, args.ConvertClassicHistogramsToNHCB)
+				require.True(t, args.EnableCompression)
+				require.Equal(t, uint(160), args.NativeHistogramBucketLimit)
+				require.Equal(t, 1.1, args.NativeHistogramMinBucketFactor)
+			},
+		},
+		{
+			name: "valid native_histogram_min_bucket_factor - exactly 1.0",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				native_histogram_min_bucket_factor = 1.0
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, 1.0, args.NativeHistogramMinBucketFactor)
+			},
+		},
+		{
+			name: "valid native_histogram_min_bucket_factor - zero means no limit",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				native_histogram_min_bucket_factor = 0.0
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, 0.0, args.NativeHistogramMinBucketFactor)
+			},
+		},
 	}
 
 	for _, tt := range tests {
