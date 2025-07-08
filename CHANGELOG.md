@@ -43,6 +43,8 @@ Main (unreleased)
 
 - Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
 
+- Add `windows` block to `alloy` component to support Windows-specific configurations. (@Ajay-Satish-01)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)

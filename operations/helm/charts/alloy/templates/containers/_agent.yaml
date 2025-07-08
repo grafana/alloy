@@ -3,10 +3,18 @@
 - name: alloy
   image: {{ .Values.global.image.registry | default .Values.image.registry }}/{{ .Values.image.repository }}{{ include "alloy.imageId" . }}
   imagePullPolicy: {{ .Values.image.pullPolicy }}
+  {{- if $values.windows.enabled }}
+  {{- if $values.windows.command }}
+  command:
+    {{- range $values.windows.command }}
+    - {{ . }}
+    {{- end}}
+  {{- end }}
+  {{- end }}
   args:
     - run
-    - /etc/alloy/{{ include "alloy.config-map.key" . }}
-    - --storage.path={{ $values.storagePath }}
+    - {{ if $values.windows.enabled }}{{ $values.windows.configPath }}{{ else }}/etc/alloy{{ end }}/{{ include "alloy.config-map.key" . }}
+    - --storage.path={{ if $values.windows.enabled }}{{ $values.windows.storagePath }}{{ else }}{{ $values.storagePath }}{{ end }}
     - --server.http.listen-addr={{ $values.listenAddr }}:{{ $values.listenPort }}
     - --server.http.ui-path-prefix={{ $values.uiPathPrefix }}
     {{- if not $values.enableReporting }}
@@ -75,15 +83,25 @@
   {{- end }}
   volumeMounts:
     - name: config
-      mountPath: /etc/alloy
+      mountPath: {{ if $values.windows.enabled }}{{ $values.windows.configPath }}{{ else }}/etc/alloy{{ end }}
     {{- if $values.mounts.varlog }}
     - name: varlog
-      mountPath: /var/log
+      mountPath: {{ if $values.windows.enabled }}{{ $values.windows.mounts.windowsLogs }}{{ else }}/var/log{{ end }}
       readOnly: true
     {{- end }}
     {{- if $values.mounts.dockercontainers }}
     - name: dockercontainers
-      mountPath: /var/lib/docker/containers
+      mountPath: {{ if $values.windows.enabled }}C:\ProgramData\docker\containers{{ else }}/var/lib/docker/containers{{ end }}
+      readOnly: true
+    {{- end }}
+    {{- if and $values.windows.enabled $values.windows.mounts.eventLogsEnabled }}
+    - name: eventlogs
+      mountPath: {{ $values.windows.mounts.eventLogs }}
+      readOnly: true
+    {{- end }}
+    {{- if and $values.windows.enabled $values.windows.mounts.windowsLogsEnabled }}
+    - name: windowslogs
+      mountPath: {{ $values.windows.mounts.windowsLogs }}
       readOnly: true
     {{- end }}
     {{- with $values.mounts.extra }}
