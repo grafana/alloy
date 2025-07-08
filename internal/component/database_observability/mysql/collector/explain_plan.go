@@ -616,23 +616,9 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 		logger = log.With(logger, "schema_name", *qi.schemaName)
 
-		useStatement := fmt.Sprintf("USE `%s`", *qi.schemaName)
-		if _, err := c.dbConnection.ExecContext(ctx, useStatement); err != nil {
-			level.Error(logger).Log("msg", "failed to set schema", "err", err)
-			continue
-		}
-
-		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
-
-		if err := rsExplain.Err(); err != nil {
-			level.Error(logger).Log("msg", "failed to run explain plan", "err", err)
-
-			continue
-		}
-
-		var byteExplainPlanJSON []byte
-		if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
-			level.Error(logger).Log("msg", "failed to scan explain plan json", "err", err)
+		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, qi)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			continue
 		}
 
@@ -692,6 +678,31 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+	conn, err := c.dbConnection.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connection: %w", err)
+	}
+	defer conn.Close()
+
+	useStatement := fmt.Sprintf("USE `%s`", *qi.schemaName)
+	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
+		return nil, fmt.Errorf("failed to set schema: %w", err)
+	}
+
+	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
+	if err := rsExplain.Err(); err != nil {
+		return nil, fmt.Errorf("failed to run explain plan: %w", err)
+	}
+
+	var byteExplainPlanJSON []byte
+	if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
+		return nil, fmt.Errorf("failed to scan explain plan json: %w", err)
+	}
+
+	return byteExplainPlanJSON, nil
 }
 
 func redactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {
