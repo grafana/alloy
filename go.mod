@@ -217,8 +217,8 @@ require (
 	github.com/xdg-go/scram v1.1.2
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2 // indirect
 	github.com/zeebo/xxh3 v1.0.2
-	go.opentelemetry.io/collector/client v1.35.0
-	go.opentelemetry.io/collector/component v1.35.0
+	go.opentelemetry.io/collector/client v1.34.0
+	go.opentelemetry.io/collector/component v1.34.0
 	go.opentelemetry.io/collector/component/componentstatus v0.128.0
 	go.opentelemetry.io/collector/component/componenttest v0.128.0
 	go.opentelemetry.io/collector/config/configauth v0.128.0
@@ -242,18 +242,18 @@ require (
 	go.opentelemetry.io/collector/exporter/debugexporter v0.128.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.128.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.128.0
-	go.opentelemetry.io/collector/extension v1.35.0
-	go.opentelemetry.io/collector/extension/extensionauth v1.35.0
+	go.opentelemetry.io/collector/extension v1.34.0
+	go.opentelemetry.io/collector/extension/extensionauth v1.34.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.128.0
 	go.opentelemetry.io/collector/extension/xextension v0.128.0
 	go.opentelemetry.io/collector/featuregate v1.35.0
 	go.opentelemetry.io/collector/otelcol v0.128.0
 	go.opentelemetry.io/collector/pdata v1.35.0
 	go.opentelemetry.io/collector/pipeline v0.128.0
-	go.opentelemetry.io/collector/processor v1.35.0
+	go.opentelemetry.io/collector/processor v1.34.0
 	go.opentelemetry.io/collector/processor/batchprocessor v0.128.0
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.128.0
-	go.opentelemetry.io/collector/receiver v1.35.0
+	go.opentelemetry.io/collector/receiver v1.34.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.128.0
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.128.0
 	go.opentelemetry.io/collector/receiver/receivertest v0.128.0
