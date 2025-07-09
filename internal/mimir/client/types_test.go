@@ -30,17 +30,15 @@ func TestRuleGroup_Marshal(t *testing.T) {
 					Limit:    0,
 					Rules: []rulefmt.Rule{
 						{
-							Record: "record",
-							Alert:  "alert",
-							Expr:   "expr",
+							Alert: "alert",
+							Expr:  "expr",
 						},
 					},
 				},
 			},
 			want: `name: group
 rules:
-    - record: record
-      alert: alert
+    - alert: alert
       expr: expr
 source_tenants:
     - tenant1

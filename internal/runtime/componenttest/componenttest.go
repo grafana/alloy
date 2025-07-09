@@ -19,7 +19,6 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -38,10 +37,6 @@ type Controller struct {
 	exportsMut sync.Mutex
 	exports    component.Exports
 	exportsCh  chan struct{}
-
-	// MinStability sets the minimum stability level for the component.
-	// If not set, defaults to featuregate.StabilityGenerallyAvailable.
-	MinStability featuregate.Stability
 }
 
 // NewControllerFromID returns a new testing Controller for the component with
@@ -167,7 +162,6 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,
 		Registerer:    prometheus.NewRegistry(),
-		MinStability:  c.MinStability,
 		GetServiceData: func(name string) (interface{}, error) {
 			switch name {
 			case labelstore.ServiceName:
