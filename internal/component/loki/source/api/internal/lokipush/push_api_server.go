@@ -49,6 +49,11 @@ func NewPushAPIServer(logger log.Logger,
 	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
 
+	// Zero means default. This is done to match Loki's pushtarget.go behaviour.
+	if maxSendMessageSize <= 0 {
+		maxSendMessageSize = 100 << 20
+	}
+
 	s := &PushAPIServer{
 		logger:             logger,
 		serverConfig:       serverConfig,
