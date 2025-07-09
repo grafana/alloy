@@ -12,8 +12,9 @@ prometheus.scrape "metrics_name_jobName" {
 			__address__ = "localhost:9101",
 		}],
 	)
-	forward_to = [prometheus.remote_write.metrics_name.receiver]
-	job_name   = "jobName"
+	forward_to                    = [prometheus.remote_write.metrics_name.receiver]
+	job_name                      = "jobName"
+	metric_name_validation_scheme = ""
 }
 
 prometheus.remote_write "metrics_name" {
