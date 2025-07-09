@@ -313,7 +313,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry())
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -383,7 +383,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry())
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -463,7 +463,7 @@ func TestReady(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry())
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -524,7 +524,7 @@ func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fa
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry())
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
