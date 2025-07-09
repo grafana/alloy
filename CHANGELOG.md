@@ -28,6 +28,7 @@ Main (unreleased)
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
 - Add the `otelcol.exporter.faro` exporter to export traces and logs to Faro endpoint. (@mar4uk)
+- Add the `otelcol.receiver.faro` receiver to receive traces and logs from the Grafana Faro Web SDK. (@mar4uk)
 
 - Add entropy support for `loki.secretfilter` (@romain-gaillard)
 
@@ -40,6 +41,7 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - Add `explain_plan` collector to `database_observability.mysql` component. (@rgeyer)
   - `locks`: addition of data locks collector (@gaantunes @fridgepoet)
+  - Query sample collector is now enabled by default (@matthewnolf)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
@@ -49,11 +51,28 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add `enable_tracing` attribute to `prometheus.exporter.snowflake` component to support debugging issues. (@dehaansa)
+
+- Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
+
+- Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
+
+### Bugfixes
+
+- Fix path for correct injection of version into constants at build time. (@adlotsof)
+
+- Propagate the `-feature.community-components.enabled` flag for remote
+  configuration components. (@tpaschalis)
+
+- Fix extension registration for `otelcol.receiver.splunkhec` auth extensions. (@dehaansa)
+
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
+
+- Upgrade `otelcol.exporter.windows` to v0.30.8 to get bugfixes and fix `update` collector support. (@dehaansa)
 
 v1.9.2
 -----------------

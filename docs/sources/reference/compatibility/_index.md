@@ -46,6 +46,7 @@ The following components, grouped by namespace, _export_ Targets.
 
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -245,6 +246,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="faro" >}}
@@ -370,6 +372,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
+- [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
 - [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
 - [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)

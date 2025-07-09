@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -15,96 +14,72 @@ type fanout struct {
 	children []storage.Appender
 }
 
-func (f *fanout) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.Append(ref, l, t, v)
+func (f fanout) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.Append(ref, l, t, v)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return ref, err
 		}
 	}
-	return ref, multiErr
+	return ref, nil
 }
 
-func (f *fanout) Commit() error {
-	var multiErr error
-	for _, x := range f.children {
-		err := x.Commit()
+func (f fanout) Commit() error {
+	for _, child := range f.children {
+		err := child.Commit()
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return err
 		}
 	}
-	return multiErr
+	return nil
 }
 
-func (f *fanout) Rollback() error {
-	var multiErr error
-	for _, x := range f.children {
-		err := x.Rollback()
+func (f fanout) Rollback() error {
+	for _, child := range f.children {
+		err := child.Rollback()
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return err
 		}
 	}
-	return multiErr
+	return nil
 }
 
-func (f *fanout) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.AppendExemplar(ref, l, e)
+func (f fanout) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.AppendExemplar(ref, l, e)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return ref, err
 		}
 	}
-	return ref, multiErr
+	return ref, nil
 }
 
-func (f *fanout) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.UpdateMetadata(ref, l, m)
+func (f fanout) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.AppendHistogram(ref, l, t, h, fh)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return ref, err
 		}
 	}
-	return ref, multiErr
+	return ref, nil
 }
 
-func (f *fanout) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.AppendHistogram(ref, l, t, h, fh)
+func (f fanout) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.UpdateMetadata(ref, l, m)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return ref, err
 		}
 	}
-	return ref, multiErr
+	return ref, nil
 }
 
-func (f *fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.AppendCTZeroSample(ref, l, t, ct)
+func (f fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.AppendCTZeroSample(ref, l, t, ct)
 		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
+			return ref, err
 		}
 	}
-	return ref, multiErr
-}
-
-func (f *fanout) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	var multiErr error
-	for _, x := range f.children {
-		_, err := x.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
-		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
-		}
-	}
-	return ref, multiErr
-}
-
-func (f *fanout) SetOptions(opts *storage.AppendOptions) {
-	for _, x := range f.children {
-		x.SetOptions(opts)
-	}
+	return ref, nil
 }
