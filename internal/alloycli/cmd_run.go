@@ -172,7 +172,7 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
-	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
+	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusUTF8MetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
@@ -499,15 +499,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) error {
 	switch fr.prometheusMetricNameValidationScheme {
 	case prometheusLegacyMetricValidationScheme:
+		level.Warn(l).Log("msg", "Using deprecated legacy metric name validation scheme")
 		model.NameValidationScheme = model.LegacyValidation
 	case prometheusUTF8MetricValidationScheme:
-		if err := featuregate.CheckAllowed(
-			featuregate.StabilityExperimental,
-			fr.minStability,
-			"Prometheus utf-8 metric name validation scheme",
-		); err != nil {
-			return err
-		}
 		model.NameValidationScheme = model.UTF8Validation
 	default:
 		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
