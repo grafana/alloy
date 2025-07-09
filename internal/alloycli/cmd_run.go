@@ -500,9 +500,9 @@ func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) 
 	switch fr.prometheusMetricNameValidationScheme {
 	case prometheusLegacyMetricValidationScheme:
 		level.Warn(l).Log("msg", "Using deprecated legacy metric name validation scheme")
-		model.NameValidationScheme = model.LegacyValidation
+		model.NameValidationScheme = model.LegacyValidation //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 	case prometheusUTF8MetricValidationScheme:
-		model.NameValidationScheme = model.UTF8Validation
+		model.NameValidationScheme = model.UTF8Validation //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 	default:
 		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
 	}
