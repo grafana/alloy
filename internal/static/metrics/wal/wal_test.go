@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	io_prometheus_client "github.com/prometheus/client_model/go"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/util"
@@ -339,7 +340,7 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
-func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
+func TestStorage_NewWillNotLoadDuplicateSeries(t *testing.T) {
 	walDir := t.TempDir()
 
 	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
@@ -369,20 +370,25 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 		_, err := s.wal.NextSegmentSync()
 		require.NoError(t, err)
 	}
+	// Series are still active
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Force GC of all the series, but they will stay in the checkpoint
 	keepTs := payload[len(payload)-1].samples[1].ts + 1
 	err = s.Truncate(keepTs)
 	require.NoError(t, err)
+	// No more active series because they were GC'ed with Truncate
+	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Publish new samples that will create new RefIDs
 	for _, metric := range payload {
-		// Write a new sample for the same metric and see what happens
 		metric.samples = metric.samples[1:]
 		metric.samples[0].ts = metric.samples[0].ts * 10
 		metric.Write(t, app)
 	}
 	require.NoError(t, app.Commit())
+	// We should be back to 4 active series now
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Close the WAL before we have a chance to remove the first RefIDs
 	err = s.Close()
@@ -390,6 +396,9 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 
 	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
 	require.NoError(t, err)
+
+	// There should only be 4 active series after we reload the WAL
+	assert.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Force multiple GC's that should purge all active series
 	for i := 0; i < 3; i++ {
@@ -401,11 +410,9 @@ func TestStorage_WillNotLeaveUnGCableSeries(t *testing.T) {
 		err = s.Truncate(keepTs)
 		require.NoError(t, err)
 	}
-	// We should 0 active series but will have 4 instead because the first 4 RefIDs are lost in the WAL
-	var metric io_prometheus_client.Metric
-	err = s.metrics.numActiveSeries.Write(&metric)
-	require.NoError(t, err)
-	require.Equal(t, 0.0, metric.Gauge.GetValue())
+
+	// We should have zero active series now
+	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 }
 
 func TestStorage_WriteStalenessMarkers(t *testing.T) {

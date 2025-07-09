@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -29,6 +28,8 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 // ErrWALClosed is an error returned when a WAL operation can't run because the
@@ -210,14 +211,19 @@ func (w *Storage) replayWAL() error {
 	}
 
 	level.Info(w.logger).Log("msg", "replaying WAL, this may take a while", "dir", w.wal.Dir())
-	dir, startFrom, err := wlog.LastCheckpoint(w.wal.Dir())
-	if err != nil && err != record.ErrNotFound {
-		return fmt.Errorf("find last checkpoint: %w", err)
+	dir, startFrom, cpErr := wlog.LastCheckpoint(w.wal.Dir())
+	if cpErr != nil && !errors.Is(cpErr, record.ErrNotFound) {
+		return fmt.Errorf("find last checkpoint: %w", cpErr)
+	}
+
+	// Find the last segment.
+	_, lastSegment, err := wlog.Segments(w.wal.Dir())
+	if err != nil {
+		return fmt.Errorf("finding WAL segments: %w", err)
 	}
 
 	multiRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
-
-	if err == nil {
+	if cpErr == nil {
 		sr, err := wlog.NewSegmentsReader(dir)
 		if err != nil {
 			return fmt.Errorf("open checkpoint: %w", err)
@@ -230,41 +236,35 @@ func (w *Storage) replayWAL() error {
 
 		// A corrupted checkpoint is a hard error for now and requires user
 		// intervention. There's likely little data that can be recovered anyway.
-		if err := w.loadWAL(wlog.NewReader(sr), multiRef); err != nil {
+		if err := w.loadWAL(wlog.NewReader(sr), multiRef, lastSegment); err != nil {
 			return fmt.Errorf("backfill checkpoint: %w", err)
 		}
 		startFrom++
 		level.Info(w.logger).Log("msg", "WAL checkpoint loaded")
 	}
 
-	// Find the last segment.
-	_, last, err := wlog.Segments(w.wal.Dir())
-	if err != nil {
-		return fmt.Errorf("finding WAL segments: %w", err)
-	}
-
 	// Backfill segments from the most recent checkpoint onwards.
-	for i := startFrom; i <= last; i++ {
+	for i := startFrom; i <= lastSegment; i++ {
 		s, err := wlog.OpenReadSegment(wlog.SegmentName(w.wal.Dir(), i))
 		if err != nil {
 			return fmt.Errorf("open WAL segment %d: %w", i, err)
 		}
 
 		sr := wlog.NewSegmentBufReader(s)
-		err = w.loadWAL(wlog.NewReader(sr), multiRef)
+		err = w.loadWAL(wlog.NewReader(sr), multiRef, lastSegment)
 		if err := sr.Close(); err != nil {
 			level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
 		}
 		if err != nil {
 			return err
 		}
-		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", last)
+		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", lastSegment)
 	}
 
 	return nil
 }
 
-func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef) (err error) {
+func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, lastSegment int) (err error) {
 	var (
 		dec     record.Decoder
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
@@ -367,21 +367,20 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 		switch v := d.(type) {
 		case []record.RefSeries:
 			for _, s := range v {
-				// If this is a new series, create it in memory without a timestamp.
-				// If we read in a sample for it, we'll use the timestamp of the latest
-				// sample. Otherwise, the series is stale and will be deleted once
-				// the truncation is performed.
-				if w.series.GetByID(s.Ref) == nil {
-					series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
-					w.series.Set(s.Labels.Hash(), series)
-					multiRef[s.Ref] = series.ref
+				// Make sure we don't try to reuse a Ref that already exists in the WAL.
+				if s.Ref > lastRef {
+					lastRef = s.Ref
+				}
 
+				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
+				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
+				if !created {
+					multiRef[s.Ref] = series.ref
+					// Keep the duplicate series in the checkpoint until the latest segment.
+					w.deleted[series.ref] = lastSegment
+				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
-
-					if s.Ref > lastRef {
-						lastRef = s.Ref
-					}
 				}
 			}
 
