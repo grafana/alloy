@@ -24,7 +24,7 @@ jobs:
     name: Publish Alloy Windows container
     strategy:
       matrix:
-        os: [windows-2022, windows-2019]
+        os: [windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       # This step needs to run before "Checkout code".

@@ -78,7 +78,7 @@
 include tools/make/*.mk
 
 ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:nanoserver-1809
+ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
