@@ -34,12 +34,12 @@ func TestConfigurePrometheusMetricNameValidationScheme(t *testing.T) {
 			expectedScheme: model.UTF8Validation,
 		},
 		{
-			name: "utf8 validation scheme with GA stability should fail",
+			name: "utf8 validation scheme with GA stability",
 			run: alloyRun{
 				prometheusMetricNameValidationScheme: prometheusUTF8MetricValidationScheme,
 				minStability:                         featuregate.StabilityGenerallyAvailable,
 			},
-			expectedError: `Prometheus utf-8 metric name validation scheme is at stability level "experimental", which is below the minimum allowed stability level "generally-available"`,
+			expectedScheme: model.UTF8Validation,
 		},
 		{
 			name: "invalid validation scheme",
