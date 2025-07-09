@@ -499,7 +499,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) error {
 	switch fr.prometheusMetricNameValidationScheme {
 	case prometheusLegacyMetricValidationScheme:
-		model.NameValidationScheme = model.LegacyValidation //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
+		model.NameValidationScheme = model.LegacyValidation
 	case prometheusUTF8MetricValidationScheme:
 		if err := featuregate.CheckAllowed(
 			featuregate.StabilityExperimental,
@@ -508,8 +508,7 @@ func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) 
 		); err != nil {
 			return err
 		}
-		level.Warn(l).Log("msg", "Using experimental UTF-8 Prometheus metric name validation scheme")
-		model.NameValidationScheme = model.UTF8Validation //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
+		model.NameValidationScheme = model.UTF8Validation
 	default:
 		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
 	}

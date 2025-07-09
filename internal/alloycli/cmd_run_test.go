@@ -55,7 +55,7 @@ func TestConfigurePrometheusMetricNameValidationScheme(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Reset the global validation scheme before each test
 			defer func() {
-				model.NameValidationScheme = model.LegacyValidation //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
+				model.NameValidationScheme = model.LegacyValidation
 			}()
 
 			err := tc.run.configurePrometheusMetricNameValidationScheme(log.NewNopLogger())
@@ -66,7 +66,7 @@ func TestConfigurePrometheusMetricNameValidationScheme(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedScheme, model.NameValidationScheme) //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
+			require.Equal(t, tc.expectedScheme, model.NameValidationScheme)
 		})
 	}
 }
