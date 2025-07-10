@@ -67,7 +67,7 @@ func runCommand() *cobra.Command {
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
-		windowsPriority:                      windowspriority.PriorityNormal,
+		windowsPriority:       windowspriority.PriorityNormal,
 	}
 
 	cmd := &cobra.Command{
@@ -172,35 +172,35 @@ depending on the nature of the reload error.
 }
 
 type alloyRun struct {
-	inMemoryAddr                         string
-	httpListenAddr                       string
-	storagePath                          string
-	minStability                         featuregate.Stability
-	uiPrefix                             string
-	enablePprof                          bool
-	disableReporting                     bool
-	clusterEnabled                       bool
-	clusterNodeName                      string
-	clusterAdvAddr                       string
-	clusterJoinAddr                      string
-	clusterDiscoverPeers                 string
-	clusterAdvInterfaces                 []string
-	clusterRejoinInterval                time.Duration
-	clusterMaxJoinPeers                  int
-	clusterName                          string
-	clusterEnableTLS                     bool
-	clusterTLSCAPath                     string
-	clusterTLSCertPath                   string
-	clusterTLSKeyPath                    string
-	clusterTLSServerName                 string
-	clusterWaitForSize                   int
-	clusterWaitTimeout                   time.Duration
-	configFormat                         string
-	configBypassConversionErrors         bool
-	configExtraArgs                      string
-	enableCommunityComps                 bool
-	disableSupportBundle                 bool
-	windowsPriority                      string
+	inMemoryAddr                 string
+	httpListenAddr               string
+	storagePath                  string
+	minStability                 featuregate.Stability
+	uiPrefix                     string
+	enablePprof                  bool
+	disableReporting             bool
+	clusterEnabled               bool
+	clusterNodeName              string
+	clusterAdvAddr               string
+	clusterJoinAddr              string
+	clusterDiscoverPeers         string
+	clusterAdvInterfaces         []string
+	clusterRejoinInterval        time.Duration
+	clusterMaxJoinPeers          int
+	clusterName                  string
+	clusterEnableTLS             bool
+	clusterTLSCAPath             string
+	clusterTLSCertPath           string
+	clusterTLSKeyPath            string
+	clusterTLSServerName         string
+	clusterWaitForSize           int
+	clusterWaitTimeout           time.Duration
+	configFormat                 string
+	configBypassConversionErrors bool
+	configExtraArgs              string
+	enableCommunityComps         bool
+	disableSupportBundle         bool
+	windowsPriority              string
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
