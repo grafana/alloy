@@ -211,19 +211,13 @@ func (w *Storage) replayWAL() error {
 	}
 
 	level.Info(w.logger).Log("msg", "replaying WAL, this may take a while", "dir", w.wal.Dir())
-	dir, startFrom, cpErr := wlog.LastCheckpoint(w.wal.Dir())
-	if cpErr != nil && !errors.Is(cpErr, record.ErrNotFound) {
-		return fmt.Errorf("find last checkpoint: %w", cpErr)
-	}
-
-	// Find the last segment.
-	_, lastSegment, err := wlog.Segments(w.wal.Dir())
-	if err != nil {
-		return fmt.Errorf("finding WAL segments: %w", err)
+	dir, startFrom, err := wlog.LastCheckpoint(w.wal.Dir())
+	if err != nil && !errors.Is(err, record.ErrNotFound) {
+		return fmt.Errorf("find last checkpoint: %w", err)
 	}
 
 	duplicateRefToValidRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
-	if cpErr == nil {
+	if err == nil {
 		sr, err := wlog.NewSegmentsReader(dir)
 		if err != nil {
 			return fmt.Errorf("open checkpoint: %w", err)
@@ -236,11 +230,17 @@ func (w *Storage) replayWAL() error {
 
 		// A corrupted checkpoint is a hard error for now and requires user
 		// intervention. There's likely little data that can be recovered anyway.
-		if err := w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, lastSegment); err != nil {
+		if err := w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, startFrom); err != nil {
 			return fmt.Errorf("backfill checkpoint: %w", err)
 		}
 		startFrom++
 		level.Info(w.logger).Log("msg", "WAL checkpoint loaded")
+	}
+
+	// Find the last segment.
+	_, lastSegment, err := wlog.Segments(w.wal.Dir())
+	if err != nil {
+		return fmt.Errorf("finding WAL segments: %w", err)
 	}
 
 	// Backfill segments from the most recent checkpoint onwards.
@@ -251,7 +251,7 @@ func (w *Storage) replayWAL() error {
 		}
 
 		sr := wlog.NewSegmentBufReader(s)
-		err = w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, lastSegment)
+		err = w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, i)
 		if err := sr.Close(); err != nil {
 			level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
 		}
@@ -268,7 +268,7 @@ func (w *Storage) replayWAL() error {
 // duplicateRefToValidRef tracks SeriesRefs that are duplicates by their labels, and maps them to the valid SeriesRef
 // that should be used instead. Duplicate SeriesRefs for the same labels can happen when a series is gc'ed from memory
 // but has not been fully removed from the WAL via a wlog.Checkpoint yet.
-func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, lastSegment int) (err error) {
+func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
 		dec     record.Decoder
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
@@ -381,7 +381,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				if !created {
 					duplicateRefToValidRef[s.Ref] = series.ref
 					// Make sure we keep the duplicate SeriesRef checkpoints while it might still exist in the WAL.
-					w.deleted[s.Ref] = lastSegment
+					w.deleted[s.Ref] = currentSegmentOrCheckpoint
 				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
