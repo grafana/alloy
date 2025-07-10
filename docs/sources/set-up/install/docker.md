@@ -75,7 +75,7 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 docker run \
   -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" \
   -p 12345:12345 \
-  grafana/alloy:nanoserver-1809 \
+  grafana/alloy:windowsservercore-ltsc2022 \
     run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" \
     "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
 ```
