@@ -12,7 +12,7 @@ Main (unreleased)
 
 ### Breaking changes
 
-- Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
+- Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2. (@thampiotr)
 
   - The `.` pattern in regular expressions in PromQL matches newline characters now. With this change a regular expressions like `.*` matches strings that include `\n`. This applies to matchers in queries and relabel configs in Prometheus and Loki components.
 
@@ -20,7 +20,9 @@ Main (unreleased)
 
   - `prometheus.scrape` is now more strict concerning the `Content-Type` header received when scraping. Prometheus v2 would default to the standard Prometheus text protocol if the target being scraped did not specify a `Content-Type` header or if the header was unparsable or unrecognised. This could lead to incorrect data being parsed in the scrape. `prometheus.scrape` will now fail the scrape in such cases. If a scrape target is not providing the correct `Content-Type` header the fallback protocol can be specified using the `fallback_scrape_protocol` parameter. See `promethues.scrape` documentation. This is a breaking change as scrapes that may have succeeded with Prometheus v2 may now fail if this fallback protocol is not specified.
 
-  - Prometheus components now support UTF-8 in metric and label names by default. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"` or enable it globally with the `--feature.prometheus.metric-validation-scheme=legacy` CLI flag.
+  - Prometheus components now support UTF-8 in metric and label names by default. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"` and optionally setting the `metric_name_escaping_scheme` to a desired value. See `prometheus.scrape` reference documentation. 
+
+  - The experimental CLI flag `--feature.prometheus.metric-validation-scheme` has been deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component.
 
   - Log message format has changed for some of the `prometheus.*` components as part of the upgrade to Prometheus v3.
 
@@ -28,7 +30,7 @@ Main (unreleased)
 
     The recommended way to deal with this change is to fix references to integer `le` and `quantile` label values, but otherwise do nothing and accept that some queries that span the transition time will produce inaccurate or unexpected results.
 
-  See [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
+  See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
 ### Features
 
