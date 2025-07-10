@@ -106,7 +106,8 @@ jobs:
           # support cross-module testing, and the provided directory may be in
           # a different module.
           cd "${{ matrix.package }}"
-          go test -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
+          # Note: -parallel=1 is required to avoid race conditions in the fuzzer until https://github.com/golang/go/issues/56238 is fixed.
+          go test -parallel=1 -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
         env:
           FUZZ_TIME: ${{ inputs.fuzz-time }}
 
