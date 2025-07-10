@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.10.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Removing the `nanoserver-1809` container image for Windows 2019. (@ptodev)
