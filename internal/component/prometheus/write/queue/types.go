@@ -186,6 +186,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 			CheckInterval:               cc.Parallelism.DesiredCheckInterval,
 			AllowedNetworkErrorFraction: cc.Parallelism.AllowedNetworkErrorFraction,
 		},
+		// TODO: add support for protobuf message format for remote write v2
 	}
 	if cc.BasicAuth != nil {
 		tcc.BasicAuth = &types.BasicAuth{
