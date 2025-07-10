@@ -9,6 +9,7 @@ package datadog
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -53,13 +54,14 @@ type Arguments struct {
 	Retry  otelcol.RetryArguments                `alloy:"retry_on_failure,block,optional"`
 
 	// Datadog specific configuration settings
-	APISettings  datadog_config.DatadogAPIArguments          `alloy:"api,block"`
-	Traces       datadog_config.DatadogTracesArguments       `alloy:"traces,block,optional"`
-	Metrics      datadog_config.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
-	Logs         datadog_config.DatadogLogsArguments         `alloy:"logs,block,optional"`
-	HostMetadata datadog_config.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
-	OnlyMetadata bool                                        `alloy:"only_metadata,attr,optional"`
-	Hostname     string                                      `alloy:"hostname,attr,optional"`
+	APISettings              datadog_config.DatadogAPIArguments          `alloy:"api,block"`
+	Traces                   datadog_config.DatadogTracesArguments       `alloy:"traces,block,optional"`
+	Metrics                  datadog_config.DatadogMetricsArguments      `alloy:"metrics,block,optional"`
+	Logs                     datadog_config.DatadogLogsArguments         `alloy:"logs,block,optional"`
+	HostMetadata             datadog_config.DatadogHostMetadataArguments `alloy:"host_metadata,block,optional"`
+	HostnameDetectionTimeout time.Duration                               `alloy:"hostname_detection_timeout,attr,optional"`
+	OnlyMetadata             bool                                        `alloy:"only_metadata,attr,optional"`
+	Hostname                 string                                      `alloy:"hostname,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -80,6 +82,7 @@ func (args *Arguments) SetToDefault() {
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	args.HostnameDetectionTimeout = 25 * time.Second
 }
 
 // Convert implements exporter.Arguments.
@@ -102,12 +105,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		TagsConfig: datadogOtelconfig.TagsConfig{
 			Hostname: args.Hostname,
 		},
-		API:          *args.APISettings.Convert(),
-		Traces:       *args.Traces.Convert(defaultTraceEndpoint),
-		Metrics:      *args.Metrics.Convert(defaultMetricsEndpoint),
-		Logs:         *args.Logs.Convert(defaultLogsEndpoint),
-		HostMetadata: *args.HostMetadata.Convert(),
-		OnlyMetadata: args.OnlyMetadata,
+		API:                      *args.APISettings.Convert(),
+		Traces:                   *args.Traces.Convert(defaultTraceEndpoint),
+		Metrics:                  *args.Metrics.Convert(defaultMetricsEndpoint),
+		Logs:                     *args.Logs.Convert(defaultLogsEndpoint),
+		HostMetadata:             *args.HostMetadata.Convert(),
+		HostnameDetectionTimeout: args.HostnameDetectionTimeout,
+		OnlyMetadata:             args.OnlyMetadata,
 	}, nil
 }
 

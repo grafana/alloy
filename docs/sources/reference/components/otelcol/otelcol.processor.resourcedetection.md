@@ -871,10 +871,13 @@ The `resource_attributes` block supports the following blocks:
 | [`host.cpu.stepping`][res-attr-cfg]      | Toggles the `host.cpu.stepping` resource attribute. Sets `enabled` to `false` by default.      | no       |
 | [`host.cpu.vendor.id`][res-attr-cfg]     | Toggles the `host.cpu.vendor.id` resource attribute. Sets `enabled` to `false` by default.     | no       |
 | [`host.id`][res-attr-cfg]                | Toggles the `host.id` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`host.interface`][res-attr-cfg]         | Toggles the `host.interface` resource attribute. Sets `enabled` to `false` by default.         | no       |
 | [`host.ip`][res-attr-cfg]                | Toggles the `host.ip` resource attribute. Sets `enabled` to `false` by default.                | no       |
 | [`host.mac`][res-attr-cfg]               | Toggles the `host.mac` resource attribute. Sets `enabled` to `false` by default.               | no       |
 | [`host.name`][res-attr-cfg]              | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`os.build.id`][res-attr-cfg]            | Toggles the `os.build.id` resource attribute. Sets `enabled` to `false` by default.            | no       |
 | [`os.description`][res-attr-cfg]         | Toggles the `os.description` resource attribute. Sets `enabled` to `false` by default.         | no       |
+| [`os.name`][res-attr-cfg]                | Toggles the `os.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
 | [`os.type`][res-attr-cfg]                | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.                 | no       |
 | [`os.version`][res-attr-cfg]             | Toggles the `os.version` resource attribute. Sets `enabled` to `false` by default.             | no       |
 

@@ -68,7 +68,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `start_at`                      | `string`                   | The position to start reading the file from.                                               | `"end"`   | no       |
 | `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |           | no       |
 
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
+`encoding` must be one of `utf-8`, `utf8-raw`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
