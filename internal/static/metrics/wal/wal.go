@@ -222,7 +222,7 @@ func (w *Storage) replayWAL() error {
 		return fmt.Errorf("finding WAL segments: %w", err)
 	}
 
-	multiRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
+	duplicateRefToValidRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
 	if cpErr == nil {
 		sr, err := wlog.NewSegmentsReader(dir)
 		if err != nil {
@@ -236,7 +236,7 @@ func (w *Storage) replayWAL() error {
 
 		// A corrupted checkpoint is a hard error for now and requires user
 		// intervention. There's likely little data that can be recovered anyway.
-		if err := w.loadWAL(wlog.NewReader(sr), multiRef, lastSegment); err != nil {
+		if err := w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, lastSegment); err != nil {
 			return fmt.Errorf("backfill checkpoint: %w", err)
 		}
 		startFrom++
@@ -251,7 +251,7 @@ func (w *Storage) replayWAL() error {
 		}
 
 		sr := wlog.NewSegmentBufReader(s)
-		err = w.loadWAL(wlog.NewReader(sr), multiRef, lastSegment)
+		err = w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, lastSegment)
 		if err := sr.Close(); err != nil {
 			level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
 		}
@@ -264,7 +264,11 @@ func (w *Storage) replayWAL() error {
 	return nil
 }
 
-func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, lastSegment int) (err error) {
+// loadWAL reads the WAL and populates the in-memory series.
+// duplicateRefToValidRef tracks SeriesRefs that are duplicates by their labels, and maps them to the valid SeriesRef
+// that should be used instead. Duplicate SeriesRefs for the same labels can happen when a series is gc'ed from memory
+// but has not been fully removed from the WAL via a wlog.Checkpoint yet.
+func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, lastSegment int) (err error) {
 	var (
 		dec     record.Decoder
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
@@ -375,9 +379,9 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
 				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
 				if !created {
-					multiRef[s.Ref] = series.ref
-					// Keep the duplicate series in the checkpoint until the latest segment.
-					w.deleted[series.ref] = lastSegment
+					duplicateRefToValidRef[s.Ref] = series.ref
+					// Make sure we keep the duplicate SeriesRef checkpoints while it might still exist in the WAL.
+					w.deleted[s.Ref] = lastSegment
 				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
@@ -388,14 +392,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			seriesPool.Put(v)
 		case []record.RefSample:
 			for _, s := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[s.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
+					s.Ref = ref
+				}
+				series := w.series.GetByID(s.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
 
-				series := w.series.GetByID(ref)
+				// Update the lastTs for the series if this sample is newer
 				if s.T > series.lastTs {
 					series.lastTs = s.T
 				}
@@ -405,13 +411,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			samplesPool.Put(v)
 		case []record.RefHistogramSample:
 			for _, entry := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[entry.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					entry.Ref = ref
+				}
+				series := w.series.GetByID(entry.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
-				series := w.series.GetByID(ref)
+
+				// Update the lastTs for the series if this sample is newer
 				if entry.T > series.lastTs {
 					series.lastTs = entry.T
 				}
@@ -421,13 +430,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			histogramsPool.Put(v)
 		case []record.RefFloatHistogramSample:
 			for _, entry := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[entry.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					entry.Ref = ref
+				}
+				series := w.series.GetByID(entry.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
-				series := w.series.GetByID(ref)
+
+				// Update the lastTs for the series if this sample is newer
 				if entry.T > series.lastTs {
 					series.lastTs = entry.T
 				}

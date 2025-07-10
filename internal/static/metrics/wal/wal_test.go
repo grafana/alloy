@@ -340,7 +340,8 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
-func TestStorage_NewWillNotLoadDuplicateSeries(t *testing.T) {
+func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
+	// Ensure the WAL can handle duplicate SeriesRefs by hash when being loaded.
 	walDir := t.TempDir()
 
 	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
@@ -359,8 +360,10 @@ func TestStorage_NewWillNotLoadDuplicateSeries(t *testing.T) {
 		})
 	}
 
+	originalSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
 	for _, metric := range payload {
 		metric.Write(t, app)
+		originalSeriesRefs = append(originalSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
 	}
 	require.NoError(t, app.Commit())
 
@@ -380,11 +383,14 @@ func TestStorage_NewWillNotLoadDuplicateSeries(t *testing.T) {
 	// No more active series because they were GC'ed with Truncate
 	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
-	// Publish new samples that will create new RefIDs
+	// Publish new samples that will create new SeriesRefs for the same labels.
+	duplicateSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
 	for _, metric := range payload {
 		metric.samples = metric.samples[1:]
 		metric.samples[0].ts = metric.samples[0].ts * 10
 		metric.Write(t, app)
+
+		duplicateSeriesRefs = append(duplicateSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
 	}
 	require.NoError(t, app.Commit())
 	// We should be back to 4 active series now
@@ -399,20 +405,15 @@ func TestStorage_NewWillNotLoadDuplicateSeries(t *testing.T) {
 
 	// There should only be 4 active series after we reload the WAL
 	assert.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
-
-	// Force multiple GC's that should purge all active series
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			_, err := s.wal.NextSegmentSync()
-			require.NoError(t, err)
-		}
-		keepTs := payload[len(payload)-1].samples[0].ts + 1 + int64(i*10)
-		err = s.Truncate(keepTs)
-		require.NoError(t, err)
+	// The original SeriesRefs should be in series
+	for _, ref := range originalSeriesRefs {
+		assert.NotNil(t, s.series.GetByID(ref))
 	}
 
-	// We should have zero active series now
-	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+	// The duplicated SeriesRefs should be considered deleted
+	for _, ref := range duplicateSeriesRefs {
+		assert.Contains(t, s.deleted, ref)
+	}
 }
 
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
