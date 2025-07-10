@@ -24,6 +24,9 @@ import (
 
 // Defaults for config blocks.
 var (
+	PrometheusProtobufMessageV1 = string(config.RemoteWriteProtoMsgV1)
+	PrometheusProtobufMessageV2 = string(config.RemoteWriteProtoMsgV2)
+
 	DefaultArguments = Arguments{
 		WALOptions: DefaultWALOptions,
 	}
@@ -77,6 +80,7 @@ type EndpointOptions struct {
 	Headers              map[string]string       `alloy:"headers,attr,optional"`
 	SendExemplars        bool                    `alloy:"send_exemplars,attr,optional"`
 	SendNativeHistograms bool                    `alloy:"send_native_histograms,attr,optional"`
+	ProtobufMessage      string                  `alloy:"protobuf_message,attr,optional"`
 	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
 	QueueOptions         *QueueOptions           `alloy:"queue_config,block,optional"`
 	MetadataOptions      *MetadataOptions        `alloy:"metadata_config,block,optional"`
@@ -92,6 +96,7 @@ func (r *EndpointOptions) SetToDefault() {
 	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
+		ProtobufMessage:  PrometheusProtobufMessageV1,
 		HTTPClientConfig: defaultHTTPClientConfig,
 	}
 }
@@ -131,6 +136,10 @@ func (r *EndpointOptions) Validate() error {
 				return err
 			}
 		}
+	}
+
+	if err := config.RemoteWriteProtoMsg(r.ProtobufMessage).Validate(); err != nil {
+		return fmt.Errorf("invalid protobuf_message %q for endpoint %q: %w", r.ProtobufMessage, r.Name, err)
 	}
 
 	return nil
@@ -245,16 +254,13 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			Name:                 rw.Name,
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
-
-			// TODO: Make this configurable when we upgrade to Prometheus v3?
-			ProtobufMessage: config.RemoteWriteProtoMsgV1,
-
-			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
-			HTTPClientConfig:    *rw.HTTPClientConfig.Convert(),
-			QueueConfig:         rw.QueueOptions.toPrometheusType(),
-			MetadataConfig:      rw.MetadataOptions.toPrometheusType(),
-			SigV4Config:         rw.SigV4.toPrometheusType(),
-			AzureADConfig:       rw.AzureAD.toPrometheusType(),
+			ProtobufMessage:      config.RemoteWriteProtoMsg(rw.ProtobufMessage),
+			WriteRelabelConfigs:  alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
+			HTTPClientConfig:     *rw.HTTPClientConfig.Convert(),
+			QueueConfig:          rw.QueueOptions.toPrometheusType(),
+			MetadataConfig:       rw.MetadataOptions.toPrometheusType(),
+			SigV4Config:          rw.SigV4.toPrometheusType(),
+			AzureADConfig:        rw.AzureAD.toPrometheusType(),
 		})
 	}
 

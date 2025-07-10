@@ -99,6 +99,7 @@ The following arguments are supported:
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |         | no       |
 | `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
+| `protobuf_message`       | `string`            | Protobuf message format to use for remote write. Must be `prometheus.WriteRequest` or `io.prometheus.write.v2.Request`. | `"prometheus.WriteRequest"` | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
@@ -343,6 +344,19 @@ prometheus.remote_write "staging" {
     headers = {
       "X-Scope-OrgID" = "staging",
     }
+  }
+}
+```
+
+### Send metrics using Remote Write v2 protocol
+
+You can configure `prometheus.remote_write` to use the Remote Write v2 protocol if your endpoint supports it:
+
+```alloy
+prometheus.remote_write "v2_example" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    protobuf_message = "io.prometheus.write.v2.Request"
   }
 }
 ```

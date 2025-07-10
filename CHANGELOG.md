@@ -71,6 +71,8 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
+
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev, @dehaansa)
   - [`otelcol.processor.resourcedetection`]: Add additional OS properties to resource detection: `os.build.id` and `os.name`.
   - [`otelcol.processor.resourcedetection`]: Add `host.interface` resource attribute to `system` detector.

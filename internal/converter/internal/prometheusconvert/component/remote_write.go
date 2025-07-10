@@ -72,6 +72,7 @@ func getEndpointOptions(remoteWriteConfigs []*prom_config.RemoteWriteConfig) []*
 			Headers:              remoteWriteConfig.Headers,
 			SendExemplars:        remoteWriteConfig.SendExemplars,
 			SendNativeHistograms: remoteWriteConfig.SendNativeHistograms,
+			ProtobufMessage:      string(remoteWriteConfig.ProtobufMessage),
 			HTTPClientConfig:     common.ToHttpClientConfig(&remoteWriteConfig.HTTPClientConfig),
 			QueueOptions:         toQueueOptions(&remoteWriteConfig.QueueConfig),
 			MetadataOptions:      toMetadataOptions(&remoteWriteConfig.MetadataConfig),

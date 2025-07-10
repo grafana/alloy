@@ -83,6 +83,40 @@ func TestAlloyConfig(t *testing.T) {
 			}),
 		},
 		{
+			testName: "Endpoint_ProtobufMessage_V1",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "prometheus.WriteRequest"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_V2",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "io.prometheus.write.v2.Request"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV2
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_Invalid",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "invalid.message"
+			}
+			`,
+			errorMsg: "unknown remote write protobuf message invalid.message",
+		},
+		{
 			testName: "RelabelConfig",
 			cfg: `
 			external_labels = {
