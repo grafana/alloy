@@ -10,6 +10,18 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Bugfixes
+
+- Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev, @dehaansa)
+  - [`otelcol.exporter.kafka`]: Allow kafka exporter to produce to topics based on metadata key values.
+  - [`otelcol.receiver.kafka`]: Enforce a backoff mechanism on non-permanent errors, such as when the queue is full.
+  - [`otelcol.receiver.kafka`]: Don't restart the Kafka consumer on failed errors when message marking is enabled for them.
+  - [`otelcol.exporter.datadog`]: Fix automatic intial point dropping when converting cumulative monotonic sum metrics.
+  - [`otelcol.exporter.datadog`]: config `tls::insecure_skip_verify` is now taken into account in metrics path.
+  - [`otelcol.exporter.datadog`]: Correctly treat summary counts as cumulative monotonic sums instead of cumulative non-monotonic sums.
+  - [`otelcol.connector.spanmetrics`]: Fix bug causing span metrics calls count to be always 0 when using delta temporality.
+  - [`otelcol.exporter.splunkhec`]: Treat HTTP 403 Forbidden as a permanent error.
+
 ### Features
 
 - (_Experimental_) Add an `array.group_by` stdlib function to group items in an array by a key. (@wildum)
@@ -37,6 +49,17 @@ Main (unreleased)
 
 - Wire in survey block for beyla.ebpf component. (@grcevski, @tpaschalis)
 
+- Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev, @dehaansa)
+  - [`otelcol.processor.resourcedetection`]: Add additional OS properties to resource detection: `os.build.id` and `os.name`.
+  - [`otelcol.processor.resourcedetection`]: Add `host.interface` resource attribute to `system` detector.
+  - [`otelcol.exporter.kafka`]: Fix Snappy compression codec support for the Kafka exporter.
+  - [`otelcol.receiver.filelog`]: Introduce `utf8-raw` encoding to avoid replacing invalid bytes with \uFFFD when reading UTF-8 input.
+  - [`otelcol.processor.k8sattributes`]: Support extracting labels and annotations from k8s Deployments.
+  - [`otelcol.processor.k8sattributes`]: Add option to configure automatic service resource attributes.
+  - [`otelcol.exporter.datadog`]: Adds `hostname_detection_timeout` configuration option for Datadog Exporter and sets default to 25 seconds.
+  - [`otelcol.receiver.datadog`]: Address semantic conventions noncompliance and add support for http/db.
+  - [`otelcol.exporter.awss3`]: Add the retry mode, max attempts and max backoff to the settings.
+
 - Add `enable_tracing` attribute to `prometheus.exporter.snowflake` component to support debugging issues. (@dehaansa)
 
 - Add support for `conditions` and statement-specific `error_mode` in `otelcol.processor.transform`. (@ptodev)
@@ -55,8 +78,6 @@ Main (unreleased)
 ### Other changes
 
 - Mark `pyroscope.receive_http` and `pyroscope.relabel` components as GA. (@marcsanmi)
-
-- Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev)
 
 - Upgrade `otelcol.exporter.windows` to v0.30.8 to get bugfixes and fix `update` collector support. (@dehaansa)
 
