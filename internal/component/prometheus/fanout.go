@@ -109,9 +109,10 @@ type appender struct {
 	fanout            *Fanout
 }
 
-func (a *appender) SetOptions(_ *storage.AppendOptions) {
-	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
-	//       it in Alloy.
+func (a *appender) SetOptions(opts *storage.AppendOptions) {
+	for _, x := range a.children {
+		x.SetOptions(opts)
+	}
 }
 
 var _ storage.Appender = (*appender)(nil)

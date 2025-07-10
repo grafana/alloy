@@ -22,9 +22,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
-
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
 )
 
 type fakeLokiClient struct {

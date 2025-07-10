@@ -111,9 +111,10 @@ type interceptappender struct {
 	stalenessTrackers []labelstore.StalenessTracker
 }
 
-func (a *interceptappender) SetOptions(_ *storage.AppendOptions) {
-	// TODO: currently only opts.DiscardOutOfOrder is available as an option. There's currently no need to implement
-	//       it in Alloy.
+func (a *interceptappender) SetOptions(opts *storage.AppendOptions) {
+	if a.child != nil {
+		a.child.SetOptions(opts)
+	}
 }
 
 var _ storage.Appender = (*interceptappender)(nil)
