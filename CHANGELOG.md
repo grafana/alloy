@@ -10,6 +10,12 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- Removing the `nanoserver-1809` container image for Windows 2019. (@ptodev)
+  This is due to the deprecation of `windows-2019` GitHub Actions runners.
+  The `windowsservercore-ltsc2022` Alloy image is still being published to DockerHub.
+
 ### Bugfixes
 
 - Upgrade `otelcol` components from OpenTelemetry v0.126.0 to v0.128.0 (@korniltsev, @dehaansa)
