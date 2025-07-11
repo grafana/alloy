@@ -119,8 +119,10 @@ func TestQueryTables(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
 			},
 			logsLines: []string{
+				`level="info" schema="some_schema" digest="xyz456" table="some_table"`,
 				`level="info" schema="some_schema" digest="abc123" table="another_table"`,
 			},
 		},
@@ -147,8 +149,12 @@ func TestQueryTables(t *testing.T) {
 				"some_schema",
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
 			}},
-			logsLabels: []model.LabelSet{},
-			logsLines:  []string{},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+			},
 		},
 		{
 			name: "start transaction",
@@ -279,15 +285,34 @@ func TestQueryTables(t *testing.T) {
 			},
 		},
 		{
-			name: "both query and fallback query are unparseable",
+			name: "both query and fallback query are truncated",
 			eventStatementsRows: [][]driver.Value{{
 				"abc123",
 				"SELECT * FROM `some_table` WHERE",
 				"some_schema",
 				"select * from some_table where",
 			}},
-			logsLabels: []model.LabelSet{},
-			logsLines:  []string{},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+			},
+		},
+		{
+			name: "query truncated within table name fallback to digest_text",
+			eventStatementsRows: [][]driver.Value{{
+				"abc123",
+				"SELECT * FROM `some_table` WHERE",
+				"some_schema",
+				"select * from `s...",
+			}},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+			},
 		},
 	}
 
