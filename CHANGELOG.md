@@ -428,6 +428,8 @@ v1.8.0
 
 - Fix panic in `loki.source.file` when the tailer had no time to run before the runner was stopped (@wildum)
 
+- Fix duplicated `seconds` query parameter when scraping pyroscope profiles (@Pluggi)
+
 ### Other changes
 
 - Upgrading to Prometheus v2.55.1. (@ptodev)
