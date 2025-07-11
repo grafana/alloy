@@ -90,6 +90,8 @@ v1.10.0-rc.0
 
 - Upgrade `otelcol.exporter.windows` to v0.30.8 to get bugfixes and fix `update` collector support. (@dehaansa)
 
+- Add `User-Agent` header to remotecfg requests. (@tpaschalis)
+
 v1.9.2
 -----------------
 
