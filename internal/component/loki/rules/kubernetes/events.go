@@ -141,12 +141,12 @@ func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespa
 			if c.args.ExtraQueryMatchers != nil {
 				for _, ruleGroup := range groups {
 					for i := range ruleGroup.Rules {
-						query := ruleGroup.Rules[i].Expr.Value
+						query := ruleGroup.Rules[i].Expr
 						newQuery, err := addMatchersToQuery(query, c.args.ExtraQueryMatchers.Matchers)
 						if err != nil {
 							level.Error(c.log).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
-						ruleGroup.Rules[i].Expr.Value = newQuery
+						ruleGroup.Rules[i].Expr = newQuery
 					}
 				}
 			}
@@ -190,7 +190,7 @@ func labelsSetLogQL(query, labelMatchType, name, value string) (string, error) {
 	default:
 		return query, fmt.Errorf("invalid label match type: %s", labelMatchType)
 	}
-	expr.Walk(func(e syntax.Expr) {
+	expr.Walk(func(e syntax.Expr) bool {
 		switch concrete := e.(type) {
 		case *syntax.MatchersExpr:
 			var found bool
@@ -209,6 +209,7 @@ func labelsSetLogQL(query, labelMatchType, name, value string) (string, error) {
 				})
 			}
 		}
+		return true
 	})
 
 	return expr.String(), nil
@@ -221,14 +222,14 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	}
 
 	var errs error
-	groups, _ := rulefmt.Parse(buf)
+	groups, _ := rulefmt.Parse(buf, false)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
-			if _, err := syntax.ParseExpr(rule.Expr.Value); err != nil {
-				if rule.Record.Value != "" {
-					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record.Value, group.Name, err))
+			if _, err := syntax.ParseExpr(rule.Expr); err != nil {
+				if rule.Record != "" {
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record, group.Name, err))
 				} else {
-					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert.Value, group.Name, err))
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert, group.Name, err))
 				}
 			}
 		}

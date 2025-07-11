@@ -23,4 +23,5 @@ loki.source.api "fun" {
 	forward_to                = []
 	labels                    = {}
 	relabel_rules             = null
+	max_send_message_size     = "0B"
 }

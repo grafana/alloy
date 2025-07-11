@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/phayes/freeport"
 
 	"github.com/grafana/dskit/flagext"
@@ -427,6 +428,7 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 			},
 		},
 		UseIncomingTimestamp: false,
+		MaxSendMessageSize:   100 * units.MiB,
 	}
 }
 

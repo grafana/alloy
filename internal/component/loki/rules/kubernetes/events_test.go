@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -24,6 +23,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
 )
 
 type fakeLokiClient struct {
@@ -122,7 +122,7 @@ func TestEventLoop(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,
@@ -236,7 +236,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,

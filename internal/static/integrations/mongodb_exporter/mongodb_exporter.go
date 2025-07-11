@@ -3,12 +3,14 @@ package mongodb_exporter
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 
 	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -90,7 +92,7 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := integrations.NewLogger(logger)
+	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
 
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),

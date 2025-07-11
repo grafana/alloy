@@ -319,6 +319,10 @@ func (t *transaction) AppendHistogramCTZeroSample(_ storage.SeriesRef, ls labels
 	return t.setCreationTimestamp(ls, atMs, ctMs, true)
 }
 
+func (t *transaction) SetOptions(_ *storage.AppendOptions) {
+	// TODO: implement this when needed
+}
+
 func (t *transaction) setCreationTimestamp(ls labels.Labels, atMs, ctMs int64, histogram bool) (storage.SeriesRef, error) {
 	select {
 	case <-t.ctx.Done():
@@ -451,7 +455,7 @@ func getScopeID(ls labels.Labels) scopeID {
 	return scope
 }
 
-func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error) {
+func (t *transaction) initTransaction(lbs labels.Labels) (*resourceKey, error) {
 	target, ok := scrape.TargetFromContext(t.ctx)
 	if !ok {
 		return nil, errors.New("unable to find target in context")
@@ -461,12 +465,12 @@ func (t *transaction) initTransaction(labels labels.Labels) (*resourceKey, error
 		return nil, errors.New("unable to find MetricMetadataStore in context")
 	}
 
-	rKey, err := t.getJobAndInstance(labels)
+	rKey, err := t.getJobAndInstance(lbs)
 	if err != nil {
 		return nil, err
 	}
 	if _, ok := t.nodeResources[*rKey]; !ok {
-		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels())
+		t.nodeResources[*rKey] = CreateResource(rKey.job, rKey.instance, target.DiscoveredLabels(labels.NewBuilder(labels.EmptyLabels())))
 	}
 
 	t.isNew = false

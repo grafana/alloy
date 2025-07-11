@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_integrations" {
 	endpoint {
-		name = "integrations-65e590"
+		name = "integrations-e1e0c0"
 		url  = "https://region.grafana.net/api/prom/push"
 
 		basic_auth {
@@ -117,9 +117,10 @@ discovery.relabel "integrations_agent" {
 }
 
 prometheus.scrape "integrations_agent" {
-	targets    = discovery.relabel.integrations_agent.output
-	forward_to = [prometheus.relabel.integrations_agent.receiver]
-	job_name   = "integrations/agent"
+	targets                       = discovery.relabel.integrations_agent.output
+	forward_to                    = [prometheus.relabel.integrations_agent.receiver]
+	job_name                      = "integrations/agent"
+	metric_name_validation_scheme = ""
 }
 
 prometheus.relabel "integrations_agent" {

@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -74,10 +76,15 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
 	// code from the prometheusreceiver which expects the Appender context to
-	// be contain both a scrape target and a metadata store, and fails the
+	// contain both a scrape target and a metadata store, and fails the
 	// conversion if they are missing. We should find a way around this as both
 	// Targets and Metadata will be handled in a different way in Alloy.
-	ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
+	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
 	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 
 	app := &appender{
@@ -100,6 +107,12 @@ type appender struct {
 	start             time.Time
 	stalenessTrackers []labelstore.StalenessTracker
 	fanout            *Fanout
+}
+
+func (a *appender) SetOptions(opts *storage.AppendOptions) {
+	for _, x := range a.children {
+		x.SetOptions(opts)
+	}
 }
 
 var _ storage.Appender = (*appender)(nil)
@@ -234,6 +247,23 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendCTZeroSample(ref, l, t, ct)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return ref, multiErr
+}
+
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
+	}
+	var multiErr error
+	for _, x := range a.children {
+		_, err := x.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}

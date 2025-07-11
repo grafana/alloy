@@ -1,6 +1,7 @@
 package build
 
 import (
+	"github.com/alecthomas/units"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -39,5 +40,6 @@ func toLokiApiArguments(config *scrapeconfig.PushTargetConfig, forwardTo []loki.
 		Labels:               convertPromLabels(config.Labels),
 		UseIncomingTimestamp: config.KeepTimestamp,
 		Server:               common.WeaveworksServerToAlloyServer(config.Server),
+		MaxSendMessageSize:   units.Base2Bytes(config.MaxSendMsgSize),
 	}
 }

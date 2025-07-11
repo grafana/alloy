@@ -10,15 +10,17 @@ discovery.serverset "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets    = discovery.serverset.prometheus1.targets
-	forward_to = [prometheus.remote_write.default.receiver]
-	job_name   = "prometheus1"
+	targets                     = discovery.serverset.prometheus1.targets
+	forward_to                  = [prometheus.remote_write.default.receiver]
+	job_name                    = "prometheus1"
+	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.scrape "prometheus2" {
-	targets    = discovery.serverset.prometheus2.targets
-	forward_to = [prometheus.remote_write.default.receiver]
-	job_name   = "prometheus2"
+	targets                     = discovery.serverset.prometheus2.targets
+	forward_to                  = [prometheus.remote_write.default.receiver]
+	job_name                    = "prometheus2"
+	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.remote_write "default" {

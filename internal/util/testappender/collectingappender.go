@@ -86,6 +86,12 @@ func (c *collectingAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.
 	panic("not implemented yet for this test appender")
 }
 
+func (c *collectingAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	panic("not implemented yet for this test appender")
+}
+
+func (c *collectingAppender) SetOptions(_ *storage.AppendOptions) {}
+
 type ConstantAppendable struct {
 	Inner CollectingAppender
 }
