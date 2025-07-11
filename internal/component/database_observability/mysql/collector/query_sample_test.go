@@ -2198,3 +2198,166 @@ func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	t.Run("executes updateSetupConsumers query when autoEnableSetupConsumers is true", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                       db,
+			InstanceKey:              "mysql-db",
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"uptime",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				5,
+				1,
+			))
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.DIGEST_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.CPU_TIME",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from some_table where id = 1",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+	})
+
+	t.Run("handles updateSetupConsumers query error gracefully", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                       db,
+			InstanceKey:              "mysql-db",
+			CollectInterval:          time.Second,
+			EntryHandler:             lokiClient,
+			Logger:                   log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"uptime",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnError(fmt.Errorf("setup consumers update failed"))
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return !collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+	})
+}
