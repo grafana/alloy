@@ -72,7 +72,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
+	github.com/grafana/regexp v0.0.0-20240607082908-2cb410fa05da
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
@@ -468,25 +468,25 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
-	github.com/aws/aws-sdk-go-v2/service/amp v1.26.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigateway v1.24.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.21.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.41.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.39.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/amp v1.30.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.28.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.24.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.51.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.43.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.50.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.39.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.45.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.224.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.22.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/shield v1.26.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.34.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19 // indirect
 	github.com/aws/smithy-go v1.22.3 // indirect
 	github.com/axiomhq/hyperloglog v0.0.0-20240507144631-af9851f82b27 // indirect
