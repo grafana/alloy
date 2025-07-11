@@ -136,7 +136,7 @@ jobs:
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: failure-${FAILED_PACKAGE}-${FAILED_FUNCTION}
+          name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
           path: ${{ steps.new-failure.outputs.file }}
 
       - name: Generate reproduction instructions
