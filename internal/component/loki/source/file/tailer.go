@@ -313,7 +313,9 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 
 		t.metrics.readLines.WithLabelValues(t.path).Inc()
 		entries <- loki.Entry{
-			Labels: model.LabelSet{},
+			// Allocate the expected size of labels. This matches the number of labels added by the middleware
+			// as configured in initRun().
+			Labels: make(model.LabelSet, len(t.labels)+1),
 			Entry: logproto.Entry{
 				Timestamp: line.Time,
 				Line:      text,

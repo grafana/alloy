@@ -170,7 +170,20 @@ func NewEntryMutatorHandler(next EntryHandler, f EntryMutatorFunc) EntryHandler 
 func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 	return EntryMiddlewareFunc(func(eh EntryHandler) EntryHandler {
 		return NewEntryMutatorHandler(eh, func(e Entry) Entry {
-			e.Labels = additionalLabels.Merge(e.Labels)
+			if len(additionalLabels) == 0 {
+				return e
+			}
+
+			if e.Labels == nil {
+				e.Labels = make(model.LabelSet, len(additionalLabels))
+			}
+
+			// Iterate and mutate the labels in place to avoid allocations.
+			for k, v := range additionalLabels {
+				if _, ok := e.Labels[k]; !ok {
+					e.Labels[k] = v
+				}
+			}
 			return e
 		})
 	})
