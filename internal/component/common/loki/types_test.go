@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// testEntry creates a consistent logproto.Entry for testing
-func testEntry() logproto.Entry {
-	return logproto.Entry{
-		Timestamp: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
-		Line:      "test log line",
-	}
-}
-
 func TestAddLabelsMiddleware(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -60,19 +52,19 @@ func TestAddLabelsMiddleware(t *testing.T) {
 			},
 		},
 		{
-			name:             "set label to empty value",
+			name: "set label to empty value",
 			additionalLabels: model.LabelSet{
 				"service": "",
 			},
 			inputEntry: Entry{
 				Labels: model.LabelSet{
-					"level": "info",
+					"level":   "info",
 					"service": "test-service",
 				},
 				Entry: testEntry(),
 			},
 			expectedLabels: model.LabelSet{
-				"level": "info",
+				"level":   "info",
 				"service": "test-service",
 			},
 		},
@@ -101,5 +93,12 @@ func TestAddLabelsMiddleware(t *testing.T) {
 				t.Fatal("timeout waiting for entry")
 			}
 		})
+	}
+}
+
+func testEntry() logproto.Entry {
+	return logproto.Entry{
+		Timestamp: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+		Line:      "test log line",
 	}
 }
