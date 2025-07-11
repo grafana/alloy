@@ -1,0 +1,38 @@
+# Test values for Windows container support
+alloy:
+  windows:
+    enabled: true
+    command: ["alloy.exe"]
+    configPath: "C:\\etc\\alloy"
+    storagePath: "C:\\tmp\\alloy"
+    mounts:
+      eventLogsEnabled: true
+      windowsLogsEnabled: true
+
+  # Enable some mounts to test path conversion
+  mounts:
+    varlog: true
+    dockercontainers: true
+
+  configMap:
+    content: |
+      logging {
+        level = "info"
+      }
+
+# Use Windows image
+image:
+  repository: grafana/alloy
+  tag: "latest-windows"
+
+# Target Windows nodes
+controller:
+  type: deployment
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/os: windows
+  tolerations:
+    - key: os
+      operator: Equal
+      value: windows
+      effect: NoSchedule

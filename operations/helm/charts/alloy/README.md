@@ -59,6 +59,16 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.stabilityLevel | string | `"generally-available"` | Minimum stability level of components and behavior to enable. Must be one of "experimental", "public-preview", or "generally-available". |
 | alloy.storagePath | string | `"/tmp/alloy"` | Path to where Grafana Alloy stores data (for example, the Write-Ahead Log). By default, data is lost between reboots. |
 | alloy.uiPathPrefix | string | `"/"` | Base path where the UI is exposed. |
+| alloy.windows | object | `{"command":[],"configPath":"C:\\etc\\alloy","enabled":false,"mounts":{"eventLogs":"C:\\Windows\\System32\\winevt\\Logs","eventLogsEnabled":false,"windowsLogs":"C:\\Windows\\Logs","windowsLogsEnabled":false},"storagePath":"C:\\tmp\\alloy"}` | Windows-specific configuration for Alloy containers |
+| alloy.windows.command | list | `[]` | Override the container command for Windows containers |
+| alloy.windows.configPath | string | `"C:\\etc\\alloy"` | Configuration file mount path for Windows containers |
+| alloy.windows.enabled | bool | `false` | Enable Windows-specific configurations (set to true when using Windows containers) |
+| alloy.windows.mounts | object | `{"eventLogs":"C:\\Windows\\System32\\winevt\\Logs","eventLogsEnabled":false,"windowsLogs":"C:\\Windows\\Logs","windowsLogsEnabled":false}` | Volume mount paths specific to Windows |
+| alloy.windows.mounts.eventLogs | string | `"C:\\Windows\\System32\\winevt\\Logs"` | Mount path for Windows event logs |
+| alloy.windows.mounts.eventLogsEnabled | bool | `false` | Enable mounting Windows event logs |
+| alloy.windows.mounts.windowsLogs | string | `"C:\\Windows\\Logs"` | Mount path for Windows logs |
+| alloy.windows.mounts.windowsLogsEnabled | bool | `false` | Enable mounting Windows logs |
+| alloy.windows.storagePath | string | `"C:\\tmp\\alloy"` | Storage path for Windows containers (overrides alloy.storagePath when windows.enabled is true) |
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |
 | configReloader.image.digest | string | `""` | SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag` |

@@ -126,6 +126,32 @@ alloy:
   # -- Set livenessProbe for the Grafana Alloy container.
   livenessProbe: {}
 
+  # -- Windows-specific configuration for Alloy containers
+  windows:
+    # -- Enable Windows-specific configurations (set to true when using Windows containers)
+    enabled: false
+
+    # -- Override the container command for Windows containers
+    command: []
+    # Example: ["alloy.exe"]
+
+    # -- Configuration file mount path for Windows containers
+    configPath: "C:\\etc\\alloy"
+
+    # -- Storage path for Windows containers (overrides alloy.storagePath when windows.enabled is true)
+    storagePath: "C:\\tmp\\alloy"
+
+    # -- Volume mount paths specific to Windows
+    mounts:
+      # -- Mount path for Windows event logs
+      eventLogs: "C:\\Windows\\System32\\winevt\\Logs"
+      # -- Mount path for Windows logs
+      windowsLogs: "C:\\Windows\\Logs"
+      # -- Enable mounting Windows event logs
+      eventLogsEnabled: false
+      # -- Enable mounting Windows logs
+      windowsLogsEnabled: false
+
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"

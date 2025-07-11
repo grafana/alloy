@@ -76,12 +76,22 @@ spec:
     {{- if $values.mounts.varlog }}
     - name: varlog
       hostPath:
-        path: /var/log
+        path: {{ if $values.windows.enabled }}{{ $values.windows.mounts.windowsLogs }}{{ else }}/var/log{{ end }}
     {{- end }}
     {{- if $values.mounts.dockercontainers }}
     - name: dockercontainers
       hostPath:
-        path: /var/lib/docker/containers
+        path: {{ if $values.windows.enabled }}C:\ProgramData\docker\containers{{ else }}/var/lib/docker/containers{{ end }}
+    {{- end }}
+    {{- if and $values.windows.enabled $values.windows.mounts.eventLogsEnabled }}
+    - name: eventlogs
+      hostPath:
+        path: {{ $values.windows.mounts.eventLogs }}
+    {{- end }}
+    {{- if and $values.windows.enabled $values.windows.mounts.windowsLogsEnabled }}
+    - name: windowslogs
+      hostPath:
+        path: {{ $values.windows.mounts.windowsLogs }}
     {{- end }}
     {{- if .Values.controller.volumes.extra }}
     {{- toYaml .Values.controller.volumes.extra | nindent 4 }}
