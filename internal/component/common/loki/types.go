@@ -170,7 +170,12 @@ func NewEntryMutatorHandler(next EntryHandler, f EntryMutatorFunc) EntryHandler 
 func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 	return EntryMiddlewareFunc(func(eh EntryHandler) EntryHandler {
 		return NewEntryMutatorHandler(eh, func(e Entry) Entry {
-			e.Labels = additionalLabels.Merge(e.Labels)
+			// NOTE: this is a hot spot that came up in profiles, we want to avoid allocations if possible.
+			for k, v := range additionalLabels {
+				if _, ok := e.Labels[k]; !ok {
+					e.Labels[k] = v
+				}
+			}
 			return e
 		})
 	})
