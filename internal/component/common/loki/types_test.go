@@ -17,6 +17,36 @@ func TestAddLabelsMiddleware(t *testing.T) {
 		expectedLabels   model.LabelSet
 	}{
 		{
+			name: "nil labels",
+			additionalLabels: model.LabelSet{
+				"service": "test-service",
+				"env":     "production",
+				"region":  "us-west-1",
+			},
+			inputEntry: Entry{
+				Labels: nil,
+				Entry: testEntry(),
+			},
+			expectedLabels: model.LabelSet{
+				"service": "test-service",
+				"env":     "production",
+				"region":  "us-west-1",
+			},
+		},
+		{
+			name: "nil additional labels",
+			additionalLabels: nil,
+			inputEntry: Entry{
+				Labels: model.LabelSet{
+					"level": "info",
+				},
+				Entry: testEntry(),
+			},
+			expectedLabels: model.LabelSet{
+				"level": "info",
+			},
+		},
+		{
 			name: "add multiple labels",
 			additionalLabels: model.LabelSet{
 				"service": "test-service",
