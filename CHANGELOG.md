@@ -75,6 +75,8 @@ v1.10.0-rc.0
 
 - Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
 
+- Reduced allocation in Loki processing pipelines (@thampiotr)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
