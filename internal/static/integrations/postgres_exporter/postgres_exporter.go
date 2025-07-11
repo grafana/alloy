@@ -13,7 +13,6 @@ import (
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
-	"github.com/prometheus-community/postgres_exporter/cmd/postgres_exporter"
 	"github.com/prometheus-community/postgres_exporter/collector"
 	config_util "github.com/prometheus/common/config"
 )
@@ -156,30 +155,25 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 
 	logger := slog.New(logging.NewSlogGoKitHandler(log))
 
-	e := postgres_exporter.NewExporter(
-		dsns,
-		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
-		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
-		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
-		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
-		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
-		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
-		postgres_exporter.WithLogger(logger),
-		postgres_exporter.WithMetricPrefix("pg"),
-	)
+	c, err := collector.NewPostgresCollector(logger, nil, dsns[0], nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
+	}
+
+	for _, val := range cfg.EnabledCollectors {
+		switch val {
+		case "database":
+			dbCollector, err := collector.NewPGDatabaseCollector(nil) // TODO: add config when exported
+			if err != nil {
+				return nil, fmt.Errorf("failed to create database collector: %w", err)
+			}
+			c.Collectors["database"] = dbCollector
+		}
+	}
 
 	if cfg.DisableDefaultMetrics {
 		// Don't include the collector metrics if the default metrics are disabled.
 		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
-	}
-
-	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
-	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
-	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
-	// and change this.
-	c, err := collector.NewPostgresCollector(logger, cfg.ExcludeDatabases, dsns[0], cfg.EnabledCollectors)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
 	}
 
 	return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e, c)), nil
