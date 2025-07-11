@@ -5,6 +5,7 @@ package file
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -438,21 +439,27 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
 
-	require.NoError(t, f.Close())
-	require.NoError(t, os.Remove(f.Name()))
+	rotations := 1000
+	go func() {
+		for i := 0; i < rotations; i++ {
+			require.NoError(t, f.Close())
+			require.NoError(t, os.Remove(f.Name()))
 
-	// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
-	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		f, err = os.Create(filename)
-		assert.NoError(collect, err)
-	}, 30*time.Second, 100*time.Millisecond)
-	defer os.Remove(f.Name())
-	defer f.Close()
+			// Create a file with the same name. Use eventually because of Windows FS can deny access if this test runs too fast.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				f, err = os.Create(filename)
+				assert.NoError(collect, err)
+			}, 30*time.Second, 100*time.Millisecond)
+			defer os.Remove(f.Name())
+			defer f.Close()
 
-	_, err = f.Write([]byte("writing some new text\n"))
-	require.NoError(t, err)
+			_, err = f.Write([]byte("writing some new text\n"))
+			require.NoError(t, err)
+			fmt.Println("writing rotation", i)
+		}
+	}()
 
-	checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+	checkMsg2(t, ch1, "writing some new text", 5*time.Second, wantLabelSet, rotations)
 }
 
 func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
@@ -463,5 +470,19 @@ func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Durat
 		require.Equal(t, labelSet, logEntry.Labels)
 	case <-time.After(timeout):
 		require.FailNow(t, "failed waiting for log line")
+	}
+}
+
+func checkMsg2(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet, rotations int) {
+	for i := 0; i < rotations; i++ {
+		select {
+		case logEntry := <-ch.Chan():
+			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+			require.Equal(t, msg, logEntry.Line)
+			require.Equal(t, labelSet, logEntry.Labels)
+			fmt.Println("read rotation", i)
+		case <-time.After(timeout):
+			require.FailNow(t, "failed waiting for log line")
+		}
 	}
 }
