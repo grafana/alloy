@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -18,18 +19,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	actualUsername = "foo"
-	actualPassword = "bar"
+	actualUsername   = "foo"
+	actualPassword   = "bar"
+	htpasswdPath     = ".htpasswd"
+	htpasswdUser     = "user"
+	htpasswdPassword = "password"
 )
 
 var (
 	cfg = fmt.Sprintf(`
 		username = "%s"
 		password = "%s"
-	`, actualUsername, actualPassword)
+		htpasswd = {
+			file = "%s"
+		}
+	`, actualUsername, actualPassword, htpasswdPath)
 )
 
 // Test performs a basic integration test which runs the otelcol.auth.basic
@@ -87,6 +96,8 @@ func TestServerAuth(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
+	createTestHtpasswdFile(t, htpasswdPath, htpasswdUser, htpasswdPassword)
+	defer deleteTestHtpasswdFile(t, htpasswdPath)
 
 	ctrl := newTestComponent(t, ctx)
 	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
@@ -117,6 +128,34 @@ func TestServerAuth(t *testing.T) {
 
 	b64EncodingAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", actualUsername, actualPassword)))
 	_, err = otelServerExtension.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
+	require.NoError(t, err)
+
+	b64EncodingAuth = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", htpasswdUser, htpasswdPassword)))
+	_, err = otelServerExtension.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
+	require.NoError(t, err)
+}
+
+func createTestHtpasswdFile(t *testing.T, path, username, password string) {
+	t.Helper()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	require.NoError(t, err)
+
+	content := fmt.Sprintf("%s:%s\n", username, string(hash))
+
+	// create file
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Write the entry to the file
+	_, err = f.WriteString(content)
+	require.NoError(t, err)
+}
+
+func deleteTestHtpasswdFile(t *testing.T, path string) {
+	t.Helper()
+	err := os.Remove(path)
 	require.NoError(t, err)
 }
 
