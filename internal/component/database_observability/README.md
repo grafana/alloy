@@ -339,3 +339,23 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 ```
+
+## Setting up the Postgres database
+
+1. Your Postgres DB should be version 16.
+
+2. Create a dedicated DB user and grant permissions.
+
+```sql
+CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
+GRANT pg_monitor TO 'db-o11y';
+GRANT pg_read_all_stats TO 'db-o11y';
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+```
+
+3. Verify that the user has been properly created.
+
+```sql
+-- run with the `db-o11y` user
+SELECT * FROM pg_stat_statements LIMIT 1;
+```
