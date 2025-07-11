@@ -92,6 +92,8 @@ func BenchmarkReadlines(b *testing.B) {
 				running:  atomic.NewBool(false),
 				receiver: loki.NewLogsReceiver(),
 				path:     tc.file,
+				positions: &noopPositions{},
+				labels:    model.LabelSet{"foo": "bar", "baz": "boo"},
 			}
 
 			for i := 0; i < b.N; i++ {
