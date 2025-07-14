@@ -117,10 +117,9 @@ discovery.relabel "integrations_agent" {
 }
 
 prometheus.scrape "integrations_agent" {
-	targets                       = discovery.relabel.integrations_agent.output
-	forward_to                    = [prometheus.relabel.integrations_agent.receiver]
-	job_name                      = "integrations/agent"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_agent.output
+	forward_to = [prometheus.relabel.integrations_agent.receiver]
+	job_name   = "integrations/agent"
 }
 
 prometheus.relabel "integrations_agent" {

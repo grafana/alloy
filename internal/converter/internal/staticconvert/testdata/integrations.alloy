@@ -19,7 +19,6 @@ prometheus.scrape "integrations_agent" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.remote_write "integrations" {
@@ -55,7 +54,6 @@ prometheus.scrape "integrations_apache_http" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.blackbox "integrations_blackbox" {
@@ -87,7 +85,6 @@ prometheus.scrape "integrations_blackbox" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.snmp "integrations_snmp" {
@@ -127,7 +124,6 @@ prometheus.scrape "integrations_snmp" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.azure "integrations_azure_exporter" {
@@ -155,7 +151,6 @@ prometheus.scrape "integrations_azure_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.cadvisor "integrations_cadvisor" { }
@@ -179,7 +174,6 @@ prometheus.scrape "integrations_cadvisor" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.cloudwatch "integrations_cloudwatch_exporter" {
@@ -253,7 +247,6 @@ prometheus.scrape "integrations_cloudwatch_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.consul "integrations_consul_exporter" { }
@@ -277,7 +270,6 @@ prometheus.scrape "integrations_consul_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.dnsmasq "integrations_dnsmasq_exporter" {
@@ -309,7 +301,6 @@ prometheus.scrape "integrations_dnsmasq_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.elasticsearch "integrations_elasticsearch_exporter" { }
@@ -333,7 +324,6 @@ prometheus.scrape "integrations_elasticsearch_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.github "integrations_github_exporter" {
@@ -360,7 +350,6 @@ prometheus.scrape "integrations_github_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.kafka "integrations_kafka_exporter" { }
@@ -384,7 +373,6 @@ prometheus.scrape "integrations_kafka_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.memcached "integrations_memcached_exporter" {
@@ -416,7 +404,6 @@ prometheus.scrape "integrations_memcached_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {
@@ -461,7 +448,6 @@ prometheus.scrape "integrations_mongodb_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.mssql "integrations_mssql" {
@@ -492,7 +478,6 @@ prometheus.scrape "integrations_mssql" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.mysql "integrations_mysqld_exporter" {
@@ -524,7 +509,6 @@ prometheus.scrape "integrations_mysqld_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.unix "integrations_node_exporter" { }
@@ -563,7 +547,6 @@ prometheus.scrape "integrations_node_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.relabel "integrations_node_exporter" {
@@ -604,7 +587,6 @@ prometheus.scrape "integrations_oracledb" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.postgres "integrations_postgres_exporter" {
@@ -636,7 +618,6 @@ prometheus.scrape "integrations_postgres_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.process "integrations_process_exporter" {
@@ -665,7 +646,6 @@ prometheus.scrape "integrations_process_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.redis "integrations_redis_exporter" {
@@ -698,7 +678,6 @@ prometheus.scrape "integrations_redis_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.snowflake "integrations_snowflake" {
@@ -727,7 +706,6 @@ prometheus.scrape "integrations_snowflake" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.squid "integrations_squid" {
@@ -754,7 +732,6 @@ prometheus.scrape "integrations_squid" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.statsd "integrations_statsd_exporter" { }
@@ -778,7 +755,6 @@ prometheus.scrape "integrations_statsd_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
 
 prometheus.exporter.gcp "integrations_gcp_exporter" {
@@ -806,5 +782,4 @@ prometheus.scrape "integrations_gcp_exporter" {
 		cert_file = "/something8.cert"
 		key_file  = "/something9.cert"
 	}
-	metric_name_validation_scheme = ""
 }
