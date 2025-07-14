@@ -87,10 +87,9 @@ discovery.relabel "integrations_azure1" {
 }
 
 prometheus.scrape "integrations_azure1" {
-	targets                       = discovery.relabel.integrations_azure1.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/azure1"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_azure1.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/azure1"
 }
 
 prometheus.exporter.azure "integrations_azure2" {
@@ -114,10 +113,9 @@ discovery.relabel "integrations_azure2" {
 }
 
 prometheus.scrape "integrations_azure2" {
-	targets                       = discovery.relabel.integrations_azure2.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/azure2"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_azure2.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/azure2"
 }
 
 prometheus.exporter.cadvisor "integrations_cadvisor" {
@@ -134,10 +132,9 @@ discovery.relabel "integrations_cadvisor" {
 }
 
 prometheus.scrape "integrations_cadvisor" {
-	targets                       = discovery.relabel.integrations_cadvisor.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/cadvisor"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_cadvisor.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/cadvisor"
 }
 
 prometheus.exporter.cloudwatch "integrations_cloudwatch_exporter" {
@@ -202,10 +199,9 @@ discovery.relabel "integrations_cloudwatch" {
 }
 
 prometheus.scrape "integrations_cloudwatch" {
-	targets                       = discovery.relabel.integrations_cloudwatch.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/cloudwatch"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_cloudwatch.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/cloudwatch"
 }
 
 prometheus.exporter.consul "integrations_consul_exporter" { }
@@ -220,10 +216,9 @@ discovery.relabel "integrations_consul" {
 }
 
 prometheus.scrape "integrations_consul" {
-	targets                       = discovery.relabel.integrations_consul.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/consul"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_consul.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/consul"
 }
 
 prometheus.exporter.dnsmasq "integrations_dnsmasq_exporter" {
@@ -246,10 +241,9 @@ discovery.relabel "integrations_dnsmasq" {
 }
 
 prometheus.scrape "integrations_dnsmasq" {
-	targets                       = discovery.relabel.integrations_dnsmasq.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/dnsmasq"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_dnsmasq.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/dnsmasq"
 }
 
 prometheus.exporter.elasticsearch "integrations_elasticsearch_exporter" { }
@@ -264,10 +258,9 @@ discovery.relabel "integrations_elasticsearch" {
 }
 
 prometheus.scrape "integrations_elasticsearch" {
-	targets                       = discovery.relabel.integrations_elasticsearch.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/elasticsearch"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_elasticsearch.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/elasticsearch"
 }
 
 prometheus.exporter.github "integrations_github_exporter" {
@@ -285,10 +278,9 @@ discovery.relabel "integrations_github" {
 }
 
 prometheus.scrape "integrations_github" {
-	targets                       = discovery.relabel.integrations_github.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/github"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_github.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/github"
 }
 
 prometheus.exporter.kafka "integrations_kafka_exporter" { }
@@ -303,10 +295,9 @@ discovery.relabel "integrations_kafka" {
 }
 
 prometheus.scrape "integrations_kafka" {
-	targets                       = discovery.relabel.integrations_kafka.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/kafka"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_kafka.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/kafka"
 }
 
 prometheus.exporter.memcached "integrations_memcached_exporter" {
@@ -329,10 +320,9 @@ discovery.relabel "integrations_memcached" {
 }
 
 prometheus.scrape "integrations_memcached" {
-	targets                       = discovery.relabel.integrations_memcached.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/memcached"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_memcached.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/memcached"
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {
@@ -363,10 +353,9 @@ discovery.relabel "integrations_mongodb" {
 }
 
 prometheus.scrape "integrations_mongodb" {
-	targets                       = discovery.relabel.integrations_mongodb.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/mongodb"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_mongodb.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/mongodb"
 }
 
 prometheus.exporter.mssql "integrations_mssql" {
@@ -383,10 +372,9 @@ discovery.relabel "integrations_mssql" {
 }
 
 prometheus.scrape "integrations_mssql" {
-	targets                       = discovery.relabel.integrations_mssql.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/mssql"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_mssql.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/mssql"
 }
 
 prometheus.exporter.mysql "integrations_mysqld_exporter" {
@@ -409,10 +397,9 @@ discovery.relabel "integrations_mysql" {
 }
 
 prometheus.scrape "integrations_mysql" {
-	targets                       = discovery.relabel.integrations_mysql.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/mysql"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_mysql.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/mysql"
 }
 
 prometheus.exporter.unix "integrations_node_exporter" { }
@@ -442,10 +429,9 @@ discovery.relabel "integrations_node_exporter" {
 }
 
 prometheus.scrape "integrations_node_exporter" {
-	targets                       = discovery.relabel.integrations_node_exporter.output
-	forward_to                    = [prometheus.relabel.integrations_node_exporter.receiver]
-	job_name                      = "integrations/node_exporter"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_node_exporter.output
+	forward_to = [prometheus.relabel.integrations_node_exporter.receiver]
+	job_name   = "integrations/node_exporter"
 }
 
 prometheus.relabel "integrations_node_exporter" {
@@ -476,10 +462,9 @@ discovery.relabel "integrations_oracledb" {
 }
 
 prometheus.scrape "integrations_oracledb" {
-	targets                       = discovery.relabel.integrations_oracledb.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/oracledb"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_oracledb.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/oracledb"
 }
 
 prometheus.exporter.postgres "integrations_postgres_exporter" {
@@ -502,10 +487,9 @@ discovery.relabel "integrations_postgres" {
 }
 
 prometheus.scrape "integrations_postgres" {
-	targets                       = discovery.relabel.integrations_postgres.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/postgres"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_postgres.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/postgres"
 }
 
 prometheus.exporter.process "integrations_process_exporter" {
@@ -525,10 +509,9 @@ discovery.relabel "integrations_process" {
 }
 
 prometheus.scrape "integrations_process" {
-	targets                       = discovery.relabel.integrations_process.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/process"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_process.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/process"
 }
 
 prometheus.exporter.redis "integrations_redis_exporter" {
@@ -552,10 +535,9 @@ discovery.relabel "integrations_redis" {
 }
 
 prometheus.scrape "integrations_redis" {
-	targets                       = discovery.relabel.integrations_redis.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/redis"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_redis.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/redis"
 }
 
 prometheus.exporter.snowflake "integrations_snowflake" {
@@ -575,10 +557,9 @@ discovery.relabel "integrations_snowflake" {
 }
 
 prometheus.scrape "integrations_snowflake" {
-	targets                       = discovery.relabel.integrations_snowflake.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/snowflake"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_snowflake.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/snowflake"
 }
 
 prometheus.exporter.squid "integrations_squid" {
@@ -595,11 +576,10 @@ discovery.relabel "integrations_squid" {
 }
 
 prometheus.scrape "integrations_squid" {
-	targets                       = discovery.relabel.integrations_squid.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/squid"
-	scrape_timeout                = "1m0s"
-	metric_name_validation_scheme = ""
+	targets        = discovery.relabel.integrations_squid.output
+	forward_to     = [prometheus.remote_write.metrics_default.receiver]
+	job_name       = "integrations/squid"
+	scrape_timeout = "1m0s"
 }
 
 prometheus.exporter.statsd "integrations_statsd_exporter" { }
@@ -614,10 +594,9 @@ discovery.relabel "integrations_statsd" {
 }
 
 prometheus.scrape "integrations_statsd" {
-	targets                       = discovery.relabel.integrations_statsd.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/statsd"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_statsd.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/statsd"
 }
 
 prometheus.exporter.self "integrations_agent" { }
@@ -644,10 +623,9 @@ discovery.relabel "integrations_agent" {
 }
 
 prometheus.scrape "integrations_agent" {
-	targets                       = discovery.relabel.integrations_agent.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/agent"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_agent.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/agent"
 }
 
 prometheus.exporter.apache "integrations_apache1" {
@@ -669,10 +647,9 @@ discovery.relabel "integrations_apache1" {
 }
 
 prometheus.scrape "integrations_apache1" {
-	targets                       = discovery.relabel.integrations_apache1.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/apache1"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_apache1.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/apache1"
 }
 
 prometheus.exporter.apache "integrations_apache2" { }
@@ -704,10 +681,9 @@ discovery.relabel "integrations_apache2" {
 }
 
 prometheus.scrape "integrations_apache2" {
-	targets                       = discovery.relabel.integrations_apache2.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/apache2"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_apache2.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/apache2"
 }
 
 prometheus.exporter.blackbox "integrations_blackbox" {
@@ -730,10 +706,9 @@ discovery.relabel "integrations_blackbox" {
 }
 
 prometheus.scrape "integrations_blackbox" {
-	targets                       = discovery.relabel.integrations_blackbox.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/blackbox"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_blackbox.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/blackbox"
 }
 
 prometheus.exporter.snmp "integrations_snmp" {
@@ -764,10 +739,9 @@ discovery.relabel "integrations_snmp" {
 }
 
 prometheus.scrape "integrations_snmp" {
-	targets                       = discovery.relabel.integrations_snmp.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/snmp"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_snmp.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/snmp"
 }
 
 prometheus.exporter.gcp "integrations_gcp_exporter" {
@@ -786,8 +760,7 @@ discovery.relabel "integrations_gcp" {
 }
 
 prometheus.scrape "integrations_gcp" {
-	targets                       = discovery.relabel.integrations_gcp.output
-	forward_to                    = [prometheus.remote_write.metrics_default.receiver]
-	job_name                      = "integrations/gcp"
-	metric_name_validation_scheme = ""
+	targets    = discovery.relabel.integrations_gcp.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/gcp"
 }
