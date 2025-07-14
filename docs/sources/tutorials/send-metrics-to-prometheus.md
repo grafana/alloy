@@ -231,7 +231,7 @@ Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and l
 {{< code >}}
 
 ```macos
-brew services restart alloy
+brew services restart grafana/grafana/alloy
 ```
 
 ```linux
