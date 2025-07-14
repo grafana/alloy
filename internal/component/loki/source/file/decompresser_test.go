@@ -88,10 +88,12 @@ func BenchmarkReadlines(b *testing.B) {
 	for _, tc := range scenarios {
 		b.Run(tc.name, func(b *testing.B) {
 			decBase := &decompressor{
-				logger:   log.NewNopLogger(),
-				running:  atomic.NewBool(false),
-				receiver: loki.NewLogsReceiver(),
-				path:     tc.file,
+				logger:    log.NewNopLogger(),
+				running:   atomic.NewBool(false),
+				receiver:  loki.NewLogsReceiver(),
+				path:      tc.file,
+				positions: &noopPositions{},
+				labels:    model.LabelSet{"foo": "bar", "baz": "boo"},
 			}
 
 			for i := 0; i < b.N; i++ {
