@@ -75,10 +75,11 @@ metrics:
     scrape_timeout: 33s`
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
 		},
 	}
 
@@ -98,10 +99,11 @@ metrics:
     scrape_timeout: ${SCRAPE_TIMEOUT}`
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
