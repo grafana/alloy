@@ -77,6 +77,8 @@ v1.10.0-rc.0
 
 - Reduced allocation in Loki processing pipelines. (@thampiotr)
 
+- Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
+
 ### Bugfixes
 
 - Fix path for correct injection of version into constants at build time. (@adlotsof)
@@ -112,8 +114,8 @@ v1.9.2
 ### Other changes
 
 -  Add no-op blocks and attributes to the `prometheus.exporter.windows` component (@ptodev).
-   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`, 
-   `where_clause`, and `use_api` attributes in the `service` block. 
+   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`,
+   `where_clause`, and `use_api` attributes in the `service` block.
    This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
 
 v1.9.1
