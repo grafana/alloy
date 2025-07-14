@@ -25,7 +25,7 @@ func TestAddLabelsMiddleware(t *testing.T) {
 			},
 			inputEntry: Entry{
 				Labels: nil,
-				Entry: testEntry(),
+				Entry:  testEntry(),
 			},
 			expectedLabels: model.LabelSet{
 				"service": "test-service",
@@ -34,7 +34,7 @@ func TestAddLabelsMiddleware(t *testing.T) {
 			},
 		},
 		{
-			name: "nil additional labels",
+			name:             "nil additional labels",
 			additionalLabels: nil,
 			inputEntry: Entry{
 				Labels: model.LabelSet{
