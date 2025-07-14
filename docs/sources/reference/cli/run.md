@@ -70,6 +70,10 @@ The following flags are supported:
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
 
+### Deprecated flags
+
+* `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
+
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}

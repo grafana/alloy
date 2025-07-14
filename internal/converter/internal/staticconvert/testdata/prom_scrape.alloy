@@ -62,19 +62,17 @@ prometheus.scrape "metrics_agent_prometheus" {
 			__address__ = "localhost:9101",
 		}],
 	)
-	forward_to                    = [prometheus.remote_write.metrics_agent.receiver]
-	job_name                      = "prometheus"
-	scrape_timeout                = "45s"
-	metric_name_validation_scheme = ""
+	forward_to     = [prometheus.remote_write.metrics_agent.receiver]
+	job_name       = "prometheus"
+	scrape_timeout = "45s"
 }
 
 prometheus.scrape "metrics_agent_promobee" {
-	targets                       = discovery.relabel.metrics_agent_promobee.output
-	forward_to                    = [prometheus.relabel.metrics_agent_promobee.receiver]
-	job_name                      = "promobee"
-	scrape_timeout                = "45s"
-	metrics_path                  = "/thermostat"
-	metric_name_validation_scheme = ""
+	targets        = discovery.relabel.metrics_agent_promobee.output
+	forward_to     = [prometheus.relabel.metrics_agent_promobee.receiver]
+	job_name       = "promobee"
+	scrape_timeout = "45s"
+	metrics_path   = "/thermostat"
 }
 
 prometheus.relabel "metrics_agent_promobee" {

@@ -70,7 +70,7 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20250630063055-0ee8e76ba280
-	github.com/grafana/loki/v3 v3.0.0-20250630063055-0ee8e76ba280
+	github.com/grafana/loki/v3 v3.0.0-20250630063055-0ee8e76ba280 // a commit from main branch. TODO: update to official release once there is one available with https://github.com/grafana/loki/commit/bd6db586182e90f5f2d781e540c023c2b2733186.
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11

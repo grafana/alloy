@@ -110,9 +110,9 @@ The `metric_name_validation_scheme` controls how metric names are validated. The
 The `metric_name_escaping_scheme` controls how metric names are escaped. The following values are supported:
 
 * `"allow-utf-8"` - Allows UTF-8 characters in metric names. No escaping is required. (default when validation scheme is "utf8")
-* `"escape_underscores"` - Replaces all legacy-invalid characters with underscores (default when validation scheme is "legacy")
-* `"escape_dots"` - Replaces all legacy-invalid characters with dots except that dots are converted to `_dot_` and pre-existing underscores are converted to `__`.
-* `"escape_values"` - Prepends the name with `U__` and replaces all invalid characters with the unicode value, surrounded by underscores. Single underscores are replaced with double underscores.
+* `"underscores"` - Replaces all legacy-invalid characters with underscores (default when validation scheme is "legacy")
+* `"dots"` - Replaces all legacy-invalid characters with dots except that dots are converted to `_dot_` and pre-existing underscores are converted to `__`.
+* `"values"` - Prepends the name with `U__` and replaces all invalid characters with the unicode value, surrounded by underscores. Single underscores are replaced with double underscores.
 
 Note: `metric_name_escaping_scheme` cannot be set to `"allow-utf-8"` while `metric_name_validation_scheme` is not set to `"utf8"`.
 
