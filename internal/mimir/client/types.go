@@ -43,9 +43,15 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 		set[g.Name] = struct{}{}
 
 		for i, r := range g.Rules {
-			for _, node := range g.Rules[i].Validate() {
-				var ruleName yaml.Node
-				if r.Alert.Value != "" {
+			// Create a RuleNode for validation - we need to construct this from the YAML node
+			ruleNode := rulefmt.RuleNode{
+				Record: yaml.Node{Value: r.Record},
+				Alert:  yaml.Node{Value: r.Alert},
+			}
+
+			for _, node := range r.Validate(ruleNode) {
+				var ruleName string
+				if r.Alert != "" {
 					ruleName = r.Alert
 				} else {
 					ruleName = r.Record
@@ -53,7 +59,7 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 				errs = append(errs, &rulefmt.Error{
 					Group:    g.Name,
 					Rule:     i + 1,
-					RuleName: ruleName.Value,
+					RuleName: ruleName,
 					Err:      node,
 				})
 			}

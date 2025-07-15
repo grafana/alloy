@@ -213,6 +213,16 @@ func (app *Appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, 
 	panic("this test appender does not yet implement AppendCTZeroSample")
 }
 
+// AppendHistogramCTZeroSample implements storage.Appender.
+func (app *Appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendHistogramCTZeroSample")
+}
+
+// SetOptions implements storage.Appender.
+func (app *Appender) SetOptions(o *storage.AppendOptions) {
+	panic("this test appender does not yet implement SetOptions")
+}
+
 // MetricFamilies returns the generated slice of *dto.MetricsFamily.
 // MetricFamilies returns an error unless Commit was called.
 //
