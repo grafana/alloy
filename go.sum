@@ -1385,6 +1385,8 @@ github.com/hashicorp/go-discover v1.1.0 h1:FN5AXXBCXbEMVq/BYk+qkYRhr+lwYgvBro2hM
 github.com/hashicorp/go-discover v1.1.0/go.mod h1:jqvs0vDZPpnKlN21oG80bwkiIKPGCrmKChV6qItAjI0=
 github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4 h1:ywaDsVo7n5ko12YD8uXjuQ8G2mQhC2mxAc4Kj3WW3GE=
 github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4/go.mod h1:yxikfLXA8Y5JA3FcFTR720PfqVEFd0dZY9FBpmcsO54=
+github.com/hashicorp/go-discover/provider/gce v0.0.0-20250625044749-2961509ab243 h1:N73Nn3TzUkVlvLvSniuM8zoZCmRBNiE+y+EQ+tJINg0=
+github.com/hashicorp/go-discover/provider/gce v0.0.0-20250625044749-2961509ab243/go.mod h1:v2kkHF09Wi3+T9NTK/4+zCdF/Kp5ZQ++4ST5mJ0NuNk=
 github.com/hashicorp/go-envparse v0.1.0 h1:bE++6bhIsNCPLvgDZkYqo3nA+/PFI51pkrHdmPSDFPY=
 github.com/hashicorp/go-envparse v0.1.0/go.mod h1:OHheN1GoygLlAkTlXLXvAdnXdZxy8JUweQ1rAXx1xnc=
 github.com/hashicorp/go-hclog v0.0.0-20180709165350-ff2cf002a8dd/go.mod h1:9bjs9uLqI8l75knNv3lV1kA55veR+WUPSiKIWcQHudI=

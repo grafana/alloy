@@ -52,7 +52,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v1.0.0
-	github.com/google/cadvisor v0.47.0
+	github.com/google/cadvisor v0.53.0
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.7.0
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6
@@ -1035,7 +1035,7 @@ require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faror
 require (
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.8 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
-	github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4 // indirect
+	github.com/hashicorp/go-discover/provider/gce v0.0.0-20250625044749-2961509ab243 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
