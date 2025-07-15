@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
+	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
 )
 
 //go:embed template.md

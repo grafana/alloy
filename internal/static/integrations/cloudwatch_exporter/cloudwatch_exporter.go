@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 
-	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 
 	"github.com/go-kit/log"
-	yace "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg"
-	yaceClients "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients"
-	yaceClientsV1 "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients/v1"
-	yaceClientsV2 "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients/v2"
-	yaceLog "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
+	yace "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg"
+	yaceClients "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients"
+	yaceClientsV1 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v1"
+	yaceClientsV2 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v2"
+	yaceLog "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 

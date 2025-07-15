@@ -75,7 +75,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
+	github.com/grafana/regexp v0.0.0-20240607082908-2cb410fa05da
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
@@ -110,7 +110,6 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.7.10
-	github.com/nerdswords/yet-another-cloudwatch-exporter v0.61.0
 	github.com/oklog/run v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.54.0
@@ -180,6 +179,7 @@ require (
 	github.com/prometheus-community/postgres_exporter v0.17.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
 	github.com/prometheus-community/windows_exporter v0.30.8 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
+	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1
 	github.com/prometheus-operator/prometheus-operator v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.2
@@ -482,25 +482,25 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/amp v1.26.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigateway v1.24.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.21.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.41.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/amp v1.30.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.28.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.24.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.51.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.45.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.51.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.39.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.45.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.227.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.33.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.22.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/shield v1.26.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/storagegateway v1.34.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
 	github.com/aws/smithy-go v1.22.4 // indirect
 	github.com/axiomhq/hyperloglog v0.2.5 // indirect
@@ -1034,7 +1034,6 @@ require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faror
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.8 // indirect
-	github.com/craiggwilson/goke v0.0.0-20240206162536-b1c58122d943 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/hashicorp/go-discover/provider/gce v0.0.0-20241120163552-5eb1507d16b4 // indirect
 )
