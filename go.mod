@@ -156,6 +156,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.128.0

@@ -2100,6 +2100,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiv
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0/go.mod h1:cVKK4o+7i0w1yD36ojYC+KwSj4WFBHG0TazYQu5lC/A=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0 h1:cHUha259kwbefs3KebyKHVedGqMP75wwPBPNUwFOtKY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0/go.mod h1:i3jLyma0OruFlVTJIlCh5QT291qZW5ZyZgcUEMrm0Fc=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0 h1:EkSbn2vBOD5u389jTiQpssrdSUT7rQdltzYBYFBGR0g=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0/go.mod h1:SwARiAxarYR+aElfGriPQ5WqHf5YfIkGiE0KVJonoSo=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.128.0 h1:LUrfwhcqP0k/lwtT8nxKX7L11RxU7xvw/NwXN/r91/A=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.128.0/go.mod h1:1jWL8z4+7JhoamkAzfSAzVLp+joDOgcf0HuAkMbK0AE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.128.0 h1:robqWLRsdalVuZhjW6oBqiHn0am5VRqQPJ5FfPZaHUk=

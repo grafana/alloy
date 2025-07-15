@@ -375,6 +375,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
 - [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
+- [otelcol.receiver.fluentforward](../components/otelcol/otelcol.receiver.fluentforward)
 - [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)

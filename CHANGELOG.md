@@ -30,6 +30,10 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+### Features
+
+- Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
+
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
@@ -37,7 +41,6 @@ Main (unreleased)
 - Add `max_send_message_size` configuration option to `loki.source.api` component to control the maximum size of requests to the push API. (@thampiotr)
 
 - Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
-
 
 v1.10.0-rc.0
 -----------------
