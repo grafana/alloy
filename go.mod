@@ -1105,6 +1105,7 @@ replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
 
 require (
 	github.com/elastic/go-freelru v0.16.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0
 	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
 )
 

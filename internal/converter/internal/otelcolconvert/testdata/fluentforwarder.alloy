@@ -1,0 +1,9 @@
+otelcol.receiver.fluentforward "default" {
+	endpoint = "localhost:1514"
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
