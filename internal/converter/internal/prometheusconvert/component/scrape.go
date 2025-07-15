@@ -48,6 +48,10 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 	}
 
 	histogramsToNHCB := scrapeConfig.ConvertClassicHistogramsToNHCB != nil && *scrapeConfig.ConvertClassicHistogramsToNHCB
+	fallbackProtocol := string(scrapeConfig.ScrapeFallbackProtocol)
+	if fallbackProtocol == "" {
+		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
+	}
 	alloyArgs := &scrape.Arguments{
 		Targets:                        targets,
 		ForwardTo:                      forwardTo,
@@ -79,7 +83,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		NativeHistogramMinBucketFactor: scrapeConfig.NativeHistogramMinBucketFactor,
 		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme,
 		MetricNameEscapingScheme:       scrapeConfig.MetricNameEscapingScheme,
-		ScrapeFallbackProtocol:         string(scrapeConfig.ScrapeFallbackProtocol),
+		ScrapeFallbackProtocol:         fallbackProtocol,
 		Clustering:                     cluster.ComponentBlock{Enabled: false},
 	}
 	return alloyArgs

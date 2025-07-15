@@ -154,6 +154,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
+		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use same fallback protocol as Prometheus v2
 		ScrapeNativeHistograms:   true,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
 		MetricNameValidationScheme:     config.UTF8ValidationConfig,
