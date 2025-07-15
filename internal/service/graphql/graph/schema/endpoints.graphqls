@@ -1,7 +1,13 @@
 extend type Query {
   # TODO: does this make sense to query *all* endpoints? What does that even mean in this context?
+  """
+  All known endpoints within Alloy.
+  """
   endpoints: [Endpoint!]!
 
+  """
+  Endpoint for a given host and port.
+  """
   endpoint(host: String!, port: Int!): Endpoint!
 }
 

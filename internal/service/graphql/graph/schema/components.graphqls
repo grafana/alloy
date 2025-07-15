@@ -1,5 +1,12 @@
 extend type Query {
+  """
+  All components running in Alloy.
+  """
   components: [Component!]!
+
+  """
+  Component by ID.
+  """
   component(id: ID!): Component
 }
 
