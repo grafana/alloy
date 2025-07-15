@@ -32,6 +32,15 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+### Enhancements
+
+- `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
+
+- Add `max_send_message_size` configuration option to `loki.source.api` component to control the maximum size of requests to the push API. (@thampiotr)
+
+- Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
+
+
 v1.10.0-rc.0
 -----------------
 
@@ -97,11 +106,9 @@ v1.10.0-rc.0
 
 - Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
 
-- `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
+- Reduced allocation in Loki processing pipelines. (@thampiotr)
 
-- Add `max_send_message_size` configuration option to `loki.source.api` component to control the maximum size of requests to the push API. (@thampiotr)
-
-- Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
+- Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
 
 ### Bugfixes
 
@@ -138,8 +145,8 @@ v1.9.2
 ### Other changes
 
 -  Add no-op blocks and attributes to the `prometheus.exporter.windows` component (@ptodev).
-   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`, 
-   `where_clause`, and `use_api` attributes in the `service` block. 
+   Version 1.9.0 of Alloy removed the `msmq` block, as well as the `enable_v2_collector`,
+   `where_clause`, and `use_api` attributes in the `service` block.
    This made it difficult for users to upgrade, so those attributes have now been made a no-op instead of being removed.
 
 v1.9.1
