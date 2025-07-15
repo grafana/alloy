@@ -3,11 +3,11 @@ package cloudwatch
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"log/slog"
 	"time"
 
 	"github.com/go-kit/log"
 	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
-	"github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/logging"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -211,7 +211,7 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	modelConf, err := conf.Validate(logging.NewNopLogger())
+	modelConf, err := conf.Validate(slog.New(slog.DiscardHandler))
 	if err != nil {
 		return yaceModel.JobsConfig{}, err
 	}
