@@ -227,7 +227,7 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	modelConf, err := conf.Validate(log.New(slog.DiscardHandler))
+	modelConf, err := conf.Validate(slog.New(slog.DiscardHandler))
 	if err != nil {
 		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
