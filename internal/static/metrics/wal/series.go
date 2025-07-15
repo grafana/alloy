@@ -141,7 +141,7 @@ func (s *stripeSeries) gc(mint int64) map[chunks.HeadSeriesRef]struct{} {
 
 				// The series is stale. We need to obtain a second lock for the
 				// ref if it's different than the hash lock.
-				refLock := int(series.ref) & (s.size - 1)
+				refLock := int(s.refLock(series.ref))
 				if hashLock != refLock {
 					s.locks[refLock].Lock()
 				}
@@ -168,14 +168,14 @@ func (s *stripeSeries) gc(mint int64) map[chunks.HeadSeriesRef]struct{} {
 }
 
 func (s *stripeSeries) GetByID(id chunks.HeadSeriesRef) *memSeries {
-	refLock := uint64(id) & uint64(s.size-1)
+	refLock := s.refLock(id)
 	s.locks[refLock].RLock()
 	defer s.locks[refLock].RUnlock()
 	return s.series[refLock][id]
 }
 
 func (s *stripeSeries) GetByHash(hash uint64, lset labels.Labels) *memSeries {
-	hashLock := hash & uint64(s.size-1)
+	hashLock := s.hashLock(hash)
 
 	s.locks[hashLock].RLock()
 	defer s.locks[hashLock].RUnlock()
@@ -184,8 +184,8 @@ func (s *stripeSeries) GetByHash(hash uint64, lset labels.Labels) *memSeries {
 
 func (s *stripeSeries) Set(hash uint64, series *memSeries) {
 	var (
-		hashLock = hash & uint64(s.size-1)
-		refLock  = uint64(series.ref) & uint64(s.size-1)
+		hashLock = s.hashLock(hash)
+		refLock  = s.refLock(series.ref)
 	)
 
 	// We can't hold both locks at once otherwise we might deadlock with a
@@ -202,8 +202,31 @@ func (s *stripeSeries) Set(hash uint64, series *memSeries) {
 	s.locks[hashLock].Unlock()
 }
 
+// GetOrSet returns the existing series for the given hash and label set, or sets it if it does not exist.
+// It returns the series and a boolean indicating whether it was newly created.
+func (s *stripeSeries) GetOrSet(hash uint64, lset labels.Labels, series *memSeries) (*memSeries, bool) {
+	hashLock := s.hashLock(hash)
+
+	s.locks[hashLock].Lock()
+	// If it already exists in hashes, return it.
+	if prev := s.hashes[hashLock].Get(hash, lset); prev != nil {
+		s.locks[hashLock].Unlock()
+		return prev, false
+	}
+	s.hashes[hashLock].Set(hash, series)
+	s.locks[hashLock].Unlock()
+
+	refLock := s.refLock(series.ref)
+
+	s.locks[refLock].Lock()
+	s.series[refLock][series.ref] = series
+	s.locks[refLock].Unlock()
+
+	return series, true
+}
+
 func (s *stripeSeries) GetLatestExemplar(ref chunks.HeadSeriesRef) *exemplar.Exemplar {
-	i := uint64(ref) & uint64(s.size-1)
+	i := s.refLock(ref)
 
 	s.locks[i].RLock()
 	exemplar := s.exemplars[i][ref]
@@ -213,7 +236,7 @@ func (s *stripeSeries) GetLatestExemplar(ref chunks.HeadSeriesRef) *exemplar.Exe
 }
 
 func (s *stripeSeries) SetLatestExemplar(ref chunks.HeadSeriesRef, exemplar *exemplar.Exemplar) {
-	i := uint64(ref) & uint64(s.size-1)
+	i := s.refLock(ref)
 
 	// Make sure that's a valid series id and record its latest exemplar
 	s.locks[i].Lock()
@@ -225,6 +248,14 @@ func (s *stripeSeries) SetLatestExemplar(ref chunks.HeadSeriesRef, exemplar *exe
 
 func (s *stripeSeries) iterator() *stripeSeriesIterator {
 	return &stripeSeriesIterator{s}
+}
+
+func (s *stripeSeries) hashLock(hash uint64) uint64 {
+	return hash & uint64(s.size-1)
+}
+
+func (s *stripeSeries) refLock(ref chunks.HeadSeriesRef) uint64 {
+	return uint64(ref) & uint64(s.size-1)
 }
 
 // stripeSeriesIterator allows to iterate over series through a channel.
@@ -243,7 +274,7 @@ func (it *stripeSeriesIterator) Channel() <-chan *memSeries {
 			for _, series := range it.s.series[i] {
 				series.Lock()
 
-				j := int(series.lset.Hash()) & (it.s.size - 1)
+				j := int(it.s.hashLock(series.lset.Hash()))
 				if i != j {
 					it.s.locks[j].RLock()
 				}
