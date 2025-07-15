@@ -136,6 +136,8 @@ The following arguments are supported:
 | `lock`        | `string`   | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                   | `"10ms"`   | no       |
 | `per_thread`  | `bool`     | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                      | `false`    | no       |
 | `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler. | `100`      | no       |
+| `log_level`   | `string`   | Sets the log level in async profiler. one of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.              | `INFO`     | no       |
+| `quiet`       | `bool`     | If set, suppresses the `Profiling started/stopped` log message.                                                 | `false`    | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
