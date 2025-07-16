@@ -50,6 +50,12 @@ alloy:
     # -- Name for the port used for clustering, useful if running inside an Istio Mesh
     portName: http
 
+    # -- Wait for the cluster to reach the number of instances before allowing clustered components to begin processing.
+    waitForSize: 0
+
+    # -- Maximum duration to wait for minimum cluster size before proceeding with available nodes
+    waitTimeout: 0
+
   # -- Minimum stability level of components and behavior to enable. Must be
   # one of "experimental", "public-preview", or "generally-available".
   stabilityLevel: "generally-available"
