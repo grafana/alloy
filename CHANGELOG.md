@@ -80,7 +80,8 @@ v1.10.0-rc.0
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - Add `explain_plan` collector to `database_observability.mysql` component. (@rgeyer)
   - `locks`: addition of data locks collector (@gaantunes @fridgepoet)
-  - Query sample collector is now enabled by default (@matthewnolf)
+  - `query_sample` collector is now enabled by default (@matthewnolf)
+  - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
 
 - (_Experimental_) `prometheus.write.queue` add support for exemplars. (@dehaansa)
 
