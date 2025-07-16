@@ -42,7 +42,7 @@ Main (unreleased)
 
 - Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
 
-v1.10.0-rc.0
+v1.10.0
 -----------------
 
 ### Breaking changes
