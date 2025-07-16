@@ -11,7 +11,7 @@ import (
 func parsePrometheusRuleGroups(t *testing.T, buf []byte) []rulefmt.RuleGroup {
 	t.Helper()
 
-	groups, errs := rulefmt.Parse(buf)
+	groups, errs := rulefmt.Parse(buf, true)
 	require.Empty(t, errs)
 
 	return groups.Groups

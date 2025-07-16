@@ -1,4 +1,4 @@
-//go:build (linux && arm64) || (linux && amd64)
+//go:build ((linux && arm64) || (linux && amd64)) && pyroscope_ebpf
 
 package ebpf
 
@@ -11,13 +11,13 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/pyroscope/ebpf/pprof"
-	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/ebpf-profiler/support"
 )
 
 func TestSendProfilesConcurrently(t *testing.T) {
@@ -77,25 +77,16 @@ func TestSendProfilesConcurrently(t *testing.T) {
 				}),
 			}, "", reg)
 
-			profiles := pprof.NewProfileBuilders(pprof.BuildersOptions{
-				SampleRate: 97,
-			})
+			profiles := []reporter.PPROF{}
 
 			for i := 0; i < td.profilesCount; i++ {
-				cid := fmt.Sprintf("cid_%d", i)
-				pid := uint32(239 + i)
-				target := sd.DiscoveryTarget(map[string]string{
+				target := labels.FromMap(map[string]string{
 					"service_name": fmt.Sprintf("service_%d", i),
 				})
-				profiles.AddSample(&pprof.ProfileSample{
-					Target:      sd.NewTargetForTesting(cid, pid, target),
-					Pid:         pid,
-					SampleType:  pprof.SampleTypeCpu,
-					Aggregation: pprof.SampleAggregated,
-					Stack: []string{
-						"func1", "func2",
-					},
-					Value: 42,
+				profiles = append(profiles, reporter.PPROF{
+					Raw:    []byte(fmt.Sprintf("profile_%d", i)),
+					Labels: target,
+					Origin: support.TraceOriginSampling,
 				})
 			}
 

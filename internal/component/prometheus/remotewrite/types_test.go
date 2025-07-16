@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/common/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/sigv4"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func expectedCfg(transform func(c *config.Config)) *config.Config {
@@ -36,7 +37,7 @@ func expectedCfg(transform func(c *config.Config)) *config.Config {
 				SendExemplars:       true,
 				HTTPClientConfig: commonconfig.HTTPClientConfig{
 					FollowRedirects: true,
-					EnableHTTP2:     true,
+					EnableHTTP2:     false,
 				},
 				QueueConfig: config.QueueConfig{
 					Capacity:          10000,
@@ -80,6 +81,40 @@ func TestAlloyConfig(t *testing.T) {
 			expectedCfg: expectedCfg(func(c *config.Config) {
 				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
 			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_V1",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "prometheus.WriteRequest"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV1
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_V2",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "io.prometheus.write.v2.Request"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = config.RemoteWriteProtoMsgV2
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_Invalid",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "invalid.message"
+			}
+			`,
+			errorMsg: "unknown remote write protobuf message invalid.message",
 		},
 		{
 			testName: "RelabelConfig",

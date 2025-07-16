@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -10,15 +11,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/static/metrics/wal"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -27,6 +19,17 @@ import (
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/static/metrics/wal"
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 // Options.
@@ -84,8 +87,12 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	remoteLogger := slog.New(
+		logging.NewSlogGoKitHandler(
+			log.With(o.Logger, "subcomponent", "rw"),
+		),
+	)
+	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -100,12 +107,17 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	fanoutLogger := slog.New(
+		logging.NewSlogGoKitHandler(
+			log.With(o.Logger, "subcomponent", "fanout"),
+		),
+	)
 	res := &Component{
 		log:                o.Logger,
 		opts:               o,
 		walStore:           walStorage,
 		remoteStore:        remoteStore,
-		storage:            storage.NewFanout(o.Logger, walStorage, remoteStore),
+		storage:            storage.NewFanout(fanoutLogger, walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	componentID := livedebugging.ComponentID(res.opts.ID)
