@@ -10,6 +10,12 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
+
+- Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
+
 1.1.2 (2025-06-26)
 ----------
 - Add NetworkPolicy support. (@TheRealNoob)
