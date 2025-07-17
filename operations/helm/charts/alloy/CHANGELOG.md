@@ -10,6 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
+- Add support to provide extraLabels to alloy.controler (@evkuzin)
+
 1.1.2 (2025-06-26)
 ----------
 - Add NetworkPolicy support. (@TheRealNoob)
