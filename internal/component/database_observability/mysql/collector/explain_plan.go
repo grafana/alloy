@@ -448,7 +448,7 @@ func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (planNode, 
 }
 
 type queryInfo struct {
-	schemaName *string
+	schemaName string
 	digest     string
 	queryText  string
 }
@@ -611,10 +611,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		if qi.schemaName == nil {
-			continue
-		}
-		logger = log.With(logger, "schema_name", *qi.schemaName)
+		logger = log.With(logger, "schema_name", qi.schemaName)
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, qi)
 		if err != nil {
@@ -662,7 +659,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		logMessage := fmt.Sprintf(
 			`schema="%s" digest="%s" explain_plan_output="%s"`,
-			*qi.schemaName,
+			qi.schemaName,
 			qi.digest,
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
@@ -687,7 +684,7 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	}
 	defer conn.Close()
 
-	useStatement := fmt.Sprintf("USE `%s`", *qi.schemaName)
+	useStatement := fmt.Sprintf("USE `%s`", qi.schemaName)
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
 		return nil, fmt.Errorf("failed to set schema: %w", err)
 	}
