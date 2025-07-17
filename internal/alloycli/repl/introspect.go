@@ -2,12 +2,32 @@ package repl
 
 import (
 	"encoding/json"
+	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/service/graphql"
 )
 
+// Cache for introspection data
+var (
+	introspectionCache struct {
+		data      *IntrospectionData
+		timestamp time.Time
+		mutex     sync.Mutex
+	}
+	cacheExpiration = 5 * time.Minute
+)
+
 // Introspect executes the introspection query and returns the parsed response
 func Introspect(gqlClient *graphql.GraphQlClient) (*IntrospectionData, error) {
+	introspectionCache.mutex.Lock()
+	defer introspectionCache.mutex.Unlock()
+
+	// Check if we have a valid cached result
+	if introspectionCache.data != nil && time.Since(introspectionCache.timestamp) < cacheExpiration {
+		return introspectionCache.data, nil
+	}
+
 	response, err := gqlClient.Execute(introspectionQuery)
 	if err != nil {
 		return nil, err
@@ -19,7 +39,11 @@ func Introspect(gqlClient *graphql.GraphQlClient) (*IntrospectionData, error) {
 		return nil, err
 	}
 
-	return &introspectionData, nil
+	// Update cache
+	introspectionCache.data = &introspectionData
+	introspectionCache.timestamp = time.Now()
+
+	return introspectionCache.data, nil
 }
 
 // GetQueryFields is a helper function to extract just the query type fields

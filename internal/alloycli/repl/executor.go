@@ -53,7 +53,8 @@ func (e *executor) Execute(line string) {
 func (e *executor) executeQuery(query string) {
 	response, err := e.gqlClient.Execute(query)
 	if err != nil {
-		fmt.Printf("Error executing query: %v\n", err)
+		fmt.Println("Error executing query. Is Alloy running?")
+		fmt.Printf("%v\n", err)
 		return
 	}
 

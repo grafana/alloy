@@ -12,8 +12,12 @@ extend type Query {
 }
 
 type Endpoint {
+  "Resolved hostname of the endpoint"
   hostname:    String
+  "Resolved IP address of the endpoint"
   ip:          String
+  "Port of the endpoint"
   port:        Int!
+  "Connection status of the endpoint"
   status:      String!
 }

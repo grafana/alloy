@@ -11,16 +11,28 @@ extend type Query {
 }
 
 type Component {
+  "ID of the component"
   id: ID!
+  "Name of the component"
   name: String!
+  "Health status of the component"
   health: Health!
+  "Arguments of the component"
   arguments: String!
+  "Exports of the component"
   exports: String!
+  "Debug information of the component"
   debugInfo: String!
+  "Connection status of the component"
   connectionStatus: String!
 }
 
+"""
+Health status of the component
+"""
 type Health {
+  "Message of the health status"
   message: String!
+  "Last updated time of the health status"
   lastUpdated: Time!
 }
