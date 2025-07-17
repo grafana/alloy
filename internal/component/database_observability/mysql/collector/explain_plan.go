@@ -607,7 +607,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") && !strings.HasPrefix(strings.ToLower(qi.queryText), "with") {
+		if !strings.HasPrefix(strings.ToLower(qi.queryText), "select") {
 			continue
 		}
 
