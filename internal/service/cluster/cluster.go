@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
 	httpservice "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -416,6 +417,13 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 
 	// Notify all components about the clustering change.
 	components := component.GetAllComponents(host, component.InfoOptions{})
+
+	if remoteCfgHost, err := remotecfg.GetRemoteCfgHost(host); err == nil {
+		components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+	} else {
+		level.Warn(s.log).Log("msg", "failed to get remotecfg service host when iterating components", "err", err)
+	}
+
 	for _, comp := range components {
 		if ctx.Err() != nil {
 			// Stop early if we exited, so we don't do unnecessary work notifying
