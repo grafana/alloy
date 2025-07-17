@@ -14,6 +14,10 @@ v1.10.1
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
+- Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
+
+- Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
+
 v1.10.0
 -----------------
 
