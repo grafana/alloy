@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 	QueryTablesName            = "query_tables"
 )
@@ -131,13 +132,20 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 		}
 
 		var tables []string
-		if tables, err = c.tryParseTableNames(sampleText, digestText); err != nil {
-			parserErr := err
-			if tables, err = c.tryTokenizeTableNames(sampleText, digestText); err != nil {
-				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", err)
+		var parserErr, lexerErr error
+		if tables, parserErr = c.tryParseTableNames(sampleText, digestText); parserErr != nil {
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText); lexerErr != nil {
+				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
 				continue
 			}
 		}
+
+		c.entryHandler.Chan() <- buildLokiEntry(
+			logging.LevelInfo,
+			OP_QUERY_ASSOCIATION,
+			c.instanceKey,
+			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+		)
 
 		for _, table := range tables {
 			c.entryHandler.Chan() <- buildLokiEntry(
