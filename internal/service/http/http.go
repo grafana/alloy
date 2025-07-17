@@ -702,7 +702,7 @@ func printFileRedacted(f *ast.File) ([]byte, error) {
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
 	return func() (service.Host, error) {
-		return remotecfg.GetRemoteCfgHost(host)
+		return remotecfg.GetHost(host)
 	}
 }
 

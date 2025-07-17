@@ -67,7 +67,7 @@ func listComponentsHandler(host service.Host) http.HandlerFunc {
 
 func listComponentsHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remoteCfgHost, err := remotecfg.GetRemoteCfgHost(host)
+		remoteCfgHost, err := remotecfg.GetHost(host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -108,7 +108,7 @@ func getComponentHandler(host service.Host) http.HandlerFunc {
 
 func getComponentHandlerRemoteCfg(host service.Host) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		remoteCfgHost, err := remotecfg.GetRemoteCfgHost(host)
+		remoteCfgHost, err := remotecfg.GetHost(host)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -339,7 +339,7 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 
 func resolveServiceHost(host service.Host, id string) (service.Host, error) {
 	if strings.HasPrefix(id, "remotecfg/") {
-		remoteCfgHost, err := remotecfg.GetRemoteCfgHost(host)
+		remoteCfgHost, err := remotecfg.GetHost(host)
 		if err != nil {
 			return nil, err
 		}

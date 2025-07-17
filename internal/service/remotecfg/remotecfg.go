@@ -592,7 +592,7 @@ func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 	return next
 }
 
-func GetRemoteCfgHost(host service.Host) (service.Host, error) {
+func GetHost(host service.Host) (service.Host, error) {
 	svc, found := host.GetService(ServiceName)
 	if !found {
 		return nil, fmt.Errorf("remote config service not available")
