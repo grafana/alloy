@@ -485,6 +485,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
+		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+		}
 		componentNames := map[string]struct{}{}
 		for _, c := range components {
 			if c.Type != component.TypeBuiltin {
