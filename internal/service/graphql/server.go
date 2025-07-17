@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"net/http"
+	"os"
 	"path"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -26,8 +27,11 @@ func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host) {
 	provider := NewAlloyGraphQLProvider(host)
 
 	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
-	// TODO: Only register the playground in development mode (or similar)
-	r.Handle(path.Join(urlPrefix, "/graphql/playground"), provider.playground)
+
+	// Only register the playground if the environment variable is set
+	if os.Getenv("ALLOY_ENABLE_GRAPHQL_PLAYGROUND") != "" {
+		r.Handle(path.Join(urlPrefix, "/graphql/playground"), provider.playground)
+	}
 }
 
 func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
@@ -39,12 +43,12 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
 
-	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](100))
 
 	srv.Use(extension.Introspection{})
-	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New[string](100),
-	})
+	// srv.Use(extension.AutomaticPersistedQuery{
+	// 	Cache: lru.New[string](100),
+	// })
 
 	return &AlloyGraphQLProvider{
 		srv:        srv,
