@@ -253,6 +253,12 @@ func (s *Service) registerMetrics() {
 // caller.
 // Data must only be called after Run.
 func (s *Service) Data() any {
+	// While the contract specifies that Data must be called after Run,
+	// the other services start in parallel and Cluster attempts to access
+	// the controller via Data, this locking prevents a race.
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
 	if s.ctrl == nil {
 		return Data{Host: nil}
 	}
@@ -282,7 +288,11 @@ var _ service.Service = (*Service)(nil)
 // Run implements [service.Service] and starts the remotecfg service. It will
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
+	// We need to use the mtx here as the cluster service will
+	// start in parallel and attempt to access the controller via Data()
+	s.mut.Lock()
 	s.ctrl = host.NewController(ServiceName)
+	s.mut.Unlock()
 
 	s.fetch()
 	err := s.registerCollector()
