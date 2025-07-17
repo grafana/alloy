@@ -13,39 +13,34 @@ func GetParentFieldPath(textBeforeCursor string) []string {
 		return []string{}
 	}
 
-	// Remove parentheses groups (field arguments)
 	text = removeParenGroups(text)
 
-	// Replace commas with spaces for consistent parsing
+	// Allow for easier tokenization with strategic substitutions
 	text = strings.ReplaceAll(text, ",", " ")
+	text = strings.ReplaceAll(text, "{", " { ")
+	text = strings.ReplaceAll(text, "}", " } ")
 
-	var fieldPath []string
-	var currentField strings.Builder
+	tokens := strings.FieldsSeq(text)
 
-	for _, char := range text {
-		switch char {
-		case '{':
-			// Opening brace - the current field opens a new level
-			if currentField.Len() > 0 {
-				fieldPath = append(fieldPath, currentField.String())
-				currentField.Reset()
+	var path []string
+	var prev string
+	for token := range tokens {
+		switch token {
+		case "{":
+			// Start new level. Append prev field to path
+			path = append(path, prev)
+		case "}":
+			// End current level. Remove prev field from path
+			if len(path) > 0 {
+				path = path[:len(path)-1]
 			}
-		case '}':
-			// Closing brace - we're exiting a level
-			if len(fieldPath) > 0 {
-				fieldPath = fieldPath[:len(fieldPath)-1]
-			}
-			currentField.Reset()
-		case ' ':
-			// Space - new field at current level, reset current field
-			currentField.Reset()
 		default:
-			// Regular character - building field name
-			currentField.WriteRune(char)
+			// Non-paren token (aka a field). Do nothing
 		}
+		prev = token
 	}
 
-	return fieldPath
+	return path
 }
 
 // removeParenGroups removes parentheses groups like (arg: value) from the text

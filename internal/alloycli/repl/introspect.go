@@ -58,7 +58,6 @@ func (iq *IntrospectionData) GetFieldsAtPath(parentPath []string) []Field {
 
 	// Navigate through each segment of the path
 	for _, segment := range parentPath {
-		// Find the field with the current segment name
 		var targetField *Field
 		for _, field := range currentFields {
 			if field.Name == segment {
@@ -68,7 +67,6 @@ func (iq *IntrospectionData) GetFieldsAtPath(parentPath []string) []Field {
 		}
 
 		if targetField == nil {
-			// Field not found at this level
 			return []Field{}
 		}
 
@@ -84,12 +82,11 @@ func (iq *IntrospectionData) GetFieldsAtPath(parentPath []string) []Field {
 			return []Field{}
 		}
 
-		// If it's not an object type, it won't have fields
+		// Only object types have fields
 		if targetType.Kind != "OBJECT" {
 			return []Field{}
 		}
 
-		// Update current fields to the fields of this type
 		currentFields = targetType.Fields
 	}
 

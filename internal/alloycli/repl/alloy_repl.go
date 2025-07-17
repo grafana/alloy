@@ -8,11 +8,8 @@ import (
 )
 
 type AlloyRepl struct {
-	HttpAddr string
-	// storagePath          string
-	MinStability featuregate.Stability
-	// uiPrefix     string
-	// configFormat         string
+	HttpAddr             string
+	MinStability         featuregate.Stability
 	EnableCommunityComps bool
 }
 

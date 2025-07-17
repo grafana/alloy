@@ -2,6 +2,7 @@ package repl
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/c-bata/go-prompt"
 	"github.com/grafana/alloy/internal/service/graphql"
@@ -45,56 +46,45 @@ func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
 		return []prompt.Suggest{}
 	}
 
-	// Find the nearest bracket to the left of cursor
-	nearestBracket := findNearestBracket(d)
-
-	// Determine if the cursor is inside a parentheses pair
-	if nearestBracket == '(' {
-		// TODO: autocomplete argument names
-		return []prompt.Suggest{}
-	}
-
+	nearestBracket := findPreviousBracket(d.TextBeforeCursor())
 	parentPath := GetParentFieldPath(d.TextBeforeCursor())
 
-	// fmt.Printf("parentPath: %v\n", parentPath)
+	suggestions := []prompt.Suggest{}
 
-	response, err := Introspect(c.gqlClient)
-	if err != nil {
-		errorMsg := fmt.Sprintf("%v", err)
+	switch nearestBracket {
+	case '(':
+		suggestions = c.suggestArguments(parentPath)
 
-		// Only display error if it's different from the last one
-		if errorMsg != c.lastError {
-			fmt.Println("Error introspecting schema. Is Alloy running?")
-			fmt.Println(errorMsg)
-			c.lastError = errorMsg
-		}
-		return []prompt.Suggest{}
-	}
-
-	// Reset error state on successful introspection
-	c.lastError = ""
-
-	fields := response.GetFieldsAtPath(parentPath)
-
-	fieldSuggestions := make([]prompt.Suggest, len(fields))
-	for i, field := range fields {
-		if field.Description != nil {
-			fieldSuggestions[i] = prompt.Suggest{
-				Text:        field.Name,
-				Description: *field.Description,
-			}
-		} else {
-			fieldSuggestions[i] = prompt.Suggest{
-				Text: field.Name,
-			}
-		}
+	case '{', '}', ')', 0:
+		suggestions = c.suggestFields(parentPath)
 	}
 
 	if len(parentPath) == 0 {
-		fieldSuggestions = append(fieldSuggestions, topLevelCommands...)
+		suggestions = append(suggestions, topLevelCommands...)
 	}
 
-	return prompt.FilterHasPrefix(fieldSuggestions, d.GetWordBeforeCursor(), true)
+	curWord := GetGraphQlWordBeforeCursor(d)
+
+	return prompt.FilterHasPrefix(suggestions, curWord, true)
+}
+
+// GetGraphQlWordBeforeCursor gets the current word before the cursor, accounting for word
+// boundaries in graphql which include "{" and "("
+func GetGraphQlWordBeforeCursor(doc prompt.Document) string {
+	word := doc.GetWordBeforeCursor()
+	word = strings.ReplaceAll(word, "{", " ")
+	word = strings.ReplaceAll(word, "(", " ")
+
+	if strings.HasSuffix(word, " ") {
+		word = ""
+	} else {
+		parts := strings.Fields(word)
+		if len(parts) > 0 {
+			word = parts[len(parts)-1]
+		}
+	}
+
+	return word
 }
 
 // isInsideQuotedString determines if the cursor is currently inside a quoted string
@@ -121,11 +111,9 @@ func isInsideQuotedString(text string) bool {
 	return insideQuote
 }
 
-// findNearestBracket finds the nearest bracket (paren or curly brace)
-// to the left of the current cursor position
-func findNearestBracket(d prompt.Document) rune {
-	textBeforeCursor := d.TextBeforeCursor()
-
+// findPreviousBracket finds the nearest bracket (paren or curly brace) to the left of the current
+// cursor position
+func findPreviousBracket(textBeforeCursor string) rune {
 	for i := len(textBeforeCursor) - 1; i >= 0; i-- {
 		char := rune(textBeforeCursor[i])
 		if brackets[char] {
@@ -133,6 +121,45 @@ func findNearestBracket(d prompt.Document) rune {
 		}
 	}
 
-	// Return null rune if no bracket found
 	return 0
+}
+
+func (c *completer) suggestArguments(_ []string) []prompt.Suggest {
+	// TODO: autocomplete argument names
+	return []prompt.Suggest{}
+}
+
+func (c *completer) suggestFields(parentPath []string) []prompt.Suggest {
+	response, err := Introspect(c.gqlClient)
+	if err != nil {
+		errorMsg := fmt.Sprintf("%v", err)
+
+		// Only display error if it's different from the last one
+		if errorMsg != c.lastError {
+			fmt.Println("Error introspecting schema. Is Alloy running?")
+			fmt.Println(errorMsg)
+			c.lastError = errorMsg
+		}
+		return []prompt.Suggest{}
+	}
+
+	c.lastError = ""
+
+	fields := response.GetFieldsAtPath(parentPath)
+
+	fieldSuggestions := make([]prompt.Suggest, len(fields))
+	for i, field := range fields {
+		if field.Description != nil {
+			fieldSuggestions[i] = prompt.Suggest{
+				Text:        field.Name,
+				Description: *field.Description,
+			}
+		} else {
+			fieldSuggestions[i] = prompt.Suggest{
+				Text: field.Name,
+			}
+		}
+	}
+
+	return fieldSuggestions
 }

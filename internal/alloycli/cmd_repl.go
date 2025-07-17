@@ -12,11 +12,8 @@ import (
 
 func replCommand() *cobra.Command {
 	r := &repl.AlloyRepl{
-		HttpAddr: "http://127.0.0.1:12345/graphql",
-		// storagePath:    "data-alloy/",
+		HttpAddr:     "http://127.0.0.1:12345/graphql",
 		MinStability: featuregate.StabilityGenerallyAvailable,
-		// uiPrefix:     "/",
-		// configFormat: "alloy",
 	}
 
 	cmd := &cobra.Command{
@@ -28,6 +25,13 @@ func replCommand() *cobra.Command {
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Print(`
+╔═══════════════════════════════════════════════════════════════════════╗
+║  This command is EXPERIMENTAL and may change or be removed in future  ║
+║  versions. Use with caution in production environments.               ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+`)
 			return r.Run(cmd)
 		},
 	}
@@ -40,8 +44,6 @@ func replCommand() *cobra.Command {
 			r.HttpAddr,
 			"Address of the GraphQL endpoint",
 		)
-	// cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to discover the HTTP UI at")
-
 	// Config flags
 	// cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
 	// cmd.Flags().BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
