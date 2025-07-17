@@ -42,6 +42,12 @@ Main (unreleased)
 
 - Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
 
+### Bugfixes
+
+- Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
+
+- Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
+
 v1.10.0
 -----------------
 
