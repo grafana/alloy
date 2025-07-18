@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -167,7 +168,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 				picosecondsToMilliseconds(blockingLockTime),
 			)
 
-			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
 		}
 	}
 
