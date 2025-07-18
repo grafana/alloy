@@ -54,7 +54,7 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 	// 	Cache: lru.New[string](100),
 	// })
 
-	// Add global 10-second timeout for all GraphQL operations
+	// Add global timeout for all GraphQL operations
 	srv.AroundRootFields(func(ctx context.Context, next graphql.RootResolver) graphql.Marshaler {
 		timeoutCtx, cancel := context.WithTimeout(ctx, globalRequestTimeout)
 		defer cancel()
