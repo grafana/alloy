@@ -49,7 +49,8 @@ Each `PodLogs` resource describes a set of pods to tail logs from.
 
 When `tail_from_end` is `false` (the default), the component reads all available logs from the Kubernetes API for newly discovered Pod containers.
 For long-running Pods, this can result in a large volume of logs being processed, which may be rejected by the downstream Loki instance if they are too old.
-Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer.
+Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer. 
+Note that If a last-read offset is already saved for a pod, the component will resume from that position and ignore the `tail_from_end` argument.
 
 ## `PodLogs` custom resource
 
