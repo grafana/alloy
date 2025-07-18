@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -140,7 +141,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
 			c.instanceKey,
@@ -148,7 +149,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 		)
 
 		for _, table := range tables {
-			c.entryHandler.Chan() <- buildLokiEntry(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,

@@ -14,6 +14,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -245,7 +246,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 		schemas = append(schemas, schema)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
 			c.instanceKey,
@@ -290,7 +291,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				b64TableSpec:  "",
 			})
 
-			c.entryHandler.Chan() <- buildLokiEntry(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
 				c.instanceKey,
@@ -333,7 +334,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			}
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
 			c.instanceKey,

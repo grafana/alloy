@@ -1,4 +1,4 @@
-package collector
+package database_observability
 
 import (
 	"fmt"
@@ -8,14 +8,13 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func buildLokiEntryWithTimestamp(level logging.Level, op, instanceKey, line string, timestamp int64) loki.Entry {
+func BuildLokiEntryWithTimestamp(level logging.Level, op, instanceKey, line string, timestamp int64) loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{
-			"job":      database_observability.JobName,
+			"job":      JobName,
 			"op":       model.LabelValue(op),
 			"instance": model.LabelValue(instanceKey),
 		},
@@ -26,6 +25,6 @@ func buildLokiEntryWithTimestamp(level logging.Level, op, instanceKey, line stri
 	}
 }
 
-func buildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
-	return buildLokiEntryWithTimestamp(level, op, instanceKey, line, time.Now().UnixNano())
+func BuildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
+	return BuildLokiEntryWithTimestamp(level, op, instanceKey, line, time.Now().UnixNano())
 }

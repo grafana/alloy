@@ -18,7 +18,9 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/buger/jsonparser"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -667,7 +669,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_EXPLAIN_PLAN_OUTPUT,
 			c.instanceKey,
