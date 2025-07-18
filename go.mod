@@ -26,7 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.80.2
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.35.4
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmatcuk/doublestar v1.3.4
+	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
 	github.com/buger/jsonparser v1.1.1
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4
@@ -511,7 +511,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/briandowns/spinner v1.23.0 // indirect
 	github.com/buger/goterm v1.0.4 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500 // indirect
@@ -1030,7 +1029,10 @@ require (
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 )
 
-require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
+require (
+	github.com/bmatcuk/doublestar v1.1.1
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
+)
 
 // NOTE: replace directives below must always be *temporary*.
 //
