@@ -3,22 +3,21 @@ package repl
 import (
 	"github.com/c-bata/go-prompt"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/service/graphql"
+	"github.com/grafana/alloy/internal/service/graphql/client"
 	"github.com/spf13/cobra"
 )
 
 type AlloyRepl struct {
-	HttpAddr             string
-	MinStability         featuregate.Stability
-	EnableCommunityComps bool
+	HttpAddr     string
+	MinStability featuregate.Stability
 }
 
-func (fr *AlloyRepl) Run(cmd *cobra.Command) error {
-	client := graphql.NewGraphQlClient(fr.HttpAddr)
+func (ar *AlloyRepl) Run(cmd *cobra.Command) error {
+	client := client.NewGraphQlClient(ar.HttpAddr)
 
 	p := prompt.New(
-		NewExecutor(fr, client).Execute,
-		NewCompleter(fr, client).Complete,
+		NewExecutor(ar, client).Execute,
+		NewCompleter(ar, client).Complete,
 		prompt.OptionTitle("alloy-repl: interactive alloy diagnostics"),
 		prompt.OptionPrefix("alloy >> "),
 		prompt.OptionInputTextColor(prompt.Green),

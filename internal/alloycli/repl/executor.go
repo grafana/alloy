@@ -5,16 +5,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafana/alloy/internal/service/graphql"
+	"github.com/grafana/alloy/internal/service/graphql/client"
+	"github.com/grafana/alloy/internal/service/graphql/utils"
 )
 
 type executor struct {
 	cfg       *AlloyRepl
-	gqlClient *graphql.GraphQlClient
+	gqlClient *client.GraphQlClient
 	commands  map[string]func()
 }
 
-func NewExecutor(cfg *AlloyRepl, gqlClient *graphql.GraphQlClient) *executor {
+func NewExecutor(cfg *AlloyRepl, gqlClient *client.GraphQlClient) *executor {
 	e := &executor{
 		cfg:       cfg,
 		gqlClient: gqlClient,
@@ -58,7 +59,7 @@ func (e *executor) executeQuery(query string) {
 		return
 	}
 
-	printGraphQlResponse(response)
+	utils.PrintGraphQlResponse(response)
 }
 
 func (e *executor) exitCommand() {

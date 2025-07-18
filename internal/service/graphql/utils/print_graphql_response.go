@@ -1,13 +1,13 @@
-package repl
+package utils
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/grafana/alloy/internal/service/graphql"
+	"github.com/grafana/alloy/internal/service/graphql/client"
 )
 
-func printGraphQlResponse(parsedResponse *graphql.GraphQlResponse) {
+func PrintGraphQlResponse(parsedResponse *client.GraphQlResponse) {
 	prettyBytes, err := json.MarshalIndent(parsedResponse.Data, "", "  ")
 	if err != nil {
 		fmt.Printf("Failed to pretty print response data: %v\n", err)

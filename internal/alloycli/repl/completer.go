@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/c-bata/go-prompt"
-	"github.com/grafana/alloy/internal/service/graphql"
+	"github.com/grafana/alloy/internal/service/graphql/client"
 )
 
 type completer struct {
 	cfg       *AlloyRepl
-	gqlClient *graphql.GraphQlClient
+	gqlClient *client.GraphQlClient
 	lastError string
 }
 
@@ -36,7 +36,7 @@ var brackets = map[rune]bool{
 	'}': true,
 }
 
-func NewCompleter(cfg *AlloyRepl, gqlClient *graphql.GraphQlClient) *completer {
+func NewCompleter(cfg *AlloyRepl, gqlClient *client.GraphQlClient) *completer {
 	return &completer{cfg: cfg, gqlClient: gqlClient}
 }
 

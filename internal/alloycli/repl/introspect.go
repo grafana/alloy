@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/service/graphql"
+	"github.com/grafana/alloy/internal/service/graphql/client"
 )
 
 // Cache for introspection data
@@ -19,7 +19,7 @@ var (
 )
 
 // Introspect executes the introspection query and returns the parsed response
-func Introspect(gqlClient *graphql.GraphQlClient) (*IntrospectionData, error) {
+func Introspect(gqlClient *client.GraphQlClient) (*IntrospectionData, error) {
 	introspectionCache.mutex.Lock()
 	defer introspectionCache.mutex.Unlock()
 
