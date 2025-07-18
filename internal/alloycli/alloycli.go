@@ -27,8 +27,8 @@ func Run() {
 		convertCommand(),
 		fmtCommand(),
 		gqlCommand(),
-		runCommand(),
 		replCommand(),
+		runCommand(),
 		toolsCommand(),
 		validateCommand(),
 	)
