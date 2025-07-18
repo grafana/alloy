@@ -24,10 +24,13 @@ func gqlCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "gql <query>",
-		Short: "Runs a GraphQL query against the Alloy instance",
+		Short: "Runs a GraphQL query against the Alloy instance (experimental)",
 		Long: `The gql subcommand runs a GraphQL query against the Alloy instance.
+The query is provided as a single argument to the command.
 
-The query is provided as a single argument to the command.`,
+This command is experimental and may be modified or removed in the future. Use
+with caution in production.
+`,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		Aliases:      []string{"graphql"},

@@ -1,10 +1,13 @@
 package graphql
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path"
+	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
@@ -17,6 +20,7 @@ import (
 )
 
 const defaultPort = "8080"
+const globalRequestTimeout = 10 * time.Second
 
 type AlloyGraphQLProvider struct {
 	srv        *handler.Server
@@ -49,6 +53,13 @@ func NewAlloyGraphQLProvider(host service.Host) *AlloyGraphQLProvider {
 	// srv.Use(extension.AutomaticPersistedQuery{
 	// 	Cache: lru.New[string](100),
 	// })
+
+	// Add global 10-second timeout for all GraphQL operations
+	srv.AroundRootFields(func(ctx context.Context, next graphql.RootResolver) graphql.Marshaler {
+		timeoutCtx, cancel := context.WithTimeout(ctx, globalRequestTimeout)
+		defer cancel()
+		return next(timeoutCtx)
+	})
 
 	return &AlloyGraphQLProvider{
 		srv:        srv,

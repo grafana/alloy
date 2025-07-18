@@ -2,6 +2,7 @@ package repl
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
@@ -57,11 +58,15 @@ func (c *completer) Complete(d prompt.Document) []prompt.Suggest {
 
 	case '{', '}', ')', 0:
 		suggestions = c.suggestFields(parentPath)
+		if len(parentPath) == 0 {
+			suggestions = append(suggestions, topLevelCommands...)
+		}
 	}
 
-	if len(parentPath) == 0 {
-		suggestions = append(suggestions, topLevelCommands...)
-	}
+	// Sort suggestions alphabetically
+	slices.SortFunc(suggestions, func(a, b prompt.Suggest) int {
+		return strings.Compare(a.Text, b.Text)
+	})
 
 	curWord := GetGraphQlWordBeforeCursor(d)
 

@@ -1,5 +1,6 @@
 package repl
 
+// This is the standard introspection query for GraphQL. It is used to get the GraphQL API schema.
 const introspectionQuery = `
   query IntrospectionQuery {
     __schema {

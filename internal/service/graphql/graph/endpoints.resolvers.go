@@ -13,7 +13,7 @@ import (
 
 // Endpoints is the resolver for the endpoints field.
 func (r *queryResolver) Endpoints(ctx context.Context) ([]model.Endpoint, error) {
-	panic(fmt.Errorf("not implemented: Endpoints - endpoints"))
+	return nil, fmt.Errorf("Not yet implemented")
 }
 
 // Endpoint is the resolver for the endpoint field.

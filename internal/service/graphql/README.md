@@ -13,7 +13,8 @@ or
 make generate-graphql-stubs
 ```
 
-From here, you can start Alloy like normal and connect to the playground at
-http://localhost/graphql/playground
+From here, you can start Alloy like normal and the GraphQL API will be reachable at
+http://localhost/graphql
 
-The GraphQL API itself is located at http://localhost/graphql
+To enable the GraphQL Playground, export `ALLOY_ENABLE_GRAPHQL_PLAYGROUND=1` and connect to the UI
+at http://localhost/graphql/playground
