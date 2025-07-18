@@ -88,8 +88,13 @@ type FSNotifyOptions struct {
 func NewFSNotify(opts FSNotifyOptions) (*FSNotify, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		diagnostics := inotifyinfo.DiagnosticsJson(opts.Logger)
-		level.Error(opts.Logger).Log("msg", "failed to create fsnotify watcher", "err", err, "inotify diagnostics", diagnostics)
+		kvs := []interface{}{"msg", "failed to create fsnotify watcher", "err", err}
+
+		if diags := inotifyinfo.DiagnosticsJson(opts.Logger); diags != "" {
+			kvs = append(kvs, "diagnostics", diags)
+		}
+
+		level.Error(opts.Logger).Log(kvs...)
 		return nil, err
 	}
 	if err := w.Add(opts.Filename); err != nil {
