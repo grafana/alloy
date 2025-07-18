@@ -453,7 +453,6 @@ type queryInfo struct {
 	schemaName             string
 	digest                 string
 	queryText              string
-	failureBackoff         bool
 	failureCount           int
 	roundsSinceLastFailure int
 }
@@ -481,6 +480,7 @@ type ExplainPlan struct {
 	dbVersion            string
 	scrapeInterval       time.Duration
 	queryCache           map[string]*queryInfo
+	queryBackoffList     map[string]*queryInfo
 	queryDenylist        map[string]*queryInfo
 	perScrapeRatio       float64
 	currentBatchSize     int
@@ -512,6 +512,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		scrapeInterval:       args.ScrapeInterval,
 		queryCache:           make(map[string]*queryInfo),
 		queryDenylist:        make(map[string]*queryInfo),
+		queryBackoffList:     make(map[string]*queryInfo),
 		perScrapeRatio:       args.PerScrapeRatio,
 		failureBackoffRounds: args.FailureBackoffRounds,
 		maxFailureCount:      args.MaxFailureCount,
@@ -575,6 +576,15 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	// Add queries with expired backoff first
+	for _, qi := range c.queryBackoffList {
+		if qi.roundsSinceLastFailure >= c.failureBackoffRounds {
+			qi.roundsSinceLastFailure = 0
+			c.queryCache[qi.key()] = qi
+			delete(c.queryBackoffList, qi.key())
+		}
+	}
+
 	// Populate cache
 	for rs.Next() {
 		if err := rs.Err(); err != nil {
@@ -583,7 +593,6 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		}
 
 		qi := &queryInfo{
-			failureBackoff:         false,
 			failureCount:           0,
 			roundsSinceLastFailure: 0,
 		}
@@ -612,35 +621,29 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 	}
 
+	for _, bqi := range c.queryBackoffList {
+		bqi.roundsSinceLastFailure++
+	}
+
 	processedCount := 0
 	for _, qi := range c.queryCache {
 		failed := false
 		if processedCount >= c.currentBatchSize {
 			break
 		}
-		if qi.failureBackoff {
-			if qi.roundsSinceLastFailure >= c.failureBackoffRounds {
-				qi.failureBackoff = false
-				qi.roundsSinceLastFailure = 0
-			} else {
-				qi.roundsSinceLastFailure++
-				continue
-			}
-		}
 		logger := log.With(c.logger, "digest", qi.digest)
 
 		defer func(failed *bool) {
 			if *failed {
 				qi.failureCount++
-				qi.failureBackoff = true
 				if qi.failureCount >= c.maxFailureCount {
-					delete(c.queryCache, qi.key())
 					c.queryDenylist[qi.key()] = qi
 					level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
+				} else {
+					c.queryBackoffList[qi.key()] = qi
 				}
-			} else {
-				delete(c.queryCache, qi.key())
 			}
+			delete(c.queryCache, qi.key())
 			processedCount++
 		}(&failed)
 
