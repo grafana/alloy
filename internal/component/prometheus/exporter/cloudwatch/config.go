@@ -3,12 +3,12 @@ package cloudwatch
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"log/slog"
 	"time"
 
 	"github.com/go-kit/log"
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
-	"github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
-	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
+	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
@@ -211,7 +211,7 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	modelConf, err := conf.Validate(logging.NewNopLogger())
+	modelConf, err := conf.Validate(slog.New(slog.DiscardHandler))
 	if err != nil {
 		return yaceModel.JobsConfig{}, err
 	}
@@ -231,7 +231,7 @@ func (tags Tags) toYACE() []yaceConf.Tag {
 func toYACERoles(rs []Role) []yaceConf.Role {
 	yaceRoles := []yaceConf.Role{}
 	// YACE defaults to an empty role, which means the environment configured role is used
-	// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
+	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
 	if len(rs) == 0 {
 		yaceRoles = append(yaceRoles, yaceConf.Role{})
 	}
