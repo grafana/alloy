@@ -29,16 +29,16 @@ func DiagnosticsJson(logger log.Logger) string {
 	return diagnostics(logger).json(logger)
 }
 
-func diagnostics(logger log.Logger) *inotifyInfo {
+func diagnostics(logger log.Logger) inotifyInfo {
 	fs, err := procfs.NewFS("/proc")
 	if err != nil {
 		level.Error(logger).Log("msg", "inotify diagnostics: failed to create procfs", "err", err)
-		return nil
+		return inotifyInfo{}
 	}
 	procs, err := fs.AllProcs()
 	if err != nil {
 		level.Error(logger).Log("msg", "inotify diagnostics: failed to get all procs", "err", err)
-		return nil
+		return inotifyInfo{}
 	}
 
 	res := inotifyInfo{
@@ -49,6 +49,7 @@ func diagnostics(logger log.Logger) *inotifyInfo {
 		fds, err := proc.FileDescriptorsInfo()
 		if err != nil {
 			level.Error(logger).Log("msg", "inotify diagnostics: failed to get file descriptors", "err", err)
+			continue
 		}
 
 		instances := 0
@@ -83,7 +84,7 @@ func diagnostics(logger log.Logger) *inotifyInfo {
 	res.MaxUserInstances = readInotifyLimits(logger, "max_user_instances")
 	res.MaxUserWatches = readInotifyLimits(logger, "max_user_watches")
 
-	return &res
+	return res
 }
 
 func readInotifyLimits(logger log.Logger, filename string) int {
@@ -101,11 +102,12 @@ func readInotifyLimits(logger log.Logger, filename string) int {
 	return data
 }
 
-func (n *inotifyInfo) json(logger log.Logger) string {
+func (n inotifyInfo) json(logger log.Logger) string {
 	output, err := json.Marshal(n)
 	if err != nil {
 		level.Error(logger).Log("msg", "inotify diagnostics: failed to marshal inotifyInfo", "err", err)
 		return `{ "error": "failed to generate inotify diagnostics" }`
 	}
+
 	return string(output)
 }
