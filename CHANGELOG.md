@@ -114,6 +114,8 @@ v1.10.0
 
 - Add `storage` and `start_from` args to cloudwatch logs receiver. (@boernd)
 
+- Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
 - Reduced allocation in Loki processing pipelines. (@thampiotr)
 
 - Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
