@@ -14,6 +14,28 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
+## v1.11 (unreleased)
+
+### Breaking changes due to major version upgrade of Prometheus
+
+Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
+
+- The `.` pattern in regular expressions in PromQL matches newline characters now. With this change a regular expressions like `.*` matches strings that include `\n`. This applies to matchers in queries and relabel configs in Prometheus and Loki components.
+
+- The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to `false` by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
+
+- Prometheus components such as `prometheus.scrape` and `prometheus.operator.*` now support UTF-8 in metric and label names by default. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"` and optionally setting the `metric_name_escaping_scheme` to a desired value. See `prometheus.scrape` reference documentation.
+
+- The experimental CLI flag `--feature.prometheus.metric-validation-scheme` has been deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component.
+
+- Log message format has changed for some of the `prometheus.*` components as part of the upgrade to Prometheus v3.
+
+- The values of the `le` label of classic histograms and the `quantile` label of summaries are now normalized upon ingestion. In previous Alloy versions, that used Prometheus v2, the value of these labels depended on the scrape protocol (protobuf vs text format) in some situations. This led to label values changing based on the scrape protocol. E.g. a metric exposed as `my_classic_hist{le="1"}` would be ingested as `my_classic_hist{le="1"}` via the text format, but as `my_classic_hist{le="1.0"}` via protobuf. This changed the identity of the metric and caused problems when querying the metric. In current Alloy release, which uses Prometheus v3, these label values will always be normalized to a float like representation. I.e. the above example will always result in `my_classic_hist{le="1.0"}` being ingested into Prometheus, no matter via which protocol. The effect of this change is that alerts, recording rules and dashboards that directly reference label values as whole numbers such as `le="1"` will stop working.
+
+  The recommended way to deal with this change is to fix references to integer `le` and `quantile` label values, but otherwise do nothing and accept that some queries that span the transition time will produce inaccurate or unexpected results.
+
+See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
+
 ## v1.9
 
 ### Breaking change: The `prometheus.exporter.oracledb` component now embeds a different exporter
@@ -30,6 +52,40 @@ The previously undocumented argument `custom_metrics` is now expecting a list of
 ### Breaking change: The `enable_context_propagation` argument in `beyla.ebpf` has been replaced with the `context_propagation` argument.
 
 Set `enable_context_propagation` to `all` to get the same behaviour as `enable_context_propagation` being set to `true`.
+
+### Breaking change: In `prometheus.exporter.windows`, the `service` and `msmq` collectors no longer work with WMI
+
+The `msmq` block has been removed. The `enable_v2_collector`, `where_clause`, and `use_api` attributes in the `service` block are also removed.
+
+Prior to Alloy v1.9.0, the `service` collector exists in 2 different versions. 
+Version 1 used WMI (Windows Management Instrumentation) to query all services and was able to provide additional information. 
+Version 2 is a more efficient solution by directly connecting to the service manager, 
+but is not able to provide additional information like run_as or start configuration.
+
+In Alloy v1.9.0 the Version 1 collector was removed, hence why some arguments and blocks were removed.
+In Alloy v1.9.2 those arguments and blocks were re-introduced as a no-op in order to make migrations easier for customers.
+
+Due to this change, the metrics produced by `service` collector are different in v1.9.0 and above.
+The `msmq` collector metrics are unchanged.
+
+Example V2 `service` metrics:
+
+```
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="continue pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="pause pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="paused"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="running"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="start pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="stop pending"} 0
+windows_service_state{display_name="Declared Configuration(DC) service",name="dcsvc",status="stopped"} 1
+```
+
+For more information on V1 and V2 `service` metrics, see the upstream exporter documentation for [version 0.27.3 of the Windows Exporter][win-exp-svc-0-27-3],
+which is the version used in Alloy v1.8.3. 
+Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-27-3].
+
+[win-exp-svc-0-27-3]: https://github.com/prometheus-community/windows_exporter/blob/v0.27.3/docs/collector.service.md
+[win-exp-svc-0-30-7]: https://github.com/prometheus-community/windows_exporter/blob/v0.30.7/docs/collector.service.md
 
 ## v1.6
 

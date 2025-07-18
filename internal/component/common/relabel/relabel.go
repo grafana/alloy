@@ -88,8 +88,8 @@ type Regexp struct {
 }
 
 func newRegexp(s string) (Regexp, error) {
-	re, err := regexp.Compile("^(?:" + s + ")$")
-	return Regexp{re}, err
+	regex, err := regexp.Compile("^(?s:" + s + ")$")
+	return Regexp{regex}, err
 }
 
 func mustNewRegexp(s string) Regexp {
@@ -110,20 +110,23 @@ func (re Regexp) MarshalText() (text []byte, err error) {
 
 // UnmarshalText implements encoding.TextUnmarshaler for Regexp.
 func (re *Regexp) UnmarshalText(text []byte) error {
-	regex, err := regexp.Compile("^(?:" + string(text) + ")$")
+	r, err := newRegexp(string(text))
 	if err != nil {
 		return err
 	}
-
-	*re = Regexp{regex}
+	*re = r
 	return nil
 }
 
 // String returns the original string used to compile the regular expression.
 func (re Regexp) String() string {
+	if re.Regexp == nil {
+		return ""
+	}
+
 	str := re.Regexp.String()
-	// Trim the anchor `^(?:` prefix and `)$` suffix.
-	return str[4 : len(str)-2]
+	// Trim the anchor `^(?s:` prefix and `)$` suffix.
+	return str[5 : len(str)-2]
 }
 
 // Config describes a relabelling step to be applied on a target.

@@ -368,7 +368,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
    {{< code >}}
 
    ```macos
-   brew services restart alloy
+   brew services restart grafana/grafana/alloy
    ```
 
    ```linux

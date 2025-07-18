@@ -3,22 +3,25 @@ package receive_http
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component"
-	fnet "github.com/grafana/alloy/internal/component/common/net"
-	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
+
+	"github.com/grafana/alloy/internal/component"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
@@ -67,12 +70,19 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	//TODO: Make this configurable in the future?
+	// TODO: Make these configurable in the future?
 	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}
+	ingestCTZeroSample := false
 
 	c := &Component{
-		opts:               opts,
-		handler:            remote.NewWriteHandler(opts.Logger, opts.Registerer, fanout, supportedRemoteWriteProtoMsgs),
+		opts: opts,
+		handler: remote.NewWriteHandler(
+			slog.New(logging.NewSlogGoKitHandler(opts.Logger)),
+			opts.Registerer,
+			fanout,
+			supportedRemoteWriteProtoMsgs,
+			ingestCTZeroSample,
+		),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
 	}

@@ -30,25 +30,24 @@ type Arguments struct {
 	EnabledCollectors []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Collector-specific config options
-	Dfsr          DfsrConfig          `alloy:"dfsr,block,optional"`
-	Exchange      ExchangeConfig      `alloy:"exchange,block,optional"`
-	IIS           IISConfig           `alloy:"iis,block,optional"`
-	LogicalDisk   LogicalDiskConfig   `alloy:"logical_disk,block,optional"`
-	MSMQ          *MSMQConfig         `alloy:"msmq,block,optional"`
-	MSSQL         MSSQLConfig         `alloy:"mssql,block,optional"`
-	Network       NetworkConfig       `alloy:"network,block,optional"`
-	PhysicalDisk  PhysicalDiskConfig  `alloy:"physical_disk,block,optional"`
-	Printer       PrinterConfig       `alloy:"printer,block,optional"`
-	Process       ProcessConfig       `alloy:"process,block,optional"`
-	ScheduledTask ScheduledTaskConfig `alloy:"scheduled_task,block,optional"`
-	Service       ServiceConfig       `alloy:"service,block,optional"`
-	SMB           SMBConfig           `alloy:"smb,block,optional"`
-	SMBClient     SMBClientConfig     `alloy:"smb_client,block,optional"`
-	SMTP          SMTPConfig          `alloy:"smtp,block,optional"`
-	TextFile      TextFileConfig      `alloy:"text_file,block,optional"`
-	TCP           TCPConfig           `alloy:"tcp,block,optional"`
-	// Currently disabled because the config is not exposed upstream.
-	//Update             UpdateConfig             `alloy:"update,block,optional"`
+	Dfsr               DfsrConfig               `alloy:"dfsr,block,optional"`
+	Exchange           ExchangeConfig           `alloy:"exchange,block,optional"`
+	IIS                IISConfig                `alloy:"iis,block,optional"`
+	LogicalDisk        LogicalDiskConfig        `alloy:"logical_disk,block,optional"`
+	MSMQ               *MSMQConfig              `alloy:"msmq,block,optional"`
+	MSSQL              MSSQLConfig              `alloy:"mssql,block,optional"`
+	Network            NetworkConfig            `alloy:"network,block,optional"`
+	PhysicalDisk       PhysicalDiskConfig       `alloy:"physical_disk,block,optional"`
+	Printer            PrinterConfig            `alloy:"printer,block,optional"`
+	Process            ProcessConfig            `alloy:"process,block,optional"`
+	ScheduledTask      ScheduledTaskConfig      `alloy:"scheduled_task,block,optional"`
+	Service            ServiceConfig            `alloy:"service,block,optional"`
+	SMB                SMBConfig                `alloy:"smb,block,optional"`
+	SMBClient          SMBClientConfig          `alloy:"smb_client,block,optional"`
+	SMTP               SMTPConfig               `alloy:"smtp,block,optional"`
+	TextFile           TextFileConfig           `alloy:"text_file,block,optional"`
+	TCP                TCPConfig                `alloy:"tcp,block,optional"`
+	Update             UpdateConfig             `alloy:"update,block,optional"`
 	Filetime           FiletimeConfig           `alloy:"filetime,block,optional"`
 	PerformanceCounter PerformanceCounterConfig `alloy:"performancecounter,block,optional"`
 	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`

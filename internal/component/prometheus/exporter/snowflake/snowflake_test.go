@@ -12,14 +12,14 @@ import (
 
 func TestAlloyUnmarshal(t *testing.T) {
 	alloyConfig := `
-	account_name 				   = "some_account"
-	username     				   = "some_user"
-	password     				 	 = "some_password"
-	private_key_path 		 	 = "/some/path/rsa_key.p8"
-	private_key_password 	 = "some_password"
-	role         					 = "some_role"
-	warehouse    				 	 = "some_warehouse"
-	exclude_deleted_tables = true
+	account_name             = "some_account"
+	username                 = "some_user"
+	password                 = "some_password"
+	private_key_path         = "/some/path/rsa_key.p8"
+	private_key_password     = "some_password"
+	role                     = "some_role"
+	warehouse                = "some_warehouse"
+	exclude_deleted_tables   = true
 	`
 
 	var args Arguments
@@ -27,14 +27,15 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := Arguments{
-		AccountName:          "some_account",
-		Username:             "some_user",
-		Password:             alloytypes.Secret("some_password"),
-		PrivateKeyPath:       "/some/path/rsa_key.p8",
-		PrivateKeyPassword:   alloytypes.Secret("some_password"),
-		Role:                 "some_role",
-		Warehouse:            "some_warehouse",
-		ExcludeDeletedTables: true,
+		AccountName:           "some_account",
+		Username:              "some_user",
+		Password:              alloytypes.Secret("some_password"),
+		PrivateKeyPath:        "/some/path/rsa_key.p8",
+		PrivateKeyPassword:    alloytypes.Secret("some_password"),
+		Role:                  "some_role",
+		Warehouse:             "some_warehouse",
+		ExcludeDeletedTables:  true,
+		EnableDriverTraceLogs: false, // Default value
 	}
 
 	require.Equal(t, expected, args)
@@ -42,13 +43,14 @@ func TestAlloyUnmarshal(t *testing.T) {
 
 func TestConvert(t *testing.T) {
 	alloyConfig := `
-	account_name           = "some_account"
-	username               = "some_user"
-	password               = "some_password"
-	private_key_path       = "/some/path/rsa_key.p8"
-	private_key_password   = "some_password"
-	warehouse              = "some_warehouse"
-	exclude_deleted_tables = true
+	account_name             = "some_account"
+	username                 = "some_user"
+	password                 = "some_password"
+	private_key_path         = "/some/path/rsa_key.p8"
+	private_key_password     = "some_password"
+	warehouse                = "some_warehouse"
+	exclude_deleted_tables   = true
+	enable_tracing           = true
 	`
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyConfig), &args)
@@ -57,14 +59,15 @@ func TestConvert(t *testing.T) {
 	res := args.Convert()
 
 	expected := snowflake_exporter.Config{
-		AccountName:          "some_account",
-		Username:             "some_user",
-		Password:             config_util.Secret("some_password"),
-		PrivateKeyPath:       "/some/path/rsa_key.p8",
-		PrivateKeyPassword:   config_util.Secret("some_password"),
-		Role:                 DefaultArguments.Role,
-		Warehouse:            "some_warehouse",
-		ExcludeDeletedTables: true,
+		AccountName:           "some_account",
+		Username:              "some_user",
+		Password:              config_util.Secret("some_password"),
+		PrivateKeyPath:        "/some/path/rsa_key.p8",
+		PrivateKeyPassword:    config_util.Secret("some_password"),
+		Role:                  DefaultArguments.Role,
+		Warehouse:             "some_warehouse",
+		ExcludeDeletedTables:  true,
+		EnableDriverTraceLogs: true,
 	}
 	require.Equal(t, expected, *res)
 }

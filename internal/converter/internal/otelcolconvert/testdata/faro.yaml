@@ -3,6 +3,9 @@ receivers:
     protocols:
       grpc:
       http:
+  
+  faro:
+    endpoint: localhost:8080
 
 exporters:
   faro:
@@ -10,15 +13,11 @@ exporters:
 
 service:
   pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: []
-      exporters: [faro]
     logs:
-      receivers: [otlp]
+      receivers: [otlp, faro]
       processors: []
       exporters: [faro]
     traces:
-      receivers: [otlp]
+      receivers: [otlp, faro]
       processors: []
       exporters: [faro]

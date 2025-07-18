@@ -175,6 +175,7 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 
 	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
 	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
+	scrapeConfig.MetricNameValidationScheme = prom_config.UTF8ValidationConfig
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 
@@ -310,6 +311,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	scrapeConfig.ScrapeTimeout = commonConfig.Autoscrape.ScrapeTimeout
 	// NOTE: We use the default value, since Agent static mode doesn't support setting this.
 	scrapeConfig.ScrapeProtocols = prom_config.DefaultScrapeProtocols
+	scrapeConfig.MetricNameValidationScheme = prom_config.UTF8ValidationConfig
 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 

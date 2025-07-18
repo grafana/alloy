@@ -212,7 +212,7 @@ func TestValidate(t *testing.T) {
 	var args filelog.Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error decoding 'parse_from': unrecognized prefix")
+	require.Contains(t, err.Error(), "'parse_from' unrecognized prefix")
 	require.Contains(t, err.Error(), "'max_concurrent_files' must be positive")
 	require.Contains(t, err.Error(), "'max_batches' must not be negative")
 	require.Contains(t, err.Error(), "invalid 'encoding': unsupported encoding 'webdings'")

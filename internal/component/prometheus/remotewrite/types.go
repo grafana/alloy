@@ -16,15 +16,18 @@ import (
 	"github.com/grafana/regexp"
 	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	promsigv4 "github.com/prometheus/common/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	promsigv4 "github.com/prometheus/sigv4"
 )
 
 // Defaults for config blocks.
 var (
+	PrometheusProtobufMessageV1 = string(config.RemoteWriteProtoMsgV1)
+	PrometheusProtobufMessageV2 = string(config.RemoteWriteProtoMsgV2)
+
 	DefaultArguments = Arguments{
 		WALOptions: DefaultWALOptions,
 	}
@@ -78,6 +81,7 @@ type EndpointOptions struct {
 	Headers              map[string]string       `alloy:"headers,attr,optional"`
 	SendExemplars        bool                    `alloy:"send_exemplars,attr,optional"`
 	SendNativeHistograms bool                    `alloy:"send_native_histograms,attr,optional"`
+	ProtobufMessage      string                  `alloy:"protobuf_message,attr,optional"`
 	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
 	QueueOptions         *QueueOptions           `alloy:"queue_config,block,optional"`
 	MetadataOptions      *MetadataOptions        `alloy:"metadata_config,block,optional"`
@@ -88,10 +92,13 @@ type EndpointOptions struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
+	defaultHTTPClientConfig := types.CloneDefaultHTTPClientConfig()
+	defaultHTTPClientConfig.EnableHTTP2 = false // This has changed to false when we upgraded to Prometheus v3.4.2
 	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
-		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		ProtobufMessage:  PrometheusProtobufMessageV1,
+		HTTPClientConfig: defaultHTTPClientConfig,
 	}
 }
 
@@ -130,6 +137,10 @@ func (r *EndpointOptions) Validate() error {
 				return err
 			}
 		}
+	}
+
+	if err := config.RemoteWriteProtoMsg(r.ProtobufMessage).Validate(); err != nil {
+		return fmt.Errorf("invalid protobuf_message %q for endpoint %q: %w", r.ProtobufMessage, r.Name, err)
 	}
 
 	return nil
@@ -244,16 +255,13 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			Name:                 rw.Name,
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
-
-			//TODO: Make this configurable when we upgrade to Prometheus v3?
-			ProtobufMessage: config.RemoteWriteProtoMsgV1,
-
-			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
-			HTTPClientConfig:    *rw.HTTPClientConfig.Convert(),
-			QueueConfig:         rw.QueueOptions.toPrometheusType(),
-			MetadataConfig:      rw.MetadataOptions.toPrometheusType(),
-			SigV4Config:         rw.SigV4.toPrometheusType(),
-			AzureADConfig:       rw.AzureAD.toPrometheusType(),
+			ProtobufMessage:      config.RemoteWriteProtoMsg(rw.ProtobufMessage),
+			WriteRelabelConfigs:  alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
+			HTTPClientConfig:     *rw.HTTPClientConfig.Convert(),
+			QueueConfig:          rw.QueueOptions.toPrometheusType(),
+			MetadataConfig:       rw.MetadataOptions.toPrometheusType(),
+			SigV4Config:          rw.SigV4.toPrometheusType(),
+			AzureADConfig:        rw.AzureAD.toPrometheusType(),
 		})
 	}
 
@@ -321,7 +329,7 @@ func (c *OAuthConfig) toPrometheusType() *azuread.OAuthConfig {
 
 	return &azuread.OAuthConfig{
 		ClientID: c.ClientID,
-		//TODO(ptodev): Upstream a change to make this an opaque string.
+		// TODO(ptodev): Upstream a change to make this an opaque string.
 		ClientSecret: string(c.ClientSecret),
 		TenantID:     c.TenantID,
 	}

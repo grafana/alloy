@@ -20,6 +20,7 @@ prometheus.scrape "prometheus_1" {
 		username = "user"
 		password = "pass"
 	}
+	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.scrape "prometheus2" {
@@ -34,8 +35,9 @@ prometheus.scrape "prometheus2" {
 			__address__ = "localhost:9093",
 		}],
 	)
-	forward_to = [prometheus.remote_write.default.receiver]
-	job_name   = "prometheus2"
+	forward_to                  = [prometheus.remote_write.default.receiver]
+	job_name                    = "prometheus2"
+	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.remote_write "default" {
