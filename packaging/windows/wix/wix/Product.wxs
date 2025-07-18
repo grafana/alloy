@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- 
+  MSIProductVersion is defined in wix.wixproj as 0.0.1 for local desktop builds.  
+  You should pass in the MSBuild Property 'MSIProductVersion' to override it during an automated build.
+  See http://msdn.microsoft.com/en-us/library/windows/desktop/aa370859%28v=vs.85%29.aspx for information on allowable values.
+  
+  The Product@Id attribute (ProductCode Property) will be a random GUID for each build.  This is to support "Major Upgrades" where each install 
+  is a seamless uninstall/reinstall.
+  -->
+	<Package Name="Alloy" Language="1033" Version="1.0.0" Manufacturer="Grafana" UpgradeCode="1d3d3582-0035-49ee-93c1-483b2a5b007b">
+    <SummaryInformation />
+    <MediaTemplate EmbedCab="yes" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Alloy is already installed." />
+    <Icon Id="Icon.ico" SourceFile="Resources\Icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Icon.ico"></Property>
+    <Property Id="DISABLEADVTSHORTCUTS" Value="1"></Property>
+		<WixVariable Id="WixUILicenseRtf" Value="Resources\LICENSE.rtf"/>
+		<WixVariable Id="WixUIBannerBmp" Value="Resources\grafana_top_banner_white.bmp"/>
+		<WixVariable Id="WixUIDialogBmp" Value="Resources\grafana_dialog_background.bmp"/>
+    <UIRef Id="UI" />
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="CompanyFolder" Name="GrafanaLabs">
+        <Directory Id="INSTALLLOCATION" Name="Alloy" />
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="Alloy" Title="Alloy" Description="Installs all the files needed for Alloy" Level="1" AllowAdvertise="no" ConfigurableDirectory="INSTALLLOCATION">
+      <ComponentGroupRef Id="AlloyFiles" />
+      <ComponentGroupRef Id="AlloyRegistry" />
+      <ComponentGroupRef Id="AlloyService" />
+    </Feature>
+  </Package>
+</Wix>

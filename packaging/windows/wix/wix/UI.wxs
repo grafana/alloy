@@ -1,0 +1,10 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Fragment>
+    <UI Id="UI">
+      <ui:WixUI Id="WixUI_FeatureTree" />
+      <!--Uncomment to inject a custom dialog into the install wizard loop -->
+      <!--<UIRef Id="CustomDlg"/>-->
+      <UIRef Id="WixUI_ErrorProgressText" />
+    </UI>
+  </Fragment>
+</Wix>
