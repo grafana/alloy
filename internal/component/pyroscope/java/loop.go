@@ -244,6 +244,12 @@ func (p *profilingLoop) start() error {
 	if cfg.Lock != "" {
 		argv = append(argv, "--lock", cfg.Lock)
 	}
+	if cfg.LogLevel != "" {
+		argv = append(argv, "--loglevel", cfg.LogLevel)
+	}
+	if cfg.Quiet {
+		argv = append(argv, "--quiet")
+	}
 	argv = append(argv,
 		"start",
 		"--timeout", strconv.Itoa(int(p.interval().Seconds())),
