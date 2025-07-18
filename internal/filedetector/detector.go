@@ -9,6 +9,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/filedetector/internal/inotifyinfo"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -87,6 +88,8 @@ type FSNotifyOptions struct {
 func NewFSNotify(opts FSNotifyOptions) (*FSNotify, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
+		diagnostics := inotifyinfo.DiagnosticsJson(opts.Logger)
+		level.Error(opts.Logger).Log("msg", "failed to create fsnotify watcher", "err", err, "inotify diagnostics", diagnostics)
 		return nil, err
 	}
 	if err := w.Add(opts.Filename); err != nil {
