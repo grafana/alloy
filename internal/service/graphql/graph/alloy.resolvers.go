@@ -13,12 +13,14 @@ import (
 
 // Alloy is the resolver for the alloy field.
 func (r *queryResolver) Alloy(ctx context.Context) (model.Alloy, error) {
-	return model.Alloy{
-		Branch:    build.Branch,
-		BuildDate: build.BuildDate,
-		BuildUser: build.BuildUser,
-		IsReady:   true, // If we get this far, Alloy is up enough to respond to API requests
-		Revision:  build.Revision,
-		Version:   build.Version,
-	}, nil
+	return model.NewAlloy(
+		model.Alloy{
+			Branch:    build.Branch,
+			BuildDate: build.BuildDate,
+			BuildUser: build.BuildUser,
+			Revision:  build.Revision,
+			Version:   build.Version,
+		},
+		r.Host,
+	), nil
 }
