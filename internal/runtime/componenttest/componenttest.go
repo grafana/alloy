@@ -119,13 +119,23 @@ func (c *Controller) Exports() component.Exports {
 //
 // Run may only be called once per Controller.
 func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
-	dataPath, err := os.MkdirTemp("", "controller-*")
+	cmp, cleanup, err := c.BuildWithoutRun(ctx, args)
 	if err != nil {
 		return err
 	}
-	defer func() {
+
+	defer cleanup()
+	return cmp.Run(ctx)
+}
+
+func (c *Controller) BuildWithoutRun(ctx context.Context, args component.Arguments) (component.Component, func() /*cleanup*/, error) {
+	dataPath, err := os.MkdirTemp("", "controller-*")
+	if err != nil {
+		return nil, func() {}, err
+	}
+	cleanup := func() {
 		_ = os.RemoveAll(dataPath)
-	}()
+	}
 
 	run, err := c.buildComponent(dataPath, args)
 
@@ -137,9 +147,11 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 	})
 
 	if err != nil {
-		return err
+		cleanup()
+		return nil, func() {}, err
 	}
-	return run.Run(ctx)
+
+	return run, cleanup, nil
 }
 
 func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {
