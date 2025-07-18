@@ -63,9 +63,11 @@ type Arguments struct {
 	SetupConsumersCollectInterval time.Duration `alloy:"setup_consumers_collect_interval,attr,optional"`
 
 	// collector: 'explain_plan'
-	ExplainPlanCollectInterval time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
-	ExplainPlanPerCollectRatio float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
-	ExplainPlanInitialLookback time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
+	ExplainPlanCollectInterval      time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
+	ExplainPlanPerCollectRatio      float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	ExplainPlanInitialLookback      time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
+	ExplainPlanFailureBackoffRounds int           `alloy:"explain_plan_failure_backoff_rounds,attr,optional"`
+	ExplainPlanMaxFailureCount      int           `alloy:"explain_plan_max_failure_count,attr,optional"`
 
 	// collector: 'locks'
 	LocksCollectInterval time.Duration `alloy:"locks_collect_interval,attr,optional"`
@@ -85,9 +87,11 @@ var DefaultArguments = Arguments{
 	SetupConsumersCollectInterval: 1 * time.Hour,
 
 	// collector: 'explain_plan'
-	ExplainPlanCollectInterval: 1 * time.Minute,
-	ExplainPlanPerCollectRatio: 1.0,
-	ExplainPlanInitialLookback: 24 * time.Hour,
+	ExplainPlanCollectInterval:      1 * time.Minute,
+	ExplainPlanPerCollectRatio:      1.0,
+	ExplainPlanInitialLookback:      24 * time.Hour,
+	ExplainPlanFailureBackoffRounds: 5,
+	ExplainPlanMaxFailureCount:      2,
 
 	// collector: 'locks'
 	LocksCollectInterval: 30 * time.Second,
