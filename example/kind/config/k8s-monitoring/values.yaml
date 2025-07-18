@@ -1,0 +1,19 @@
+cluster:
+  name: example-kind-cluster
+
+alloy-logs:
+  enabled: false
+
+alloy-metrics:
+  enabled: true
+
+alloy-receiver:
+  enabled: false
+
+clusterMetrics:
+  enabled: true
+# clusterEvents:
+# enabled: true
+
+# podLogs:
+# enabled: true

@@ -1,0 +1,9 @@
+---
+apiVersion: collectors.grafana.com/v1alpha1
+kind: Alloy
+metadata:
+  name: alloy-test
+  namespace: alloy
+spec:
+  alloy:
+    namespace: alloy
