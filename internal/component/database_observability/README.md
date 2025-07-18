@@ -1,6 +1,8 @@
 # Setting Up Database Observability with Grafana Cloud
 
-## Setting up the MySQL database
+## MySQL
+
+### Setting up the MySQL database
 
 1. Your MySQL DB should be above version 8.
 
@@ -106,9 +108,9 @@ Use this statement to enable the consumers if they are disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME IN ('events_waits_current', 'events_waits_history');
 ```
 
-## Running and configuring Alloy
+### Running and configuring Alloy
 
-1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-2c22262` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
+1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
 2. Add the following configuration block to Alloy.
 - Replace `<your_DB_name>`
@@ -210,7 +212,7 @@ loki.write "logs_service" {
 }
 ```
 
-## Configuring Alloy with the k8s-monitoring helm chart
+### Configuring Alloy with the k8s-monitoring helm chart
 
 When using the k8s-monitoring helm chart you might need to extend your `values.yaml` with:
 
@@ -218,7 +220,7 @@ When using the k8s-monitoring helm chart you might need to extend your `values.y
 alloy:
   image:
     repository: "grafana/alloy-dev"
-    tag: <alloy-version> // e.g. "v1.10.0-devel-2c22262"
+    tag: <alloy-version> // e.g. "v1.10.0-devel-630bcbb"
 
   alloy:
     stabilityLevel: experimental
@@ -234,7 +236,7 @@ extraConfig: |
   }
 ```
 
-## Example Alloy configuration
+### Example Alloy configuration
 
 This is a complete example of Alloy Database Observability configuration using two different databases:
 
@@ -340,9 +342,11 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 }
 ```
 
-## Setting up the Postgres database
+## PostgreSQL
 
-1. Your Postgres DB should be version 16.
+### Setting up the Postgres database
+
+1. Your Postgres DB should be at least version 16.
 
 2. Create a dedicated DB user and grant permissions.
 
@@ -350,12 +354,117 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
 GRANT pg_monitor TO 'db-o11y';
 GRANT pg_read_all_stats TO 'db-o11y';
+```
+
+3. Create the `pg_stat_statements` extension in every database you want to monitor.
+
+```sql
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ```
 
-3. Verify that the user has been properly created.
+4. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
 SELECT * FROM pg_stat_statements LIMIT 1;
+```
+
+### Running and configuring Alloy
+
+1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
+
+2. Add the following configuration block to Alloy.
+- Replace `<your_DB_name>`
+- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
+
+3. Copy this block for each DB you'd like to monitor.
+
+```
+local.file "postgres_secret_<your_DB_name>" {
+  filename  = "/var/lib/alloy/postgres_secret_<your_DB_name>"
+  is_secret = true
+}
+
+prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
+  data_source_name  = local.file.postgres_secret_<your_DB_name>.content
+  enabled_collectors = ["database", "stat_statements"]
+
+  autodiscovery {
+    enabled = true
+
+    // If running on AWS RDS, exclude the `rdsadmin` database
+    database_denylist = ["rdsadmin"]
+  }
+}
+
+database_observability.postgres "postgres_<your_DB_name>" {
+  data_source_name  = local.file.postgres_secret_<your_DB_name>.content
+  forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
+  collect_interval  = "1m"
+}
+
+loki.relabel "database_observability_postgres_<your_DB_name>" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  // OPTIONAL: add any additional relabeling rules; must be consistent with rules in "discovery.relabel"
+  rule {
+    target_label = "instance"
+    replacement  = "<instance_label>"
+  }
+  rule {
+    target_label = "<custom_label_1>"
+    replacement  = "<custom_value_1>"
+  }
+}
+
+discovery.relabel "database_observability_postgres_<your_DB_name>" {
+  targets = concat(prometheus.exporter.postgres.integrations_postgres_exporter_<your_DB_name>.targets, database_observability.postgres.postgres_<your_DB_name>.targets)
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+
+  // OPTIONAL: add any additional relabeling rules; must be consistent with rules in "loki.relabel"
+  rule {
+    target_label = "instance"
+    replacement  = "<instance_label>"
+  }
+  rule {
+    target_label = "<custom_label_1>"
+    replacement  = "<custom_value_1>"
+  }
+}
+
+prometheus.scrape "database_observability_postgres_<your_DB_name>" {
+  targets    = discovery.relabel.database_observability_postgres_<your_DB_name>.output
+  job_name   = "integrations/db-o11y"
+  forward_to = [prometheus.remote_write.metrics_service.receiver]
+}
+```
+
+4. Add Prometheus remote_write and Loki write config, if not present already. From the Grafana Cloud home, click on your stack and view URLs under Prometheus and Loki details where API tokens may also be generated.
+
+```
+prometheus.remote_write "metrics_service" {
+  endpoint {
+    url = sys.env("GCLOUD_HOSTED_METRICS_URL")
+
+    basic_auth {
+      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("GCLOUD_HOSTED_METRICS_ID")
+    }
+  }
+}
+
+loki.write "logs_service" {
+  endpoint {
+    url = sys.env("GCLOUD_HOSTED_LOGS_URL")
+
+    basic_auth {
+      password = sys.env("GCLOUD_RW_API_KEY")
+      username = sys.env("GCLOUD_HOSTED_LOGS_ID")
+    }
+  }
+}
 ```
