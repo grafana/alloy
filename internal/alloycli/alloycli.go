@@ -26,6 +26,8 @@ func Run() {
 	cmd.AddCommand(
 		convertCommand(),
 		fmtCommand(),
+		gqlCommand(),
+		replCommand(),
 		runCommand(),
 		toolsCommand(),
 		validateCommand(),
