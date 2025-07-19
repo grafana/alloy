@@ -145,7 +145,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	if offset, err := t.opts.Positions.Get(positionsEnt.Path, positionsEnt.Labels); err != nil {
 		level.Warn(t.log).Log("msg", "failed to load last read offset", "err", err)
-	} else {
+	} else if offset != 0 {
 		lastReadTime = time.UnixMicro(offset)
 	}
 
@@ -156,7 +156,13 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 	}
 
 	var offsetTime *metav1.Time
+
 	if !lastReadTime.IsZero() {
+		offsetTime = &metav1.Time{Time: lastReadTime}
+	} else if t.opts.TailFromEnd {
+		// No position exists AND TailFromEnd is true.
+		// We set the start time to now() to only get new logs.
+		lastReadTime = time.Now()
 		offsetTime = &metav1.Time{Time: lastReadTime}
 	}
 
