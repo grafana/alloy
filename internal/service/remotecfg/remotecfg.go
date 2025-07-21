@@ -63,17 +63,19 @@ type Service struct {
 
 	ctrl service.Controller
 
-	mut                  sync.RWMutex
-	asClient             collectorv1connect.CollectorServiceClient
-	clientFactory        func(args Arguments) (collectorv1connect.CollectorServiceClient, error)
-	ticker               *jitter.Ticker
-	updateTickerChan     chan struct{}
-	pollFrequency        time.Duration
-	dataPath             string
-	lastLoadedConfigHash string
-	systemAttrs          map[string]string
-	attrs                map[string]string
-	metrics              *metrics
+	mut                        sync.RWMutex
+	asClient                   collectorv1connect.CollectorServiceClient
+	clientFactory              func(args Arguments) (collectorv1connect.CollectorServiceClient, error)
+	ticker                     *jitter.Ticker
+	updateTickerChan           chan struct{}
+	pollFrequency              time.Duration
+	dataPath                   string
+	lastLoadedConfigHash       string
+	systemAttrs                map[string]string
+	attrs                      map[string]string
+	metrics                    *metrics
+	previousRemoteConfigStatus *collectorv1.RemoteConfigStatus
+	remoteConfigStatus         *collectorv1.RemoteConfigStatus
 
 	// This is the hash received from the API. It is used to determine if
 	// the configuration has changed since the last fetch
@@ -294,6 +296,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.ctrl = host.NewController(ServiceName)
 	s.mut.Unlock()
 
+	s.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, "")
 	s.fetch()
 	err := s.registerCollector()
 	if err != nil && err != errNoopClient {
@@ -425,7 +428,7 @@ func (s *Service) fetchRemote() error {
 
 	level.Debug(s.opts.Logger).Log("msg", "fetching remote configuration")
 
-	b, err := s.getAPIConfig()
+	b, err := s.getAPIConfig(false)
 	s.metrics.totalAttempts.Add(1)
 
 	if err == nil {
@@ -454,11 +457,15 @@ func (s *Service) fetchRemote() error {
 
 	err = s.parseAndLoad(b)
 	if err != nil {
+		s.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error())
+		s.getAPIConfig(true)
 		return err
 	}
 
 	// If successful, flush to disk and keep a copy.
 	s.setCachedConfig(b)
+	s.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
+	s.getAPIConfig(true)
 	return nil
 }
 
@@ -475,12 +482,23 @@ func (s *Service) fetchLocal() {
 	}
 }
 
-func (s *Service) getAPIConfig() ([]byte, error) {
+func (s *Service) getAPIConfig(requestOnly bool) ([]byte, error) {
 	s.mut.RLock()
+
+	var remoteConfigStatus *collectorv1.RemoteConfigStatus = nil
+	if s.previousRemoteConfigStatus == nil || !reflect.DeepEqual(s.previousRemoteConfigStatus, s.remoteConfigStatus) {
+		remoteConfigStatus = s.remoteConfigStatus
+		s.previousRemoteConfigStatus = &collectorv1.RemoteConfigStatus{
+			Status:       remoteConfigStatus.Status,
+			ErrorMessage: remoteConfigStatus.ErrorMessage,
+		}
+	}
+
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{
-		Id:              s.args.ID,
-		LocalAttributes: s.attrs,
-		Hash:            s.remoteHash,
+		Id:                 s.args.ID,
+		LocalAttributes:    s.attrs,
+		Hash:               s.remoteHash,
+		RemoteConfigStatus: remoteConfigStatus,
 	})
 	client := s.asClient
 	s.mut.RUnlock()
@@ -491,6 +509,12 @@ func (s *Service) getAPIConfig() ([]byte, error) {
 		return nil, err
 	}
 	s.metrics.getConfigTime.Observe(time.Since(start).Seconds())
+
+	// If we want to make the request to send data to the server but not retrieve config, ignore the response.
+	if requestOnly {
+		return nil, nil
+	}
+
 	if gcr.Msg.NotModified {
 		return nil, errNotModified
 	}
@@ -518,6 +542,15 @@ func (s *Service) setCachedConfig(b []byte) {
 	err := os.WriteFile(p, b, 0750)
 	if err != nil {
 		level.Error(s.opts.Logger).Log("msg", "failed to flush remote configuration contents the on-disk cache", "err", err)
+	}
+}
+
+func (s *Service) setRemoteConfigStatus(status collectorv1.RemoteConfigStatuses, errorMessage string) {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.remoteConfigStatus = &collectorv1.RemoteConfigStatus{
+		Status:       status,
+		ErrorMessage: errorMessage,
 	}
 }
 

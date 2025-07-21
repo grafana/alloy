@@ -60,7 +60,7 @@ require (
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/grafana/alloy-remote-config v0.0.10
+	github.com/grafana/alloy-remote-config v0.0.11-0.20250721144718-3484e4745b93
 	github.com/grafana/alloy/syntax v0.1.0
 	github.com/grafana/beyla/v2 v2.4.3-alloy
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
