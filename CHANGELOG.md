@@ -44,6 +44,8 @@ Main (unreleased)
 
 - `pyroscope.java` now supports configuring the `log_level` and `quiet` flags on async-profiler. (@deltamualpha)
 
+- Switch to the optimized `speedup` branch of `github.com/grafana/regexp` (@dehaansa)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
