@@ -47,7 +47,7 @@ You can use the following arguments with `prometheus.enrich`:
 | `forward_to`          | `[]prometheus.MetricsReceiver` | Where the metrics should be forwarded to, after enrichment.                                        |                        | yes      |
 | `target_match_label`  | `string`                       | The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |                        | yes      |
 | `targets`             | `[]discovery.Target`           | List of targets from a discovery component.                                                        |                        | yes      |
-| `labels_to_copy`      | `[]string`                     | List of labels to copy from discovered targets to logs. If empty, all labels will be copied.       |                        | no       |
+| `labels_to_copy`      | `[]string`                     | List of labels to copy from discovered targets to metrics. If empty, all labels will be copied.    |                        | no       |
 | `metrics_match_label` | `string`                       | The label from incoming metrics to match against discovered targets, for example `"service_name"`. |                        | no       |
 
 If not provided, the `metrics_match_label` attribute will default to the value of `target_match_label`.

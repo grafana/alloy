@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// TODO check metrics availability
 func TestEnrichPromMetrics(t *testing.T) {
 	testName := "enrich_prom_metrics"
 	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, testName)

@@ -16,14 +16,14 @@ import (
 )
 
 func TestEnricher(t *testing.T) {
-	// Create basic component options
 	tests := []struct {
 		name           string
 		args           Arguments
+		inputLabels    map[string]string
 		expectedLabels map[string]string
 	}{
 		{
-			name: "test1",
+			name: "label enrichment with target_labels and metrics_match_label",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -37,6 +37,9 @@ func TestEnricher(t *testing.T) {
 				MetricsMatchLabel: "service_name",
 				LabelsToCopy:      []string{"env", "owner"},
 			},
+			inputLabels: map[string]string{
+				"service_name": "test-service",
+			},
 			expectedLabels: map[string]string{
 				"service_name": "test-service",
 				"env":          "prod",
@@ -44,7 +47,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "test2",
+			name: "mismatch metrics and targets",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -58,8 +61,47 @@ func TestEnricher(t *testing.T) {
 				MetricsMatchLabel: "service_name",
 				LabelsToCopy:      []string{"env", "owner"},
 			},
+			inputLabels: map[string]string{
+				"service_name": "test-service",
+			},
 			expectedLabels: map[string]string{
 				"service_name": "test-service",
+			},
+		},
+		{
+			name: "match using target_match_label when metrics_match_label is not specified",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"service": "test-service",
+						"env":     "prod",
+						"owner":   "team-a",
+						"foo":     "bar",
+					}),
+				},
+				TargetMatchLabel: "service",
+			},
+			inputLabels: map[string]string{
+				"service": "test-service",
+			},
+			expectedLabels: map[string]string{
+				"service": "test-service",
+				"env":     "prod",
+				"owner":   "team-a",
+				"foo":     "bar",
+			},
+		},
+		{
+			name: "copy as is, when targets is empty",
+			args: Arguments{
+				Targets:          []discovery.Target{},
+				TargetMatchLabel: "service",
+			},
+			inputLabels: map[string]string{
+				"service": "test-service",
+			},
+			expectedLabels: map[string]string{
+				"service": "test-service",
 			},
 		},
 	}
@@ -91,7 +133,7 @@ func TestEnricher(t *testing.T) {
 
 			require.NoError(t, err)
 
-			lbls := labels.FromStrings("service_name", "test-service")
+			lbls := labels.FromMap(tt.inputLabels)
 			app := entry.Appender(t.Context())
 
 			_, err = app.Append(0, lbls, time.Now().UnixMilli(), 0)
