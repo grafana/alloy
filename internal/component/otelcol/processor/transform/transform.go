@@ -59,8 +59,10 @@ type Statements []string
 type ContextStatementsSlice []ContextStatements
 
 type ContextStatements struct {
-	Context    ContextID  `alloy:"context,attr"`
-	Statements Statements `alloy:"statements,attr"`
+	Context    ContextID      `alloy:"context,attr"`
+	Conditions []string       `alloy:"conditions,attr,optional"`
+	Statements Statements     `alloy:"statements,attr"`
+	ErrorMode  ottl.ErrorMode `alloy:"error_mode,attr,optional"`
 }
 
 type NoContextStatements struct {
@@ -149,6 +151,8 @@ func (args *ContextStatements) convert() map[string]interface{} {
 	return map[string]interface{}{
 		"context":    args.Context,
 		"statements": args.Statements,
+		"conditions": args.Conditions,
+		"error_mode": args.ErrorMode,
 	}
 }
 

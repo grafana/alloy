@@ -2,13 +2,16 @@ package wal
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/tsdb/wlog"
+	"github.com/prometheus/prometheus/util/compression"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -37,7 +40,7 @@ type wrapper struct {
 func New(cfg Config, log log.Logger, registerer prometheus.Registerer) (WAL, error) {
 	// TODO: We should fine-tune the WAL instantiated here to allow some buffering of written entries, but not written to disk
 	// yet. This will attest for the lack of buffering in the channel Writer exposes.
-	tsdbWAL, err := wlog.NewSize(log, registerer, cfg.Dir, wlog.DefaultSegmentSize, wlog.CompressionSnappy)
+	tsdbWAL, err := wlog.NewSize(slog.New(logging.NewSlogGoKitHandler(log)), registerer, cfg.Dir, wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
 		return nil, fmt.Errorf("failde to create tsdb WAL: %w", err)
 	}

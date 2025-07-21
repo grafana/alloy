@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -40,16 +41,19 @@ const (
 
 var (
 	target = scrape.NewTarget(
-		// processedLabels contain label values after processing (e.g. relabeling)
-		labels.FromMap(map[string]string{
+		// processed labels only
+		labels.EmptyLabels(),
+		// scrape config used to create this target
+		&config.DefaultScrapeConfig,
+		// target labels
+		model.LabelSet{
 			model.InstanceLabel: "localhost:8080",
-		}),
-		// discoveredLabels contain labels prior to any processing
-		labels.FromMap(map[string]string{
+		},
+		// target group labels
+		model.LabelSet{
 			model.AddressLabel: "address:8080",
 			model.SchemeLabel:  "http",
-		}),
-		nil)
+		})
 
 	scrapeCtx = scrape.ContextWithMetricMetadataStore(
 		scrape.ContextWithTarget(context.Background(), target),
@@ -452,17 +456,17 @@ func testTransactionAppendWithEmptyLabelArrayFallbackToTargetLabels(t *testing.T
 	sink := new(consumertest.MetricsSink)
 
 	scrapeTarget := scrape.NewTarget(
-		// processedLabels contain label values after processing (e.g. relabeling)
-		labels.FromMap(map[string]string{
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{
 			model.InstanceLabel: "localhost:8080",
 			model.JobLabel:      "federate",
-		}),
-		// discoveredLabels contain labels prior to any processing
-		labels.FromMap(map[string]string{
+		},
+		model.LabelSet{
 			model.AddressLabel: "address:8080",
 			model.SchemeLabel:  "http",
-		}),
-		nil)
+		},
+	)
 
 	ctx := scrape.ContextWithMetricMetadataStore(
 		scrape.ContextWithTarget(context.Background(), scrapeTarget),
@@ -472,6 +476,8 @@ func testTransactionAppendWithEmptyLabelArrayFallbackToTargetLabels(t *testing.T
 
 	_, err := tr.Append(0, labels.FromMap(map[string]string{
 		model.MetricNameLabel: "counter_test",
+		model.InstanceLabel:   "localhost:8080",
+		model.JobLabel:        "test",
 	}), time.Now().Unix()*1000, 1.0)
 	assert.NoError(t, err)
 }

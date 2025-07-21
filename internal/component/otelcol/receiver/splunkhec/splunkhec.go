@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelconfig "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -164,7 +165,16 @@ func (a Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomp
 func (a Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	// FIXME(kalleep): Add support for ack extension.
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.122.0/extension/ackextension
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if a.HTTPServer.Authentication != nil {
+		ext, err := a.HTTPServer.Authentication.GetExtension(auth.Server)
+		// Extension will not be registered if there was an error.
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
+	}
+	return m
 }
 
 // NextConsumers implements receiver.Arguments.

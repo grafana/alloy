@@ -141,7 +141,7 @@ func appendStaticPromtail(f *builder.File, staticConfig *config.Config) diag.Dia
 
 		// We need to set this when empty so the promtail converter doesn't think it has been overridden
 		if promtailConfig.Global == (promtail_config.GlobalConfig{}) {
-			promtailConfig.Global.FileWatch = file.DefaultWatchConig
+			promtailConfig.Global.FileWatch = file.DefaultWatchConfig
 		}
 
 		if promtailConfig.LimitsConfig == (limit.Config{}) {

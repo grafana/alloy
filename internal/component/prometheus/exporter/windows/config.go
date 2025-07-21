@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
 
@@ -28,24 +30,24 @@ type Arguments struct {
 	EnabledCollectors []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Collector-specific config options
-	Dfsr          DfsrConfig          `alloy:"dfsr,block,optional"`
-	Exchange      ExchangeConfig      `alloy:"exchange,block,optional"`
-	IIS           IISConfig           `alloy:"iis,block,optional"`
-	LogicalDisk   LogicalDiskConfig   `alloy:"logical_disk,block,optional"`
-	MSSQL         MSSQLConfig         `alloy:"mssql,block,optional"`
-	Network       NetworkConfig       `alloy:"network,block,optional"`
-	PhysicalDisk  PhysicalDiskConfig  `alloy:"physical_disk,block,optional"`
-	Printer       PrinterConfig       `alloy:"printer,block,optional"`
-	Process       ProcessConfig       `alloy:"process,block,optional"`
-	ScheduledTask ScheduledTaskConfig `alloy:"scheduled_task,block,optional"`
-	Service       ServiceConfig       `alloy:"service,block,optional"`
-	SMB           SMBConfig           `alloy:"smb,block,optional"`
-	SMBClient     SMBClientConfig     `alloy:"smb_client,block,optional"`
-	SMTP          SMTPConfig          `alloy:"smtp,block,optional"`
-	TextFile      TextFileConfig      `alloy:"text_file,block,optional"`
-	TCP           TCPConfig           `alloy:"tcp,block,optional"`
-	// Currently disabled because the config is not exposed upstream.
-	//Update             UpdateConfig             `alloy:"update,block,optional"`
+	Dfsr               DfsrConfig               `alloy:"dfsr,block,optional"`
+	Exchange           ExchangeConfig           `alloy:"exchange,block,optional"`
+	IIS                IISConfig                `alloy:"iis,block,optional"`
+	LogicalDisk        LogicalDiskConfig        `alloy:"logical_disk,block,optional"`
+	MSMQ               *MSMQConfig              `alloy:"msmq,block,optional"`
+	MSSQL              MSSQLConfig              `alloy:"mssql,block,optional"`
+	Network            NetworkConfig            `alloy:"network,block,optional"`
+	PhysicalDisk       PhysicalDiskConfig       `alloy:"physical_disk,block,optional"`
+	Printer            PrinterConfig            `alloy:"printer,block,optional"`
+	Process            ProcessConfig            `alloy:"process,block,optional"`
+	ScheduledTask      ScheduledTaskConfig      `alloy:"scheduled_task,block,optional"`
+	Service            ServiceConfig            `alloy:"service,block,optional"`
+	SMB                SMBConfig                `alloy:"smb,block,optional"`
+	SMBClient          SMBClientConfig          `alloy:"smb_client,block,optional"`
+	SMTP               SMTPConfig               `alloy:"smtp,block,optional"`
+	TextFile           TextFileConfig           `alloy:"text_file,block,optional"`
+	TCP                TCPConfig                `alloy:"tcp,block,optional"`
+	Update             UpdateConfig             `alloy:"update,block,optional"`
 	Filetime           FiletimeConfig           `alloy:"filetime,block,optional"`
 	PerformanceCounter PerformanceCounterConfig `alloy:"performancecounter,block,optional"`
 	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`
@@ -54,7 +56,9 @@ type Arguments struct {
 }
 
 // Convert converts the component's Arguments to the integration's Config.
-func (a *Arguments) Convert() *windows_integration.Config {
+func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
+	a.logDeprecatedFields(logger)
+
 	return &windows_integration.Config{
 		EnabledCollectors:  strings.Join(a.EnabledCollectors, ","),
 		Dfsr:               a.Dfsr.Convert(),
@@ -77,6 +81,21 @@ func (a *Arguments) Convert() *windows_integration.Config {
 		PerformanceCounter: a.PerformanceCounter.Convert(),
 		MSCluster:          a.MSCluster.Convert(),
 		NetFramework:       a.NetFramework.Convert(),
+	}
+}
+
+func (a *Arguments) logDeprecatedFields(logger log.Logger) {
+	if a.MSMQ != nil {
+		level.Warn(logger).Log("msg", "the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
+	}
+	if a.Service.UseApi != nil {
+		level.Warn(logger).Log("msg", "the `use_api` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+	}
+	if a.Service.Where != nil {
+		level.Warn(logger).Log("msg", "the `where_clause` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+	}
+	if a.Service.V2 != nil {
+		level.Warn(logger).Log("msg", "the `enable_v2_collector` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 }
 
@@ -162,8 +181,11 @@ func (t SMTPConfig) Convert() windows_integration.SMTPConfig {
 
 // ServiceConfig handles settings for the windows_exporter service collector
 type ServiceConfig struct {
-	Include string `alloy:"include,attr,optional"`
-	Exclude string `alloy:"exclude,attr,optional"`
+	Include string  `alloy:"include,attr,optional"`
+	Exclude string  `alloy:"exclude,attr,optional"`
+	UseApi  *string `alloy:"use_api,attr,optional"`
+	Where   *string `alloy:"where_clause,attr,optional"`
+	V2      *string `alloy:"enable_v2_collector,attr,optional"`
 }
 
 // Convert converts the component's ServiceConfig to the integration's ServiceConfig.
@@ -236,6 +258,10 @@ func (t MSSQLConfig) Convert() windows_integration.MSSQLConfig {
 	return windows_integration.MSSQLConfig{
 		EnabledClasses: strings.Join(t.EnabledClasses, ","),
 	}
+}
+
+type MSMQConfig struct {
+	Where string `alloy:"where_clause,attr,optional"`
 }
 
 // LogicalDiskConfig handles settings for the windows_exporter logical disk collector

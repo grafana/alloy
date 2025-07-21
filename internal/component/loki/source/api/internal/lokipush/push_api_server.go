@@ -35,22 +35,30 @@ type PushAPIServer struct {
 	server       *fnet.TargetServer
 	handler      loki.EntryHandler
 
-	rwMutex       sync.RWMutex
-	labels        model.LabelSet
-	relabelRules  []*relabel.Config
-	keepTimestamp bool
+	rwMutex            sync.RWMutex
+	labels             model.LabelSet
+	relabelRules       []*relabel.Config
+	keepTimestamp      bool
+	maxSendMessageSize int64
 }
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
 	handler loki.EntryHandler,
 	registerer prometheus.Registerer,
+	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
 
+	// Zero means default. This is done to match Loki's pushtarget.go behaviour.
+	if maxSendMessageSize <= 0 {
+		maxSendMessageSize = 100 << 20
+	}
+
 	s := &PushAPIServer{
-		logger:       logger,
-		serverConfig: serverConfig,
-		handler:      handler,
+		logger:             logger,
+		serverConfig:       serverConfig,
+		handler:            handler,
+		maxSendMessageSize: maxSendMessageSize,
 	}
 
 	srv, err := fnet.NewTargetServer(logger, "loki_source_api", registerer, serverConfig)
@@ -156,14 +164,17 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	tenantID, _ := tenant.TenantID(r.Context())
-	req, err := push.ParseRequest(
+	req, _, err := push.ParseRequest(
 		logger,
 		tenantID,
+		int(s.maxSendMessageSize),
 		r,
-		nil, // tenants retention
 		push.EmptyLimits{},
+		nil,
 		push.ParseLokiRequest,
 		nil, // usage tracker
+		nil,
+		"",
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
@@ -278,7 +289,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
-func (s *PushAPIServer) ready(w http.ResponseWriter, r *http.Request) {
+func (s *PushAPIServer) ready(w http.ResponseWriter, _ *http.Request) {
 	resp := "ready"
 	if _, err := w.Write([]byte(resp)); err != nil {
 		level.Error(s.logger).Log("msg", "failed to respond to ready endoint", "err", err)

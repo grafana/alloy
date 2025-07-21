@@ -436,7 +436,7 @@ func TestSourceTenants(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue[kubernetes.Event](workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),

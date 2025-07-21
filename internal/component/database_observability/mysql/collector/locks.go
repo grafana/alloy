@@ -19,7 +19,7 @@ const (
 	LocksName       = "locks"
 	OP_DATA_LOCKS   = "query_data_locks"
 	selectDataLocks = `
-		SELECT 
+		SELECT
 			waiting_stmt_current.TIMER_WAIT waitingTimerWait,
 			waiting_stmt_current.LOCK_TIME waitingLockTime,
 			waiting_stmt_current.DIGEST waitingDigest,
@@ -40,7 +40,7 @@ const (
 				AND lock_waits.ENGINE = blocking_lock.ENGINE
 		JOIN performance_schema.events_statements_current blocking_stmt_current
 			ON blocking_lock.thread_id = blocking_stmt_current.thread_id
-				AND blocking_stmt_current.EVENT_ID < blocking_lock.EVENT_ID;`
+				AND blocking_stmt_current.EVENT_ID < blocking_lock.EVENT_ID`
 )
 
 type LockArguments struct {
@@ -156,7 +156,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		// only log if the lock_time is longer than the threshold
 		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
-				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%f ms" waiting_lock_time="%f ms" blocking_timer_wait="%f ms" blocking_lock_time="%f ms"`,
+				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
 				waitingDigest,
 				waitingDigestText,
 				blockingDigest,

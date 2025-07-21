@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -27,8 +28,10 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
+	"github.com/prometheus/prometheus/util/compression"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -147,7 +150,10 @@ type Storage struct {
 
 // NewStorage makes a new Storage.
 func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
-	w, err := wlog.NewSize(logger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, wlog.CompressionSnappy)
+	// Convert go-kit logger to slog logger
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
+
+	w, err := wlog.NewSize(slogLogger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +537,7 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil
 	}
 
-	keep := func(id chunks.HeadSeriesRef) bool {
+	keep := func(id chunks.HeadSeriesRef, _ int) bool {
 		if w.series.GetByID(id) != nil {
 			return true
 		}
@@ -539,7 +545,11 @@ func (w *Storage) Truncate(mint int64) error {
 		seg, ok := w.deleted[id]
 		return ok && seg > last
 	}
-	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint); err != nil {
+
+	// Convert go-kit logger to slog logger
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
+
+	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
@@ -876,6 +886,16 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m meta
 	return 0, nil
 }
 
+func (a *appender) SetOptions(_ *storage.AppendOptions) {
+	// TODO: implement this later
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
+}
+
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	// TODO: implement this later
+	return 0, nil
+}
+
 // Commit submits the collected samples and purges the batch.
 func (a *appender) Commit() error {
 	if err := a.log(); err != nil {
@@ -922,7 +942,7 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingHistograms) > 0 {
-		buf = encoder.HistogramSamples(a.pendingHistograms, buf)
+		buf, _ = encoder.HistogramSamples(a.pendingHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
@@ -930,7 +950,7 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingFloatHistograms) > 0 {
-		buf = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		buf, _ = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}

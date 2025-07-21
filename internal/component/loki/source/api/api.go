@@ -6,6 +6,10 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/alecthomas/units"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -13,8 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -34,12 +36,14 @@ type Arguments struct {
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
 	RelabelRules         relabel.Rules       `alloy:"relabel_rules,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
+	MaxSendMessageSize   units.Base2Bytes    `alloy:"max_send_message_size,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server:             fnet.DefaultServerConfig(),
+		MaxSendMessageSize: 100 * units.MiB,
 	}
 }
 
@@ -142,7 +146,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(serverRegistry)
 
 		var err error
-		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, loki.NewEntryHandler(c.entriesChan, func() {}), serverRegistry)
+		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, loki.NewEntryHandler(c.entriesChan, func() {}), serverRegistry, int64(newArgs.MaxSendMessageSize))
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
