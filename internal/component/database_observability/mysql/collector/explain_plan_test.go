@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"os"
 	"testing"
@@ -1678,5 +1679,197 @@ func TestExplainPlan(t *testing.T) {
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
+	})
+}
+
+func TestQueryFailureBackoff(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
+		"version",
+	}).AddRow(
+		"8.0.32",
+	))
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki_fake.NewClient(func() {})
+	defer lokiClient.Stop()
+
+	logBuffer := bytes.NewBuffer(nil)
+
+	queryUnderTestHash := fmt.Sprintf("%x", md5.Sum([]byte("some_schema|some_digest1")))
+
+	c, err := NewExplainPlan(ExplainPlanArguments{
+		DB:                   db,
+		Logger:               log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		InstanceKey:          "mysql-db",
+		ScrapeInterval:       time.Second,
+		PerScrapeRatio:       1,
+		EntryHandler:         lokiClient,
+		InitialLookback:      lastSeen,
+		FailureBackoffRounds: 5,
+		MaxFailureCount:      3,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest1",
+		"select * from some_table where id = 1",
+		lastSeen,
+	))
+
+	c.populateQueryCache(t.Context())
+	t.Run("failure increments counter", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnError(fmt.Errorf("some error"))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryBackoffList))
+		require.Equal(t, 0, c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure)
+		require.Equal(t, 1, c.queryBackoffList[queryUnderTestHash].failureCount)
+	})
+
+	t.Run("subsequent rounds do not process failed queries, increment rounds since last failure", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{}))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryBackoffList))
+		require.Equal(t, 1, c.queryBackoffList[queryUnderTestHash].failureCount)
+		require.Equal(t, 1, c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure)
+	})
+
+	t.Run("new queries can be added and processed while others are on backoff", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			"schema_name",
+			"digest",
+			"query_sample_text",
+			"last_seen",
+		}).AddRow(
+			"some_schema",
+			"some_digest2",
+			"select * from some_table where id = 2",
+			lastSeen,
+		))
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 2").WillReturnRows(sqlmock.NewRows([]string{
+			"json",
+		}).AddRow(
+			[]byte(`{"query_block": {"select_id": 1}}`),
+		))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryBackoffList))
+		require.Equal(t, 2, c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure)
+		require.Equal(t, 1, c.queryBackoffList[queryUnderTestHash].failureCount)
+	})
+
+	t.Run("failure backoff expires after defined rounds", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure = c.failureBackoffRounds
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{}))
+
+		require.Equal(t, 1, len(c.queryBackoffList))
+		require.Contains(t, c.queryBackoffList, queryUnderTestHash)
+
+		err = c.populateQueryCache(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryBackoffList))
+		require.Equal(t, 1, len(c.queryCache))
+		require.Contains(t, c.queryCache, queryUnderTestHash)
+		require.Equal(t, 0, c.queryCache[queryUnderTestHash].roundsSinceLastFailure)
+		require.Equal(t, 1, c.queryCache[queryUnderTestHash].failureCount)
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnError(fmt.Errorf("some error"))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 2, c.queryBackoffList[queryUnderTestHash].failureCount)
+		require.Equal(t, 0, c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure)
+	})
+
+	t.Run("query denylisted after max failure count", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		c.queryBackoffList[queryUnderTestHash].roundsSinceLastFailure = c.failureBackoffRounds
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{}))
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnError(fmt.Errorf("some error"))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
+	})
+
+	t.Run("denylisted queries are not added to query cache", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			"schema_name",
+			"digest",
+			"query_sample_text",
+			"last_seen",
+		}).AddRow(
+			"some_schema",
+			"some_digest1",
+			"select * from some_table where id = 1",
+			lastSeen,
+		).AddRow(
+			"some_schema",
+			"some_digest2",
+			"select * from some_table where id = 2",
+			lastSeen,
+		))
+
+		err = c.populateQueryCache(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 1, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 2").WillReturnRows(sqlmock.NewRows([]string{
+			"json",
+		}).AddRow(
+			[]byte(`{"query_block": {"select_id": 1}}`),
+		))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
 	})
 }

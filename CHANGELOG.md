@@ -42,6 +42,9 @@ Main (unreleased)
 
 - Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
 
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - Add failure backoff to `explain_plan` collector in `database_observability.mysql` component. (@rgeyer)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
