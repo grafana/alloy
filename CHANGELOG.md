@@ -50,6 +50,8 @@ Main (unreleased)
 
 - Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
 
+- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+
 v1.10.0
 -----------------
 
