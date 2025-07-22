@@ -34,6 +34,8 @@ Main (unreleased)
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 
+- Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@username)
+
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
@@ -339,7 +341,7 @@ v1.8.3
 
 - Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
 
-- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+- Fix detection of the "streams limit exceeded" error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
 
 - Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
 

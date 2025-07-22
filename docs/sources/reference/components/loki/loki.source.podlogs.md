@@ -129,6 +129,7 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`clustering`][clustering]                                    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`namespace_selector`][selector]                              | Label selector for which namespaces to discover `PodLogs` in.                               | no       |
 | `namespace_selector` > [`match_expression`][match_expression] | Label selector expression for which namespaces to discover `PodLogs` in.                    | no       |
+| [`node_filter`][node_filter]                                  | Filter pods by node to limit discovery scope.                                               | no       |
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
@@ -140,6 +141,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [match_expression]: #match_expression
+[node_filter]: #node_filter
 [oauth2]: #oauth2
 [selector]: #selector-and-namespace_selector
 [tls_config]: #tls_config
@@ -213,6 +215,32 @@ Clustering looks only at the following labels for determining the shard key:
 
 [using clustering]: ../../../../get-started/clustering/
 
+### `node_filter`
+
+| Name        | Type     | Description                                                        | Default | Required |
+|-------------|----------|--------------------------------------------------------------------|---------|----------|
+| `enabled`   | `bool`   | Enable node-based filtering for pod discovery.                    | `false` | no       |
+| `node_name` | `string` | Node name to filter pods by. Falls back to NODE_NAME env var if empty. | `""`    | no       |
+
+When `enabled` is set to `true`, `loki.source.podlogs` will only discover and collect logs from pods running on the specified node.
+This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from pods on other nodes.
+
+If `node_name` is not specified, the component will attempt to use the `NODE_NAME` environment variable.
+This allows for easy configuration in DaemonSet deployments where the node name can be injected via the Kubernetes downward API.
+
+Example DaemonSet configuration:
+
+```yaml
+env:
+  - name: NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+```
+
+Node filtering significantly reduces API server load and network traffic by limiting pod discovery to only the local node, 
+making it highly recommended for DaemonSet deployments in large clusters.
+
 ### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for `PodLogs` or Namespace discovery.
@@ -283,6 +311,25 @@ This example discovers all `PodLogs` resources and forwards collected logs to a 
 ```alloy
 loki.source.podlogs "default" {
   forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+}
+```
+
+This example shows how to use node filtering for DaemonSet deployments to collect logs only from pods running on the current node:
+
+```alloy
+loki.source.podlogs "daemonset" {
+  forward_to = [loki.write.local.receiver]
+  
+  node_filter {
+    enabled = true
+    // node_name will be automatically read from NODE_NAME environment variable
+  }
 }
 
 loki.write "local" {
