@@ -123,16 +123,16 @@ The exact permissions depend on your system's security configuration and the spe
 
 ### Windows security groups
 
-To collect common Windows telemetry, for example event logs and performance counters, the user account you use to run {{< param "PRODUCT_NAME" >}} should be a member of the following [Windows security groups](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups).
-These groups provide the necessary read access without granting excessive privileges.
+To collect common Windows telemetry, for example event logs and performance counters, the user account you use to run {{< param "PRODUCT_NAME" >}} should be a member of the following [Windows security groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups).
+These groups provide the minimum required read access.
 
-* [Event Log Readers](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers)
+* [Event Log Readers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers)
   : This group allows members to read data from local event logs, including Application, System, Security, and other custom logs.
   This is essential for any Alloy configuration that collects Windows Event Log data.
-* [Performance Monitor Users](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users)
+* [Performance Monitor Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users)
   : This group allows non-administrator users to access performance counter data.
   This group is important for {{< param "PRODUCT_NAME" >}} components that collect Windows performance metrics, for example CPU, memory, disk I/O, and network usage.
-* [Performance Log Users](http://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)
+* [Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)
   : This group is used to schedule logging of performance counter data and manage performance alerts.
   Performance Log Users is necessary for advanced or historical data collection scenarios, particularly those that involve the Windows Data Collector Sets.
 
@@ -141,23 +141,23 @@ These groups provide the necessary read access without granting excessive privil
 Beyond the standard Windows groups, {{< param "PRODUCT_NAME" >}} requires some specific permissions for its operational functions:
 
 * Storage directory permissions
-  : {{< param "PRODUCT_NAME" >}} needs [read, write, and modify permissions](https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/access-control) to manage files and directories within its data storage location.
+  : {{< param "PRODUCT_NAME" >}} needs [read, write, and modify permissions](https://learn.microsoft.com/windows/security/identity-protection/access-control/access-control) to manage files and directories within its data storage location.
   The default location for the data storage is `%PROGRAMDATA%\GrafanaLabs\Alloy\data`.
 * Application log file read permissions
   : If you configure {{< param "PRODUCT_NAME" >}} to read application log files directly from disk, the user account you use to run {{< param "PRODUCT_NAME" >}} must have read access to those log files and their containing directories.
-  You may need to modify the [Access Control Lists](https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists) for these resources or add the {{< param "PRODUCT_NAME" >}} service account to a custom group that has these permissions.
+  You may need to modify the [Access Control Lists](https://learn.microsoft.com/windows/win32/secauthz/access-control-lists) for these resources or add the {{< param "PRODUCT_NAME" >}} service account to a custom group that has these permissions.
 * Network access for telemetry destinations
   : {{< param "PRODUCT_NAME" >}} needs network connectivity and, if applicable, proxy configuration, to communicate with its configured telemetry endpoints.
     This includes source endpoints for scraping metrics from Prometheus exporters and pulling logs from remote APIs and destination endpoints for writing metrics to Prometheus or Grafana Cloud, and sending logs to Loki.
     Make sure your firewall rules allow outbound connections from the {{< param "PRODUCT_NAME" >}} host to these destinations on the necessary ports.
 * Registry access
-  : The user account you use to run {{< param "PRODUCT_NAME" >}} may need access to the [Windows Registry](https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-key-security-and-access-rights) to configure things like [environment variables](https://grafana.com/docs/alloy/latest/configure/windows/#change-environment-variable-values).
+  : The user account you use to run {{< param "PRODUCT_NAME" >}} may need access to the [Windows Registry](https://learn.microsoft.com/windows/win32/sysinfo/registry-key-security-and-access-rights) to configure things like [environment variables](https://grafana.com/docs/alloy/latest/configure/windows/#change-environment-variable-values).
 * UI port listening permission
-  : If you want to enable the {{< param "PRODUCT_NAME" >}} UI, the user account you use to run {{< param "PRODUCT_NAME" >}} must have [permission to listen](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/rules) on the configured UI port.
+  : If you want to enable the {{< param "PRODUCT_NAME" >}} UI, the user account you use to run {{< param "PRODUCT_NAME" >}} must have [permission to listen](https://learn.microsoft.com/windows/security/operating-system-security/network-security/windows-firewall/rules) on the configured UI port.
     The default port is `12345`.
 * Run as a service permission
   : By default, {{< param "PRODUCT_NAME" >}} is installed and run as a Windows Service.
-  The user account you use to run {{< param "PRODUCT_NAME" >}} must have the [`Log on as a service`](https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/log-on-as-a-service) user right.
+  The user account you use to run {{< param "PRODUCT_NAME" >}} must have the [`Log on as a service`](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/log-on-as-a-service) user right.
 * Temporary directory management
   : Depending on how you configure components and data processing, {{< param "PRODUCT_NAME" >}} might require permissions to create, read, and write temporary files in the system's designated temporary directories.
 * Process and service enumeration
