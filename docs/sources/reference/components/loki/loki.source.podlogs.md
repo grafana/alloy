@@ -324,7 +324,7 @@ loki.write "local" {
 }
 ```
 
-This example shows how to use node filtering for DaemonSet deployments to collect logs only from pods running on the current node:
+This example shows how to use node filtering for DaemonSet deployments to collect logs only from Pods running on the current node:
 
 ```alloy
 loki.source.podlogs "daemonset" {
