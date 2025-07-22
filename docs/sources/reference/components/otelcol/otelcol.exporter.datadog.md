@@ -40,10 +40,11 @@ otelcol.exporter.datadog "<LABEL>" {
 
 You can use the following arguments with `otelcol.exporter.datadog`:
 
-| Name            | Type     | Description                                                                      | Default | Required |
-| --------------- | -------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `hostname`      | `string` | The fallback hostname used for payloads without hostname-identifying attributes. |         | no       |
-| `only_metadata` | `bool`   | Whether to send only metadata.                                                   | `false` | no       |
+| Name                         | Type       | Description                                                                      | Default | Required |
+| ---------------------------- | ---------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `hostname`                   | `string`   | The fallback hostname used for payloads without hostname-identifying attributes. |         | no       |
+| `hostname_detection_timeout` | `duration` | The timeout for hostname detection.                                              | `25s`   | no       |
+| `only_metadata`              | `bool`     | Whether to send only metadata.                                                   | `false` | no       |
 
 If `hostname` is unset, the hostname is determined automatically.
 For more information, refer to the Datadog [Fallback hostname logic](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic) documentation.

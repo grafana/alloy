@@ -32,6 +32,7 @@ import (
 	"github.com/prometheus/prometheus/util/strutil"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 const (
@@ -54,7 +55,7 @@ const (
 	healthLabel = model.MetaLabelPrefix + "consulagent_health"
 	// serviceAddressLabel is the name of the label containing the (optional) service address.
 	serviceAddressLabel = model.MetaLabelPrefix + "consulagent_service_address"
-	//servicePortLabel is the name of the label containing the service port.
+	// servicePortLabel is the name of the label containing the service port.
 	servicePortLabel = model.MetaLabelPrefix + "consulagent_service_port"
 	// datacenterLabel is the name of the label containing the datacenter ID.
 	datacenterLabel = model.MetaLabelPrefix + "consulagent_dc"
@@ -128,7 +129,7 @@ func (*SDConfig) Name() string { return "consulagent" }
 
 // NewDiscoverer returns a Discoverer for the Config.
 func (c *SDConfig) NewDiscoverer(opts discovery.DiscovererOptions) (discovery.Discoverer, error) {
-	return NewDiscovery(c, opts.Logger)
+	return NewDiscovery(c, slogadapter.GoKit(opts.Logger.Handler()))
 }
 
 // SetDirectory joins any relative file paths with dir.

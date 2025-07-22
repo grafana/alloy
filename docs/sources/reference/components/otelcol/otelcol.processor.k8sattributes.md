@@ -145,10 +145,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name               | Type           | Description                                             | Default     | Required |
-| ------------------ | -------------- | ------------------------------------------------------- | ----------- | -------- |
-| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no       |
-| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no       |
+| Name               | Type           | Description                                                                 | Default     | Required |
+| ------------------ | -------------- | --------------------------------------------------------------------------- | ----------- | -------- |
+| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                                        | _See below_ | no       |
+| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][semantic conventions]. | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -171,6 +171,12 @@ The supported `metadata` keys are:
 * `k8s.replicaset.uid`
 * `k8s.statefulset.name`
 * `k8s.statefulset.uid`
+* `service.instance.id`
+* `service.name`
+* `service.namespace`
+* `service.version`
+
+The `service.*` metadata are calculated following the OpenTelemetry [semantic conventions][].
 
 By default, if `metadata` isn't specified, the following fields are extracted and added to spans, metrics, and logs as resource attributes:
 
@@ -186,7 +192,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
+[semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 
 ### `annotation`
 

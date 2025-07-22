@@ -207,7 +207,7 @@ The following argument is supported:
 
 | Name                 | Type     | Description                                         | Default   | Required |
 | -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `level`              | `int`    | The level of compression to use on messages.        | `-1`      | no       |
+| `level`              | `int`    | The level of compression to use on messages.        | `0`       | no       |
 
 The following levels are valid combinations of `compression` and `level`:
 

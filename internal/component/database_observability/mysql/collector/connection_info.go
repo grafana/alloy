@@ -13,7 +13,10 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
-var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+var (
+	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
+)
 
 type ConnectionInfoArguments struct {
 	DSN      string
@@ -33,7 +36,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine"})
 
 	args.Registry.MustRegister(infoMetric)
 
@@ -61,6 +64,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerName         = "unknown"
 		providerRegion       = "unknown"
 		dbInstanceIdentifier = "unknown"
+		engine               = "mysql"
 	)
 
 	host, _, err := net.SplitHostPort(cfg.Addr)
@@ -72,10 +76,16 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 				dbInstanceIdentifier = matches[1]
 				providerRegion = matches[3]
 			}
+		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
+			providerName = "azure"
+			matches := azureRegex.FindStringSubmatch(host)
+			if len(matches) > 1 {
+				dbInstanceIdentifier = matches[1]
+			}
 		}
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine).Set(1)
 	return nil
 }
 

@@ -67,7 +67,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				RequiredAcks:    1,
 				Compression:     "none",
 				CompressionParams: configcompression.CompressionParams{
-					Level: -1,
+					Level: 0,
 				},
 			},
 		}

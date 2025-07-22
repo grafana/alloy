@@ -54,6 +54,7 @@ loki.source.api "uber_pipeline" {
 	}
 	relabel_rules          = discovery.relabel.uber_pipeline.rules
 	use_incoming_timestamp = true
+	max_send_message_size  = "0B"
 }
 
 discovery.docker "uber_pipeline" {

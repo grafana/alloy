@@ -47,33 +47,46 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		return nil
 	}
 
-	return &scrape.Arguments{
-		Targets:                   targets,
-		ForwardTo:                 forwardTo,
-		JobName:                   scrapeConfig.JobName,
-		HonorLabels:               scrapeConfig.HonorLabels,
-		HonorTimestamps:           scrapeConfig.HonorTimestamps,
-		TrackTimestampsStaleness:  scrapeConfig.TrackTimestampsStaleness,
-		Params:                    scrapeConfig.Params,
-		ScrapeClassicHistograms:   scrapeConfig.ScrapeClassicHistograms,
-		ScrapeNativeHistograms:    true,
-		ScrapeInterval:            time.Duration(scrapeConfig.ScrapeInterval),
-		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
-		ScrapeFailureLogFile:      scrapeConfig.ScrapeFailureLogFile,
-		ScrapeProtocols:           convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
-		MetricsPath:               scrapeConfig.MetricsPath,
-		Scheme:                    scrapeConfig.Scheme,
-		BodySizeLimit:             scrapeConfig.BodySizeLimit,
-		SampleLimit:               scrapeConfig.SampleLimit,
-		TargetLimit:               scrapeConfig.TargetLimit,
-		LabelLimit:                scrapeConfig.LabelLimit,
-		LabelNameLengthLimit:      scrapeConfig.LabelNameLengthLimit,
-		LabelValueLengthLimit:     scrapeConfig.LabelValueLengthLimit,
-		HTTPClientConfig:          *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
-		ExtraMetrics:              false,
-		EnableProtobufNegotiation: false,
-		Clustering:                cluster.ComponentBlock{Enabled: false},
+	histogramsToNHCB := scrapeConfig.ConvertClassicHistogramsToNHCB != nil && *scrapeConfig.ConvertClassicHistogramsToNHCB
+	fallbackProtocol := string(scrapeConfig.ScrapeFallbackProtocol)
+	if fallbackProtocol == "" {
+		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
 	}
+	alloyArgs := &scrape.Arguments{
+		Targets:                        targets,
+		ForwardTo:                      forwardTo,
+		JobName:                        scrapeConfig.JobName,
+		HonorLabels:                    scrapeConfig.HonorLabels,
+		HonorTimestamps:                scrapeConfig.HonorTimestamps,
+		TrackTimestampsStaleness:       scrapeConfig.TrackTimestampsStaleness,
+		Params:                         scrapeConfig.Params,
+		ScrapeClassicHistograms:        scrapeConfig.AlwaysScrapeClassicHistograms,
+		ScrapeNativeHistograms:         true,
+		ScrapeInterval:                 time.Duration(scrapeConfig.ScrapeInterval),
+		ScrapeTimeout:                  time.Duration(scrapeConfig.ScrapeTimeout),
+		ScrapeFailureLogFile:           scrapeConfig.ScrapeFailureLogFile,
+		ScrapeProtocols:                convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
+		MetricsPath:                    scrapeConfig.MetricsPath,
+		Scheme:                         scrapeConfig.Scheme,
+		BodySizeLimit:                  scrapeConfig.BodySizeLimit,
+		SampleLimit:                    scrapeConfig.SampleLimit,
+		TargetLimit:                    scrapeConfig.TargetLimit,
+		LabelLimit:                     scrapeConfig.LabelLimit,
+		LabelNameLengthLimit:           scrapeConfig.LabelNameLengthLimit,
+		LabelValueLengthLimit:          scrapeConfig.LabelValueLengthLimit,
+		HTTPClientConfig:               *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
+		ExtraMetrics:                   false,
+		EnableProtobufNegotiation:      false,
+		ConvertClassicHistogramsToNHCB: histogramsToNHCB,
+		EnableCompression:              scrapeConfig.EnableCompression,
+		NativeHistogramBucketLimit:     scrapeConfig.NativeHistogramBucketLimit,
+		NativeHistogramMinBucketFactor: scrapeConfig.NativeHistogramMinBucketFactor,
+		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme,
+		MetricNameEscapingScheme:       scrapeConfig.MetricNameEscapingScheme,
+		ScrapeFallbackProtocol:         fallbackProtocol,
+		Clustering:                     cluster.ComponentBlock{Enabled: false},
+	}
+	return alloyArgs
 }
 
 func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Target {

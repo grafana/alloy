@@ -24,6 +24,8 @@ type ProfilingConfig struct {
 	CPU        bool          `alloy:"cpu,attr,optional"`
 	Event      string        `alloy:"event,attr,optional"`
 	PerThread  bool          `alloy:"per_thread,attr,optional"`
+	LogLevel   string        `alloy:"log_level,attr,optional"`
+	Quiet      bool          `alloy:"quiet,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
@@ -52,6 +54,8 @@ func defaultArguments() Arguments {
 			CPU:        true,
 			Event:      "itimer",
 			PerThread:  false,
+			LogLevel:   "INFO",
+			Quiet:      false,
 		},
 	}
 }

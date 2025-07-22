@@ -12,6 +12,13 @@ Unreleased
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
 
+1.2.0 (2025-07-16)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.0. (@ptodev)
+
 1.1.2 (2025-06-26)
 ----------
 - Add NetworkPolicy support. (@TheRealNoob)

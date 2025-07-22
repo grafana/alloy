@@ -13,11 +13,11 @@ import (
 	"github.com/prometheus/common/model"
 	promCfg "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/static/config/encoder"
-	"github.com/grafana/alloy/internal/static/metrics"
 	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -75,10 +75,11 @@ metrics:
     scrape_timeout: 33s`
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
 		},
 	}
 
@@ -98,10 +99,11 @@ metrics:
     scrape_timeout: ${SCRAPE_TIMEOUT}`
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
@@ -181,8 +183,11 @@ func TestConfig_Defaults(t *testing.T) {
 	err := LoadBytes([]byte(`{}`), false, &c)
 	require.NoError(t, err)
 
-	require.Equal(t, metrics.DefaultConfig, c.Metrics)
-	require.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
+	defaultConfig := DefaultConfig()
+	util.DefaultConfigFromFlags(&defaultConfig)
+
+	assert.Equal(t, defaultConfig.Metrics, c.Metrics)
+	assert.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
 }
 
 func TestConfig_TracesLokiValidates(t *testing.T) {
