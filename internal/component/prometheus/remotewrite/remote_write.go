@@ -2,6 +2,9 @@ package remotewrite
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -11,15 +14,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/timestamp"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/storage/remote"
-	"go.uber.org/atomic"
-
+	"github.com/gogo/protobuf/proto"
+	"github.com/golang/snappy"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
@@ -30,6 +26,17 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/timestamp"
+	"github.com/prometheus/prometheus/prompb"
+	writev2 "github.com/prometheus/prometheus/prompb/io/prometheus/write/v2"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/prometheus/prometheus/storage/remote"
+	"go.uber.org/atomic"
 )
 
 // Options.
@@ -51,6 +58,9 @@ func init() {
 		},
 	})
 }
+
+// Ensure that Component implements the component.TestConnectionComponent interface
+var _ component.TestConnectionComponent = (*Component)(nil)
 
 // Component is the prometheus.remote_write component.
 type Component struct {
@@ -323,13 +333,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		return err
 	}
 	uid := alloyseed.Get().UID
-	for _, cfg := range convertedConfig.RemoteWriteConfigs {
-		if cfg.Headers == nil {
-			cfg.Headers = map[string]string{}
-		}
-		cfg.Headers[alloyseed.LegacyHeaderName] = uid
-		cfg.Headers[alloyseed.HeaderName] = uid
-	}
+	applyAlloySeedID(convertedConfig, uid)
 	err = c.remoteStore.ApplyConfig(convertedConfig)
 	if err != nil {
 		return err
@@ -340,3 +344,120 @@ func (c *Component) Update(newConfig component.Arguments) error {
 }
 
 func (c *Component) LiveDebugging() {}
+
+func (c *Component) TestConnection(ctx context.Context) error {
+	if c.exited.Load() {
+		return fmt.Errorf("%s has exited", c.opts.ID)
+	}
+
+	c.mut.RLock()
+	cfg, err := convertConfigs(c.cfg)
+	c.mut.RUnlock()
+
+	if err != nil {
+		return fmt.Errorf("failed to convert to remote_write config: %w", err)
+	}
+	applyAlloySeedID(cfg, alloyseed.Get().UID)
+
+	for _, rwConf := range cfg.RemoteWriteConfigs {
+		name := rwConf.Name
+		if name == "" {
+			hash, err := getHash(rwConf)
+			if err != nil {
+				return fmt.Errorf("failed to generate hash for remote write config: %w", err)
+			}
+			name = hash[:6] // Use the first 6 characters of the hash as the name.
+		}
+		cl, err := remote.NewWriteClient(name, &remote.ClientConfig{
+			URL:              rwConf.URL,
+			WriteProtoMsg:    rwConf.ProtobufMessage,
+			Timeout:          rwConf.RemoteTimeout,
+			HTTPClientConfig: rwConf.HTTPClientConfig,
+			SigV4Config:      rwConf.SigV4Config,
+			AzureADConfig:    rwConf.AzureADConfig,
+			GoogleIAMConfig:  rwConf.GoogleIAMConfig,
+			Headers:          rwConf.Headers,
+			RetryOnRateLimit: rwConf.QueueConfig.RetryOnRateLimit,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create remote write client: %w", err)
+		}
+
+		payload, err := generatePayload(rwConf, c.opts.ID)
+
+		_, err = cl.Store(ctx, payload, 0)
+		if err != nil {
+			return fmt.Errorf("failed to store data with remote write client: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func generatePayload(cfg *config.RemoteWriteConfig, componentID string) ([]byte, error) {
+	buf := &[]byte{}
+
+	switch cfg.ProtobufMessage {
+	case config.RemoteWriteProtoMsgV1:
+		req := &prompb.WriteRequest{
+			Timeseries: []prompb.TimeSeries{
+				{
+					Labels: []prompb.Label{
+						{Name: "__name__", Value: "test_metric"},
+						{Name: "source", Value: "test_connection"},
+						{Name: "job", Value: componentID},
+						{Name: "uid", Value: alloyseed.Get().UID},
+					},
+					Samples: []prompb.Sample{
+						{Timestamp: timestamp.FromTime(time.Now()), Value: 1.0},
+					},
+				},
+			},
+		}
+
+		pBuf := proto.NewBuffer(nil)
+		err := pBuf.Marshal(req)
+		if err != nil {
+			return nil, err
+		}
+		return snappy.Encode(*buf, pBuf.Bytes()), nil
+	case config.RemoteWriteProtoMsgV2:
+		symbolTable := writev2.NewSymbolTable()
+		refs := &[]uint32{}
+		symbolTable.SymbolizeLabels(labels.FromStrings(
+			"__name__", "test_metric",
+			"source", "test_connection",
+			"job", componentID,
+			"uid", alloyseed.Get().UID,
+		), *refs)
+		req := writev2.Request{
+			Symbols: symbolTable.Symbols(),
+			Timeseries: []writev2.TimeSeries{
+				{
+					LabelsRefs: *refs,
+					Samples: []writev2.Sample{
+						{Timestamp: timestamp.FromTime(time.Now()), Value: 1.0},
+					},
+				},
+			},
+		}
+		encoded, err := req.OptimizedMarshal(*buf)
+		if err != nil {
+			return nil, err
+		}
+		// destination and source cannot overlap
+		dst := &[]byte{}
+		return snappy.Encode(*dst, encoded), nil
+	default:
+		return nil, fmt.Errorf("unknown protobuf message type: %s", cfg.ProtobufMessage)
+	}
+}
+
+func getHash(data interface{}) (string, error) {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+	hash := md5.Sum(bytes)
+	return hex.EncodeToString(hash[:]), nil
+}

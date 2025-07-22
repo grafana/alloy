@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/grafana/alloy/internal/alloyseed"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -279,6 +280,18 @@ func toLabels(in map[string]string) labels.Labels {
 	}
 	sort.Sort(res)
 	return res
+}
+
+func applyAlloySeedID(cfg *config.Config, seedID string) {
+	// If the seed ID is empty, we don't need to do anything.
+	uid := alloyseed.Get().UID
+	for _, cfg := range cfg.RemoteWriteConfigs {
+		if cfg.Headers == nil {
+			cfg.Headers = map[string]string{}
+		}
+		cfg.Headers[alloyseed.LegacyHeaderName] = uid
+		cfg.Headers[alloyseed.HeaderName] = uid
+	}
 }
 
 // ManagedIdentityConfig is used to store managed identity config values
