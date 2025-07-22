@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
@@ -382,14 +383,22 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			}
 
 			// Build a fake client with the PodLogs, Namespace, and Pods.
-			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(podLogs, ns, podOnNode1, podOnNode2).Build()
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(podLogs, ns, podOnNode1, podOnNode2).WithIndex(&corev1.Pod{}, "spec.nodeName", func(obj client.Object) []string {
+				pod := obj.(*corev1.Pod)
+				return []string{pod.Spec.NodeName}
+			}).Build()
 
 			// Create a reconciler and configure node filtering
 			r := newReconciler(log.NewNopLogger(), nil, nil)
 			r.UpdateNodeFilter(tt.nodeFilterEnabled, tt.nodeFilterName)
 
 			// Call reconcilePodLogs.
-			targets, _ := r.reconcilePodLogs(t.Context(), cl, podLogs)
+			targets, discoveredPodLogs := r.reconcilePodLogs(t.Context(), cl, podLogs)
+
+			// Check for reconcile errors
+			if discoveredPodLogs.ReconcileError != "" {
+				t.Fatalf("reconcile error: %s", discoveredPodLogs.ReconcileError)
+			}
 
 			// Verify target count
 			if len(targets) != tt.expectedTargetCount {
@@ -399,7 +408,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			// Verify pod names in targets
 			actualPodNames := make([]string, len(targets))
 			for i, target := range targets {
-				actualPodNames[i] = target.Labels().Get(kubetail.LabelPodName)
+				actualPodNames[i] = target.DiscoveryLabels().Get(kubetail.LabelPodName)
 			}
 
 			if len(actualPodNames) != len(tt.expectedPodNames) {
