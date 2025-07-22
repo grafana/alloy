@@ -125,6 +125,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, []string{"accessmethods"}, args.MSSQL.EnabledClasses)
 	require.Equal(t, "", args.LogicalDisk.Exclude)
 	require.Equal(t, ".+", args.LogicalDisk.Include)
+
 	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
@@ -144,7 +145,7 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.IIS.SiteInclude)
 	require.Equal(t, "^(?:)$", conf.IIS.AppExclude)
 	require.Equal(t, "^(?:.+)$", conf.IIS.AppInclude)
-	require.Equal(t, "C:", conf.TextFile.TextFileDirectory)
+	require.Equal(t, []string{"C:"}, conf.TextFile.Directories)
 	require.Equal(t, "^(?:)$", conf.SMTP.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.SMTP.Include)
 	require.Equal(t, "^(?:.*)$", conf.Service.Include)
