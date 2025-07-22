@@ -41,30 +41,45 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectDatabaseNames).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
 				}).AddRow(
-					"some_database_name",
+					"books_store",
 				),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public").
+					AddRow("postgis"),
 			)
 
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
+			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 1)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" dbName="some_database_name"`, lokiEntries[0].Line)
+		assert.Len(t, lokiEntries, 3)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" db="books_store"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="public"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
+		require.Equal(t, `level="info" schema="postgis"`, lokiEntries[2].Line)
 		//require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
 		//require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
 		//require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
