@@ -229,8 +229,8 @@ The following arguments are supported:
 When you set `enabled` to `true`, `loki.source.podlogs` only discovers and collects logs from Pods running on the specified node.
 This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from Pods on other nodes.
 
-If `node_name` is not specified, the component will attempt to use the `NODE_NAME` environment variable.
-This allows for easy configuration in DaemonSet deployments where the node name can be injected via the Kubernetes downward API.
+If you don't specify `node_name`, `loki.source.podlogs` attempts to use the `NODE_NAME` environment variable.
+This allows for easy configuration in DaemonSet deployments where you can inject the node name with the Kubernetes downward API.
 
 Example DaemonSet configuration:
 
