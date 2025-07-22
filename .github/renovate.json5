@@ -122,7 +122,6 @@
       // This forces each dep to have a unique group, resulting in each major update
       // having its own PR.
       "groupName": "{{manager}} dependency {{depName}}",
-      "commitMessageAction": "major: update",
       "commitMessageTopic": "{{manager}} dependency {{depName}}"
     }
   ],
