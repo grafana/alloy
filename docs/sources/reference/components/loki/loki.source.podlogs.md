@@ -242,8 +242,7 @@ env:
         fieldPath: spec.nodeName
 ```
 
-Node filtering significantly reduces API server load and network traffic by limiting pod discovery to only the local node, 
-making it highly recommended for DaemonSet deployments in large clusters.
+Node filtering significantly reduces API server load and network traffic by limiting Pod discovery to only the local node, making it highly recommended for DaemonSet deployments in large clusters.
 
 ### `match_expression`
 
