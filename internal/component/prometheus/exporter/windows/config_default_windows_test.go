@@ -62,18 +62,18 @@ func TestDefaultConfig(t *testing.T) {
 	// TODO: The BlackList and WhiteList attributes should be removed in Alloy v2.
 	// They are not even documented in Alloy v1.
 	expected := Arguments{
-		EnabledCollectors: []string{"cpu", "cs", "logical_disk", "net", "os", "service", "system"},
+		EnabledCollectors: []string{"cpu", "logical_disk", "net", "os", "service", "system"},
 		Dfsr:              DfsrConfig{SourcesEnabled: []string{"connection", "folder", "volume"}},
 		Exchange:          ExchangeConfig{EnabledList: []string{"ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"}},
 		IIS:               IISConfig{AppBlackList: "^$", AppWhiteList: "^.+$", SiteBlackList: "^$", SiteWhiteList: "^.+$", AppExclude: "^$", AppInclude: "^.+$", SiteExclude: "^$", SiteInclude: "^.+$"},
-		LogicalDisk:       LogicalDiskConfig{BlackList: "^$", WhiteList: "^.+$", Include: "^.+$", Exclude: "^$"},
+		LogicalDisk:       LogicalDiskConfig{BlackList: "^$", WhiteList: "^.+$", Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics"}},
 		MSCluster:         MSClusterConfig{EnabledList: []string{"cluster", "network", "node", "resource", "resourcegroup"}},
 		MSSQL:             MSSQLConfig{EnabledClasses: []string{"accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"}},
 		Network:           NetworkConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
 		NetFramework:      NetFrameworkConfig{EnabledList: []string{"clrexceptions", "clrinterop", "clrjit", "clrloading", "clrlocksandthreads", "clrmemory", "clrremoting", "clrsecurity"}},
 		PhysicalDisk:      PhysicalDiskConfig{Include: "^.+$", Exclude: "^$"},
 		Printer:           PrinterConfig{Exclude: "^$", Include: "^.+$"},
-		Process:           ProcessConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$", EnableIISWorkerProcess: false},
+		Process:           ProcessConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$", EnableIISWorkerProcess: false, CounterVersion: 0},
 		ScheduledTask:     ScheduledTaskConfig{Exclude: "^$", Include: "^.+$"},
 		Service:           ServiceConfig{Include: "^.+$", Exclude: "^$"},
 		SMB:               SMBConfig{EnabledList: []string{}},
