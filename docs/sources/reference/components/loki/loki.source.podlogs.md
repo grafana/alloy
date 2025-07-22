@@ -230,7 +230,9 @@ When you set `enabled` to `true`, `loki.source.podlogs` only discovers and colle
 This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from Pods on other nodes.
 
 If you don't specify `node_name`, `loki.source.podlogs` attempts to use the `NODE_NAME` environment variable.
-This allows for easy configuration in DaemonSet deployments where you can inject the node name with the Kubernetes downward API.
+This allows for easy configuration in DaemonSet deployments where you can inject the node name with the [Kubernetes downward API][].
+
+[Kubernetes downward API]: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
 
 Example DaemonSet configuration:
 
