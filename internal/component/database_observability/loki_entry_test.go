@@ -13,7 +13,7 @@ func TestBuildLokiEntry(t *testing.T) {
 	entry := BuildLokiEntry(logging.LevelDebug, "test-operation", "test-instance", "This is a test log line")
 
 	require.Len(t, entry.Labels, 3)
-	require.Equal(t, database_observability.JobName, string(entry.Labels["job"]))
+	require.Equal(t, JobName, string(entry.Labels["job"]))
 	require.Equal(t, "test-operation", string(entry.Labels["op"]))
 	require.Equal(t, "test-instance", string(entry.Labels["instance"]))
 	require.Equal(t, `level="debug" This is a test log line`, entry.Line)
