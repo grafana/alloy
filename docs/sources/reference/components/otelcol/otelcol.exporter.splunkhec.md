@@ -159,12 +159,12 @@ This allows resource attributes like `host.name` to be mapped to the top-level `
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                                                                      | Default                | Required |
-| ------------ | -------- | ------------------------------------------------------------------------------------------------ | ---------------------- | -------- |
-| `source`     | `string` | Specifies the mapping of a specific unified model attribute value to the standard source field of a HEC event. | `"com.splunk.source"`     | no       |
+| Name         | Type     | Description                                                                                                        | Default                   | Required |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- | -------- |
+| `host`       | `string` | Specifies the mapping of a specific unified model attribute value to the standard host field of a HEC event.       | `"host.name"`             | no       |
+| `index`      | `string` | Specifies the mapping of a specific unified model attribute value to the standard index field of a HEC event.      | `"com.splunk.index"`      | no       |
+| `source`     | `string` | Specifies the mapping of a specific unified model attribute value to the standard source field of a HEC event.     | `"com.splunk.source"`     | no       |
 | `sourcetype` | `string` | Specifies the mapping of a specific unified model attribute value to the standard sourcetype field of a HEC event. | `"com.splunk.sourcetype"` | no       |
-| `index`      | `string` | Specifies the mapping of a specific unified model attribute value to the standard index field of a HEC event. | `"com.splunk.index"`      | no       |
-| `host`       | `string` | Specifies the mapping of a specific unified model attribute value to the standard host field of a HEC event. | `"host.name"`             | no       |
 
 ### `debug_metrics`
 
