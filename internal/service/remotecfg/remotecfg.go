@@ -31,7 +31,6 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	commonconfig "github.com/prometheus/common/config"
 )
 
@@ -82,16 +81,6 @@ type Service struct {
 	// This is the AST file parsed from the configuration. This is used
 	// for the support bundle
 	astFile *ast.File
-}
-
-type metrics struct {
-	lastLoadSuccess      prometheus.Gauge
-	lastFetchNotModified prometheus.Gauge
-	totalFailures        prometheus.Counter
-	configHash           *prometheus.GaugeVec
-	lastFetchSuccessTime prometheus.Gauge
-	totalAttempts        prometheus.Counter
-	getConfigTime        prometheus.Histogram
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -199,56 +188,6 @@ func getSystemAttributes() map[string]string {
 	}
 }
 
-func (s *Service) registerMetrics() {
-	prom := promauto.With(s.opts.Metrics)
-	mets := &metrics{
-		configHash: prom.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "remotecfg_hash",
-				Help: "Hash of the currently active remote configuration.",
-			},
-			[]string{"hash"},
-		),
-		lastLoadSuccess: prom.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "remotecfg_last_load_successful",
-				Help: "Remote config loaded successfully",
-			},
-		),
-		lastFetchNotModified: prom.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "remotecfg_last_load_not_modified",
-				Help: "Remote config not modified since last fetch",
-			},
-		),
-		totalFailures: prom.NewCounter(
-			prometheus.CounterOpts{
-				Name: "remotecfg_load_failures_total",
-				Help: "Remote configuration load failures",
-			},
-		),
-		totalAttempts: prom.NewCounter(
-			prometheus.CounterOpts{
-				Name: "remotecfg_load_attempts_total",
-				Help: "Attempts to load remote configuration",
-			},
-		),
-		lastFetchSuccessTime: prom.NewGauge(
-			prometheus.GaugeOpts{
-				Name: "remotecfg_last_load_success_timestamp_seconds",
-				Help: "Timestamp of the last successful remote configuration load",
-			},
-		),
-		getConfigTime: prom.NewHistogram(
-			prometheus.HistogramOpts{
-				Name: "remotecfg_request_duration_seconds",
-				Help: "Duration of remote configuration requests.",
-			},
-		),
-	}
-	s.metrics = mets
-}
-
 // Data returns an instance of [Data]. Calls to Data are cachable by the
 // caller.
 // Data must only be called after Run.
@@ -291,6 +230,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	// We need to use the mtx here as the cluster service will
 	// start in parallel and attempt to access the controller via Data()
 	s.mut.Lock()
+	s.metrics = registerMetrics(s.opts.Metrics)
 	s.ctrl = host.NewController(ServiceName)
 	s.mut.Unlock()
 
@@ -373,9 +313,6 @@ func (s *Service) Update(newConfig any) error {
 		return err
 	}
 
-	if s.metrics == nil {
-		s.registerMetrics()
-	}
 	s.mut.Unlock()
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -577,29 +514,6 @@ func (s *Service) setPollFrequency(t time.Duration) {
 	case s.updateTickerChan <- struct{}{}:
 	default:
 	}
-}
-
-type agentInterceptor struct {
-	agent string
-}
-
-func (i *agentInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
-	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		req.Header().Set("User-Agent", i.agent)
-		return next(ctx, req)
-	}
-}
-
-func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
-	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
-		conn := next(ctx, spec)
-		conn.RequestHeader().Set("User-Agent", i.agent)
-		return conn
-	}
-}
-
-func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
-	return next
 }
 
 func GetHost(host service.Host) (service.Host, error) {
