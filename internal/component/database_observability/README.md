@@ -351,9 +351,9 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 2. Create a dedicated DB user and grant permissions.
 
 ```sql
-CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
-GRANT pg_monitor TO 'db-o11y';
-GRANT pg_read_all_stats TO 'db-o11y';
+CREATE USER "db-o11y" WITH PASSWORD '<password>';
+GRANT pg_monitor TO "db-o11y";
+GRANT pg_read_all_stats TO "db-o11y";
 ```
 
 3. Create the `pg_stat_statements` extension in every database you want to monitor.
