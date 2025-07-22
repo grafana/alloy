@@ -129,7 +129,7 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`clustering`][clustering]                                    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`namespace_selector`][selector]                              | Label selector for which namespaces to discover `PodLogs` in.                               | no       |
 | `namespace_selector` > [`match_expression`][match_expression] | Label selector expression for which namespaces to discover `PodLogs` in.                    | no       |
-| [`node_filter`][node_filter]                                  | Filter pods by node to limit discovery scope.                                               | no       |
+| [`node_filter`][node_filter]                                  | Filter Pods by node to limit discovery scope.                                               | no       |
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
