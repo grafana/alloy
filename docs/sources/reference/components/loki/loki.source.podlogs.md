@@ -226,8 +226,8 @@ The following arguments are supported:
 | `enabled`   | `bool`   | Enable node-based filtering for Pod discovery.                                            | `false` | no       |
 | `node_name` | `string` | Node name to filter Pods by. Falls back to the `NODE_NAME` environment variable if empty. | `""`    | no       |
 
-When `enabled` is set to `true`, `loki.source.podlogs` will only discover and collect logs from pods running on the specified node.
-This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from pods on other nodes.
+When you set `enabled` to `true`, `loki.source.podlogs` only discovers and collects logs from Pods running on the specified node.
+This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from Pods on other nodes.
 
 If `node_name` is not specified, the component will attempt to use the `NODE_NAME` environment variable.
 This allows for easy configuration in DaemonSet deployments where the node name can be injected via the Kubernetes downward API.
