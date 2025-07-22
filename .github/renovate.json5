@@ -91,7 +91,7 @@
         "sigs.k8s.io/controller-runtime"
       ],
       "dependencyDashboardApproval": true,
-      // This forces each dep to have a unique group, resulting in each major update
+      // This forces each dep to have a unique group, resulting in each unstable update
       // having its own PR.
       "groupName": "{{manager}} unstable dependency {{depName}}",
       "commitMessageTopic": "{{manager}} unstable dependency {{depName}}"
