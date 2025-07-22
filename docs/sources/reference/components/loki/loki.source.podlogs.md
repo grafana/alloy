@@ -221,10 +221,10 @@ The `node_filter` block configures node-based filtering for Pod discovery.
 
 The following arguments are supported: 
 
-| Name        | Type     | Description                                                        | Default | Required |
-|-------------|----------|--------------------------------------------------------------------|---------|----------|
-| `enabled`   | `bool`   | Enable node-based filtering for pod discovery.                    | `false` | no       |
-| `node_name` | `string` | Node name to filter pods by. Falls back to NODE_NAME env var if empty. | `""`    | no       |
+| Name        | Type     | Description                                                                               | Default | Required |
+| ----------- | -------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`   | `bool`   | Enable node-based filtering for Pod discovery.                                            | `false` | no       |
+| `node_name` | `string` | Node name to filter Pods by. Falls back to the `NODE_NAME` environment variable if empty. | `""`    | no       |
 
 When `enabled` is set to `true`, `loki.source.podlogs` will only discover and collect logs from pods running on the specified node.
 This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from pods on other nodes.
