@@ -217,6 +217,10 @@ Clustering looks only at the following labels for determining the shard key:
 
 ### `node_filter`
 
+The `node_filter` block configures node-based filtering for Pod discovery.
+
+The following arguments are supported: 
+
 | Name        | Type     | Description                                                        | Default | Required |
 |-------------|----------|--------------------------------------------------------------------|---------|----------|
 | `enabled`   | `bool`   | Enable node-based filtering for pod discovery.                    | `false` | no       |
