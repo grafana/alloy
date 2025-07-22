@@ -45,10 +45,11 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			SiteInclude:   config.IIS.SiteInclude,
 		},
 		LogicalDisk: windows.LogicalDiskConfig{
-			BlackList: config.LogicalDisk.BlackList,
-			WhiteList: config.LogicalDisk.WhiteList,
-			Include:   config.LogicalDisk.Include,
-			Exclude:   config.LogicalDisk.Exclude,
+			BlackList:   config.LogicalDisk.BlackList,
+			WhiteList:   config.LogicalDisk.WhiteList,
+			Include:     config.LogicalDisk.Include,
+			Exclude:     config.LogicalDisk.Exclude,
+			EnabledList: split(config.LogicalDisk.EnabledList),
 		},
 		MSSQL: windows.MSSQLConfig{
 			EnabledClasses: split(config.MSSQL.EnabledClasses),
@@ -77,10 +78,12 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Include: config.Printer.Include,
 		},
 		Process: windows.ProcessConfig{
-			BlackList: config.Process.BlackList,
-			WhiteList: config.Process.WhiteList,
-			Exclude:   config.Process.Exclude,
-			Include:   config.Process.Include,
+			BlackList:              config.Process.BlackList,
+			WhiteList:              config.Process.WhiteList,
+			Exclude:                config.Process.Exclude,
+			Include:                config.Process.Include,
+			EnableIISWorkerProcess: config.Process.EnableIISWorkerProcess,
+			CounterVersion:         config.Process.CounterVersion,
 		},
 		ScheduledTask: windows.ScheduledTaskConfig{
 			Exclude: config.ScheduledTask.Exclude,
