@@ -72,7 +72,8 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`text_file`][text_file]                   | Configures the `textfile` collector.           | no       |
 | [`update`][update]                         | Configures the `update` collector.             | no       |
 
-The `textfile` collector is configured with the `text_file` block, this will be updated in a future release to be consistent.
+The `textfile` collector is currently configured with the `text_file` block. 
+This will be updated in a future release to be consistent.
 
 {{< admonition type="note" >}}
 Starting with release 1.9.0, the `msmq` block is deprecated.
