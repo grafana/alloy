@@ -118,7 +118,7 @@ type IISConfig struct {
 
 // TextFileConfig handles settings for the windows_exporter Text File collector
 type TextFileConfig struct {
-	TextFileDirectory string `yaml:"text_file_directory,omitempty"`
+	Directories []string `yaml:"directories,omitempty"`
 }
 
 // SMTPConfig handles settings for the windows_exporter SMTP collector
@@ -142,6 +142,7 @@ type ProcessConfig struct {
 	Include                string `yaml:"include,omitempty"`
 	Exclude                string `yaml:"exclude,omitempty"`
 	EnableIISWorkerProcess bool   `yaml:"enable_iis_worker_process,omitempty"`
+	CounterVersion         uint8  `yaml:"counter_version,omitempty"` // 0 for autoselect, 1 for v1, 2 for v2
 }
 
 // NetworkConfig handles settings for the windows_exporter network collector
@@ -159,10 +160,11 @@ type MSSQLConfig struct {
 
 // LogicalDiskConfig handles settings for the windows_exporter logical disk collector
 type LogicalDiskConfig struct {
-	BlackList string `yaml:"blacklist,omitempty"`
-	WhiteList string `yaml:"whitelist,omitempty"`
-	Include   string `yaml:"include,omitempty"`
-	Exclude   string `yaml:"exclude,omitempty"`
+	EnabledList string `yaml:"enabled_list,omitempty"`
+	BlackList   string `yaml:"blacklist,omitempty"`
+	WhiteList   string `yaml:"whitelist,omitempty"`
+	Include     string `yaml:"include,omitempty"`
+	Exclude     string `yaml:"exclude,omitempty"`
 }
 
 // ScheduledTaskConfig handles settings for the windows_exporter scheduled_task collector

@@ -2,6 +2,7 @@ package windows
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,7 +46,8 @@ type Arguments struct {
 	SMB                SMBConfig                `alloy:"smb,block,optional"`
 	SMBClient          SMBClientConfig          `alloy:"smb_client,block,optional"`
 	SMTP               SMTPConfig               `alloy:"smtp,block,optional"`
-	TextFile           TextFileConfig           `alloy:"text_file,block,optional"`
+	TextFileDeprecated *TextFileConfig          `alloy:"text_file,block,optional"`
+	TextFile           *TextFileConfig          `alloy:"textfile,block,optional"`
 	TCP                TCPConfig                `alloy:"tcp,block,optional"`
 	Update             UpdateConfig             `alloy:"update,block,optional"`
 	Filetime           FiletimeConfig           `alloy:"filetime,block,optional"`
@@ -59,8 +61,12 @@ type Arguments struct {
 func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
 	a.logDeprecatedFields(logger)
 
+	filteredCollectors := slices.DeleteFunc(a.EnabledCollectors, func(collector string) bool {
+		return collector == "cs" || collector == "logon"
+	})
+
 	return &windows_integration.Config{
-		EnabledCollectors:  strings.Join(a.EnabledCollectors, ","),
+		EnabledCollectors:  strings.Join(filteredCollectors, ","),
 		Dfsr:               a.Dfsr.Convert(),
 		Exchange:           a.Exchange.Convert(),
 		IIS:                a.IIS.Convert(),
@@ -75,16 +81,55 @@ func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
 		SMB:                a.SMB.Convert(),
 		SMBClient:          a.SMBClient.Convert(),
 		SMTP:               a.SMTP.Convert(),
-		TextFile:           a.TextFile.Convert(),
+		TextFile:           CombineAndConvert(a.TextFile, a.TextFileDeprecated),
 		TCP:                a.TCP.Convert(),
 		Filetime:           a.Filetime.Convert(),
 		PerformanceCounter: a.PerformanceCounter.Convert(),
 		MSCluster:          a.MSCluster.Convert(),
 		NetFramework:       a.NetFramework.Convert(),
+		Update:             a.Update.Convert(),
+		DNS:                a.DNS.Convert(),
+	}
+}
+
+// Combine combines two TextFileConfig instances to ensure support for the deprecated version
+func CombineAndConvert(t, deprecated *TextFileConfig) windows_integration.TextFileConfig {
+	if t == nil && deprecated == nil {
+		return windows_integration.TextFileConfig{
+			Directories: defaultTextFileDirectories,
+		}
+	}
+
+	if t == nil {
+		return deprecated.Convert()
+	}
+
+	if deprecated == nil {
+		return t.Convert()
+	}
+
+	directories := append(t.Directories, deprecated.Directories...)
+	// Support the deprecated `text_file_directory` attribute.
+	if len(t.TextFileDirectory) > 0 {
+		directories = append(directories, strings.Split(t.TextFileDirectory, ",")...)
+	}
+	if len(deprecated.TextFileDirectory) > 0 {
+		directories = append(directories, strings.Split(deprecated.TextFileDirectory, ",")...)
+	}
+	// Sort so we can use slices.Compact to remove duplicates.
+	slices.Sort(directories)
+	return windows_integration.TextFileConfig{
+		Directories: slices.Compact(directories),
 	}
 }
 
 func (a *Arguments) logDeprecatedFields(logger log.Logger) {
+	if slices.Contains(a.EnabledCollectors, "cs") {
+		level.Warn(logger).Log("msg", "the `cs` collector is removed - its metrics are in the `os`, `memory`, and `cpu` collectors")
+	}
+	if slices.Contains(a.EnabledCollectors, "logon") {
+		level.Warn(logger).Log("msg", "the `logon` collector is removed - its metrics are in the `terminal_services` collector")
+	}
 	if a.MSMQ != nil {
 		level.Warn(logger).Log("msg", "the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
@@ -96,6 +141,9 @@ func (a *Arguments) logDeprecatedFields(logger log.Logger) {
 	}
 	if a.Service.V2 != nil {
 		level.Warn(logger).Log("msg", "the `enable_v2_collector` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+	}
+	if a.TextFileDeprecated != nil {
+		level.Warn(logger).Log("msg", "the `text_file` block is deprecated and will be removed in the future - use `textfile` instead")
 	}
 }
 
@@ -151,13 +199,24 @@ func (t IISConfig) Convert() windows_integration.IISConfig {
 
 // TextFileConfig handles settings for the windows_exporter Text File collector
 type TextFileConfig struct {
-	TextFileDirectory string `alloy:"text_file_directory,attr,optional"`
+	TextFileDirectory string   `alloy:"text_file_directory,attr,optional"`
+	Directories       []string `alloy:"directories,attr,optional"`
 }
 
 // Convert converts the component's TextFileConfig to the integration's TextFileConfig.
 func (t TextFileConfig) Convert() windows_integration.TextFileConfig {
+	directories := t.Directories
+	// Support the deprecated `text_file_directory` attribute.
+	if len(t.TextFileDirectory) > 0 {
+		directories = append(directories, strings.Split(t.TextFileDirectory, ",")...)
+		slices.Sort(directories)
+		directories = slices.Compact(directories)
+	}
+	if len(directories) == 0 {
+		directories = defaultTextFileDirectories
+	}
 	return windows_integration.TextFileConfig{
-		TextFileDirectory: t.TextFileDirectory,
+		Directories: directories,
 	}
 }
 
@@ -203,6 +262,7 @@ type ProcessConfig struct {
 	Exclude                string `alloy:"exclude,attr,optional"`
 	Include                string `alloy:"include,attr,optional"`
 	EnableIISWorkerProcess bool   `alloy:"enable_iis_worker_process,attr,optional"`
+	CounterVersion         uint8  `alloy:"counter_version,attr,optional"`
 }
 
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
@@ -266,10 +326,11 @@ type MSMQConfig struct {
 
 // LogicalDiskConfig handles settings for the windows_exporter logical disk collector
 type LogicalDiskConfig struct {
-	BlackList string `alloy:"blacklist,attr,optional"`
-	WhiteList string `alloy:"whitelist,attr,optional"`
-	Include   string `alloy:"include,attr,optional"`
-	Exclude   string `alloy:"exclude,attr,optional"`
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+	BlackList   string   `alloy:"blacklist,attr,optional"`
+	WhiteList   string   `alloy:"whitelist,attr,optional"`
+	Include     string   `alloy:"include,attr,optional"`
+	Exclude     string   `alloy:"exclude,attr,optional"`
 }
 
 // Convert converts the component's LogicalDiskConfig to the integration's LogicalDiskConfig.
@@ -302,7 +363,7 @@ type PrinterConfig struct {
 	Include string `alloy:"include,attr,optional"`
 }
 
-// Convert converts the component's ProcessConfig to the integration's ProcessConfig.
+// Convert converts the component's PrinterConfig to the integration's PrinterConfig.
 func (t PrinterConfig) Convert() windows_integration.PrinterConfig {
 	return windows_integration.PrinterConfig{
 		Exclude: wrapRegex(t.Exclude),

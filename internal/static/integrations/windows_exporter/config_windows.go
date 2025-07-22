@@ -81,7 +81,7 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.SMTP.ServerExclude, err = regexp.Compile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
 	errs = append(errs, err)
 
-	cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
+	cfg.Textfile.TextFileDirectories = c.TextFile.Directories
 
 	cfg.PhysicalDisk.DiskInclude, err = regexp.Compile(c.PhysicalDisk.Include)
 	errs = append(errs, err)
@@ -98,6 +98,7 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
 	errs = append(errs, err)
 	cfg.Process.EnableWorkerProcess = c.Process.EnableIISWorkerProcess
+	cfg.Process.CounterVersion = c.Process.CounterVersion
 
 	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
 	errs = append(errs, err)
@@ -110,6 +111,8 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 	cfg.LogicalDisk.VolumeExclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
 	errs = append(errs, err)
+
+	cfg.LogicalDisk.CollectorsEnabled = strings.Split(c.LogicalDisk.EnabledList, ",")
 
 	cfg.ScheduledTask.TaskInclude, err = regexp.Compile(c.ScheduledTask.Include)
 	errs = append(errs, err)
@@ -145,7 +148,7 @@ func coalesceString(v ...string) string {
 
 // DefaultConfig holds the default settings for the windows_exporter integration.
 var DefaultConfig = Config{
-	EnabledCollectors: "cpu,cs,logical_disk,net,os,service,system",
+	EnabledCollectors: "cpu,logical_disk,net,os,service,system",
 	Dfsr: DfsrConfig{
 		SourcesEnabled: strings.Join(collector.ConfigDefaults.DFSR.CollectorsEnabled, ","),
 	},
@@ -163,10 +166,11 @@ var DefaultConfig = Config{
 		SiteExclude:   collector.ConfigDefaults.IIS.SiteExclude.String(),
 	},
 	LogicalDisk: LogicalDiskConfig{
-		BlackList: collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
-		WhiteList: collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+		EnabledList: strings.Join(collector.ConfigDefaults.LogicalDisk.CollectorsEnabled, ","),
+		BlackList:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+		WhiteList:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Include:     collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Exclude:     collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 	},
 	MSSQL: MSSQLConfig{
 		EnabledClasses: strings.Join(collector.ConfigDefaults.Mssql.CollectorsEnabled, ","),
@@ -192,10 +196,12 @@ var DefaultConfig = Config{
 		Exclude: collector.ConfigDefaults.Printer.PrinterExclude.String(),
 	},
 	Process: ProcessConfig{
-		BlackList: collector.ConfigDefaults.Process.ProcessExclude.String(),
-		WhiteList: collector.ConfigDefaults.Process.ProcessInclude.String(),
-		Include:   collector.ConfigDefaults.Process.ProcessInclude.String(),
-		Exclude:   collector.ConfigDefaults.Process.ProcessExclude.String(),
+		BlackList:              collector.ConfigDefaults.Process.ProcessExclude.String(),
+		WhiteList:              collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Include:                collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Exclude:                collector.ConfigDefaults.Process.ProcessExclude.String(),
+		EnableIISWorkerProcess: collector.ConfigDefaults.Process.EnableWorkerProcess,
+		CounterVersion:         collector.ConfigDefaults.Process.CounterVersion,
 	},
 	ScheduledTask: ScheduledTaskConfig{
 		Include: collector.ConfigDefaults.ScheduledTask.TaskInclude.String(),
@@ -218,7 +224,7 @@ var DefaultConfig = Config{
 		EnabledList: "",
 	},
 	TextFile: TextFileConfig{
-		TextFileDirectory: strings.Join(collector.ConfigDefaults.Textfile.TextFileDirectories, ","),
+		Directories: collector.ConfigDefaults.Textfile.TextFileDirectories,
 	},
 	TCP: TCPConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.TCP.CollectorsEnabled, ","),

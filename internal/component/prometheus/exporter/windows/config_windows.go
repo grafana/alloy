@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package windows
 
 import (
@@ -7,6 +10,9 @@ import (
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 	col "github.com/prometheus-community/windows_exporter/pkg/collector"
 )
+
+// We copy this so that the non-windows only code can reference the default via the stub file
+var defaultTextFileDirectories = col.ConfigDefaults.Textfile.TextFileDirectories
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
@@ -29,10 +35,11 @@ func (a *Arguments) SetToDefault() {
 			SiteExclude:   col.ConfigDefaults.IIS.SiteExclude.String(),
 		},
 		LogicalDisk: LogicalDiskConfig{
-			BlackList: col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
-			WhiteList: col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-			Include:   col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-			Exclude:   col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+			BlackList:   col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+			WhiteList:   col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+			Include:     col.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+			Exclude:     col.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+			EnabledList: slices.Clone(col.ConfigDefaults.LogicalDisk.CollectorsEnabled),
 		},
 		MSSQL: MSSQLConfig{
 			EnabledClasses: slices.Clone(col.ConfigDefaults.Mssql.CollectorsEnabled),
@@ -57,6 +64,7 @@ func (a *Arguments) SetToDefault() {
 			Include:                col.ConfigDefaults.Process.ProcessInclude.String(),
 			Exclude:                col.ConfigDefaults.Process.ProcessExclude.String(),
 			EnableIISWorkerProcess: col.ConfigDefaults.Process.EnableWorkerProcess,
+			CounterVersion:         col.ConfigDefaults.Process.CounterVersion,
 		},
 		ScheduledTask: ScheduledTaskConfig{
 			Include: col.ConfigDefaults.ScheduledTask.TaskInclude.String(),
@@ -78,9 +86,10 @@ func (a *Arguments) SetToDefault() {
 			Include:   col.ConfigDefaults.SMTP.ServerInclude.String(),
 			Exclude:   col.ConfigDefaults.SMTP.ServerExclude.String(),
 		},
-		TextFile: TextFileConfig{
-			TextFileDirectory: strings.Join(col.ConfigDefaults.Textfile.TextFileDirectories, ","),
-		},
+		// Keep the defaults in the deprecated field & block for backward compatibility.
+		// TODO(@dehaansa) - remove in a future release.
+		// TextFileDeprecated & TextFile are both pointer types to allow for identification
+		// of whether the user has set the field or not.
 		TCP: TCPConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.TCP.CollectorsEnabled),
 		},

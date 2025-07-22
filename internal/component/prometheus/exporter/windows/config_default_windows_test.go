@@ -79,11 +79,12 @@ func TestDefaultConfig(t *testing.T) {
 		SMB:               SMBConfig{EnabledList: []string{}},
 		SMBClient:         SMBClientConfig{EnabledList: []string{}},
 		SMTP:              SMTPConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
-		TextFile:          TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
-		TCP:               TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
-		Filetime:          FiletimeConfig{FilePatterns: []string{}},
-		DNS:               DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
-		Update:            UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
+		// This default is not set on the defaults, but is applied when sending the config to the integration code
+		// TextFile:          &TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
+		TCP:      TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
+		Filetime: FiletimeConfig{FilePatterns: []string{}},
+		DNS:      DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
+		Update:   UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
 	}
 
 	var args Arguments

@@ -180,7 +180,7 @@ require (
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.17.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
-	github.com/prometheus-community/windows_exporter v0.30.8 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
+	github.com/prometheus-community/windows_exporter v0.31.1 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-operator/prometheus-operator v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.2
@@ -192,7 +192,7 @@ require (
 	github.com/prometheus/memcached_exporter v0.13.0
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.6.0
-	github.com/prometheus/procfs v0.16.1
+	github.com/prometheus/procfs v0.17.0
 	github.com/prometheus/prometheus v0.304.2 // replaced by a fork of v3.4.2 further down this file
 	github.com/prometheus/sigv4 v0.2.0
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
@@ -279,14 +279,14 @@ require (
 	go.uber.org/goleak v1.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.39.0
+	golang.org/x/crypto v0.40.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
-	golang.org/x/net v0.41.0
+	golang.org/x/net v0.42.0
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.15.0
-	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.26.0
+	golang.org/x/sync v0.16.0
+	golang.org/x/sys v0.34.0
+	golang.org/x/text v0.27.0
 	golang.org/x/time v0.12.0
 	golang.org/x/tools v0.34.0
 	google.golang.org/api v0.239.0
@@ -455,7 +455,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.51.0 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/Microsoft/hcsshim v0.12.9 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
 	github.com/Shopify/sarama v1.38.1 // indirect
@@ -511,7 +510,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.9.0 // indirect
 	github.com/briandowns/spinner v1.23.0 // indirect
 	github.com/buger/goterm v1.0.4 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500 // indirect
@@ -1005,7 +1004,7 @@ require (
 	golang.design/x/chann v0.1.2 // indirect
 	golang.org/x/arch v0.18.0 // indirect
 	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
