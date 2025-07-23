@@ -17,6 +17,10 @@ type metrics struct {
 }
 
 func registerMetrics(reg prometheus.Registerer) *metrics {
+	if reg == nil {
+		reg = prometheus.DefaultRegisterer
+	}
+
 	m := &metrics{
 		configHash: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
