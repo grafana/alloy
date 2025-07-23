@@ -35,7 +35,6 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
@@ -96,7 +95,6 @@ func TestSchemaTable(t *testing.T) {
 			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			CacheEnabled:    false,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)

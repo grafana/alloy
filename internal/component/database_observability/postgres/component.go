@@ -240,11 +240,6 @@ func (c *Component) startCollectors() error {
 		CollectInterval: c.args.CollectInterval,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
-
-		// TODO: make these configurable
-		CacheEnabled: true,
-		CacheSize:    256,
-		CacheTTL:     10 * time.Minute,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)

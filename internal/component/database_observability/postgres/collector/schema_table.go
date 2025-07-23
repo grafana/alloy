@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -42,10 +41,6 @@ type SchemaTableArguments struct {
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
-	CacheEnabled bool
-	CacheSize    int
-	CacheTTL     time.Duration
-
 	Logger log.Logger
 }
 
@@ -54,12 +49,6 @@ type SchemaTable struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-
-	// Cache of table definitions. Entries are removed after a configurable TTL.
-	// Key is a string of the form "schema.table@timestamp", where timestamp is
-	// the last update time of the table (this allows capturing schema changes
-	// at each scan, regardless of caching).
-	cache *expirable.LRU[string, *tableInfo]
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -85,10 +74,6 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaTableName),
 		running:         &atomic.Bool{},
-	}
-
-	if args.CacheEnabled {
-		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
