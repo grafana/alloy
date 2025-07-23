@@ -53,7 +53,6 @@ func TestMetricsRegistration(t *testing.T) {
 		"remotecfg_load_attempts_total",
 		"remotecfg_last_load_success_timestamp_seconds",
 		"remotecfg_request_duration_seconds",
-		"remotecfg_using_fallback_config",
 	}
 
 	// Check that all expected metrics are registered
@@ -100,7 +99,6 @@ func TestMetricNames(t *testing.T) {
 		"remotecfg_load_attempts_total":                 "Attempts to load remote configuration",
 		"remotecfg_last_load_success_timestamp_seconds": "Timestamp of the last successful remote configuration load",
 		"remotecfg_request_duration_seconds":            "Duration of remote configuration requests.",
-		"remotecfg_using_fallback_config":               "1 if using cached config due to API failures, 0 if using API config.",
 	}
 
 	for expectedName, expectedHelp := range expectedMetrics {
@@ -159,7 +157,6 @@ func TestMetricTypes(t *testing.T) {
 		"remotecfg_load_attempts_total":                 "COUNTER",
 		"remotecfg_last_load_success_timestamp_seconds": "GAUGE",
 		"remotecfg_request_duration_seconds":            "HISTOGRAM",
-		"remotecfg_using_fallback_config":               "GAUGE",
 	}
 
 	for metricName, expectedType := range expectedTypes {
