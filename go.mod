@@ -154,6 +154,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.128.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0
@@ -490,6 +491,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.51.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.45.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.227.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/iam v1.38.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.4 // indirect
@@ -545,6 +547,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/deneonet/benc v1.1.8 // indirect
 	github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 // indirect
 	github.com/dennwc/ioctl v1.0.0 // indirect
@@ -657,6 +660,7 @@ require (
 	github.com/hashicorp/cronexpr v1.1.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-discover/provider/gce v0.0.0-20250625044749-2961509ab243 // indirect
 	github.com/hashicorp/go-envparse v0.1.0 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -1028,14 +1032,6 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
-)
-
-require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.128.0
-
-require (
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.8 // indirect
-	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
-	github.com/hashicorp/go-discover/provider/gce v0.0.0-20250625044749-2961509ab243 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
