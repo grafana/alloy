@@ -18,6 +18,7 @@ import (
 const (
 	OP_DATABASE_DETECTION = "database_detection"
 	OP_SCHEMA_DETECTION   = "schema_detection"
+	OP_TABLE_DETECTION    = "table_detection"
 	SchemaTableName       = "schema_table"
 )
 
@@ -33,7 +34,21 @@ const (
 	    schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
 	    AND schema_name NOT LIKE 'pg_temp_%'
 	    AND schema_name NOT LIKE 'pg_toast_temp_%'`
+
+	selectTableName = `
+	SELECT
+		tablename,
+	FROM
+		pg_tables
+	WHERE
+		schemaname = $1` // TODO: information_schema.tables doesn't show all the tables, something to look into. permissions maybe?
 )
+
+type tableInfo struct {
+	schema    string
+	tableName string
+	tableType string
+}
 
 type SchemaTableArguments struct {
 	DB              *sql.DB
@@ -181,6 +196,48 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 
 	if len(schemas) == 0 {
 		level.Info(c.logger).Log("msg", "no schema detected from information_schema.schemata")
+		return nil
+	}
+
+	tables := []*tableInfo{}
+
+	for _, schema := range schemas {
+		level.Debug(c.logger).Log("msg", "querying tables for schema", "schema", schema, "query", selectTableName)
+		rs, err := c.dbConnection.QueryContext(ctx, selectTableName, schema)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to query tables", "schema", schema, "err", err)
+			break
+		}
+		defer rs.Close()
+
+		for rs.Next() {
+			var tableName, tableType string
+			if err := rs.Scan(&tableName, &tableType); err != nil {
+				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
+				break
+			}
+			tables = append(tables, &tableInfo{
+				schema:    schema,
+				tableName: tableName,
+				tableType: tableType,
+			})
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_TABLE_DETECTION,
+				c.instanceKey,
+				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+			)
+		}
+
+		if err := rs.Err(); err != nil {
+			level.Error(c.logger).Log("msg", "error during iterating over tables result set", "err", err)
+			return err
+		}
+	}
+
+	if len(tables) == 0 {
+		level.Info(c.logger).Log("msg", "no tables detected from pg_tables")
 		return nil
 	}
 
