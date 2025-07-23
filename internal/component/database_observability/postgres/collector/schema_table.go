@@ -56,16 +56,6 @@ type SchemaTable struct {
 	cancel  context.CancelFunc
 }
 
-type tableInfo struct {
-	schema        string
-	tableName     string
-	tableType     string
-	createTime    time.Time
-	updateTime    time.Time
-	b64CreateStmt string
-	b64TableSpec  string
-}
-
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
