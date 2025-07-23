@@ -49,9 +49,15 @@ type configManager struct {
 	// to store and retrieve the cached configuration.
 	argsHash string
 
-	ticker               *jitter.Ticker
-	pollFrequency        time.Duration
-	updateTickerChan     chan struct{}
+	// This is the ticker that is used to poll the API for configuration changes.
+	ticker           *jitter.Ticker
+	updateTickerChan chan struct{}
+
+	// This is the base frequency at which we poll the API for configuration changes. A jitter is applied to this value.
+	pollFrequency time.Duration
+
+	// This is the hash of the last loaded configuration. It is used to determine if
+	// the configuration has changed since the last fetch.
 	lastLoadedConfigHash string
 
 	// This is the hash received from the API. It is used to determine if
