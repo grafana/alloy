@@ -107,7 +107,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, ".+", args.IIS.SiteInclude)
 	require.Equal(t, "", args.IIS.AppExclude)
 	require.Equal(t, ".+", args.IIS.AppInclude)
-	require.Equal(t, "C:", args.TextFile.TextFileDirectory)
+	require.Equal(t, "C:", args.TextFileDeprecated.TextFileDirectory)
 	require.Equal(t, "", args.SMTP.Exclude)
 	require.Equal(t, ".+", args.SMTP.Include)
 	require.Equal(t, ".*", args.Service.Include)
