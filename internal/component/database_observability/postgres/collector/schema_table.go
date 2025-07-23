@@ -27,13 +27,14 @@ const (
 
 	selectSchemaNames = `
 	SELECT 
-	    schema_name 
+	    nspname as schema_name
 	FROM 
-	    information_schema.schemata
+	    pg_namespace
 	WHERE 
-	    schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-	    AND schema_name NOT LIKE 'pg_temp_%'
-	    AND schema_name NOT LIKE 'pg_toast_temp_%'`
+	    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+	    AND nspname NOT LIKE 'pg_temp_%'
+	    AND nspname NOT LIKE 'pg_toast_temp_%'
+	    AND nspname NOT LIKE 'pg_toast_%'` // TODO: hmm information_schema.schemata might have the same issue as below, something to look into
 
 	selectTableName = `
 	SELECT
@@ -167,7 +168,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 
 	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query schemas", "err", err)
+		level.Error(c.logger).Log("msg", "failed to query pg_namespace", "err", err)
 		return err
 	}
 	defer schemaRs.Close()
@@ -176,7 +177,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan schemata", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "err", err)
 			break
 		}
 		schemas = append(schemas, schema)
@@ -190,12 +191,12 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	}
 
 	if err := schemaRs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over schemas result set", "err", err)
+		level.Error(c.logger).Log("msg", "error during iterating over pg_namespace result set", "err", err)
 		return err
 	}
 
 	if len(schemas) == 0 {
-		level.Info(c.logger).Log("msg", "no schema detected from information_schema.schemata")
+		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace")
 		return nil
 	}
 
@@ -211,15 +212,15 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		defer rs.Close()
 
 		for rs.Next() {
-			var tableName, tableType string
-			if err := rs.Scan(&tableName, &tableType); err != nil {
+			var tableName string
+			if err := rs.Scan(&tableName); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
 			tables = append(tables, &tableInfo{
 				schema:    schema,
 				tableName: tableName,
-				tableType: tableType,
+				tableType: "BASE TABLE", // pg_tables only contains base tables
 			})
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
