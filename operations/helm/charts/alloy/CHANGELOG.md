@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
+
 1.2.0 (2025-07-16)
 ----------
 
