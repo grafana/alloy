@@ -10,6 +10,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -333,7 +334,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
 				c.instanceKey,
@@ -363,7 +364,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 			}
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.instanceKey,
