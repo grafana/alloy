@@ -531,7 +531,8 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
 	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
 	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
-	dec.ConvertClassicHistogramsToNHCB = &c.ConvertClassicHistogramsToNHCB
+	convertToNHCB := c.ConvertClassicHistogramsToNHCB
+	dec.ConvertClassicHistogramsToNHCB = &convertToNHCB
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
