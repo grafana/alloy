@@ -229,6 +229,7 @@ func (c *Component) startCollectors() error {
 		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
 		return err
 	}
+
 	c.collectors = append(c.collectors, ciCollector)
 
 	return nil

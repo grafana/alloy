@@ -30,7 +30,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewTodoName(todoCollectorArguments{
+		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:              db,
 			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
@@ -41,7 +41,7 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseNames).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -80,9 +80,5 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, `level="info" schema="public"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
 		require.Equal(t, `level="info" schema="postgis"`, lokiEntries[2].Line)
-		//require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		//require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		//require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		//require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
 	})
 }
