@@ -154,8 +154,8 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
-		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use same fallback protocol as Prometheus v2
-		ScrapeNativeHistograms:   true,
+		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
+		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
 		MetricNameValidationScheme:     config.UTF8ValidationConfig,
 		ConvertClassicHistogramsToNHCB: false,
@@ -180,6 +180,18 @@ func (arg *Arguments) Validate() error {
 		// For backwards-compatibility, if EnableProtobufNegotiation is set to true, the ScrapeProtocols are set to
 		// [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
 		arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+	}
+
+	if arg.ScrapeNativeHistograms {
+		// When scrape_native_histograms is set to true, the default scrape protocols are overridden to
+		// Proto-first scrape protocols, like in upstream Prometheus.
+		if reflect.DeepEqual(arg.ScrapeProtocols, defaultScrapeProtocols) {
+			arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		}
+
+		if !slices.Contains(arg.ScrapeProtocols, string(config.PrometheusProto)) {
+			return fmt.Errorf("scrape_native_histograms is set to true, but PrometheusProto is not in scrape_protocols")
+		}
 	}
 
 	// Validate scrape protocols
