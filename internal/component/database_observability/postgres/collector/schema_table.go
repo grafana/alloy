@@ -199,5 +199,15 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		)
 	}
 
+	if err := schemaRs.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over schemas result set", "err", err)
+		return err
+	}
+
+	if len(schemas) == 0 {
+		level.Info(c.logger).Log("msg", "no schema detected from information_schema.schemata")
+		return nil
+	}
+
 	return nil
 }
