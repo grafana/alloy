@@ -50,6 +50,8 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |
 | alloy.listenScheme | string | `"HTTP"` | Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS" |
+| alloy.initialDelaySeconds | int | `10` | Number of seconds after the container has started before readiness probes are initiated. |
+| alloy.timeoutSeconds | int | `1` | Number of seconds after which the readiness probe times out. |
 | alloy.livenessProbe | object | `{}` | Set livenessProbe for the Grafana Alloy container. |
 | alloy.mounts.dockercontainers | bool | `false` | Mount /var/lib/docker/containers from the host into the container for log collection. |
 | alloy.mounts.extra | list | `[]` | Extra volume mounts to add into the Grafana Alloy container. Does not affect the watch container. |
