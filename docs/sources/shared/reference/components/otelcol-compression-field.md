@@ -14,3 +14,5 @@ The `compression` argument controls which compression mechanism to use. Supporte
 * `"zstd"`
 
 If you set `compression` to `"none"` or an empty string `""`, the requests aren't compressed.
+
+> **NOTE**: The Grafana Cloud OTLP endpoint supports the [OTLP/HTTP with binary protocol buffer encoding](https://opentelemetry.io/docs/specs/otlp/#binary-protobuf-encoding) with either no compression or `gzip` compression.
