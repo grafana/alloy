@@ -3,6 +3,7 @@ package podlogs
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/prometheus/util/strutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -69,6 +71,8 @@ type reconciler struct {
 	podLogsSelector          labels.Selector
 	podLogsNamespaceSelector labels.Selector
 	shouldDistribute         bool
+	nodeFilterEnabled        bool
+	nodeFilterName           string
 
 	debugMut  sync.RWMutex
 	debugInfo []DiscoveredPodLogs
@@ -94,6 +98,33 @@ func (r *reconciler) UpdateSelectors(podLogs, namespace labels.Selector) {
 
 	r.podLogsSelector = podLogs
 	r.podLogsNamespaceSelector = namespace
+}
+
+// UpdateNodeFilter updates the node filter configuration used by the reconciler.
+func (r *reconciler) UpdateNodeFilter(enabled bool, nodeName string) {
+	r.reconcileMut.Lock()
+	defer r.reconcileMut.Unlock()
+
+	r.nodeFilterEnabled = enabled
+	r.nodeFilterName = nodeName
+}
+
+// getNodeFilterName returns the effective node name to filter by.
+// If enabled but no node name is provided, it falls back to the NODE_NAME environment variable.
+func (r *reconciler) getNodeFilterName() string {
+	r.reconcileMut.RLock()
+	defer r.reconcileMut.RUnlock()
+
+	if !r.nodeFilterEnabled {
+		return ""
+	}
+
+	if r.nodeFilterName != "" {
+		return r.nodeFilterName
+	}
+
+	// Fall back to NODE_NAME environment variable
+	return os.Getenv("NODE_NAME")
 }
 
 // SetDistribute configures whether targets are distributed amongst the cluster.
@@ -236,6 +267,15 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 	opts := []client.ListOption{
 		client.MatchingLabelsSelector{Selector: sel},
 	}
+
+	// Add node filtering if enabled
+	if nodeFilterName := r.getNodeFilterName(); nodeFilterName != "" {
+		level.Debug(r.log).Log("msg", "applying node filter for pod discovery", "node", nodeFilterName, "key", key)
+		opts = append(opts, client.MatchingFieldsSelector{
+			Selector: fields.OneTermEqualSelector("spec.nodeName", nodeFilterName),
+		})
+	}
+
 	var podList corev1.PodList
 	if err := cli.List(ctx, &podList, opts...); err != nil {
 		discoveredPodLogs.ReconcileError = fmt.Sprintf("failed to list Pods: %s", err)
