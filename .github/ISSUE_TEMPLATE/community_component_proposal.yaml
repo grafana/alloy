@@ -1,6 +1,6 @@
 name: Community component proposal
 description: Propose a new community component.
-labels: ["community-component", "proposal"]
+labels: ["community-component", "proposal", "needs-triage"]
 body:
   - type: markdown
     attributes:
