@@ -55,8 +55,8 @@
       path: /-/ready
       port: {{ $values.listenPort }}
       scheme: {{ $values.listenScheme }}
-    initialDelaySeconds: 10
-    timeoutSeconds: 1
+    initialDelaySeconds: {{ $values.initialDelaySeconds }}
+    timeoutSeconds: {{ $values.timeoutSeconds }}
   {{- with $values.livenessProbe }}
   livenessProbe:
     {{- toYaml . | nindent 4 }}

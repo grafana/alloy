@@ -46,6 +46,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
 | alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
+| alloy.initialDelaySeconds | int | `10` | Initial delay for readiness probe. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |
@@ -58,6 +59,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.securityContext | object | `{}` | Security context to apply to the Grafana Alloy container. |
 | alloy.stabilityLevel | string | `"generally-available"` | Minimum stability level of components and behavior to enable. Must be one of "experimental", "public-preview", or "generally-available". |
 | alloy.storagePath | string | `"/tmp/alloy"` | Path to where Grafana Alloy stores data (for example, the Write-Ahead Log). By default, data is lost between reboots. |
+| alloy.timeoutSeconds | int | `1` | Timeout for readiness probe. |
 | alloy.uiPathPrefix | string | `"/"` | Base path where the UI is exposed. |
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |

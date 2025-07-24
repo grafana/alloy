@@ -68,6 +68,12 @@ alloy:
   # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
   listenScheme: HTTP
 
+  # -- Initial delay for readiness probe.
+  initialDelaySeconds: 10
+
+  # -- Timeout for readiness probe.
+  timeoutSeconds: 1
+
   # --  Base path where the UI is exposed.
   uiPathPrefix: /
 

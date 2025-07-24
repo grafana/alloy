@@ -30,6 +30,8 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+- Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
@@ -42,6 +44,8 @@ Main (unreleased)
 
 - Add `protobuf_message` argument to `prometheus.remote_write` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@thampiotr)
 
+- Update the `yet-another-cloudwatch-exporter` dependency to point to the prometheus-community repo as it has been donated. Adds a few new services to `prometheus.exporter.cloudwatch`. (@dehaansa, @BoweFlex, @andriikushch)
+
 - `pyroscope.java` now supports configuring the `log_level` and `quiet` flags on async-profiler. (@deltamualpha)
 
 ### Bugfixes
@@ -49,6 +53,8 @@ Main (unreleased)
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
 
 - Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
+
+- Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
 
 v1.10.0
 -----------------
