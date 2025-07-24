@@ -210,6 +210,6 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 
 	require.Equal(t, "START line 2", out[1].Line)
 	require.Equal(t, model.LabelValue("one"), out[1].Labels["value"])
-	require.Equal(t, "sm-key1", out[1].StructuredMetadata[0].Name)
+	require.Equal(t, "sm-key2", out[1].StructuredMetadata[0].Name)
 	require.Equal(t, "sm-value2", out[1].StructuredMetadata[0].Value)
 }
