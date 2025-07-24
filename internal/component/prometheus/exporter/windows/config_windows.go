@@ -11,9 +11,6 @@ import (
 	col "github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
-// We copy this so that the non-windows only code can reference the default via the stub file
-var defaultTextFileDirectories = col.ConfigDefaults.Textfile.TextFileDirectories
-
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
