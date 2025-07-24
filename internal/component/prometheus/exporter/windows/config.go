@@ -210,9 +210,6 @@ func (t TextFileConfig) Convert() windows_integration.TextFileConfig {
 		slices.Sort(directories)
 		directories = slices.Compact(directories)
 	}
-	if len(directories) == 0 {
-		directories = defaultTextFileDirectories
-	}
 	return windows_integration.TextFileConfig{
 		Directories: directories,
 	}
