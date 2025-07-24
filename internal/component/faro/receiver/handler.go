@@ -19,6 +19,8 @@ import (
 
 const apiKeyHeader = "x-api-key"
 
+var defaultAllowedHeaders = []string{"content-type", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
+
 type handler struct {
 	log         log.Logger
 	rateLimiter *rate.Limiter
@@ -71,7 +73,7 @@ func (h *handler) Update(args ServerArguments) {
 	if len(args.CORSAllowedOrigins) > 0 {
 		h.cors = cors.New(cors.Options{
 			AllowedOrigins: args.CORSAllowedOrigins,
-			AllowedHeaders: []string{apiKeyHeader, "content-type", "x-faro-session-id"},
+			AllowedHeaders: defaultAllowedHeaders,
 		})
 	} else {
 		h.cors = nil // Disable cors.
