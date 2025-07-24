@@ -29,26 +29,25 @@ const (
 	SELECT 
 	    nspname as schema_name
 	FROM 
-	    pg_namespace
+	    pg_catalog.pg_namespace
 	WHERE 
 	    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
 	    AND nspname NOT LIKE 'pg_temp_%'
 	    AND nspname NOT LIKE 'pg_toast_temp_%'
-	    AND nspname NOT LIKE 'pg_toast_%'` // TODO: hmm information_schema.schemata might have the same issue as below, something to look into
+	    AND nspname NOT LIKE 'pg_toast_%'`
 
-	selectTableName = `
+	selectTableNames = `
 	SELECT
-		tablename,
+		tablename
 	FROM
-		pg_tables
+		pg_catalog.pg_tables
 	WHERE
-		schemaname = $1` // TODO: information_schema.tables doesn't show all the tables, something to look into. permissions maybe?
+		schemaname = $1`
 )
 
 type tableInfo struct {
 	schema    string
 	tableName string
-	tableType string
 }
 
 type SchemaTableArguments struct {
@@ -203,8 +202,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	tables := []*tableInfo{}
 
 	for _, schema := range schemas {
-		level.Debug(c.logger).Log("msg", "querying tables for schema", "schema", schema, "query", selectTableName)
-		rs, err := c.dbConnection.QueryContext(ctx, selectTableName, schema)
+		rs, err := c.dbConnection.QueryContext(ctx, selectTableNames, schema)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to query tables", "schema", schema, "err", err)
 			break
@@ -220,7 +218,6 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			tables = append(tables, &tableInfo{
 				schema:    schema,
 				tableName: tableName,
-				tableType: "BASE TABLE", // pg_tables only contains base tables
 			})
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
