@@ -69,8 +69,11 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`smb`][smb]                               | Configures the `smb` collector.                | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
-| [`textfile`][textfile]                     | Configures the `textfile` collector.          | no       |
+| [`textfile`][textfile]                     | Configures the `textfile` collector.           | no       |
 | [`update`][update]                         | Configures the `update` collector.             | no       |
+
+For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
+It is identical to the `textfile` block, and will be removed in a future release.
 
 {{< admonition type="note" >}}
 Starting with release 1.9.0, the `msmq` block is deprecated.

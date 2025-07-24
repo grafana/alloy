@@ -61,8 +61,8 @@ type Selections []Selection
 
 type Selection struct {
 	Section string   `alloy:"attr,attr"`
-	Include []string `alloy:"include,attr"`
-	Exclude []string `alloy:"exclude,attr"`
+	Include []string `alloy:"include,attr,optional"`
+	Exclude []string `alloy:"exclude,attr,optional"`
 }
 
 type Services []Service
