@@ -3,7 +3,10 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -19,6 +22,7 @@ const (
 	OP_DATABASE_DETECTION = "database_detection"
 	OP_SCHEMA_DETECTION   = "schema_detection"
 	OP_TABLE_DETECTION    = "table_detection"
+	OP_CREATE_STATEMENT   = "create_statement"
 	SchemaTableName       = "schema_table"
 )
 
@@ -43,11 +47,45 @@ const (
 		pg_catalog.pg_tables
 	WHERE
 		schemaname = $1`
+
+	selectColumnNames = `
+	SELECT
+		attr.attname as column_name,
+		attr.atttypid::regtype as column_type,
+		NOT attr.attnotnull as is_nullable,
+		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default,
+		attr.attidentity as identity_generation, -- IDENTITY column will be flagged as auto-increment: identity generation type, if any
+		CASE WHEN constraint_pk.contype = 'p' THEN true ELSE false END as is_primary_key
+	FROM
+		pg_attribute attr -- pg_attribute stores column information
+		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum -- pg_attrdef stores default values for columns
+		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p' -- pg_constraint stores primary key information
+	WHERE
+		attr.attrelid = $1::regclass
+		AND attr.attnum > 0  -- no system columns
+		AND NOT attr.attisdropped -- no dropped columns`
 )
 
 type tableInfo struct {
-	schema    string
-	tableName string
+	database      string
+	schema        string
+	tableName     string
+	updateTime    time.Time
+	b64CreateStmt string
+	b64TableSpec  string
+}
+
+type tableSpec struct {
+	Columns []columnSpec `json:"columns"`
+}
+
+type columnSpec struct {
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	NotNull       bool   `json:"not_null,omitempty"`
+	AutoIncrement bool   `json:"auto_increment,omitempty"`
+	PrimaryKey    bool   `json:"primary_key,omitempty"`
+	DefaultValue  string `json:"default_value,omitempty"`
 }
 
 type SchemaTableArguments struct {
@@ -131,38 +169,22 @@ func (c *SchemaTable) Stop() {
 }
 
 func (c *SchemaTable) extractNames(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectDatabaseName)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_database", "err", err)
-		return err
+	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
+	var dbName string
+	if err := rs.Scan(&dbName); err != nil {
+		level.Error(c.logger).Log("msg", "failed to scan pg_database", "err", err)
 	}
-	defer rs.Close()
 
-	var databases []string
-	for rs.Next() {
-		var dbName string
-		if err := rs.Scan(&dbName); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_database", "err", err)
-			break
-		}
-		databases = append(databases, dbName)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_DATABASE_DETECTION,
-			c.instanceKey,
-			fmt.Sprintf(`db="%s"`, dbName),
-		)
-	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		OP_DATABASE_DETECTION,
+		c.instanceKey,
+		fmt.Sprintf(`database="%s"`, dbName),
+	)
 
 	if err := rs.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over result set", "err", err)
 		return err
-	}
-
-	if len(databases) == 0 {
-		level.Info(c.logger).Log("msg", "database is ok")
-		return nil
 	}
 
 	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
@@ -185,7 +207,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
 			c.instanceKey,
-			fmt.Sprintf(`schema="%s"`, schema),
+			fmt.Sprintf(`database="%s" schema="%s"`, dbName, schema),
 		)
 	}
 
@@ -216,15 +238,17 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 				break
 			}
 			tables = append(tables, &tableInfo{
-				schema:    schema,
-				tableName: tableName,
+				database:   dbName,
+				schema:     schema,
+				tableName:  tableName,
+				updateTime: time.Now(),
 			})
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
 				c.instanceKey,
-				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+				fmt.Sprintf(`database="%s" schema="%s" table="%s"`, dbName, schema, tableName),
 			)
 		}
 
@@ -239,5 +263,91 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		return nil
 	}
 
+	for _, table := range tables {
+		table, err = c.fetchTableDefinitions(ctx, table)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to get table definitions", "schema", table.schema, "table", table.tableName, "err", err)
+			continue
+		}
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			OP_CREATE_STATEMENT,
+			c.instanceKey,
+			fmt.Sprintf(
+				`database="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+				dbName, table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
+			),
+		)
+	}
+
 	return nil
+}
+
+func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, table *tableInfo) (*tableInfo, error) {
+	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to analyze table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		return table, err
+	}
+
+	jsonSpec, err := json.Marshal(spec)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to marshal table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		return table, err
+	}
+	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
+
+	createStmt := fmt.Sprintf("-- Table %s.%s structure", table.schema, table.tableName)
+	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
+
+	return table, nil
+}
+
+func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string) (*tableSpec, error) {
+	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
+	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer colRS.Close()
+
+	tblSpec := &tableSpec{Columns: []columnSpec{}}
+
+	for colRS.Next() {
+		var columnName, columnType, identityGeneration string
+		var columnDefault sql.NullString
+		var isNullable, isPrimaryKey bool
+		if err := colRS.Scan(&columnName, &columnType, &isNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan table columns", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		columnDefaultValue := "null"
+		if columnDefault.Valid {
+			columnDefaultValue = columnDefault.String
+		}
+
+		// detect auto-increment: either SERIAL or IDENTITY columns
+		isAutoIncrement := (columnDefault.Valid && strings.Contains(strings.ToLower(columnDefault.String), "nextval(")) ||
+			(identityGeneration == "a" || identityGeneration == "d")
+
+		colSpec := columnSpec{
+			Name:          columnName,
+			Type:          columnType,
+			NotNull:       !isNullable,
+			AutoIncrement: isAutoIncrement,
+			PrimaryKey:    isPrimaryKey,
+			DefaultValue:  columnDefaultValue,
+		}
+		tblSpec.Columns = append(tblSpec.Columns, colSpec)
+	}
+
+	if err := colRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	return tblSpec, nil
 }
