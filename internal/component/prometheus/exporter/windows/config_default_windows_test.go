@@ -43,7 +43,8 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.SMBClient.EnabledList, args.SMBClient.EnabledList)
 	require.Equal(t, defaultArgs.SMTP.Exclude, args.SMTP.Exclude)
 	require.Equal(t, defaultArgs.SMTP.Include, args.SMTP.Include)
-	require.Equal(t, defaultArgs.TextFile.TextFileDirectory, args.TextFile.TextFileDirectory)
+	// The default is now set in the convert function to allow for the deprecated text_file block to be used.
+	// require.Equal(t, defaultArgs.TextFile.TextFileDirectory, args.TextFile.TextFileDirectory)
 	require.Equal(t, defaultArgs.TCP.EnabledList, args.TCP.EnabledList)
 	require.Equal(t, defaultArgs.Filetime.FilePatterns, args.Filetime.FilePatterns)
 	require.Equal(t, defaultArgs.DNS.EnabledList, args.DNS.EnabledList)

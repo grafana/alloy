@@ -95,9 +95,7 @@ func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
 // Combine combines two TextFileConfig instances to ensure support for the deprecated version
 func CombineAndConvert(t, deprecated *TextFileConfig) windows_integration.TextFileConfig {
 	if t == nil && deprecated == nil {
-		return windows_integration.TextFileConfig{
-			Directories: defaultTextFileDirectories,
-		}
+		return windows_integration.TextFileConfig{}
 	}
 
 	if t == nil {
