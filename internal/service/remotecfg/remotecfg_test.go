@@ -54,7 +54,7 @@ func TestOnDiskCache(t *testing.T) {
 	client.getConfigFunc = buildGetConfigHandler("unparseable config", "", false)
 
 	// Write the cache contents, and run the service.
-	err := os.WriteFile(env.svc.dataPath, []byte(cacheContents), 0644)
+	err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(cacheContents), 0644)
 	require.NoError(t, err)
 
 	// Run the service.
@@ -68,7 +68,7 @@ func TestOnDiskCache(t *testing.T) {
 	// As the API response was unparseable, verify that the service has loaded
 	// the on-disk cache contents.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		b, err := env.svc.getCachedConfig()
+		b, err := env.svc.cm.getCachedConfig()
 		assert.NoError(c, err)
 		assert.Equal(c, cacheContents, string(b))
 	}, time.Second, 10*time.Millisecond)
@@ -112,7 +112,7 @@ func TestGoodBadGood(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API to an invalid configuration.
@@ -124,13 +124,13 @@ func TestGoodBadGood(t *testing.T) {
 	// loaded and flushed on disk, but also recorded the "bad" hash saved for
 	// comparison.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		b, err := env.svc.getCachedConfig()
+		b, err := env.svc.cm.getCachedConfig()
 		assert.NoError(c, err)
 		assert.Equal(c, cfgGood, string(b))
 	}, 1*time.Second, 10*time.Millisecond)
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API to the previous "good"
@@ -141,7 +141,7 @@ func TestGoodBadGood(t *testing.T) {
 
 	// Verify that the service has updated the hash.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -183,7 +183,7 @@ func TestAPIResponse(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API.
@@ -193,7 +193,7 @@ func TestAPIResponse(t *testing.T) {
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg2)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfg2)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -234,7 +234,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 	// As the API response was successful, verify that the service has loaded
 	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API.
@@ -248,7 +248,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		// Ensure that getConfig has been called again since changing the response.
 		assert.Greater(c, client.getConfigCalls.Load(), calls)
-		assert.Equal(c, getHash([]byte(cfg1)), env.svc.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -386,10 +386,19 @@ func newTestEnvironment(t *testing.T, client *collectorClient) *testEnvironment 
 		Logger:      util.TestLogger(t),
 		StoragePath: t.TempDir(),
 	})
-	svc.clientFactory = func(_ Arguments) (collectorv1connect.CollectorServiceClient, error) {
-		return client, nil
-	}
 	require.NoError(t, err)
+
+	// Replace the package-level function with our mock
+	originalCreateAPIClient := createAPIClient
+	createAPIClient = func(args Arguments, metrics *metrics) (collectorv1connect.CollectorServiceClient, error) {
+		// Return the mock wrapped in an apiClient to preserve the NotModified handling
+		return newAPIClientWithClient(client, metrics), nil
+	}
+
+	// Restore original function when test completes
+	t.Cleanup(func() {
+		createAPIClient = originalCreateAPIClient
+	})
 
 	return &testEnvironment{
 		t:   t,
