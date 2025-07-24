@@ -190,8 +190,9 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		Entry: loki.Entry{
 			Labels: s.startLineEntry.Entry.Labels.Clone(),
 			Entry: logproto.Entry{
-				Timestamp: s.startLineEntry.Entry.Entry.Timestamp,
-				Line:      s.buffer.String(),
+				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
+				Line:               s.buffer.String(),
+				StructuredMetadata: s.startLineEntry.StructuredMetadata,
 			},
 		},
 	}

@@ -54,6 +54,8 @@ Main (unreleased)
 
 - Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
 
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+
 v1.10.0
 -----------------
 
