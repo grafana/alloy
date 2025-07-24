@@ -20,6 +20,15 @@ you can query the `127.0.0.1:12345/metrics` endpoint to see the internal metrics
 
 The `/metrics` endpoint returns the internal metrics of {{< param "PRODUCT_NAME" >}} in the Prometheus exposition format.
 
+#### Component Filtering
+
+You can use the `component` query parameter to filter the metrics output. 
+For example, `/metrics?component=agent&component=otel`.
+
+The endpoint will only return metrics with a `component` label that matches one of the provided values.
+
+If you don't provide a `component` filter, the default behavior is unchanged, and the endpoint returns all metrics.
+
 ### /-/ready
 
 An {{< param "PRODUCT_NAME" >}} instance is ready once it has loaded its initial configuration.
