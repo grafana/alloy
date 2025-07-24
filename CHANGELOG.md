@@ -18,6 +18,8 @@ v1.10.1
 
 - Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
 
+- Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
+
 v1.10.0
 -----------------
 
