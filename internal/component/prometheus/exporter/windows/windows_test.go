@@ -145,7 +145,7 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.IIS.SiteInclude)
 	require.Equal(t, "^(?:)$", conf.IIS.AppExclude)
 	require.Equal(t, "^(?:.+)$", conf.IIS.AppInclude)
-	require.Equal(t, []string{"C:"}, conf.TextFile.Directories)
+	require.Equal(t, "C:", conf.TextFile.TextFileDirectory)
 	require.Equal(t, "^(?:)$", conf.SMTP.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.SMTP.Include)
 	require.Equal(t, "^(?:.*)$", conf.Service.Include)

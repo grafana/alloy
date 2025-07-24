@@ -81,7 +81,7 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.SMTP.ServerExclude, err = regexp.Compile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
 	errs = append(errs, err)
 
-	cfg.Textfile.TextFileDirectories = c.TextFile.Directories
+	cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
 
 	cfg.PhysicalDisk.DiskInclude, err = regexp.Compile(c.PhysicalDisk.Include)
 	errs = append(errs, err)
@@ -224,7 +224,7 @@ var DefaultConfig = Config{
 		EnabledList: "",
 	},
 	TextFile: TextFileConfig{
-		Directories: collector.ConfigDefaults.Textfile.TextFileDirectories,
+		TextFileDirectory: strings.Join(collector.ConfigDefaults.Textfile.TextFileDirectories, ","),
 	},
 	TCP: TCPConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.TCP.CollectorsEnabled, ","),

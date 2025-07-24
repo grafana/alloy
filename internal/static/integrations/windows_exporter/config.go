@@ -118,7 +118,7 @@ type IISConfig struct {
 
 // TextFileConfig handles settings for the windows_exporter Text File collector
 type TextFileConfig struct {
-	Directories []string `yaml:"directories,omitempty"`
+	TextFileDirectory string `yaml:"text_file_directory,omitempty"`
 }
 
 // SMTPConfig handles settings for the windows_exporter SMTP collector

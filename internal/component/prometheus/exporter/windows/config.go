@@ -117,7 +117,7 @@ func CombineAndConvert(t, deprecated *TextFileConfig) windows_integration.TextFi
 	// Sort so we can use slices.Compact to remove duplicates.
 	slices.Sort(directories)
 	return windows_integration.TextFileConfig{
-		Directories: slices.Compact(directories),
+		TextFileDirectory: strings.Join(slices.Compact(directories), ","),
 	}
 }
 
@@ -211,7 +211,7 @@ func (t TextFileConfig) Convert() windows_integration.TextFileConfig {
 		directories = slices.Compact(directories)
 	}
 	return windows_integration.TextFileConfig{
-		Directories: directories,
+		TextFileDirectory: strings.Join(directories, ","),
 	}
 }
 

@@ -106,7 +106,7 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Include:   config.SMTP.Include,
 		},
 		TextFile: &windows.TextFileConfig{
-			Directories: config.TextFile.Directories,
+			Directories: strings.Split(config.TextFile.TextFileDirectory, ","),
 		},
 		TCP: windows.TCPConfig{
 			EnabledList: split(config.TCP.EnabledList),
