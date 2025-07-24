@@ -62,6 +62,41 @@
       "dependencyDashboardApproval": true
     },
     {
+      // Hold unstable deps
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector",
+        "github.com/KimMachineGun/automemlimit",
+        "github.com/google/cadvisor",
+        "github.com/grafana/jfr-parser/pprof",
+        "github.com/hashicorp/vault/api/**",
+        "github.com/jaegertracing/jaeger-idl",
+        "github.com/mackerelio/go-osstat",
+        "github.com/ncabatoff/process-exporter",
+        "github.com/nerdswords/yet-another-cloudwatch-exporter",
+        "github.com/prometheus-operator/**",
+        "github.com/prometheus/consul_exporter",
+        "github.com/prometheus/memcached_exporter",
+        "github.com/prometheus/procfs",
+        "github.com/prometheus/sigv4",
+        "github.com/testcontainers/testcontainers-go",
+        "github.com/testcontainers/testcontainers-go/**",
+        "go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux",
+        "go.opentelemetry.io/otel/exporters/prometheus",
+        "google.golang.org/api",
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go",
+        "k8s.io/component-base",
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each unstable update
+      // having its own PR.
+      "groupName": "{{manager}} unstable dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} unstable dependency {{depName}}"
+    },
+    {
       "matchManagers": ["helm-values"],
       // "groupName": "helm-values dependencies",
       "enabled": false // TODO: remove to enable when ready
@@ -86,7 +121,8 @@
       "dependencyDashboardApproval": true,
       // This forces each dep to have a unique group, resulting in each major update
       // having its own PR.
-      "groupName": "{{manager}} dependency {{depName}}"
+      "groupName": "{{manager}} dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} dependency {{depName}}"
     }
   ],
 }
