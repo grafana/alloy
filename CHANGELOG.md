@@ -34,6 +34,9 @@ Main (unreleased)
   - There are various renamed metrics and two removed collectors (`cs`, `logon`), see the [v1.11 release notes][1_11-release-notes] for more information.
 
     [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
+
+- Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
