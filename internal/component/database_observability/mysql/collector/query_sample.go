@@ -58,7 +58,13 @@ SELECT
 	waits.event_name as WAIT_EVENT_NAME,
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
-	waits.timer_wait as WAIT_TIMER_WAIT
+	waits.timer_wait as WAIT_TIMER_WAIT,
+	nested_waits.event_id as NESTED_WAIT_EVENT_ID,
+	nested_waits.end_event_id as NESTED_WAIT_END_EVENT_ID,
+	nested_waits.event_name as NESTED_WAIT_EVENT_NAME,
+	nested_waits.object_name as NESTED_WAIT_OBJECT_NAME,
+	nested_waits.object_type as NESTED_WAIT_OBJECT_TYPE,
+	nested_waits.timer_wait as NESTED_WAIT_TIMER_WAIT
 	%s
 FROM
 	performance_schema.events_statements_history AS statements
@@ -66,6 +72,11 @@ LEFT JOIN
 	performance_schema.events_waits_history waits
 	ON statements.thread_id = waits.thread_id
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+LEFT JOIN
+	performance_schema.events_waits_history nested_waits
+	ON waits.thread_id = nested_waits.thread_id
+	AND waits.event_id = nested_waits.nesting_event_id
+	AND waits.event_name = 'wait/io/table/sql/handler'
 WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
@@ -245,13 +256,21 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
 
-			// sample wait info, if any
+			// wait event info
 			WaitEventID    sql.NullString
 			WaitEndEventID sql.NullString
 			WaitEventName  sql.NullString
 			WaitObjectName sql.NullString
 			WaitObjectType sql.NullString
 			WaitTime       sql.NullFloat64
+
+			// nested wait event info
+			NestedWaitEventID    sql.NullString
+			NestedWaitEndEventID sql.NullString
+			NestedWaitEventName  sql.NullString
+			NestedWaitObjectName sql.NullString
+			NestedWaitObjectType sql.NullString
+			NestedWaitTime       sql.NullFloat64
 		}{}
 
 		scanArgs := []interface{}{
@@ -276,6 +295,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectName,
 			&row.WaitObjectType,
 			&row.WaitTime,
+			&row.NestedWaitEventID,
+			&row.NestedWaitEndEventID,
+			&row.NestedWaitEventName,
+			&row.NestedWaitObjectName,
+			&row.NestedWaitObjectType,
+			&row.NestedWaitTime,
 		}
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
@@ -344,7 +369,24 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		if row.WaitEventID.Valid {
-			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			// Use nested wait event data if available, otherwise use original wait event data
+			eventID := row.WaitEventID.String
+			endEventID := row.WaitEndEventID.String
+			eventName := row.WaitEventName.String
+			objectName := row.WaitObjectName.String
+			objectType := row.WaitObjectType.String
+			waitTime := row.WaitTime.Float64
+
+			if row.NestedWaitEventID.Valid && row.WaitEventName.String == "wait/io/table/sql/handler" {
+				eventID = row.NestedWaitEventID.String
+				endEventID = row.NestedWaitEndEventID.String
+				eventName = row.NestedWaitEventName.String
+				objectName = row.NestedWaitObjectName.String
+				objectType = row.NestedWaitObjectType.String
+				waitTime = row.NestedWaitTime.Float64
+			}
+
+			waitTimeMs := picosecondsToMilliseconds(waitTime)
 			waitLogMessage := fmt.Sprintf(
 				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
@@ -352,12 +394,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				row.Digest.String,
 				digestText,
 				row.StatementEventID.String,
-				row.WaitEventID.String,
-				row.WaitEndEventID.String,
-				row.WaitEventName.String,
-				row.WaitObjectName.String,
-				row.WaitObjectType.String,
-				waitTime,
+				eventID,
+				endEventID,
+				eventName,
+				objectName,
+				objectType,
+				waitTimeMs,
 			)
 
 			if c.disableQueryRedaction && row.SQLText.Valid {
