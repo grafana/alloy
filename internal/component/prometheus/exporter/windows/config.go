@@ -268,6 +268,7 @@ func (t ProcessConfig) Convert() windows_integration.ProcessConfig {
 		Exclude:                wrapRegex(t.Exclude),
 		Include:                wrapRegex(t.Include),
 		EnableIISWorkerProcess: t.EnableIISWorkerProcess,
+		CounterVersion:         t.CounterVersion,
 	}
 }
 
@@ -331,10 +332,11 @@ type LogicalDiskConfig struct {
 // Convert converts the component's LogicalDiskConfig to the integration's LogicalDiskConfig.
 func (t LogicalDiskConfig) Convert() windows_integration.LogicalDiskConfig {
 	return windows_integration.LogicalDiskConfig{
-		BlackList: wrapRegex(t.BlackList),
-		WhiteList: wrapRegex(t.WhiteList),
-		Include:   wrapRegex(t.Include),
-		Exclude:   wrapRegex(t.Exclude),
+		EnabledList: strings.Join(t.EnabledList, ","),
+		BlackList:   wrapRegex(t.BlackList),
+		WhiteList:   wrapRegex(t.WhiteList),
+		Include:     wrapRegex(t.Include),
+		Exclude:     wrapRegex(t.Exclude),
 	}
 }
 
