@@ -1,6 +1,9 @@
 package build
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -22,7 +25,26 @@ func split(collectorList string) []string {
 	return strings.Split(collectorList, ",")
 }
 
+// This behavior is copied from getDefaultPath() function in:
+// windows_exporter@v0.27.4-0.20241010144849-a0f6d3bcf9a4\pkg\collector\textfile\textfile.go
+func getDefaultTextFileConfig() *windows.TextFileConfig {
+	execPath, _ := os.Executable()
+	return &windows.TextFileConfig{
+		Directories: []string{filepath.Join(filepath.Dir(execPath), "textfile_inputs")},
+	}
+}
+
 func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
+	// In order to support the rename of text_file block to textfile,
+	// we need to leave them both as nil in the Arguments default, but that breaks
+	// the behavior of the syntax token builder encodeFields function checking for default values
+	var textfile *windows.TextFileConfig
+	if !reflect.DeepEqual(config.TextFile, getDefaultTextFileConfig()) {
+		textfile = &windows.TextFileConfig{
+			Directories: split(config.TextFile.TextFileDirectory),
+		}
+	}
+
 	return &windows.Arguments{
 		EnabledCollectors: split(config.EnabledCollectors),
 		Dfsr: windows.DfsrConfig{
@@ -105,9 +127,7 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude:   config.SMTP.Exclude,
 			Include:   config.SMTP.Include,
 		},
-		TextFile: &windows.TextFileConfig{
-			Directories: split(config.TextFile.TextFileDirectory),
-		},
+		TextFile: textfile,
 		TCP: windows.TCPConfig{
 			EnabledList: split(config.TCP.EnabledList),
 		},
