@@ -56,6 +56,8 @@ Main (unreleased)
 
 - Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
 
+- Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
+
 v1.10.0
 -----------------
 
