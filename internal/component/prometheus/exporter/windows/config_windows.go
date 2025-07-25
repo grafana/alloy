@@ -81,9 +81,8 @@ func (a *Arguments) SetToDefault() {
 			Exclude:   col.ConfigDefaults.SMTP.ServerExclude.String(),
 		},
 		// Keep the defaults in the deprecated field & block for backward compatibility.
-		// TODO(@dehaansa) - remove in a future release.
 		// TextFileDeprecated & TextFile are both pointer types to allow for identification
-		// of whether the user has set the field or not.
+		// of whether the user has set the field or not, so we don't initialize them here.
 		TCP: TCPConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.TCP.CollectorsEnabled),
 		},
