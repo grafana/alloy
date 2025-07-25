@@ -354,10 +354,10 @@ For example, you can set `enabled_list` to `["metrics"]`.
 
 | Name                  | Type           | Description                                                     | Default       | Required |
 | --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.    |               | no       |
-| `text_file_directory` | `string`.      | Deprecated. The directory containing the files to be ingested.  | __see below__ | no       |
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
+| `text_file_directory` | `string`.      | Deprecated. The directory containing the files to be ingested.  |               | no       |
 
-To remain backwards compatibility, the missnamed `text_file` block can still be used to configure the `textfile` collector.
+For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
 
 The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
@@ -365,7 +365,7 @@ Until the deprecated field is removed, the default value will be left in `text_f
 
 The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
 By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
-For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `[]"C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
 
 Only files with the extension `.prom` inside the specified directories are read.
 
