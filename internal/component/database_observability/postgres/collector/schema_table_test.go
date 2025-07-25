@@ -103,10 +103,9 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
 
-		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.authors structure"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}]}`))
 
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
 	})
 
 	t.Run("collector selects and logs multiple schemas and multiple tables", func(t *testing.T) {
@@ -234,13 +233,9 @@ func TestSchemaTable(t *testing.T) {
 		expectedCategoriesTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true,"default_value":"null"}]}`))
 		expectedSpatialTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"srid","type":"integer","not_null":true,"primary_key":true,"default_value":"null"}]}`))
 
-		expectedAuthorsCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.authors structure"))
-		expectedCategoriesCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.categories structure"))
-		expectedSpatialCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table postgis.spatial_ref_sys structure"))
-
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" create_statement="%s" table_spec="%s"`, expectedAuthorsCreateStmt, expectedAuthorsTableSpec), lokiEntries[6].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="categories" create_statement="%s" table_spec="%s"`, expectedCategoriesCreateStmt, expectedCategoriesTableSpec), lokiEntries[7].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="postgis" table="spatial_ref_sys" create_statement="%s" table_spec="%s"`, expectedSpatialCreateStmt, expectedSpatialTableSpec), lokiEntries[8].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedAuthorsTableSpec), lokiEntries[6].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="categories" table_spec="%s"`, expectedCategoriesTableSpec), lokiEntries[7].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[8].Line)
 	})
 
 	t.Run("no schemas found", func(t *testing.T) {
@@ -299,8 +294,6 @@ func TestSchemaTable(t *testing.T) {
 
 	// TODO add test for "" default column value
 	// TODO make sure assertion for null default column value is correct
-	// TODO add test for serial auto increment column
-	// TODO add test for identity auto increment column
 	t.Run("collector handles null default column value", func(t *testing.T) {
 		t.Parallel()
 
@@ -385,17 +378,14 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, `level="info" database="test_db" schema="public" table="test_table"`, lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
 
-		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.test_table structure"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true,"default_value":"null"},{"name":"name","type":"character varying(255)","default_value":"John Doe"}]}`))
 
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
 	})
 
 }
 
 func Test_collector_detects_auto_increment_column(t *testing.T) {
-	// The goroutine which deletes expired entries runs indefinitely,
-	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("collector detects auto increment column", func(t *testing.T) {
@@ -477,10 +467,9 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.Equal(t, `level="info" database="serial_test_db" schema="public" table="users"`, lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
 
-		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.users structure"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"nextval('users_id_seq'::regclass)"},{"name":"username","type":"character varying(255)","not_null":true,"default_value":"null"}]}`))
 
-		require.Equal(t, fmt.Sprintf(`level="info" database="serial_test_db" schema="public" table="users" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
 	})
 
 	t.Run("collector detects identity column", func(t *testing.T) {
@@ -563,10 +552,9 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.Equal(t, `level="info" database="identity_test_db" schema="public" table="products"`, lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
 
-		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.products structure"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
 
-		require.Equal(t, fmt.Sprintf(`level="info" database="identity_test_db" schema="public" table="products" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
 	})
 }
 
@@ -706,14 +694,9 @@ func Test_collector_detects_table_types(t *testing.T) {
 		expectedMaterializedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"total_users","type":"bigint","not_null":true}]}`))
 		expectedForeignTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"remote_id","type":"integer","not_null":true}]}`))
 
-		expectedUsersCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.users structure"))
-		expectedViewCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.user_view structure"))
-		expectedMaterializedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.user_summary structure"))
-		expectedForeignCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.remote_data structure"))
-
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="users" create_statement="%s" table_spec="%s"`, expectedUsersCreateStmt, expectedUsersTableSpec), lokiEntries[6].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_view" create_statement="%s" table_spec="%s"`, expectedViewCreateStmt, expectedViewTableSpec), lokiEntries[7].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_summary" create_statement="%s" table_spec="%s"`, expectedMaterializedCreateStmt, expectedMaterializedTableSpec), lokiEntries[8].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="remote_data" create_statement="%s" table_spec="%s"`, expectedForeignCreateStmt, expectedForeignTableSpec), lokiEntries[9].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="users" table_spec="%s"`, expectedUsersTableSpec), lokiEntries[6].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_view" table_spec="%s"`, expectedViewTableSpec), lokiEntries[7].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_summary" table_spec="%s"`, expectedMaterializedTableSpec), lokiEntries[8].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="remote_data" table_spec="%s"`, expectedForeignTableSpec), lokiEntries[9].Line)
 	})
 }

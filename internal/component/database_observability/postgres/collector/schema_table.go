@@ -75,13 +75,12 @@ const (
 )
 
 type tableInfo struct {
-	database      string
-	schema        string
-	tableName     string
-	tableType     string
-	updateTime    time.Time
-	b64CreateStmt string
-	b64TableSpec  string
+	database     string
+	schema       string
+	tableName    string
+	tableType    string
+	updateTime   time.Time
+	b64TableSpec string
 }
 
 type tableSpec struct {
@@ -286,8 +285,8 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			OP_CREATE_STATEMENT,
 			c.instanceKey,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-				dbName, table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
+				`database="%s" schema="%s" table="%s" table_spec="%s"`,
+				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
 	}
@@ -308,9 +307,6 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, table *tableInf
 		return table, err
 	}
 	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
-
-	createStmt := fmt.Sprintf("-- Table %s.%s structure", table.schema, table.tableName)
-	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
 
 	return table, nil
 }
