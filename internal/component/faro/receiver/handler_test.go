@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -287,7 +288,14 @@ func TestCORSPreflightWithAllowedHeader(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Origin", "https://example.com")
 	req.Header.Set("Access-Control-Request-Method", "POST")
-	req.Header.Set("Access-Control-Request-Headers", strings.Join(defaultAllowedHeaders, ","))
+
+	sortedHeaders := make([]string, 0, len(defaultAllowedHeaders))
+	sortedHeaders = append(sortedHeaders, defaultAllowedHeaders...)
+	sort.Strings(sortedHeaders)
+	// Library github.com/rs/cors expects values listed in Access-Control-Request-Headers header
+	// are unique and sorted;
+	// see https://github.com/rs/cors/blob/1084d89a16921942356d1c831fbe523426cf836e/cors.go#L115-L120
+	req.Header.Set("Access-Control-Request-Headers", strings.Join(sortedHeaders, ","))
 
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
