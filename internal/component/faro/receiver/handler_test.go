@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -225,6 +226,86 @@ func TestValidAPIKey(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, rr.Result().StatusCode)
 	require.Len(t, exporter1.payloads, 1)
 	require.Len(t, exporter2.payloads, 1)
+}
+
+func TestCORSPreflightWithDisallowedHeader(t *testing.T) {
+	var (
+		exporter1 = &testExporter{"exporter1", false, nil}
+		exporter2 = &testExporter{"exporter2", false, nil}
+
+		h = newHandler(
+			util.TestLogger(t),
+			prometheus.NewRegistry(),
+			[]exporter{exporter1, exporter2},
+		)
+	)
+
+	h.Update(ServerArguments{
+		CORSAllowedOrigins: []string{
+			"https://example.com",
+		},
+	})
+
+	// Test preflight request with disallowed header
+	req, err := http.NewRequest(http.MethodOptions, "/collect", nil)
+	require.NoError(t, err)
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	req.Header.Set("Access-Control-Request-Headers", "x-custom-header")
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// The preflight should succeed (204), but x-custom-header should NOT be in allowed headers
+	require.Equal(t, http.StatusNoContent, rr.Result().StatusCode)
+	allowedHeaders := rr.Header().Get("Access-Control-Allow-Headers")
+
+	// When requesting a disallowed header, CORS returns empty Access-Control-Allow-Headers
+	// This effectively tells the browser that no custom headers are allowed
+	require.Equal(t, "", allowedHeaders, "CORS should return empty allowed headers when disallowed header is requested")
+}
+
+func TestCORSPreflightWithAllowedHeader(t *testing.T) {
+	var (
+		exporter1 = &testExporter{"exporter1", false, nil}
+		exporter2 = &testExporter{"exporter2", false, nil}
+
+		h = newHandler(
+			util.TestLogger(t),
+			prometheus.NewRegistry(),
+			[]exporter{exporter1, exporter2},
+		)
+	)
+
+	h.Update(ServerArguments{
+		CORSAllowedOrigins: []string{
+			"https://example.com",
+		},
+	})
+
+	// Test preflight request with allowed headers
+	req, err := http.NewRequest(http.MethodOptions, "/collect", nil)
+	require.NoError(t, err)
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+
+	sortedHeaders := make([]string, 0, len(defaultAllowedHeaders))
+	sortedHeaders = append(sortedHeaders, defaultAllowedHeaders...)
+	sort.Strings(sortedHeaders)
+	// Library github.com/rs/cors expects values listed in Access-Control-Request-Headers header
+	// are unique and sorted;
+	// see https://github.com/rs/cors/blob/1084d89a16921942356d1c831fbe523426cf836e/cors.go#L115-L120
+	req.Header.Set("Access-Control-Request-Headers", strings.Join(sortedHeaders, ","))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// The preflight should succeed and include the requested headers
+	require.Equal(t, http.StatusNoContent, rr.Result().StatusCode)
+	allowedHeaders := rr.Header().Get("Access-Control-Allow-Headers")
+	for _, allowed := range defaultAllowedHeaders {
+		require.Contains(t, allowedHeaders, allowed)
+	}
 }
 
 func TestRateLimiter(t *testing.T) {
