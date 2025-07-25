@@ -27,10 +27,10 @@ func split(collectorList string) []string {
 
 // This behavior is copied from getDefaultPath() function in:
 // windows_exporter@v0.27.4-0.20241010144849-a0f6d3bcf9a4\pkg\collector\textfile\textfile.go
-func getDefaultTextFileConfig() *windows.TextFileConfig {
+func getDefaultTextFileConfig() windows_exporter.TextFileConfig {
 	execPath, _ := os.Executable()
-	return &windows.TextFileConfig{
-		Directories: []string{filepath.Join(filepath.Dir(execPath), "textfile_inputs")},
+	return windows_exporter.TextFileConfig{
+		TextFileDirectory: filepath.Join(filepath.Dir(execPath), "textfile_inputs"),
 	}
 }
 
