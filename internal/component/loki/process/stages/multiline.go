@@ -192,7 +192,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 			Entry: logproto.Entry{
 				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
 				Line:               s.buffer.String(),
-				StructuredMetadata: s.startLineEntry.StructuredMetadata,
+				StructuredMetadata: s.startLineEntry.Entry.Entry.StructuredMetadata,
 			},
 		},
 	}
