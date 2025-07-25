@@ -61,8 +61,9 @@ func TestSchemaTable(t *testing.T) {
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("authors"),
+					"table_name",
+					"table_type",
+				}).AddRow("authors", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
@@ -147,16 +148,18 @@ func TestSchemaTable(t *testing.T) {
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("authors").
-					AddRow("categories"),
+					"table_name",
+					"table_type",
+				}).AddRow("authors", "BASE TABLE").
+					AddRow("categories", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectTableNames).WithArgs("postgis").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("spatial_ref_sys"),
+					"table_name",
+					"table_type",
+				}).AddRow("spatial_ref_sys", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.authors").RowsWillBeClosed().
@@ -336,8 +339,9 @@ func TestSchemaTable(t *testing.T) {
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("test_table"),
+					"table_name",
+					"table_type",
+				}).AddRow("test_table", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
@@ -432,8 +436,9 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("users"),
+					"table_name",
+					"table_type",
+				}).AddRow("users", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
@@ -516,8 +521,9 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"tablename",
-				}).AddRow("products"),
+					"table_name",
+					"table_type",
+				}).AddRow("products", "BASE TABLE"),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.products").RowsWillBeClosed().
@@ -561,5 +567,153 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
 
 		require.Equal(t, fmt.Sprintf(`level="info" database="identity_test_db" schema="public" table="products" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
+	})
+}
+
+func Test_collector_detects_table_types(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	t.Run("collector detects different table types", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaTable(SchemaTableArguments{
+			DB:              db,
+			InstanceKey:     "postgres-db",
+			CollectInterval: 10 * time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"test_db",
+				),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"table_type",
+				}).AddRow("users", "BASE TABLE").
+					AddRow("user_view", "VIEW").
+					AddRow("user_summary", "MATERIALIZED VIEW").
+					AddRow("remote_data", "FOREIGN TABLE"),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"is_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", false, "", "", true),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.user_view").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"is_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", false, "", "", false),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.user_summary").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"is_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("total_users", "bigint", false, "", "", false),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.remote_data").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"is_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("remote_id", "integer", false, "", "", false),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 10
+		}, 2*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Len(t, lokiEntries, 10)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="test_db"`, lokiEntries[0].Line)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public"`, lokiEntries[1].Line)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public" table="users"`, lokiEntries[2].Line)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[3].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public" table="user_view"`, lokiEntries[3].Line)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[4].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public" table="user_summary"`, lokiEntries[4].Line)
+
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[5].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public" table="remote_data"`, lokiEntries[5].Line)
+
+		expectedUsersTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))
+		expectedViewTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true}]}`))
+		expectedMaterializedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"total_users","type":"bigint","not_null":true}]}`))
+		expectedForeignTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"remote_id","type":"integer","not_null":true}]}`))
+
+		expectedUsersCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.users structure"))
+		expectedViewCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.user_view structure"))
+		expectedMaterializedCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.user_summary structure"))
+		expectedForeignCreateStmt := base64.StdEncoding.EncodeToString([]byte("-- Table public.remote_data structure"))
+
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="users" create_statement="%s" table_spec="%s"`, expectedUsersCreateStmt, expectedUsersTableSpec), lokiEntries[6].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_view" create_statement="%s" table_spec="%s"`, expectedViewCreateStmt, expectedViewTableSpec), lokiEntries[7].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="user_summary" create_statement="%s" table_spec="%s"`, expectedMaterializedCreateStmt, expectedMaterializedTableSpec), lokiEntries[8].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="remote_data" create_statement="%s" table_spec="%s"`, expectedForeignCreateStmt, expectedForeignTableSpec), lokiEntries[9].Line)
 	})
 }

@@ -41,12 +41,20 @@ const (
 	    AND nspname NOT LIKE 'pg_toast_%'`
 
 	selectTableNames = `
-	SELECT
-		tablename
-	FROM
-		pg_catalog.pg_tables
-	WHERE
-		schemaname = $1`
+	SELECT 
+		pg_class.relname as table_name,
+		CASE pg_class.relkind 
+			WHEN 'r' THEN 'BASE TABLE'
+			WHEN 'v' THEN 'VIEW'
+			WHEN 'm' THEN 'MATERIALIZED VIEW'
+			WHEN 'f' THEN 'FOREIGN TABLE'
+			WHEN 'p' THEN 'PARTITIONED TABLE'
+			ELSE 'OTHER'
+		END as table_type
+	FROM pg_catalog.pg_class pg_class
+	JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+	WHERE pg_namespace.nspname = $1 
+		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')`
 
 	selectColumnNames = `
 	SELECT
@@ -70,6 +78,7 @@ type tableInfo struct {
 	database      string
 	schema        string
 	tableName     string
+	tableType     string
 	updateTime    time.Time
 	b64CreateStmt string
 	b64TableSpec  string
@@ -233,7 +242,8 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 
 		for rs.Next() {
 			var tableName string
-			if err := rs.Scan(&tableName); err != nil {
+			var tableType string
+			if err := rs.Scan(&tableName, &tableType); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
@@ -241,6 +251,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 				database:   dbName,
 				schema:     schema,
 				tableName:  tableName,
+				tableType:  tableType,
 				updateTime: time.Now(),
 			})
 
