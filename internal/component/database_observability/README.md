@@ -348,13 +348,7 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 
 1. Your Postgres DB should be at least version 16.
 
-2. Create a dedicated DB user and grant permissions.
-
-```sql
-CREATE USER "db-o11y" WITH PASSWORD '<password>';
-GRANT pg_monitor TO "db-o11y";
-GRANT pg_read_all_stats TO "db-o11y";
-```
+2. Add the `pg_stat_statements` module to `shared_preload_libraries` in `postgresql.conf`. This requires a restart of the Postgres DB.
 
 3. Create the `pg_stat_statements` extension in every database you want to monitor.
 
@@ -362,7 +356,15 @@ GRANT pg_read_all_stats TO "db-o11y";
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ```
 
-4. Verify that the user has been properly created.
+4. Create a dedicated DB user and grant permissions.
+
+```sql
+CREATE USER "db-o11y" WITH PASSWORD '<password>';
+GRANT pg_monitor TO "db-o11y";
+GRANT pg_read_all_stats TO "db-o11y";
+```
+
+5. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
