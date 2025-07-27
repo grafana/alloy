@@ -47,7 +47,7 @@ The component will apply the following labels to log entries from the client inf
 - `__syslog_connection_ip_address`
 - `__syslog_connection_hostname`
 
-The component will apply the following labels to log entries if they are available in the syslog message.
+The component will apply the following labels to log entries if they have been parsed from the syslog message.
 - `__syslog_message_severity`
 - `__syslog_message_facility`
 - `__syslog_message_hostname`
@@ -55,7 +55,7 @@ The component will apply the following labels to log entries if they are availab
 - `__syslog_message_proc_id`
 - `__syslog_message_msg_id`
 
-If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structured data in the parsed message, it will be applied to the entry as a label with prefix `__syslog_message_sd_`.
+If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structured data in the parsed message, it will be applied to the log entry as a label with prefix `__syslog_message_sd_`.
 For example, if the structured data provided is `[example@99999 test="value"]`, the log entry will have the label `__syslog_message_sd_example_99999_test` with a value of `value`.
 
 Before passing log entries to the next component in the pipeline, the syslog source will remove any labels with a `__` prefix.
