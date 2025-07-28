@@ -43,11 +43,13 @@ You can use the following arguments with `loki.source.syslog`:
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
-The component will apply the following labels to log entries from the client information if possible.
+`loki.source.syslog` applies the following labels to log entries from the client information if possible.
+
 - `__syslog_connection_ip_address`
 - `__syslog_connection_hostname`
 
-The component will apply the following labels to log entries if they have been parsed from the syslog message.
+`loki.source.syslog` applies the following labels to log entries if they have been parsed from the syslog message.
+
 - `__syslog_message_severity`
 - `__syslog_message_facility`
 - `__syslog_message_hostname`
@@ -59,8 +61,8 @@ If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structur
 For example, if the structured data provided is `[example@99999 test="value"]`, the log entry will have the label `__syslog_message_sd_example_99999_test` with a value of `value`.
 
 Before passing log entries to the next component in the pipeline, the syslog source will remove any labels with a `__` prefix.
-To retain the `__syslog_` on the log entry, they must be moved to labels that do not have a `__` prefix by rules in the `relabel_rules` argument.
-The following relabel example would retain all syslog labels on the log entry when passing the entries to the next component in the pipeline.
+To retain the `__syslog_` labels on the log entries, you must use rules in the `relabel_rules` argument to move them to labels that do not have a `__` prefix.
+The following relabel example retains all `__syslog_` labels on the log entry when the entries are passed to the next component in the pipeline.
 
 ```alloy
 loki.relabel "syslog" {
