@@ -14,6 +14,8 @@ title: loki.source.syslog
 
 `loki.source.syslog` listens for syslog messages over TCP or UDP connections and forwards them to other `loki.*` components.
 The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) syslog protocol or the [RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) BSD syslog protocol.
+If your messages aren't RFC5424 compliant, you can use syslog-ng or rsyslog to convert the messages to a compliant format.
+For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
 
@@ -37,7 +39,7 @@ loki.source.syslog "<LABEL>" {
 You can use the following arguments with `loki.source.syslog`:
 
 | Name            | Type                 | Description                               | Default | Required |
-| --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
+|-----------------|----------------------|-------------------------------------------|---------|----------|
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | `{}`    | no       |
 
@@ -45,17 +47,17 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 `loki.source.syslog` applies the following labels to log entries from the client information if possible.
 
-- `__syslog_connection_ip_address`
-- `__syslog_connection_hostname`
+* `__syslog_connection_ip_address`
+* `__syslog_connection_hostname`
 
 `loki.source.syslog` applies the following labels to log entries if they have been parsed from the syslog message.
 
-- `__syslog_message_severity`
-- `__syslog_message_facility`
-- `__syslog_message_hostname`
-- `__syslog_message_app_name`
-- `__syslog_message_proc_id`
-- `__syslog_message_msg_id`
+* `__syslog_message_severity`
+* `__syslog_message_facility`
+* `__syslog_message_hostname`
+* `__syslog_message_app_name`
+* `__syslog_message_proc_id`
+* `__syslog_message_msg_id`
 
 If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structured data in the parsed message, it will be applied to the log entry as a label with prefix `__syslog_message_sd_`.
 For example, if the structured data provided is `[example@99999 test="value"]`, the log entry will have the label `__syslog_message_sd_example_99999_test` with a value of `value`.
@@ -80,7 +82,7 @@ loki.relabel "syslog" {
 You can use the following blocks with `loki.source.syslog`:
 
 | Name                                    | Description                                                                 | Required |
-| --------------------------------------- | --------------------------------------------------------------------------- | -------- |
+|-----------------------------------------|-----------------------------------------------------------------------------|----------|
 | [`listener`][listener]                  | Configures a listener for Syslog messages.                                  | no       |
 | `listener` > [`tls_config`][tls_config] | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
@@ -98,7 +100,7 @@ The following arguments can be used to configure a `listener`.
 Only the `address` field is required and any omitted fields take their default values.
 
 | Name                              | Type          | Description                                                                            | Default     | Required |
-| --------------------------------- | ------------- | -------------------------------------------------------------------------------------- | ----------- | -------- |
+|-----------------------------------|---------------|----------------------------------------------------------------------------------------|-------------|----------|
 | `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |             | yes      |
 | `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`    | no       |
 | `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`     | no       |
