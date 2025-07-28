@@ -103,7 +103,7 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-The allowed headers for cross-domain requests are hardcoded as: `Content-Type`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, `X-Scope-OrgID`.
+You can use the following headers for cross-domain requests: `Content-Type`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
 
 When the `api_key` argument is non-empty, client requests must have an HTTP header called `X-API-Key` matching the value of the `api_key` argument.
 Requests that are missing the header or have the wrong value are rejected with an `HTTP 401 Unauthorized` status code.
