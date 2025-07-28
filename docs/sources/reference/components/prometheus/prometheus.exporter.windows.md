@@ -355,7 +355,7 @@ For example, you can set `enabled_list` to `["metrics"]`.
 | Name                  | Type           | Description                                                     | Default       | Required |
 | --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
 | `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
-| `text_file_directory` | `string`.      | Deprecated. The directory containing the files to be ingested.  |               | no       |
+| `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
 
 For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
