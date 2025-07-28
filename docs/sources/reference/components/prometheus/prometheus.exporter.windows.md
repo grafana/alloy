@@ -261,7 +261,7 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 | Name                        | Type     | Description                                    | Default  | Required |
 |-----------------------------|----------|------------------------------------------------|----------|----------|
-| `counter_version`           | `int`.   | Version of the process collector to use.       | `0`      | no       |
+| `counter_version`           | `int`   | Version of the process collector to use.       | `0`      | no       |
 | `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries. | `false`  | no       |
 | `exclude`                   | `string` | Regular expression of processes to exclude.    | `"^$"`   | no       |
 | `include`                   | `string` | Regular expression of processes to include.    | `"^.+$"` | no       |
