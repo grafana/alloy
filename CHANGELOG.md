@@ -48,6 +48,8 @@ Main (unreleased)
 
 - `pyroscope.java` now supports configuring the `log_level` and `quiet` flags on async-profiler. (@deltamualpha)
 
+- Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
