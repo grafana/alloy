@@ -30,6 +30,8 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+- Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
@@ -53,6 +55,8 @@ Main (unreleased)
 - Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
 
 - Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
+
+- Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
 - Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
