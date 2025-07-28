@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 
@@ -192,7 +193,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 			Entry: logproto.Entry{
 				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
 				Line:               s.buffer.String(),
-				StructuredMetadata: s.startLineEntry.Entry.Entry.StructuredMetadata,
+				StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
 			},
 		},
 	}
