@@ -1943,6 +1943,8 @@ github.com/ncabatoff/go-seq v0.0.0-20180805175032-b08ef85ed833 h1:t4WWQ9I797y7QU
 github.com/ncabatoff/go-seq v0.0.0-20180805175032-b08ef85ed833/go.mod h1:0CznHmXSjMEqs5Tezj/w2emQoM41wzYM9KpDKUHPYag=
 github.com/ncabatoff/process-exporter v0.7.10 h1:+Ere7+3se6QqP54gg7aBRagWcL8bq3u5zNi/GRSWeKQ=
 github.com/ncabatoff/process-exporter v0.7.10/go.mod h1:DHZRZjqxw9LCOpLlX0DjBuyn6d5plh41Jv6Tmttj7Ek=
+github.com/ncabatoff/process-exporter v0.8.7 h1:V+Xtlq7Q9ticzNtkIR9fUlyNxD+rQLs1P8qzumsCWQI=
+github.com/ncabatoff/process-exporter v0.8.7/go.mod h1:tzUO/+OadS/ynh8xu2lO66zb72a8x0VrIWLPddKGilU=
 github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 h1:BQ1HW7hr4IVovMwWg0E0PYcyW8CzqDcVmaew9cujU4s=
 github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2/go.mod h1:TLb2Sg7HQcgGdloNxkrmtgDNR9uVYF3lfdFIN4Ro6Sk=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=

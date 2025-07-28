@@ -25,13 +25,15 @@ prometheus.exporter.process "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.process`:
 
-| Name                | Type     | Description                                       | Default   | Required |
-| ------------------- | -------- | ------------------------------------------------- | --------- | -------- |
-| `gather_smaps`      | `bool`   | Gather metrics from the smaps file for a process. | `true`    | no       |
-| `procfs_path`       | `string` | The procfs mount point.                           | `"/proc"` | no       |
-| `recheck_on_scrape` | `bool`   | Recheck process names on each scrape.             | `true`    | no       |
-| `track_children`    | `bool`   | Whether to track a process' children.             | `true`    | no       |
-| `track_threads`     | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
+| Name                  | Type     | Description                                       | Default   | Required |
+| --------------------- | -------- | ------------------------------------------------- | --------- | -------- |
+| `gather_smaps`        | `bool`   | Gather metrics from the smaps file for a process. | `true`    | no       |
+| `procfs_path`         | `string` | The procfs mount point.                           | `"/proc"` | no       |
+| `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.             | `false`   | no       |
+| `remove_empty_groups` | `bool`   | Forget process groups with no processes.          | `false`   | no       |
+| `track_children`      | `bool`   | Whether to track a process' children.             | `true`    | no       |
+| `track_threads`       | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
+
 
 ## Blocks
 
