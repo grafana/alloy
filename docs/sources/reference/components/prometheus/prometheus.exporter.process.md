@@ -34,16 +34,14 @@ You can use the following arguments with `prometheus.exporter.process`:
 | `track_children`      | `bool`   | Whether to track a process' children.             | `true`    | no       |
 | `track_threads`       | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
 
-If `remove_empty_groups` is `true`, the process "groups" created by the `matcher` blocks will continue to report 
-metrics until {{< param "PRODUCT_NAME" >}} is restarted. This can cause unbounded growth in metrics being reported
-and resources consumed by {{< param "PRODUCT_NAME" >}} if the `matcher` blocks' `name` arguments define group names that
-may be different for new process instances. This is the default behavior for backwards compatibility, but we
-would recommend you consider setting `remove_empty_groups` to `false`.
+If `remove_empty_groups` is `true`, the process "groups" created by the `matcher` blocks continue to report metrics until {{< param "PRODUCT_NAME" >}} is restarted.
+This can cause unbounded growth in metrics being reported and resources consumed by {{< param "PRODUCT_NAME" >}} if the `matcher` blocks' `name` arguments define group names that
+may be different for new process instances.
+This is the default behavior for backwards compatibility, but we recommend that you set `remove_empty_groups` to `false`.
 
 For example, when `remove_empty_groups` is `true` and the `name` argument for a `matcher` block utilizes the `.PID` of
-a process, the `matcher` will create a new process group when a new instance of a process in that `matcher` block
-is identified, but the previous group will continue to report metrics even though no running processes are associated
-with that group.
+a process, the `matcher` creates a new process group when a new instance of a process in that `matcher` block is identified.
+The previous group continues to report metrics even though no running processes are associated with that group.
 
 ## Blocks
 
