@@ -380,7 +380,7 @@ For example, you can set `enabled_list` to `["metrics"]`.
 | `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
 | `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
 
-For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
+For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
 
 The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
@@ -403,7 +403,7 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 | `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
 | `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
 
-For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
+For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
 
 The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
