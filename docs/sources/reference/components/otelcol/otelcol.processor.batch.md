@@ -46,7 +46,7 @@ otelcol.processor.batch "<LABEL>" {
 You can use the following arguments with `otelcol.processor.batch`:
 
 | Name                         | Type           | Description                                                             | Default   | Required |
-| ---------------------------- | -------------- | ----------------------------------------------------------------------- | --------- | -------- |
+|------------------------------|----------------|-------------------------------------------------------------------------|-----------|----------|
 | `metadata_cardinality_limit` | `number`       | Limit of the unique metadata key/value combinations.                    | `1000`    | no       |
 | `metadata_keys`              | `list(string)` | Creates a different batcher for each key/value combination of metadata. | `[]`      | no       |
 | `send_batch_max_size`        | `number`       | Upper limit of a batch size.                                            | `0`       | no       |
@@ -90,7 +90,7 @@ The maximum number of distinct combinations is limited to the configured `metada
 You can use the following blocks with `otelcol.processor.batch`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
@@ -99,7 +99,7 @@ You can use the following blocks with `otelcol.processor.batch`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -112,7 +112,7 @@ You can use the following blocks with `otelcol.processor.batch`:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
