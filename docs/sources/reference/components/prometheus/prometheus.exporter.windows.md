@@ -284,18 +284,24 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 | Name                        | Type     | Description                                    | Default  | Required |
 |-----------------------------|----------|------------------------------------------------|----------|----------|
-| `counter_version`           | `int`   | Version of the process collector to use.       | `0`      | no       |
+| `counter_version`           | `int`    | Version of the process collector to use.       | `0`      | no       |
 | `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries. | `false`  | no       |
 | `exclude`                   | `string` | Regular expression of processes to exclude.    | `"^$"`   | no       |
 | `include`                   | `string` | Regular expression of processes to include.    | `"^.+$"` | no       |
 
-The `counter_version` may be `0`, `1`, or `2`. A value of `0` uses the latest available (currently V2), the other values specify which version of the process collector to utilize.
+The `counter_version` may be `0`, `1`, or `2`.
+* A value of `1` uses the Windows `Process` performance counters via the [registry] API.
+* A value of `2` uses the Windows `Process V2` performance counters via the [pdh] API. These are available starting in Windows 11.
+* A value of `0` checks to see if `Process V2` counters are available, and falls back to `Process` counters if they are not available.
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 There is a warning in the upstream collector that use of `enable_iis_worker_process` may leak memory. Use with caution.
+
+[pdh]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
+[registry]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/using-the-registry-functions-to-consume-counter-data
 
 ### `scheduled_task`
 
