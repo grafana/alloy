@@ -2,6 +2,9 @@ package enrich
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
@@ -11,8 +14,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestEnricher(t *testing.T) {

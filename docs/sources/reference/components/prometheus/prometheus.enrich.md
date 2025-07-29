@@ -109,15 +109,14 @@ prometheus.remote_write "default" {
 `prometheus.enrich` can accept arguments from the following components:
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
-- Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
+- Components that export [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-exporters)
 
 `prometheus.enrich` has exports that can be consumed by the following components:
 
 - Components that consume [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
 
 {{< admonition type="note" >}}
-Connecting some components may not be sensible or components may require further configuration to make the connection
-work correctly.
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
 Refer to the linked documentation for more details.
 {{< /admonition >}}
 

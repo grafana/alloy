@@ -3,6 +3,7 @@ package enrich
 import (
 	"context"
 	"fmt"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
@@ -55,9 +56,8 @@ type Exports struct {
 }
 
 type Component struct {
-	opts    component.Options
-	args    Arguments
-	exports Exports
+	opts component.Options
+	args Arguments
 
 	mut      sync.RWMutex
 	receiver *prometheus.Interceptor
