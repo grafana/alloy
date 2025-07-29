@@ -389,8 +389,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over samples result set: %w", err)
 	}
 
 	return nil
@@ -399,14 +398,12 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
 	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to update performance_schema.setup_consumers", "err", err)
-		return err
+		return fmt.Errorf("failed to update performance_schema.setup_consumers: %w", err)
 	}
 
 	rowsAffected, err := rs.RowsAffected()
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to get rows affected from performance_schema.setup_consumers", "err", err)
-		return err
+		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
 	}
 	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
