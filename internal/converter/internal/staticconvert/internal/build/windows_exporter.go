@@ -138,5 +138,10 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Online:         config.Update.Online,
 			ScrapeInterval: config.Update.ScrapeInterval,
 		},
+		Net: windows.NetConfig{
+			Include:     config.Net.Include,
+			Exclude:     config.Net.Exclude,
+			EnabledList: split(config.Net.EnabledList),
+		},
 	}
 }
