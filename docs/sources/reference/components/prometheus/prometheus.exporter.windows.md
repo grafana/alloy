@@ -574,8 +574,8 @@ Refer to the linked documentation on each collector for more information on repo
 Certain collectors cause {{< param "PRODUCT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
 These include but aren't limited to `mscluster`, `vmware`, `nps`, `dns`, `msmq`, `ad`, `hyperv`, and `scheduled_task`.
 
-The `cs` and `logon` collectors were deprecated and have been removed from the exporter.
-Their configuration is currently preserved to ease migration, however they will be removed in the future.
+The `cs` and `logon` collectors are deprecated and have been removed from the exporter.
+You can continue to use the configuration for these collectors, however this option will be removed in the future.
 {{< /admonition >}}
 
 ## Example
