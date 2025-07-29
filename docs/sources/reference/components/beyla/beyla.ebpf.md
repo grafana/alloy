@@ -105,9 +105,7 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 [network filters]: #network-filters
 [output]: #output
 
-### `output`
-
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+### `output` {{% badge text="Required" *}} {#`alternative-heading-id`}
 
 The `output` block configures a set of components to forward the resulting telemetry data to.
 
