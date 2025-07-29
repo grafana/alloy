@@ -58,6 +58,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`mscluster`][mscluster]                   | Configures the `mscluster` collector.          | no       |
 | [`mssql`][mssql]                           | Configures the `mssql` collector.              | no       |
 | [`netframework`][netframework]             | Configures the `netframework` collector.       | no       |
+| [`net`][net]                               | Configures the `net` collector.                | no       |
 | [`network`][network]                       | Configures the `network` collector.            | no       |
 | [`performancecounter`][performancecounter] | Configures the `performancecounter` collector. | no       |
 | [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.      | no       |
@@ -89,6 +90,7 @@ You can still include this block in your configuration files. However, its usage
 [logical_disk]: #logical_disk
 [mscluster]: #mscluster
 [mssql]: #mssql
+[net]: #net
 [netframework]: #netframework
 [network]: #network
 [performancecounter]: #performancecounter
@@ -177,6 +179,23 @@ For example, you can set `enabled_list` to `["cluster"]`.
 | Name              | Type           | Description                         | Default                                                                                                                                                              | Required |
 | ----------------- | -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"]` | no       |
+
+### `net`
+
+| Name           | Type           | Description                            | Default                   | Required |
+|----------------|----------------|----------------------------------------|---------------------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use.           | `["metrics", "nic_info"]` | no       |
+| `exclude`      | `string`       | Regular expression of NICs to exclude. | `"^$"`                    | no       |
+| `include`      | `string`       | Regular expression of NICs to include. | `"^.+$"`                  | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+* `metrics`
+* `nic_info`
+
+NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+
+User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 ### `network`
 

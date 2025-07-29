@@ -55,6 +55,7 @@ type Arguments struct {
 	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`
 	NetFramework       NetFrameworkConfig       `alloy:"netframework,block,optional"`
 	DNS                DNSConfig                `alloy:"dns,block,optional"`
+	Net                NetConfig                `alloy:"net,block,optional"`
 }
 
 // Convert converts the component's Arguments to the integration's Config.
@@ -301,6 +302,22 @@ func (t NetworkConfig) Convert() windows_integration.NetworkConfig {
 		WhiteList: wrapRegex(t.WhiteList),
 		Exclude:   wrapRegex(t.Exclude),
 		Include:   wrapRegex(t.Include),
+	}
+}
+
+// NetConfig handles settings for the windows_exporter net collector
+type NetConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+	Exclude     string   `alloy:"exclude,attr,optional"`
+	Include     string   `alloy:"include,attr,optional"`
+}
+
+// Convert converts the component's NetConfig to the integration's NetConfig.
+func (t NetConfig) Convert() windows_integration.NetConfig {
+	return windows_integration.NetConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+		Exclude:     wrapRegex(t.Exclude),
+		Include:     wrapRegex(t.Include),
 	}
 }
 

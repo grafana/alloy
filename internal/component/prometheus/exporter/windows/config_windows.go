@@ -102,5 +102,10 @@ func (a *Arguments) SetToDefault() {
 			Online:         col.ConfigDefaults.Update.Online,
 			ScrapeInterval: col.ConfigDefaults.Update.ScrapeInterval,
 		},
+		Net: NetConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.Net.CollectorsEnabled),
+			Exclude:     col.ConfigDefaults.Net.NicExclude.String(),
+			Include:     col.ConfigDefaults.Net.NicInclude.String(),
+		},
 	}
 }

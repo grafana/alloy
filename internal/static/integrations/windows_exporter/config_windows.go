@@ -134,6 +134,12 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 
 	cfg.DNS.CollectorsEnabled = strings.Split(c.DNS.EnabledList, ",")
 
+	cfg.Net.CollectorsEnabled = strings.Split(c.Net.EnabledList, ",")
+	cfg.Net.NicExclude, err = regexp.Compile(c.Net.Exclude)
+	errs = append(errs, err)
+	cfg.Net.NicInclude, err = regexp.Compile(c.Net.Include)
+	errs = append(errs, err)
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -241,6 +247,11 @@ var DefaultConfig = Config{
 	},
 	DNS: DNSConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.DNS.CollectorsEnabled, ","),
+	},
+	Net: NetConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.Net.CollectorsEnabled, ","),
+		Exclude:     collector.ConfigDefaults.Net.NicExclude.String(),
+		Include:     collector.ConfigDefaults.Net.NicInclude.String(),
 	},
 }
 

@@ -41,6 +41,7 @@ type Config struct {
 	Filetime           FiletimeConfig           `yaml:"filetime,omitempty"`
 	PerformanceCounter PerformanceCounterConfig `yaml:"performancecounter,omitempty"`
 	DNS                DNSConfig                `yaml:"dns,omitempty"`
+	Net                NetConfig                `yaml:"net,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -195,4 +196,11 @@ type SMBConfig struct {
 // Deprecated: This is not used by the windows_exporter
 type SMBClientConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// NetConfig handles settings for the windows_exporter net collector
+type NetConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+	Exclude     string `yaml:"exclude,omitempty"`
+	Include     string `yaml:"include,omitempty"`
 }
