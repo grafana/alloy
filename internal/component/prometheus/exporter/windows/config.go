@@ -90,6 +90,7 @@ func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
 		NetFramework:       a.NetFramework.Convert(),
 		Update:             a.Update.Convert(),
 		DNS:                a.DNS.Convert(),
+		Net:                a.Net.Convert(),
 	}
 }
 
