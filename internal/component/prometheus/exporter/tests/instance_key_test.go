@@ -391,6 +391,9 @@ func TestInstanceKey(t *testing.T) {
 				LogicalDisk: windows.LogicalDiskConfig{
 					EnabledList: []string{"metrics"},
 				},
+				Net: windows.NetConfig{
+					EnabledList: []string{"metrics"},
+				},
 			},
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",
