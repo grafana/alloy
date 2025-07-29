@@ -47,34 +47,38 @@ Refer to the [Collectors list](#collectors-list) for the default set.
 
 You can use the following blocks with `prometheus.exporter.windows`:
 
-| Name                                       | Description                                    | Required |
-| ------------------------------------------ | ---------------------------------------------- | -------- |
-| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
-| [`dns`][dns]                               | Configures the `dns` collector.                | no       |
-| [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
-| [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
-| [`iis`][iis]                               | Configures the `iis` collector.                | no       |
-| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.       | no       |
-| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.          | no       |
-| [`mssql`][mssql]                           | Configures the `mssql` collector.              | no       |
-| [`netframework`][netframework]             | Configures the `netframework` collector.       | no       |
-| [`net`][net]                               | Configures the `net` collector.                | no       |
-| [`network`][network]                       | Configures the `network` collector.            | no       |
-| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector. | no       |
-| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.      | no       |
-| [`printer`][printer]                       | Configures the `printer` collector.            | no       |
-| [`process`][process]                       | Configures the `process` collector.            | no       |
-| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.     | no       |
-| [`service`][service]                       | Configures the `service` collector.            | no       |
-| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.         | no       |
-| [`smb`][smb]                               | Configures the `smb` collector.                | no       |
-| [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
-| [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
-| [`textfile`][textfile]                     | Configures the `textfile` collector.           | no       |
-| [`update`][update]                         | Configures the `update` collector.             | no       |
+| Name                                       | Description                                                               | Required |
+|--------------------------------------------|---------------------------------------------------------------------------|----------|
+| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.                                          | no       |
+| [`dns`][dns]                               | Configures the `dns` collector.                                           | no       |
+| [`exchange`][exchange]                     | Configures the `exchange` collector.                                      | no       |
+| [`filetime`][filetime]                     | Configures the `filetime` collector.                                      | no       |
+| [`iis`][iis]                               | Configures the `iis` collector.                                           | no       |
+| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.                                  | no       |
+| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.                                     | no       |
+| [`mssql`][mssql]                           | Configures the `mssql` collector.                                         | no       |
+| [`netframework`][netframework]             | Configures the `netframework` collector.                                  | no       |
+| [`net`][net]                               | Configures the `net` collector.                                           | no       |
+| [`network`][network]                       | Configures the `network` collector.                                       | no       |
+| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector.                            | no       |
+| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.                                 | no       |
+| [`printer`][printer]                       | Configures the `printer` collector.                                       | no       |
+| [`process`][process]                       | Configures the `process` collector.                                       | no       |
+| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.                                | no       |
+| [`service`][service]                       | Configures the `service` collector.                                       | no       |
+| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.                                    | no       |
+| [`smb`][smb]                               | Configures the `smb` collector.                                           | no       |
+| [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
+| [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
+| [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
+| [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
+| [`update`][update]                         | Configures the `update` collector.                                        | no       |
 
-For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
-It is identical to the `textfile` block, and will be removed in a future release.
+{{< admonition type="caution" >}}
+Starting with v1.11.0, the `text_file ` block is deprecated.
+It will be removed in a future release.
+Use the `textfile` block to configure the `textfile` collector.
+{{< /admonition >}}
 
 {{< admonition type="note" >}}
 Starting with release 1.9.0, the `msmq` block is deprecated.
@@ -370,6 +374,29 @@ The collectors specified by `enabled_list` can include the following:
 For example, you can set `enabled_list` to `["metrics"]`.
 
 ### `textfile`
+
+| Name                  | Type           | Description                                                     | Default       | Required |
+| --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
+| `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
+
+For backwards compatibility, the `textfile` collector can also be configured with the undocumented `text_file` block.
+If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
+
+The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
+Until the deprecated field is removed, the default value will be left in `text_file_directory` to ensure backward compatibility.
+
+The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
+By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
+For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+
+Only files with the extension `.prom` inside the specified directories are read.
+
+{{< admonition type="note" >}}
+The `.prom` files must end with an empty line feed for the component to recognize and read them.
+{{< /admonition >}}
+
+### `text_file` (Deprecated: use `textfile` instead)
 
 | Name                  | Type           | Description                                                     | Default       | Required |
 | --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
