@@ -1609,7 +1609,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1628,7 +1630,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2059,7 +2063,9 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -2212,12 +2218,13 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:                       db,
-			InstanceKey:              "mysql-db",
-			CollectInterval:          time.Second,
-			EntryHandler:             lokiClient,
-			Logger:                   log.NewLogfmtLogger(os.Stderr),
-			AutoEnableSetupConsumers: true,
+			DB:                          db,
+			InstanceKey:                 "mysql-db",
+			CollectInterval:             time.Second,
+			EntryHandler:                lokiClient,
+			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers:    true,
+			SetupConsumersCheckInterval: time.Second,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2322,12 +2329,13 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewQuerySample(QuerySampleArguments{
-			DB:                       db,
-			InstanceKey:              "mysql-db",
-			CollectInterval:          time.Second,
-			EntryHandler:             lokiClient,
-			Logger:                   log.NewLogfmtLogger(os.Stderr),
-			AutoEnableSetupConsumers: true,
+			DB:                          db,
+			InstanceKey:                 "mysql-db",
+			CollectInterval:             time.Second,
+			EntryHandler:                lokiClient,
+			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers:    true,
+			SetupConsumersCheckInterval: time.Second,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)

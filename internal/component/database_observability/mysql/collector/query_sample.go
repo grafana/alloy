@@ -77,24 +77,26 @@ const updateSetupConsumers = `
 		WHERE name = 'events_statements_cpu'`
 
 type QuerySampleArguments struct {
-	DB                       *sql.DB
-	InstanceKey              string
-	CollectInterval          time.Duration
-	EntryHandler             loki.EntryHandler
-	DisableQueryRedaction    bool
-	AutoEnableSetupConsumers bool
+	DB                          *sql.DB
+	InstanceKey                 string
+	CollectInterval             time.Duration
+	EntryHandler                loki.EntryHandler
+	DisableQueryRedaction       bool
+	AutoEnableSetupConsumers    bool
+	SetupConsumersCheckInterval time.Duration
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection             *sql.DB
-	instanceKey              string
-	collectInterval          time.Duration
-	entryHandler             loki.EntryHandler
-	sqlParser                parser.Parser
-	disableQueryRedaction    bool
-	autoEnableSetupConsumers bool
+	dbConnection                *sql.DB
+	instanceKey                 string
+	collectInterval             time.Duration
+	entryHandler                loki.EntryHandler
+	sqlParser                   parser.Parser
+	disableQueryRedaction       bool
+	autoEnableSetupConsumers    bool
+	setupConsumersCheckInterval time.Duration
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -107,15 +109,16 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:             args.DB,
-		instanceKey:              args.InstanceKey,
-		collectInterval:          args.CollectInterval,
-		entryHandler:             args.EntryHandler,
-		sqlParser:                parser.NewTiDBSqlParser(),
-		disableQueryRedaction:    args.DisableQueryRedaction,
-		autoEnableSetupConsumers: args.AutoEnableSetupConsumers,
-		logger:                   log.With(args.Logger, "collector", QuerySampleName),
-		running:                  &atomic.Bool{},
+		dbConnection:                args.DB,
+		instanceKey:                 args.InstanceKey,
+		collectInterval:             args.CollectInterval,
+		entryHandler:                args.EntryHandler,
+		sqlParser:                   parser.NewTiDBSqlParser(),
+		disableQueryRedaction:       args.DisableQueryRedaction,
+		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
+		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		logger:                      log.With(args.Logger, "collector", QuerySampleName),
+		running:                     &atomic.Bool{},
 	}
 
 	return c, nil
@@ -140,6 +143,11 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	if err := c.initializeBookmark(c.ctx); err != nil {
 		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
 		return err
+	}
+
+	// Start setup_consumers check goroutine if enabled
+	if c.autoEnableSetupConsumers {
+		go c.runSetupConsumersCheck()
 	}
 
 	go func() {
@@ -176,6 +184,23 @@ func (c *QuerySample) Stop() {
 	c.cancel()
 }
 
+func (c *QuerySample) runSetupConsumersCheck() {
+	ticker := time.NewTicker(c.setupConsumersCheckInterval)
+
+	for {
+		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
+			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+		}
+
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// continue loop
+		}
+	}
+}
+
 // initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
 // samples that may have been collected previously.
 func (c *QuerySample) initializeBookmark(ctx context.Context) error {
@@ -193,12 +218,6 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 }
 
 func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
-	if c.autoEnableSetupConsumers {
-		if err := c.updateSetupConsumersSettings(ctx); err != nil {
-			return err
-		}
-	}
-
 	timeRow := c.dbConnection.QueryRowContext(ctx, selectNowAndUptime)
 
 	var now, uptime float64
