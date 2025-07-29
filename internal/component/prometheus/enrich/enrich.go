@@ -3,6 +3,7 @@ package enrich
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -17,7 +18,6 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
-	"sync"
 )
 
 func init() {
