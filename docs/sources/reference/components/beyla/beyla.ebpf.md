@@ -107,7 +107,9 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 
 ### `output`
 
-{{< badge text="Required" >}} The `output` block configures a set of components to forward the resulting telemetry data to.
+{{< badge text="Required" >}} 
+
+The `output` block configures a set of components to forward the resulting telemetry data to.
 
 The following arguments are supported:
 
