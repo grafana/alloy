@@ -7,7 +7,7 @@ labels:
 title: otelcol.exporter.googlecloud
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Community</span>
+{{< badge text="Community" tooltip="This component is developed, maintained, and supported by the Alloy user community." >}}
 
 # `otelcol.exporter.googlecloud`
 
