@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
+- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+
 v1.10.0
 -----------------
 
