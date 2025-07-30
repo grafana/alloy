@@ -62,7 +62,7 @@ otelcol.processor.interval "<LABEL>" {
 You can use the following argument with `otelcol.processor.interval`:
 
 | Name       | Type       | Description                                                           | Default | Required |
-| ---------- | ---------- | --------------------------------------------------------------------- | ------- | -------- |
+|------------|------------|-----------------------------------------------------------------------|---------|----------|
 | `interval` | `duration` | The interval in which the processor should export aggregated metrics. | `"60s"` | no       |
 
 ## Blocks
@@ -70,7 +70,7 @@ You can use the following argument with `otelcol.processor.interval`:
 You can use the following blocks with `otelcol.processor.interval`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`passthrough`][passthrough]     | Configures metric types to be passed through instead of aggregated.        | no       |
@@ -81,7 +81,7 @@ You can use the following blocks with `otelcol.processor.interval`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -96,7 +96,7 @@ The `passthrough` block configures which metric types should be passed through i
 The following attributes are supported:
 
 | Name      | Type   | Description                                                                           | Default | Required |
-| --------- | ------ | ------------------------------------------------------------------------------------- | ------- | -------- |
+|-----------|--------|---------------------------------------------------------------------------------------|---------|----------|
 | `gauge`   | `bool` | Determines whether gauge metrics should be passed through as they're or aggregated.   | `false` | no       |
 | `summary` | `bool` | Determines whether summary metrics should be passed through as they're or aggregated. | `false` | no       |
 
@@ -105,7 +105,7 @@ The following attributes are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
@@ -153,7 +153,7 @@ otelcol.auth.basic "grafana_cloud" {
 ```
 
 | Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
-| --------- | -------------- | ------------------------- | ------------------- | ----: |
+|-----------|----------------|---------------------------|---------------------|------:|
 | 0         | `test_metric`  | Cumulative                | `labelA: example1`  |   4.0 |
 | 2         | `test_metric`  | Cumulative                | `labelA: example2`  |   3.1 |
 | 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
@@ -164,13 +164,13 @@ otelcol.auth.basic "grafana_cloud" {
 The processor immediately passes the following metric to the next processor in the chain because it's a Delta metric.
 
 | Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
-| --------- | -------------- | ------------------------- | ------------------- | ----: |
+|-----------|----------------|---------------------------|---------------------|------:|
 | 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
 
 At the next `interval` (15s by default), the processor passed the following metrics to the next processor in the chain.
 
 | Timestamp | Metric Name   | Aggregation Temporarility | Attributes         | Value |
-| --------- | ------------- | ------------------------- | ------------------ | ----: |
+|-----------|---------------|---------------------------|--------------------|------:|
 | 8         | `test_metric` | Cumulative                | `labelA: example1` |  12.8 |
 | 10        | `test_metric` | Cumulative                | `labelA: example1` |   6.4 |
 

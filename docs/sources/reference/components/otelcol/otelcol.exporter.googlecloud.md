@@ -42,7 +42,7 @@ Refer to the original [Google Cloud Exporter][] document.
 You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 | Name                        | Type     | Description                                                                                                                                                                                                                        | Default                                         | Required |
-| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------- |
+|-----------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|----------|
 | `project`                   | `string` | GCP project identifier.                                                                                                                                                                                                            | Fetch from credentials                          | no       |
 | `destination_project_quota` | `bool`   | Counts quota for traces and metrics against the project to which the data is sent as opposed to the project associated with the Collector's service account. For example, when setting `project_id` or using multi-project export. | `false`                                         | no       |
 | `user_agent`                | `string` | Override the user agent string sent on requests to Cloud Monitoring (currently only applies to metrics). Specify `{{version}}` to include the application version number.                                                          | `"opentelemetry-collector-contrib {{version}}"` | no       |
@@ -91,7 +91,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name                          | Type           | Description                                                                                                                                                                                                | Default                      | Required |
-| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
+|-------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|----------|
 | `compression`                 | `string`       | Compression format for Log gRPC requests. Supported values: [`gzip`].                                                                                                                                      | `""` (no compression)        | no       |
 | `default_log_name`            | `string`       | Defines a default name for log entries. If left unset, and a log entry doesn't have the `gcp.log_name` attribute set, the exporter returns an error processing that entry.                                 | `""`                         | no       |
 | `endpoint`                    | `string`       | Endpoint where log data is sent.                                                                                                                                                                           | `logging.googleapis.com:443` | no       |
@@ -108,7 +108,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name                                   | Type           | Description                                                                                                                                                                                                                 | Default                                                          | Required |
-| -------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------- |
+|----------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|----------|
 | `compression`                          | `string`       | Compression format for Metrics gRPC requests. Supported values: [`gzip`].                                                                                                                                                   | `""` (no compression)                                            | no       |
 | `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the  channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                             | `10`                                                             | no       |
 | `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                          | no       |
@@ -131,7 +131,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name          | Type     | Description                                                                              | Default | Required |
-| ------------- | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
 | `directory`   | `string` | Path to local directory for the WAL file.                                                | `"./"`  | yes      |
 | `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `"1h"`  | no       |
 
@@ -144,7 +144,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 ### `trace`
 
 | Name                                 | Type           | Description                                                                                                                                                                      | Default                           | Required |
-| ------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------- |
+|--------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|----------|
 | `attribute_mappings`                 | `list(object)` | Determines how to map from OpenTelemetry attribute keys to Google Cloud Trace keys. By default, it changes HTTP and service keys so that they appear more prominently in the UI. | `[]`                              | no       |
 | `attribute_mappings` > `key`         | `string`       | The OpenTelemetry attribute key.                                                                                                                                                 | `""`                              | no       |
 | `attribute_mappings` > `replacement` | `string`       | The attribute sent to Google Cloud Trace.                                                                                                                                        | `""`                              | no       |

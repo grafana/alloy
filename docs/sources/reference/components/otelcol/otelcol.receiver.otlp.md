@@ -48,7 +48,7 @@ The `otelcol.receiver.otlp` component doesn't support any arguments. You can con
 You can use the following blocks with `otelcol.receiver.otlp`:
 
 | Block                                                             | Description                                                                | Required |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                                | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`grpc`][grpc]                                                    | Configures the gRPC server to receive telemetry data.                      | no       |
@@ -75,7 +75,7 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -91,7 +91,7 @@ If the `grpc` block isn't provided, a gRPC server isn't started.
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default          | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                  | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4317"` | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`          | no       |
@@ -115,7 +115,7 @@ The server will close connections from clients that violate the configured polic
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                             | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------|---------|----------|
 | `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
 | `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
@@ -126,7 +126,7 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 The following arguments are supported:
 
 | Name                       | Type       | Description                                                                         | Default      | Required |
-| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+|----------------------------|------------|-------------------------------------------------------------------------------------|--------------|----------|
 | `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
 | `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
 | `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
@@ -148,13 +148,13 @@ If the `http` block isn't specified, an HTTP server isn't started.
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4318"`                                           | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `logs_url_path`          | `string`                   | The URL path to receive logs on.                                             | `"/v1/logs"`                                               | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `metrics_url_path`       | `string`                   | The URL path to receive metrics on.                                          | `"/v1/metrics"`                                            | no       |
 | `traces_url_path`        | `string`                   | The URL path to receive traces on.                                           | `"/v1/traces"`                                             | no       |
 
@@ -171,7 +171,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |

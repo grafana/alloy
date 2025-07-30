@@ -51,7 +51,7 @@ The `otelcol.receiver.jaeger` component doesn't support any arguments. You can c
 You can use the following blocks with `otelcol.receiver.jaeger`:
 
 | Block                                                                           | Description                                                                | Required |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|---------------------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                                              | Configures where to send received telemetry data.                          | yes      |
 | [`protocols`][protocols]                                                        | Configures the protocols the component can accept traffic over.            | yes      |
 | `protocols` > [`grpc`][grpc]                                                    | Configures a Jaeger gRPC server to receive traces.                         | no       |
@@ -84,13 +84,13 @@ For example, `protocols` > `grpc` refers to a `grpc` block defined inside a `pro
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `protocols`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `protocols` block defines a set of protocols used to accept traces over the network.
 
@@ -106,7 +106,7 @@ If the `grpc` block isn't provided, a gRPC server isn't started.
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default           | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|-------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14250"` | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                   | no       |
@@ -136,7 +136,7 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 The following arguments are supported:
 
 | Name                       | Type       | Description                                                                         | Default      | Required |
-| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+|----------------------------|------------|-------------------------------------------------------------------------------------|--------------|----------|
 | `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
 | `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
 | `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |
@@ -151,7 +151,7 @@ The server closes connections from clients that violate the configured policy.
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                             | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------|---------|----------|
 | `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
 | `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
@@ -163,7 +163,7 @@ If the `thrift_http` block isn't specified, an HTTP server isn't started.
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14268"`                                          | no       |
@@ -177,7 +177,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
@@ -200,7 +200,7 @@ If the `thrift_binary` block isn't provided, a UDP server isn't started.
 The following arguments are supported:
 
 | Name                 | Type     | Description                                                    | Default          | Required |
-| -------------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+|----------------------|----------|----------------------------------------------------------------|------------------|----------|
 | `endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6832"` | no       |
 | `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no       |
 | `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no       |
@@ -215,7 +215,7 @@ If the `thrift_compact` block isn't provided, a UDP server isn't started.
 The following arguments are supported:
 
 | Name                 | Type     | Description                                                    | Default          | Required |
-| -------------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+|----------------------|----------|----------------------------------------------------------------|------------------|----------|
 | `endpoint`           | `string` | `host:port` to listen for traffic on.                          | `"0.0.0.0:6831"` | no       |
 | `max_packet_size`    | `string` | Maximum UDP message size.                                      | `"65KiB"`        | no       |
 | `queue_size`         | `number` | Maximum number of UDP messages that can be queued at once.     | `1000`           | no       |

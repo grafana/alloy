@@ -38,7 +38,7 @@ otelcol.exporter.otlphttp "<LABEL>" {
 You can use the following arguments with `otelcol.exporter.otlphttp`:
 
 | Name               | Type     | Description                                                               | Default                           | Required |
-| ------------------ | -------- | ------------------------------------------------------------------------- | --------------------------------- | -------- |
+|--------------------|----------|---------------------------------------------------------------------------|-----------------------------------|----------|
 | `encoding`         | `string` | The encoding to use for messages. Should be either `"proto"` or `"json"`. | `"proto"`                         | no       |
 | `logs_endpoint`    | `string` | The endpoint to send logs to.                                             | `client.endpoint + "/v1/logs"`    | no       |
 | `metrics_endpoint` | `string` | The endpoint to send metrics to.                                          | `client.endpoint + "/v1/metrics"` | no       |
@@ -52,7 +52,7 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 You can use the following blocks with `otelcol.exporter.otlphttp`:
 
 | Block                                                 | Description                                                                | Required |
-| ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                      | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
@@ -74,7 +74,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the HTTP client used by the component.
 
@@ -165,7 +165,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
