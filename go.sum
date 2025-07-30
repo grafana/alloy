@@ -1328,8 +1328,8 @@ github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250714124518-c5d0a4dad445 h1:1rC8i0khfZdRA0/k7RBQQ84PhASNQLssezXHmFcWZ6Y=
 github.com/grafana/postgres_exporter v0.0.0-20250714124518-c5d0a4dad445/go.mod h1:0elZWWHfbwJNwKbiKgBKaEXTDewatxCt9UFZaN6LZsA=
-github.com/grafana/prometheus v1.8.2-0.20250709144109-5551df55271b h1:7e6NMPNpqETo6ID2oddAl7+Vt91SrpGGP3v7qwgrgG0=
-github.com/grafana/prometheus v1.8.2-0.20250709144109-5551df55271b/go.mod h1:ioGx2SGKTY+fLnJSQCdTHqARVldGNS8OlIe3kvp98so=
+github.com/grafana/prometheus v1.8.2-0.20250730140258-90a2d9915a0f h1:8XSzN/sFjvKFsvCFAvdFSWdvsvd5m+SaWNqxpBV1BGw=
+github.com/grafana/prometheus v1.8.2-0.20250730140258-90a2d9915a0f/go.mod h1:ioGx2SGKTY+fLnJSQCdTHqARVldGNS8OlIe3kvp98so=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
