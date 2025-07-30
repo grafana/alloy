@@ -108,6 +108,12 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		TCP: windows.TCPConfig{
 			EnabledList: split(config.TCP.EnabledList),
 		},
-		// add update collector settings
+		DNS: windows.DNSConfig{
+			EnabledList: split(config.DNS.EnabledList),
+		},
+		Update: windows.UpdateConfig{
+			Online:         config.Update.Online,
+			ScrapeInterval: config.Update.ScrapeInterval,
+		},
 	}
 }

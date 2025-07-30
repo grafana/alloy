@@ -67,11 +67,11 @@ For example, in Docker, capabilities that aren't on the allowlist are dropped by
 
 You can use the following arguments with `pyroscope.java`:
 
-| Name         | Type                     | Description                                      | Default | Required |
-| ------------ | ------------------------ | ------------------------------------------------ | ------- | -------- |
-| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send collected profiles to. |         | yes      |
-| `targets`    | `list(map(string))`      | List of java process targets to profile.         |         | yes      |
-| `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `/tmp`  | no       |
+| Name         | Type                     | Description                                      | Default  | Required |
+| ------------ | ------------------------ | ------------------------------------------------ | -------- | -------- |
+| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send collected profiles to. |          | yes      |
+| `targets`    | `list(map(string))`      | List of java process targets to profile.         |          | yes      |
+| `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `"/tmp"` | no       |
 
 ## Profiling behavior
 
@@ -134,7 +134,9 @@ The following arguments are supported:
 | `event`       | `string`   | Sets the CPU profiling event. Can be one of `itimer`, `cpu` or `wall`.                                          | `"itimer"` | no       |
 | `interval`    | `duration` | How frequently to collect profiles from the targets.                                                            | `"60s"`    | no       |
 | `lock`        | `string`   | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                   | `"10ms"`   | no       |
+| `log_level`   | `string`   | Sets the log level in async profiler. one of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.              | `"INFO"`   | no       |
 | `per_thread`  | `bool`     | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                      | `false`    | no       |
+| `quiet`       | `bool`     | If set, suppresses the `Profiling started/stopped` log message.                                                 | `false`    | no       |
 | `sample_rate` | `int`      | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler. | `100`      | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.

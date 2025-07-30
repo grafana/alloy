@@ -196,6 +196,7 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Logger:           log.Default(),
 	})
 	if err != nil {
 		logChan <- TestLog{

@@ -40,11 +40,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
 					Exponential: nil,
@@ -91,11 +93,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				ExcludeDimensions:        nil,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160},
@@ -119,12 +123,19 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				name = "http.method"
 				default = "GET"
 			}
+			calls_dimension {
+				name = "http.something_else"
+				default = "default_value"
+			}
 			exclude_dimensions = ["test_exclude_dim1", "test_exclude_dim2"]
 			aggregation_temporality = "DELTA"
 			resource_metrics_cache_size = 12345
 			metric_timestamp_cache_size = 12389
 			histogram {
 				disable = true
+				dimension {
+					name = "http.nonsense"
+				}
 				unit = "s"
 				explicit {
 					buckets = ["333ms", "777s", "999h"]
@@ -145,6 +156,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
+				CallsDimensions: []spanmetricsconnector.Dimension{
+					{Name: "http.something_else", Default: getStringPtr("default_value")},
+				},
 				Dimensions: []spanmetricsconnector.Dimension{
 					{Name: "http.status_code", Default: nil},
 					{Name: "http.method", Default: getStringPtr("GET")},
@@ -154,6 +168,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ResourceMetricsCacheSize: 12345,
 				TimestampCacheSize:       &timestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions: []spanmetricsconnector.Dimension{
+						{Name: "http.nonsense", Default: nil},
+					},
 					Disable:     true,
 					Unit:        1,
 					Exponential: nil,
@@ -192,11 +209,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: spanmetricsconnector.Config{
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
 					Unit:        0,
 					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
 					Explicit:    nil,

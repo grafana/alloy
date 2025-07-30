@@ -192,6 +192,10 @@ func testArgs() Arguments {
 	args.ScrapeInterval = 100 * time.Millisecond
 	args.ScrapeTimeout = args.ScrapeInterval
 	args.HonorLabels = true
+	err := args.Validate()
+	if err != nil {
+		panic(fmt.Errorf("invalid arguments for test: %w", err))
+	}
 	return args
 }
 

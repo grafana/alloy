@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -45,7 +45,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 			},
 			ep: promopv1alpha1.StaticConfig{
 				Targets: []promopv1alpha1.Target{"foo", "bar"},
-				Labels: map[promopv1.LabelName]string{
+				Labels: map[string]string{
 					"foo": "bar",
 				},
 			},
@@ -83,6 +83,9 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -133,6 +136,9 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 	}

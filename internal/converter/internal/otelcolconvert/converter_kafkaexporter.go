@@ -13,6 +13,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configcompression"
 )
 
 func init() {
@@ -89,10 +90,17 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
-		MaxMessageBytes:  cfg.MaxMessageBytes,
-		Compression:      cfg.Compression,
-		RequiredAcks:     int(cfg.RequiredAcks),
-		FlushMaxMessages: cfg.FlushMaxMessages,
+		MaxMessageBytes:   cfg.MaxMessageBytes,
+		Compression:       cfg.Compression,
+		CompressionParams: toKafkaCompressionParams(cfg.CompressionParams),
+		RequiredAcks:      int(cfg.RequiredAcks),
+		FlushMaxMessages:  cfg.FlushMaxMessages,
+	}
+}
+
+func toKafkaCompressionParams(cfg configcompression.CompressionParams) kafka.CompressionParams {
+	return kafka.CompressionParams{
+		Level: int(cfg.Level),
 	}
 }
 

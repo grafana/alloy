@@ -15,8 +15,10 @@ title: otelcol.receiver.opencensus
 `otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP using the [OpenCensus](https://opencensus.io/) format and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.opencensus` is a wrapper over the upstream OpenTelemetry Collector `opencensus` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.opencensus` is a wrapper over the upstream OpenTelemetry Collector [`opencensus`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`opencensus`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/opencensusreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.opencensus` components by giving them different labels.
@@ -42,7 +44,7 @@ You can use the following arguments with `otelcol.receiver.opencensus`:
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 | `cors_allowed_origins`   | `list(string)`             | A list of allowed Cross-Origin Resource Sharing (CORS) origins.              |                   | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:55678"` | no       |
-| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.               | `false`           | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`           | no       |
 | `max_concurrent_streams` | `number`                   | Limit the number of concurrent streaming RPC calls.                          |                   | no       |
 | `max_recv_msg_size`      | `string`                   | Maximum size of messages the server will accept.                             | `"4MiB"`          | no       |
 | `read_buffer_size`       | `string`                   | Size of the read buffer the gRPC server will use for reading from clients.   | `"512KiB"`        | no       |
@@ -72,11 +74,13 @@ You can use the following blocks with `otelcol.receiver.opencensus`:
 | `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
+| `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `keepalive` > `enforcesment_policy` refers to an `enforcement_policy` block defined inside a `keepalive` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
@@ -131,6 +135,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

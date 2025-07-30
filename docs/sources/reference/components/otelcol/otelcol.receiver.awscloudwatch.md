@@ -15,8 +15,10 @@ title: otelcol.receiver.awscloudwatch
 `otelcol.receiver.awscloudwatch` receives logs from Amazon CloudWatch and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.awscloudwatch` is a wrapper over the upstream OpenTelemetry Collector `awscloudwatch` receiver.
+`otelcol.receiver.awscloudwatch` is a wrapper over the upstream OpenTelemetry Collector [`awscloudwatch`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`awscloudwatch`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awscloudwatchreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.awscloudwatch` components by giving them different labels.
@@ -37,11 +39,12 @@ otelcol.receiver.awscloudwatch "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 
-| Name            | Type     | Description                      | Default | Required |
-| --------------- | -------- | -------------------------------- | ------- | -------- |
-| `region`        | `string` | AWS region to collect logs from. |         | yes      |
-| `imds_endpoint` | `string` | Custom EC2 IMDS endpoint to use. |         | no       |
-| `profile`       | `string` | AWS credentials profile to use.  |         | no       |
+| Name            | Type                       | Description                                                               | Default | Required |
+| --------------- | -------------------------- | ------------------------------------------------------------------------- | ------- | -------- |
+| `region`        | `string`                   | AWS region to collect logs from.                                          |         | yes      |
+| `imds_endpoint` | `string`                   | Custom EC2 IMDS endpoint to use.                                          |         | no       |
+| `profile`       | `string`                   | AWS credentials profile to use.                                           |         | no       |
+| `storage`       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.  |         | no       |
 
 If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
 
@@ -79,6 +82,7 @@ The following arguments are supported:
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to CloudWatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
+| `start_from`             | `string`   | Timestamp in RFC3339 format where to start reading logs.       | `""`    | no       |
 
 The `logs` block supports the following blocks:
 

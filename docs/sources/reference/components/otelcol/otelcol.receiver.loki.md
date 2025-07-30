@@ -16,6 +16,10 @@ title: otelcol.receiver.loki
 
 You can specify multiple `otelcol.receiver.loki` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.loki` is a custom component unrelated to any receivers from the upstream OpenTelemetry Collector.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -28,7 +32,7 @@ otelcol.receiver.loki "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.loki` doesn't support any arguments.
+The `otelcol.receiver.loki` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 

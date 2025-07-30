@@ -1,0 +1,27 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
+	}
+}
+
+otelcol.receiver.faro "default" {
+	output {
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
+	}
+}
+
+otelcol.exporter.faro "default" {
+	client {
+		endpoint = "https://faro.example.com/collect"
+	}
+}

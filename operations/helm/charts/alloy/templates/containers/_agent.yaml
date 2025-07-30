@@ -55,8 +55,8 @@
       path: /-/ready
       port: {{ $values.listenPort }}
       scheme: {{ $values.listenScheme }}
-    initialDelaySeconds: 10
-    timeoutSeconds: 1
+    initialDelaySeconds: {{ $values.initialDelaySeconds }}
+    timeoutSeconds: {{ $values.timeoutSeconds }}
   {{- with $values.livenessProbe }}
   livenessProbe:
     {{- toYaml . | nindent 4 }}
@@ -86,7 +86,7 @@
       mountPath: /var/lib/docker/containers
       readOnly: true
     {{- end }}
-    {{- range $values.mounts.extra }}
-    - {{- toYaml . | nindent 6 }}
+    {{- with $values.mounts.extra }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

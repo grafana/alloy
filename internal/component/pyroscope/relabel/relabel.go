@@ -35,7 +35,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.relabel",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {

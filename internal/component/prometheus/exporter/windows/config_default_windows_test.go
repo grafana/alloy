@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -43,7 +44,11 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.SMTP.Exclude, args.SMTP.Exclude)
 	require.Equal(t, defaultArgs.SMTP.Include, args.SMTP.Include)
 	require.Equal(t, defaultArgs.TextFile.TextFileDirectory, args.TextFile.TextFileDirectory)
-
+	require.Equal(t, defaultArgs.TCP.EnabledList, args.TCP.EnabledList)
+	require.Equal(t, defaultArgs.Filetime.FilePatterns, args.Filetime.FilePatterns)
+	require.Equal(t, defaultArgs.DNS.EnabledList, args.DNS.EnabledList)
+	require.Equal(t, defaultArgs.Update.Online, args.Update.Online)
+	require.Equal(t, defaultArgs.Update.ScrapeInterval, args.Update.ScrapeInterval)
 }
 
 // This is a copy of the getDefaultPath() function in:
@@ -77,6 +82,8 @@ func TestDefaultConfig(t *testing.T) {
 		TextFile:          TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
 		TCP:               TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
 		Filetime:          FiletimeConfig{FilePatterns: []string{}},
+		DNS:               DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
+		Update:            UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
 	}
 
 	var args Arguments

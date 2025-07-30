@@ -1,25 +1,30 @@
-//go:build (linux && arm64) || (linux && amd64)
+//go:build linux && (arm64 || amd64) && pyroscope_ebpf
 
 package ebpf
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
-	demangle2 "github.com/grafana/pyroscope/ebpf/cpp/demangle"
-	"github.com/grafana/pyroscope/ebpf/pprof"
-	"github.com/grafana/pyroscope/ebpf/sd"
-	"github.com/grafana/pyroscope/ebpf/symtab"
-
+	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/oklog/run"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/table"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
 
 func init() {
@@ -33,168 +38,143 @@ func init() {
 			return New(opts, arguments)
 		},
 	})
+	python.NoContinueWithNextUnwinder.Store(true)
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), opts.Logger, targetsOptionFromArgs(args))
+	cfg, err := args.Convert()
 	if err != nil {
-		return nil, fmt.Errorf("ebpf target finder create: %w", err)
+		return nil, err
 	}
+	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize)
+	if err != nil {
+		return nil, err
+	}
+	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
+	discovery := discovery2.NewTargetProducer(cgroups, args.targetsOptions(dynamicProfilingPolicy))
 	ms := newMetrics(opts.Registerer)
 
-	session, err := ebpfspy.NewSession(
-		opts.Logger,
-		targetFinder,
-		convertSessionOptions(args, ms),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("ebpf session create: %w", err)
-	}
+	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 
-	alloyAppendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	var nfs samples.NativeSymbolResolver
+	if cfg.SymbolizeNativeFrames {
+		tf := irsymcache.TableTableFactory{
+			Options: []table.Option{
+				table.WithFiles(),
+				table.WithLines(),
+			},
+		}
+		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
+			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
+			Path:        cfg.SymbCachePath,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	cfg.FileObserver = nfs
+
+	if dynamicProfilingPolicy {
+		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
+	} else {
+		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
+	}
 
 	res := &Component{
-		options:      opts,
-		metrics:      ms,
-		appendable:   alloyAppendable,
-		args:         args,
-		targetFinder: targetFinder,
-		session:      session,
-		argsUpdate:   make(chan Arguments, 4),
+		cfg:                    cfg,
+		options:                opts,
+		metrics:                ms,
+		appendable:             appendable,
+		args:                   args,
+		targetFinder:           discovery,
+		dynamicProfilingPolicy: dynamicProfilingPolicy,
+		argsUpdate:             make(chan Arguments, 4),
 	}
-	res.metrics.targetsActive.Set(float64(len(res.targetFinder.DebugInfo())))
+
+	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+		res.sendProfiles(ctx, ps)
+	}))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.VerboseMode {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	return res, nil
 }
 
-var DefaultArguments = NewDefaultArguments()
-
-// NewDefaultArguments create the default settings for a scrape job.
-func NewDefaultArguments() Arguments {
-	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           97,
-		PidCacheSize:         32,
-		ContainerIDCacheSize: 1024,
-		BuildIDCacheSize:     64,
-		SameFileCacheSize:    8,
-		CacheRounds:          3,
-		CollectUserProfile:   true,
-		CollectKernelProfile: true,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		SymbolsMapSize:       2048,
-		PIDMapSize:           16384,
-	}
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (arg *Arguments) SetToDefault() {
-	*arg = NewDefaultArguments()
-}
-
 type Component struct {
-	options      component.Options
-	args         Arguments
-	argsUpdate   chan Arguments
-	appendable   *pyroscope.Fanout
-	targetFinder sd.TargetFinder
-	session      ebpfspy.Session
+	options                component.Options
+	args                   Arguments
+	dynamicProfilingPolicy bool
+	argsUpdate             chan Arguments
+	appendable             *pyroscope.Fanout
+	targetFinder           discovery2.TargetProducer
 
-	debugInfo     DebugInfo
-	debugInfoLock sync.Mutex
-	metrics       *metrics
+	metrics *metrics
+	cfg     *controller.Config
 
 	healthMut sync.RWMutex
 	health    component.Health
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	var (
-		sessionStarted   = false
-		sessionErrors    = 0
-		sessionMaxErrors = 3
-	)
 
-	collectInterval := c.args.CollectInterval
-	t := time.NewTicker(collectInterval)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case newArgs := <-c.argsUpdate:
-			// ensure there are no other updates queued. this might happen if the collection takes a very long time
-			newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
-
-			// update targets
-			c.args = newArgs
-			c.session.UpdateTargets(targetsOptionFromArgs(c.args))
-			c.metrics.targetsActive.Set(float64(len(c.targetFinder.DebugInfo())))
-			err := c.session.Update(convertSessionOptions(c.args, c.metrics))
-			if err != nil {
-				level.Error(c.options.Logger).Log("msg", "failed to update profiling session", "err", err)
-				c.reportUnhealthy(err)
-				continue
-			}
-			c.appendable.UpdateChildren(newArgs.ForwardTo)
-			if c.args.CollectInterval != collectInterval {
-				t.Reset(c.args.CollectInterval)
-				collectInterval = c.args.CollectInterval
-			}
-		case <-t.C:
-			if !sessionStarted {
-				err := c.session.Start()
-				if err != nil {
-					sessionErrors++
-					if sessionErrors > sessionMaxErrors {
-						level.Error(c.options.Logger).Log("msg", "too many errors starting profiling session, giving up", "tries", sessionErrors, "last_error", err)
-						t.Stop()
-						continue
-					}
-					level.Error(c.options.Logger).Log("msg", "failed to start profiling session", "err", err)
-					c.reportUnhealthy(err)
-					continue
-				}
-				sessionErrors = 0
-				defer func() {
-					c.session.Stop()
-					level.Info(c.options.Logger).Log("msg", "ebpf profiling session stopped")
-				}()
-				sessionStarted = true
-				level.Info(c.options.Logger).Log("msg", "ebpf profiling session started")
-			}
-
-			err := c.collectProfiles(ctx)
-			if err != nil {
-				level.Error(c.options.Logger).Log("msg", "failed to collect profiles", "err", err)
-				c.reportUnhealthy(err)
-				c.metrics.profilingSessionsFailingTotal.Inc()
-				continue
-			}
-			c.reportHealthy()
-			c.updateDebugInfo()
+	c.checkTraceFS()
+	ctlr := controller.New(c.cfg)
+	const sessionMaxErrors = 3
+	var err error
+	for i := 0; i < sessionMaxErrors; i++ {
+		err = ctlr.Start(ctx)
+		if err != nil {
+			c.reportUnhealthy(err)
+			time.Sleep(c.cfg.ReporterInterval)
+			continue
 		}
+		break
 	}
-}
-
-func getLatestArgsFromChannel[A any](ch chan A, current A) A {
-	for {
-		select {
-		case x := <-ch:
-			current = x
-		default:
-			return current
+	if err != nil {
+		return err
+	}
+	c.reportHealthy()
+	defer func() {
+		ctlr.Shutdown()
+		if c.cfg.FileObserver != nil {
+			c.cfg.FileObserver.Cleanup()
 		}
-	}
+	}()
+
+	var g run.Group
+	g.Add(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case newArgs := <-c.argsUpdate:
+				c.args = newArgs
+				c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
+				c.appendable.UpdateChildren(newArgs.ForwardTo)
+			}
+		}
+	}, func(error) {})
+	return g.Run()
 }
 
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
-	c.argsUpdate <- newArgs
+	select {
+	case c.argsUpdate <- newArgs:
+	default:
+		_ = level.Debug(c.options.Logger).Log("msg", "dropped args update")
+	}
 	return nil
 }
 
 func (c *Component) reportUnhealthy(err error) {
+	_ = level.Error(c.options.Logger).
+		Log("msg", "unhealthy", "err", err)
+
 	c.healthMut.Lock()
 	defer c.healthMut.Unlock()
 	c.health = component.Health{
@@ -219,114 +199,108 @@ func (c *Component) CurrentHealth() component.Health {
 	return c.health
 }
 
-func (c *Component) DebugInfo() interface{} {
-	c.debugInfoLock.Lock()
-	defer c.debugInfoLock.Unlock()
-	return c.debugInfo
-}
-
-func (c *Component) collectProfiles(ctx context.Context) error {
-	c.metrics.profilingSessionsTotal.Inc()
-	level.Debug(c.options.Logger).Log("msg", "ebpf  collectProfiles")
-	args := c.args
-	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-		SampleRate:    int64(args.SampleRate),
-		PerPIDProfile: true,
-	})
-	err := pprof.Collect(builders, c.session)
-
-	if err != nil {
-		return fmt.Errorf("ebpf session collectProfiles %w", err)
+func (c *Component) checkTraceFS() {
+	candidates := []string{
+		"/sys/kernel/tracing",
+		"/sys/kernel/debug/tracing",
 	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-	bytesSent := 0
-	for _, builder := range builders.Builders {
-		// check if the context is done
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		serviceName := builder.Labels.Get("service_name")
-		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(builder.Profile.Sample)))
-
-		buf := bytes.NewBuffer(nil)
-		_, err := builder.Write(buf)
+	for _, p := range candidates {
+		_, err := os.Stat(filepath.Join(p, "events"))
 		if err != nil {
-			return fmt.Errorf("ebpf profile encode %w", err)
-		}
-		rawProfile := buf.Bytes()
-
-		appender := c.appendable.Appender()
-		bytesSent += len(rawProfile)
-		c.metrics.pprofBytesTotal.WithLabelValues(serviceName).Add(float64(len(rawProfile)))
-
-		samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-		err = appender.Append(ctx, builder.Labels, samples)
-		if err != nil {
-			level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
 			continue
 		}
+		level.Debug(c.options.Logger).Log("msg", "found tracefs at "+p)
+		return
 	}
-	level.Debug(c.options.Logger).Log("msg", "ebpf append done", "bytes_sent", bytesSent)
-	return nil
-}
-
-type DebugInfo struct {
-	Targets interface{} `alloy:"targets,attr,optional"`
-	Session interface{} `alloy:"session,attr,optional"`
-}
-
-func (c *Component) updateDebugInfo() {
-	c.debugInfoLock.Lock()
-	defer c.debugInfoLock.Unlock()
-
-	c.debugInfo = DebugInfo{
-		Targets: c.targetFinder.DebugInfo(),
-		Session: c.session.DebugInfo(),
+	mountPath := candidates[0]
+	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
+	if err != nil {
+		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
+	} else {
+		level.Debug(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
 	}
 }
 
-func targetsOptionFromArgs(args Arguments) sd.TargetsOptions {
-	targets := make([]sd.DiscoveryTarget, 0, len(args.Targets))
+// NewDefaultArguments create the default settings for a scrape job.
+func NewDefaultArguments() Arguments {
+	return Arguments{
+		CollectInterval:      15 * time.Second,
+		SampleRate:           19,
+		ContainerIDCacheSize: 1024,
+		Demangle:             "none",
+		PythonEnabled:        true,
+		PerlEnabled:          true,
+		PHPEnabled:           true,
+		HotspotEnabled:       true,
+		RubyEnabled:          true,
+		V8Enabled:            true,
+		DotNetEnabled:        true,
+		GoEnabled:            false,
+	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	*args = NewDefaultArguments()
+}
+
+func (args *Arguments) Convert() (*controller.Config, error) {
+	cfgProtoType, err := controller.ParseArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfgProtoType.Validate(); err != nil {
+		return nil, err
+	}
+
+	cfg := new(controller.Config)
+	*cfg = *cfgProtoType
+	cfg.ReporterInterval = args.CollectInterval
+	cfg.SamplesPerSecond = args.SampleRate
+	cfg.Tracers = args.tracers()
+	return cfg, nil
+}
+
+func (args *Arguments) tracers() string {
+	var tracers []string
+	if args.PythonEnabled {
+		tracers = append(tracers, "python")
+	}
+	if args.PerlEnabled {
+		tracers = append(tracers, "perl")
+	}
+	if args.PHPEnabled {
+		tracers = append(tracers, "php")
+	}
+	if args.HotspotEnabled {
+		tracers = append(tracers, "hotspot")
+	}
+	if args.V8Enabled {
+		tracers = append(tracers, "v8")
+	}
+	if args.RubyEnabled {
+		tracers = append(tracers, "ruby")
+	}
+	if args.DotNetEnabled {
+		tracers = append(tracers, "dotnet")
+	}
+	if args.GoEnabled {
+		tracers = append(tracers, "go")
+	}
+	return strings.Join(tracers, ",")
+}
+
+func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) discovery2.TargetsOptions {
+	targets := make([]discovery2.DiscoveredTarget, 0, len(args.Targets))
 	for _, t := range args.Targets {
 		targets = append(targets, t.AsMap())
 	}
-	return sd.TargetsOptions{
-		Targets:            targets,
-		TargetsOnly:        true,
-		ContainerCacheSize: args.ContainerIDCacheSize,
-	}
-}
-
-func convertSessionOptions(args Arguments, ms *metrics) ebpfspy.SessionOptions {
-	return ebpfspy.SessionOptions{
-		CollectUser:   args.CollectUserProfile,
-		CollectKernel: args.CollectKernelProfile,
-		SampleRate:    args.SampleRate,
-		PythonEnabled: args.PythonEnabled,
-		Metrics:       ms.ebpfMetrics,
-		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback: args.GoTableFallback,
-			DemangleOptions: demangle2.ConvertDemangleOptions(args.Demangle),
-		},
-		CacheOptions: symtab.CacheOptions{
-			PidCacheOptions: symtab.GCacheOptions{
-				Size:       args.PidCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			BuildIDCacheOptions: symtab.GCacheOptions{
-				Size:       args.BuildIDCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-			SameFileCacheOptions: symtab.GCacheOptions{
-				Size:       args.SameFileCacheSize,
-				KeepRounds: args.CacheRounds,
-			},
-		},
-		BPFMapsOptions: ebpfspy.BPFMapsOptions{
-			SymbolsMapSize: uint32(args.SymbolsMapSize),
-			PIDMapSize:     uint32(args.PIDMapSize),
+	return discovery2.TargetsOptions{
+		Targets:     targets,
+		TargetsOnly: dynamicProfilingPolicy,
+		DefaultTarget: discovery2.DiscoveredTarget{
+			"service_name": "ebpf/unspecified",
 		},
 	}
 }

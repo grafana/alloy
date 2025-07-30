@@ -44,7 +44,7 @@ func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
 		MaxConnsPerHost:     args.MaxConnsPerHost,
 		IdleConnTimeout:     args.IdleConnTimeout,
 		DisableKeepAlives:   args.DisableKeepAlives,
-		TLSSetting: configtls.ClientConfig{
+		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},
 	}
@@ -198,7 +198,7 @@ func (args *DatadogMetricsArguments) SetToDefault() {
 		DeltaTTL: 3600,
 		ExporterConfig: DatadogMetricsExporterArguments{
 			ResourceAttributesAsTags:           false,
-			InstrumentationScopeMetadataAsTags: false,
+			InstrumentationScopeMetadataAsTags: true,
 		},
 		HistConfig: DatadogHistogramArguments{
 			Mode:             "distributions",
@@ -234,7 +234,7 @@ func (args *DatadogMetricsExporterArguments) Convert() *datadogOtelconfig.Metric
 func (args *DatadogMetricsExporterArguments) SetToDefault() {
 	*args = DatadogMetricsExporterArguments{
 		ResourceAttributesAsTags:           false,
-		InstrumentationScopeMetadataAsTags: false,
+		InstrumentationScopeMetadataAsTags: true,
 	}
 }
 

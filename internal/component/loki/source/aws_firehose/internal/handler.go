@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/logproto"
-	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
+	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -274,6 +274,9 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	cwLogsLabels.Set("__aws_cw_msg_type", cwRecord.MessageType)
 
 	for _, event := range cwRecord.LogEvents {
+		if h.useIncomingTs {
+			timestamp = time.UnixMilli(event.Timestamp)
+		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
 			Entry: logproto.Entry{

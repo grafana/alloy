@@ -16,7 +16,7 @@ title: beyla.ebpf
 The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" >}}.
 {{< /admonition >}}
 
-The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][[eBPF website]] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
+The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][eBPF website] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
@@ -40,11 +40,11 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name              | Type     | Description                                                                         | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------------------- | ------- | -------- |
-| `debug`           | `bool`   | Enable debug mode for Beyla.                                                        | `false` | no       |
-| `enforce_sys_caps`| `bool`   | Enforce system capabilities required for eBPF instrumentation.                      | `false` | no       |
-| `trace_printer`   | `string` | Format for printing trace information.                                              | `"disabled"` | no |
+| Name               | Type     | Description                                                    | Default      | Required |
+| ------------------ | -------- | -------------------------------------------------------------- | ------------ | -------- |
+| `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
+| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
+| `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
 
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
@@ -76,6 +76,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no       |
 | `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no       |
 | `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no       |
+| `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
+| `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -129,14 +131,14 @@ It contains the following blocks:
 
 This `kubernetes` block configures the decorating of the metrics and traces with Kubernetes metadata from the instrumented Pods.
 
-| Name                       | Type           | Description                                            | Default | Required |
-| -------------------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false` | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `30m`   | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `30s`   | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
+| Name                       | Type           | Description                                            | Default   | Required |
+| -------------------------- | -------------- | ------------------------------------------------------ | --------- | -------- |
+| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`      | no       |
+| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`      | no       |
+| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false`   | no       |
+| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"`   | no       |
+| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"`   | no       |
+| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false`   | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -237,17 +239,18 @@ In some scenarios, Beyla instruments a wide variety of services, such as a Kuber
 The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-The same properties are available for both `services` and `exclude_services` blocks.
+The same properties are available for both `services`, `exclude_services`, and `survey` blocks.
 The `services` block configures the services to discover for the component.
 The `exclude_services` block configures the services to exclude for the component.
+The `survey` block configures the services that the component will emit information for.
 
-| Name         | Type     | Description                                                                              | Default | Required |
-| ------------ | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
-| `name`       | `string` | The name of the service to match.                                                        | `""`    | no       |
-| `namespace`  | `string` | The namespace of the service to match.                                                   | `""`    | no       |
-| `open_ports` | `string` | The port of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
-| `exe_path`   | `string` | The path of the running service for Beyla automatically instrumented with eBPF.          | `""`    | no       |
-| `containers_only` | `bool`   |Restrict the discovery to processes which are running inside a container.             | `false` | no       |
+| Name              | Type     | Description                                                                     | Default | Required |
+| ----------------- | -------- | ------------------------------------------------------------------------------- | ------- | -------- |
+| `name`            | `string` | The name of the service to match.                                               | `""`    | no       |
+| `namespace`       | `string` | The namespace of the service to match.                                          | `""`    | no       |
+| `open_ports`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `exe_path`        | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `containers_only` | `bool`   | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -256,6 +259,9 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
+
+If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
+This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
 
 #### `default_exclude_services`
 
@@ -267,17 +273,17 @@ Set to empty to allow Alloy to instrument itself as well as these other componen
 This `kubernetes` block filters the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
-| Name               | Type          | Description                                                                                                 | Default | Required |
-| ------------------ | ------------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                       | `""`    | no       |
-| `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                      | `""`    | no       |
-| `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                       | `""`    | no       |
-| `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                           | `""`    | no       |
-| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression. | `{}`    | no       |
-| `pod_annotations`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
-| `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                             | `""`    | no       |
-| `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                      | `""`    | no       |
-| `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                     | `""`    | no       |
+| Name               | Type          | Description                                                                                                        | Default | Required |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                              | `""`    | no       |
+| `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                             | `""`    | no       |
+| `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                              | `""`    | no       |
+| `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                                  | `""`    | no       |
+| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.        | `{}`    | no       |
+| `pod_annotations`  | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
+| `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                                    | `""`    | no       |
+| `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                             | `""`    | no       |
+| `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                            | `""`    | no       |
 
 Example:
 
@@ -312,7 +318,7 @@ The `ebpf` block configures eBPF-specific settings.
 | ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
 | `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
 | `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `30s`        | no       |
+| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `"30s"`      | no       |
 | `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
 | `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
 | `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
@@ -431,7 +437,7 @@ The `network` block configures network metrics options for Beyla. You must appen
 | `agent_ip_iface`       | `string`       | Network interface to get agent IP from.                               | `"external"`      | no       |
 | `agent_ip_type`        | `string`       | Type of IP address to use.                                            | `"any"`           | no       |
 | `agent_ip`             | `string`       | Allows overriding the reported `beyla.ip` attribute on each metric.   | `""`              | no       |
-| `cache_active_timeout` | `duration`     | Timeout for active flow cache entries.                                | `5s`              | no       |
+| `cache_active_timeout` | `duration`     | Timeout for active flow cache entries.                                | `"5s"`            | no       |
 | `cache_max_flows`      | `int`          | Maximum number of flows to cache.                                     | `5000`            | no       |
 | `cidrs`                | `list(string)` | List of CIDR ranges to monitor.                                       | `[]`              | no       |
 | `direction`            | `string`       | Direction of traffic to monitor.                                      | `"both"`          | no       |
@@ -495,13 +501,13 @@ You can set `direction` to `ingress`, `egress`, or `both` (default).
 
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
-| Name              | Type           | Description                                                                              | Default       | Required |
-| ----------------- | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
-| `ignore_mode`     | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
-| `ignore_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
-| `patterns`        | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
-| `unmatched`       | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
-| `wildcard_char`   | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
+| Name               | Type           | Description                                                                              | Default       | Required |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
+| `ignore_mode`      | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
+| `ignored_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
+| `patterns`         | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
+| `unmatched`        | `string`       | Specifies what to do when a trace HTTP path doesn't match any of the `patterns` entries. | `"heuristic"` | no       |
+| `wildcard_char`    | `string`       | Character to use as wildcard in patterns.                                                | `"*"`         | no       |
 
 `ignore_mode` properties are:
 
@@ -509,7 +515,7 @@ The `routes` block configures the routes to match HTTP paths into user-provided 
 * `metrics` discards only the metrics that match the `ignored_patterns`. No trace events are ignored.
 * `traces` discards only the traces that match the `ignored_patterns`. No metric events are ignored.
 
-`patterns` and `ignore_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
+`patterns` and `ignored_patterns` are a list of patterns which a URL path with specific tags which allow for grouping path segments (or ignored them).
 The matcher tags can be in the `:name` or `{name}` format.
 
 `unmatched` properties are:

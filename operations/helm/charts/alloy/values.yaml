@@ -68,6 +68,12 @@ alloy:
   # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
   listenScheme: HTTP
 
+  # -- Initial delay for readiness probe.
+  initialDelaySeconds: 10
+
+  # -- Timeout for readiness probe.
+  timeoutSeconds: 1
+
   # --  Base path where the UI is exposed.
   uiPathPrefix: /
 
@@ -188,6 +194,9 @@ controller:
 
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
   replicas: 1
+
+  # -- Extra labels to add to the controller.
+  extraLabels: {}
 
   # -- Annotations to add to controller.
   extraAnnotations: {}
@@ -375,6 +384,22 @@ controller:
 
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
+
+networkPolicy:
+  enabled: false
+  flavor: kubernetes
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Default allow all traffic because Alloy is so configurable
+  # It is recommended to change this before deploying to production
+  # To disable each policyType, set value to `null`
+  ingress:
+    - {}
+  egress:
+    - {}
 
 service:
   # -- Creates a Service for the controller's pods.

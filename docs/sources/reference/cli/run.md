@@ -1,12 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/run/
 description: Learn about the run command
-menuTitle: run
-title: The run command
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: run
 weight: 300
 ---
 
-# The `run` command
+# `run`
 
 The `run` command runs {{< param "PRODUCT_NAME" >}} in the foreground until an interrupt is received.
 
@@ -35,10 +38,10 @@ The HTTP server is also exposes a UI at `/` for debugging running components.
 The following flags are supported:
 
 * `--server.http.enable-pprof`: Enable /debug/pprof profiling endpoints. (default `true`).
-* `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `alloy.internal:12345`).
-* `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `127.0.0.1:12345`).
-* `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `/`).
-* `--storage.path`: Base directory where components can store data (default `data-alloy/`).
+* `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `"alloy.internal:12345"`).
+* `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `"127.0.0.1:12345"`).
+* `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `"/"`).
+* `--storage.path`: Base directory where components can store data (default `"data-alloy/"`).
 * `--disable-reporting`: Disable [data collection][] (default `false`).
 * `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
 * `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
@@ -62,11 +65,14 @@ The following flags are supported:
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
 * `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
-* `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+
+### Deprecated flags
+
+* `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/

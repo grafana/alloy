@@ -15,8 +15,10 @@ title: otelcol.extension.jaeger_remote_sampling
 `otelcol.extension.jaeger_remote_sampling` serves a specified Jaeger remote sampling document.
 
 {{< admonition type="note" >}}
-`otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry Collector `jaegerremotesampling` extension.
+`otelcol.extension.jaeger_remote_sampling` is a wrapper over the upstream OpenTelemetry Collector [`jaegerremotesampling`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`jaegerremotesampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/jaegerremotesampling
 {{< /admonition >}}
 
 You can specify multiple `otelcol.extension.jaeger_remote_sampling` components by giving them different labels.
@@ -32,7 +34,7 @@ otelcol.extension.jaeger_remote_sampling "<LABEL>" {
 
 ## Arguments
 
-`otelcol.extension.jaeger_remote_sampling` doesn't support any arguments and is configured fully through inner blocks.
+The `otelcol.extension.jaeger_remote_sampling` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -47,11 +49,13 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | [`http`][http]                                                    | Configures the HTTP server to serve Jaeger remote sampling.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                             | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                              | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
 | [`grpc`][grpc]                                                    | Configures the gRPC server to serve Jaeger remote sampling.                      | no       |
 | `grpc` > [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                         | no       |
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                       | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                          | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                              | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                                    | no       |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state.       | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -59,6 +63,7 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 
 [http]: #http
 [tls]: #tls
+[tpm]: #tpm
 [cors]: #cors
 [grpc]: #grpc
 [keepalive]: #keepalive
@@ -82,7 +87,7 @@ The following arguments are supported:
 | ----------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no       |
 | `file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no       |
-| `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `0`     | no       |
+| `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `"0"`   | no       |
 
 Exactly one of the `file` argument, `content` argument or `remote` block must be specified.
 
@@ -100,7 +105,7 @@ The following arguments are supported:
 | `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`   | no       |
 | `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`       | no       |
 | `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |            | no       |
-| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`    | no       |
+| `wait_for_ready`    | `bool`                     | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`    | no       |
 | `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"` | no       |
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -144,6 +149,12 @@ This `tls` block configures TLS settings used for the connection to the gRPC ser
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `http`
 
 The `http` block configures an HTTP server which serves the Jaeger remote sampling document.
@@ -156,7 +167,7 @@ The following arguments are supported:
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:5778"`                                           | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 
 ### `cors`
 
@@ -186,6 +197,12 @@ The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `grpc`
 

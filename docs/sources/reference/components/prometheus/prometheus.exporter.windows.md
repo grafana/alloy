@@ -50,6 +50,7 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | Name                                       | Description                                    | Required |
 | ------------------------------------------ | ---------------------------------------------- | -------- |
 | [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
+| [`dns`][dns]                               | Configures the `dns` collector.                | no       |
 | [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
 | [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
 | [`iis`][iis]                               | Configures the `iis` collector.                | no       |
@@ -68,9 +69,20 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`smb`][smb]                               | Configures the `smb` collector.                | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
-| [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
+| [`text_file`][text_file]                   | Configures the `textfile` collector.           | no       |
+| [`update`][update]                         | Configures the `update` collector.             | no       |
+
+The `textfile` collector is currently configured with the `text_file` block. 
+To be consistent with the `textfile` collector name, the `text_file` block will be deprecated in a future release and replaced with a `textfile` block. 
+
+{{< admonition type="note" >}}
+Starting with release 1.9.0, the `msmq` block is deprecated.
+It will be removed in a future release.
+You can still include this block in your configuration files. However, its usage is now a no-op.
+{{< /admonition >}}
 
 [dfsr]: #dfsr
+[dns]: #dns
 [exchange]: #exchange
 [filetime]: #filetime
 [iis]: #iis
@@ -90,12 +102,19 @@ You can use the following blocks with `prometheus.exporter.windows`:
 [smtp]: #smtp
 [text_file]: #text_file
 [tcp]: #tcp
+[update]: #update
 
 ### `dfsr`
 
 | Name             | Type           | Description                            | Default                            | Required |
 | ---------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
 | `source_enabled` | `list(string)` | A list of DFSR Perflib sources to use. | `["connection","folder","volume"]` | no       |
+
+### `dns`
+
+| Name           | Type           | Description                  | Default                      | Required |
+|----------------|----------------|------------------------------|------------------------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["metrics", "wmi_stats"]` | no       |
 
 ### `exchange`
 
@@ -149,8 +168,8 @@ For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `mssql`
 
-| Name              | Type           | Description                         | Default | Required |
-| ----------------- | -------------- | ----------------------------------- | ------- | -------- |
+| Name              | Type           | Description                         | Default                                                                                                                                                              | Required |
+| ----------------- | -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"]` | no       |
 
 ### `network`
@@ -268,6 +287,12 @@ For a service to be included, it must match the regular expression specified by 
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
+{{< admonition type="note" >}}
+Starting with release 1.9.0, the `use_api`, `where_clause`, and `enable_v2_collector` attributes are deprecated.
+They will be removed in a future release.
+You can still include these attributes in your configuration files. However, their usage is now a no-op.
+{{< /admonition >}}
+
 ### `smb`
 
 | Name           | Type           | Description                                      | Default | Required |
@@ -331,6 +356,13 @@ When `text_file_directory` is set, only files with the extension `.prom` inside 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
 {{< /admonition >}}
+
+### `update`
+
+| Name              | Type       | Description                                          | Default | Required |
+|-------------------|------------|------------------------------------------------------|---------|----------|
+| `online`          | `bool`     | Whether to search for updates online.                | `false` | no       |
+| `scrape_interval` | `duration` | How frequently to scrape Windows Update information. | `6h`    | no       |
 
 ## Exported fields
 
@@ -419,6 +451,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`terminal_services`][terminal_services]                             | Terminal services (RDS)                                              |                    |
 | [`textfile`][textfile]                                               | Read Prometheus metrics from a text file                             |                    |
 | [`udp`][udp]                                                         | UDP connections                                                      |                    |
+| [`update`][update]                                                   | Windows Update service metrics                                       |                    |
 | [`vmware`][vmware]                                                   | Performance counters installed by the VMware Guest agent             |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
@@ -464,6 +497,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [terminal_services]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.terminal_services.md
 [textfile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.textfile.md
 [udp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.udp.md
+[update]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.update.md
 [vmware]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.vmware.md
 [sql_server]: https://docs.microsoft.com/en-us/sql/relational-databases/performance-monitor/use-sql-server-objects#SQLServerPOs
 

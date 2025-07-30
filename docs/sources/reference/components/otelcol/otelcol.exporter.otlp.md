@@ -15,8 +15,10 @@ title: otelcol.exporter.otlp
 `otelcol.exporter.otlp` accepts telemetry data from other `otelcol` components and writes them over the network using the OTLP gRPC protocol.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.otlp` is a wrapper over the upstream OpenTelemetry Collector `otlp` exporter.
+`otelcol.exporter.otlp` is a wrapper over the upstream OpenTelemetry Collector [`otlp`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`otlp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlpexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.otlp` components by giving them different labels.
@@ -48,6 +50,7 @@ You can use the following blocks with `otelcol.exporter.otlp`:
 | [`client`][client]                     | Configures the gRPC client to send telemetry data to.                      | yes      |
 | `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
 | `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
+| `client` > `tls` > [`tpm`][tpm]        | Configures TPM settings for the TLS key_file.                              | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                | no       |
@@ -57,6 +60,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 [client]: #client
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [sending_queue]: #sending_queue
 [retry_on_failure]: #retry_on_failure
@@ -70,17 +74,17 @@ The `client` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
-| Name                | Type                       | Description                                                                      | Default       | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | ------------- | -------- |
-| `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |               | yes      |
-| `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no       |
-| `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no       |
-| `balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `round_robin` | no       |
-| `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`      | no       |
-| `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`          | no       |
-| `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |               | no       |
-| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`       | no       |
-| `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`    | no       |
+| Name                | Type                       | Description                                                                      | Default         | Required |
+| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | --------------- | -------- |
+| `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |                 | yes      |
+| `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |                 | no       |
+| `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |                 | no       |
+| `balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `"round_robin"` | no       |
+| `compression`       | `string`                   | Compression mechanism to use for requests.                                       | `"gzip"`        | no       |
+| `headers`           | `map(string)`              | Additional headers to send with the request.                                     | `{}`            | no       |
+| `read_buffer_size`  | `string`                   | Size of the read buffer the gRPC client to use for reading server responses.     |                 | no       |
+| `wait_for_ready`    | `boolean`                  | Waits for gRPC connection to be in the `READY` state before sending data.        | `false`         | no       |
+| `write_buffer_size` | `string`                   | Size of the write buffer the gRPC client to use for writing requests.            | `"512KiB"`      | no       |
 
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -124,6 +128,12 @@ The `tls` block configures TLS settings used for the connection to the gRPC
 server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< admonition type="note" >}}
 `otelcol.exporter.otlp` uses gRPC, which doesn't allow you to send sensitive credentials like `auth` over insecure channels.

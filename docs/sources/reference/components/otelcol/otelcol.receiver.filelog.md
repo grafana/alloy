@@ -15,8 +15,10 @@ title: otelcol.receiver.filelog
 `otelcol.receiver.filelog` reads log entries from files and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector `filelog` receiver.
+`otelcol.receiver.filelog` is a wrapper over the upstream OpenTelemetry Collector [`filelog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`filelog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.filelog` components by giving them different labels.
@@ -36,42 +38,43 @@ otelcol.receiver.filelog "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.filelog`:
 
-| Name                            | Type                       | Description                                                                                | Default | Required |
-| ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | ------- | -------- |
-| `include`                       | `list(string)`             | A list of glob patterns to include files.                                                  |         | yes      |
-| `acquire_fs_lock`               | `bool`                     | Whether to acquire a file system lock while reading the file (Unix only).                  | `false` | no       |
-| `attributes`                    | `map(string)`              | A map of attributes to add to each log entry.                                              | `{}`    | no       |
-| `compression`                   | `string`                   | The compression type used for the log file.                                                | ``      | no       |
-| `delete_after_read`             | `bool`                     | Whether to delete the file after reading.                                                  | `false` | no       |
-| `encoding`                      | `string`                   | The encoding of the log file.                                                              | `utf-8` | no       |
-| `exclude_older_than`            | `duration`                 | Exclude files with a modification time older than the specified duration.                  | `0s`    | no       |
-| `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`    | no       |
-| `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`  | no       |
-| `force_flush_period`            | `duration`                 | The period after which logs are flushed even if the buffer isn't full.                     | `500ms` | no       |
-| `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false` | no       |
-| `include_file_name`             | `bool`                     | Whether to include the filename in the log entry.                                          | `true`  | no       |
-| `include_file_owner_group_name` | `bool`                     | Whether to include the file owner's group name in the log entry.                           | `false` | no       |
-| `include_file_owner_name`       | `bool`                     | Whether to include the file owner's name in the log entry.                                 | `false` | no       |
-| `include_file_path_resolved`    | `bool`                     | Whether to include the resolved file path in the log entry.                                | `false` | no       |
-| `include_file_path`             | `bool`                     | Whether to include the file path in the log entry.                                         | `false` | no       |
-| `include_file_record_number`    | `bool`                     | Whether to include the file record number in the log entry.                                | `false` | no       |
-| `max_batches`                   | `int`                      | The maximum number of batches to process concurrently.                                     | `10`    | no       |
-| `max_concurrent_files`          | `int`                      | The maximum number of files to read concurrently.                                          | `10`    | no       |
-| `max_log_size`                  | `units.Base2Bytes`         | The maximum size of a log entry.                                                           | `1MiB`  | no       |
-| `operators`                     | `list(map(string))`        | A list of operators used to parse the log entries.                                         | `[]`    | no       |
-| `poll_interval`                 | `duration`                 | The interval at which the file is polled for new entries.                                  | `200ms` | no       |
-| `preserve_leading_whitespaces`  | `bool`                     | Preserves leading whitespace in messages when set to `true`.                               | `false` | no       |
-| `preserve_trailing_whitespaces` | `bool`                     | Preserves trailing whitespace in messages when set to `true`.                              | `false` | no       |
-| `resource`                      | `map(string)`              | A map of resource attributes to associate with each log entry.                             | `{}`    | no       |
-| `start_at`                      | `string`                   | The position to start reading the file from.                                               | `end`   | no       |
-| `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |         | no       |
+| Name                            | Type                       | Description                                                                                | Default   | Required |
+| ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | --------- | -------- |
+| `include`                       | `list(string)`             | A list of glob patterns to include files.                                                  |           | yes      |
+| `acquire_fs_lock`               | `bool`                     | Whether to acquire a file system lock while reading the file (Unix only).                  | `false`   | no       |
+| `attributes`                    | `map(string)`              | A map of attributes to add to each log entry.                                              | `{}`      | no       |
+| `compression`                   | `string`                   | The compression type used for the log file.                                                | ``        | no       |
+| `delete_after_read`             | `bool`                     | Whether to delete the file after reading.                                                  | `false`   | no       |
+| `encoding`                      | `string`                   | The encoding of the log file.                                                              | `"utf-8"` | no       |
+| `exclude_older_than`            | `duration`                 | Exclude files with a modification time older than the specified duration.                  | `"0s"`    | no       |
+| `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`      | no       |
+| `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`    | no       |
+| `force_flush_period`            | `duration`                 | The period after which logs are flushed even if the buffer isn't full.                     | `"500ms"` | no       |
+| `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false`   | no       |
+| `include_file_name`             | `bool`                     | Whether to include the filename in the log entry.                                          | `true`    | no       |
+| `include_file_owner_group_name` | `bool`                     | Whether to include the file owner's group name in the log entry.                           | `false`   | no       |
+| `include_file_owner_name`       | `bool`                     | Whether to include the file owner's name in the log entry.                                 | `false`   | no       |
+| `include_file_path_resolved`    | `bool`                     | Whether to include the resolved file path in the log entry.                                | `false`   | no       |
+| `include_file_path`             | `bool`                     | Whether to include the file path in the log entry.                                         | `false`   | no       |
+| `include_file_record_number`    | `bool`                     | Whether to include the file record number in the log entry.                                | `false`   | no       |
+| `max_batches`                   | `int`                      | The maximum number of batches to process concurrently.                                     | `10`      | no       |
+| `max_concurrent_files`          | `int`                      | The maximum number of files to read concurrently.                                          | `10`      | no       |
+| `max_log_size`                  | `units.Base2Bytes`         | The maximum size of a log entry.                                                           | `1MiB`    | no       |
+| `operators`                     | `list(map(string))`        | A list of operators used to parse the log entries.                                         | `[]`      | no       |
+| `poll_interval`                 | `duration`                 | The interval at which the file is polled for new entries.                                  | `"200ms"` | no       |
+| `preserve_leading_whitespaces`  | `bool`                     | Preserves leading whitespace in messages when set to `true`.                               | `false`   | no       |
+| `preserve_trailing_whitespaces` | `bool`                     | Preserves trailing whitespace in messages when set to `true`.                              | `false`   | no       |
+| `resource`                      | `map(string)`              | A map of resource attributes to associate with each log entry.                             | `{}`      | no       |
+| `start_at`                      | `string`                   | The position to start reading the file from.                                               | `"end"`   | no       |
+| `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |           | no       |
 
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
+`encoding` must be one of `utf-8`, `utf8-raw`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
 
-`compression` must be either `` or `gzip`.
+`compression` must be either `""`, `gzip`, or `auto`. `auto` automatically detects file compression type and ingests data.
+Currently, only gzip compressed files are auto detected. This allows for mix of compressed and uncompressed files to be ingested with the same filelogreceiver.
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
@@ -99,8 +102,7 @@ otelcol.receiver.filelog "default" {
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.receiver.filelog`:
+You can use the following blocks with `otelcol.receiver.filelog`:
 
 | Block                                      | Description                                                                                     | Required |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
@@ -208,7 +210,7 @@ The following arguments are supported:
 | `sort_type` | `string` | The type of sorting to apply.                                                |         | yes      |
 | `ascending` | `bool`   | Whether to sort in ascending order.                                          | `true`  | no       |
 | `layout`    | `string` | The layout of the timestamp to be parsed from a named `regex` capture group. | `""`    | no       |
-| `location`  | `string` | The location of the timestamp.                                               | `UTC`   | no       |
+| `location`  | `string` | The location of the timestamp.                                               | `"UTC"` | no       |
 | `regex_key` | `string` | The named capture group from the `regex` attribute to use for sorting.       | `""`    | no       |
 
 `sort_type` must be one of `numeric`, `lexicographic`, `timestamp`, or `mtime`.
@@ -231,9 +233,9 @@ The following arguments are supported:
 | Name               | Type       | Description                                                                                                               | Default | Required |
 | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
-| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `1s`    | no       |
-| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `5m`    | no       |
-| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `30s`   | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `"1s"`  | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `"5m"`  | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                                    | `"30s"` | no       |
 
 If `max_elapsed_time` is set to `0` data is never discarded.
 

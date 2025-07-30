@@ -13,6 +13,7 @@ type LogsConfig struct {
 	PollInterval        time.Duration `alloy:"poll_interval,attr,optional"`
 	MaxEventsPerRequest int           `alloy:"max_events_per_request,attr,optional"`
 	Groups              GroupConfig   `alloy:"groups,block,optional"`
+	StartFrom           string        `alloy:"start_from,attr,optional"`
 }
 
 func (args *LogsConfig) Convert() *awscloudwatchreceiver.LogsConfig {
@@ -23,6 +24,7 @@ func (args *LogsConfig) Convert() *awscloudwatchreceiver.LogsConfig {
 		PollInterval:        args.PollInterval,
 		MaxEventsPerRequest: args.MaxEventsPerRequest,
 		Groups:              args.Groups.Convert(),
+		StartFrom:           args.StartFrom,
 	}
 }
 

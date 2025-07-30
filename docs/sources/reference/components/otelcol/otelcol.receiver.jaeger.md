@@ -15,8 +15,10 @@ title: otelcol.receiver.jaeger
 `otelcol.receiver.jaeger` accepts Jaeger-formatted data over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector `jaeger` receiver.
+`otelcol.receiver.jaeger` is a wrapper over the upstream OpenTelemetry Collector [`jaeger`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`jaeger`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.jaeger` components by giving them different labels.
@@ -42,7 +44,7 @@ otelcol.receiver.jaeger "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.jaeger` doesn't support any arguments and is configured fully through inner blocks.
+The `otelcol.receiver.jaeger` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -54,12 +56,14 @@ You can use the following blocks with `otelcol.receiver.jaeger`:
 | [`protocols`][protocols]                                                        | Configures the protocols the component can accept traffic over.            | yes      |
 | `protocols` > [`grpc`][grpc]                                                    | Configures a Jaeger gRPC server to receive traces.                         | no       |
 | `protocols` > `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
+| `protocols` > `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 | `protocols` > `grpc` > [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                   | no       |
 | `protocols` > `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | `protocols` > `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `protocols` > [`thrift_http`][thrift_http]                                      | Configures a Thrift HTTP server to receive traces.                         | no       |
 | `protocols` > `thrift_http` > [`cors`][cors]                                    | Configures CORS for the Thrift HTTP server.                                | no       |
 | `protocols` > `thrift_http` > [`tls`][tls]                                      | Configures TLS for the Thrift HTTP server.                                 | no       |
+| `protocols` > `thrift_http` > `tls` > [`tpm`][tpm]                              | Configures TPM settings for the TLS key_file.                              | no       |
 | `protocols` > [`thrift_binary`][thrift_binary]                                  | Configures a Thrift binary UDP server to receive traces.                   | no       |
 | `protocols` > [`thrift_compact`][thrift_compact]                                | Configures a Thrift compact UDP server to receive traces.                  | no       |
 | [`debug_metrics`][debug_metrics]                                                | Configures the metrics that this component generates to monitor its state. | no       |
@@ -70,6 +74,7 @@ For example, `protocols` > `grpc` refers to a `grpc` block defined inside a `pro
 [protocols]: #protocols
 [grpc]: #grpc
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
@@ -121,6 +126,12 @@ If the `tls` block isn't provided, TLS isn't used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `keepalive`
 
 The `keepalive` block configures keepalive settings for connections to a gRPC server.
@@ -166,7 +177,7 @@ The following arguments are supported:
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14268"`                                          | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 
 ### `cors`
 

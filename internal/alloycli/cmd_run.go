@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
@@ -54,11 +53,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-var (
-	prometheusLegacyMetricValidationScheme = "legacy"
-	prometheusUTF8MetricValidationScheme   = "utf-8"
-)
-
 func runCommand() *cobra.Command {
 	r := &alloyRun{
 		inMemoryAddr:          "alloy.internal:12345",
@@ -73,10 +67,7 @@ func runCommand() *cobra.Command {
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
-		// For backwards compatibility - use the LegacyValidation of Prometheus metrics name. This is a global variable
-		// setting that has changed upstream. See https://github.com/prometheus/common/pull/724.
-		prometheusMetricNameValidationScheme: prometheusLegacyMetricValidationScheme,
-		windowsPriority:                      windowspriority.PriorityNormal,
+		windowsPriority:       windowspriority.PriorityNormal,
 	}
 
 	cmd := &cobra.Command{
@@ -172,7 +163,6 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
-	cmd.Flags().StringVar(&r.prometheusMetricNameValidationScheme, "feature.prometheus.metric-validation-scheme", prometheusLegacyMetricValidationScheme, fmt.Sprintf("Prometheus metric validation scheme to use. Supported values: %q, %q. NOTE: this is an experimental flag and may be removed in future releases.", prometheusLegacyMetricValidationScheme, prometheusUTF8MetricValidationScheme))
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
@@ -182,36 +172,35 @@ depending on the nature of the reload error.
 }
 
 type alloyRun struct {
-	inMemoryAddr                         string
-	httpListenAddr                       string
-	storagePath                          string
-	minStability                         featuregate.Stability
-	uiPrefix                             string
-	enablePprof                          bool
-	disableReporting                     bool
-	clusterEnabled                       bool
-	clusterNodeName                      string
-	clusterAdvAddr                       string
-	clusterJoinAddr                      string
-	clusterDiscoverPeers                 string
-	clusterAdvInterfaces                 []string
-	clusterRejoinInterval                time.Duration
-	clusterMaxJoinPeers                  int
-	clusterName                          string
-	clusterEnableTLS                     bool
-	clusterTLSCAPath                     string
-	clusterTLSCertPath                   string
-	clusterTLSKeyPath                    string
-	clusterTLSServerName                 string
-	clusterWaitForSize                   int
-	clusterWaitTimeout                   time.Duration
-	configFormat                         string
-	configBypassConversionErrors         bool
-	configExtraArgs                      string
-	enableCommunityComps                 bool
-	disableSupportBundle                 bool
-	prometheusMetricNameValidationScheme string
-	windowsPriority                      string
+	inMemoryAddr                 string
+	httpListenAddr               string
+	storagePath                  string
+	minStability                 featuregate.Stability
+	uiPrefix                     string
+	enablePprof                  bool
+	disableReporting             bool
+	clusterEnabled               bool
+	clusterNodeName              string
+	clusterAdvAddr               string
+	clusterJoinAddr              string
+	clusterDiscoverPeers         string
+	clusterAdvInterfaces         []string
+	clusterRejoinInterval        time.Duration
+	clusterMaxJoinPeers          int
+	clusterName                  string
+	clusterEnableTLS             bool
+	clusterTLSCAPath             string
+	clusterTLSCertPath           string
+	clusterTLSKeyPath            string
+	clusterTLSServerName         string
+	clusterWaitForSize           int
+	clusterWaitTimeout           time.Duration
+	configFormat                 string
+	configBypassConversionErrors bool
+	configExtraArgs              string
+	enableCommunityComps         bool
+	disableSupportBundle         bool
+	windowsPriority              string
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -234,10 +223,6 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
 		return fmt.Errorf("building tracer: %w", err)
-	}
-
-	if err := fr.configurePrometheusMetricNameValidationScheme(l); err != nil {
-		return err
 	}
 
 	// The non-windows path for this is just a return nil, but to protect against
@@ -496,30 +481,13 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	}
 }
 
-func (fr *alloyRun) configurePrometheusMetricNameValidationScheme(l log.Logger) error {
-	switch fr.prometheusMetricNameValidationScheme {
-	case prometheusLegacyMetricValidationScheme:
-		model.NameValidationScheme = model.LegacyValidation
-	case prometheusUTF8MetricValidationScheme:
-		if err := featuregate.CheckAllowed(
-			featuregate.StabilityExperimental,
-			fr.minStability,
-			"Prometheus utf-8 metric name validation scheme",
-		); err != nil {
-			return err
-		}
-		level.Warn(l).Log("msg", "Using experimental UTF-8 Prometheus metric name validation scheme")
-		model.NameValidationScheme = model.UTF8Validation
-	default:
-		return fmt.Errorf("invalid prometheus metric name validation scheme: %q", fr.prometheusMetricNameValidationScheme)
-	}
-	return nil
-}
-
 // getEnabledComponentsFunc returns a function that gets the current enabled components
 func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
+		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+		}
 		componentNames := map[string]struct{}{}
 		for _, c := range components {
 			if c.Type != component.TypeBuiltin {
@@ -602,14 +570,18 @@ func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
 	return [32]byte(hash.Sum(nil))
 }
 
-// addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
+// addDeprecatedFlags adds flags that are deprecated, have no effect, but we keep them for backwards compatibility.
 func addDeprecatedFlags(cmd *cobra.Command) {
-	_ = cmd.Flags().
-		Bool("cluster.use-discovery-v1", false, "This flag is deprecated and has no effect.")
-	err := cmd.Flags().MarkDeprecated("cluster.use-discovery-v1", "This flag is deprecated and has no effect.")
-	if err != nil { // this should never fail
-		panic(err)
+	deprecateFlagByName := func(cmd *cobra.Command, name string) {
+		msg := "This flag is deprecated and has no effect."
+		_ = cmd.Flags().Bool(name, false, msg)
+		err := cmd.Flags().MarkDeprecated(name, msg)
+		if err != nil { // this should never fail
+			panic(err)
+		}
 	}
+	deprecateFlagByName(cmd, "cluster.use-discovery-v1")
+	deprecateFlagByName(cmd, "feature.prometheus.metric-validation-scheme")
 }
 
 func interruptContext() (context.Context, context.CancelFunc) {

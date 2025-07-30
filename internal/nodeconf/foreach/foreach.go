@@ -12,9 +12,10 @@ const (
 )
 
 type Arguments struct {
-	Collection []any  `alloy:"collection,attr"`
-	Var        string `alloy:"var,attr"`
-	Id         string `alloy:"id,attr,optional"`
+	Collection   []any  `alloy:"collection,attr"`
+	Var          string `alloy:"var,attr"`
+	Id           string `alloy:"id,attr,optional"`
+	HashStringId bool   `alloy:"hash_string_id,attr,optional"`
 
 	// EnableMetrics should be false by default.
 	// That way users are protected from an explosion of debug metrics

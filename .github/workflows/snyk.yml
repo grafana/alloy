@@ -13,6 +13,6 @@ permissions:
 
 jobs:
   snyk-scan-ci:
-    uses: grafana/security-github-actions/.github/workflows/snyk_monitor.yml@8364d021298f71ee5c2ebddfff591a6efd60ceac # main
+    uses: grafana/security-github-actions/.github/workflows/snyk_monitor.yml@d85dd725e45422776d8fbfc345767ac9060d12e2 # main
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

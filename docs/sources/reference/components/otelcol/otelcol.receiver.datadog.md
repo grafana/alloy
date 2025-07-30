@@ -18,6 +18,13 @@ title: otelcol.receiver.datadog
 
 You can specify multiple `otelcol.receiver.datadog` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/datadogreceiver
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -36,8 +43,8 @@ You can use the following arguments with `otelcol.receiver.datadog`:
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
-| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.               | `false`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
+| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `read_timeout`           | `duration`                 | Read timeout for requests of the HTTP server.                                | `"60s"`                                                    | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
@@ -55,8 +62,13 @@ You can use the following blocks with `otelcol.receiver.datadog`:
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |
+| `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS key_file.                              | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -99,6 +111,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

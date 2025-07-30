@@ -48,7 +48,7 @@ func toOAuth2ClientAuthExtension(cfg *oauth2clientauthextension.Config) *oauth2.
 		TokenURL:       cfg.TokenURL,
 		EndpointParams: cfg.EndpointParams,
 		Scopes:         cfg.Scopes,
-		TLSSetting:     toTLSClientArguments(cfg.TLSSetting),
+		TLS:            toTLSClientArguments(cfg.TLS),
 		Timeout:        cfg.Timeout,
 		DebugMetrics:   common.DefaultValue[oauth2.Arguments]().DebugMetrics,
 	}

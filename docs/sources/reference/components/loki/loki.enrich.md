@@ -25,10 +25,10 @@ loki.enrich "<LABEL>" {
   targets = <DISCOVERY_COMPONENT>.targets
   
   // Which label from discovered targets to match against
-  match_label = "<LABEL>"
+  target_match_label = "<LABEL>"
   
   // Which label from incoming logs to match against
-  source_label = "<LABEL>"
+  logs_match_label = "<LABEL>"
   
   // List of labels to copy from discovered targets to logs
   labels_to_copy = ["<LABEL>", ...]
@@ -40,15 +40,17 @@ loki.enrich "<LABEL>" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `loki.enrich`:
 
-| Name                 | Type                  | Description                                                                                      | Default              | Required |
-| -------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | -------------------- | -------- |
-| `forward_to`         | `[]loki.LogsReceiver` | List of receivers to send enriched logs to.                                                      |                      | yes      |
-| `target_match_label` | `string`              | The label from discovered targets to match against, for example, `"__inventory_consul_service"`. |                      | yes      |
-| `targets`            | `[]discovery.Target`  | List of targets from a discovery. component.                                                     |                      | yes      |
-| `labels_to_copy`     | `[]string`            | List of labels to copy from discovered targets to logs. If empty, all labels will be copied.     |                      | no       |
-| `logs_match_label`   | `string`              | The label from incoming logs to match against discovered targets, for example `"service_name"`.  | `target_match_label` | no       |
+| Name                 | Type                  | Description                                                                                      | Default                | Required |
+| -------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | ---------------------- | -------- |
+| `forward_to`         | `[]loki.LogsReceiver` | List of receivers to send enriched logs to.                                                      |                        | yes      |
+| `target_match_label` | `string`              | The label from discovered targets to match against, for example, `"__inventory_consul_service"`. |                        | yes      |
+| `targets`            | `[]discovery.Target`  | List of targets from a discovery component.                                                      |                        | yes      |
+| `labels_to_copy`     | `[]string`            | List of labels to copy from discovered targets to logs. If empty, all labels will be copied.     |                        | no       |
+| `logs_match_label`   | `string`              | The label from incoming logs to match against discovered targets, for example `"service_name"`.  |                        | no       |
+
+If not provided, the `logs_match_label` attribute will default to the value of `target_match_label`.
 
 ## Blocks
 

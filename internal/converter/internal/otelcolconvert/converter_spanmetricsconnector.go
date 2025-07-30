@@ -81,6 +81,22 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		})
 	}
 
+	var callsDimensions []spanmetrics.Dimension
+	for _, d := range cfg.CallsDimensions {
+		callsDimensions = append(callsDimensions, spanmetrics.Dimension{
+			Name:    d.Name,
+			Default: d.Default,
+		})
+	}
+
+	var histogramDimensions []spanmetrics.Dimension
+	for _, d := range cfg.Histogram.Dimensions {
+		histogramDimensions = append(histogramDimensions, spanmetrics.Dimension{
+			Name:    d.Name,
+			Default: d.Default,
+		})
+	}
+
 	var eventDimensions []spanmetrics.Dimension
 	for _, d := range cfg.Dimensions {
 		eventDimensions = append(eventDimensions, spanmetrics.Dimension{
@@ -96,6 +112,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 
 	return &spanmetrics.Arguments{
 		Dimensions:             dimensions,
+		CallsDimensions:        callsDimensions,
 		ExcludeDimensions:      cfg.ExcludeDimensions,
 		DimensionsCacheSize:    cfg.DimensionsCacheSize,
 		AggregationTemporality: spanmetrics.FromOTelAggregationTemporality(cfg.AggregationTemporality),
@@ -104,6 +121,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 			Unit:        cfg.Histogram.Unit.String(),
 			Exponential: exponential,
 			Explicit:    explicit,
+			Dimensions:  histogramDimensions,
 		},
 		MetricsFlushInterval:         cfg.MetricsFlushInterval,
 		MetricsExpiration:            cfg.MetricsExpiration,

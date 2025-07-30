@@ -16,8 +16,10 @@ title: otelcol.processor.tail_sampling
 All spans for a given trace _must_ be received by the same collector instance for effective sampling decisions.
 
 {{< admonition type="note" >}}
-`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib `tail_sampling` processor.
+`otelcol.processor.tail_sampling` is a wrapper over the upstream OpenTelemetry Collector Contrib [`tail_sampling`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`tail_sampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/tailsamplingprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.tail_sampling` components by giving them different labels.
@@ -152,12 +154,14 @@ The following arguments are supported:
 
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
-* When there's an "inverted not sample" decision, the trace isn't sampled.
+* When there's an "inverted not sample" decision, the trace isn't sampled. ***Deprecated***
 * When there's a "sample" decision, the trace is sampled.
-* When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled.
+* When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled. ***Deprecated***
 * In all other cases, the trace isn't sampled.
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
+There is an exception to this if the policy is within an and or composite policy, the resulting decision will be either sampled or not sampled.
+The "inverted" decisions have been deprecated, please make use of `drop` policy to explicitly not sample select traces.
 
 ### `boolean_attribute`
 
@@ -292,9 +296,9 @@ The following arguments are supported:
 | ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `key`                    | `string`       | Tag that the filter is matched against.                                                                                                                     |         | yes      |
 | `values`                 | `list(string)` | Set of values or regular expressions to use when matching against attribute values.                                                                         |         | yes      |
-| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | false   | no       |
+| `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | `false` | no       |
 | `cache_max_size`         | `string`       | The maximum number of attribute entries of Least Recently Used (LRU) Cache that stores the matched result from the regular expressions defined in `values.` |         | no       |
-| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | false   | no       |
+| `invert_match`           | `bool`         | Indicates that values or regular expressions must not match against attribute values.                                                                       | `false` | no       |
 
 ### `trace_state`
 

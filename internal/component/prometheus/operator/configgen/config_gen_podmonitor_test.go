@@ -88,6 +88,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -146,6 +149,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -204,6 +210,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -262,6 +271,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 		{
@@ -303,11 +315,11 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					LabelLimit:            ptr.To(uint64(103)),
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
-					AttachMetadata:        &promopv1.AttachMetadata{Node: true},
+					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
-				Port:            "metrics",
+				Port:            stringPtr("metrics"),
 				EnableHttp2:     &falseVal,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
@@ -319,13 +331,11 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				HonorLabels:     true,
 				HonorTimestamps: &falseVal,
 				FilterRunning:   &falseVal,
-				TLSConfig: &promopv1.PodMetricsEndpointTLSConfig{
-					SafeTLSConfig: promopv1.SafeTLSConfig{
-						ServerName:         "foo.com",
-						InsecureSkipVerify: true,
-					},
+				TLSConfig: &promopv1.SafeTLSConfig{
+					ServerName:         stringPtr("foo.com"),
+					InsecureSkipVerify: boolPtr(true),
 				},
-				RelabelConfigs: []*promopv1.RelabelConfig{
+				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
@@ -422,11 +432,14 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				SampleLimit:           101,
-				TargetLimit:           102,
-				LabelLimit:            103,
-				LabelNameLengthLimit:  104,
-				LabelValueLengthLimit: 105,
+				SampleLimit:                    101,
+				TargetLimit:                    102,
+				LabelLimit:                     103,
+				LabelNameLengthLimit:           104,
+				LabelValueLengthLimit:          105,
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "utf8",
+				MetricNameEscapingScheme:       "allow-utf-8",
 			},
 		},
 	}

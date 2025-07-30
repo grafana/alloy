@@ -14,6 +14,13 @@ title: otelcol.receiver.influxdb
 
 You can specify multiple `otelcol.receiver.influxdb` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.receiver.influxdb` is a wrapper over the upstream OpenTelemetry Collector [`influxdb`][] receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`influxdb`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -28,7 +35,7 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 
 ## Arguments
 
-`otelcol.receiver.influxdb` supports the following arguments:
+You can use the following arguments with `otelcol.receiver.influxdb`:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
 | ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
@@ -36,14 +43,14 @@ otelcol.receiver.influxdb "influxdb_metrics" {
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8086"`                                         | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 
 By default, `otelcol.receiver.influxdb` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8086` to listen on all network interfaces.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.receiver.influxdb`:
+You can use the following blocks with `otelcol.receiver.influxdb`:
 
 | Block                            | Description                                           | Required |
 | -------------------------------- | ----------------------------------------------------- | -------- |
@@ -51,8 +58,13 @@ The following blocks are supported inside the definition of `otelcol.receiver.in
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                  | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                   | no       |
+| `tls` > [`tpm`][tpm]             | Configures TPM settings for the TLS key_file.         | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 [tls]: #tls
+[tpm]: #tpm
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -95,6 +107,12 @@ The `tls` block configures TLS settings used for a server.
 If the `tls` block isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -66,8 +66,10 @@ Raw strings are generally more convenient for writing OTTL statements.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-`otelcol.processor.transform` is a wrapper over the upstream OpenTelemetry Collector `transform` processor.
+`otelcol.processor.transform` is a wrapper over the upstream OpenTelemetry Collector [`transform`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`transform`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.transform` components by giving them different labels.
@@ -107,8 +109,9 @@ otelcol.processor.transform "<LABEL>" {
 ```
 
 ## Arguments
+[Arguments]: #arguments
 
-You can use the following arguments with `otelcol.processor.transform`:
+You can use the following argument with `otelcol.processor.transform`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
 | ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |
@@ -158,10 +161,12 @@ You can use the following blocks with `otelcol.processor.transform`:
 The `log_statements` block specifies statements which transform log telemetry signals.
 Multiple `log_statements` blocks can be specified.
 
-| Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
-| `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
-| `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
+| Name         | Type           | Description                                                         | Default | Required |
+| ------------ | -------------- | ------------------------------------------------------------------- | ------- | -------- |
+| `context`    | `string`       | OTTL Context to use when interpreting the associated statements.    |         | yes      |
+| `statements` | `list(string)` | A list of OTTL statements.                                          |         | yes      |
+| `conditions` | `list(string)` | Conditions for the statements to be executed.                       |         | no       |
+| `error_mode` | `string`       | How to react to errors if they occur while processing a statement.  |         | no       |
 
 The supported values for `context` are:
 
@@ -171,15 +176,24 @@ The supported values for `context` are:
 
 Refer to [OTTL Context][] for more information about how to use contexts.
 
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+(including their individual `where` clauses) to be executed.
+
+The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
+If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
+
 ### `metric_statements`
 
 The `metric_statements` block specifies statements which transform metric telemetry signals.
 Multiple `metric_statements` blocks can be specified.
 
-| Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
-| `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
-| `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
+| Name         | Type           | Description                                                         | Default | Required |
+| ------------ | -------------- | ------------------------------------------------------------------- | ------- | -------- |
+| `context`    | `string`       | OTTL Context to use when interpreting the associated statements.    |         | yes      |
+| `statements` | `list(string)` | A list of OTTL statements.                                          |         | yes      |
+| `conditions` | `list(string)` | Conditions for the statements to be executed.                       |         | no       |
+| `error_mode` | `string`       | How to react to errors if they occur while processing a statement.  |         | no       |
 
 The supported values for `context` are:
 
@@ -189,6 +203,13 @@ The supported values for `context` are:
 * `datapoint`: Use when interacting only with individual OTLP metric data points.
 
 Refer to [OTTL Context][] for more information about how to use contexts.
+
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+(including their individual `where` clauses) to be executed.
+
+The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
+If `error_mode` is not specified in `metric_statements`, the top-level `error_mode` is applied.
 
 ### `statements`
 
@@ -236,10 +257,12 @@ All of this happens automatically, leaving you to write OTTL statements without 
 The `trace_statements` block specifies statements which transform trace telemetry signals.
 Multiple `trace_statements` blocks can be specified.
 
-| Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
-| `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
-| `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
+| Name         | Type           | Description                                                         | Default | Required |
+| ------------ | -------------- | ------------------------------------------------------------------- | ------- | -------- |
+| `context`    | `string`       | OTTL Context to use when interpreting the associated statements.    |         | yes      |
+| `statements` | `list(string)` | A list of OTTL statements.                                          |         | yes      |
+| `conditions` | `list(string)` | Conditions for the statements to be executed.                       |         | no       |
+| `error_mode` | `string`       | How to react to errors if they occur while processing a statement.  |         | no       |
 
 The supported values for `context` are:
 
@@ -249,6 +272,13 @@ The supported values for `context` are:
 * `spanevent`: Use when interacting only with OTLP span events.
 
 Refer to [OTTL Context][] for more information about how to use contexts.
+
+`conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
+The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
+(including their individual `where` clauses) to be executed.
+
+The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
+If `error_mode` is not specified in `trace_statements`, the top-level `error_mode` is applied.
 
 ### OTTL Context
 
@@ -595,6 +625,42 @@ otelcol.processor.transform "default" {
 otelcol.exporter.otlp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
+  }
+}
+```
+
+### Using conditions
+
+This example only runs the statements if the conditions are met:
+
+```alloy
+otelcol.processor.transform "default" {
+  error_mode = "ignore"
+
+  metric_statements {
+    context = "metric"
+    statements = [
+      `set(metric.description, "Sum")`,
+    ]
+    conditions = [
+      `metric.type == METRIC_DATA_TYPE_SUM`,
+    ]
+  }
+
+  log_statements {
+    context = "log"
+    statements = [
+      `set(log.body, log.attributes["http.route"])`,
+    ]
+    conditions = [
+      `IsMap(log.body) and log.body["object"] != nil`,
+    ]
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlp.default.input]
   }
 }
 ```

@@ -16,8 +16,10 @@ title: otelcol.receiver.syslog
 It supports syslog protocols [RFC5424][] and [RFC3164][] and can receive data over `TCP` or `UDP`.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.syslog` is a wrapper over the upstream OpenTelemetry Collector `syslog` receiver.
+`otelcol.receiver.syslog` is a wrapper over the upstream OpenTelemetry Collector [`syslog`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`syslog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/syslogreceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.syslog` components by giving them different labels.
@@ -42,15 +44,15 @@ otelcol.receiver.syslog "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.syslog`:
 
-| Name                              | Type     | Description                                                        | Default   | Required |
-| --------------------------------- | -------- | ------------------------------------------------------------------ | --------- | -------- |
-| `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`   | no       |
-| `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`   | no       |
-| `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `UTC`     | no       |
-| `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`    | no       |
-| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    |           | no       |
-| `on_error`                        | `string` | The action to take when an error occurs.                           | `send`    | no       |
-| `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `rfc5424` | no       |
+| Name                              | Type     | Description                                                        | Default     | Required |
+| --------------------------------- | -------- | ------------------------------------------------------------------ | ----------- | -------- |
+| `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`     | no       |
+| `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`     | no       |
+| `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `"UTC"`     | no       |
+| `max_octets`                      | `int`    | The maximum octets for messages when octet counting is enabled.    | `8192`      | no       |
+| `non_transparent_framing_trailer` | `string` | The framing trailer when using RFC6587 Non-Transparent-Framing.    |             | no       |
+| `on_error`                        | `string` | The action to take when an error occurs.                           | `"send"`    | no       |
+| `protocol`                        | `string` | The syslog protocol that the syslog server supports.               | `"rfc5424"` | no       |
 
 The `protocol` argument specifies the syslog format supported by the receiver.
 `protocol` must be one of `rfc5424` or `rfc3164`
@@ -85,6 +87,7 @@ You can use the following blocks with `otelcol.receiver.syslog`:
 | [`tcp`][tcp]                           | Configures a TCP syslog server to receive syslog messages.                                      | no*      |
 | `tcp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages                                     | no       |
 | `tcp` > [`tls`][tls]                   | Configures TLS for the TCP syslog server.                                                       | no       |
+| `tcp` > `tls` > [`tpm`][tpm]           | Configures TPM settings for the TLS key_file.                                                   | no       |
 | [`udp`][udp]                           | Configures a UDP syslog server to receive syslog messages.                                      | no*      |
 | `udp` > [`async`][async]               | Configures rules for asynchronous parsing of incoming messages.                                 | no       |
 | `udp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages.                                    | no       |
@@ -95,6 +98,7 @@ For example, `tcp` > `tls` refers to a `tls` block defined inside a `tcp` block.
 A syslog receiver must have either a `udp` or `tcp` block configured.
 
 [tls]: #tls
+[tpm]: #tpm
 [udp]: #udp
 [tcp]: #tcp
 [multiline]: #multiline
@@ -170,6 +174,12 @@ The `tls` block configures TLS settings used for a server. If the `tls` block
 isn't provided, TLS won't be used for connections to the server.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `udp`
 

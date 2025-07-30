@@ -20,8 +20,10 @@ This component only supports client authentication.
 [Signing AWS API requests]: https://docs.aws.amazon.com/general/latest/gr/signing-aws-api-requests.html
 
 {{< admonition type="note" >}}
-`otelcol.auth.sigv4` is a wrapper over the upstream OpenTelemetry Collector `sigv4auth` extension.
+`otelcol.auth.sigv4` is a wrapper over the upstream OpenTelemetry Collector [`sigv4auth`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`sigv4auth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/sigv4authextension
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.sigv4` components by giving them different labels.
@@ -45,8 +47,8 @@ You can use the following arguments with `otelcol.auth.sigv4`:
 
 | Name      | Type     | Description                   | Default | Required |
 | --------- | -------- | ----------------------------- | ------- | -------- |
-| `region`  | `string` | The AWS region to sign with.  | ""      | no       |
-| `service` | `string` | The AWS service to sign with. | ""      | no       |
+| `region`  | `string` | The AWS region to sign with.  | `""`    | no       |
+| `service` | `string` | The AWS service to sign with. | `""`    | no       |
 
 If `region` and `service` are left empty, their values are inferred from the URL of the exporter using the following rules:
 
@@ -78,9 +80,9 @@ The `assume_role` block specifies the configuration needed to assume a role.
 
 | Name           | Type     | Description                                                     | Default | Required |
 | -------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
-| `arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | ""      | no       |
-| `session_name` | `string` | The name of a role session.                                     | ""      | no       |
-| `sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | ""      | no       |
+| `arn`          | `string` | The Amazon Resource Name (ARN) of a role to assume.             | `""`    | no       |
+| `session_name` | `string` | The name of a role session.                                     | `""`    | no       |
+| `sts_region`   | `string` | The AWS region where STS is used to assume the configured role. | `""`    | no       |
 
 If the `assume_role` block is specified in the configuration and `sts_region` isn't set, then `sts_region` will default to the value for `region`.
 

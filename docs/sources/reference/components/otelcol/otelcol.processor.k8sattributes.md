@@ -15,8 +15,10 @@ title: otelcol.processor.k8sattributes
 `otelcol.processor.k8sattributes` accepts telemetry data from other `otelcol` components and adds Kubernetes metadata to the resource attributes of spans, logs, or metrics.
 
 {{< admonition type="note" >}}
-`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry Collector `k8sattributes` processor.
+`otelcol.processor.k8sattributes` is a wrapper over the upstream OpenTelemetry Collector [`k8sattributes`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
+
+[`k8sattributes`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/k8sattributesprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.k8sattributes` components by giving them different labels.
@@ -37,12 +39,12 @@ otelcol.processor.k8sattributes "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.k8sattributes`:
 
-| Name                        | Type       | Description                                                                    | Default          | Required |
-| --------------------------- | ---------- | ------------------------------------------------------------------------------ | ---------------- | -------- |
-| `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `serviceAccount` | no       |
-| `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`          | no       |
-| `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`          | no       |
-| `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`          | no       |
+| Name                        | Type       | Description                                                                    | Default           | Required |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------ | ----------------- | -------- |
+| `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `"serviceAccount"`| no       |
+| `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`           | no       |
+| `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`           | no       |
+| `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`           | no       |
 
 The supported values for `auth_type` are:
 
@@ -143,10 +145,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name               | Type           | Description                                             | Default     | Required |
-| ------------------ | -------------- | ------------------------------------------------------- | ----------- | -------- |
-| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no       |
-| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no       |
+| Name               | Type           | Description                                                                 | Default     | Required |
+| ------------------ | -------------- | --------------------------------------------------------------------------- | ----------- | -------- |
+| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                                        | _See below_ | no       |
+| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][semantic conventions]. | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -169,6 +171,12 @@ The supported `metadata` keys are:
 * `k8s.replicaset.uid`
 * `k8s.statefulset.name`
 * `k8s.statefulset.uid`
+* `service.instance.id`
+* `service.name`
+* `service.namespace`
+* `service.version`
+
+The `service.*` metadata are calculated following the OpenTelemetry [semantic conventions][].
 
 By default, if `metadata` isn't specified, the following fields are extracted and added to spans, metrics, and logs as resource attributes:
 
@@ -184,7 +192,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
+[semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 
 ### `annotation`
 

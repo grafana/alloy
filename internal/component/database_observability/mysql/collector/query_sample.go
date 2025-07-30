@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -293,7 +293,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = c.calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64)
+		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -334,7 +334,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
 				c.instanceKey,
@@ -364,7 +364,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 			}
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.instanceKey,
@@ -380,26 +380,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 {
-	// timer indicates event timing since server startup.
-	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
-	// We need to account for this overflow when calculating the timestamp.
-
-	// Knowing the number of overflows that occurred, we can calculate how much overflow time to compensate.
-	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
-	overflowTime := float64(previousOverflows) * picosecondsOverflowInSeconds
-	// We then add this overflow compensation to the server start time, and also add the timer value (remember this is counted from server start).
-	// The resulting value is the timestamp in seconds at which an event happened.
-	timerSeconds := picosecondsToSeconds(timer)
-	timestampSeconds := serverStartTime + overflowTime + timerSeconds
-
-	return secondsToMilliseconds(timestampSeconds)
-}
-
-func calculateNumberOfOverflows(uptime float64) int {
-	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
 }
 
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
@@ -418,40 +398,4 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
-}
-
-// uptimeSinceOverflow calculates the uptime "modulo" overflows (if any): it returns the remainder of the uptime value with any
-// overflowed time removed
-func uptimeSinceOverflow(uptime float64) float64 {
-	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
-	return secondsToPicoseconds(uptime - overflowAdjustment)
-}
-
-var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
-
-const (
-	picosecondsPerSecond      float64 = 1e12
-	millisecondsPerSecond     float64 = 1e3
-	millisecondsPerPicosecond float64 = 1e9
-	nanosecondsPerMillisecond float64 = 1e6
-)
-
-func picosecondsToSeconds(picoseconds float64) float64 {
-	return picoseconds / picosecondsPerSecond
-}
-
-func picosecondsToMilliseconds(picoseconds float64) float64 {
-	return picoseconds / millisecondsPerPicosecond
-}
-
-func millisecondsToNanoseconds(milliseconds float64) float64 {
-	return milliseconds * nanosecondsPerMillisecond
-}
-
-func secondsToPicoseconds(seconds float64) float64 {
-	return seconds * picosecondsPerSecond
-}
-
-func secondsToMilliseconds(seconds float64) float64 {
-	return seconds * millisecondsPerSecond
 }

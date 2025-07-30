@@ -13,8 +13,10 @@ title: otelcol.receiver.solace
 `otelcol.receiver.solace` accepts traces from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/) and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector `solace` receiver from the `otelcol-contrib` distribution.
+`otelcol.receiver.solace` is a wrapper over the upstream OpenTelemetry Collector [`solace`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`solace`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/solacereceiver
 {{< /admonition >}}
 
 You can specify multiple `otelcol.receiver.solace` components by giving them different labels.
@@ -37,11 +39,11 @@ otelcol.receiver.solace "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.solace`:
 
-| Name                 | Type     | Description                                                               | Default          | Required |
-| -------------------- | -------- | ------------------------------------------------------------------------- | ---------------- | -------- |
-| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                  | yes      |
-| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `localhost:5671` | no       |
-| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | 10               | no       |
+| Name                 | Type     | Description                                                               | Default            | Required |
+| -------------------- | -------- | ------------------------------------------------------------------------- | ------------------ | -------- |
+| `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                    | yes      |
+| `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `"localhost:5671"` | no       |
+| `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | `10`               | no       |
 
 `queue` must have the format `queue://#telemetry-myTelemetryProfile`.
 
@@ -60,6 +62,7 @@ You can use the following blocks with `otelcol.receiver.solace`:
 | [`flow`][flow]                                      | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
 | `flow` > [`delayed_retry`][delayed_retry]           | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
 | [`tls`][tls]                                        | Configures TLS for connecting to the Solace broker.                                                                              | no       |
+| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS key_file.                                                                                    | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -73,6 +76,7 @@ One SASL authentication block is required in the `authentication` block.
 [sasl_xauth2]: #sasl_xauth2
 [sasl_external]: #sasl_external
 [tls]: #tls
+[tpm]: #tpm
 [flow]: #flow
 [delayed_retry]: #delayed_retry
 [debug_metrics]: #debug_metrics
@@ -96,7 +100,7 @@ It doesn't support any arguments and is configured fully through inner blocks.
 
 ### `sasl_external`
 
-The `sasl_xauth2` block configures how to authenticate to the Solace broker with SASL External.
+The `sasl_external` block configures how to authenticate to the Solace broker with SASL External.
 It doesn't support any arguments or blocks.
 It must be used with the [`tls`][tls] block.
 
@@ -144,6 +148,12 @@ The following arguments are supported:
 ### `tls`
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

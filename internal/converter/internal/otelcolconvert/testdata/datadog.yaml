@@ -12,6 +12,7 @@ exporters:
     metrics:
       delta_ttl: 1200
       resource_attributes_as_tags: true
+      instrumentation_scope_metadata_as_tags: false
       histograms:
         mode: "counters"
       sums:

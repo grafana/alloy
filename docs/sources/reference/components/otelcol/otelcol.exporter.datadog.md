@@ -18,8 +18,10 @@ title: otelcol.exporter.datadog
 `otelcol.exporter.datadog` accepts metrics and traces telemetry data from other `otelcol` components and sends it to Datadog.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector `datadog` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.datadog` is a wrapper over the upstream OpenTelemetry Collector [`datadog`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`datadog`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/datadogexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.
@@ -38,10 +40,11 @@ otelcol.exporter.datadog "<LABEL>" {
 
 You can use the following arguments with `otelcol.exporter.datadog`:
 
-| Name            | Type     | Description                                                                      | Default | Required |
-| --------------- | -------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `hostname`      | `string` | The fallback hostname used for payloads without hostname-identifying attributes. |         | no       |
-| `only_metadata` | `bool`   | Whether to send only metadata.                                                   | `false` | no       |
+| Name                         | Type       | Description                                                                      | Default | Required |
+| ---------------------------- | ---------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `hostname`                   | `string`   | The fallback hostname used for payloads without hostname-identifying attributes. |         | no       |
+| `hostname_detection_timeout` | `duration` | The timeout for hostname detection.                                              | `25s`   | no       |
+| `only_metadata`              | `bool`     | Whether to send only metadata.                                                   | `false` | no       |
 
 If `hostname` is unset, the hostname is determined automatically.
 For more information, refer to the Datadog [Fallback hostname logic](https://docs.datadoghq.com/opentelemetry/schema_semantics/hostname/?tab=datadogexporter#fallback-hostname-logic) documentation.
@@ -111,7 +114,7 @@ The following arguments are supported:
 | ------------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                    |         | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                       | `"45s"` | no       |
-| `insecure_skip_verify`    | `boolean`  | Ignores insecure server TLS certificates.                                   |         | no       |
+| `insecure_skip_verify`    | `bool`     | Ignores insecure server TLS certificates.                                   |         | no       |
 | `max_conns_per_host`      | `int`      | Limits the total (dialing,active, and idle) number of connections per host. |         | no       |
 | `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.          | `5`     | no       |
 | `max_idle_conns`          | `int`      | Limits the number of idle HTTP connections the client can keep open.        | `100`   | no       |
@@ -182,10 +185,10 @@ The `exporter` block configures the metric exporter settings.
 
 The following arguments are supported:
 
-| Name                                     | Type   | Description                                                                          | Default | Required |
-| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `true` to add metadata about the instrumentation scope that created a metric. | `false` | no       |
-| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.             | `false` | no       |
+| Name                                     | Type   | Description                                                                               | Default | Required |
+| ---------------------------------------- | ------ |-------------------------------------------------------------------------------------------|---------| -------- |
+| `instrumentation_scope_metadata_as_tags` | `bool` | Set to `false` to not add metadata about the instrumentation scope that created a metric. | `true`  | no       |
+| `resource_attributes_as_tags`            | `bool` | Set to `true` to add resource attributes of a metric to its metric tags.                  | `false` | no       |
 
 ### `histograms`
 

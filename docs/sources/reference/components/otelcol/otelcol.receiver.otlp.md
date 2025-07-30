@@ -15,8 +15,10 @@ title: otelcol.receiver.otlp
 `otelcol.receiver.otlp` accepts OTLP-formatted data over the network and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
-`otelcol.receiver.otlp` is a wrapper over the upstream OpenTelemetry Collector `otlp` receiver.
+`otelcol.receiver.otlp` is a wrapper over the upstream OpenTelemetry Collector [`otlp`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`otlp`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/receiver/otlpreceiver
 {{< /admonition >}}
 
 Multiple `otelcol.receiver.otlp` components can be specified by giving them
@@ -39,7 +41,7 @@ otelcol.receiver.otlp "<LABEL>" {
 
 ## Arguments
 
-`otelcol.receiver.otlp` doesn't support any arguments.
+The `otelcol.receiver.otlp` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
@@ -54,15 +56,18 @@ You can use the following blocks with `otelcol.receiver.otlp`:
 | `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | `grpc` > [`tls`][tls]                                             | Configures TLS for the gRPC server.                                        | no       |
+| `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 | [`http`][http]                                                    | Configures the HTTP server to receive telemetry data.                      | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                       | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                        | no       |
+| `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS key_file.                              | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` block.
 
 [grpc]: #grpc
 [tls]: #tls
+[tpm]: #tpm
 [keepalive]: #keepalive
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
@@ -138,6 +143,12 @@ If the `tls` block isn't provided, TLS won't be used for connections to the serv
 
 {{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `http`
 
 The `http` block configures the HTTP server used by the component.
@@ -152,7 +163,7 @@ The following arguments are supported:
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:4318"`                                           | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `logs_url_path`          | `string`                   | The URL path to receive logs on.                                             | `"/v1/logs"`                                               | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `20MiB`                                                    | no       |
+| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                    | no       |
 | `metrics_url_path`       | `string`                   | The URL path to receive metrics on.                                          | `"/v1/metrics"`                                            | no       |
 | `traces_url_path`        | `string`                   | The URL path to receive traces on.                                           | `"/v1/traces"`                                             | no       |
 

@@ -20,7 +20,7 @@ func TestConfigConversion(t *testing.T) {
 	expectedCustomise := splunkhecexporter.Config{
 		ClientConfig: confighttp.ClientConfig{
 			Endpoint: "http://localhost:8088", ProxyURL: "",
-			TLSSetting: configtls.ClientConfig{
+			TLS: configtls.ClientConfig{
 				Config: configtls.Config{
 					CAFile:                   "",
 					CAPem:                    "",
@@ -41,7 +41,7 @@ func TestConfigConversion(t *testing.T) {
 			WriteBufferSize:      0,
 			Timeout:              10000000000,
 			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Authentication)(nil),
+			Auth:                 (*configauth.Config)(nil),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -50,7 +50,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              (*confighttp.CookiesConfig)(nil),
+			Cookies:              confighttp.CookiesConfig{},
 		},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
@@ -110,7 +110,7 @@ func TestConfigConversion(t *testing.T) {
 		ClientConfig: confighttp.ClientConfig{
 			Endpoint: "http://localhost:8088",
 			ProxyURL: "",
-			TLSSetting: configtls.ClientConfig{
+			TLS: configtls.ClientConfig{
 				Config: configtls.Config{
 					CAFile:                   "",
 					CAPem:                    "",
@@ -131,7 +131,7 @@ func TestConfigConversion(t *testing.T) {
 			WriteBufferSize:      0,
 			Timeout:              15000000000,
 			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Authentication)(nil),
+			Auth:                 (*configauth.Config)(nil),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -140,7 +140,7 @@ func TestConfigConversion(t *testing.T) {
 			DisableKeepAlives:    false,
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
-			Cookies:              (*confighttp.CookiesConfig)(nil)},
+			Cookies:              confighttp.CookiesConfig{}},
 		QueueSettings: exporterhelper.QueueBatchConfig{
 			Enabled:      true,
 			NumConsumers: 10,
