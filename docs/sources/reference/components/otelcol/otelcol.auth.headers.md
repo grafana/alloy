@@ -45,7 +45,7 @@ The `otelcol.auth.headers` component doesn't support any arguments. You can conf
 You can use the following blocks with `otelcol.auth.headers`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`header`][header]               | Custom header to attach to requests.                                       | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
@@ -54,11 +54,13 @@ You can use the following blocks with `otelcol.auth.headers`:
 
 ### `header`
 
+{{< badge text="Required" >}}
+
 The `header` block defines a custom header to attach to requests.
 It's valid to provide multiple `header` blocks to set more than one header.
 
 | Name             | Type                 | Description                                                  | Default    | Required |
-| ---------------- | -------------------- | ------------------------------------------------------------ | ---------- | -------- |
+|------------------|----------------------|--------------------------------------------------------------|------------|----------|
 | `key`            | `string`             | Name of the header to set.                                   |            | yes      |
 | `action`         | `string`             | An action to perform on the header.                          | `"upsert"` | no       |
 | `from_attribute` | `string`             | Authentication attribute name used to retrieve header value. |            | no       |
@@ -94,7 +96,7 @@ For `from_context` to work, other components in the pipeline also need to be con
 The following fields are exported and can be referenced by other components:
 
 | Name      | Type                       | Description                                                     |
-| --------- | -------------------------- | --------------------------------------------------------------- |
+|-----------|----------------------------|-----------------------------------------------------------------|
 | `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health

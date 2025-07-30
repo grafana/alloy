@@ -41,14 +41,14 @@ The `otelcol.receiver.prometheus` component doesn't support any arguments. You c
 You can use the following block with `otelcol.receiver.prometheus`:
 
 | Block              | Description                                       | Required |
-| ------------------ | ------------------------------------------------- | -------- |
+|--------------------|---------------------------------------------------|----------|
 | [`output`][output] | Configures where to send received telemetry data. | yes      |
 
 [output]: #output
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -57,7 +57,7 @@ You can use the following block with `otelcol.receiver.prometheus`:
 The following fields are exported and can be referenced by other components:
 
 | Name       | Type              | Description                                                          |
-| ---------- | ----------------- | -------------------------------------------------------------------- |
+|------------|-------------------|----------------------------------------------------------------------|
 | `receiver` | `MetricsReceiver` | A value that other components can use to send Prometheus metrics to. |
 
 ## Component health

@@ -43,7 +43,7 @@ loki.source.azure_event_hubs "<LABEL>" {
 You can use the following arguments with `loki.source.azure_event_hubs`:
 
 | Name                        | Type                 | Description                                                                         | Default                          | Required |
-| --------------------------- | -------------------- | ----------------------------------------------------------------------------------- | -------------------------------- | -------- |
+|-----------------------------|----------------------|-------------------------------------------------------------------------------------|----------------------------------|----------|
 | `event_hubs`                | `list(string)`       | Event Hubs to consume.                                                              |                                  | yes      |
 | `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                           |                                  | yes      |
 | `fully_qualified_namespace` | `string`             | Event hub namespace.                                                                |                                  | yes      |
@@ -81,19 +81,19 @@ The following internal labels prefixed with `__` are available but are discarded
 You can use the following block with `loki.source.azure_event_hubs`:
 
 | Name                               | Description                                        | Required |
-| ---------------------------------- | -------------------------------------------------- | -------- |
+|------------------------------------|----------------------------------------------------|----------|
 | [`authentication`][authentication] | Authentication configuration with Azure Event Hub. | yes      |
 
 [authentication]: #authentication
 
 ### `authentication`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `authentication` block defines the authentication method when communicating with Azure Event Hub.
 
 | Name                | Type           | Description                                                               | Default | Required |
-| ------------------- | -------------- | ------------------------------------------------------------------------- | ------- | -------- |
+|---------------------|----------------|---------------------------------------------------------------------------|---------|----------|
 | `mechanism`         | `string`       | Authentication mechanism.                                                 |         | yes      |
 | `connection_string` | `secret`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no       |
 | `scopes`            | `list(string)` | Access token scopes. Default is `fully_qualified_namespace` without port. |         | no       |

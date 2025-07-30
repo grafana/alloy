@@ -40,7 +40,7 @@ otelcol.receiver.tcplog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.tcplog`:
 
 | Name                 | Type     | Description                                                                                                 | Default   | Required |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | --------- | -------- |
+|----------------------|----------|-------------------------------------------------------------------------------------------------------------|-----------|----------|
 | `listen_address`     | `string` | The `<HOST:PORT>` address to listen to for logs messages.                                                   |           | yes      |
 | `add_attributes`     | `bool`   | Add `net.*` attributes to log messages according to [OpenTelemetry semantic conventions][net-semconv].      | `false`   | no       |
 | `encoding`           | `string` | The encoding of the log messages.                                                                           | `"utf-8"` | no       |
@@ -58,7 +58,7 @@ The `max_log_size` argument has a minimum value of `64KiB`.
 You can use the following blocks with `otelcol.receiver.tcplog`:
 
 | Block                                  | Description                                                                                     | Required |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+|----------------------------------------|-------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
 | [`multiline`][multiline]               | Configures rules for multiline parsing of incoming messages                                     | no       |
@@ -78,7 +78,7 @@ For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -108,7 +108,7 @@ A backoff algorithm is used to delay the retry upon subsequent failures.
 The following arguments are supported:
 
 | Name               | Type       | Description                                                                                                               | Default | Required |
-| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|--------------------|------------|---------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
 | `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `"1s"`  | no       |
 | `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `"5m"`  | no       |

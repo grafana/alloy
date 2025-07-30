@@ -33,7 +33,7 @@ otelcol.connector.host_info "<LABEL>" {
 You can use the following arguments with `otelcol.connector.host_info`:
 
 | Name                     | Type           | Description                                                        | Default       | Required |
-| ------------------------ | -------------- | ------------------------------------------------------------------ | ------------- | -------- |
+|--------------------------|----------------|--------------------------------------------------------------------|---------------|----------|
 | `host_identifiers`       | `list(string)` | Ordered list of resource attributes used to identify unique hosts. | `["host.id"]` | no       |
 | `metrics_flush_interval` | `duration`     | How often to flush generated metrics.                              | `"60s"`       | no       |
 
@@ -42,7 +42,7 @@ You can use the following arguments with `otelcol.connector.host_info`:
 You can use the following blocks with `otelcol.connector.host_info`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
@@ -51,7 +51,7 @@ You can use the following blocks with `otelcol.connector.host_info`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -64,7 +64,7 @@ You can use the following blocks with `otelcol.connector.host_info`:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` traces telemetry data.

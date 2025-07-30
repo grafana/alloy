@@ -40,7 +40,7 @@ otelcol.receiver.splunkhec "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.splunkhec`:
 
 | Name                       | Type                       | Description                                                                                                    | Default                                                    | Required |
-| -------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|----------------------------|----------------------------|----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `access_token_passthrough` | `bool`                     | If enabled preserves incoming access token as a attribute `com.splunk.hec.access_token`                        | `false`                                                    | no       |
 | `auth`                     | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                                   |                                                            | no       |
 | `compression_algorithms`   | `list(string)`             | A list of compression algorithms the server can accept.                                                        | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
@@ -62,7 +62,7 @@ If logs or metrics are exported with `otelcol.exporter.splunkhec` it will check 
 You can use the following blocks with `otelcol.receiver.splunkhec`:
 
 | Block                                                      | Description                                                                | Required |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
 | [`cors`][cors]                                             | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
@@ -82,14 +82,14 @@ For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `output` block configures a set of components to forward resulting telemetry data to.
 
 The following arguments are supported:
 
 | Name      | Type                     | Description                           | Default | Required |
-| --------- |--------------------------|---------------------------------------|---------|--------- |
+|-----------|--------------------------|---------------------------------------|---------|----------|
 | `logs`    | `list(otelcol.Consumer)` | List of consumers to send logs to.    | `[]`    | no       |
 | `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
 
@@ -104,7 +104,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
@@ -128,7 +128,7 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 The `hec_metadata_to_otel_attrs` block configures OpenTelemetry attributes from HEC metadata.
 
 | Name         | Type     | Description                                                   | Default                 | Required |
-| ------------ | -------- | ------------------------------------------------------------- | ----------------------- | -------- |
+|--------------|----------|---------------------------------------------------------------|-------------------------|----------|
 | `host`       | `string` | Specifies the mapping of the host field to a attribute.       | `host.name`             | no       |
 | `index`      | `string` | Specifies the mapping of the index field to a attribute.      | `com.splunk.index`      | no       |
 | `source`     | `string` | Specifies the mapping of the source field to a attribute.     | `com.splunk.source`     | no       |
