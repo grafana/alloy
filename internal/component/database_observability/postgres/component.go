@@ -52,18 +52,32 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName             alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval            time.Duration       `alloy:"collect_interval,attr,optional"`
-	QuerySampleCollectInterval time.Duration       `alloy:"query_sample_collect_interval,attr,optional"`
-	ForwardTo                  []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors           []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors          []string            `alloy:"disable_collectors,attr,optional"`
-	DisableQueryRedaction      bool                `alloy:"disable_query_redaction,attr,optional"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+
+	QuerySampleArguments QuerySampleArguments `alloy:"query_samples,block,optional"`
+	QueryTablesArguments QueryTablesArguments `alloy:"query_details,block,optional"`
+}
+
+type QuerySampleArguments struct {
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+}
+
+type QueryTablesArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval:            1 * time.Minute,
-	QuerySampleCollectInterval: 15 * time.Second,
+	QuerySampleArguments: QuerySampleArguments{
+		CollectInterval:       15 * time.Second,
+		DisableQueryRedaction: false,
+	},
+	QueryTablesArguments: QueryTablesArguments{
+		CollectInterval: 1 * time.Minute,
+	},
 }
 
 func (a *Arguments) SetToDefault() {
@@ -251,7 +265,7 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
-			CollectInterval: c.args.CollectInterval,
+			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -269,10 +283,10 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QuerySampleName] {
 		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                    dbConnection,
-			CollectInterval:       c.args.QuerySampleCollectInterval,
+			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.DisableQueryRedaction,
+			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
@@ -318,7 +332,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:           dbConnection,
-			InstanceKey:  c.instanceKey,
 			EntryHandler: entryHandler,
 			Logger:       c.opts.Logger,
 		})

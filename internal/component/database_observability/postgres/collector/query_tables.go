@@ -19,7 +19,7 @@ import (
 const (
 	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QueryTablesName            = "query_tables"
+	QueryTablesName            = "query_details"
 )
 
 var selectQueriesFromActivity = `
@@ -43,7 +43,6 @@ var selectQueriesFromActivity = `
 
 type QueryTablesArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 

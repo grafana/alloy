@@ -394,7 +394,6 @@ func TestQuerySample(t *testing.T) {
 
 			collector, err := NewQuerySample(QuerySampleArguments{
 				DB:              db,
-				InstanceKey:     "mysql-db",
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -491,7 +490,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -588,7 +586,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -760,7 +757,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -882,7 +878,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			InstanceKey:           "mysql-db",
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1001,7 +996,6 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			InstanceKey:           "mysql-db",
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1111,7 +1105,6 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			InstanceKey:           "mysql-db",
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1223,7 +1216,6 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1353,7 +1345,6 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1482,7 +1473,6 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1608,9 +1598,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{
-			DB: db,
-		})
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1629,9 +1617,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{
-			DB: db,
-		})
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2058,9 +2044,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySample(QuerySampleArguments{
-			DB: db,
-		})
+		c, err := NewQuerySample(QuerySampleArguments{DB: db})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -2214,7 +2198,6 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                          db,
-			InstanceKey:                 "mysql-db",
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
@@ -2325,7 +2308,6 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                          db,
-			InstanceKey:                 "mysql-db",
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
 			Logger:                      log.NewLogfmtLogger(os.Stderr),

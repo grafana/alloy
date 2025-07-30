@@ -25,49 +25,51 @@ database_observability.mysql "<LABEL>" {
 
 You can use the following arguments with `database_observability.mysql`:
 
-| Name                               | Type                 | Description                                                                                    | Default | Required |
-|------------------------------------|----------------------|------------------------------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                 | `secret`             | [Data Source Name][] for the MySQL server to connect to.                                       |         | yes      |
-| `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
-| `collect_interval`                 | `duration`           | How frequently to collect information from database.                                           | `"1m"`  | no       |
-| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
-| `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                        | `false` | no       |
-| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
-| `explain_plan_collect_interval`    | `duration`           | How frequently to collect explain plan information from database.                              | `"1m"`  | no       |
-| `explain_plan_per_collect_ratio`   | `float`              | Ratio of explain plan queries to collect per collect interval.                                 | `1.0`   | no       |
-| `explain_plan_initial_lookback`    | `duration`           | How far back to look for explain plan queries on the first collection interval.                | `"24h"` | no       |
-| `explain_plan_exclude_schemas`     | `list(string)`       | List of schemas to exclude from explain plan collection.                                       |         | no       |
-| `locks_collect_interval`           | `duration`           | How frequently to collect locks information from database.                                     | `"30s"` | no       |
-| `locks_threshold`                  | `duration`           | Threshold for locks to be considered slow. If a lock exceeds this duration, it will be logged. | `"1s"`  | no       |
-| `setup_consumers_collect_interval` | `duration`           | How frequently to collect `performance_schema.setup_consumers` information from the database.    | `"1h"`  | no       |
-| `allow_update_performance_schema_settings` | `boolean`     | Whether to allow updates to `performance_schema` settings in any collector. | `false` | no |
-| `query_sample_auto_enable_setup_consumers` | `boolean`     | Whether to allow the `query_sample` collector to enable some specific `performance_schema.setup_consumers` settings. | `false` | no |
+| Name                                       | Type                 | Description                                                                 | Default | Required |
+|--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
+| `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
+| `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
+| `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
+| `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
+| `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. | `false` | no       |
 
 The following collectors are configurable:
 
 | Name              | Description                                              | Enabled by default |
 |-------------------|----------------------------------------------------------|--------------------|
-| `query_tables`    | Collect query table information.                         | yes                |
-| `schema_table`    | Collect schemas and tables from `information_schema`.    | yes                |
-| `query_sample`    | Collect query samples.                                   | yes                |
+| `query_details`   | Collect queries information.                             | yes                |
+| `schema_details`  | Collect schemas and tables from `information_schema`.    | yes                |
+| `query_samples`   | Collect query samples.                                   | yes                |
 | `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
-| `explain_plan`    | Collect explain plan information.                        | no                 |
+| `explain_plans`   | Collect explain plans information.                       | no                 |
 
 ## Blocks
 
 You can use the following blocks with `database_observability.mysql`:
 
-| Block                              | Description                            | Required |
-|------------------------------------|----------------------------------------|----------|
-| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.    | no       |
-| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information. | no       | 
+| Block                                | Description                                       | Required |
+|--------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
+| [`query_details`][query_details]     | Configure the queries collector.                  | no       |
+| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
+| [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
+| [`locks`][locks]                     | Configure the locks collector.                    | no       |
+| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
+[setup_consumers]: #setup_consumers
+[query_details]: #query_details
+[schema_details]: #schema_details
+[explain_plans]: #explain_plans
+[locks]: #locks
+[query_samples]: #query_samples
 
 ### `cloud_provider`
 
@@ -84,6 +86,52 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | Name  | Type     | Description                                             | Default | Required |
 |-------|----------|---------------------------------------------------------|---------|----------|
 | `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
+
+### `setup_consumers`
+
+| Name               | Type       | Description                                                                                   | Default | Required |
+|--------------------|------------|-----------------------------------------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect `performance_schema.setup_consumers` information from the database. | `"1h"`  | no       |
+
+### `query_details`
+
+| Name               | Type       | Description                                          | Default | Required |
+|--------------------|------------|------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+
+### `schema_details`
+
+| Name               | Type       | Description                                                           | Default | Required |
+|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
+| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
+| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
+| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+
+### `explain_plans`
+
+| Name                | Type       | Description                                                                     | Default | Required |
+|---------------------|------------|---------------------------------------------------------------------------------|---------|----------|
+| `collect_interval`  | `duration` | How frequently to collect information from database.                            | `"1m"`  | no       |
+| `per_collect_ratio` | `float`    | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
+| `initial_lookback`  | `duration` | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
+| `explain_plan_exclude_schemas`     | `list(string)`       | List of schemas to exclude from explain plan collection.                                       |         | no       |
+
+### `locks`
+
+| Name               | Type       | Description                                                                                    | Default | Required |
+|--------------------|------------|------------------------------------------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.                                           | `"1m"`  | no       |
+| `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
+
+### `query_samples`
+
+| Name                             | Type       | Description                                                                    | Default | Required |
+|----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
+| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"1m"`  | no       |
+| `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
+| `auto_enable_setup_consumers`    | `boolean`  | Whether to enable some specific `performance_schema.setup_consumers` settings. | `false` | no       |
+| `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 
 ## Example
 
