@@ -93,8 +93,8 @@ The following values are supported:
 * `OpenMetricsText0.0.1`
 * `OpenMetricsText1.0.0`
 * `PrometheusProto`
-* `PrometheusText1.0.0`
 * `PrometheusText0.0.4`
+* `PrometheusText1.0.0`
 
 You can also use the `scrape_fallback_protocol` argument to specify a fallback protocol to use if the target does not provide a valid Content-Type header.
 
