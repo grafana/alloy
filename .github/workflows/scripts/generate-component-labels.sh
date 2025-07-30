@@ -1,6 +1,3 @@
-# If run on OSX, default bash < 4 and does not support declare -A, also bsd awk does not support multiline strings
-#!/usr/bin/env bash
-
 set -euo pipefail
 
 declare -A COLORS

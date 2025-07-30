@@ -12,7 +12,7 @@ for README in $(find ./docs/sources/reference/components -name '*.md' -and -not 
         continue
     fi
     FILENAME=${README##*/}
-    LABEL_NAME="c/${FILENAME%.*}"
+    LABEL_NAME="${FILENAME%.*}"
     TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
     
     if (( "${#LABEL_NAME}" > 50 )); then

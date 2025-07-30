@@ -26,3 +26,10 @@ body:
       description: What should this component do?
     validations:
       required: true
+  - type: dropdown
+    attributes:
+      label: Tip
+      description: This element is static, used to render a helpful sub-heading for end-users and community members to help prioritize issues. Please leave as is.
+      options:
+        - <sub>React with 👍 to help prioritize this issue.</sub>
+      default: 0
