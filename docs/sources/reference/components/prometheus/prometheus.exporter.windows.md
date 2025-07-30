@@ -290,8 +290,8 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 | `include`                   | `string` | Regular expression of processes to include.    | `"^.+$"` | no       |
 
 The `counter_version` may be `0`, `1`, or `2`.
-* A value of `1` uses the Windows `Process` performance counters via the [registry] API.
-* A value of `2` uses the Windows `Process V2` performance counters via the [pdh] API. These are available starting in Windows 11.
+* A value of `1` uses the Windows `Process` performance counters via the [registry][] API.
+* A value of `2` uses the Windows `Process V2` performance counters via the [pdh][] API. These are available starting in Windows 11.
 * A value of `0` checks to see if `Process V2` counters are available, and falls back to `Process` counters if they are not available.
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
@@ -381,10 +381,10 @@ For example, you can set `enabled_list` to `["metrics"]`.
 
 ### `textfile`
 
-| Name                  | Type           | Description                                                     | Default       | Required |
-| --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
-| `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
+| Name                  | Type           | Description                                                    | Default       | Required |
+|-----------------------|----------------|----------------------------------------------------------------|---------------|----------|
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | __see below__ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
 
 For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
@@ -404,10 +404,10 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 
 ### `text_file` (Deprecated: use `textfile` instead)
 
-| Name                  | Type           | Description                                                     | Default       | Required |
-| --------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.    | __see below__ | no       |
-| `text_file_directory` | `string`      | Deprecated. The directory containing the files to be ingested.  |               | no       |
+| Name                  | Type           | Description                                                    | Default       | Required |
+|-----------------------|----------------|----------------------------------------------------------------|---------------|----------|
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | __see below__ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
 
 For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
 If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
