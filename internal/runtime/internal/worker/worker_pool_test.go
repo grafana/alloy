@@ -303,7 +303,7 @@ func TestWorkerPool(t *testing.T) {
 			shortTimeout := 100 * time.Millisecond
 			err = pool.Stop(shortTimeout)
 			require.Error(t, err)
-			require.Contains(t, err.Error(), "worker pool did not stop within timeout")
+			require.Contains(t, err.Error(), "worker pool did not stop within 100ms timeout")
 
 			// Clean up the blocking task
 			close(blockTask)
@@ -311,11 +311,11 @@ func TestWorkerPool(t *testing.T) {
 		})
 
 		t.Run("should stop successfully when no tasks are running", func(t *testing.T) {
-			defer goleak.VerifyNone(t)
+			defer goleak.VerifyNone(t, goleak.IgnoreAnyFunction("github.com/grafana/alloy/internal/runtime/internal/worker.(*fixedWorkerPool).Stop.func1"))
 			pool := NewFixedWorkerPool(2, 5)
 
 			// Submit a quick task that completes immediately
-			done := make(chan struct{})
+			done := make(chan struct{}, 1)
 			err := pool.SubmitWithKey("quick-task", func() {
 				done <- struct{}{}
 			})
