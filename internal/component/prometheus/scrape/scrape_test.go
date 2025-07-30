@@ -297,8 +297,8 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			`,
 			expectError: false,
 			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
 				require.Equal(t, []string{
 					"OpenMetricsText1.0.0",
 					"OpenMetricsText0.0.1",
@@ -322,8 +322,8 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			`,
 			expectError: false,
 			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
 				require.Equal(t, []string{
 					"PrometheusProto",
 					"OpenMetricsText1.0.0",
@@ -450,17 +450,14 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			},
 		},
 		{
-			name: "escaping scheme only - validation scheme should default to utf8",
+			name: "escaping scheme only set to utf-8",
 			config: `
 				targets = [{ "target1" = "target1" }]
 				forward_to = []
 				metric_name_escaping_scheme = "allow-utf-8"
 			`,
-			expectError: false,
-			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
-			},
+			expectError: true,
+			errorContains: "metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'",
 		},
 		{
 			name: "empty string validation scheme",
@@ -481,8 +478,8 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			`,
 			expectError: false,
 			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
 			},
 		},
 		{

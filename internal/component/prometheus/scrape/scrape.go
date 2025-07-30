@@ -157,7 +157,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
 		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme:     config.UTF8ValidationConfig,
+		MetricNameValidationScheme:     config.LegacyValidationConfig,
 		ConvertClassicHistogramsToNHCB: false,
 		EnableCompression:              true,
 		NativeHistogramBucketLimit:     0,

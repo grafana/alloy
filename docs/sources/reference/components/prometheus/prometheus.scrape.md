@@ -57,8 +57,8 @@ You can use the following arguments with `prometheus.scrape`:
 | `label_limit`                        | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                                             |                                                                                                  | no       |
 | `label_name_length_limit`            | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                                       |                                                                                                  | no       |
 | `label_value_length_limit`           | `uint`                  | More than this label value length post metric-relabeling causes the scrape to fail.                                      |                                                                                                  | no       |
-| `metric_name_escaping_scheme`        | `string`                | The escaping scheme to use for metric names. See below for available values.                                             | `"allow-utf-8"`                                                                                  | no       |
-| `metric_name_validation_scheme`      | `string`                | The validation scheme to use for metric names. See below for available values.                                           | `"utf8"`                                                                                         | no       |
+| `metric_name_escaping_scheme`        | `string`                | The escaping scheme to use for metric names. See below for available values.                                             | `"underscores"`                                                                                  | no       |
+| `metric_name_validation_scheme`      | `string`                | The validation scheme to use for metric names. See below for available values.                                           | `"legacy"`                                                                                       | no       |
 | `metrics_path`                       | `string`                | The HTTP resource path on which to fetch metrics from targets.                                                           | `"/metrics"`                                                                                     | no       |
 | `native_histogram_bucket_limit`      | `uint`                  | Native histogram buckets will be merged to stay within this limit. Disabled when set to zero.                            | `0`                                                                                              | no       |
 | `native_histogram_min_bucket_factor` | `float64`               | If the growth from one bucket to the next is smaller than this, buckets will be merged. Disabled when set to zero.       | `0`                                                                                              | no       |
@@ -108,8 +108,8 @@ The default value for `scrape_protocols` changes to `["PrometheusProto", "OpenMe
 
 The `metric_name_validation_scheme` controls how metric names are validated. The following values are supported:
 
-* `"utf8"` - Uses UTF-8 validation scheme (default)
-* `"legacy"` - Uses legacy validation scheme which was default in Prometheus v2.
+* `"utf8"` - Uses UTF-8 validation scheme.
+* `"legacy"` - Uses legacy validation scheme which was default in Prometheus v2 (default).
 
 The `metric_name_escaping_scheme` controls how metric names are escaped. The following values are supported:
 
