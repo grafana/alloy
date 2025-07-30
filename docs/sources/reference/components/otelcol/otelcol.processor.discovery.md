@@ -55,7 +55,7 @@ otelcol.processor.discovery "<LABEL>" {
 You can use the following arguments with `otelcol.processor.discovery`:
 
 | Name               | Type                | Description                                                           | Default                                                         | Required |
-| ------------------ | ------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------- | -------- |
+|--------------------|---------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------|----------|
 | `targets`          | `list(map(string))` | List of target labels to apply to the spans.                          |                                                                 | yes      |
 | `operation_type`   | `string`            | Configures whether to update a span's attribute if it already exists. | `"upsert"`                                                      | no       |
 | `pod_associations` | `list(string)`      | Configures how to decide the hostname of the span.                    | `["ip", "net.host.ip", "k8s.pod.ip", "hostname", "connection"]` | no       |
@@ -89,14 +89,14 @@ For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"`
 You can use the following block with `otelcol.processor.discovery`:
 
 | Block              | Description                                       | Required |
-| ------------------ | ------------------------------------------------- | -------- |
+|--------------------|---------------------------------------------------|----------|
 | [`output`][output] | Configures where to send received telemetry data. | yes      |
 
 [output]: #output
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -105,7 +105,7 @@ You can use the following block with `otelcol.processor.discovery`:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:
