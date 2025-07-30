@@ -7,9 +7,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/common/config"
-	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 const (

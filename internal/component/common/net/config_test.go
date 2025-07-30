@@ -5,7 +5,7 @@ import (
 	"time"
 
 	dskit "github.com/grafana/dskit/server"
-	"github.com/prometheus/common/config"
+	promCfg "github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/syntax"
@@ -166,7 +166,7 @@ func TestConfig(t *testing.T) {
 
 				// TLS Config assertions
 				require.Equal(t, "-----BEGIN CERTIFICATE-----\ntest cert\n-----END CERTIFICATE-----", config.HTTPTLSConfig.TLSCert)
-				require.Equal(t, config.Secret("-----BEGIN PRIVATE KEY-----\ntest key\n-----END PRIVATE KEY-----"), config.HTTPTLSConfig.TLSKey)
+				require.Equal(t, promCfg.Secret("-----BEGIN PRIVATE KEY-----\ntest key\n-----END PRIVATE KEY-----"), config.HTTPTLSConfig.TLSKey)
 				require.Equal(t, "/path/to/cert.pem", config.HTTPTLSConfig.TLSCertPath)
 				require.Equal(t, "/path/to/key.pem", config.HTTPTLSConfig.TLSKeyPath)
 				require.Equal(t, "RequireAndVerifyClientCert", config.HTTPTLSConfig.ClientAuth)
@@ -193,7 +193,7 @@ func TestConfig(t *testing.T) {
 
 				// gRPC TLS Config assertions
 				require.Equal(t, "-----BEGIN CERTIFICATE-----\ngrpc cert\n-----END CERTIFICATE-----", config.GRPCTLSConfig.TLSCert)
-				require.Equal(t, config.Secret("-----BEGIN PRIVATE KEY-----\ngrpc key\n-----END PRIVATE KEY-----"), config.GRPCTLSConfig.TLSKey)
+				require.Equal(t, promCfg.Secret("-----BEGIN PRIVATE KEY-----\ngrpc key\n-----END PRIVATE KEY-----"), config.GRPCTLSConfig.TLSKey)
 				require.Equal(t, "/path/to/grpc-cert.pem", config.GRPCTLSConfig.TLSCertPath)
 				require.Equal(t, "/path/to/grpc-key.pem", config.GRPCTLSConfig.TLSKeyPath)
 				require.Equal(t, "RequestClientCert", config.GRPCTLSConfig.ClientAuth)
