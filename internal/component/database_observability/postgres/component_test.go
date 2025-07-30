@@ -34,7 +34,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_tables"]
+		enable_collectors = ["query_details"]
 	`
 
 		var args Arguments
@@ -53,7 +53,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		disable_collectors = ["query_tables"]
+		disable_collectors = ["query_details"]
 	`
 
 		var args Arguments
@@ -72,8 +72,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		disable_collectors = ["query_tables"]
-		enable_collectors = ["query_tables"]
+		disable_collectors = ["query_details"]
+		enable_collectors = ["query_details"]
 	`
 
 		var args Arguments
@@ -112,7 +112,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_sample"]
+		enable_collectors = ["query_samples"]
 	`
 
 		var args Arguments
@@ -131,7 +131,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_tables", "query_sample"]
+		enable_collectors = ["query_details", "query_samples"]
 	`
 
 		var args Arguments
@@ -150,7 +150,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		disable_collectors = ["query_sample"]
+		disable_collectors = ["query_samples"]
 	`
 
 		var args Arguments
@@ -171,41 +171,45 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_sample"]
+		enable_collectors = ["query_samples"]
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.False(t, args.DisableQueryRedaction, "query redaction should be enabled by default")
+		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction, "query redaction should be enabled by default")
 	})
 
 	t.Run("explicitly disable query redaction", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_sample"]
-		disable_query_redaction = true
+		enable_collectors = ["query_samples"]
+		query_samples {
+			disable_query_redaction = true
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.True(t, args.DisableQueryRedaction, "query redaction should be disabled when explicitly set")
+		assert.True(t, args.QuerySampleArguments.DisableQueryRedaction, "query redaction should be disabled when explicitly set")
 	})
 
 	t.Run("explicitly enable query redaction", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_sample"]
-		disable_query_redaction = false
+		enable_collectors = ["query_samples"]
+		query_samples {
+			disable_query_redaction = false
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.False(t, args.DisableQueryRedaction, "query redaction should be enabled when explicitly set to false")
+		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction, "query redaction should be enabled when explicitly set to false")
 	})
 }
 
@@ -219,50 +223,21 @@ func TestCollectionIntervals(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.Equal(t, DefaultArguments.CollectInterval, args.CollectInterval, "collect_interval should default to 1 minute")
-		assert.Equal(t, DefaultArguments.QuerySampleCollectInterval, args.QuerySampleCollectInterval, "query_sample_collect_interval should default to 15 seconds")
+		assert.Equal(t, DefaultArguments.QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
 	})
 
 	t.Run("custom intervals", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		collect_interval = "30s"
-		query_sample_collect_interval = "5s"
+		query_samples {
+			collect_interval = "5s"
+		}
 		`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.Equal(t, 30*time.Second, args.CollectInterval, "collect_interval should be set to 30 seconds")
-		assert.Equal(t, 5*time.Second, args.QuerySampleCollectInterval, "query_sample_collect_interval should be set to 5 seconds")
-	})
-
-	t.Run("only collect_interval set", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		collect_interval = "30s"
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-		assert.Equal(t, 30*time.Second, args.CollectInterval, "collect_interval should be set to 30 seconds")
-		assert.Equal(t, DefaultArguments.QuerySampleCollectInterval, args.QuerySampleCollectInterval, "query_sample_collect_interval should default to 15 seconds")
-	})
-
-	t.Run("only query_sample_collect_interval set", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		query_sample_collect_interval = "5s"
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-		assert.Equal(t, DefaultArguments.CollectInterval, args.CollectInterval, "collect_interval should default to 1 minute")
-		assert.Equal(t, 5*time.Second, args.QuerySampleCollectInterval, "query_sample_collect_interval should be set to 5 seconds")
+		assert.Equal(t, 5*time.Second, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should be set to 5 seconds")
 	})
 }

@@ -20,44 +20,44 @@ import (
 const (
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
-	QuerySampleName = "query_sample"
+	QuerySampleName = "query_samples"
 )
 
 const selectPgStatActivity = `
-	SELECT 
+	SELECT
 		clock_timestamp() as now,
-		d.datname,		
+		d.datname,
 		s.pid,
 		s.leader_pid,
-		s.usename,		
+		s.usename,
 		s.application_name,
 		s.client_addr,
 		s.client_port,
 		s.backend_type,
 		s.backend_start,
 		s.backend_xid,
-		s.backend_xmin,		
+		s.backend_xmin,
 		s.xact_start,
 		s.state,
-		s.state_change,		
+		s.state_change,
 		s.wait_event_type,
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
 		s.query_id,
 		s.query
-	FROM pg_stat_activity s 
+	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
-	WHERE 
+	WHERE
 		s.pid <> pg_backend_pid() AND
 		(
 			s.backend_type != 'client backend' OR
 			(
-				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND 
+				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND
 				(
-					s.state != 'idle' OR 
+					s.state != 'idle' OR
 					(s.state = 'idle' AND s.state_change > $1)
-				) AND 
+				) AND
 				coalesce(TRIM(s.state), '') != ''
 			)
 		)

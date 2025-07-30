@@ -18,14 +18,16 @@ func Test_collectSQLText(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_query_redaction = true
+		query_samples {
+			disable_query_redaction = true
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.True(t, args.DisableQueryRedaction)
+		assert.True(t, args.QuerySampleArguments.DisableQueryRedaction)
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
@@ -40,7 +42,7 @@ func Test_collectSQLText(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.False(t, args.DisableQueryRedaction)
+		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction)
 	})
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
@@ -49,14 +51,16 @@ func Test_collectSQLText(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		setup_consumers_collect_interval = "1h"
+		setup_consumers {
+			collect_interval = "1h"
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Equal(t, time.Hour, args.SetupConsumersCollectInterval)
+		assert.Equal(t, time.Hour, args.SetupConsumersArguments.CollectInterval)
 	})
 }
 
@@ -87,7 +91,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -110,7 +114,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans"]
 	`
 
 		var args Arguments
@@ -133,8 +137,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -157,8 +161,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
-		enable_collectors = ["query_tables"]
+		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		enable_collectors = ["query_details"]
 	`
 
 		var args Arguments
