@@ -140,6 +140,131 @@ func TestForwardsMetrics(t *testing.T) {
 	verifyExpectations(t, input, expected, actualSamples, args, ctx)
 }
 
+func TestForwardsMetricsTLS(t *testing.T) {
+	timestamp := time.Now().Add(time.Second).UnixMilli()
+	input := []prompb.TimeSeries{{
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "foo", Value: "bar"}},
+		Samples: []prompb.Sample{
+			{Timestamp: timestamp, Value: 12},
+			{Timestamp: timestamp + 1, Value: 24},
+			{Timestamp: timestamp + 2, Value: 48},
+		},
+	}, {
+		Labels: []prompb.Label{{Name: "__name__", Value: "test_metric"}, {Name: "cluster", Value: "local"}, {Name: "fizz", Value: "buzz"}},
+		Samples: []prompb.Sample{
+			{Timestamp: timestamp, Value: 191},
+			{Timestamp: timestamp + 1, Value: 1337},
+		},
+	}}
+
+	expected := []testSample{
+		{ts: timestamp, val: 12, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 1, val: 24, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp + 2, val: 48, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "foo", "bar")},
+		{ts: timestamp, val: 191, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
+		{ts: timestamp + 1, val: 1337, l: labels.FromStrings("__name__", "test_metric", "cluster", "local", "fizz", "buzz")},
+	}
+
+	actualSamples := make(chan testSample, 100)
+
+	// Generate test certificate and key for TLS
+	testCert, testKey, err := generateTestCertAndKey()
+	require.NoError(t, err)
+
+	// Start the component with TLS configuration
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	args := Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+				TLSConfig: &fnet.TLSConfig{
+					Cert: testCert,
+					Key:  alloytypes.Secret(testKey),
+				},
+			},
+			GRPC: testGRPCConfig(t),
+		},
+		ForwardTo: testAppendable(actualSamples),
+	}
+	comp, err := New(testOptions(t), args)
+	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	go func() {
+		require.NoError(t, comp.Run(ctx))
+	}()
+
+	verifyExpectationsTLS(t, input, expected, actualSamples, args, ctx)
+}
+
+func verifyExpectationsTLS(
+	t *testing.T,
+	input []prompb.TimeSeries,
+	expected []testSample,
+	actualSamples chan testSample,
+	args Arguments,
+	ctx context.Context,
+) {
+	// In case server didn't start yet
+	waitForServerToBeReady(t, args)
+
+	// Send the input time series to the component using HTTPS
+	endpoint := fmt.Sprintf(
+		"https://%s:%d/api/v1/metrics/write",
+		args.Server.HTTP.ListenAddress,
+		args.Server.HTTP.ListenPort,
+	)
+	err := requestTLS(ctx, endpoint, &prompb.WriteRequest{Timeseries: input})
+	require.NoError(t, err)
+
+	// Verify we receive expected metrics
+	for _, exp := range expected {
+		select {
+		case actual := <-actualSamples:
+			require.Equal(t, exp, actual)
+		case <-ctx.Done():
+			t.Fatalf("test timed out")
+		}
+	}
+
+	select {
+	case unexpected := <-actualSamples:
+		t.Fatalf("unexpected extra sample received: %v", unexpected)
+	default:
+	}
+}
+
+func requestTLS(ctx context.Context, rawRemoteWriteURL string, req *prompb.WriteRequest) error {
+	remoteWriteURL, err := url.Parse(rawRemoteWriteURL)
+	if err != nil {
+		return err
+	}
+
+	client, err := remote.NewWriteClient("remote-write-client", &remote.ClientConfig{
+		URL:     &config.URL{URL: remoteWriteURL},
+		Timeout: model.Duration(30 * time.Second),
+		HTTPClientConfig: config.HTTPClientConfig{
+			TLSConfig: config.TLSConfig{
+				InsecureSkipVerify: true,
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	buf, err := proto.Marshal(protoadapt.MessageV2Of(req))
+	if err != nil {
+		return err
+	}
+
+	compressed := snappy.Encode(buf, buf)
+	_, err = client.Store(ctx, compressed, 0)
+	return err
+}
+
 func TestUpdate(t *testing.T) {
 	timestamp := time.Now().Add(time.Second).UnixMilli()
 	input01 := []prompb.TimeSeries{{
@@ -230,13 +355,6 @@ func TestServerRestarts(t *testing.T) {
 	otherPort, err := freeport.GetFreePort()
 	require.NoError(t, err)
 
-	// Generate test certificates once for all tests
-	testCert, testKey, err := generateTestCertAndKey()
-	require.NoError(t, err)
-
-	testCert2, testKey2, err := generateTestCertAndKey()
-	require.NoError(t, err)
-
 	testCases := []struct {
 		name          string
 		initialArgs   Arguments
@@ -307,150 +425,6 @@ func TestServerRestarts(t *testing.T) {
 			},
 			shouldRestart: true,
 		},
-		{
-			name: "adding HTTP TLS config requires restart",
-			initialArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			newArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			shouldRestart: true,
-		},
-		{
-			name: "removing HTTP TLS config requires restart",
-			initialArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			newArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			shouldRestart: true,
-		},
-		{
-			name: "GRPC TLS config change requires restart",
-			initialArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
-					GRPC: &fnet.GRPCConfig{
-						ListenAddress: "localhost",
-						ListenPort:    getFreePort(t),
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			newArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
-					GRPC: &fnet.GRPCConfig{
-						ListenAddress: "localhost",
-						ListenPort:    getFreePort(t),
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert2,
-							Key:  alloytypes.Secret(testKey2),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			shouldRestart: true,
-		},
-		{
-			name: "HTTP TLS cert content change requires restart",
-			initialArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			newArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert2,
-							Key:  alloytypes.Secret(testKey2), // Use matching key
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			shouldRestart: true,
-		},
-		{
-			name: "identical HTTP TLS configs require no restart",
-			initialArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			newArgs: Arguments{
-				Server: &fnet.ServerConfig{
-					HTTP: &fnet.HTTPConfig{
-						ListenAddress: "localhost",
-						ListenPort:    port,
-						TLSConfig: &fnet.TLSConfig{
-							Cert: testCert,
-							Key:  alloytypes.Secret(testKey),
-						},
-					},
-				},
-				ForwardTo: []storage.Appendable{},
-			},
-			shouldRestart: false,
-		},
 	}
 
 	for _, tc := range testCases {
@@ -507,7 +481,7 @@ func waitForServerToBeReady(t *testing.T, args Arguments) {
 		protocol := "http"
 		var tlsConfig *tls.Config
 
-		if args.Server.HTTP.TLSConfig != nil && (args.Server.HTTP.TLSConfig.Cert != "" || args.Server.HTTP.TLSConfig.CertFile != "") {
+		if args.Server.HTTP.TLSConfig != nil {
 			protocol = "https"
 			tlsConfig = &tls.Config{
 				InsecureSkipVerify: true,
