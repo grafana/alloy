@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -95,7 +96,7 @@ func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Recei
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
 	collector := lazycollector.New()
-	opts.Registerer.MustRegister(collector)
+	util.MustRegisterOrGet(opts.Registerer, collector)
 
 	r := &Receiver{
 		ctx:    ctx,

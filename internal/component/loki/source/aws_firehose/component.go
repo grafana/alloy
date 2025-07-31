@@ -81,7 +81,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		logger: log.With(o.Logger, "component", "aws_firehose_logs"),
 	}
 
-	o.Registerer.MustRegister(c.serverMetrics)
+	util.MustRegisterOrGet(o.Registerer, c.serverMetrics)
 
 	if err := c.Update(args); err != nil {
 		return nil, err
