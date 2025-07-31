@@ -19,6 +19,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -56,6 +57,8 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
+
+	Targets []discovery.Target `alloy:"targets,attr"`
 
 	// collector: 'setup_consumers'
 	SetupConsumersCollectInterval time.Duration `alloy:"setup_consumers_collect_interval,attr,optional"`
@@ -212,12 +215,30 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 	}), nil
 }
 
+func (c *Component) getRelabelingRules() []*alloy_relabel.Config {
+	r := alloy_relabel.DefaultRelabelConfig // use default to avoid defining all fields
+	r.Replacement = "this_is_a_test"
+	r.TargetLabel = "is_this_a_test"
+	r.Action = alloy_relabel.Replace
+	return []*alloy_relabel.Config{&r}
+}
+
 func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.args = args.(Arguments)
+
+	targets := make([]discovery.Target, 0, len(c.args.Targets))
+	for _, t := range c.args.Targets {
+		builder := discovery.NewTargetBuilderFrom(t)
+		if alloy_relabel.ProcessBuilder(builder, c.getRelabelingRules()...) {
+			targets = append(targets, builder.Target())
+		}
+	}
+
 	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
+		Targets: append(targets, c.baseTarget),
 	})
 
 	for _, collector := range c.collectors {
@@ -228,8 +249,6 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.dbConnection != nil {
 		c.dbConnection.Close()
 	}
-
-	c.args = args.(Arguments)
 
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
@@ -426,7 +445,12 @@ func (c *Component) startCollectors() error {
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+	relabelingGatherer := &RelabelingGatherer{
+		gatherer: c.registry,
+		rules:    c.getRelabelingRules(),
+	}
+
+	return promhttp.HandlerFor(relabelingGatherer, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {
