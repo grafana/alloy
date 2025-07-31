@@ -15,7 +15,7 @@ const ConnectionInfoName = "connection_info"
 var (
 	rdsRegex     = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
 	azureRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
-	versionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)\s?(?P<suffix>.*)?$`)
+	versionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)
 )
 
 type ConnectionInfoArguments struct {
@@ -95,7 +95,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		dbVersion = matches[1]
 	}
 	if len(matches) > 2 && matches[2] != "" {
-		dbVersionSuffix = matches[2]
+		dbVersionSuffix = strings.TrimSpace(matches[2])
 	}
 
 	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, dbVersion, dbVersionSuffix).Set(1)
