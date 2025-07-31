@@ -31,6 +31,8 @@ import (
 
 const name = "database_observability.postgres"
 
+const selectDBSchemaVersion = `SHOW server_version`
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -216,10 +218,24 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 
+	rs := dbConnection.QueryRowContext(context.Background(), selectDBSchemaVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query DB schema version", "err", err)
+		return err
+	}
+
+	var dbVersion string
+	if err := rs.Scan(&dbVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan DB schema version", "err", err)
+		return err
+	}
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:       string(c.args.DataSourceName),
+		Registry:  c.registry,
+		DBVersion: dbVersion,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
