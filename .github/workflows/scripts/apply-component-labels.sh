@@ -15,7 +15,7 @@ if [[ "${COMPONENTS_SECTION_START}" != '-1' ]]; then
 fi
 
 for COMPONENT in ${BODY_COMPONENTS}; do
-  # Comments are delimited by ', ' and the for loop separates on spaces, so remove the extra comma.
+  # Components are delimited by ', ' and the for loop separates on spaces, so remove the extra comma.
   COMPONENT=${COMPONENT//,/}
   LABEL_NAME="c/${COMPONENT}"
 
