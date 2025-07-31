@@ -60,7 +60,7 @@ There are a variety of other labels that can be applied to issues and pull reque
 Adding the label to a pull request will trigger the full suite of tests on Windows on a pull request.
 At this time there are no other OS-based labels.
 * There are various `dependencies` and language (`go`, `javascript`, etc) labels that may be applied by bots.
-* Component labels like `prometheus.remote_write` should be applied whenever possible. These labels should all be generated (but not automatically applied) by a GitHub action.
+* Component labels like `c/prometheus.remote_write` should be applied whenever possible. These labels should all be managed by GitHub actions workflows.
 * The `v2.0-breaking-change` label may be applied if the issue represents a breaking change that will need to be delayed until Alloy v2.x.
 
 ## Community Members
@@ -68,5 +68,9 @@ At this time there are no other OS-based labels.
 Community members and other interested parties are welcome to help triage issues by investigating the root cause of bugs, adding input for
 features they would like to see, or participating in design discussions.
 
-If you are looking to contribute a pull request for an issue that has been triaged, please comment on the issue and request
+If you would like to help prioritize important issues, please use the :thumbs-up: reaction.
+We can not guarantee that issues with large numbers of reactions will be implemented or prioritized,
+but the data will be used to help understand the impact of issues in order to inform planning.
+
+If you would like to contribute a pull request for an issue, please comment on the issue and request
 it to be assigned to you! A maintainer will set the assignment when they are able.
