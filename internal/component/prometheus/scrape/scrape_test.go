@@ -456,7 +456,7 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 				forward_to = []
 				metric_name_escaping_scheme = "allow-utf-8"
 			`,
-			expectError: true,
+			expectError:   true,
 			errorContains: "metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'",
 		},
 		{
