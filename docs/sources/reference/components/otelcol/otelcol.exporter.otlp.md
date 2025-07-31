@@ -38,7 +38,7 @@ otelcol.exporter.otlp "<LABEL>" {
 You can use the following argument with `otelcol.exporter.otlp`:
 
 | Name      | Type       | Description                                      | Default | Required |
-| --------- | ---------- | ------------------------------------------------ | ------- | -------- |
+|-----------|------------|--------------------------------------------------|---------|----------|
 | `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
@@ -46,7 +46,7 @@ You can use the following argument with `otelcol.exporter.otlp`:
 You can use the following blocks with `otelcol.exporter.otlp`:
 
 | Block                                  | Description                                                                | Required |
-| -------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------|----------------------------------------------------------------------------|----------|
 | [`client`][client]                     | Configures the gRPC client to send telemetry data to.                      | yes      |
 | `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
 | `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
@@ -66,14 +66,14 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
 | Name                | Type                       | Description                                                                      | Default         | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | --------------- | -------- |
+|---------------------|----------------------------|----------------------------------------------------------------------------------|-----------------|----------|
 | `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |                 | yes      |
 | `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |                 | no       |
 | `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |                 | no       |
@@ -115,7 +115,7 @@ The `keepalive` block configures keepalive settings for gRPC client connections.
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                                               | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------------------------|---------|----------|
 | `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
 | `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
 | `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
@@ -156,7 +156,7 @@ to the gRPC server.
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

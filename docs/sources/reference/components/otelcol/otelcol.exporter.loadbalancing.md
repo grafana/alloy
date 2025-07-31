@@ -59,7 +59,7 @@ otelcol.exporter.loadbalancing "<LABEL>" {
 You can use the following arguments with `otelcol.exporter.loadbalancing`:
 
 | Name          | Type       | Description                                                                        | Default     | Required |
-| ------------- | ---------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+|---------------|------------|------------------------------------------------------------------------------------|-------------|----------|
 | `routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no       |
 | `timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no       |
 
@@ -95,7 +95,7 @@ where the list of resolved endpoints changes frequently due to deployments and s
 You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
 | Block                                                     | Description                                                                       | Required |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
+|-----------------------------------------------------------|-----------------------------------------------------------------------------------|----------|
 | [`resolver`][resolver]                                    | Configures discovering the endpoints to export to.                                | yes      |
 | `resolver` > [`aws_cloud_map`][aws_cloud_map]             | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
 | `resolver` > [`dns`][dns]                                 | DNS-sourced list of endpoints to export to.                                       | no       |
@@ -139,7 +139,7 @@ There are two types of [queue][] and [retry][] blocks:
 
 ### `resolver`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `resolver` block configures how to retrieve the endpoint to which this exporter will send data.
 
@@ -153,7 +153,7 @@ The `aws_cloud_map` block allows users to use `otelcol.exporter.loadbalancing` w
 The following arguments are supported:
 
 | Name            | Type       | Description                                                                        | Default     | Required |
-| --------------- | ---------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+|-----------------|------------|------------------------------------------------------------------------------------|-------------|----------|
 | `namespace`     | `string`   | The CloudMap namespace where the service is registered.                            |             | yes      |
 | `service_name`  | `string`   | The name of the service which was specified when registering the instance.         |             | yes      |
 | `health_status` | `string`   | Ports to use with the IP addresses resolved from `service`.                        | `"HEALTHY"` | no       |
@@ -184,7 +184,7 @@ This IP address and the port specified via the `port` attribute will then be use
 The following arguments are supported:
 
 | Name       | Type       | Description                                                           | Default  | Required |
-| ---------- | ---------- | --------------------------------------------------------------------- | -------- | -------- |
+|------------|------------|-----------------------------------------------------------------------|----------|----------|
 | `hostname` | `string`   | DNS hostname to resolve.                                              |          | yes      |
 | `interval` | `duration` | Resolver interval.                                                    | `"5s"`   | no       |
 | `port`     | `string`   | Port to be used with the IP addresses resolved from the DNS hostname. | `"4317"` | no       |
@@ -199,7 +199,7 @@ The `kubernetes` resolver has a much faster response time than the `dns` resolve
 The following arguments are supported:
 
 | Name               | Type           | Description                                                 | Default  | Required |
-| ------------------ | -------------- | ----------------------------------------------------------- | -------- | -------- |
+|--------------------|----------------|-------------------------------------------------------------|----------|----------|
 | `service`          | `string`       | Kubernetes service to resolve.                              |          | yes      |
 | `ports`            | `list(number)` | Ports to use with the IP addresses resolved from `service`. | `[4317]` | no       |
 | `return_hostnames` | `bool`         | Return hostnames instead of IPs.                            | `false`  | no       |
@@ -223,7 +223,7 @@ The `static` block configures a list of endpoints which this exporter will send 
 The following arguments are supported:
 
 | Name        | Type           | Description                     | Default | Required |
-| ----------- | -------------- | ------------------------------- | ------- | -------- |
+|-------------|----------------|---------------------------------|---------|----------|
 | `hostnames` | `list(string)` | List of endpoints to export to. |         | yes      |
 
 ### `protocol`
@@ -243,7 +243,7 @@ The endpoints used by the client block are the ones from the `resolver` block
 The following arguments are supported:
 
 | Name                | Type                       | Description                                                                      | Default       | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | ------------- | -------- |
+|---------------------|----------------------------|----------------------------------------------------------------------------------|---------------|----------|
 | `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |               | no       |
 | `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |               | no       |
 | `balancer_name`     | `string`                   | Which gRPC client-side load balancer to use for requests.                        | `round_robin` | no       |
@@ -283,7 +283,7 @@ The `keepalive` block configures keepalive settings for gRPC client connections.
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                                               | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------------------------|---------|----------|
 | `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
 | `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
 | `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
@@ -315,7 +315,7 @@ The `retry` block configures how failed requests to the gRPC server are retried.
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for telemetry signals of these types:

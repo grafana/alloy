@@ -113,7 +113,7 @@ otelcol.processor.transform "<LABEL>" {
 You can use the following argument with `otelcol.processor.transform`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
-| ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |
+|--------------|----------|--------------------------------------------------------------------|---------------|----------|
 | `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no       |
 
 The supported values for `error_mode` are:
@@ -129,7 +129,7 @@ The supported values for `error_mode` are:
 You can use the following blocks with `otelcol.processor.transform`:
 
 | Block                                    | Description                                                                                   | Required |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------- | -------- |
+|------------------------------------------|-----------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                       | Configures where to send received telemetry data.                                             | yes      |
 | [`debug_metrics`][debug_metrics]         | Configures the metrics that this component generates to monitor its state.                    | no       |
 | [`log_statements`][log_statements]       | Statements which transform logs.                                                              | no       |
@@ -147,7 +147,7 @@ You can use the following blocks with `otelcol.processor.transform`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -161,7 +161,7 @@ The `log_statements` block specifies statements which transform log telemetry si
 Multiple `log_statements` blocks can be specified.
 
 | Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
 
@@ -179,7 +179,7 @@ The `metric_statements` block specifies statements which transform metric teleme
 Multiple `metric_statements` blocks can be specified.
 
 | Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
 
@@ -203,7 +203,7 @@ The `statements` block can replace the `log_statements`, `metric_statements`, an
 It can also be used alongside them.
 
 | Name     | Type           | Description                                        | Default | Required |
-| -------- | -------------- | -------------------------------------------------- | ------- | -------- |
+|----------|----------------|----------------------------------------------------|---------|----------|
 | `log`    | `list(string)` | A list of OTTL statements which transform logs.    | `[]`    | no       |
 | `metric` | `list(string)` | A list of OTTL statements which transform metrics. | `[]`    | no       |
 | `trace`  | `list(string)` | A list of OTTL statements which transform traces.  | `[]`    | no       |
@@ -239,7 +239,7 @@ The `trace_statements` block specifies statements which transform trace telemetr
 Multiple `trace_statements` blocks can be specified.
 
 | Name         | Type           | Description                                                      | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements. |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                       |         | yes      |
 
@@ -320,7 +320,7 @@ For example, although you can modify resource attributes associated to a span us
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

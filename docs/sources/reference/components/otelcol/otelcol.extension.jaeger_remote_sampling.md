@@ -41,7 +41,7 @@ The `otelcol.extension.jaeger_remote_sampling` component doesn't support any arg
 You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`:
 
 | Block                                                             | Description                                                                      | Required |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------- |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------------|----------|
 | [`source`][source]                                                | Configures the Jaeger remote sampling document.                                  | yes      |
 | `source` > [`remote`][remote]                                     | Configures the gRPC client used to retrieve the Jaeger remote sampling document. | no       |
 | `source` > `remote` > [`keepalive` client][keepalive_client]      | Configures keepalive settings for the gRPC client.                               | no       |
@@ -74,14 +74,14 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 
 ### `source`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `source` block configures the method of retrieving the Jaeger remote sampling document that's served by the servers specified in the `grpc` and `http` blocks.
 
 The following arguments are supported:
 
 | Name              | Type       | Description                                                                     | Default | Required |
-| ----------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------|------------|---------------------------------------------------------------------------------|---------|----------|
 | `content`         | `string`   | A string containing the Jaeger remote sampling contents directly.               | `""`    | no       |
 | `file`            | `string`   | A local file containing a Jaeger remote sampling document.                      | `""`    | no       |
 | `reload_interval` | `duration` | The interval at which to reload the specified file. Leave at 0 to never reload. | `"0"`   | no       |
@@ -95,7 +95,7 @@ The `remote` block configures the gRPC client used by the component.
 The following arguments are supported:
 
 | Name                | Type                       | Description                                                                      | Default    | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | ---------- | -------- |
+|---------------------|----------------------------|----------------------------------------------------------------------------------|------------|----------|
 | `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |            | yes      |
 | `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |            | no       |
 | `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |            | no       |
@@ -135,7 +135,7 @@ This `keepalive` block configures keepalive settings for gRPC client connections
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                                               | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------------------------|---------|----------|
 | `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
 | `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
 | `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
@@ -153,7 +153,7 @@ The `http` block configures an HTTP server which serves the Jaeger remote sampli
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:5778"`                                           | no       |
@@ -167,7 +167,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
@@ -196,7 +196,7 @@ The `grpc` block configures a gRPC server which serves the Jaeger remote samplin
 The following arguments are supported:
 
 | Name                     | Type                       | Description                                                                  | Default           | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|-------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:14250"` | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                   | no       |
@@ -220,7 +220,7 @@ The server will close connections from clients that violate the configured polic
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                             | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------|---------|----------|
 | `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
 | `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
@@ -231,7 +231,7 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 The following arguments are supported:
 
 | Name                       | Type       | Description                                                                         | Default      | Required |
-| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+|----------------------------|------------|-------------------------------------------------------------------------------------|--------------|----------|
 | `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
 | `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
 | `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |

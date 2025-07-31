@@ -40,7 +40,7 @@ otelcol.receiver.solace "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.solace`:
 
 | Name                 | Type     | Description                                                               | Default            | Required |
-| -------------------- | -------- | ------------------------------------------------------------------------- | ------------------ | -------- |
+|----------------------|----------|---------------------------------------------------------------------------|--------------------|----------|
 | `queue`              | `string` | Name of the Solace telemetry queue to get span trace messages from.       |                    | yes      |
 | `broker`             | `string` | Name of the Solace broker using AMQP over TLS.                            | `"localhost:5671"` | no       |
 | `max_unacknowledged` | `int`    | Maximum number of unacknowledged messages the Solace broker can transmit. | `10`               | no       |
@@ -52,7 +52,7 @@ You can use the following arguments with `otelcol.receiver.solace`:
 You can use the following blocks with `otelcol.receiver.solace`:
 
 | Block                                               | Description                                                                                                                      | Required |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                                  | Configures where to send received telemetry data.                                                                                | yes      |
 | [`authentication`][authentication]                  | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
 | `authentication` > [`sasl_external`][sasl_external] | Authenticates against the Solace broker with SASL External.                                                                      | no       |
@@ -82,7 +82,7 @@ One SASL authentication block is required in the `authentication` block.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -92,6 +92,8 @@ It's recommended to only set one consumer for this component.
 {{< /admonition >}}
 
 ### `authentication`
+
+{{< badge text="Required" >}}
 
 The `authentication` block configures how to authenticate for connecting to the Solace broker.
 It doesn't support any arguments and is configured fully through inner blocks.
@@ -109,7 +111,7 @@ The `sasl_plain` block configures how to authenticate to the Solace broker with 
 The following arguments are supported:
 
 | Name       | Type     | Description          | Default | Required |
-| ---------- | -------- | -------------------- | ------- | -------- |
+|------------|----------|----------------------|---------|----------|
 | `password` | `string` | The password to use. |         | yes      |
 | `username` | `string` | The username to use. |         | yes      |
 
@@ -120,7 +122,7 @@ The `sasl_xauth2` block configures how to authenticate to the Solace broker with
 The following arguments are supported:
 
 | Name       | Type     | Description               | Default | Required |
-| ---------- | -------- | ------------------------- | ------- | -------- |
+|------------|----------|---------------------------|---------|----------|
 | `bearer`   | `string` | The bearer in plain text. |         | yes      |
 | `username` | `string` | The username to use.      |         | yes      |
 
@@ -140,7 +142,7 @@ The `delayed_retry` block sets the flow control strategy to `delayed retry` whic
 The following arguments are supported:
 
 | Name    | Type     | Description                       | Default  | Required |
-| ------- | -------- | --------------------------------- | -------- | -------- |
+|---------|----------|-----------------------------------|----------|----------|
 | `delay` | `string` | The time to wait before retrying. | `"10ms"` | no       |
 
 ### `tls`

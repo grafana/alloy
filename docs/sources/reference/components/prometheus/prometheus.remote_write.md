@@ -38,7 +38,7 @@ prometheus.remote_write "<LABEL>" {
 You can use the following argument with `prometheus.remote_write`:
 
 | Name              | Type          | Description                                     | Default | Required |
-| ----------------- | ------------- | ----------------------------------------------- | ------- | -------- |
+|-------------------|---------------|-------------------------------------------------|---------|----------|
 | `external_labels` | `map(string)` | Labels to add to metrics sent over the network. |         | no       |
 
 ## Blocks
@@ -46,7 +46,7 @@ You can use the following argument with `prometheus.remote_write`:
 You can use the following blocks with `prometheus.remote_write`:
 
 | Block                                                           | Description                                                                | Required |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|-----------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`endpoint`][endpoint]                                          | Location to send metrics to.                                               | no       |
 | `endpoint` > [`authorization`][authorization]                   | Configure generic authorization to the endpoint.                           | no       |
 | `endpoint` > [`azuread`][azuread]                               | Configure AzureAD for authenticating to the endpoint.                      | no       |
@@ -138,19 +138,19 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 ### `managed_identity`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/azure-managed_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `oauth`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/azure-oauth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `sdk`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/azuread-sdk.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -161,7 +161,7 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 ### `metadata_config`
 
 | Name                   | Type       | Description                                                         | Default | Required |
-| ---------------------- | ---------- | ------------------------------------------------------------------- | ------- | -------- |
+|------------------------|------------|---------------------------------------------------------------------|---------|----------|
 | `max_samples_per_send` | `number`   | Maximum number of metadata samples to send to the endpoint at once. | `2000`  | no       |
 | `send_interval`        | `duration` | How frequently metric metadata is sent to the endpoint.             | `"1m"`  | no       |
 | `send`                 | `bool`     | Controls whether metric metadata is sent to the endpoint.           | `true`  | no       |
@@ -177,7 +177,7 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 ### `queue_config`
 
 | Name                   | Type       | Description                                                          | Default  | Required |
-| ---------------------- | ---------- | -------------------------------------------------------------------- | -------- | -------- |
+|------------------------|------------|----------------------------------------------------------------------|----------|----------|
 | `batch_send_deadline`  | `duration` | Maximum time samples wait in the buffer before sending.              | `"5s"`   | no       |
 | `capacity`             | `number`   | Number of samples to buffer per shard.                               | `10000`  | no       |
 | `max_backoff`          | `duration` | Maximum retry delay.                                                 | `"5s"`   | no       |
@@ -224,7 +224,7 @@ The default value is `0s`, which means that all samples are sent (feature is dis
 The `wal` block customizes the Write-Ahead Log (WAL) used to temporarily store metrics before they're sent to the configured set of endpoints.
 
 | Name                 | Type       | Description                                                    | Default | Required |
-| -------------------- | ---------- | -------------------------------------------------------------- | ------- | -------- |
+|----------------------|------------|----------------------------------------------------------------|---------|----------|
 | `truncate_frequency` | `duration` | How frequently to clean up the WAL.                            | `"2h"`  | no       |
 | `min_keepalive_time` | `duration` | Minimum time to keep data in the WAL before it can be removed. | `"5m"`  | no       |
 | `max_keepalive_time` | `duration` | Maximum time to keep data in the WAL before removing it.       | `"8h"`  | no       |
@@ -249,7 +249,7 @@ Samples aren't removed until they're at least as old as `min_keepalive_time`, an
 The following fields are exported and can be referenced by other components:
 
 | Name       | Type              | Description                                                |
-| ---------- | ----------------- | ---------------------------------------------------------- |
+|------------|-------------------|------------------------------------------------------------|
 | `receiver` | `MetricsReceiver` | A value which other components can use to send metrics to. |
 
 ## Component health

@@ -57,7 +57,7 @@ otelcol.receiver.vcenter "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.vcenter`:
 
 | Name                  | Type       | Description                                                               | Default | Required |
-| --------------------- | ---------- | ------------------------------------------------------------------------- | ------- | -------- |
+|-----------------------|------------|---------------------------------------------------------------------------|---------|----------|
 | `endpoint`            | `string`   | Endpoint to a vCenter Server or ESXi host which has the SDK path enabled. |         | yes      |
 | `username`            | `string`   | Username to use for authentication.                                       |         | yes      |
 | `password`            | `string`   | Password to use for authentication.                                       |         | yes      |
@@ -72,7 +72,7 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 You can use the following blocks with `otelcol.receiver.vcenter`:
 
 | Block                                        | Description                                                                | Required |
-| -------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                           | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]             | Configures the metrics that this component generates to monitor its state. | no       |
 | [`metrics`][metrics]                         | Configures which metrics will be sent to downstream components.            | no       |
@@ -87,7 +87,7 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -98,7 +98,7 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 ### `metrics`
 
 | Name                                       | Type         | Description                                                    | Default | Required |
-| ------------------------------------------ | ------------ | -------------------------------------------------------------- | ------- | -------- |
+|--------------------------------------------|--------------|----------------------------------------------------------------|---------|----------|
 | `vcenter.cluster.cpu.effective`            | [`metric`][] | Enables the `vcenter.cluster.cpu.effective` metric.            | `true`  | no       |
 | `vcenter.cluster.cpu.limit`                | [`metric`][] | Enables the `vcenter.cluster.cpu.limit` metric.                | `true`  | no       |
 | `vcenter.cluster.host.count`               | [`metric`][] | Enables the `vcenter.cluster.host.count` metric.               | `true`  | no       |
@@ -176,13 +176,13 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 #### `metric`
 
 | Name      | Type      | Description                   | Default | Required |
-| --------- | --------- | ----------------------------- | ------- | -------- |
+|-----------|-----------|-------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to enable the metric. | `true`  | no       |
 
 ### `resource_attributes`
 
 | Name                                   | Type                     | Description                                                            | Default | Required |
-| -------------------------------------- | ------------------------ | ---------------------------------------------------------------------- | ------- | -------- |
+|----------------------------------------|--------------------------|------------------------------------------------------------------------|---------|----------|
 | `vcenter.datacenter.name`              | [`resource_attribute`][] | Enables the `vcenter.datacenter.name` resource attribute.              | `true`  | no       |
 | `vcenter.cluster.name`                 | [`resource_attribute`][] | Enables the `vcenter.cluster.name` resource attribute.                 | `true`  | no       |
 | `vcenter.datastore.name`               | [`resource_attribute`][] | Enables the `vcenter.cluster.resource_pool` resource attribute.        | `true`  | no       |
@@ -201,7 +201,7 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 #### `resource_attribute`
 
 | Name      | Type      | Description                               | Default | Required |
-| --------- | --------- | ----------------------------------------- | ------- | -------- |
+|-----------|-----------|-------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to enable the resource attribute. | `true`  | no       |
 
 ### `tls`

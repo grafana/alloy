@@ -45,7 +45,7 @@ otelcol.receiver.syslog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.syslog`:
 
 | Name                              | Type     | Description                                                        | Default     | Required |
-| --------------------------------- | -------- | ------------------------------------------------------------------ | ----------- | -------- |
+|-----------------------------------|----------|--------------------------------------------------------------------|-------------|----------|
 | `allow_skip_pri_header`           | `bool`   | Allow parsing records without a priority header.                   | `false`     | no       |
 | `enable_octet_counting`           | `bool`   | Whether to enable RFC6587 octet counting.                          | `false`     | no       |
 | `location`                        | `string` | The geographic time zone to use when parsing an RFC3164 timestamp. | `"UTC"`     | no       |
@@ -80,7 +80,7 @@ The `on_error` argument can take the following values:
 You can use the following blocks with `otelcol.receiver.syslog`:
 
 | Block                                  | Description                                                                                     | Required |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+|----------------------------------------|-------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
@@ -107,7 +107,7 @@ A syslog receiver must have either a `udp` or `tcp` block configured.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -122,7 +122,7 @@ A backoff algorithm is used to delay the retry upon subsequent failures.
 The following arguments are supported:
 
 | Name               | Type       | Description                                                                                               | Default | Required |
-| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|--------------------|------------|-----------------------------------------------------------------------------------------------------------|---------|----------|
 | `enabled`          | `bool`     | If true, the receiver will pause reading a file and attempt to resend the current batch of logs on error. | `false` | no       |
 | `initial_interval` | `duration` | The time to wait after first failure to retry.                                                            | `1s`    | no       |
 | `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                | `5m`    | no       |
@@ -136,7 +136,7 @@ The `tcp` block configures a TCP syslog server.
 The following arguments are supported:
 
 | Name                            | Type     | Description                                                                                                 | Default | Required |
-| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------------------------|----------|-------------------------------------------------------------------------------------------------------------|---------|----------|
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                 |         | yes      |
 | `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                        | `utf-8` | no       |
@@ -179,7 +179,7 @@ The `udp` block configures a UDP syslog server.
 The following arguments are supported:
 
 | Name                            | Type     | Description                                                                                                 | Default | Required |
-| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------------------------|----------|-------------------------------------------------------------------------------------------------------------|---------|----------|
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                 |         | yes      |
 | `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                        | `utf-8` | no       |

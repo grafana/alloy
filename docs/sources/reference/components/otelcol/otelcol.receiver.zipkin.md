@@ -38,7 +38,7 @@ otelcol.receiver.zipkin "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.zipkin`:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `parse_string_tags`      | `bool`                     | Parse string tags and binary annotations into non-string types.              | `false`                                                    | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:9411"`                                           | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
@@ -54,7 +54,7 @@ String tags and binary annotations that can't be converted remain unchanged.
 You can use the following blocks with `otelcol.receiver.zipkin`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received traces.                                  | yes      |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
@@ -67,7 +67,7 @@ You can use the following blocks with `otelcol.receiver.zipkin`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -82,7 +82,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
