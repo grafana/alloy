@@ -193,7 +193,7 @@ body:
   - type: dropdown
     attributes:
       label: Tip
-      description: This element is static, used to render a helpful sub-heading for end-users and community members to help prioritize issues. Please leave as is.
+      description: This is a standard issue postscript to encourage community members to engage with the issue to help gauge its importance.
       options:
-        - <sub>React with 👍 to help prioritize this issue.</sub>
+        - <sub>React with 👍 if this issue is important to you.</sub>
       default: 0
