@@ -40,7 +40,7 @@ faro.receiver "<LABEL>" {
 You can use the following arguments with `faro.receiver`:
 
 | Name               | Type          | Description                                  | Default    | Required |
-| ------------------ | ------------- | -------------------------------------------- | ---------- | -------- |
+|--------------------|---------------|----------------------------------------------|------------|----------|
 | `extra_log_labels` | `map(string)` | Extra labels to attach to emitted log lines. | `{}`       | no       |
 | `log_format`       | `string`      | Export format for the logs.                  | `"logfmt"` | no       |
 
@@ -56,7 +56,7 @@ The following strings are valid log line formats:
 You can use the following blocks with `faro.receiver`:
 
 | Block                                        | Description                                          | Required |
-| -------------------------------------------- | ---------------------------------------------------- | -------- |
+|----------------------------------------------|------------------------------------------------------|----------|
 | [`output`][output]                           | Configures where to send collected telemetry data.   | yes      |
 | [`server`][server]                           | Configures the HTTP server.                          | no       |
 | `server` >  [`rate_limiting`][rate_limiting] | Configures rate limiting for the HTTP server.        | no       |
@@ -74,10 +74,12 @@ For example, `sourcemaps` > `location` refers to a `location` block defined insi
 
 ### `output`
 
+{{< badge text="Required" >}}
+
 The `output` block specifies where to forward collected logs and traces.
 
 | Name     | Type                     | Description                                          | Default | Required |
-| -------- | ------------------------ | ---------------------------------------------------- | ------- | -------- |
+|----------|--------------------------|------------------------------------------------------|---------|----------|
 | `logs`   | `list(LogsReceiver)`     | A list of `loki` components to forward logs to.      | `[]`    | no       |
 | `traces` | `list(otelcol.Consumer)` | A list of `otelcol` components to forward traces to. | `[]`    | no       |
 
@@ -87,7 +89,7 @@ The `server` block configures the HTTP server managed by the `faro.receiver` com
 Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to this HTTP server for processing.
 
 | Name                       | Type           | Description                                                     | Default       | Required |
-| -------------------------- | -------------- | --------------------------------------------------------------- | ------------- | -------- |
+|----------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
 | `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
 | `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
 | `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
@@ -112,7 +114,7 @@ If the `api_key` argument is empty, no authentication checks are performed, and 
 The `rate_limiting` block configures rate limiting for client requests.
 
 | Name         | Type     | Description                          | Default | Required |
-| ------------ | -------- | ------------------------------------ | ------- | -------- |
+|--------------|----------|--------------------------------------|---------|----------|
 | `enabled`    | `bool`   | Whether to enable rate limiting.     | `true`  | no       |
 | `rate`       | `number` | Rate of allowed requests per second. | `50`    | no       |
 | `burst_size` | `number` | Allowed burst size of requests.      | `100`   | no       |
@@ -131,7 +133,7 @@ The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
 | Name                    | Type           | Description                                | Default | Required |
-| ----------------------- | -------------- | ------------------------------------------ | ------- | -------- |
+|-------------------------|----------------|--------------------------------------------|---------|----------|
 | `download`              | `bool`         | Whether to download sourcemaps.            | `true`  | no       |
 | `download_from_origins` | `list(string)` | Which origins to download sourcemaps from. | `["*"]` | no       |
 | `download_timeout`      | `duration`     | Timeout when downloading sourcemaps.       | `"1s"`  | no       |
@@ -156,7 +158,7 @@ The `location` block declares a location where sourcemaps are stored on the file
 You can specify the `location` block multiple times to declare multiple locations where sourcemaps are stored.
 
 | Name                   | Type     | Description                                         | Default | Required |
-| ---------------------- | -------- | --------------------------------------------------- | ------- | -------- |
+|------------------------|----------|-----------------------------------------------------|---------|----------|
 | `minified_path_prefix` | `string` | The prefix of the minified path sent from browsers. |         | yes      |
 | `path`                 | `string` | The path on disk where sourcemaps are stored.       |         | yes      |
 

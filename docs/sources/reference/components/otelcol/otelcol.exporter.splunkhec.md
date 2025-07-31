@@ -46,7 +46,7 @@ The `otelcol.exporter.splunkhec` component doesn't support any arguments. You ca
 You can use the following blocks with `otelcol.exporter.splunkhec`:
 
 | Block                                                 | Description                                                                    | Required |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
+|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`splunk`][splunk]                                    | Configures the Splunk HEC exporter.                                            | yes      |
 | `splunk` > [`batcher`][batcher]                       | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | `splunk` > [`heartbeat`][heartbeat]                   | Configures the exporters heartbeat settings.                                   | no       |
@@ -72,14 +72,14 @@ For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `
 
 ### `splunk`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `splunk` block configures Splunk HEC specific settings.
 
 The following arguments are supported:
 
 | Name                         | Type     | Description                                                                                                            | Default                        | Required |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------- |
+|------------------------------|----------|------------------------------------------------------------------------------------------------------------------------|--------------------------------|----------|
 | `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                                | yes      |
 | `disable_compression`        | `bool`   | Disable Gzip compression.                                                                                              | `false`                        | no       |
 | `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                        | no       |
@@ -101,7 +101,7 @@ The following arguments are supported:
 #### `batcher`
 
 | Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
-| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+|-----------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|
 | `enabled`       | `bool`     | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false`   | no       |
 | `flush_timeout` | `duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `"200ms"` | no       |
 | `max_size`      | `uint`     | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`       | no       |
@@ -111,34 +111,34 @@ The following arguments are supported:
 #### `heartbeat`
 
 | Name       | Type       | Description                                           | Default | Required |
-| ---------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+|------------|------------|-------------------------------------------------------|---------|----------|
 | `interval` | `duration` | Time interval for the heartbeat interval, in seconds. | `"0s"`  | no       |
 | `startup`  | `bool`     | Send heartbeat events on exporter startup.            | `false` | no       |
 
 #### `otel_to_hec_fields`
 
 | Name              | Type     | Description                                         | Default | Required |
-| ----------------- | -------- | --------------------------------------------------- | ------- | -------- |
+|-------------------|----------|-----------------------------------------------------|---------|----------|
 | `severity_number` | `string` | Maps severity number field to a specific HEC field. | `""`    | no       |
 | `severity_text`   | `string` | Maps severity text field to a specific HEC field.   | `""`    | no       |
 
 #### `telemetry`
 
 | Name                     | Type          | Description                                            | Default | Required |
-| ------------------------ | ------------- | ------------------------------------------------------ | ------- | -------- |
+|--------------------------|---------------|--------------------------------------------------------|---------|----------|
 | `enabled`                | `bool`        | Enable telemetry inside the exporter.                  | `false` | no       |
 | `override_metrics_names` | `map(string)` | Override metrics for internal metrics in the exporter. |         | no       |
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the HTTP client used by the component.
 
 The following arguments are supported:
 
 | Name                      | Type       | Description                                                                                     | Default | Required |
-| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------------------|------------|-------------------------------------------------------------------------------------------------|---------|----------|
 | `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                                                 |         | yes      |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                                        | `false` | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                                           | `"45s"` | no       |
@@ -171,7 +171,7 @@ The `retry_on_failure` block configures how failed requests to Splunk HEC are re
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                 |
-| ------- | ------------------ | ----------------------------------------------------------- |
+|---------|--------------------|-------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
