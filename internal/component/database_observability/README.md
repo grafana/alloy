@@ -90,6 +90,27 @@ Use this statement to enable the consumer if it's disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
 ```
 
+Note that the 'events_statements_cpu' consumer might be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumer on your behalf then extend the grants of the `db-o11y` user:
+
+```sql
+GRANT UPDATE ON performance_schema.setup_consumers TO 'db-o11y'@'%';
+```
+
+and additionally enable these options:
+
+```
+database_observability.mysql "mysql_<your_DB_name>" {
+  enable_collectors = ["query_sample"]
+
+  // Global option to allow writing to performance_schema tables
+  allow_update_performance_schema_settings = true
+
+  // Option to allow the `query_sample` collector to
+  // enable the 'events_statements_cpu' consumer
+  query_sample_auto_enable_setup_consumers = true
+}
+```
+
 7. Optionally enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings:
 
 ```promql

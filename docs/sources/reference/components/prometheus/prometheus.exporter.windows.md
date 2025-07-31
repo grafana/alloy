@@ -69,8 +69,11 @@ You can use the following blocks with `prometheus.exporter.windows`:
 | [`smb`][smb]                               | Configures the `smb` collector.                | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
-| [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
-| [`update`][update]                         | Configures the `update` collector.          | no       |
+| [`text_file`][text_file]                   | Configures the `textfile` collector.           | no       |
+| [`update`][update]                         | Configures the `update` collector.             | no       |
+
+The `textfile` collector is currently configured with the `text_file` block. 
+To be consistent with the `textfile` collector name, the `text_file` block will be deprecated in a future release and replaced with a `textfile` block. 
 
 {{< admonition type="note" >}}
 Starting with release 1.9.0, the `msmq` block is deprecated.
@@ -223,6 +226,17 @@ prometheus.exporter.windows "default" {
   
   ...
 }
+```
+
+The `performance_counters.yaml` file should be a YAML file that represents an array of objects matching the schema in the documentation, like the example below.
+
+```yaml
+- name: memory
+  object: "Memory"
+  counters:
+    - name: "Cache Faults/sec"
+      type: "counter" # optional
+
 ```
 
 [documentation]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md

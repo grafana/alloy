@@ -45,17 +45,18 @@ The `otelcol.exporter.splunkhec` component doesn't support any arguments. You ca
 
 You can use the following blocks with `otelcol.exporter.splunkhec`:
 
-| Block                                                 | Description                                                                    | Required |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
-| [`splunk`][splunk]                                    | Configures the Splunk HEC exporter.                                            | yes      |
-| `splunk` > [`batcher`][batcher]                       | Configures batching requests based on a timeout and a minimum number of items. | no       |
-| `splunk` > [`heartbeat`][heartbeat]                   | Configures the exporters heartbeat settings.                                   | no       |
-| `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields] | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
-| `splunk` > [`telemetry`][telemetry]                   | Configures the exporters telemetry.                                            | no       |
-| [`client`][client]                                    | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
-| [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
-| [`queue`][queue]                                      | Configures batching of data before sending.                                    | no       |
-| [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
+| Block                                                      | Description                                                                    | Required |
+|------------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`splunk`][splunk]                                         | Configures the Splunk HEC exporter.                                            | yes      |
+| `splunk` > [`batcher`][batcher]                            | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `splunk` > [`heartbeat`][heartbeat]                        | Configures the exporters heartbeat settings.                                   | no       |
+| `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields]      | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
+| `splunk` > [`telemetry`][telemetry]                        | Configures the exporters telemetry.                                            | no       |
+| [`client`][client]                                         | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
+| [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`otel_attrs_to_hec_metadata`][otel_attrs_to_hec_metadata] | Configures mapping of resource attributes to HEC metadata fields.              | no       |
+| [`queue`][queue]                                           | Configures batching of data before sending.                                    | no       |
+| [`retry_on_failure`][retry_on_failure]                     | Configures retry mechanism for failed requests.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `splunk` block.
@@ -66,20 +67,21 @@ For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `
 [heartbeat]: #heartbeat
 [batcher]: #batcher
 [client]: #client
+[otel_attrs_to_hec_metadata]: #otel_attrs_to_hec_metadata
 [retry_on_failure]: #retry_on_failure
 [queue]: #queue
 [debug_metrics]: #debug_metrics
 
 ### `splunk`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `splunk` block configures Splunk HEC specific settings.
 
 The following arguments are supported:
 
 | Name                         | Type     | Description                                                                                                            | Default                        | Required |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------- |
+|------------------------------|----------|------------------------------------------------------------------------------------------------------------------------|--------------------------------|----------|
 | `token`                      | `secret` | Splunk HEC Token.                                                                                                      |                                | yes      |
 | `disable_compression`        | `bool`   | Disable Gzip compression.                                                                                              | `false`                        | no       |
 | `export_raw`                 | `bool`   | Send only the logs body when targeting HEC raw endpoint.                                                               | `false`                        | no       |
@@ -101,7 +103,7 @@ The following arguments are supported:
 #### `batcher`
 
 | Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
-| --------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
+|-----------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|
 | `enabled`       | `bool`     | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false`   | no       |
 | `flush_timeout` | `duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `"200ms"` | no       |
 | `max_size`      | `uint`     | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`       | no       |
@@ -111,34 +113,34 @@ The following arguments are supported:
 #### `heartbeat`
 
 | Name       | Type       | Description                                           | Default | Required |
-| ---------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+|------------|------------|-------------------------------------------------------|---------|----------|
 | `interval` | `duration` | Time interval for the heartbeat interval, in seconds. | `"0s"`  | no       |
 | `startup`  | `bool`     | Send heartbeat events on exporter startup.            | `false` | no       |
 
 #### `otel_to_hec_fields`
 
 | Name              | Type     | Description                                         | Default | Required |
-| ----------------- | -------- | --------------------------------------------------- | ------- | -------- |
+|-------------------|----------|-----------------------------------------------------|---------|----------|
 | `severity_number` | `string` | Maps severity number field to a specific HEC field. | `""`    | no       |
 | `severity_text`   | `string` | Maps severity text field to a specific HEC field.   | `""`    | no       |
 
 #### `telemetry`
 
 | Name                     | Type          | Description                                            | Default | Required |
-| ------------------------ | ------------- | ------------------------------------------------------ | ------- | -------- |
+|--------------------------|---------------|--------------------------------------------------------|---------|----------|
 | `enabled`                | `bool`        | Enable telemetry inside the exporter.                  | `false` | no       |
 | `override_metrics_names` | `map(string)` | Override metrics for internal metrics in the exporter. |         | no       |
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the HTTP client used by the component.
 
 The following arguments are supported:
 
 | Name                      | Type       | Description                                                                                     | Default | Required |
-| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------------------|------------|-------------------------------------------------------------------------------------------------|---------|----------|
 | `endpoint`                | `string`   | The Splunk HEC endpoint to use.                                                                 |         | yes      |
 | `disable_keep_alives`     | `bool`     | Disable HTTP keep-alive.                                                                        | `false` | no       |
 | `idle_conn_timeout`       | `duration` | Time to wait before an idle connection closes itself.                                           | `"45s"` | no       |
@@ -149,6 +151,20 @@ The following arguments are supported:
 | `read_buffer_size`        | `int`      | Size of the read buffer the HTTP client uses for reading server responses.                      | `0`     | no       |
 | `timeout`                 | `duration` | Time to wait before marking a request as failed.                                                | `"15s"` | no       |
 | `write_buffer_size`       | `int`      | Size of the write buffer the HTTP client uses for writing requests.                             | `0`     | no       |
+
+### `otel_attrs_to_hec_metadata`
+
+The `otel_attrs_to_hec_metadata` block configures the mapping of resource attributes to HEC metadata fields.
+This allows resource attributes like `host.name` to be mapped to the top-level `host` field in the HEC JSON payload.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                                                                                        | Default                   | Required |
+|--------------|----------|--------------------------------------------------------------------------------------------------------------------|---------------------------|----------|
+| `host`       | `string` | Specifies the mapping of a specific unified model attribute value to the standard host field of a HEC event.       | `"host.name"`             | no       |
+| `index`      | `string` | Specifies the mapping of a specific unified model attribute value to the standard index field of a HEC event.      | `"com.splunk.index"`      | no       |
+| `source`     | `string` | Specifies the mapping of a specific unified model attribute value to the standard source field of a HEC event.     | `"com.splunk.source"`     | no       |
+| `sourcetype` | `string` | Specifies the mapping of a specific unified model attribute value to the standard sourcetype field of a HEC event. | `"com.splunk.sourcetype"` | no       |
 
 ### `debug_metrics`
 
@@ -171,7 +187,7 @@ The `retry_on_failure` block configures how failed requests to Splunk HEC are re
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                 |
-| ------- | ------------------ | ----------------------------------------------------------- |
+|---------|--------------------|-------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
@@ -292,21 +308,20 @@ local.file_match "local_files" {
 
 otelcol.receiver.loki "default" {
     output {
-        logs = [otelcol.processor.attributes.default.input]
+        logs = [otelcol.processor.resourcedetection.default.input]
     }
 }
 
-otelcol.processor.attributes "default" {
-    action {
-        key    = "host"
-        action = "upsert"
-        value  = "myhost"
-    }
+otelcol.processor.resourcedetection "default" {
+    detectors = ["system"]
 
-    action {
-        key    = "host.name"
-        action = "upsert"
-        value  = "myhost"
+    system {
+        hostname_sources = ["os", "dns"]
+        resource_attributes {
+            host.name {
+                enabled = true
+            }
+        }
     }
 
     output {
@@ -336,6 +351,14 @@ otelcol.exporter.splunkhec "default" {
 
     sending_queue {
         enabled = false
+    }
+
+    // Configure mapping of resource attributes to HEC metadata fields
+    otel_attrs_to_hec_metadata {
+        host       = "host.name"           // Maps host.name resource attribute to top-level host field
+        source     = "com.splunk.source"   // Maps com.splunk.source attribute to source field
+        sourcetype = "com.splunk.sourcetype" // Maps com.splunk.sourcetype attribute to sourcetype field
+        index      = "com.splunk.index"    // Maps com.splunk.index attribute to index field
     }
 
     splunk {
