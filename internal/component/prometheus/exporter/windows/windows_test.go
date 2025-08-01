@@ -107,7 +107,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, ".+", args.IIS.SiteInclude)
 	require.Equal(t, "", args.IIS.AppExclude)
 	require.Equal(t, ".+", args.IIS.AppInclude)
-	require.Equal(t, "C:", args.TextFile.TextFileDirectory)
+	require.Equal(t, "C:", args.TextFileDeprecated.TextFileDirectory)
 	require.Equal(t, "", args.SMTP.Exclude)
 	require.Equal(t, ".+", args.SMTP.Include)
 	require.Equal(t, ".*", args.Service.Include)
@@ -125,6 +125,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, []string{"accessmethods"}, args.MSSQL.EnabledClasses)
 	require.Equal(t, "", args.LogicalDisk.Exclude)
 	require.Equal(t, ".+", args.LogicalDisk.Include)
+
 	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string

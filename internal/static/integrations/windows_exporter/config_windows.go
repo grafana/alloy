@@ -98,6 +98,7 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
 	errs = append(errs, err)
 	cfg.Process.EnableWorkerProcess = c.Process.EnableIISWorkerProcess
+	cfg.Process.CounterVersion = c.Process.CounterVersion
 
 	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
 	errs = append(errs, err)
@@ -110,6 +111,8 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	errs = append(errs, err)
 	cfg.LogicalDisk.VolumeExclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
 	errs = append(errs, err)
+
+	cfg.LogicalDisk.CollectorsEnabled = strings.Split(c.LogicalDisk.EnabledList, ",")
 
 	cfg.ScheduledTask.TaskInclude, err = regexp.Compile(c.ScheduledTask.Include)
 	errs = append(errs, err)
@@ -131,6 +134,12 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 
 	cfg.DNS.CollectorsEnabled = strings.Split(c.DNS.EnabledList, ",")
 
+	cfg.Net.CollectorsEnabled = strings.Split(c.Net.EnabledList, ",")
+	cfg.Net.NicExclude, err = regexp.Compile(c.Net.Exclude)
+	errs = append(errs, err)
+	cfg.Net.NicInclude, err = regexp.Compile(c.Net.Include)
+	errs = append(errs, err)
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -145,7 +154,7 @@ func coalesceString(v ...string) string {
 
 // DefaultConfig holds the default settings for the windows_exporter integration.
 var DefaultConfig = Config{
-	EnabledCollectors: "cpu,cs,logical_disk,net,os,service,system",
+	EnabledCollectors: "cpu,logical_disk,net,os,service,system",
 	Dfsr: DfsrConfig{
 		SourcesEnabled: strings.Join(collector.ConfigDefaults.DFSR.CollectorsEnabled, ","),
 	},
@@ -163,10 +172,11 @@ var DefaultConfig = Config{
 		SiteExclude:   collector.ConfigDefaults.IIS.SiteExclude.String(),
 	},
 	LogicalDisk: LogicalDiskConfig{
-		BlackList: collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
-		WhiteList: collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-		Include:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
-		Exclude:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+		EnabledList: strings.Join(collector.ConfigDefaults.LogicalDisk.CollectorsEnabled, ","),
+		BlackList:   collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
+		WhiteList:   collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Include:     collector.ConfigDefaults.LogicalDisk.VolumeInclude.String(),
+		Exclude:     collector.ConfigDefaults.LogicalDisk.VolumeExclude.String(),
 	},
 	MSSQL: MSSQLConfig{
 		EnabledClasses: strings.Join(collector.ConfigDefaults.Mssql.CollectorsEnabled, ","),
@@ -192,10 +202,12 @@ var DefaultConfig = Config{
 		Exclude: collector.ConfigDefaults.Printer.PrinterExclude.String(),
 	},
 	Process: ProcessConfig{
-		BlackList: collector.ConfigDefaults.Process.ProcessExclude.String(),
-		WhiteList: collector.ConfigDefaults.Process.ProcessInclude.String(),
-		Include:   collector.ConfigDefaults.Process.ProcessInclude.String(),
-		Exclude:   collector.ConfigDefaults.Process.ProcessExclude.String(),
+		BlackList:              collector.ConfigDefaults.Process.ProcessExclude.String(),
+		WhiteList:              collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Include:                collector.ConfigDefaults.Process.ProcessInclude.String(),
+		Exclude:                collector.ConfigDefaults.Process.ProcessExclude.String(),
+		EnableIISWorkerProcess: collector.ConfigDefaults.Process.EnableWorkerProcess,
+		CounterVersion:         collector.ConfigDefaults.Process.CounterVersion,
 	},
 	ScheduledTask: ScheduledTaskConfig{
 		Include: collector.ConfigDefaults.ScheduledTask.TaskInclude.String(),
@@ -235,6 +247,11 @@ var DefaultConfig = Config{
 	},
 	DNS: DNSConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.DNS.CollectorsEnabled, ","),
+	},
+	Net: NetConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.Net.CollectorsEnabled, ","),
+		Exclude:     collector.ConfigDefaults.Net.NicExclude.String(),
+		Include:     collector.ConfigDefaults.Net.NicInclude.String(),
 	},
 }
 
