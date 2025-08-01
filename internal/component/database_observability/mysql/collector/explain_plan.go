@@ -450,48 +450,49 @@ func parseUnionResultNode(logger log.Logger, unionResultNode []byte) (planNode, 
 }
 
 type queryInfo struct {
-	schemaName             string
-	digest                 string
-	queryText              string
-	failureCount           int
-	roundsSinceLastFailure int
+	schemaName   string
+	digest       string
+	queryText    string
+	failureCount int
 }
 
 func (qi *queryInfo) key() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(qi.schemaName+"|"+qi.digest)))
 }
 
+type knownSQLCodes string
+
+const (
+	accessDeniedSQLCode knownSQLCodes = "1044"
+)
+
 type ExplainPlanArguments struct {
-	DB                   *sql.DB
-	InstanceKey          string
-	ScrapeInterval       time.Duration
-	PerScrapeRatio       float64
-	EntryHandler         loki.EntryHandler
-	InitialLookback      time.Time
-	FailureBackoffRounds int
-	MaxFailureCount      int
+	DB              *sql.DB
+	InstanceKey     string
+	ScrapeInterval  time.Duration
+	PerScrapeRatio  float64
+	EntryHandler    loki.EntryHandler
+	InitialLookback time.Time
 
 	Logger log.Logger
 }
 
 type ExplainPlan struct {
-	dbConnection         *sql.DB
-	instanceKey          string
-	dbVersion            string
-	scrapeInterval       time.Duration
-	queryCache           map[string]*queryInfo
-	queryBackoffList     map[string]*queryInfo
-	queryDenylist        map[string]*queryInfo
-	perScrapeRatio       float64
-	currentBatchSize     int
-	entryHandler         loki.EntryHandler
-	lastSeen             time.Time
-	failureBackoffRounds int
-	maxFailureCount      int
-	logger               log.Logger
-	running              *atomic.Bool
-	ctx                  context.Context
-	cancel               context.CancelFunc
+	dbConnection          *sql.DB
+	instanceKey           string
+	dbVersion             string
+	scrapeInterval        time.Duration
+	queryCache            map[string]*queryInfo
+	queryDenylist         map[string]*queryInfo
+	unrecoverableSQLCodes []knownSQLCodes
+	perScrapeRatio        float64
+	currentBatchSize      int
+	entryHandler          loki.EntryHandler
+	lastSeen              time.Time
+	logger                log.Logger
+	running               *atomic.Bool
+	ctx                   context.Context
+	cancel                context.CancelFunc
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
@@ -506,20 +507,20 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	}
 
 	return &ExplainPlan{
-		dbConnection:         args.DB,
-		instanceKey:          args.InstanceKey,
-		dbVersion:            dbVersion,
-		scrapeInterval:       args.ScrapeInterval,
-		queryCache:           make(map[string]*queryInfo),
-		queryDenylist:        make(map[string]*queryInfo),
-		queryBackoffList:     make(map[string]*queryInfo),
-		perScrapeRatio:       args.PerScrapeRatio,
-		failureBackoffRounds: args.FailureBackoffRounds,
-		maxFailureCount:      args.MaxFailureCount,
-		entryHandler:         args.EntryHandler,
-		lastSeen:             args.InitialLookback,
-		logger:               log.With(args.Logger, "collector", ExplainPlanName),
-		running:              atomic.NewBool(false),
+		dbConnection:   args.DB,
+		instanceKey:    args.InstanceKey,
+		dbVersion:      dbVersion,
+		scrapeInterval: args.ScrapeInterval,
+		queryCache:     make(map[string]*queryInfo),
+		queryDenylist:  make(map[string]*queryInfo),
+		unrecoverableSQLCodes: []knownSQLCodes{
+			accessDeniedSQLCode,
+		},
+		perScrapeRatio: args.PerScrapeRatio,
+		entryHandler:   args.EntryHandler,
+		lastSeen:       args.InitialLookback,
+		logger:         log.With(args.Logger, "collector", ExplainPlanName),
+		running:        atomic.NewBool(false),
 	}, nil
 }
 
@@ -576,15 +577,6 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	}
 	defer rs.Close()
 
-	// Add queries with expired backoff first
-	for _, qi := range c.queryBackoffList {
-		if qi.roundsSinceLastFailure >= c.failureBackoffRounds {
-			qi.roundsSinceLastFailure = 0
-			c.queryCache[qi.key()] = qi
-			delete(c.queryBackoffList, qi.key())
-		}
-	}
-
 	// Populate cache
 	for rs.Next() {
 		if err := rs.Err(); err != nil {
@@ -592,10 +584,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 			return err
 		}
 
-		qi := &queryInfo{
-			failureCount:           0,
-			roundsSinceLastFailure: 0,
-		}
+		qi := &queryInfo{failureCount: 0}
 		var ls time.Time
 		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
@@ -621,31 +610,23 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 	}
 
-	for _, bqi := range c.queryBackoffList {
-		bqi.roundsSinceLastFailure++
-	}
-
 	processedCount := 0
 	for _, qi := range c.queryCache {
-		failed := false
+		nonRecoverableFailureOccurred := false
 		if processedCount >= c.currentBatchSize {
 			break
 		}
 		logger := log.With(c.logger, "digest", qi.digest)
 
-		defer func(failed *bool) {
-			if *failed {
+		defer func(nonRecoverableFailureOccurred *bool) {
+			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
-				if qi.failureCount >= c.maxFailureCount {
-					c.queryDenylist[qi.key()] = qi
-					level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
-				} else {
-					c.queryBackoffList[qi.key()] = qi
-				}
+				c.queryDenylist[qi.key()] = qi
+				level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
 			}
 			delete(c.queryCache, qi.key())
 			processedCount++
-		}(&failed)
+		}(&nonRecoverableFailureOccurred)
 
 		if strings.HasSuffix(qi.queryText, "...") {
 			level.Debug(logger).Log("msg", "skipping truncated query")
@@ -661,26 +642,31 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
-			failed = true
+			for _, code := range c.unrecoverableSQLCodes {
+				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
+					nonRecoverableFailureOccurred = true
+					break
+				}
+			}
 			continue
 		}
 
 		if len(byteExplainPlanJSON) == 0 {
 			level.Error(logger).Log("msg", "explain plan json bytes is empty")
-			failed = true
+			nonRecoverableFailureOccurred = true
 			continue
 		}
 
 		if !utf8.Valid(byteExplainPlanJSON) {
 			level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
-			failed = true
+			nonRecoverableFailureOccurred = true
 			continue
 		}
 
 		redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to redact explain plan json", "err", err)
-			failed = true
+			nonRecoverableFailureOccurred = true
 			continue
 		}
 
@@ -693,7 +679,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
-			failed = true
+			nonRecoverableFailureOccurred = true
 			continue
 		}
 
@@ -703,7 +689,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 				"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 				"err", genErr,
 			)
-			failed = true
+			nonRecoverableFailureOccurred = true
 			continue
 		}
 
