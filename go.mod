@@ -1059,7 +1059,7 @@ replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7
 replace github.com/prometheus/prometheus => github.com/thampiotr/prometheus v0.0.0-20250731131506-a28a7d9c5b3b // staleness_disabling_v3.4.2 branch
 
 // TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/common/pull/809
-replace github.com/prometheus/common => github.com/thampiotr/common v0.0.0-20250801132732-61b386b68d79
+replace github.com/prometheus/common => github.com/thampiotr/common v0.0.0-20250801143043-d02488af238f
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
