@@ -180,6 +180,9 @@ func (arg *Arguments) Validate() error {
 		// For backwards-compatibility, if EnableProtobufNegotiation is set to true, the ScrapeProtocols are set to
 		// [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
 		arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		// In previous Prometheus versions, EnableProtobufNegotiation would also enable native histogram scraping.
+		// This is no longer the case, so we need to explicitly enable it here.
+		arg.ScrapeNativeHistograms = true
 	}
 
 	if arg.ScrapeNativeHistograms {
