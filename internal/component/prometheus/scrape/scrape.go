@@ -259,10 +259,11 @@ type Component struct {
 	movedTargetsCounter client_prometheus.Counter
 	unregisterer        util.Unregisterer
 
-	mut        sync.RWMutex
-	args       Arguments
-	scraper    *scrape.Manager
-	appendable *prometheus.Fanout
+	mut             sync.RWMutex
+	args            Arguments
+	scraper         *scrape.Manager
+	appendable      *prometheus.Fanout
+	firstUpdateDone bool
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
@@ -302,12 +303,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
-		// NOTE: This is not Update()-able. 
+		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
-		// NOTE: This is not Update()-able. 
+		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 	}
 
@@ -450,11 +451,17 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
-		return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
-	}
-	if c.args.ExtraMetrics != newArgs.ExtraMetrics {
-		return fmt.Errorf("extra_metrics cannot be updated at runtime")
+	// Some fields are not updateable at runtime - only allow them when Update()
+	// is called for the first time from New().
+	if !c.firstUpdateDone {
+		c.firstUpdateDone = true
+	} else {
+		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
+			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
+		}
+		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
+			return fmt.Errorf("extra_metrics cannot be updated at runtime")
+		}			
 	}
 
 	c.args = newArgs
