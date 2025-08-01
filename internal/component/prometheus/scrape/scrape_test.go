@@ -290,16 +290,65 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 		assertions    func(t *testing.T, args Arguments)
 	}{
 		{
-			name: "no validation scheme specified",
+			name: "defaults",
 			config: `
 				targets = [{ "target1" = "target1" }]
 				forward_to = []
 			`,
 			expectError: false,
 			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
+				require.Equal(t, []string{
+					"OpenMetricsText1.0.0",
+					"OpenMetricsText0.0.1",
+					"PrometheusText1.0.0",
+					"PrometheusText0.0.4",
+				}, args.ScrapeProtocols)
+				require.Equal(t, "PrometheusText0.0.4", args.ScrapeFallbackProtocol)
+				require.Equal(t, false, args.ScrapeNativeHistograms)
+				require.Equal(t, false, args.ConvertClassicHistogramsToNHCB)
+				require.Equal(t, true, args.EnableCompression)
+				require.Equal(t, uint(0), args.NativeHistogramBucketLimit)
+				require.Equal(t, 0.0, args.NativeHistogramMinBucketFactor)
 			},
+		},
+		{
+			name: "native histogram defaults",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				scrape_native_histograms = true
+			`,
+			expectError: false,
+			assertions: func(t *testing.T, args Arguments) {
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
+				require.Equal(t, []string{
+					"PrometheusProto",
+					"OpenMetricsText1.0.0",
+					"OpenMetricsText0.0.1",
+					"PrometheusText1.0.0",
+					"PrometheusText0.0.4",
+				}, args.ScrapeProtocols)
+				require.Equal(t, "PrometheusText0.0.4", args.ScrapeFallbackProtocol)
+				require.Equal(t, true, args.ScrapeNativeHistograms)
+				require.Equal(t, false, args.ConvertClassicHistogramsToNHCB)
+				require.Equal(t, true, args.EnableCompression)
+				require.Equal(t, uint(0), args.NativeHistogramBucketLimit)
+				require.Equal(t, 0.0, args.NativeHistogramMinBucketFactor)
+			},
+		},
+		{
+			name: "native histogram missing PrometheusProto",
+			config: `
+				targets = [{ "target1" = "target1" }]
+				forward_to = []
+				scrape_native_histograms = true
+				scrape_protocols = ["OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText1.0.0"]
+			`,
+			expectError:   true,
+			errorContains: `scrape_native_histograms is set to true, but PrometheusProto is not in scrape_protocols`,
 		},
 		{
 			name: "valid utf8 with allow-utf-8",
@@ -401,17 +450,14 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			},
 		},
 		{
-			name: "escaping scheme only - validation scheme should default to utf8",
+			name: "escaping scheme only set to utf-8",
 			config: `
 				targets = [{ "target1" = "target1" }]
 				forward_to = []
 				metric_name_escaping_scheme = "allow-utf-8"
 			`,
-			expectError: false,
-			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
-			},
+			expectError:   true,
+			errorContains: "metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'",
 		},
 		{
 			name: "empty string validation scheme",
@@ -432,8 +478,8 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			`,
 			expectError: false,
 			assertions: func(t *testing.T, args Arguments) {
-				require.Equal(t, "utf8", args.MetricNameValidationScheme)
-				require.Equal(t, "allow-utf-8", args.MetricNameEscapingScheme)
+				require.Equal(t, "legacy", args.MetricNameValidationScheme)
+				require.Equal(t, "underscores", args.MetricNameEscapingScheme)
 			},
 		},
 		{

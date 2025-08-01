@@ -84,8 +84,8 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -137,8 +137,8 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}

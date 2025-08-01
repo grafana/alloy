@@ -102,8 +102,8 @@ func TestGenerateProbeConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -194,8 +194,8 @@ func TestGenerateProbeConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -288,8 +288,8 @@ func TestGenerateProbeConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}

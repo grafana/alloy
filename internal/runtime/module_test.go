@@ -127,7 +127,7 @@ func TestModule(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
 			mc := newModuleController(testModuleControllerOptions(t)).(*moduleController)
 			// modules do not clean up their own worker pool as we normally use a shared one from the root controller
-			defer mc.o.WorkerPool.Stop()
+			defer mc.o.WorkerPool.Stop(5 * time.Second)
 
 			tm := &testModule{
 				content: tc.argumentModuleContent + tc.exportModuleContent,
@@ -192,7 +192,7 @@ func TestExportsWhenNotUsed(t *testing.T) {
 func TestIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
@@ -226,7 +226,7 @@ func TestIDList(t *testing.T) {
 func TestDuplicateIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 

@@ -52,6 +52,11 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 	if fallbackProtocol == "" {
 		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
 	}
+
+	// Set the escaping and validation scheme to default values in Alloy for maximum compatibility with backends.
+	scrapeConfig.MetricNameValidationScheme = prom_config.LegacyValidationConfig
+	scrapeConfig.MetricNameEscapingScheme = "" // this will default to underscores given the legacy validation scheme
+
 	alloyArgs := &scrape.Arguments{
 		Targets:                        targets,
 		ForwardTo:                      forwardTo,
@@ -61,7 +66,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		TrackTimestampsStaleness:       scrapeConfig.TrackTimestampsStaleness,
 		Params:                         scrapeConfig.Params,
 		ScrapeClassicHistograms:        scrapeConfig.AlwaysScrapeClassicHistograms,
-		ScrapeNativeHistograms:         true,
+		ScrapeNativeHistograms:         false, // this is controlled by a Prometheus feature, not the config file
 		ScrapeInterval:                 time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:                  time.Duration(scrapeConfig.ScrapeTimeout),
 		ScrapeFailureLogFile:           scrapeConfig.ScrapeFailureLogFile,
