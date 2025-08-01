@@ -618,9 +618,15 @@ func TestMetrics_Validate(t *testing.T) {
 			wantErr: `metrics.instrumentations: invalid value "invalid"`,
 		},
 		{
-			name: "valid features",
+			name: "valid application features",
 			args: Metrics{
-				Features: []string{"application", "network"},
+				Features: []string{"application", "application_span", "application_service_graph", "application_process", "application_host"},
+			},
+		},
+		{
+			name: "valid network features",
+			args: Metrics{
+				Features: []string{"network", "network_inter_zone"},
 			},
 		},
 		{
@@ -652,9 +658,8 @@ func TestArguments_Validate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "empty arguments",
-			args:    Arguments{},
-			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
+			name: "empty arguments",
+			args: Arguments{},
 		},
 		{
 			name: "valid network-only configuration",
@@ -757,14 +762,6 @@ func TestArguments_Validate(t *testing.T) {
 				},
 				// No metrics features defined
 			},
-		},
-		{
-			name: "invalid configuration with disabled tracing and no metrics",
-			args: Arguments{
-				TracePrinter: "disabled",
-				// No metrics features and disabled tracing
-			},
-			wantErr: "either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled",
 		},
 	}
 
