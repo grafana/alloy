@@ -85,12 +85,14 @@ You can use the following blocks with `beyla.ebpf`:
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
 | [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
+| `traces`                                                       | Configures trace collection and sampling options for the component. | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
 [routes]: #routes
+[traces]: #traces
 [attributes]: #attributes
 [kubernetes attributes]: #kubernetes-attributes
 [kubernetes services]: #kubernetes-services
@@ -315,9 +317,62 @@ beyla.ebpf "default" {
 }
 ```
 
-#### `sampler`
 
-The `sampler` block configures trace sampling for the matching service. This allows you to control the rate at which traces are sampled and exported.
+
+### `traces`
+
+The `traces` block configures trace collection and sampling options for the beyla.ebpf component.
+
+{{< admonition type="note" >}}
+To export traces, you must also configure the [`output`][output] block with a `traces` destination. Without an output configuration, traces will be collected but not exported.
+{{< /admonition >}}
+
+| Name              | Type           | Description                                                      | Default | Required |
+|-------------------|----------------|------------------------------------------------------------------|---------|----------|
+| `instrumentations` | `list(string)` | List of instrumentations to enable for trace collection.        | `["*"]` | no       |
+
+The `traces` block contains the following sub-blocks:
+
+- [`sampler`][sampler] - configures global trace sampling settings. See the [`sampler`][sampler] section for detailed configuration options.
+
+#### `instrumentations`
+
+`instrumentations` is a list of instrumentations to enable for trace collection. The following instrumentations are available:
+
+* `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `grpc` enables the collection of gRPC traces.
+* `gpu` enables the collection of GPU performance traces.
+* `http` enables the collection of HTTP/HTTPS/HTTP2 traces.
+* `kafka` enables the collection of Kafka client/server traces.
+* `mongo` enables the collection of MongoDB database traces.
+* `redis` enables the collection of Redis client/server database traces.
+* `sql` enables the collection of SQL database client call traces.
+
+Example:
+
+```alloy
+beyla.ebpf "default" {
+  traces {
+    instrumentations = ["http", "grpc", "sql"]
+    sampler {
+      name = "traceidratio"
+      arg = "0.1"  // Global 10% sampling rate for all traces
+    }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+```
+
+For per-service sampling configuration, use the `sampler` block within the `discovery` > `services` section instead.
+
+### `sampler`
+
+The `sampler` block configures trace sampling settings. This block can be used in two contexts:
+
+1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
+2. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
 
 | Name   | Type     | Description                                                             | Default | Required |
 |--------|----------|-------------------------------------------------------------------------|---------|----------|
@@ -333,7 +388,9 @@ The following sampling strategies are supported:
 * `parentbased_always_off`: Uses parent-based sampling that never samples when there's no parent span.
 * `parentbased_traceidratio`: Uses parent-based sampling with trace ID ratio-based sampling for root spans. The `arg` should be a decimal value between 0 and 1.
 
-Example:
+#### Examples
+
+Per-service sampling (configured within `discovery` > `services`):
 
 ```alloy
 beyla.ebpf "default" {
@@ -342,9 +399,26 @@ beyla.ebpf "default" {
       open_ports = "8080"
       sampler {
         name = "traceidratio"
-        arg = "0.1"  // 10% sampling rate
+        arg = "0.1"  // 10% sampling rate for this specific service
       }
     }
+  }
+}
+```
+
+Global sampling (configured within `traces`):
+
+```alloy
+beyla.ebpf "default" {
+  traces {
+    instrumentations = ["http", "grpc", "sql"]
+    sampler {
+      name = "traceidratio"
+      arg = "0.1"  // Global 10% sampling rate for all traces
+    }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
   }
 }
 ```
@@ -464,8 +538,10 @@ The `metrics` block configures which metrics Beyla collects.
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
 * `grpc` enables the collection of gRPC application metrics.
+* `gpu` enables the collection of GPU performance metrics.
 * `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 * `kafka` enables the collection of Kafka client/server message queue metrics.
+* `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
 

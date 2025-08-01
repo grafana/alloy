@@ -19,6 +19,7 @@ import (
 	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/prom"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
@@ -399,7 +400,7 @@ func (args Metrics) hasAppFeature() bool {
 
 func (args Metrics) Validate() error {
 	validInstrumentations := map[string]struct{}{
-		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
+		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
 	}
 	for _, instrumentation := range args.Instrumentations {
 		if _, ok := validInstrumentations[instrumentation]; !ok {
@@ -653,9 +654,11 @@ func (c *Component) Handler() http.Handler {
 func (a *Arguments) Convert() (*beyla.Config, error) {
 	var err error
 	cfg := beyla.DefaultConfig
+
 	if a.Output != nil {
-		cfg.TracesReceiver = convertTraceConsumers(a.Output.Traces)
+		cfg.TracesReceiver = a.Traces.Convert(a.Output.Traces)
 	}
+
 	cfg.Routes = a.Routes.Convert()
 	cfg.Attributes = a.Attributes.Convert()
 	cfg.Discovery, err = a.Discovery.Convert()
@@ -700,6 +703,17 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 
+	if err := args.Traces.Validate(); err != nil {
+		return err
+	}
+
+	// If traces block is defined with instrumentations, output section must be defined
+	if len(args.Traces.Instrumentations) > 0 || args.Traces.Sampler.Name != "" {
+		if args.Output == nil {
+			return fmt.Errorf("traces block is defined but output section is missing. When using traces configuration, you must define an output block")
+		}
+	}
+
 	if hasAppFeature {
 		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
 			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
@@ -727,6 +741,48 @@ func (args *Arguments) Validate() error {
 		if err := service.Sampler.Validate(); err != nil {
 			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
 		}
+	}
+
+	return nil
+}
+
+func (args Traces) Convert(consumers []otelcol.Consumer) beyla.TracesReceiverConfig {
+	// Convert the OTEL consumers
+	convertedConsumers := make([]beyla.Consumer, len(consumers))
+	for i, trace := range consumers {
+		convertedConsumers[i] = trace
+	}
+
+	config := beyla.TracesReceiverConfig{
+		Traces: convertedConsumers,
+	}
+
+	if len(args.Instrumentations) == 0 {
+		config.Instrumentations = []string{
+			instrumentations.InstrumentationALL,
+		}
+	} else {
+		config.Instrumentations = args.Instrumentations
+	}
+	if args.Sampler.Name != "" || args.Sampler.Arg != "" {
+		config.Sampler = args.Sampler.Convert()
+	}
+	return config
+}
+
+func (args Traces) Validate() error {
+	validInstrumentations := map[string]struct{}{
+		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
+	}
+	for _, instrumentation := range args.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("traces.instrumentations: invalid value %q", instrumentation)
+		}
+	}
+
+	// Validate the global sampler config
+	if err := args.Sampler.Validate(); err != nil {
+		return fmt.Errorf("invalid global sampler configuration: %s", err.Error())
 	}
 
 	return nil
@@ -764,16 +820,6 @@ func stringToPortEnum(s string) (services.PortEnum, error) {
 		return services.PortEnum{}, err
 	}
 	return p, nil
-}
-
-func convertTraceConsumers(consumers []otelcol.Consumer) beyla.TracesReceiverConfig {
-	convertedConsumers := make([]beyla.Consumer, len(consumers))
-	for i, trace := range consumers {
-		convertedConsumers[i] = trace
-	}
-	return beyla.TracesReceiverConfig{
-		Traces: convertedConsumers,
-	}
 }
 
 func defaultInstance() string {

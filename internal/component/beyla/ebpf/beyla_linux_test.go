@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/beyla/v2/pkg/config"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
@@ -85,7 +86,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		}
 		metrics {
 			features = ["application", "network"]
-			instrumentations = ["redis", "sql"]
+			instrumentations = ["redis", "sql", "gpu", "mongo"]
 			network {
 				agent_ip = "0.0.0.0"
 				interfaces = ["eth0"]
@@ -100,6 +101,13 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				agent_ip_iface = "local"
 				agent_ip_type = "ipv4"
 				exclude_interfaces = []
+			}
+		}
+		traces {
+			instrumentations = ["http", "grpc", "kafka"]
+			sampler {
+				name = "traceidratio"
+				arg = "0.1"
 			}
 		}
 		ebpf {
@@ -171,7 +179,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
 	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
-	require.Equal(t, []string{"redis", "sql"}, cfg.Prometheus.Instrumentations)
+	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
@@ -186,6 +194,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
 	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
+	require.Equal(t, []string{"http", "grpc", "kafka"}, cfg.TracesReceiver.Instrumentations)
+	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
+	require.Len(t, cfg.TracesReceiver.Traces, 0)
 }
 
 func TestArguments_TracePrinterDebug(t *testing.T) {
@@ -507,8 +518,8 @@ func TestSamplerConfig_Validate(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name: "empty config is valid",
-			config: SamplerConfig{},
+			name:        "empty config is valid",
+			config:      SamplerConfig{},
 			expectError: false,
 		},
 		{
@@ -958,7 +969,7 @@ func TestMetrics_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
 			},
 		},
 		{
@@ -1170,4 +1181,179 @@ func TestDeprecatedFields(t *testing.T) {
 			strings.Contains(output, "open_port' field is deprecated") &&
 			strings.Contains(output, "executable_name' field is deprecated")
 	}, time.Second, time.Millisecond*10)
+}
+
+func TestTraces_Convert(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      Traces
+		consumers []otelcol.Consumer
+		expected  beyla.TracesReceiverConfig
+	}{
+		{
+			name:      "empty config uses default instrumentations",
+			args:      Traces{},
+			consumers: nil,
+			expected: beyla.TracesReceiverConfig{
+				Traces: []beyla.Consumer{},
+				Instrumentations: []string{
+					instrumentations.InstrumentationALL,
+				},
+			},
+		},
+		{
+			name: "custom instrumentations",
+			args: Traces{
+				Instrumentations: []string{"http", "grpc"},
+			},
+			consumers: nil,
+			expected: beyla.TracesReceiverConfig{
+				Traces:           []beyla.Consumer{},
+				Instrumentations: []string{"http", "grpc"},
+			},
+		},
+		{
+			name: "with consumers",
+			args: Traces{
+				Instrumentations: []string{"kafka"},
+			},
+			consumers: []otelcol.Consumer{
+				// Mock consumer would go here in real test
+			},
+			expected: beyla.TracesReceiverConfig{
+				Traces:           []beyla.Consumer{},
+				Instrumentations: []string{"kafka"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.args.Convert(tt.consumers)
+			require.Equal(t, tt.expected.Instrumentations, result.Instrumentations)
+			require.Len(t, result.Traces, len(tt.expected.Traces))
+		})
+	}
+}
+
+func TestTraces_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Traces
+		wantErr string
+	}{
+		{
+			name: "valid empty config",
+			args: Traces{},
+		},
+		{
+			name: "valid instrumentations",
+			args: Traces{
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+			},
+		},
+		{
+			name: "invalid instrumentation",
+			args: Traces{
+				Instrumentations: []string{"invalid"},
+			},
+			wantErr: `traces.instrumentations: invalid value "invalid"`,
+		},
+		{
+			name: "valid sampler config",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "traceidratio",
+					Arg:  "0.5",
+				},
+			},
+		},
+		{
+			name: "invalid sampler config",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "invalid_sampler",
+				},
+			},
+			wantErr: "invalid global sampler configuration",
+		},
+		{
+			name: "sampler with invalid arg",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "traceidratio",
+					Arg:  "invalid",
+				},
+			},
+			wantErr: "invalid global sampler configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name: "traces with instrumentations but no output",
+			args: Arguments{
+				Traces: Traces{
+					Instrumentations: []string{"http"},
+				},
+			},
+			wantErr: "traces block is defined but output section is missing",
+		},
+		{
+			name: "traces with sampler but no output",
+			args: Arguments{
+				Traces: Traces{
+					Sampler: SamplerConfig{
+						Name: "always_on",
+					},
+				},
+			},
+			wantErr: "traces block is defined but output section is missing",
+		},
+		{
+			name: "traces with output is valid",
+			args: Arguments{
+				Traces: Traces{
+					Instrumentations: []string{"http"},
+				},
+				Output: &otelcol.ConsumerArguments{},
+			},
+		},
+		{
+			name: "empty traces block is valid without output",
+			args: Arguments{
+				Traces: Traces{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }

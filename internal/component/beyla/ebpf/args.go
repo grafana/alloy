@@ -21,6 +21,7 @@ type Arguments struct {
 	Attributes     Attributes                 `alloy:"attributes,block,optional"`
 	Discovery      Discovery                  `alloy:"discovery,block,optional"`
 	Metrics        Metrics                    `alloy:"metrics,block,optional"`
+	Traces         Traces                     `alloy:"traces,block,optional"`
 	EBPF           EBPF                       `alloy:"ebpf,block,optional"`
 	Filters        Filters                    `alloy:"filters,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
@@ -74,14 +75,14 @@ type SamplerConfig struct {
 }
 
 type Service struct {
-	Name           string            `alloy:"name,attr,optional"`
-	Namespace      string            `alloy:"namespace,attr,optional"`
-	OpenPorts      string            `alloy:"open_ports,attr,optional"`
-	Path           string            `alloy:"exe_path,attr,optional"`
-	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
-	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
+	Name           string               `alloy:"name,attr,optional"`
+	Namespace      string               `alloy:"namespace,attr,optional"`
+	OpenPorts      string               `alloy:"open_ports,attr,optional"`
+	Path           string               `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService    `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool                 `alloy:"containers_only,attr,optional"`
 	ExportModes    services.ExportModes `alloy:"exports,attr,optional"`
-	Sampler        SamplerConfig     `alloy:"sampler,block,optional"`
+	Sampler        SamplerConfig        `alloy:"sampler,block,optional"`
 }
 
 type KubernetesService struct {
@@ -110,6 +111,11 @@ type Metrics struct {
 	Instrumentations                []string `alloy:"instrumentations,attr,optional"`
 	AllowServiceGraphSelfReferences bool     `alloy:"allow_service_graph_self_references,attr,optional"`
 	Network                         Network  `alloy:"network,block,optional"`
+}
+
+type Traces struct {
+	Instrumentations []string      `alloy:"instrumentations,attr,optional"`
+	Sampler          SamplerConfig `alloy:"sampler,block,optional"`
 }
 
 type Network struct {
