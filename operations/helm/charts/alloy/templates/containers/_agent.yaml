@@ -39,10 +39,11 @@
   envFrom:
     {{- toYaml $values.envFrom | nindent 4 }}
   {{- end }}
-  {{- if $values.enableContainerPort }}
   ports:
+    {{- if $values.enableHttpServerPort }}
     - containerPort: {{ $values.listenPort }}
       name: http-metrics
+    {{- end }}
     {{- range $portMap := $values.extraPorts }}
     - containerPort: {{ $portMap.targetPort }}
       {{- if $portMap.hostPort }}
@@ -51,6 +52,7 @@
       name: {{ $portMap.name }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
     {{- end }}
+  {{- if $values.enableHttpServerPort }}
   readinessProbe:
     httpGet:
       path: /-/ready

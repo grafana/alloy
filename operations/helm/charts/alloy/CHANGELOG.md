@@ -11,7 +11,7 @@ Unreleased
 ----------
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
-- Add option to not expose container port. (@kun98-liu)
+- Add option to not expose http server port. (@kun98-liu)
 
 ### Enhancements
 
