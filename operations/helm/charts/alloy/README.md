@@ -104,6 +104,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].minAllowed | object | `{}` | Defines the min allowed resources for the pod |
 | controller.autoscaling.vertical.updatePolicy | string | `nil` | Configures the update policy for the Vertical Pod Autoscaler. |
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
+| controller.dnsConfig | object | `{}` | Configures the DNS configurations including nameservers, search domains, and DNS options like ndots. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config |
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
 | controller.extraContainers | list | `[]` | Additional containers to run alongside the Alloy container and initContainers. |
