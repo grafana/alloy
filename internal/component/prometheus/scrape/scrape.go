@@ -138,6 +138,8 @@ type Arguments struct {
 	// If the growth factor of one bucket to the next is smaller than this,
 	// buckets will be merged to stay within the limit. Disabled when set zero.
 	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
+	// Whether the metric metadata should be passed to the downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -288,13 +290,22 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	var metadataStore prometheus.UpdateableMetadataStore
+	if args.HonorMetadata {
+		metadataStore = prometheus.NewMetadataStore()
+	} else {
+		metadataStore = prometheus.NoopMetadataStore{}
+	}
+
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
 	scrapeOptions := &scrape.Options{
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
+		// TODO: Check if this has performance implications.
+		AppendMetadata: args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
