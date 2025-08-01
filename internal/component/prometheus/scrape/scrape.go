@@ -461,7 +461,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
 			return fmt.Errorf("extra_metrics cannot be updated at runtime")
-		}			
+		}
 	}
 
 	c.args = newArgs
