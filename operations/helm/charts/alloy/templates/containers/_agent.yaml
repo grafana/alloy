@@ -18,6 +18,12 @@
     {{- if $values.clustering.name }}
     - --cluster.name={{ $values.clustering.name }}
     {{- end}}
+    {{- if $values.clustering.waitForSize }}
+    - --cluster.wait-for-size={{ $values.clustering.waitForSize }}
+    {{- end}}
+    {{- if $values.clustering.waitTimeout }}
+    - --cluster.wait-timeout={{ $values.clustering.waitTimeout }}
+    {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
     - --stability.level={{ $values.stabilityLevel }}
