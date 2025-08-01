@@ -2024,6 +2024,8 @@ github.com/onsi/gomega v1.34.2/go.mod h1:v1xfxRgk0KIsG+QOdm7p8UosrOzPYRo60fd3B/1
 github.com/onsi/gomega v1.35.1/go.mod h1:PvZbdDc8J6XJEpDK4HCuRBm8a6Fzp9/DmhC9C7yFlog=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.128.0 h1:+Wm1F0Gz2RkVCvp4TWfEeMCslmjsDFQSe0k1vnCPmt8=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.128.0/go.mod h1:hVnJYPLkDHptK19f2yE17iVQ1nxCUoLbAPLaUc5OA28=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/datadogconnector v0.128.0 h1:Gg96YrA/PDlOaaY1JvAUm2+ozf462JD/rqBckM23qdE=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/datadogconnector v0.128.0/go.mod h1:jqAEvMjbN7tp/YmMLoDu/1a3eOQLUD36d7256jzmyAA=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.128.0 h1:bMZiuK/oAL5aPjvDzLpiqTwHLd5pR1fst5XEM+c60uQ=
@@ -2844,6 +2846,8 @@ go.opentelemetry.io/collector/confmap/provider/fileprovider v1.34.0 h1:WyKwbPQAq
 go.opentelemetry.io/collector/confmap/provider/fileprovider v1.34.0/go.mod h1:8VwdaWn9Bl6hJY1/LZS6CrfZIM6pfH0rw5Xkm4davxM=
 go.opentelemetry.io/collector/confmap/provider/httpprovider v1.34.0 h1:XawpKhTVN4leN3j6yP0mc+XnN3h9YVnxIG4yD0N2XtU=
 go.opentelemetry.io/collector/confmap/provider/httpprovider v1.34.0/go.mod h1:oGVH9eaPiblF+434Da/p3BrJx1a3scsIcFnyN0NuGJo=
+go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.34.0 h1:H5vydOgiKVEnJneBiDlJfDohHaDjnrCQtPHGZ3D+/zg=
+go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.34.0/go.mod h1:tANXH2WiUkzQEy39uK56eVvB5ZiHzDfatjx4xVLsNbw=
 go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.35.0 h1:ISxrkHXQWlxLdifbn3/XciydQeWFEMygPr0oqeZpN0I=
 go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.35.0/go.mod h1:jmIxi1X2uD4lq4vJ30lmdQgiYs7UaiyzXr/86FX1b1E=
 go.opentelemetry.io/collector/confmap/xconfmap v0.128.0 h1:hcVKU45pjC+PLz7xUc8kwSlR5wsN2w8hs9midZ3ez10=

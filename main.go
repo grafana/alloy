@@ -1,10 +1,13 @@
 package main
 
 import (
+	"os"
+
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/cmd/otelcol"
 
 	// Register Prometheus SD components
 	_ "github.com/grafana/loki/v3/clients/pkg/promtail/discovery/consulagent"
@@ -32,5 +35,11 @@ func init() {
 }
 
 func main() {
+	// Check for OTEL_MODE environment variable
+	if otelMode := os.Getenv("OTEL_MODE"); otelMode == "true" {
+		otelcol.Main()
+		return
+	}
+
 	alloycli.Run()
 }

@@ -1034,6 +1034,16 @@ require (
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
 )
 
+require github.com/grafana/alloy/internal/cmd/otelcol v0.0.0-00010101000000-000000000000
+
+require (
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.128.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/envprovider v1.34.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.34.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/httpprovider v1.34.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.34.0 // indirect
+)
+
 // NOTE: replace directives below must always be *temporary*.
 //
 // Adding a replace directive to change a module to a fork of a module will
@@ -1099,6 +1109,8 @@ replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.202
 
 // Submodules.
 replace github.com/grafana/alloy/syntax => ./syntax
+
+replace github.com/grafana/alloy/internal/cmd/otelcol => ./internal/cmd/otelcol
 
 // Add exclude directives so Go doesn't pick old incompatible k8s.io/client-go
 // versions.
