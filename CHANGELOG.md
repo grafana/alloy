@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Add support of `tls_config` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
