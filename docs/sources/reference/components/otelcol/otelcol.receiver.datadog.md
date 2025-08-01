@@ -41,7 +41,7 @@ otelcol.receiver.datadog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.datadog`:
 
 | Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
@@ -57,7 +57,7 @@ To expose the HTTP server to other machines on your network, configure `endpoint
 You can use the following blocks with `otelcol.receiver.datadog`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
@@ -75,7 +75,7 @@ For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -86,7 +86,7 @@ The `cors` block configures CORS settings for an HTTP server.
 The following arguments are supported:
 
 | Name              | Type           | Description                                              | Default                | Required |
-| ----------------- | -------------- | -------------------------------------------------------- | ---------------------- | -------- |
+|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
 | `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no       |
 | `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
 | `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no       |

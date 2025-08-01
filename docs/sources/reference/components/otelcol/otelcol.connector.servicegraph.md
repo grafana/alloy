@@ -59,7 +59,7 @@ otelcol.connector.servicegraph "<LABEL>" {
 You can use the following arguments with `otelcol.connector.servicegraph`:
 
 | Name                        | Type             | Description                                                                              | Default                                                                                                                      | Required |
-| --------------------------- | ---------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
+|-----------------------------|------------------|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|----------|
 | `cache_loop`                | `duration`       | Configures how often to delete series which have not been updated.                       | `"1m"`                                                                                                                       | no       |
 | `database_name_attribute`   | `string`         | (Deprecated) The attribute name used to identify the database name from span attributes. | `"db.name"`                                                                                                                  | no       |
 | `database_name_attributes`  | `list(string)`   | The list of attribute names used to identify the database name from span attributes.     | `["db.name"]`                                                                                                                | no       |
@@ -85,7 +85,7 @@ Every span which can be paired up to form a request is kept in an in-memory stor
 The following metrics are emitted by the processor:
 
 | Metric                                      | Type      | Labels                                | Description                                                               |
-| ------------------------------------------- | --------- | ------------------------------------- | ------------------------------------------------------------------------- |
+|---------------------------------------------|-----------|---------------------------------------|---------------------------------------------------------------------------|
 | `traces_service_graph_dropped_spans_total`  | Counter   | `client`, `server`, `connection_type` | Total count of dropped spans                                              |
 | `traces_service_graph_request_client`       | Histogram | `client`, `server`, `connection_type` | Number of seconds for a request between two nodes as seen from the client |
 | `traces_service_graph_request_failed_total` | Counter   | `client`, `server`, `connection_type` | Total count of failed requests between two nodes                          |
@@ -120,7 +120,7 @@ The attributes in `database_name_attributes` are tried in order, selecting the f
 You can use the following blocks with `otelcol.connector.servicegraph`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send telemetry data.                                   | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`store`][store]                 | Configures the in-memory store for spans.                                  | no       |
@@ -131,7 +131,7 @@ You can use the following blocks with `otelcol.connector.servicegraph`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -144,7 +144,7 @@ You can use the following blocks with `otelcol.connector.servicegraph`:
 The `store` block configures the in-memory store for spans.
 
 | Name        | Type       | Description                                   | Default | Required |
-| ----------- | ---------- | --------------------------------------------- | ------- | -------- |
+|-------------|------------|-----------------------------------------------|---------|----------|
 | `max_items` | `number`   | Maximum number of items to keep in the store. | `1000`  | no       |
 | `ttl`       | `duration` | The time to live for spans in the store.      | `"2s"`  | no       |
 
@@ -153,7 +153,7 @@ The `store` block configures the in-memory store for spans.
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` traces telemetry data.
