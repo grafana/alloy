@@ -244,13 +244,14 @@ The `services` block configures the services to discover for the component.
 The `exclude_services` block configures the services to exclude for the component.
 The `survey` block configures the services that the component will emit information for.
 
-| Name              | Type     | Description                                                                     | Default | Required |
-|-------------------|----------|---------------------------------------------------------------------------------|---------|----------|
-| `name`            | `string` | The name of the service to match.                                               | `""`    | no       |
-| `namespace`       | `string` | The namespace of the service to match.                                          | `""`    | no       |
-| `open_ports`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `exe_path`        | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `containers_only` | `bool`   | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
+| Name              | Type           | Description                                                                     | Default | Required |
+|-------------------|----------------|---------------------------------------------------------------------------------|---------|----------|
+| `name`            | `string`       | The name of the service to match.                                               | `""`    | no       |
+| `namespace`       | `string`       | The namespace of the service to match.                                          | `""`    | no       |
+| `open_ports`      | `string`       | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `exe_path`        | `string`       | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `containers_only` | `bool`         | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
+| `exports`         | `list(string)` | Export modes for the service. Valid values: `"metrics"`, `"traces"`.            | `[]`    | no       |
 
 `exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
 
@@ -259,6 +260,8 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
+
+`exports` specifies what types of telemetry data to export for the matching service. You can specify `"metrics"`, `"traces"`, or both. If empty, the service will export both metrics and traces by default.
 
 If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
 This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
