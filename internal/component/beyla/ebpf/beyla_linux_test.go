@@ -13,12 +13,13 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
-	"github.com/grafana/beyla/v2/pkg/export/attributes"
-	"github.com/grafana/beyla/v2/pkg/export/debug"
-	"github.com/grafana/beyla/v2/pkg/filter"
-	"github.com/grafana/beyla/v2/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/grafana/beyla/v2/pkg/services"
-	"github.com/grafana/beyla/v2/pkg/transform"
+	"github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-kit/log"

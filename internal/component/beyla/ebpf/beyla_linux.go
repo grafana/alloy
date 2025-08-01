@@ -9,20 +9,20 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"regexp"
 	"sync"
 	"time"
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
-	"github.com/grafana/beyla/v2/pkg/export/attributes"
-	"github.com/grafana/beyla/v2/pkg/export/debug"
-	"github.com/grafana/beyla/v2/pkg/export/prom"
-	"github.com/grafana/beyla/v2/pkg/filter"
-	"github.com/grafana/beyla/v2/pkg/kubeflags"
-	"github.com/grafana/beyla/v2/pkg/services"
-	"github.com/grafana/beyla/v2/pkg/transform"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/prom"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -113,7 +113,7 @@ func (args Selections) Convert() attributes.Selection {
 	return s
 }
 
-func (args Discovery) Convert() (services.DiscoveryConfig, error) {
+func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
 
 	// Services
@@ -664,14 +664,11 @@ func (args *Arguments) Validate() error {
 }
 
 func stringToRegexpAttr(s string) (services.RegexpAttr, error) {
-	if s == "" {
-		return services.RegexpAttr{}, nil
-	}
-	re, err := regexp.Compile(s)
-	if err != nil {
+	var attr services.RegexpAttr
+	if err := attr.UnmarshalText([]byte(s)); err != nil {
 		return services.RegexpAttr{}, err
 	}
-	return services.NewPathRegexp(re), nil
+	return attr, nil
 }
 
 func stringToGlobAttr(s string) (services.GlobAttr, error) {
