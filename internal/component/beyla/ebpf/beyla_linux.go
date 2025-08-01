@@ -72,8 +72,6 @@ const (
 	SamplerParentBasedTraceIDRatio = "parentbased_traceidratio"
 )
 
-// validInstrumentations contains the list of valid instrumentation values
-// that can be used in both metrics and traces configurations
 var validInstrumentations = map[string]struct{}{
 	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
 }
@@ -92,7 +90,6 @@ func (args Routes) Convert() *transform.RoutesConfig {
 	return routes
 }
 
-// Validate validates the sampler configuration
 func (args SamplerConfig) Validate() error {
 	if args.Name == "" {
 		return nil // Empty name is valid, will use default
