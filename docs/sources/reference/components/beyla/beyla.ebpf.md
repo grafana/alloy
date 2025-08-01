@@ -76,6 +76,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no       |
 | `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no       |
 | `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no       |
+| `discovery` > `services` > [`sampler`][sampler]                        | Configures trace sampling for the service.                                                         | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
@@ -95,6 +96,7 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 [kubernetes services]: #kubernetes-services
 [discovery]: #discovery
 [services]: #services
+[sampler]: #sampler
 [instance_id]: #instance_id
 [select]: #select
 [ebpf]: #ebpf
@@ -307,6 +309,40 @@ beyla.ebpf "default" {
     exclude_services {
       kubernetes {
         namespace = "kube-system"
+      }
+    }
+  }
+}
+```
+
+#### `sampler`
+
+The `sampler` block configures trace sampling for the matching service. This allows you to control the rate at which traces are sampled and exported.
+
+| Name   | Type     | Description                                                             | Default | Required |
+|--------|----------|-------------------------------------------------------------------------|---------|----------|
+| `name` | `string` | The name of the sampling strategy to use.                              | `""`    | no       |
+| `arg`  | `string` | The argument for the sampling strategy (e.g., sampling ratio for traceidratio). | `""`    | no       |
+
+The following sampling strategies are supported:
+
+* `traceidratio`: Samples traces based on a ratio of trace IDs. The `arg` should be a decimal value between 0 and 1 (e.g., "0.1" for 10% sampling).
+* `always_on`: Always samples traces. No `arg` required.
+* `always_off`: Never samples traces. No `arg` required.
+* `parentbased_always_on`: Uses parent-based sampling that always samples when there's no parent span. This is the default behavior.
+* `parentbased_always_off`: Uses parent-based sampling that never samples when there's no parent span.
+* `parentbased_traceidratio`: Uses parent-based sampling with trace ID ratio-based sampling for root spans. The `arg` should be a decimal value between 0 and 1.
+
+Example:
+
+```alloy
+beyla.ebpf "default" {
+  discovery {
+    services {
+      open_ports = "8080"
+      sampler {
+        name = "traceidratio"
+        arg = "0.1"  // 10% sampling rate
       }
     }
   }

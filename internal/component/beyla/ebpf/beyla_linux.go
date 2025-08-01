@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"sync"
 	"time"
 
@@ -73,6 +74,60 @@ func (args Routes) Convert() *transform.RoutesConfig {
 		routes.WildcardChar = args.WildcardChar
 	}
 	return routes
+}
+
+// Validate validates the sampler configuration
+func (args SamplerConfig) Validate() error {
+	if args.Name == "" {
+		return nil // Empty name is valid, will use default
+	}
+
+	validSamplers := map[string]bool{
+		"always_on":                true,
+		"always_off":               true,
+		"traceidratio":             true,
+		"parentbased_always_on":    true,
+		"parentbased_always_off":   true,
+		"parentbased_traceidratio": true,
+	}
+
+	if !validSamplers[args.Name] {
+		return fmt.Errorf("invalid sampler name %q. Valid values are: always_on, always_off, traceidratio, parentbased_always_on, parentbased_always_off, parentbased_traceidratio", args.Name)
+	}
+
+	// Validate arg for ratio-based samplers
+	if args.Name == "traceidratio" || args.Name == "parentbased_traceidratio" {
+		if args.Arg == "" {
+			return fmt.Errorf("sampler %q requires an arg parameter with a ratio value between 0 and 1", args.Name)
+		}
+
+		ratio, err := strconv.ParseFloat(args.Arg, 64)
+		if err != nil {
+			return fmt.Errorf("invalid arg %q for sampler %q: must be a valid decimal number", args.Arg, args.Name)
+		}
+
+		if ratio < 0 || ratio > 1 {
+			return fmt.Errorf("invalid arg %q for sampler %q: ratio must be between 0 and 1 (inclusive)", args.Arg, args.Name)
+		}
+	}
+
+	return nil
+}
+
+func (args SamplerConfig) Convert() services.SamplerConfig {
+	// Validate the sampler config and return default if invalid
+	if err := args.Validate(); err != nil {
+		// Log the validation error and fall back to default
+		return services.SamplerConfig{
+			Name: "parentbased_always_on",
+			Arg:  "",
+		}
+	}
+
+	return services.SamplerConfig{
+		Name: args.Name,
+		Arg:  args.Arg,
+	}
 }
 
 func (args Attributes) Convert() beyla.Attributes {
@@ -205,6 +260,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			return nil, err
 		}
 
+		samplerConfig := s.Sampler.Convert()
 		attrs = append(attrs, services.RegexSelector{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -215,6 +271,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
 			ExportModes:    s.ExportModes,
+			SamplerConfig:  &samplerConfig,
 		})
 	}
 	return attrs, nil
@@ -233,6 +290,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			return nil, err
 		}
 
+		samplerConfig := s.Sampler.Convert()
 		attrs = append(attrs, services.GlobAttributes{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -243,6 +301,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
 			ExportModes:    s.ExportModes,
+			SamplerConfig:  &samplerConfig,
 		})
 	}
 	return attrs, nil
@@ -662,6 +721,14 @@ func (args *Arguments) Validate() error {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
+
+	// Validate sampler configurations in services
+	for i, service := range args.Discovery.Services {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
+		}
+	}
+
 	return nil
 }
 

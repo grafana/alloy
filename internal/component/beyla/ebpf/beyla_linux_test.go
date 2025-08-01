@@ -62,6 +62,10 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 					namespace = "default"
 				}
 				exports = ["metrics", "traces"]
+				sampler {
+					name = "traceidratio"
+					arg = "0.5"
+				}
 			}
 			services {
 				name = "test2"
@@ -159,6 +163,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportMetrics))
+	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Services[0].SamplerConfig)
 	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
 	require.Len(t, cfg.Discovery.ExcludeServices, 1)
 	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
@@ -447,6 +454,198 @@ func TestConvert_Routes(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
+func TestConvert_SamplerConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     SamplerConfig
+		expected services.SamplerConfig
+	}{
+		{
+			name: "with name and arg",
+			args: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.5",
+			},
+			expected: services.SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.5",
+			},
+		},
+		{
+			name: "empty config",
+			args: SamplerConfig{},
+			expected: services.SamplerConfig{
+				Name: "",
+				Arg:  "",
+			},
+		},
+		{
+			name: "only name",
+			args: SamplerConfig{
+				Name: "always_on",
+			},
+			expected: services.SamplerConfig{
+				Name: "always_on",
+				Arg:  "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tt.args.Convert()
+			require.Equal(t, tt.expected, config)
+		})
+	}
+}
+
+func TestSamplerConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      SamplerConfig
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "empty config is valid",
+			config: SamplerConfig{},
+			expectError: false,
+		},
+		{
+			name: "valid always_on",
+			config: SamplerConfig{
+				Name: "always_on",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid always_off",
+			config: SamplerConfig{
+				Name: "always_off",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid traceidratio with arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.1",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_always_on",
+			config: SamplerConfig{
+				Name: "parentbased_always_on",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_always_off",
+			config: SamplerConfig{
+				Name: "parentbased_always_off",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_traceidratio with arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+				Arg:  "0.5",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid sampler name",
+			config: SamplerConfig{
+				Name: "invalid_sampler",
+			},
+			expectError: true,
+			errorMsg:    "invalid sampler name",
+		},
+		{
+			name: "traceidratio without arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+			},
+			expectError: true,
+			errorMsg:    "requires an arg parameter",
+		},
+		{
+			name: "parentbased_traceidratio without arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+			},
+			expectError: true,
+			errorMsg:    "requires an arg parameter",
+		},
+		{
+			name: "traceidratio with invalid arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "invalid",
+			},
+			expectError: true,
+			errorMsg:    "must be a valid decimal number",
+		},
+		{
+			name: "traceidratio with negative ratio",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "-0.1",
+			},
+			expectError: true,
+			errorMsg:    "ratio must be between 0 and 1",
+		},
+		{
+			name: "traceidratio with ratio > 1",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "1.5",
+			},
+			expectError: true,
+			errorMsg:    "ratio must be between 0 and 1",
+		},
+		{
+			name: "parentbased_traceidratio with invalid arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+				Arg:  "not_a_number",
+			},
+			expectError: true,
+			errorMsg:    "must be a valid decimal number",
+		},
+		{
+			name: "traceidratio with boundary values - 0",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0",
+			},
+			expectError: false,
+		},
+		{
+			name: "traceidratio with boundary values - 1",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "1",
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestConvert_Attributes(t *testing.T) {
 	args := Attributes{
 		Kubernetes: KubernetesDecorator{
@@ -499,6 +698,10 @@ func TestConvert_Discovery(t *testing.T) {
 				OpenPorts:      "80",
 				ContainersOnly: true,
 				ExportModes:    services.ExportModes{services.ExportMetrics},
+				Sampler: SamplerConfig{
+					Arg:  "0.5",
+					Name: "traceidratio",
+				},
 			},
 			{
 				Kubernetes: KubernetesService{
@@ -538,6 +741,7 @@ func TestConvert_Discovery(t *testing.T) {
 	require.True(t, config.Services[0].ContainersOnly)
 	require.True(t, config.Services[0].ExportModes.CanExport(services.ExportMetrics))
 	require.False(t, config.Services[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Services[0].SamplerConfig)
 	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
 	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]

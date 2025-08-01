@@ -68,14 +68,20 @@ type Selection struct {
 
 type Services []Service
 
+type SamplerConfig struct {
+	Name string `alloy:"name,attr,optional"`
+	Arg  string `alloy:"arg,attr,optional"`
+}
+
 type Service struct {
-	Name           string               `alloy:"name,attr,optional"`
-	Namespace      string               `alloy:"namespace,attr,optional"`
-	OpenPorts      string               `alloy:"open_ports,attr,optional"`
-	Path           string               `alloy:"exe_path,attr,optional"`
-	Kubernetes     KubernetesService    `alloy:"kubernetes,block,optional"`
-	ContainersOnly bool                 `alloy:"containers_only,attr,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 	ExportModes    services.ExportModes `alloy:"exports,attr,optional"`
+	Sampler        SamplerConfig     `alloy:"sampler,block,optional"`
 }
 
 type KubernetesService struct {
