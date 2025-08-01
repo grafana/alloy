@@ -63,6 +63,21 @@ type Component struct {
 
 var _ component.HealthComponent = (*Component)(nil)
 
+const (
+	SamplerAlwaysOn                = "always_on"
+	SamplerAlwaysOff               = "always_off"
+	SamplerTraceIDRatio            = "traceidratio"
+	SamplerParentBasedAlwaysOn     = "parentbased_always_on"
+	SamplerParentBasedAlwaysOff    = "parentbased_always_off"
+	SamplerParentBasedTraceIDRatio = "parentbased_traceidratio"
+)
+
+// validInstrumentations contains the list of valid instrumentation values
+// that can be used in both metrics and traces configurations
+var validInstrumentations = map[string]struct{}{
+	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
+}
+
 func (args Routes) Convert() *transform.RoutesConfig {
 	routes := beyla.DefaultConfig.Routes
 	if args.Unmatch != "" {
@@ -84,20 +99,22 @@ func (args SamplerConfig) Validate() error {
 	}
 
 	validSamplers := map[string]bool{
-		"always_on":                true,
-		"always_off":               true,
-		"traceidratio":             true,
-		"parentbased_always_on":    true,
-		"parentbased_always_off":   true,
-		"parentbased_traceidratio": true,
+		SamplerAlwaysOn:                true,
+		SamplerAlwaysOff:               true,
+		SamplerTraceIDRatio:            true,
+		SamplerParentBasedAlwaysOn:     true,
+		SamplerParentBasedAlwaysOff:    true,
+		SamplerParentBasedTraceIDRatio: true,
 	}
 
 	if !validSamplers[args.Name] {
-		return fmt.Errorf("invalid sampler name %q. Valid values are: always_on, always_off, traceidratio, parentbased_always_on, parentbased_always_off, parentbased_traceidratio", args.Name)
+		return fmt.Errorf("invalid sampler name %q. Valid values are: %s, %s, %s, %s, %s, %s", args.Name,
+			SamplerAlwaysOn, SamplerAlwaysOff, SamplerTraceIDRatio,
+			SamplerParentBasedAlwaysOn, SamplerParentBasedAlwaysOff, SamplerParentBasedTraceIDRatio)
 	}
 
 	// Validate arg for ratio-based samplers
-	if args.Name == "traceidratio" || args.Name == "parentbased_traceidratio" {
+	if args.Name == SamplerTraceIDRatio || args.Name == SamplerParentBasedTraceIDRatio {
 		if args.Arg == "" {
 			return fmt.Errorf("sampler %q requires an arg parameter with a ratio value between 0 and 1", args.Name)
 		}
@@ -120,7 +137,7 @@ func (args SamplerConfig) Convert() services.SamplerConfig {
 	if err := args.Validate(); err != nil {
 		// Log the validation error and fall back to default
 		return services.SamplerConfig{
-			Name: "parentbased_always_on",
+			Name: SamplerParentBasedAlwaysOn,
 			Arg:  "",
 		}
 	}
@@ -391,7 +408,8 @@ func (args Metrics) hasNetworkFeature() bool {
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
-		case "application", "application_host", "application_span", "application_service_graph", "application_process":
+		case "application", "application_host", "application_span", "application_service_graph",
+			"application_process", "application_span_otel", "application_span_sizes":
 			return true
 		}
 	}
@@ -399,9 +417,6 @@ func (args Metrics) hasAppFeature() bool {
 }
 
 func (args Metrics) Validate() error {
-	validInstrumentations := map[string]struct{}{
-		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
-	}
 	for _, instrumentation := range args.Instrumentations {
 		if _, ok := validInstrumentations[instrumentation]; !ok {
 			return fmt.Errorf("metrics.instrumentations: invalid value %q", instrumentation)
@@ -737,7 +752,6 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	// Validate sampler configurations in services
 	for i, service := range args.Discovery.Services {
 		if err := service.Sampler.Validate(); err != nil {
 			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
@@ -772,9 +786,6 @@ func (args Traces) Convert(consumers []otelcol.Consumer) beyla.TracesReceiverCon
 }
 
 func (args Traces) Validate() error {
-	validInstrumentations := map[string]struct{}{
-		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
-	}
 	for _, instrumentation := range args.Instrumentations {
 		if _, ok := validInstrumentations[instrumentation]; !ok {
 			return fmt.Errorf("traces.instrumentations: invalid value %q", instrumentation)
