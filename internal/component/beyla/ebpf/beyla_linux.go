@@ -409,7 +409,8 @@ func (args Metrics) Validate() error {
 	}
 
 	validFeatures := map[string]struct{}{
-		"application": {}, "application_span": {}, "application_host": {},
+		"application": {}, "application_span": {}, "application_span_otel": {},
+		"application_span_sizes": {}, "application_host": {},
 		"application_service_graph": {}, "application_process": {},
 		"network": {}, "network_inter_zone": {},
 	}

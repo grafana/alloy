@@ -530,6 +530,8 @@ The `metrics` block configures which metrics Beyla collects.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
 * `application_span` exports application-level metrics in traces span metrics format.
+* `application_span_otel` exports OpenTelemetry-compatible span metrics.
+* `application_span_sizes` exports span size metrics for trace analysis.
 * `application_host` exports application-level host metrics for host-based pricing.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
