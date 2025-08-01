@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Expand `extraObjects` to have more flexibility in templating (@TheRealNoob)
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
 
