@@ -356,7 +356,13 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ```
 
-4. Create a dedicated DB user and grant permissions.
+4. Verify that the extension is enabled.
+
+```sql
+SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
+```
+
+5. Create a dedicated DB user and grant permissions.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -364,7 +370,7 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-5. Verify that the user has been properly created.
+6. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
