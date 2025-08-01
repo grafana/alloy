@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/common-tls-config-block/
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/server-tls-config-block/
 description: Shared content, tls config block
 headless: true
 ---
