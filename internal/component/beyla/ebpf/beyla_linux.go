@@ -15,14 +15,14 @@ import (
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/prom"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
-	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -214,6 +214,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
+			ExportModes:    s.ExportModes,
 		})
 	}
 	return attrs, nil
@@ -241,6 +242,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
+			ExportModes:    s.ExportModes,
 		})
 	}
 	return attrs, nil

@@ -17,9 +17,8 @@ import (
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
 	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
-	"github.com/grafana/beyla/v2/pkg/services"
-	"github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-kit/log"
@@ -62,6 +61,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				kubernetes {
 					namespace = "default"
 				}
+				exports = ["metrics", "traces"]
 			}
 			services {
 				name = "test2"
@@ -72,6 +72,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 						test = "test",
 					}
 				}
+				exports = ["metrics"]
 			}
 			exclude_services {
 				exe_path = "test3"
@@ -255,7 +256,7 @@ func TestArguments_ValidationErrors(t *testing.T) {
 					features = ["application"]
 				}
 			`,
-			wantErr: "error parsing regexp: missing closing ]: `[`",
+			wantErr: "invalid regular expression \"[\": error parsing regexp: missing closing ]: `[`",
 		},
 		{
 			name: "invalid port range",
@@ -279,6 +280,148 @@ func TestArguments_ValidationErrors(t *testing.T) {
 			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
 			_, err := args.Convert()
 			require.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestArguments_InvalidExportModes(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "invalid selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["foo"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "empty selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = [""]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "one invalid selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics", "not traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			require.Error(t, syntax.Unmarshal([]byte(tt.config), &args))
+		})
+	}
+}
+
+func TestArguments_ValidExportModes(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "empty selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = []
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "traces",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "metrics",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "metrics and traces",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics", "traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "traces and metrics",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["traces", "metrics"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
 		})
 	}
 }
@@ -355,6 +498,7 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
+				ExportModes:    services.ExportModes{services.ExportMetrics},
 			},
 			{
 				Kubernetes: KubernetesService{
@@ -392,6 +536,8 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
 	require.True(t, config.Services[0].ContainersOnly)
+	require.True(t, config.Services[0].ExportModes.CanExport(services.ExportMetrics))
+	require.False(t, config.Services[0].ExportModes.CanExport(services.ExportTraces))
 	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
 	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]

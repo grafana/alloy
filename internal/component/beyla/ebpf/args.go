@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
 )
 
 // Arguments configures the Beyla component.
@@ -68,12 +69,13 @@ type Selection struct {
 type Services []Service
 
 type Service struct {
-	Name           string            `alloy:"name,attr,optional"`
-	Namespace      string            `alloy:"namespace,attr,optional"`
-	OpenPorts      string            `alloy:"open_ports,attr,optional"`
-	Path           string            `alloy:"exe_path,attr,optional"`
-	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
-	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
+	Name           string               `alloy:"name,attr,optional"`
+	Namespace      string               `alloy:"namespace,attr,optional"`
+	OpenPorts      string               `alloy:"open_ports,attr,optional"`
+	Path           string               `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService    `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool                 `alloy:"containers_only,attr,optional"`
+	ExportModes    services.ExportModes `alloy:"exports,attr,optional"`
 }
 
 type KubernetesService struct {
