@@ -76,7 +76,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		receivers:          args.ForwardTo,
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 	}
-	opts.Registerer.MustRegister(c.uncheckedCollector)
+	util.MustRegisterOrGet(opts.Registerer, c.uncheckedCollector)
 	err := c.Update(args)
 	if err != nil {
 		return nil, err

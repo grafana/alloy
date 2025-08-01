@@ -70,7 +70,7 @@ type Component struct {
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
-	opts.Registerer.MustRegister(uncheckedCollector)
+	util.MustRegisterOrGet(opts.Registerer, uncheckedCollector)
 
 	c := &Component{
 		opts:               opts,

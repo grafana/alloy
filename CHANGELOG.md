@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
+- Use MustRegisterOrGet to avoid panics during component reevaluations. (@dehaansa)
+
 v1.10.0
 -----------------
 

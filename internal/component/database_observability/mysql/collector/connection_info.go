@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 )
@@ -38,7 +39,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Help:      "Information about the connection",
 	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine"})
 
-	args.Registry.MustRegister(infoMetric)
+	util.MustRegisterOrGet(args.Registry, infoMetric)
 
 	return &ConnectionInfo{
 		DSN:        args.DSN,
