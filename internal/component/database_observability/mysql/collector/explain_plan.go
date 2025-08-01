@@ -45,8 +45,6 @@ const selectDigestsForExplainPlan = `
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
-const selectDBSchemaVersion = `SELECT VERSION()`
-
 type explainPlanOutputOperation string
 
 const (
@@ -462,6 +460,7 @@ type ExplainPlanArguments struct {
 	PerScrapeRatio  float64
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
+	DBVersion       string
 
 	Logger log.Logger
 }
@@ -484,20 +483,10 @@ type ExplainPlan struct {
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	rs := args.DB.QueryRowContext(context.Background(), selectDBSchemaVersion)
-	if rs.Err() != nil {
-		return nil, rs.Err()
-	}
-
-	var dbVersion string
-	if err := rs.Scan(&dbVersion); err != nil {
-		return nil, err
-	}
-
 	return &ExplainPlan{
 		dbConnection:   args.DB,
 		instanceKey:    args.InstanceKey,
-		dbVersion:      dbVersion,
+		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make([]queryInfo, 0),
 		perScrapeRatio: args.PerScrapeRatio,
