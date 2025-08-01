@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/jmespath/go-jmespath"
+	"github.com/jmespath-community/go-jmespath"
 	json "github.com/json-iterator/go"
 )
 
