@@ -24,6 +24,8 @@ v1.10.1
 
 - Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
+- Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
+
 v1.10.0
 -----------------
 
