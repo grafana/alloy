@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Upgrade `beyla.ebpf` to version Beyla v2.5.4 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.4) (@marctc)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)

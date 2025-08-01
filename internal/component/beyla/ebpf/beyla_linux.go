@@ -9,20 +9,22 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
-	"github.com/grafana/beyla/v2/pkg/export/attributes"
-	"github.com/grafana/beyla/v2/pkg/export/debug"
-	"github.com/grafana/beyla/v2/pkg/export/prom"
-	"github.com/grafana/beyla/v2/pkg/filter"
-	"github.com/grafana/beyla/v2/pkg/kubeflags"
-	"github.com/grafana/beyla/v2/pkg/services"
-	"github.com/grafana/beyla/v2/pkg/transform"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/prom"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -61,6 +63,19 @@ type Component struct {
 
 var _ component.HealthComponent = (*Component)(nil)
 
+const (
+	SamplerAlwaysOn                = "always_on"
+	SamplerAlwaysOff               = "always_off"
+	SamplerTraceIDRatio            = "traceidratio"
+	SamplerParentBasedAlwaysOn     = "parentbased_always_on"
+	SamplerParentBasedAlwaysOff    = "parentbased_always_off"
+	SamplerParentBasedTraceIDRatio = "parentbased_traceidratio"
+)
+
+var validInstrumentations = map[string]struct{}{
+	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
+}
+
 func (args Routes) Convert() *transform.RoutesConfig {
 	routes := beyla.DefaultConfig.Routes
 	if args.Unmatch != "" {
@@ -73,6 +88,61 @@ func (args Routes) Convert() *transform.RoutesConfig {
 		routes.WildcardChar = args.WildcardChar
 	}
 	return routes
+}
+
+func (args SamplerConfig) Validate() error {
+	if args.Name == "" {
+		return nil // Empty name is valid, will use default
+	}
+
+	validSamplers := map[string]bool{
+		SamplerAlwaysOn:                true,
+		SamplerAlwaysOff:               true,
+		SamplerTraceIDRatio:            true,
+		SamplerParentBasedAlwaysOn:     true,
+		SamplerParentBasedAlwaysOff:    true,
+		SamplerParentBasedTraceIDRatio: true,
+	}
+
+	if !validSamplers[args.Name] {
+		return fmt.Errorf("invalid sampler name %q. Valid values are: %s, %s, %s, %s, %s, %s", args.Name,
+			SamplerAlwaysOn, SamplerAlwaysOff, SamplerTraceIDRatio,
+			SamplerParentBasedAlwaysOn, SamplerParentBasedAlwaysOff, SamplerParentBasedTraceIDRatio)
+	}
+
+	// Validate arg for ratio-based samplers
+	if args.Name == SamplerTraceIDRatio || args.Name == SamplerParentBasedTraceIDRatio {
+		if args.Arg == "" {
+			return fmt.Errorf("sampler %q requires an arg parameter with a ratio value between 0 and 1", args.Name)
+		}
+
+		ratio, err := strconv.ParseFloat(args.Arg, 64)
+		if err != nil {
+			return fmt.Errorf("invalid arg %q for sampler %q: must be a valid decimal number", args.Arg, args.Name)
+		}
+
+		if ratio < 0 || ratio > 1 {
+			return fmt.Errorf("invalid arg %q for sampler %q: ratio must be between 0 and 1 (inclusive)", args.Arg, args.Name)
+		}
+	}
+
+	return nil
+}
+
+func (args SamplerConfig) Convert() services.SamplerConfig {
+	// Validate the sampler config and return default if invalid
+	if err := args.Validate(); err != nil {
+		// Log the validation error and fall back to default
+		return services.SamplerConfig{
+			Name: SamplerParentBasedAlwaysOn,
+			Arg:  "",
+		}
+	}
+
+	return services.SamplerConfig{
+		Name: args.Name,
+		Arg:  args.Arg,
+	}
 }
 
 func (args Attributes) Convert() beyla.Attributes {
@@ -113,7 +183,7 @@ func (args Selections) Convert() attributes.Selection {
 	return s
 }
 
-func (args Discovery) Convert() (services.DiscoveryConfig, error) {
+func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
 
 	// Services
@@ -205,6 +275,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			return nil, err
 		}
 
+		samplerConfig := s.Sampler.Convert()
 		attrs = append(attrs, services.RegexSelector{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -214,6 +285,8 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
+			ExportModes:    s.ExportModes,
+			SamplerConfig:  &samplerConfig,
 		})
 	}
 	return attrs, nil
@@ -232,6 +305,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			return nil, err
 		}
 
+		samplerConfig := s.Sampler.Convert()
 		attrs = append(attrs, services.GlobAttributes{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -241,6 +315,8 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
+			ExportModes:    s.ExportModes,
+			SamplerConfig:  &samplerConfig,
 		})
 	}
 	return attrs, nil
@@ -329,7 +405,8 @@ func (args Metrics) hasNetworkFeature() bool {
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
-		case "application", "application_host", "application_span", "application_service_graph", "application_process":
+		case "application", "application_host", "application_span", "application_service_graph",
+			"application_process", "application_span_otel", "application_span_sizes":
 			return true
 		}
 	}
@@ -337,9 +414,6 @@ func (args Metrics) hasAppFeature() bool {
 }
 
 func (args Metrics) Validate() error {
-	validInstrumentations := map[string]struct{}{
-		"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {},
-	}
 	for _, instrumentation := range args.Instrumentations {
 		if _, ok := validInstrumentations[instrumentation]; !ok {
 			return fmt.Errorf("metrics.instrumentations: invalid value %q", instrumentation)
@@ -347,7 +421,8 @@ func (args Metrics) Validate() error {
 	}
 
 	validFeatures := map[string]struct{}{
-		"application": {}, "application_span": {}, "application_host": {},
+		"application": {}, "application_span": {}, "application_span_otel": {},
+		"application_span_sizes": {}, "application_host": {},
 		"application_service_graph": {}, "application_process": {},
 		"network": {}, "network_inter_zone": {},
 	}
@@ -592,9 +667,11 @@ func (c *Component) Handler() http.Handler {
 func (a *Arguments) Convert() (*beyla.Config, error) {
 	var err error
 	cfg := beyla.DefaultConfig
+
 	if a.Output != nil {
-		cfg.TracesReceiver = convertTraceConsumers(a.Output.Traces)
+		cfg.TracesReceiver = a.Traces.Convert(a.Output.Traces)
 	}
+
 	cfg.Routes = a.Routes.Convert()
 	cfg.Attributes = a.Attributes.Convert()
 	cfg.Discovery, err = a.Discovery.Convert()
@@ -639,6 +716,17 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 
+	if err := args.Traces.Validate(); err != nil {
+		return err
+	}
+
+	// If traces block is defined with instrumentations, output section must be defined
+	if len(args.Traces.Instrumentations) > 0 || args.Traces.Sampler.Name != "" {
+		if args.Output == nil {
+			return fmt.Errorf("traces block is defined but output section is missing. When using traces configuration, you must define an output block")
+		}
+	}
+
 	if hasAppFeature {
 		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
 			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
@@ -660,18 +748,61 @@ func (args *Arguments) Validate() error {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
+
+	for i, service := range args.Discovery.Services {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (args Traces) Convert(consumers []otelcol.Consumer) beyla.TracesReceiverConfig {
+	// Convert the OTEL consumers
+	convertedConsumers := make([]beyla.Consumer, len(consumers))
+	for i, trace := range consumers {
+		convertedConsumers[i] = trace
+	}
+
+	config := beyla.TracesReceiverConfig{
+		Traces: convertedConsumers,
+	}
+
+	if len(args.Instrumentations) == 0 {
+		config.Instrumentations = []string{
+			instrumentations.InstrumentationALL,
+		}
+	} else {
+		config.Instrumentations = args.Instrumentations
+	}
+	if args.Sampler.Name != "" || args.Sampler.Arg != "" {
+		config.Sampler = args.Sampler.Convert()
+	}
+	return config
+}
+
+func (args Traces) Validate() error {
+	for _, instrumentation := range args.Instrumentations {
+		if _, ok := validInstrumentations[instrumentation]; !ok {
+			return fmt.Errorf("traces.instrumentations: invalid value %q", instrumentation)
+		}
+	}
+
+	// Validate the global sampler config
+	if err := args.Sampler.Validate(); err != nil {
+		return fmt.Errorf("invalid global sampler configuration: %s", err.Error())
+	}
+
 	return nil
 }
 
 func stringToRegexpAttr(s string) (services.RegexpAttr, error) {
-	if s == "" {
-		return services.RegexpAttr{}, nil
-	}
-	re, err := regexp.Compile(s)
-	if err != nil {
+	var attr services.RegexpAttr
+	if err := attr.UnmarshalText([]byte(s)); err != nil {
 		return services.RegexpAttr{}, err
 	}
-	return services.NewPathRegexp(re), nil
+	return attr, nil
 }
 
 func stringToGlobAttr(s string) (services.GlobAttr, error) {
@@ -698,16 +829,6 @@ func stringToPortEnum(s string) (services.PortEnum, error) {
 		return services.PortEnum{}, err
 	}
 	return p, nil
-}
-
-func convertTraceConsumers(consumers []otelcol.Consumer) beyla.TracesReceiverConfig {
-	convertedConsumers := make([]beyla.Consumer, len(consumers))
-	for i, trace := range consumers {
-		convertedConsumers[i] = trace
-	}
-	return beyla.TracesReceiverConfig{
-		Traces: convertedConsumers,
-	}
 }
 
 func defaultInstance() string {
