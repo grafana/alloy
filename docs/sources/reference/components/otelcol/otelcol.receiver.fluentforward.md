@@ -39,25 +39,25 @@ otelcol.receiver.fluentforward "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.fluentforward`:
 
-| Name                 | Type     | Description                                                                                                 | Default   | Required |
-| -------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `endpoint`     | `string` | The `<HOST:PORT>` or `unix://<path to socket>` address to listen to for logs messages.                                                   |           | yes      |
+| Name       | Type     | Description                                                                            | Default | Required |
+|------------|----------|----------------------------------------------------------------------------------------|---------|----------|
+| `endpoint` | `string` | The `<HOST:PORT>` or `unix://<path to socket>` address to listen to for logs messages. |         | yes      |
 
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.fluentforward`:
 
-| Block                                  | Description                                                                                     | Required |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
-| [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
+| Block                            | Description                                                                | Required |
+|----------------------------------|----------------------------------------------------------------------------|----------|
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
 [output]: #output
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

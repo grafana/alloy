@@ -80,7 +80,7 @@ otelcol.processor.filter "<LABEL>" {
 You can use the following argument with `otelcol.processor.filter`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
-| ------------ | -------- | ------------------------------------------------------------------ | ------------- | -------- |
+|--------------|----------|--------------------------------------------------------------------|---------------|----------|
 | `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no       |
 
 The supported values for `error_mode` are:
@@ -94,7 +94,7 @@ The supported values for `error_mode` are:
 You can use the following blocks with `otelcol.processor.filter`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`logs`][logs]                   | Statements which filter logs.                                              | no       |
@@ -109,7 +109,7 @@ You can use the following blocks with `otelcol.processor.filter`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -123,7 +123,7 @@ The `logs` block specifies statements that filter log telemetry signals.
 Only `logs` blocks can be specified.
 
 | Name         | Type           | Description                                    | Default | Required |
-| ------------ | -------------- | ---------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------|---------|----------|
 | `log_record` | `list(string)` | List of OTTL statements filtering OTLP metric. |         | no       |
 
 The syntax of OTTL statements depends on the OTTL context. Refer to the OpenTelemetry documentation for more information:
@@ -138,7 +138,7 @@ The `metrics` block specifies statements that filter metric telemetry signals.
 Only one `metrics` blocks can be specified.
 
 | Name        | Type           | Description                                               | Default | Required |
-| ----------- | -------------- | --------------------------------------------------------- | ------- | -------- |
+|-------------|----------------|-----------------------------------------------------------|---------|----------|
 | `datapoint` | `list(string)` | List of OTTL statements filtering OTLP metric datapoints. |         | no       |
 | `metric`    | `list(string)` | List of OTTL statements filtering OTLP metric.            |         | no       |
 
@@ -163,7 +163,7 @@ The `traces` block specifies statements that filter trace telemetry signals.
 Only one `traces` block can be specified.
 
 | Name        | Type           | Description                                         | Default | Required |
-| ----------- | -------------- | --------------------------------------------------- | ------- | -------- |
+|-------------|----------------|-----------------------------------------------------|---------|----------|
 | `span`      | `list(string)` | List of OTTL statements filtering OTLP spans.       |         | no       |
 | `spanevent` | `list(string)` | List of OTTL statements filtering OTLP span events. |         | no       |
 
@@ -187,7 +187,7 @@ If all span events for a span are dropped, the span will be left intact.
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

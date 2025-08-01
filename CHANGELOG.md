@@ -36,6 +36,11 @@ Main (unreleased)
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 
+- Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
+
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
@@ -48,6 +53,8 @@ Main (unreleased)
 
 - `pyroscope.java` now supports configuring the `log_level` and `quiet` flags on async-profiler. (@deltamualpha)
 
+- Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
@@ -57,6 +64,8 @@ Main (unreleased)
 - Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
 
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
+
+- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
 - Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
@@ -349,7 +358,7 @@ v1.8.3
 
 - Fix `mimir.rules.kubernetes` panic on non-leader debug info retrieval (@TheoBrigitte)
 
-- Fix detection of the “streams limit exceeded” error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
+- Fix detection of the "streams limit exceeded" error in the Loki client so that metrics are correctly labeled as `ReasonStreamLimited`. (@maratkhv)
 
 - Fix `loki.source.file` race condition that often lead to panic when using `decompression`. (@kalleep)
 

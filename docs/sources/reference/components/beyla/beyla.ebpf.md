@@ -41,7 +41,7 @@ beyla.ebpf "<LABEL>" {
 You can use the following arguments with `beyla.ebpf`:
 
 | Name               | Type     | Description                                                    | Default      | Required |
-| ------------------ | -------- | -------------------------------------------------------------- | ------------ | -------- |
+|--------------------|----------|----------------------------------------------------------------|--------------|----------|
 | `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
 | `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
 | `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
@@ -65,7 +65,7 @@ The following formats are supported:
 You can use the following blocks with `beyla.ebpf`:
 
 | Block                                                                  | Description                                                                                        | Required |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------- |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
 | [`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no       |
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
@@ -107,14 +107,14 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `output` block configures a set of components to forward the resulting telemetry data to.
 
 The following arguments are supported:
 
 | Name     | Type                     | Description                          | Default | Required |
-| -------- | ------------------------ | ------------------------------------ | ------- | -------- |
+|----------|--------------------------|--------------------------------------|---------|----------|
 | `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
 
 You must specify the `output` block, but all its arguments are optional.
@@ -131,14 +131,14 @@ It contains the following blocks:
 
 This `kubernetes` block configures the decorating of the metrics and traces with Kubernetes metadata from the instrumented Pods.
 
-| Name                       | Type           | Description                                            | Default   | Required |
-| -------------------------- | -------------- | ------------------------------------------------------ | --------- | -------- |
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`      | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`      | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false`   | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"`   | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"`   | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false`   | no       |
+| Name                       | Type           | Description                                            | Default | Required |
+|----------------------------|----------------|--------------------------------------------------------|---------|----------|
+| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
+| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
+| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false` | no       |
+| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
+| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
+| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -166,7 +166,7 @@ In `disable_informers`, you can specify the Kubernetes informers to disable. The
 The `instance_id` block configures instance ID settings.
 
 | Name                | Type     | Description                                             | Default | Required |
-| ------------------- | -------- | ------------------------------------------------------- | ------- | -------- |
+|---------------------|----------|---------------------------------------------------------|---------|----------|
 | `dns`               | `bool`   | Enable DNS resolution for hostname.                     | `true`  | no       |
 | `override_hostname` | `string` | Override the hostname used for instance identification. | `""`    | no       |
 
@@ -175,7 +175,7 @@ The `instance_id` block configures instance ID settings.
 The `select` block configures which attributes to include or exclude for specific metric/trace sections.
 
 | Name      | Type           | Description                                            | Default | Required |
-| --------- | -------------- | ------------------------------------------------------ | ------- | -------- |
+|-----------|----------------|--------------------------------------------------------|---------|----------|
 | `attr`    | `string`       | The attribute name to select.                          | `[]`    | yes      |
 | `exclude` | `list(string)` | List of attributes to exclude.                         | `[]`    | no       |
 | `include` | `list(string)` | List of attributes to include. Use `*` to include all. | `[]`    | no       |
@@ -227,7 +227,7 @@ The `http_client_*` section would override the base configuration, enabling the 
 The `discovery` block configures the discovery for processes to instrument matching given criteria.
 
 | Name                                 | Type   | Description                                                        | Default | Required |
-| ------------------------------------ | ------ | ------------------------------------------------------------------ | ------- | -------- |
+|--------------------------------------|--------|--------------------------------------------------------------------|---------|----------|
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
 
@@ -245,7 +245,7 @@ The `exclude_services` block configures the services to exclude for the componen
 The `survey` block configures the services that the component will emit information for.
 
 | Name              | Type     | Description                                                                     | Default | Required |
-| ----------------- | -------- | ------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------|----------|---------------------------------------------------------------------------------|---------|----------|
 | `name`            | `string` | The name of the service to match.                                               | `""`    | no       |
 | `namespace`       | `string` | The namespace of the service to match.                                          | `""`    | no       |
 | `open_ports`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
@@ -274,7 +274,7 @@ This `kubernetes` block filters the services to instrument based on their Kubern
 the instrumented processes need to match all the selector properties.
 
 | Name               | Type          | Description                                                                                                        | Default | Required |
-| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+|--------------------|---------------|--------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                              | `""`    | no       |
 | `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                             | `""`    | no       |
 | `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                              | `""`    | no       |
@@ -314,14 +314,14 @@ beyla.ebpf "default" {
 
 The `ebpf` block configures eBPF-specific settings.
 
-| Name                          | Type          | Description                                                                    | Default      | Required |
-| ----------------------------- | ------------- | ------------------------------------------------------------------------------ | ------------ | -------- |
-| `wakeup_len`                  | `int`         | Number of messages to accumulate before wakeup request.                        | `""`         | no       |
-| `track_request_headers`       | `bool`        | Enable tracking of request headers for Traceparent fields.                     | `false`      | no       |
-| `http_request_timeout`        | `duration`    | Timeout for HTTP requests.                                                     | `"30s"`      | no       |
-| `context_propagation`         | `string`      | Enables injecting of the Traceparent header value for outgoing HTTP requests.  | `"disabled"` | no       |
-| `high_request_volume`         | `bool`        | Optimize for immediate request information when response is seen.              | `false`      | no       |
-| `heuristic_sql_detect`        | `bool`        | Enable heuristic-based detection of SQL requests.                              | `false`      | no       |
+| Name                    | Type       | Description                                                                   | Default      | Required |
+|-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
+| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
+| `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
+| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
+| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
 
 
 #### `context_propagation`
@@ -360,11 +360,11 @@ It contains the following blocks:
 
 The `application` block configures filtering of application attributes.
 
-| Name        | Type     | Description                              | Required |
-| ----------- | -------- | -----------------------------------------| -------- |
-| `attr`      | `string` | The name of the attribute to match.      | yes      |
-| `match`     | `string` | String to match attribute values.        | no       |
-| `not_match` | `string` | String to exclude matching values.       | no       |
+| Name        | Type     | Description                         | Required |
+|-------------|----------|-------------------------------------|----------|
+| `attr`      | `string` | The name of the attribute to match. | yes      |
+| `match`     | `string` | String to match attribute values.   | no       |
+| `not_match` | `string` | String to exclude matching values.  | no       |
 
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
@@ -374,11 +374,11 @@ wildcards).
 
 The `network` block configures filtering of network attributes.
 
-| Name        | Type     | Description                              | Required |
-| ----------- | -------- | ---------------------------------------- | -------- |
-| `attr`      | `string` | The name of the attribute to match.      | yes      |
-| `match`     | `string` | String to match attribute values.        | no       |
-| `not_match` | `string` | String to exclude matching values.       | no       |
+| Name        | Type     | Description                         | Required |
+|-------------|----------|-------------------------------------|----------|
+| `attr`      | `string` | The name of the attribute to match. | yes      |
+| `match`     | `string` | String to match attribute values.   | no       |
+| `not_match` | `string` | String to exclude matching values.  | no       |
 
 Both properties accept a
 [glob-like](https://github.com/gobwas/glob) string (it can be a full value or include
@@ -406,7 +406,7 @@ beyla.ebpf "default" {
 The `metrics` block configures which metrics Beyla collects.
 
 | Name                                  | Type           | Description                                                | Default           | Required |
-| ------------------------------------- | -------------- | ---------------------------------------------------------- | ----------------- | -------- |
+|---------------------------------------|----------------|------------------------------------------------------------|-------------------|----------|
 | `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
 | `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
 | `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
@@ -417,7 +417,9 @@ The `metrics` block configures which metrics Beyla collects.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
 * `application_span` exports application-level metrics in traces span metrics format.
+* `application_host` exports application-level host metrics for host-based pricing.
 * `network` exports network-level metrics.
+* `network_inter_zone` exports network-level inter-zone metrics.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -433,7 +435,7 @@ The `metrics` block configures which metrics Beyla collects.
 The `network` block configures network metrics options for Beyla. You must append `network` to the `features` list in the `metrics` block to enable network metrics.
 
 | Name                   | Type           | Description                                                           | Default           | Required |
-| ---------------------- | -------------- | --------------------------------------------------------------------- | ----------------- | -------- |
+|------------------------|----------------|-----------------------------------------------------------------------|-------------------|----------|
 | `agent_ip_iface`       | `string`       | Network interface to get agent IP from.                               | `"external"`      | no       |
 | `agent_ip_type`        | `string`       | Type of IP address to use.                                            | `"any"`           | no       |
 | `agent_ip`             | `string`       | Allows overriding the reported `beyla.ip` attribute on each metric.   | `""`              | no       |
@@ -502,7 +504,7 @@ You can set `direction` to `ingress`, `egress`, or `both` (default).
 The `routes` block configures the routes to match HTTP paths into user-provided HTTP routes.
 
 | Name               | Type           | Description                                                                              | Default       | Required |
-| ------------------ | -------------- | ---------------------------------------------------------------------------------------- | ------------- | -------- |
+|--------------------|----------------|------------------------------------------------------------------------------------------|---------------|----------|
 | `ignore_mode`      | `string`       | The mode to use when ignoring patterns.                                                  | `""`          | no       |
 | `ignored_patterns` | `list(string)` | List of provided URL path patterns to ignore from `http.route` trace/metric property.    | `[]`          | no       |
 | `patterns`         | `list(string)` | List of provided URL path patterns to set the `http.route` trace/metric property.        | `[]`          | no       |
@@ -535,7 +537,7 @@ The matcher tags can be in the `:name` or `{name}` format.
 The following fields are exported and can be referenced by other components.
 
 | Name      | Type                | Description                                                                         |
-| --------- | ------------------- | ----------------------------------------------------------------------------------- |
+|-----------|---------------------|-------------------------------------------------------------------------------------|
 | `targets` | `list(map(string))` | The targets that can be used to collect metrics of instrumented services with eBPF. |
 
 For example, the `targets` can either be passed to a `discovery.relabel` component to rewrite the targets' label sets or to a `prometheus.scrape` component that collects the exposed metrics.

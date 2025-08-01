@@ -40,7 +40,7 @@ otelcol.processor.deltatocumulative "<LABEL>" {
 You can use the following arguments with `otelcol.processor.deltatocumulative`:
 
 | Name          | Type       | Description                                                         | Default               | Required |
-| ------------- | ---------- | ------------------------------------------------------------------- | --------------------- | -------- |
+|---------------|------------|---------------------------------------------------------------------|-----------------------|----------|
 | `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`                | no       |
 | `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
@@ -57,7 +57,7 @@ If the limit of tracked streams is reached, new incoming streams are dropped.
 You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
@@ -66,7 +66,7 @@ You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -79,7 +79,7 @@ You can use the following blocks with `otelcol.processor.deltatocumulative`:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
