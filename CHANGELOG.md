@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+
 v1.10.0
 -----------------
 
