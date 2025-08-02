@@ -36,17 +36,23 @@ otelcol.auth.basic "<LABEL>" {
     file = "/etc/alloy/.htpasswd"
     inline = "<USERNAME>:<PASSWORD>"
   }
+  
+  client_auth {
+    username = "<USERNAME>"
+    password = "<PASSWORD>"
+  }
 }
 ```
 
 ## Arguments
+Deprecated in favor of the [`client_auth`][client_auth] and [`htpasswd`][htpasswd] blocks.
 
 You can use the following arguments with `otelcol.auth.basic`:
 
-| Name       | Type     | Description                                                                     | Default | Required |
-|------------|----------|---------------------------------------------------------------------------------|---------|----------|
-| `password` | `secret` | Password to use for basic authentication requests.                              |         | no       |
-| `username` | `string` | Username to use for basic authentication requests.                              |         | no       |
+| Name       | Type     | Description                                                     | Default | Required |
+|------------|----------|-----------------------------------------------------------------|---------|----------|
+| `password` | `secret` | (Deprecated) Password to use for basic authentication requests. |         | no       |
+| `username` | `string` | (Deprecated) Username to use for basic authentication requests. |         | no       |
 
 
 ## Blocks
@@ -55,11 +61,24 @@ You can use the following block with `otelcol.auth.basic`:
 
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
+| [`client_auth`][client_auth]     | Configures the service authentication for an exporter                      | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`htpasswd`][htpasswd]           | Configures the service authentication for a receiver                       | no       |
 
+[client_auth]: #client_auth
 [debug_metrics]: #debug_metrics
 [htpasswd]: #htpasswd
+
+### `client_auth`
+The `client_auth` block configures how the client extensions will authenticate to servers.
+
+| Name       | Type     | Description                                       | Default | Required |
+|------------|----------|---------------------------------------------------|---------|----------|
+| `password` | `string` | Password to use for basic authentication requests |         | yes      |
+| `inline`   | `string` | Username to use for basic authentication requests |         | yes      |
+
+If both the `client_auth` block and the `username`/`password` attributes are specified, to more closely match the 
+upstream extension's behavior, the `username` and `password` are ignored in favor the `client_auth` block.
 
 ### `debug_metrics`
 
@@ -73,6 +92,10 @@ The `htpasswd` block configures how the server extensions will authenticate call
 |----------|----------|--------------------------------------------------------------------|---------|----------|
 | `file`   | `string` | Path to the htpasswd file to use for basic authentication requests | `""`    | no       |
 | `inline` | `string` | The htpasswd file inline content                                   | `""`    | no       |
+
+If both the `htpasswd` block and the `username`/`password` attributes are specified, to not break existing functionality
+and to more closely match the upstream extension's behavior, the `username` and `password` are appended to the `inline`
+attribute of this block.
 
 ## Exported fields
 
