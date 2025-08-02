@@ -58,7 +58,7 @@ alloy:
   # By default, data is lost between reboots.
   storagePath: /tmp/alloy
 
-  # -- Enables Grafana Alloy container's http server port. 
+  # -- Enables Grafana Alloy container's http server port.
   enableHttpServerPort: true
 
   # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
