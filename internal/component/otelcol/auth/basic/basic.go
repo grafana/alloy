@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	errNoCredentialSource = errors.New("no credential source provided") //nolint:gofmt
+	errNoCredentialSource = errors.New("no credential source provided")
 	errNoPasswordProvided = errors.New("no password provided")
 )
 
@@ -41,20 +41,33 @@ type HtpasswdConfig struct {
 }
 
 func (c HtpasswdConfig) convert() *basicauthextension.HtpasswdSettings {
-	settings := &basicauthextension.HtpasswdSettings{}
-	if c.File != "" {
-		settings.File = c.File
+	return &basicauthextension.HtpasswdSettings{
+		File:   c.File,
+		Inline: c.Inline,
 	}
-	if c.Inline != "" {
-		settings.Inline = c.Inline
+}
+
+type ClientAuthConfig struct {
+	Username string `alloy:"username,attr"`
+	Password string `alloy:"password,attr"`
+}
+
+func (c ClientAuthConfig) convert() *basicauthextension.ClientAuthSettings {
+	if c.Username == "" && c.Password == "" {
+		return nil
 	}
-	return settings
+	return &basicauthextension.ClientAuthSettings{
+		Username: c.Username,
+		Password: configopaque.String(c.Password),
+	}
 }
 
 // Arguments configures the otelcol.auth.basic component.
 type Arguments struct {
-	Username string            `alloy:"username,attr,optional"`
-	Password alloytypes.Secret `alloy:"password,attr,optional"`
+	Username string            `alloy:"username,attr,optional"` // Deprecated: Use ClientAuth instead
+	Password alloytypes.Secret `alloy:"password,attr,optional"` // Deprecated: Use ClientAuth instead
+
+	ClientAuth *ClientAuthConfig `alloy:"client_auth,block,optional"`
 
 	Htpasswd *HtpasswdConfig `alloy:"htpasswd,block,optional"`
 
@@ -72,7 +85,7 @@ func (args *Arguments) SetToDefault() {
 // Validate implements syntax.Validator
 func (args Arguments) Validate() error {
 	// check if no argument was provided
-	if args.Username == "" && args.Password == "" && args.Htpasswd == nil {
+	if args.Username == "" && args.Password == "" && args.Htpasswd == nil && args.ClientAuth == nil {
 		return errNoCredentialSource
 	}
 	// the downstream basicauthextension package supports having both inline
@@ -89,12 +102,19 @@ func (args Arguments) Validate() error {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	return &basicauthextension.Config{
-		ClientAuth: &basicauthextension.ClientAuthSettings{
-			Username: args.Username,
-			Password: configopaque.String(args.Password),
-		},
-	}, nil
+	c := &basicauthextension.Config{}
+	// If the client config is specified, ignore the deprecated
+	// username and password attributes.
+	if args.ClientAuth != nil {
+		c.ClientAuth = args.ClientAuth.convert()
+		return c, nil
+	}
+
+	c.ClientAuth = &basicauthextension.ClientAuthSettings{
+		Username: args.Username,
+		Password: configopaque.String(args.Password),
+	}
+	return c, nil
 }
 
 // ConvertServer implements auth.Arguments.
@@ -105,6 +125,7 @@ func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
 	if args.Htpasswd != nil {
 		c.Htpasswd = args.Htpasswd.convert()
 	}
+	// Keeping this to avoid breaking existing use cases. Remove this for v2
 	if args.Username != "" && args.Password != "" {
 		c.Htpasswd.Inline += fmt.Sprintf("\n%s:%s", args.Username, args.Password)
 	}
