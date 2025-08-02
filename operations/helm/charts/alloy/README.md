@@ -40,6 +40,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |
 | alloy.configMap.key | string | `nil` | Key in ConfigMap to get config from. |
 | alloy.configMap.name | string | `nil` | Name of existing ConfigMap to use. Used when create is false. |
+| alloy.enableHttpServerPort | bool | `true` | Enables Grafana Alloy container's http server port. |
 | alloy.enableReporting | bool | `true` | Enables sending Grafana Labs anonymous usage stats to help improve Grafana Alloy. |
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
