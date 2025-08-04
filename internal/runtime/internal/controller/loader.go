@@ -291,11 +291,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 // Cleanup unregisters any existing metrics and optionally stops the worker pool.
 func (l *Loader) Cleanup(stopWorkerPool bool) {
 	if stopWorkerPool {
-		// Wait at most 5 seconds for currently evaluating components to finish.
-		err := l.workerPool.Stop(time.Second * 5)
-		if err != nil {
-			level.Warn(l.log).Log("msg", "timed out stopping worker pool", "err", err)
-		}
+		l.workerPool.Stop()
 	}
 	if l.globals.Registerer == nil {
 		return
