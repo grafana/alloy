@@ -584,7 +584,7 @@ SCHEMA_DENYLIST:
 			return err
 		}
 		for _, schema := range c.schemaDenyList {
-			if strings.ToLower(qi.schemaName) == strings.ToLower(schema) {
+			if strings.EqualFold(qi.schemaName, schema) {
 				continue SCHEMA_DENYLIST
 			}
 		}
