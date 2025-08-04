@@ -5,7 +5,7 @@ permissions:
   contents: read
 
 jobs:
-  regenerate-docs:
+  regenerate-gh-issue-templates:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
