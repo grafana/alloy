@@ -1,4 +1,4 @@
-name: 'Ping code owners on a new issue'
+name: 'Apply labels on a new issue'
 on:
   issues:
     types: [opened]
