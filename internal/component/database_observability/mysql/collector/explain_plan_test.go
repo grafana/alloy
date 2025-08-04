@@ -1682,7 +1682,7 @@ func TestExplainPlan(t *testing.T) {
 	})
 }
 
-func TestQueryFailureBackoff(t *testing.T) {
+func TestQueryFailureDenylist(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
