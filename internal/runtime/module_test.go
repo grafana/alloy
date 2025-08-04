@@ -224,8 +224,6 @@ func TestIDList(t *testing.T) {
 }
 
 func TestDuplicateIDList(t *testing.T) {
-	// TODO(@dehaansa) - we shouldn't depend on metrics registration for rejecting duplicate module IDs
-	t.Skip()
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
 	defer o.WorkerPool.Stop()
@@ -244,10 +242,12 @@ func TestDuplicateIDList(t *testing.T) {
 		return len(nc.ModuleIDs()) == 1
 	}, 5*time.Second, 100*time.Millisecond)
 
-	// This should panic with duplicate registration.
-	require.PanicsWithError(t, "duplicate metrics collector registration attempted", func() {
-		_, _ = nc.NewModule("t1", nil)
-	})
+	// This should no longer panic with duplicate registration, but still be rejected when Run is called.
+
+	mod1Dup, err := nc.NewModule("t1", nil)
+	require.NoError(t, err)
+	err = mod1Dup.Run(ctx)
+	require.Error(t, err)
 }
 
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
