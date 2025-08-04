@@ -469,6 +469,7 @@ type ExplainPlanArguments struct {
 	InstanceKey     string
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
+	SchemaDenyList  []string
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
 	DBVersion       string
@@ -483,6 +484,7 @@ type ExplainPlan struct {
 	scrapeInterval        time.Duration
 	queryCache            map[string]*queryInfo
 	queryDenylist         map[string]*queryInfo
+	schemaDenyList        []string
 	unrecoverableSQLCodes []knownSQLCodes
 	perScrapeRatio        float64
 	currentBatchSize      int
@@ -502,6 +504,10 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]*queryInfo),
+		schemaDenyList: args.SchemaDenyList,
+		unrecoverableSQLCodes: []knownSQLCodes{
+			accessDeniedSQLCode,
+		},
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
 		lastSeen:       args.InitialLookback,
@@ -564,6 +570,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	defer rs.Close()
 
 	// Populate cache
+SCHEMA_DENYLIST:
 	for rs.Next() {
 		if err := rs.Err(); err != nil {
 			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
@@ -575,6 +582,11 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
+		}
+		for _, schema := range c.schemaDenyList {
+			if strings.ToLower(qi.schemaName) == strings.ToLower(schema) {
+				continue SCHEMA_DENYLIST
+			}
 		}
 		if _, ok := c.queryDenylist[qi.key()]; !ok {
 			c.queryCache[qi.key()] = qi

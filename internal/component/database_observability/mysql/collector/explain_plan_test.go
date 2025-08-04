@@ -1769,3 +1769,54 @@ func TestQueryFailureDenylist(t *testing.T) {
 		require.Equal(t, 1, len(c.queryDenylist))
 	})
 }
+
+func TestSchemaDenylist(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
+		"version",
+	}).AddRow(
+		"8.0.32",
+	))
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki_fake.NewClient(func() {})
+	defer lokiClient.Stop()
+
+	logBuffer := bytes.NewBuffer(nil)
+
+	c, err := NewExplainPlan(ExplainPlanArguments{
+		DB:              db,
+		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		InstanceKey:     "mysql-db",
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		SchemaDenyList:  []string{"some_schema"},
+		EntryHandler:    lokiClient,
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest1",
+		"select * from some_table where id = 1",
+		lastSeen,
+	).AddRow(
+		"different_schema",
+		"some_digest2",
+		"select * from some_table where id = 2",
+		lastSeen,
+	))
+
+	c.populateQueryCache(t.Context())
+	require.Equal(t, 1, len(c.queryCache))
+	require.Equal(t, 0, len(c.queryDenylist))
+}
