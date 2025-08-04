@@ -14,7 +14,8 @@ for README in $(find ./docs/sources/reference/components -name '*.md' -and -not 
     FILENAME=${README##*/}
     LABEL_NAME="${FILENAME%.*}"
     TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
-    
+    echo "Found component: ${TYPE}"
+
     if (( "${#LABEL_NAME}" > 50 )); then
         echo "'${LABEL_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
         continue
