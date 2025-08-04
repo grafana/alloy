@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 	"gopkg.in/yaml.v3"
@@ -235,9 +234,9 @@ var DefaultConfig = Config{
 	TCP: TCPConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.TCP.CollectorsEnabled, ","),
 	},
-	Update: UpdateConfig{ // fields are not exported
-		Online:         false,
-		ScrapeInterval: 6 * time.Hour,
+	Update: UpdateConfig{
+		Online:         collector.ConfigDefaults.Update.Online,
+		ScrapeInterval: collector.ConfigDefaults.Update.ScrapeInterval,
 	},
 	Filetime: FiletimeConfig{
 		FilePatterns: collector.ConfigDefaults.Filetime.FilePatterns,
