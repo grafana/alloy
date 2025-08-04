@@ -377,7 +377,7 @@ The `sampler` block configures trace sampling settings. This block can be used i
 | Name   | Type     | Description                                                             | Default | Required |
 |--------|----------|-------------------------------------------------------------------------|---------|----------|
 | `name` | `string` | The name of the sampling strategy to use.                              | `""`    | no       |
-| `arg`  | `string` | The argument for the sampling strategy (e.g., sampling ratio for traceidratio). | `""`    | no       |
+| `arg`  | `string` | The argument for the sampling strategy. | `""`    | no       |
 
 The following sampling strategies are supported:
 
