@@ -25,7 +25,7 @@ To run this component, {{< param "PRODUCT_NAME" >}} requires administrative priv
 The number of required capabilities depends on the specific use case.
 Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla) for more information.
 
-In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}. You will also need to set the `hostPID` flag to `true` in the Pod spec so that in can access all the processes running on the host.
 {{< /admonition >}}
 
 ## Usage
