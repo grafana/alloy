@@ -3,29 +3,29 @@
 
 set -euo pipefail
 
-# Create an array of labels so they can be added in to the issue templates
-declare -a LABELS
+# Create an array of component names so they can be added in to the issue templates
+declare -a LIST
 
-for README in $(find ./docs/sources/reference/components -name '*.md' -and -not -name '*index.md' -print0); do
+find ./docs/sources/reference/components -name '*.md' ! -name '*index.md' -print0 | while IFS= read -r -d '' README; do
     # The find ends up with an empty string in some OSes
     if [[ -z "${README}" ]]; then
         continue
     fi
     FILENAME=${README##*/}
-    LABEL_NAME="${FILENAME%.*}"
-    TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
-    echo "Found component: ${TYPE}"
+    COMPONENT_NAME="${FILENAME%.*}"
+    TYPE=$(echo "${COMPONENT_NAME}" | cut -f1 -d '.' )
+    echo "Found component: ${COMPONENT_NAME}"
 
-    if (( "${#LABEL_NAME}" > 50 )); then
-        echo "'${LABEL_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
+    if (( "${#COMPONENT_NAME}" > 50 )); then
+        echo "'${COMPONENT_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
         continue
     fi
-    LABELS+=("${LABEL_NAME}")
+    LIST+=("${COMPONENT_NAME}")
 done
 
-content="$(printf -- "`printf "      - %s\n" "${LABELS[@]}"`")\n      # End components list"
+content="$(printf -- "`printf "      - %s\n" "${LIST[@]}"`")\n      # End components list"
 
-# replace the text in the .github/ISSUE_TEMPLATE/*.yaml files between "# Start components list" and "# End components list" with the LABELS array using awk
+# replace the text in the .github/ISSUE_TEMPLATE/*.yaml files between "# Start components list" and "# End components list" with the LIST array using awk
 for TEMPLATE in $(find .github/ISSUE_TEMPLATE -name '*.yaml'); do
     echo "Updating ${TEMPLATE} with component labels"
     awk -v content="${content}" '
