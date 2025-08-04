@@ -16,14 +16,14 @@ COLORS["remote"]="#4B5320"
 
 FALLBACK_COLOR="#999999"
 
-for README in $(find ./docs/sources/reference/components -name '*.md' -and -not -name '*index.md' -print0); do
+for README in $(find ./docs/sources/reference/components -name '*.md' ! -name '*index.md'); do
     # The find ends up with an empty string in some OSes
     if [[ -z "${README}" ]]; then
         continue
     fi
     FILENAME=${README##*/}
     LABEL_NAME="c/${FILENAME%.*}"
-    TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
+    TYPE=$(echo "${FILENAME}" | cut -f1 -d '.' )
     
     if (( "${#LABEL_NAME}" > 50 )); then
         echo "'${LABEL_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
