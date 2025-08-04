@@ -141,3 +141,85 @@ func TestComponent_Update(t *testing.T) {
 	err = comp.Update(Arguments{})
 	require.NoError(t, err)
 }
+
+func TestAppender_WithExpfmtEncoding(t *testing.T) {
+	var loggedOutput string
+
+	logger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		for i := 0; i < len(keyvals); i += 2 {
+			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
+				loggedOutput = keyvals[i+1].(string)
+			}
+		}
+		return nil
+	})
+
+	comp, err := New(component.Options{
+		ID:     "test",
+		Logger: logger,
+	}, Arguments{})
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	appender := comp.Appender(ctx)
+
+	lbls := labels.FromStrings("__name__", "test_metric", "job", "test_job", "instance", "localhost:8080")
+	_, err = appender.Append(0, lbls, time.Now().Unix(), 42.0)
+	require.NoError(t, err)
+
+	err = appender.Commit()
+	require.NoError(t, err)
+
+	require.NotEmpty(t, loggedOutput)
+	require.Contains(t, loggedOutput, "test_metric")
+	require.Contains(t, loggedOutput, "job=\"test_job\"")
+	require.Contains(t, loggedOutput, "instance=\"localhost:8080\"")
+	require.Contains(t, loggedOutput, "42")
+
+	require.NotContains(t, loggedOutput, "Prometheus metrics received by")
+	require.NotContains(t, loggedOutput, "Timestamp:")
+}
+
+func TestAppender_WithOpenMetricsFormat(t *testing.T) {
+	var loggedOutput string
+
+	logger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		for i := 0; i < len(keyvals); i += 2 {
+			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
+				loggedOutput = keyvals[i+1].(string)
+			}
+		}
+		return nil
+	})
+
+	args := Arguments{Format: "openmetrics"}
+
+	comp, err := New(component.Options{
+		ID:     "test",
+		Logger: logger,
+	}, args)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	appender := comp.Appender(ctx)
+
+	lbls := labels.FromStrings("__name__", "test_metric", "job", "test_job")
+	_, err = appender.Append(0, lbls, time.Now().Unix(), 42.0)
+	require.NoError(t, err)
+
+	err = appender.Commit()
+	require.NoError(t, err)
+
+	require.NotEmpty(t, loggedOutput)
+	require.Contains(t, loggedOutput, "test_metric")
+	require.Contains(t, loggedOutput, "job=\"test_job\"")
+
+	t.Logf("OpenMetrics output: %s", loggedOutput)
+}
+
+func TestArguments_Defaults(t *testing.T) {
+	args := Arguments{}
+	args.SetToDefault()
+
+	require.Equal(t, "text", args.Format)
+}
