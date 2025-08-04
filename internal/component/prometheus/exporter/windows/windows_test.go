@@ -2,6 +2,7 @@ package windows
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/syntax"
@@ -93,6 +94,11 @@ var (
 						"				  state: idle"
 
 		}
+
+		update {
+			online = true
+			scrape_interval = "10h"
+		}
 		`
 )
 
@@ -129,6 +135,8 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
 	require.Equal(t, "---\t- name: \"Processor\"\t\tcounters:\t\t\t- name: \"% Processor Time\"\t\t\t  instance: \"_Total\"\t\t\t  type: \"counter\"\t\t\t  labels:\t\t\t\t  state: idle", args.PerformanceCounter.Objects)
+	require.Equal(t, true, args.Update.Online)
+	require.Equal(t, 10*time.Hour, args.Update.ScrapeInterval)
 }
 
 func TestConvert(t *testing.T) {
@@ -164,4 +172,6 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.LogicalDisk.Include)
 	require.Equal(t, "example", conf.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, conf.Filetime.FilePatterns)
+	require.Equal(t, true, conf.Update.Online)
+	require.Equal(t, 10*time.Hour, conf.Update.ScrapeInterval)
 }

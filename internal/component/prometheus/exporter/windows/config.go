@@ -82,6 +82,7 @@ func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
 		MSCluster:          a.MSCluster.Convert(),
 		NetFramework:       a.NetFramework.Convert(),
 		DNS:                a.DNS.Convert(),
+		Update:             a.Update.Convert(),
 	}
 }
 
