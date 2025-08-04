@@ -139,7 +139,7 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 |----------------------------|----------------|--------------------------------------------------------|---------|----------|
 | `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
 | `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false` | no       |
+| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
 | `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
 | `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
 | `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
@@ -716,11 +716,6 @@ This example gets metrics from `beyla.ebpf` for the specified namespace and Pods
 
 ```alloy
 beyla.ebpf "default" {
-  attributes {
-    kubernetes {
-     enable = "true"
-    }
-  }
   discovery {
     services {
      kubernetes {
