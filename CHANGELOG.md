@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
+- Fix issue with `prometheus.exporter.windows` not propagating `update` collector config. (@kalleep)
+
 v1.10.0
 -----------------
 
