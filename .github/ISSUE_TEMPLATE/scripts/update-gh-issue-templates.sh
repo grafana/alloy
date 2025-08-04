@@ -27,6 +27,10 @@ if [ ${#LIST[@]} -eq 0 ]; then
     exit 1
 fi
 
+IFS=$'\n' LIST=($(sort <<<"${LIST[*]}"))
+# Reset IFS to default
+unset IFS
+
 # Format the list properly
 LABELS_LIST="$(printf "      - %s\n" "${LIST[@]}")"
 # Append the # End components list comment to the end of the list
