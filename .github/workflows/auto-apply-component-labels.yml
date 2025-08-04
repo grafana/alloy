@@ -6,7 +6,7 @@ on:
 permissions: read-all
 
 jobs:
-  ping-owners-on-new-issue:
+  apply-labels-on-issue:
     permissions:
       issues: write
     runs-on: ubuntu-latest
