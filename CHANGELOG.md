@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
@@ -66,6 +68,8 @@ Main (unreleased)
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+
+- Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
 v1.10.0
 -----------------
