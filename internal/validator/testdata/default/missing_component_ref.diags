@@ -1,6 +1,0 @@
-Error: main.alloy:5:14: component "loki.process.test2.receiver" does not exist or is out of scope
-
-4 |     format = "logfmt"
-5 |     write_to = [loki.process.test2.receiver]
-  |                 ^^^^^^^^^^^^^^^^^^^^
-6 | }

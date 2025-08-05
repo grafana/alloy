@@ -1,0 +1,24 @@
+missing component ref
+-- main.alloy --
+
+logging {
+	level  = "info"
+	format = "logfmt"
+	write_to = [loki.process.test2.receiver]
+}
+
+declare "self_collect" {
+	argument "metrics_output" {
+		optional = false
+		comment  = ""
+	}
+	
+
+	prometheus.scrape "selfmonitor" {
+		targets = [{
+			__address__ = "127.0.0.1:12345",
+		}]
+
+		forward_to = [prometheus.relabel.default.receiver]
+	}
+}
