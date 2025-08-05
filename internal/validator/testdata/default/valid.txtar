@@ -219,3 +219,10 @@ declare "pods_and_nodes" {
 		)
 	}
 }
+
+pods_and_nodes "pan" {}
+
+prometheus.scrape "pan" {
+	targets = pods_and_nodes.pan.value
+	forward_to = []
+}

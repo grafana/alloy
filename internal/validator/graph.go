@@ -3,6 +3,7 @@ package validator
 import (
 	"fmt"
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/grafana/alloy/internal/dag"
@@ -95,6 +96,15 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 	for _, cycle := range dag.StronglyConnectedComponents(s.graph.Graph) {
 		if len(cycle) > 1 {
 			cycleStr := make([]string, len(cycle))
+
+			// We need to sort the nodes to have consitent order in output.
+			slices.SortFunc(cycle, func(a dag.Node, b dag.Node) int {
+				if a.NodeID() > b.NodeID() {
+					return 1
+				}
+				return -1
+			})
+
 			for i, node := range cycle {
 				cycleStr[i] = node.NodeID()
 			}
