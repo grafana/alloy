@@ -38,7 +38,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "db_version"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version"})
 
 	args.Registry.MustRegister(infoMetric)
 
