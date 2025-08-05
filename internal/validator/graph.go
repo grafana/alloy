@@ -4,6 +4,7 @@ import (
 	"iter"
 
 	"github.com/grafana/alloy/internal/dag"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/typecheck"
@@ -36,9 +37,10 @@ func (g *orderedGraph) Nodes() iter.Seq[dag.Node] {
 	}
 }
 
-func validateGraph(s *state) diag.Diagnostics {
+func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostics {
 	var diags diag.Diagnostics
 	for n := range s.graph.Nodes() {
+
 		switch node := n.(type) {
 		case *node:
 			// Add any diagnostic for node that should be before type check.
@@ -72,7 +74,13 @@ func validateGraph(s *state) diag.Diagnostics {
 				diags.Merge(typecheck.Block(node.n.block, node.n.args))
 			}
 
-			diags.Merge(validateGraph(node.state))
+			diags.Merge(validateGraph(node.state, minStability))
+		}
+
+		refs, refDiags := findReferences(n, s.graph.Graph, s.scope, minStability)
+		diags.Merge(refDiags)
+		for _, ref := range refs {
+			s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
 		}
 	}
 
@@ -80,6 +88,7 @@ func validateGraph(s *state) diag.Diagnostics {
 }
 
 type blockNode interface {
+	NodeID() string
 	Block() *ast.BlockStmt
 }
 

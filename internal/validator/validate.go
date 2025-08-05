@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/typecheck"
+	"github.com/grafana/alloy/syntax/vm"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -78,9 +79,12 @@ func (v *validator) run(cr *componentRegistry) error {
 		components: components,
 		services:   services,
 		cr:         cr,
+		scope: vm.NewScope(map[string]any{
+			"module_path": struct{}{},
+		}),
 	}
 
-	diags := validateGraph(v.validate(rootState))
+	diags := validateGraph(v.validate(rootState), v.minStability)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -91,6 +95,7 @@ func (v *validator) run(cr *componentRegistry) error {
 type state struct {
 	root       bool
 	foreach    bool
+	scope      *vm.Scope
 	graph      *orderedGraph
 	declares   []*ast.BlockStmt
 	configs    []*ast.BlockStmt
@@ -145,12 +150,20 @@ func (v *validator) validateDeclares(s *state) {
 			services:   services,
 			components: components,
 			cr:         newComponentRegistry(s.cr),
+			scope:      vm.NewScope(s.scope.Variables),
 		}
 
 		// Add module state as node to graph
 		s.graph.Add(newSubNode(node, v.validate(moduleState)))
 
 		if node.block.Label != "" {
+			// FIXME(kalleep): for now we don't set any value for arguments.
+			// if we want to type check properties we need to handle this
+			args := make(map[string]struct{}, len(moduleState.arguments))
+			for _, arg := range moduleState.arguments {
+				args[arg.Label] = struct{}{}
+			}
+			moduleState.scope.Variables["argument"] = args
 			s.cr.registerCustomComponent(node.block, generateArgumentsStruct(moduleState.arguments))
 		}
 	}
@@ -312,8 +325,7 @@ func (v *validator) validateForeach(node *node, s *state) {
 	// We extract all blocks from template body and evaluate them as components.
 	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
 
-	// Add foreach state as node to the graph
-	s.graph.Add(newSubNode(node, v.validate(&state{
+	foreachState := &state{
 		root:       s.root,
 		foreach:    true,
 		graph:      newGraph(),
@@ -322,7 +334,17 @@ func (v *validator) validateForeach(node *node, s *state) {
 		services:   services,
 		components: components,
 		cr:         newComponentRegistry(s.cr),
-	})))
+		scope:      vm.NewScope(s.scope.Variables),
+	}
+
+	value, ok := typecheck.TryUnwrapBlockAttr(node.block, "var", reflect.String)
+	if ok {
+		// FIXME(kalleep): for now we don't set the value. If we want to add type checking
+		// we need to handle it properly.
+		foreachState.scope.Variables[value.Text()] = struct{}{}
+	}
+	// Add foreach state as node to the graph
+	s.graph.Add(newSubNode(node, v.validate(foreachState)))
 }
 
 // validateComponents will perform validation on component blocks.
@@ -513,7 +535,7 @@ func blockMissingLabel(b *ast.BlockStmt) (diag.Diagnostic, bool) {
 func generateArgumentsStruct(args []*ast.BlockStmt) any {
 	fields := make([]reflect.StructField, 0, len(args))
 	for _, a := range args {
-		optional := typecheck.TryUnwrapBlockAttr(a, "optional", syntax.ValueFromBool(false))
+		optional := typecheck.UnwrapBlockAttr(a, "optional", syntax.ValueFromBool(false))
 
 		var tag string
 		if optional.Bool() {
