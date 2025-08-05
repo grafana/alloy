@@ -40,7 +40,7 @@ func validateGraph(s *state) diag.Diagnostics {
 	var diags diag.Diagnostics
 	for n := range s.graph.Nodes() {
 		switch node := n.(type) {
-		case *blockNode:
+		case *node:
 			// Add any diagnostic for node that should be before type check.
 			diags.Merge(node.diags)
 			if node.args != nil {
@@ -67,6 +67,11 @@ func validateGraph(s *state) diag.Diagnostics {
 			}
 			diags.Merge(typecheck.Block(node.block, reg.CloneArguments()))
 		case *subNode:
+			diags.Merge(node.n.diags)
+			if node.n.args != nil {
+				diags.Merge(typecheck.Block(node.n.block, node.n.args))
+			}
+
 			diags.Merge(validateGraph(node.state))
 		}
 	}
@@ -74,27 +79,39 @@ func validateGraph(s *state) diag.Diagnostics {
 	return diags
 }
 
-func newBlockNode(block *ast.BlockStmt) *blockNode {
-	return &blockNode{
+type blockNode interface {
+	Block() *ast.BlockStmt
+}
+
+func newNode(block *ast.BlockStmt) *node {
+	return &node{
 		id:    blockID(block),
 		block: block,
 	}
 }
 
-var _ dag.Node = (*blockNode)(nil)
+var (
+	_ dag.Node  = (*node)(nil)
+	_ blockNode = (*node)(nil)
+)
 
-// blockNode is a generic node that can be added to the graph.
+// node is a generic node that can be added to the graph.
 // We only perform type checking if args are not nil.
 // We also store any diagnostics that are not related to type cheking on
 // the node so we can render them in correct order.
-type blockNode struct {
+type node struct {
 	id    string
 	args  any
-	diags diag.Diagnostics
 	block *ast.BlockStmt
+	diags diag.Diagnostics
 }
 
-func (n *blockNode) NodeID() string {
+// Block implements blockNode.
+func (n *node) Block() *ast.BlockStmt {
+	return n.block
+}
+
+func (n *node) NodeID() string {
 	return n.id
 }
 
@@ -105,37 +122,52 @@ func newComponentNode(block *ast.BlockStmt) *componentNode {
 	}
 }
 
-var _ dag.Node = (*componentNode)(nil)
+var (
+	_ dag.Node  = (*componentNode)(nil)
+	_ blockNode = (*componentNode)(nil)
+)
 
 // componentNode is a node used for components where we need to delay
 // certain checks until we have performed other ones.
 type componentNode struct {
 	id    string
-	diags diag.Diagnostics
 	block *ast.BlockStmt
+	diags diag.Diagnostics
+}
+
+func (c *componentNode) Block() *ast.BlockStmt {
+	return c.block
 }
 
 func (c *componentNode) NodeID() string {
 	return c.id
 }
 
-func newSubNode(node dag.Node, s *state) *subNode {
+func newSubNode(n *node, s *state) *subNode {
 	return &subNode{
-		id:    node.NodeID() + "-sub",
+		n:     n,
 		state: s,
 	}
 }
 
-var _ dag.Node = (*subNode)(nil)
+var (
+	_ dag.Node  = (*subNode)(nil)
+	_ blockNode = (*subNode)(nil)
+)
 
 // subNode is used to delay certain checks of a sub graph until we have
 // performed other ones.
 type subNode struct {
-	id string
+	n *node
 	*state
+}
+
+// Block implements blockNode.
+func (s *subNode) Block() *ast.BlockStmt {
+	return s.n.Block()
 }
 
 // NodeID implements dag.Node.
 func (s *subNode) NodeID() string {
-	return s.id
+	return s.n.NodeID()
 }

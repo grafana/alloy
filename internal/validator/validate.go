@@ -116,7 +116,7 @@ func (v *validator) validateDeclares(s *state) {
 	mem := make(map[string]*ast.BlockStmt, len(s.declares))
 
 	for i, d := range s.declares {
-		node := newBlockNode(d)
+		node := newNode(d)
 
 		// Declare blocks must have a label.
 		if node.block.Label == "" {
@@ -134,9 +134,6 @@ func (v *validator) validateDeclares(s *state) {
 			// We need to generate a unique id for this duplicated node so we can still typecheck it.
 			node.id = node.id + "-" + strconv.Itoa(i)
 		}
-
-		// Add declare to graph
-		s.graph.Add(node)
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
 
@@ -169,7 +166,7 @@ func (v *validator) validateConfigs(s *state) {
 		var (
 			// regiter controls whether we register arguments and imports.
 			register bool
-			node     = newBlockNode(c)
+			node     = newNode(c)
 		)
 
 		// Config blocks needs to be unique.
@@ -238,7 +235,7 @@ func (v *validator) validateConfigs(s *state) {
 	}
 }
 
-func (v *validator) validateImport(node *blockNode, register bool, s *state) {
+func (v *validator) validateImport(node *node, register bool, s *state) {
 	// Require label for import block.
 	if diag, ok := blockMissingLabel(node.block); ok {
 		register = false
@@ -265,7 +262,7 @@ func (v *validator) validateImport(node *blockNode, register bool, s *state) {
 	}
 }
 
-func (v *validator) validateForeach(node *blockNode, s *state) {
+func (v *validator) validateForeach(node *node, s *state) {
 	name := node.block.GetBlockName()
 
 	// Check required stability level.
@@ -312,7 +309,6 @@ func (v *validator) validateForeach(node *blockNode, s *state) {
 		return
 	}
 
-	s.graph.Add(node)
 	// We extract all blocks from template body and evaluate them as components.
 	configs, declares, services, components := extractBlocks(node, template.Body, v.sm)
 
@@ -364,7 +360,7 @@ func (v *validator) validateServices(s *state) {
 
 	for i, c := range s.services {
 		var (
-			node = newBlockNode(c)
+			node = newNode(c)
 			def  = v.sm[c.GetBlockName()]
 		)
 
@@ -399,7 +395,7 @@ var configBlockNames = [...]string{
 }
 
 // extractBlocks extracts configs, declares and components blocks from body
-func extractBlocks(node *blockNode, body ast.Body, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt) {
+func extractBlocks(node *node, body ast.Body, sm map[string]service.Definition) ([]*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt, []*ast.BlockStmt) {
 	var (
 		configs    = make([]*ast.BlockStmt, 0, len(body))
 		declares   = make([]*ast.BlockStmt, 0, len(body))
