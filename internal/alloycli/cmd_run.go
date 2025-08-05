@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -224,6 +225,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	if err != nil {
 		return fmt.Errorf("building tracer: %w", err)
 	}
+
+	startOTelCollectorRuntimeIfConfigured(log.With(l, "service", "otelcol"), ctx, &wg)
 
 	// The non-windows path for this is just a return nil, but to protect against
 	// refactoring assumptions we confirm that we're running on windows before setting the priority.
@@ -479,6 +482,70 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			}
 		}
 	}
+}
+
+func startOTelCollectorRuntimeIfConfigured(l log.Logger, ctx context.Context, wg *sync.WaitGroup) {
+	// The most basic way to start the otelcol runtime:
+	// - use the binary from environment variable
+	// - use the config from environment variable
+	// - run it as a subprocess
+	// - pipe the output to the parent process's stdout and stderr
+	// - use the context to cancel the command when main Alloy process is interrupted
+	// - wait for the otelcol runtime to exit, and if it doesn't do so within 5 seconds, send a kill signal
+	otelColBinaryPath := os.Getenv("OTELCOL_BINARY_PATH")
+	if otelColBinaryPath == "" {
+		level.Info(l).Log("msg", "otelcol binary path not configured and will not be started")
+		return
+	}
+
+	otelColBinaryPath, err := filepath.Abs(otelColBinaryPath)
+	if err != nil {
+		level.Error(l).Log("msg", "failed to get absolute path of otelcol binary", "err", err)
+		return
+	}
+	level.Info(l).Log("msg", "starting otelcol runtime", "path", otelColBinaryPath)
+
+	otelColConfigPath := os.Getenv("OTELCOL_CONFIG_PATH")
+	if otelColConfigPath == "" {
+		level.Error(l).Log("msg", "otelcol config path not configured and will not be started")
+		return
+	}
+
+	otelColCmd := exec.CommandContext(ctx, otelColBinaryPath, "--config", otelColConfigPath)
+	otelColCmd.Cancel = func() error {
+		level.Info(l).Log("msg", "sending interrupt signal to otelcol runtime")
+		otelColCmd.Process.Signal(syscall.SIGINT)
+		startTime := time.Now()
+		for {
+			if otelColCmd.ProcessState != nil && otelColCmd.ProcessState.Exited() {
+				return os.ErrProcessDone
+			}
+			if time.Since(startTime) > 5*time.Second {
+				level.Warn(l).Log("msg", "otelcol runtime did not exit after 5 seconds, killing it")
+				otelColCmd.Process.Kill()
+				// Give it a chance to exit after the kill signal sent.
+				time.Sleep(100 * time.Millisecond)
+				if otelColCmd.ProcessState != nil && otelColCmd.ProcessState.Exited() {
+					return os.ErrProcessDone
+				}
+				return fmt.Errorf("otelcol runtime sent kill signal after 5 seconds")
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	otelColCmd.Stdout = os.Stdout
+	otelColCmd.Stderr = os.Stderr
+	otelColCmd.WaitDelay = 5 * time.Second
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := otelColCmd.Run()
+		if err != nil {
+			level.Error(l).Log("msg", "otelcol runtime exited with error", "err", err)
+		} else {
+			level.Info(l).Log("msg", "otelcol runtime exited")
+		}
+	}()
 }
 
 // getEnabledComponentsFunc returns a function that gets the current enabled components
