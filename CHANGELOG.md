@@ -28,6 +28,8 @@ v1.10.1
 
 - Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
+- Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
+
 v1.10.0
 -----------------
 
