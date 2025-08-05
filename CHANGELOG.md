@@ -69,6 +69,8 @@ Main (unreleased)
 
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
+
 v1.10.0
 -----------------
 
