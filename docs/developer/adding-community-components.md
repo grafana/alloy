@@ -44,10 +44,15 @@ Community components live amongst other components in the code. The only differe
 
 The documentation should also follow the same pattern as the core components. You must include the the following markdown elements in the component documentation.
 
-* A community badge below the frontmatter.
+* A community badge in the frontmatter labels.
 
   ```markdown
-  <span class="badge docs-labels__stage docs-labels__item">Community</span>
+  labels:
+    products:
+      - oss
+    tags:
+      - text: Community
+        tooltip: This component is developed, maintained, and supported by the Alloy user community.
   ```
 
 * The [shortcode][] for the community component description below the heading 1.
