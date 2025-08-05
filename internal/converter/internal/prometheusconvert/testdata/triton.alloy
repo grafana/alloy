@@ -17,16 +17,14 @@ prometheus.scrape "prometheus1" {
 			__address__ = "localhost:9090",
 		}],
 	)
-	forward_to                  = [prometheus.remote_write.default.receiver]
-	job_name                    = "prometheus1"
-	metric_name_escaping_scheme = "allow-utf-8"
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
 }
 
 prometheus.scrape "prometheus2" {
-	targets                     = discovery.triton.prometheus2.targets
-	forward_to                  = [prometheus.remote_write.default.receiver]
-	job_name                    = "prometheus2"
-	metric_name_escaping_scheme = "allow-utf-8"
+	targets    = discovery.triton.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
 }
 
 prometheus.remote_write "default" {

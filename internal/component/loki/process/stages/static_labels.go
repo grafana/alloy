@@ -37,6 +37,8 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 		return ErrEmptyStaticLabelStageConfig
 	}
 	for labelName := range c.Values {
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
 			return fmt.Errorf(ErrInvalidLabelName, labelName)
 		}
