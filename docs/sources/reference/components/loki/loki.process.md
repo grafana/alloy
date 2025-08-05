@@ -484,7 +484,7 @@ Then the extracted `ip` value is given as source to `geoip` stage. The `geoip` s
 
 The `stage.json` inner block configures a JSON processing stage that parses incoming log lines or previously extracted values as JSON and uses [JMESPath expressions][] to extract new values from them.
 
-[JMESPath expressions]: https://jmespath.site/tutorial.html
+[JMESPath expressions]: https://jmespath.site/main/#tutorial
 
 The following arguments are supported:
 
