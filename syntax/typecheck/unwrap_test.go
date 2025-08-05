@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/syntax/parser"
 )
 
-func TestTryUnwrapBlockAttr(t *testing.T) {
+func TestUnwrapBlockAttr(t *testing.T) {
 	type TestCase struct {
 		desc     string
 		attr     string
@@ -58,7 +58,7 @@ func TestTryUnwrapBlockAttr(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			file, err := parser.ParseFile("", tt.src)
 			require.NoError(t, err)
-			v := TryUnwrapBlockAttr(file.Body[0].(*ast.BlockStmt), tt.attr, tt.dv)
+			v := UnwrapBlockAttr(file.Body[0].(*ast.BlockStmt), tt.attr, tt.dv)
 
 			require.Equal(t, v.Type(), tt.expected.Type())
 			require.Equal(t, v.Reflect(), tt.expected.Reflect())
