@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"fmt"
 	"iter"
+	"strings"
 
 	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -87,6 +89,37 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 			for _, ref := range refs {
 				s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
 			}
+		}
+	}
+
+	for _, cycle := range dag.StronglyConnectedComponents(s.graph.Graph) {
+		if len(cycle) > 1 {
+			cycleStr := make([]string, len(cycle))
+			for i, node := range cycle {
+				cycleStr[i] = node.NodeID()
+			}
+			for _, node := range cycle {
+				n := node.(blockNode)
+				diags.Add(diag.Diagnostic{
+					Severity: diag.SeverityLevelError,
+					StartPos: ast.StartPos(n.Block()).Position(),
+					EndPos:   n.Block().LCurlyPos.Position(),
+					Message:  fmt.Sprintf("cycle detected: %s", strings.Join(cycleStr, ", ")),
+				})
+			}
+
+		}
+	}
+
+	for _, e := range s.graph.Edges() {
+		if e.From == e.To {
+			n := e.From.(blockNode)
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(n.Block()).Position(),
+				EndPos:   n.Block().LCurlyPos.Position(),
+				Message:  fmt.Sprintf("cannot reference self"),
+			})
 		}
 	}
 
