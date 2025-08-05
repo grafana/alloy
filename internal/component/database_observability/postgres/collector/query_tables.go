@@ -147,7 +147,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
 			c.instanceKey,
-			fmt.Sprintf(`queryID="%s" query_text="%s" datName="%s" engine="postgres"`, queryID, queryText, databaseName),
+			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
 		tables, err := c.tryTokenizeTableNames(queryText)
@@ -161,7 +161,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
 				c.instanceKey,
-				fmt.Sprintf(`queryID="%s" datName="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
 			)
 		}
 	}
