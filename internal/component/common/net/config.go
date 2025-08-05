@@ -46,7 +46,7 @@ type HTTPConfig struct {
 	ServerReadTimeout  time.Duration `alloy:"server_read_timeout,attr,optional"`
 	ServerWriteTimeout time.Duration `alloy:"server_write_timeout,attr,optional"`
 	ServerIdleTimeout  time.Duration `alloy:"server_idle_timeout,attr,optional"`
-	TLSConfig          *TLSConfig    `alloy:"tls_config,block,optional"`
+	TLSConfig          *TLSConfig    `alloy:"tls,block,optional"`
 }
 
 // Into applies the configs from HTTPConfig into a dskit.Into.
@@ -73,7 +73,7 @@ type GRPCConfig struct {
 	ServerMaxRecvMsg           int           `alloy:"server_max_recv_msg_size,attr,optional"`
 	ServerMaxSendMsg           int           `alloy:"server_max_send_msg_size,attr,optional"`
 	ServerMaxConcurrentStreams uint          `alloy:"server_max_concurrent_streams,attr,optional"`
-	TLSConfig                  *TLSConfig    `alloy:"tls_config,block,optional"`
+	TLSConfig                  *TLSConfig    `alloy:"tls,block,optional"`
 }
 
 // TLSConfig sets up options for TLS connections.
@@ -83,8 +83,8 @@ type TLSConfig struct {
 	CertFile      string            `alloy:"cert_file,attr,optional"`
 	KeyFile       string            `alloy:"key_file,attr,optional"`
 	ClientAuth    string            `alloy:"client_auth_type,attr,optional"`
-	ClientCAs     string            `alloy:"client_ca_file,attr,optional"`
-	ClientCAsText string            `alloy:"client_ca,attr,optional"`
+	ClientCAFile  string            `alloy:"client_ca_file,attr,optional"`
+	ClientCA      string            `alloy:"client_ca,attr,optional"`
 }
 
 // Into applies the configs from GRPCConfig into a dskit.Into.
@@ -109,8 +109,8 @@ func (t *TLSConfig) Into(c *dskit.TLSConfig) {
 	c.TLSKey = config.Secret(t.Key)
 	c.TLSCertPath = t.CertFile
 	c.TLSKeyPath = t.KeyFile
-	c.ClientCAs = t.ClientCAs
-	c.ClientCAsText = t.ClientCAsText
+	c.ClientCAs = t.ClientCAFile
+	c.ClientCAsText = t.ClientCA
 	c.ClientAuth = t.ClientAuth
 }
 

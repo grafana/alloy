@@ -151,7 +151,7 @@ func TestConfig(t *testing.T) {
 			raw: `
 			http {
 				listen_port = 8443
-				tls_config {
+				tls {
 					cert_pem = "-----BEGIN CERTIFICATE-----\ntest cert\n-----END CERTIFICATE-----"
 					key_pem = "-----BEGIN PRIVATE KEY-----\ntest key\n-----END PRIVATE KEY-----"
 					cert_file = "/path/to/cert.pem"
@@ -178,7 +178,7 @@ func TestConfig(t *testing.T) {
 			raw: `
 			grpc {
 				listen_port = 9443
-				tls_config {
+				tls {
 					cert_pem = "-----BEGIN CERTIFICATE-----\ngrpc cert\n-----END CERTIFICATE-----"
 					key_pem = "-----BEGIN PRIVATE KEY-----\ngrpc key\n-----END PRIVATE KEY-----"
 					cert_file = "/path/to/grpc-cert.pem"
@@ -205,7 +205,7 @@ func TestConfig(t *testing.T) {
 			raw: `
 			http {
 				listen_port = 8443
-				tls_config {
+				tls {
 					cert_file = "/path/to/http-cert.pem"
 					key_file = "/path/to/http-key.pem"
 					client_auth_type = "NoClientCert"
@@ -213,7 +213,7 @@ func TestConfig(t *testing.T) {
 			}
 			grpc {
 				listen_port = 9443
-				tls_config {
+				tls {
 					cert_file = "/path/to/grpc-cert.pem"
 					key_file = "/path/to/grpc-key.pem"
 					client_auth_type = "RequireAndVerifyClientCert"
@@ -238,7 +238,7 @@ func TestConfig(t *testing.T) {
 		"tls config with minimal settings": {
 			raw: `
 			http {
-				tls_config {
+				tls {
 					cert_file = "/minimal/cert.pem"
 					key_file = "/minimal/key.pem"
 				}

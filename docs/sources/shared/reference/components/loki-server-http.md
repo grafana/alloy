@@ -16,10 +16,10 @@ You can use the following arguments to configure the `http` block. Any omitted f
 | `server_idle_timeout`  | `duration` | Idle timeout for HTTP server.                                                                                    | `"120s"` | no       |
 | `server_read_timeout`  | `duration` | Read timeout for HTTP server.                                                                                    | `"30s"`  | no       |
 | `server_write_timeout` | `duration` | Write timeout for HTTP server.                                                                                   | `"30s"`  | no       |
-| `tls_config`           | `block`    | TLS config for HTTP server.                                                                                      | `{}`     | no       |
+| `tls       `           | `block`    | TLS config for HTTP server.                                                                                      | `{}`     | no       |
 
-[tls_config]: #tls_config
+[tls]: #tls
 
-### `tls_config`
+### `tls`
 
 {{< docs/shared lookup="reference/components/common-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
