@@ -98,10 +98,10 @@ Section "install"
   WriteRegStr   HKLM "${UNINSTALLKEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "InstallLocation"      '"$INSTDIR"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayIcon"          '"$INSTDIR\logo.ico"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '"${ABOUTURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "HelpLink"             '"${HELPURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLUpdateInfo"        '"${UPDATEURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLInfoAbout"         '"${ABOUTURL}"'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '${ABOUTURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "HelpLink"             '${HELPURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLUpdateInfo"        '${UPDATEURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLInfoAbout"         '${ABOUTURL}'
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoRepair" 1
 
