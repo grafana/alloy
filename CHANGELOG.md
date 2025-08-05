@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+
 v1.10.0
 -----------------
 
