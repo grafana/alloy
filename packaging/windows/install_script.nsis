@@ -13,6 +13,7 @@ Unicode true
 !include .\macros.nsis
 
 !define APPNAME     "Alloy"
+!define PUBLISHER   "Grafana Labs"
 !define HELPURL     "https://grafana.com/docs/alloy/latest"
 !define UPDATEURL   "https://github.com/grafana/alloy/releases"
 !define ABOUTURL    "https://github.com/grafana/alloy"
@@ -98,7 +99,7 @@ Section "install"
   WriteRegStr   HKLM "${UNINSTALLKEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "InstallLocation"      '"$INSTDIR"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayIcon"          '"$INSTDIR\logo.ico"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '${ABOUTURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '${PUBLISHER}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "HelpLink"             '${HELPURL}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "URLUpdateInfo"        '${UPDATEURL}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "URLInfoAbout"         '${ABOUTURL}'
