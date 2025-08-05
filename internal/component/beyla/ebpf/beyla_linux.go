@@ -329,7 +329,7 @@ func (args Metrics) hasNetworkFeature() bool {
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
-		case "application", "application_span", "application_service_graph", "application_process":
+		case "application", "application_host", "application_span", "application_service_graph", "application_process":
 			return true
 		}
 	}
@@ -347,9 +347,9 @@ func (args Metrics) Validate() error {
 	}
 
 	validFeatures := map[string]struct{}{
-		"application": {}, "application_span": {},
+		"application": {}, "application_span": {}, "application_host": {},
 		"application_service_graph": {}, "application_process": {},
-		"network": {},
+		"network": {}, "network_inter_zone": {},
 	}
 	for _, feature := range args.Features {
 		if _, ok := validFeatures[feature]; !ok {
@@ -627,11 +627,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	hasNetworkFeature := args.Metrics.hasNetworkFeature()
 	hasAppFeature := args.Metrics.hasAppFeature()
-
-	isTracingEnabled := args.TracePrinter != "" && args.TracePrinter != string(debug.TracePrinterDisabled)
-	hasOutputConfig := args.Output != nil && args.Output.Traces != nil
 
 	if args.TracePrinter == "" {
 		args.TracePrinter = string(debug.TracePrinterDisabled)
@@ -664,11 +660,6 @@ func (args *Arguments) Validate() error {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
-
-	if !hasNetworkFeature && !hasAppFeature && !isTracingEnabled && !hasOutputConfig {
-		return fmt.Errorf("either metrics.features must include at least one of: [network, application, application_span, application_service_graph, application_process], or tracing must be enabled via trace_printer or output section")
-	}
-
 	return nil
 }
 

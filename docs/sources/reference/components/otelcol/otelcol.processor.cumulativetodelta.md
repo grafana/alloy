@@ -40,7 +40,7 @@ otelcol.processor.cumulativetodelta "<LABEL>" {
 You can use the following arguments with `otelcol.processor.cumulativetodelta`:
 
 | Name            | Type       | Description                                                            | Default  | Required |
-| --------------- | ---------- | ---------------------------------------------------------------------- | -------- | -------- |
+|-----------------|------------|------------------------------------------------------------------------|----------|----------|
 | `initial_value` | `string`   | Handling of the first observed point for a given metric identity.      | `"auto"` | no       |
 | `max_staleness` | `duration` | The total time a state entry will live past the time it was last seen. | `"0"`    | no       |
 
@@ -66,7 +66,7 @@ When the collector (re)starts, there's no record of how much of a given cumulati
 You can use the following blocks with `otelcol.processor.cumulativetodelta`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`exclude`][exclude]             | Configures which metrics to not convert to delta.                          | no       |
@@ -82,7 +82,7 @@ If neither `include` nor `exclude` are supplied, no filtering is applied.
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -93,7 +93,7 @@ The `include` block configures which metrics to convert to delta.
 The following attributes are supported:
 
 | Name           | Type           | Description                              | Default | Required |
-| -------------- | -------------- | ---------------------------------------- |-------- | -------- |
+|----------------|----------------|------------------------------------------|---------|----------|
 | `match_type`   | `string`       | Match type to use, `strict` or `regexp`. |         | no       |
 | `metric_types` | `list(string)` | Metric types to convert to delta.        |         | no       |
 | `metrics`      | `list(string)` | Names or patterns to convert to delta.   |         | no       |
@@ -110,7 +110,7 @@ The `exclude` block configures which metrics not to convert to delta.
 The following attributes are supported:
 
 | Name           | Type           | Description                                            | Default | Required |
-| -------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
+|----------------|----------------|--------------------------------------------------------|---------|----------|
 | `match_type`   | `string`       | Match type to use, `strict` or `regexp`.               |         | no       |
 | `metric_types` | `list(string)` | Metric types to exclude when converting to delta.      |         | no       |
 | `metrics`      | `list(string)` | Names or patterns to exclude when converting to delta. |         | no       |
@@ -128,7 +128,7 @@ Valid values for `metric_types` are `sum` and `histogram`.
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
