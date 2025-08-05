@@ -10,7 +10,7 @@ on:
       # TODO - be more precise and only run if a new component readme file is created, this will also run on modifications
       - './docs/sources/reference/components/**/*.md'
       - '!./docs/sources/reference/components/**/_index.md'
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   generate-component-labels:

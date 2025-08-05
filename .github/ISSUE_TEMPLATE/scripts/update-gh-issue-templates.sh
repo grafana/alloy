@@ -1,38 +1,56 @@
 # If run on OSX, default bash < 4 and does not support declare -A, also bsd awk does not support multiline strings
-#!/usr/bin/env bash
 
 set -euo pipefail
 
-# Create an array of labels so they can be added in to the issue templates
-declare -a LABELS
+# Create an array of component names so they can be added in to the issue templates
+declare -a LIST
 
-for README in $(find ./docs/sources/reference/components -name '*.md' -and -not -name '*index.md' -print0); do
+for README in $(find ./docs/sources/reference/components -name '*.md' ! -name '*index.md'); do
     # The find ends up with an empty string in some OSes
     if [[ -z "${README}" ]]; then
         continue
     fi
     FILENAME=${README##*/}
-    LABEL_NAME="${FILENAME%.*}"
-    TYPE=$(echo "${LABEL_NAME}" | cut -f1 -d '.' )
-    
-    if (( "${#LABEL_NAME}" > 50 )); then
-        echo "'${LABEL_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
+    COMPONENT_NAME="${FILENAME%.*}"
+
+    if (( "${#COMPONENT_NAME}" > 50 )); then
+        echo "'${COMPONENT_NAME}' exceeds GitHubs 50-character limit on labels, skipping"
         continue
     fi
-    LABELS+=("${LABEL_NAME}")
+
+    LIST+=("${COMPONENT_NAME}")
 done
 
-content="$(printf -- "`printf "      - %s\n" "${LABELS[@]}"`")\n      # End components list"
+# Ensure LIST array has been populated
+if [ ${#LIST[@]} -eq 0 ]; then
+    echo "No components were found. Exiting script."
+    exit 1
+fi
 
-# replace the text in the .github/ISSUE_TEMPLATE/*.yaml files between "# Start components list" and "# End components list" with the LABELS array using awk
+IFS=$'\n' LIST=($(sort <<<"${LIST[*]}"))
+# Reset IFS to default
+unset IFS
+
+# Format the list properly
+LABELS_LIST="$(printf "      - %s\n" "${LIST[@]}")"
+# Append the # End components list comment to the end of the list
+LABELS_LIST="${LABELS_LIST}\n      # End components list"
+
+# Create a temporary file with the content
+echo -e "${LABELS_LIST}" > /tmp/labels_content.txt
+
+# Process the templates
 for TEMPLATE in $(find .github/ISSUE_TEMPLATE -name '*.yaml'); do
     echo "Updating ${TEMPLATE} with component labels"
-    awk -v content="${content}" '
+
+    # Use awk to replace the section in each template
+    awk -v labels_file="/tmp/labels_content.txt" '
         BEGIN { in_section = 0 }
         /# Start components list/ { in_section = 1; print; next }
-        /# End components list/ { in_section = 0; print content; next }
+        /# End components list/ { in_section = 0; while ((getline line < labels_file) > 0) print line; next }
         !in_section { print }
     ' "${TEMPLATE}" > "${TEMPLATE}.tmp" && mv "${TEMPLATE}.tmp" "${TEMPLATE}"
+
     echo "Updated ${TEMPLATE} successfully"
 done
 

@@ -284,7 +284,7 @@ else
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
 endif
 
-update-gh-issue-templates:
+generate-gh-issue-templates:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else

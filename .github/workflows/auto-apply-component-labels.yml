@@ -1,4 +1,4 @@
-name: 'Ping code owners on a new issue'
+name: 'Apply labels on a new issue'
 on:
   issues:
     types: [opened]
@@ -6,7 +6,7 @@ on:
 permissions: read-all
 
 jobs:
-  ping-owners-on-new-issue:
+  apply-labels-on-issue:
     permissions:
       issues: write
     runs-on: ubuntu-latest
