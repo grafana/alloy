@@ -42,7 +42,7 @@ Doing the implementation will make you a maintainer of the component. This will 
 
 Community components live amongst other components in the code. The only difference with core components is that the flag `Community` should be set to true when registering the component.
 
-The documentation should also follow the same pattern as the core components. You must include the the following markdown elements in the component documentation.
+The documentation should also follow the same pattern as the core components. You must include the following markdown elements in the component documentation.
 
 - A community badge in the front matter labels.
 
