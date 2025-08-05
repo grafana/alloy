@@ -202,3 +202,20 @@ shadow_me "test" {}
 declare "b" { a "test" {} }
 
 declare "a" { }
+
+declare "pods_and_nodes" {
+	discovery.kubernetes "pods" {
+		role = "pod"
+	}
+
+	discovery.kubernetes "nodes" {
+		role = "node"
+	}
+
+	export "kubernetes_resources" {
+		value = array.concat(
+			discovery.kubernetes.pods.targets,
+			discovery.kubernetes.nodes.targets,
+		)
+	}
+}

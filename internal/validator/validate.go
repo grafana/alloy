@@ -141,6 +141,8 @@ func (v *validator) validateDeclares(s *state) {
 		}
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
+		// We set an empty body here because they are evalutated in a sub graph.
+		node.block.Body = ast.Body{}
 
 		moduleState := &state{
 			root:       false,

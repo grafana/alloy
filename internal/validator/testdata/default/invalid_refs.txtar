@@ -22,3 +22,20 @@ declare "self_collect" {
 		forward_to = [prometheus.relabel.default.receiver]
 	}
 }
+
+declare "pods_and_nodes" {
+	discovery.kubernetes "pods" {
+		role = "pod"
+	}
+
+	discovery.kubernetes "nodes" {
+		role = "node"
+	}
+
+	export "kubernetes_resources" {
+		value = array.concat(
+			discovery.kubernetes.pods2.targets,
+			discovery.kubernetes.nodes2.targets,
+		)
+	}
+}
