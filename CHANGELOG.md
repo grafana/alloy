@@ -30,6 +30,8 @@ v1.10.1
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+
 v1.10.0
 -----------------
 
