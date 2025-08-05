@@ -1,0 +1,26 @@
+dist:
+  module: github.com/grafana/alloy/otelcol
+  name: otelcol
+  description: Subprocess proof of concept collector binary.
+  version: 0.1
+  output_path: ./otelcol
+
+extensions:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.128.0
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.128.0
+
+processors:
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.128.0
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.128.0
+
+connectors:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.128.0
+
+# When using `make genotelcontribcol`, the `replaces` content is appended to this
+# file before passing it to OCB, to ensure that local versions are used for all
+# Contrib modules.
+replaces:
