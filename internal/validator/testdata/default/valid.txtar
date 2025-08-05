@@ -22,6 +22,12 @@ tracing {
 	write_to = [otelcol.exporter.otlp.tempo.input]
 }
 
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "http://tempo:3001"
+	}
+}
+
 local.file_match "applogs" {
 	path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 }

@@ -37,10 +37,9 @@ func (g *orderedGraph) Nodes() iter.Seq[dag.Node] {
 	}
 }
 
-func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostics {
+func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	for n := range s.graph.Nodes() {
-
 		switch node := n.(type) {
 		case *node:
 			// Add any diagnostic for node that should be before type check.
@@ -68,19 +67,26 @@ func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostic
 				continue
 			}
 			diags.Merge(typecheck.Block(node.block, reg.CloneArguments()))
-		case *subNode:
+		case *moduleNode:
 			diags.Merge(node.n.diags)
 			if node.n.args != nil {
 				diags.Merge(typecheck.Block(node.n.block, node.n.args))
 			}
-
-			diags.Merge(validateGraph(node.state, minStability))
+			diags.Merge(validateGraph(node.state, minStability, false))
+		case *foreachNode:
+			diags.Merge(node.n.diags)
+			if node.n.args != nil {
+				diags.Merge(typecheck.Block(node.n.block, node.n.args))
+			}
+			diags.Merge(validateGraph(node.state, minStability, true))
 		}
 
-		refs, refDiags := findReferences(n, s.graph.Graph, s.scope, minStability)
-		diags.Merge(refDiags)
-		for _, ref := range refs {
-			s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
+		if !skipRefs {
+			refs, refDiags := findReferences(n, s.graph.Graph, s.scope, minStability)
+			diags.Merge(refDiags)
+			for _, ref := range refs {
+				s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
+			}
 		}
 	}
 
@@ -88,7 +94,7 @@ func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostic
 }
 
 type blockNode interface {
-	NodeID() string
+	dag.Node
 	Block() *ast.BlockStmt
 }
 
@@ -152,31 +158,54 @@ func (c *componentNode) NodeID() string {
 	return c.id
 }
 
-func newSubNode(n *node, s *state) *subNode {
-	return &subNode{
+func newModuleNode(n *node, s *state) *moduleNode {
+	return &moduleNode{
 		n:     n,
 		state: s,
 	}
 }
 
 var (
-	_ dag.Node  = (*subNode)(nil)
-	_ blockNode = (*subNode)(nil)
+	_ dag.Node  = (*moduleNode)(nil)
+	_ blockNode = (*moduleNode)(nil)
 )
 
-// subNode is used to delay certain checks of a sub graph until we have
+// moduleNode is used to delay certain checks of a sub graph until we have
 // performed other ones.
-type subNode struct {
+type moduleNode struct {
 	n *node
 	*state
 }
 
-// Block implements blockNode.
-func (s *subNode) Block() *ast.BlockStmt {
-	return s.n.Block()
+func (m *moduleNode) Block() *ast.BlockStmt {
+	return m.n.Block()
 }
 
-// NodeID implements dag.Node.
-func (s *subNode) NodeID() string {
-	return s.n.NodeID()
+func (m *moduleNode) NodeID() string {
+	return m.n.NodeID()
+}
+
+func newForeachNode(n *node, s *state) *foreachNode {
+	return &foreachNode{
+		n:     n,
+		state: s,
+	}
+}
+
+var (
+	_ dag.Node  = (*foreachNode)(nil)
+	_ blockNode = (*foreachNode)(nil)
+)
+
+type foreachNode struct {
+	n *node
+	*state
+}
+
+func (f *foreachNode) Block() *ast.BlockStmt {
+	return f.n.Block()
+}
+
+func (f *foreachNode) NodeID() string {
+	return f.n.NodeID()
 }

@@ -84,7 +84,7 @@ func (v *validator) run(cr *componentRegistry) error {
 		}),
 	}
 
-	diags := validateGraph(v.validate(rootState), v.minStability)
+	diags := validateGraph(v.validate(rootState), v.minStability, false)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -154,7 +154,7 @@ func (v *validator) validateDeclares(s *state) {
 		}
 
 		// Add module state as node to graph
-		s.graph.Add(newSubNode(node, v.validate(moduleState)))
+		s.graph.Add(newModuleNode(node, v.validate(moduleState)))
 
 		if node.block.Label != "" {
 			// FIXME(kalleep): for now we don't set any value for arguments.
@@ -344,7 +344,7 @@ func (v *validator) validateForeach(node *node, s *state) {
 		foreachState.scope.Variables[value.Text()] = struct{}{}
 	}
 	// Add foreach state as node to the graph
-	s.graph.Add(newSubNode(node, v.validate(foreachState)))
+	s.graph.Add(newForeachNode(node, v.validate(foreachState)))
 }
 
 // validateComponents will perform validation on component blocks.
