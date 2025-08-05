@@ -60,6 +60,12 @@ func (h *HTTPConfig) Into(c *dskit.Config) {
 	if h.TLSConfig != nil {
 		h.TLSConfig.Into(&c.HTTPTLSConfig)
 	}
+	if h.TLSConfig.MinVersion != c.MinVersion {
+		c.MinVersion = h.TLSConfig.MinVersion
+	}
+	if h.TLSConfig.CipherSuites != c.CipherSuites {
+		c.CipherSuites = h.TLSConfig.CipherSuites
+	}
 }
 
 // GRPCConfig configures the gRPC dskit started by dskit.Server.
@@ -78,13 +84,15 @@ type GRPCConfig struct {
 
 // TLSConfig sets up options for TLS connections.
 type TLSConfig struct {
-	Cert          string            `alloy:"cert_pem,attr,optional"`
-	Key           alloytypes.Secret `alloy:"key_pem,attr,optional"`
-	CertFile      string            `alloy:"cert_file,attr,optional"`
-	KeyFile       string            `alloy:"key_file,attr,optional"`
-	ClientAuth    string            `alloy:"client_auth_type,attr,optional"`
-	ClientCAFile  string            `alloy:"client_ca_file,attr,optional"`
-	ClientCA      string            `alloy:"client_ca,attr,optional"`
+	Cert         string            `alloy:"cert_pem,attr,optional"`
+	Key          alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	CertFile     string            `alloy:"cert_file,attr,optional"`
+	KeyFile      string            `alloy:"key_file,attr,optional"`
+	ClientAuth   string            `alloy:"client_auth_type,attr,optional"`
+	ClientCAFile string            `alloy:"client_ca_file,attr,optional"`
+	ClientCA     string            `alloy:"client_ca,attr,optional"`
+	CipherSuites string            `alloy:"cipher_suites,attr,optional"`
+	MinVersion   string            `alloy:"min_version,attr,optional"`
 }
 
 // Into applies the configs from GRPCConfig into a dskit.Into.
@@ -100,6 +108,12 @@ func (g *GRPCConfig) Into(c *dskit.Config) {
 	c.GRPCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
 	if g.TLSConfig != nil {
 		g.TLSConfig.Into(&c.GRPCTLSConfig)
+	}
+	if g.TLSConfig.MinVersion != c.MinVersion {
+		c.MinVersion = g.TLSConfig.MinVersion
+	}
+	if g.TLSConfig.CipherSuites != c.CipherSuites {
+		c.CipherSuites = g.TLSConfig.CipherSuites
 	}
 }
 
