@@ -17,7 +17,7 @@ import (
 )
 
 func TestQueryTables(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/component/common/loki/client/fake.NewClient.func1"))
+	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
 		name                string
@@ -386,7 +386,7 @@ func TestQueryTables(t *testing.T) {
 }
 
 func TestQueryTablesSQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/component/common/loki/client/fake.NewClient.func1"))
+	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()
