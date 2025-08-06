@@ -70,6 +70,7 @@ If you want to opt out of anonymous usage statistics reporting, set the [CLI fla
 
    ```shell
    sudo systemctl restart alloy
+   ```
 
 [components]: ../get-started/components/
 [command line flag]: ../reference/cli/run/
