@@ -530,13 +530,13 @@ func TestActivity_FetchActivity(t *testing.T) {
 			defer db.Close()
 
 			var logBuf strings.Builder
-			
+
 			// Create a thread-safe writer wrapper
 			safeWriter := &struct {
 				sync.Mutex
 				*strings.Builder
 			}{Builder: &logBuf}
-			
+
 			logger := log.NewLogfmtLogger(safeWriter)
 			lokiClient := loki_fake.NewClient(func() {})
 
