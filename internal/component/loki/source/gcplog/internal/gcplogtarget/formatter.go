@@ -89,6 +89,8 @@ func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.L
 			continue
 		}
 		// ignore invalid labels
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValid() || !model.LabelValue(lbl.Value).IsValid() {
 			continue
 		}

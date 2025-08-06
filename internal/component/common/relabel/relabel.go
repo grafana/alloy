@@ -171,12 +171,16 @@ func (rc *Config) Validate() error {
 	if (rc.Action == Replace || rc.Action == HashMod || rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.TargetLabel == "" {
 		return fmt.Errorf("relabel configuration for %s action requires 'target_label' value", rc.Action)
 	}
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
 	if rc.Action == Replace && !strings.Contains(rc.TargetLabel, "$") && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
 	if rc.Action == Replace && strings.Contains(rc.TargetLabel, "$") && !relabelTarget.MatchString(rc.TargetLabel) {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
 	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
@@ -186,6 +190,8 @@ func (rc *Config) Validate() error {
 	if rc.Action == LabelMap && !relabelTarget.MatchString(rc.Replacement) {
 		return fmt.Errorf("%q is invalid 'replacement' for %s action", rc.Replacement, rc.Action)
 	}
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
 	if rc.Action == HashMod && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
@@ -261,6 +267,8 @@ func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
 			break
 		}
 		target := model.LabelName(cfg.Regex.ExpandString([]byte{}, cfg.TargetLabel, val, indexes))
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !target.IsValid() {
 			break
 		}

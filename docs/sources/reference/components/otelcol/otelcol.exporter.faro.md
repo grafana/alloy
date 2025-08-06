@@ -45,7 +45,7 @@ The `otelcol.exporter.faro` component doesn't support any arguments. You can con
 You can use the following blocks with `otelcol.exporter.faro`:
 
 | Block                                                 | Description                                                                | Required |
-| ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                      | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
@@ -69,7 +69,7 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the HTTP client used by the component.
 
@@ -122,7 +122,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for logs and traces.

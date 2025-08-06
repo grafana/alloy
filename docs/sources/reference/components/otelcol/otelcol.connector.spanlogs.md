@@ -39,7 +39,7 @@ otelcol.connector.spanlogs "<LABEL>" {
 You can use the following arguments with `otelcol.connector.spanlogs`:
 
 | Name                 | Type           | Description                                   | Default | Required |
-| -------------------- | -------------- | --------------------------------------------- | ------- | -------- |
+|----------------------|----------------|-----------------------------------------------|---------|----------|
 | `event_attributes`   | `list(string)` | Additional event attributes to log.           | `[]`    | no       |
 | `events`             | `bool`         | Log one line for every span event.            | `false` | no       |
 | `labels`             | `list(string)` | A list of keys that will be logged as labels. | `[]`    | no       |
@@ -60,7 +60,7 @@ Setting either `spans` or `events` to `true` could lead to a high volume of logs
 You can use the following blocks with `otelcol.connector.spanlogs`:
 
 | Block                    | Description                                       | Required |
-| ------------------------ | ------------------------------------------------- | -------- |
+|--------------------------|---------------------------------------------------|----------|
 | [`output`][output]       | Configures where to send received telemetry data. | yes      |
 | [`overrides`][overrides] | Overrides for keys in the log body.               | no       |
 
@@ -69,7 +69,7 @@ You can use the following blocks with `otelcol.connector.spanlogs`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -80,7 +80,7 @@ The `overrides` block configures overrides for keys that will be logged in the b
 The following arguments are supported:
 
 | Name                | Type     | Description                                                | Default  | Required |
-| ------------------- | -------- | ---------------------------------------------------------- | -------- | -------- |
+|---------------------|----------|------------------------------------------------------------|----------|----------|
 | `duration_key`      | `string` | Log key for the duration of the span.                      | `dur`    | no       |
 | `logs_instance_tag` | `string` | Indicates if the log line is for a span, root, or process. | `traces` | no       |
 | `service_key`       | `string` | Log key for the service name of the resource.              | `svc`    | no       |
@@ -93,7 +93,7 @@ The following arguments are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
