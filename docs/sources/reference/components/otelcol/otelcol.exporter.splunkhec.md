@@ -4,10 +4,11 @@ description: Learn about otelcol.exporter.splunkhec
 labels:
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.splunkhec
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Community</span>
 
 # `otelcol.exporter.splunkhec`
 
