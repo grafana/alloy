@@ -117,7 +117,7 @@ You can use the following blocks with `loki.source.awsfirehose`:
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

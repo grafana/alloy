@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/loki-server-http/
-description: Shared content, loki server http
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/server-http/
+description: Shared content, server http
 headless: true
 ---
 
@@ -16,10 +16,19 @@ You can use the following arguments to configure the `http` block. Any omitted f
 | `server_idle_timeout`  | `duration` | Idle timeout for HTTP server.                                                                                    | `"120s"` | no       |
 | `server_read_timeout`  | `duration` | Read timeout for HTTP server.                                                                                    | `"30s"`  | no       |
 | `server_write_timeout` | `duration` | Write timeout for HTTP server.                                                                                   | `"30s"`  | no       |
-| `tls       `           | `block`    | TLS config for HTTP server.                                                                                      | `{}`     | no       |
 
-[tls]: #tls
+
+## Blocks
+
+You can use the following blocks with `http`:
+
+| Block        | Description                             | Required |
+| ------------ | --------------------------------------- | -------- |
+| [`tls`][tls] | Configure TLS settings for HTTP server. | no       |
+
 
 ### `tls`
 
-{{< docs/shared lookup="reference/components/common-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+The `tls` block configures TLS config for HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
