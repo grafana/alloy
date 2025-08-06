@@ -574,8 +574,6 @@ func (s *Service) setPollFrequency(t time.Duration) {
 	default:
 	}
 }
-<<<<<<< HEAD
-=======
 
 type agentInterceptor struct {
 	agent string
@@ -612,4 +610,3 @@ func GetHost(host service.Host) (service.Host, error) {
 	}
 	return data.Host, nil
 }
->>>>>>> 1fa6b5a94 (Ensure cluster notifications are sent to remotecfg components (#4006))
