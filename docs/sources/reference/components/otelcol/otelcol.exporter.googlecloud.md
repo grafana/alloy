@@ -4,10 +4,11 @@ description: Learn about otelcol.exporter.googlecloud
 labels:
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.googlecloud
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Community</span>
 
 # `otelcol.exporter.googlecloud`
 

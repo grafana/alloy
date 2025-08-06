@@ -18,8 +18,6 @@ Main (unreleased)
 
   - The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to `false` by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
 
-  - Prometheus components such as `prometheus.scrape` and `prometheus.operator.*` now support UTF-8 in metric and label names by default. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"` and optionally setting the `metric_name_escaping_scheme` to a desired value. See `prometheus.scrape` reference documentation.
-
   - The experimental CLI flag `--feature.prometheus.metric-validation-scheme` has been deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component.
 
   - Log message format has changed for some of the `prometheus.*` components as part of the upgrade to Prometheus v3.
@@ -43,7 +41,7 @@ Main (unreleased)
 
 ### Enhancements
 
-- `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. (@thampiotr)
+- `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
 - Add `max_send_message_size` configuration option to `loki.source.api` component to control the maximum size of requests to the push API. (@thampiotr)
 
@@ -55,6 +53,8 @@ Main (unreleased)
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
@@ -65,7 +65,13 @@ Main (unreleased)
 
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
+- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+
+- Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
 - Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
