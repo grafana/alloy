@@ -52,7 +52,14 @@ const selectPgStatActivity = `
 		s.pid <> pg_backend_pid() AND
 		(
 			s.backend_type != 'client backend' OR
-			(coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND s.state != 'idle' and coalesce(TRIM(s.state), '') != '')
+			(
+				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND 
+				(
+					s.state != 'idle' OR 
+					(s.state = 'idle' AND s.state_change > $1)
+				) AND 
+				coalesce(TRIM(s.state), '') != ''
+			)
 		)
 `
 
@@ -100,10 +107,11 @@ type Activity struct {
 	disableQueryRedaction bool
 	entryHandler          loki.EntryHandler
 
-	logger  log.Logger
-	running *atomic.Bool
-	ctx     context.Context
-	cancel  context.CancelFunc
+	logger     log.Logger
+	running    *atomic.Bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	lastScrape time.Time
 }
 
 func NewActivity(args ActivityArguments) (*Activity, error) {
@@ -173,7 +181,8 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *Activity) fetchActivity(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	scrapeTime := time.Now()
+	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query pg_stat_activity", "err", err)
 		return err
@@ -228,10 +237,10 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			}
 		}
 
-		// Use leader_pid if available, otherwise use pid - this will allow us to see the actual caller PID when there are parallel executions
-		effectivePID := activity.PID
+		// Prepare leader_pid for logging if it exists
+		leaderPID := ""
 		if activity.LeaderPID.Valid {
-			effectivePID = int(activity.LeaderPID.Int64)
+			leaderPID = fmt.Sprintf(` leader_pid="%d"`, activity.LeaderPID.Int64)
 		}
 
 		stateDuration := calculateDuration(activity.StateChange, activity.Now)
@@ -283,7 +292,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d" user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d"%s user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			activity.Now.Format(time.RFC3339Nano),
 			c.instanceKey,
 			applicationName,
@@ -291,7 +300,8 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			backendType,
 			backendDuration,
 			state,
-			effectivePID,
+			activity.PID,
+			leaderPID,
 			userName,
 			activity.UserSysID,
 			databaseName,
@@ -350,6 +360,9 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
+
+	// Update last scrape time after successful scrape
+	c.lastScrape = scrapeTime
 
 	return nil
 }
