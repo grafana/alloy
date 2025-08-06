@@ -386,7 +386,7 @@ The supported values for `name` are:
 * `always_off`: Never samples traces. No `arg` required.
 * `parentbased_always_on`: Uses parent-based sampling that always samples when there's no parent span. This is the default behavior.
 * `parentbased_always_off`: Uses parent-based sampling that never samples when there's no parent span.
-* `parentbased_traceidratio`: Uses parent-based sampling with trace ID ratio-based sampling for root spans. The `arg` should be a decimal value between 0 and 1.
+* `parentbased_traceidratio`: Uses parent-based sampling with trace ID ratio-based sampling for root spans. The `arg` must be a decimal value between 0 and 1.
 
 #### Examples
 
