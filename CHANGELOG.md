@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
@@ -68,6 +70,8 @@ Main (unreleased)
 - Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+
+- Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
 - Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
