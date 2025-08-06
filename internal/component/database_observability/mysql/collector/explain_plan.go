@@ -470,7 +470,7 @@ type ExplainPlanArguments struct {
 	InstanceKey     string
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
-	SchemaDenyList  []string
+	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
 	DBVersion       string
@@ -485,7 +485,7 @@ type ExplainPlan struct {
 	scrapeInterval        time.Duration
 	queryCache            map[string]*queryInfo
 	queryDenylist         map[string]*queryInfo
-	schemaDenyList        []string
+	excludeSchemas        []string
 	unrecoverableSQLCodes []knownSQLCodes
 	perScrapeRatio        float64
 	currentBatchSize      int
@@ -505,7 +505,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]*queryInfo),
-		schemaDenyList: args.SchemaDenyList,
+		excludeSchemas: args.ExcludeSchemas,
 		unrecoverableSQLCodes: []knownSQLCodes{
 			accessDeniedSQLCode,
 		},
@@ -583,7 +583,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
-		if slices.ContainsFunc(c.schemaDenyList, func(schema string) bool {
+		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
 			return strings.EqualFold(schema, qi.schemaName)
 		}) {
 			continue

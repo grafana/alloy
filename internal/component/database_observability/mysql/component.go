@@ -66,7 +66,7 @@ type Arguments struct {
 	ExplainPlanCollectInterval time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
 	ExplainPlanPerCollectRatio float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
 	ExplainPlanInitialLookback time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
-	ExplainPlanSchemaDenylist  []string      `alloy:"explain_plan_schema_denylist,attr,optional"`
+	ExplainPlanExcludeSchemas  []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 
 	// collector: 'locks'
 	LocksCollectInterval time.Duration `alloy:"locks_collect_interval,attr,optional"`
@@ -408,7 +408,7 @@ func (c *Component) startCollectors() error {
 			InstanceKey:     c.instanceKey,
 			ScrapeInterval:  c.args.ExplainPlanCollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlanPerCollectRatio,
-			SchemaDenyList:  c.args.ExplainPlanSchemaDenylist,
+			ExcludeSchemas:  c.args.ExplainPlanExcludeSchemas,
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
