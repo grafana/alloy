@@ -32,7 +32,6 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
 | `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
 
-
 The following collectors are configurable:
 
 | Name              | Description                                              | Enabled by default |

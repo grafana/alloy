@@ -24,8 +24,6 @@ Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
 
 - The `enable_http2` in `prometheus.remote_write` component's endpoints has been changed to `false` by default. Previously, in Prometheus v2 the remote write http client would default to use http2. In order to parallelize multiple remote write queues across multiple sockets its preferable to not default to http2. If you prefer to use http2 for remote write you must now set `enable_http2` to `true` in your `prometheus.remote_write` endpoints configuration section.
 
-- Prometheus components such as `prometheus.scrape` and `prometheus.operator.*` now support UTF-8 in metric and label names by default. This means metric and label names can change after upgrading according to what is exposed by endpoints. Furthermore, metric and label names that would have previously been flagged as invalid no longer will be. Users wishing to preserve the original validation behavior can update their `prometheus.scrape` configuration to specify the legacy validation scheme: `metric_name_validation_scheme = "legacy"` and optionally setting the `metric_name_escaping_scheme` to a desired value. See `prometheus.scrape` reference documentation.
-
 - The experimental CLI flag `--feature.prometheus.metric-validation-scheme` has been deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component.
 
 - Log message format has changed for some of the `prometheus.*` components as part of the upgrade to Prometheus v3.
@@ -82,7 +80,7 @@ windows_service_state{display_name="Declared Configuration(DC) service",name="dc
 
 For more information on V1 and V2 `service` metrics, see the upstream exporter documentation for [version 0.27.3 of the Windows Exporter][win-exp-svc-0-27-3],
 which is the version used in Alloy v1.8.3. 
-Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-27-3].
+Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-30-7].
 
 [win-exp-svc-0-27-3]: https://github.com/prometheus-community/windows_exporter/blob/v0.27.3/docs/collector.service.md
 [win-exp-svc-0-30-7]: https://github.com/prometheus-community/windows_exporter/blob/v0.30.7/docs/collector.service.md

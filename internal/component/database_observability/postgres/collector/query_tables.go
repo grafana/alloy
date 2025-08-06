@@ -124,9 +124,10 @@ func (c *QueryTables) Stop() {
 }
 
 func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
+	slog.Info("Fetching and associating queries")
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		slog.Error("failed to fetch statements from statements view", "err", err)
+		slog.Error("failed to fetch statements from pg_stat_statements view", "err", err)
 		return err
 	}
 	defer rs.Close()
@@ -139,7 +140,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			&databaseName,
 		)
 		if err != nil {
-			slog.Error("failed to scan result set for statements", "err", err)
+			slog.Error("failed to scan result set for pg_stat_statements", "err", err)
 			continue
 		}
 
