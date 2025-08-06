@@ -86,7 +86,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
 | [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
-| `traces`                                                       | Configures trace collection and sampling options for all services instrumented by the component. | no       |
+| [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
+| `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 
 The > symbol indicates deeper levels of nesting.
