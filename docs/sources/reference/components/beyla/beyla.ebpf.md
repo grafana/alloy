@@ -372,10 +372,12 @@ The `sampler` block configures trace sampling settings. This block can be used i
 1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
 2. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
 
-| Name   | Type     | Description                                                             | Default | Required |
-|--------|----------|-------------------------------------------------------------------------|---------|----------|
-| `name` | `string` | The name of the sampling strategy to use.                              | `""`    | no       |
-| `arg`  | `string` | The argument for the sampling strategy. | `""`    | no       |
+The following arguments are supported: 
+
+| Name   | Type     | Description                               | Default | Required |
+|--------|----------|-------------------------------------------|---------|----------|
+| `arg`  | `string` | The argument for the sampling strategy.   | `""`    | no       |
+| `name` | `string` | The name of the sampling strategy to use. | `""`    | no       |
 
 The following sampling strategies are supported:
 
