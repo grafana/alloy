@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -570,7 +571,6 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	defer rs.Close()
 
 	// Populate cache
-SCHEMA_DENYLIST:
 	for rs.Next() {
 		if err := rs.Err(); err != nil {
 			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
@@ -583,10 +583,10 @@ SCHEMA_DENYLIST:
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
-		for _, schema := range c.schemaDenyList {
-			if strings.EqualFold(qi.schemaName, schema) {
-				continue SCHEMA_DENYLIST
-			}
+		if slices.ContainsFunc(c.schemaDenyList, func(schema string) bool {
+			return strings.EqualFold(schema, qi.schemaName)
+		}) {
+			continue
 		}
 		if _, ok := c.queryDenylist[qi.key()]; !ok {
 			c.queryCache[qi.key()] = qi
