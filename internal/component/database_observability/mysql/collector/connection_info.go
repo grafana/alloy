@@ -19,16 +19,16 @@ var (
 )
 
 type ConnectionInfoArguments struct {
-	DSN       string
-	Registry  *prometheus.Registry
-	DBVersion string
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
 }
 
 type ConnectionInfo struct {
-	DSN        string
-	Registry   *prometheus.Registry
-	DBVersion  string
-	InfoMetric *prometheus.GaugeVec
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
+	InfoMetric    *prometheus.GaugeVec
 
 	running *atomic.Bool
 }
@@ -43,11 +43,11 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 	args.Registry.MustRegister(infoMetric)
 
 	return &ConnectionInfo{
-		DSN:        args.DSN,
-		Registry:   args.Registry,
-		DBVersion:  args.DBVersion,
-		InfoMetric: infoMetric,
-		running:    &atomic.Bool{},
+		DSN:           args.DSN,
+		Registry:      args.Registry,
+		EngineVersion: args.EngineVersion,
+		InfoMetric:    infoMetric,
+		running:       &atomic.Bool{},
 	}, nil
 }
 
@@ -88,7 +88,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, c.DBVersion).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
 	return nil
 }
 
