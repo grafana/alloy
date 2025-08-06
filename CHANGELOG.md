@@ -26,6 +26,8 @@ v1.10.1
 
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+
 v1.10.0
 -----------------
 
