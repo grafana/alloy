@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
 
+- Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
