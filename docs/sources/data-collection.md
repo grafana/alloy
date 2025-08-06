@@ -58,5 +58,9 @@ If you want to opt out of anonymous usage statistics reporting, set the [CLI fla
           CUSTOM_ARGS: "--disable-reporting"
 ```
 
+### Example: Systemd service (installed via `.deb`)
+
+Edit the `/etc/default/alloy` and add `--disable-reporting` to the `CUSTOM_ARGS` environment variable.
+
 [components]: ../get-started/components/
 [command line flag]: ../reference/cli/run/
