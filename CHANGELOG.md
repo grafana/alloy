@@ -60,6 +60,15 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+
+v1.10.1
+-----------------
+
+### Bugfixes
+
+- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
 
 - Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
@@ -68,17 +77,15 @@ Main (unreleased)
 
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
-- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
-- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+- Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
-- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
-- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
-
-- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
 v1.10.0
 -----------------
