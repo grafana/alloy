@@ -50,9 +50,11 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName  alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -202,6 +204,26 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+func enableOrDisableCollectors(a Arguments) map[string]bool {
+	// configurable collectors and their default enabled/disabled value
+	collectors := map[string]bool{
+		collector.QueryTablesName: false,
+	}
+
+	for _, disabled := range a.DisableCollectors {
+		if _, ok := collectors[disabled]; ok {
+			collectors[disabled] = false
+		}
+	}
+	for _, enabled := range a.EnableCollectors {
+		if _, ok := collectors[enabled]; ok {
+			collectors[enabled] = true
+		}
+	}
+
+	return collectors
+}
+
 func (c *Component) startCollectors() error {
 	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
 	if err != nil {
@@ -215,6 +237,28 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 	c.dbConnection = dbConnection
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+
+	collectors := enableOrDisableCollectors(c.args)
+
+	if collectors[collector.QueryTablesName] {
+		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			CollectInterval: c.args.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTables collector", "err", err)
+			return err
+		}
+		if err := qCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, qCollector)
+	}
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
