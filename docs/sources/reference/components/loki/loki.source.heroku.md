@@ -69,7 +69,7 @@ You can use the following blocks with `loki.source.heroku`:
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Labels
 

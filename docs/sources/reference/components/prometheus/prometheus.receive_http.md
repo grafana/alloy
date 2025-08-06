@@ -58,7 +58,7 @@ You can use the following block with `prometheus.receive_http`:
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

@@ -110,7 +110,7 @@ The `labels` map is applied to every entry that passes through the component.
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

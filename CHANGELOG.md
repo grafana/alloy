@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
 
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
 ### Bugfixes
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
