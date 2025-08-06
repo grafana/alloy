@@ -208,7 +208,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			&activity.BlockedByPids,
 		)
 		if err != nil {
-			level.Info(c.logger).Log("msg", "failed to scan pg_stat_activity set", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity set", "err", err)
 			continue
 		}
 
@@ -283,13 +283,14 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" pid="%d" user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d" user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			activity.Now.Format(time.RFC3339Nano),
 			c.instanceKey,
 			applicationName,
 			clientAddr,
 			backendType,
 			backendDuration,
+			state,
 			effectivePID,
 			userName,
 			activity.UserSysID,

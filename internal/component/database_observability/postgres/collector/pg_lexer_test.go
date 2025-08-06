@@ -255,7 +255,7 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 		{
 			name: "truncated query mid-table name",
 			sql:  "SELECT * FROM users JOIN ord...",
-			want: []string{"users"},
+			want: []string{"users", "ord..."},
 		},
 		{
 			name: "truncated query with schema qualified tables",

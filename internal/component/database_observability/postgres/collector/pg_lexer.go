@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/DataDog/go-sqllexer"
 )
@@ -17,15 +16,8 @@ func ExtractTableNames(sql string) ([]string, error) {
 		return nil, fmt.Errorf("failed to normalize SQL: %w", err)
 	}
 
-	tables := make([]string, 0)
-
-	for _, table := range metadata.Tables {
-		if !strings.HasSuffix(table, "...") {
-			tables = append(tables, table)
-		}
-	}
-
-	return tables, nil
+	// Return all table names, including those that end with "..." for truncated queries, as we can't know if the table name was truncated or not
+	return metadata.Tables, nil
 }
 
 // Redact obfuscates a SQL query by replacing literals with ? placeholders

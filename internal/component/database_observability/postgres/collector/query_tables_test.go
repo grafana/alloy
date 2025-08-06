@@ -17,7 +17,7 @@ import (
 )
 
 func TestQueryTables(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/component/common/loki/client/fake.NewClient.func1"))
 
 	testcases := []struct {
 		name                string
@@ -178,7 +178,7 @@ func TestQueryTables(t *testing.T) {
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"xyz456\" querytext=\"INSERT INTO some_table...\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="xyz456" datname="some_database" table="some_table" engine="postgres"`,
+				`level="info" queryid="xyz456" datname="some_database" table="some_table..." engine="postgres"`, // returning the table name with "..." as we can't know if the table name was truncated or not
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM another_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
 				`level="info" queryid="abc123" datname="some_database" table="another_table" engine="postgres"`,
 			},
@@ -386,7 +386,7 @@ func TestQueryTables(t *testing.T) {
 }
 
 func TestQueryTablesSQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/component/common/loki/client/fake.NewClient.func1"))
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()
