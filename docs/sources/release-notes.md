@@ -60,7 +60,7 @@ windows_service_state{display_name="Declared Configuration(DC) service",name="dc
 
 For more information on V1 and V2 `service` metrics, see the upstream exporter documentation for [version 0.27.3 of the Windows Exporter][win-exp-svc-0-27-3],
 which is the version used in Alloy v1.8.3. 
-Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-27-3].
+Alloy v1.9.2 uses [version 0.30.7 of the Windows Exporter][win-exp-svc-0-30-7].
 
 [win-exp-svc-0-27-3]: https://github.com/prometheus-community/windows_exporter/blob/v0.27.3/docs/collector.service.md
 [win-exp-svc-0-30-7]: https://github.com/prometheus-community/windows_exporter/blob/v0.30.7/docs/collector.service.md
