@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -529,7 +530,14 @@ func TestActivity_FetchActivity(t *testing.T) {
 			defer db.Close()
 
 			var logBuf strings.Builder
-			logger := log.NewLogfmtLogger(&logBuf)
+			
+			// Create a thread-safe writer wrapper
+			safeWriter := &struct {
+				sync.Mutex
+				*strings.Builder
+			}{Builder: &logBuf}
+			
+			logger := log.NewLogfmtLogger(safeWriter)
 			lokiClient := loki_fake.NewClient(func() {})
 
 			activity, err := NewActivity(ActivityArguments{
@@ -552,7 +560,9 @@ func TestActivity_FetchActivity(t *testing.T) {
 			if tc.isLoggerTest {
 				// For error/debug/info log test cases, assert on logger output
 				require.Eventually(t, func() bool {
+					safeWriter.Lock()
 					logOutput := logBuf.String()
+					safeWriter.Unlock()
 					found := validateLoggerOutput(logOutput, tc.expectedLines)
 					if found {
 						// Stop the collector as soon as we get the expected log message
