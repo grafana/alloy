@@ -58,9 +58,9 @@ func TestConnectionInfo(t *testing.T) {
 		reg := prometheus.NewRegistry()
 
 		collector, err := NewConnectionInfo(ConnectionInfoArguments{
-			DSN:       tc.dsn,
-			Registry:  reg,
-			DBVersion: tc.engineVersion,
+			DSN:           tc.dsn,
+			Registry:      reg,
+			EngineVersion: tc.engineVersion,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
