@@ -335,9 +335,7 @@ The `traces` block contains the following sub-blocks:
 
 - [`sampler`][sampler] - configures global trace sampling settings. See the [`sampler`][sampler] section for detailed configuration options.
 
-#### `instrumentations`
-
-`instrumentations` is a list of instrumentations to enable for trace collection. The following instrumentations are available:
+The supported values for `instrumentations` are:
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
 * `grpc` enables the collection of gRPC traces.
