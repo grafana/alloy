@@ -338,14 +338,14 @@ The `traces` block contains the following sub-blocks:
 
 The supported values for `instrumentations` are:
 
-* `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
-* `grpc` enables the collection of gRPC traces.
-* `gpu` enables the collection of GPU performance traces.
-* `http` enables the collection of HTTP/HTTPS/HTTP2 traces.
-* `kafka` enables the collection of Kafka client/server traces.
-* `mongo` enables the collection of MongoDB database traces.
-* `redis` enables the collection of Redis client/server database traces.
-* `sql` enables the collection of SQL database client call traces.
+* `*`: Enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `grpc`: Enables the collection of gRPC traces.
+* `gpu`: Enables the collection of GPU performance traces.
+* `http`: Enables the collection of HTTP/HTTPS/HTTP2 traces.
+* `kafka`: Enables the collection of Kafka client/server traces.
+* `mongo`: Enables the collection of MongoDB database traces.
+* `redis`: Enables the collection of Redis client/server database traces.
+* `sql`: Enables the collection of SQL database client call traces.
 
 Example:
 
