@@ -76,6 +76,8 @@ Main (unreleased)
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
+
 v1.10.0
 -----------------
 
