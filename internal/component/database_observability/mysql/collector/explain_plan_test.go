@@ -1803,7 +1803,7 @@ func TestSchemaDenylist(t *testing.T) {
 		InstanceKey:     "mysql-db",
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
-		SchemaDenyList:  []string{"some_schema"},
+		ExcludeSchemas:  []string{"some_schema"},
 		EntryHandler:    lokiClient,
 		InitialLookback: lastSeen,
 	})
