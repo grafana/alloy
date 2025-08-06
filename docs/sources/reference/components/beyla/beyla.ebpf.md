@@ -323,7 +323,8 @@ beyla.ebpf "default" {
 The `traces` block configures trace collection and sampling options for the beyla.ebpf component.
 
 {{< admonition type="note" >}}
-To export traces, you must also configure the [`output`][output] block with a `traces` destination. Without an output configuration, traces will be collected but not exported.
+To export traces, you must also configure the [`output`][output] block with a `traces` destination.
+Without an output configuration, traces are collected but not exported.
 {{< /admonition >}}
 
 | Name              | Type           | Description                                                      | Default | Required |
