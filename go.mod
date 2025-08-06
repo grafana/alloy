@@ -80,7 +80,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250725102104-86087dfeca27
+	github.com/grafana/walqueue v0.0.0-20250805193458-bc71e76f54a7
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/hashicorp/go-discover v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -99,7 +99,6 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c
 	github.com/jaegertracing/jaeger-idl v0.5.0
 	github.com/jaswdr/faker/v2 v2.3.2
-	github.com/jmespath/go-jmespath v0.4.0
 	github.com/jonboulle/clockwork v0.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.18.0
@@ -1032,6 +1031,11 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	tags.cncf.io/container-device-interface v1.0.1 // indirect
+)
+
+require (
+	github.com/jmespath-community/go-jmespath v1.1.1
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.

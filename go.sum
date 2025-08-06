@@ -1344,6 +1344,8 @@ github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
 github.com/grafana/walqueue v0.0.0-20250725102104-86087dfeca27 h1:Wb0TpBAxlHwgIZcDBhNqjwvdwz0vZzzGCIw35xFFleU=
 github.com/grafana/walqueue v0.0.0-20250725102104-86087dfeca27/go.mod h1:uhuBvXxR2H4BStQrYrb8PPdG5nGWo9WUpOCzYUFZEqU=
+github.com/grafana/walqueue v0.0.0-20250805193458-bc71e76f54a7 h1:1/eVIvAvcMPYrlq9MPUQzFKpnyEWuk0EAyyBclWBx5w=
+github.com/grafana/walqueue v0.0.0-20250805193458-bc71e76f54a7/go.mod h1:uhuBvXxR2H4BStQrYrb8PPdG5nGWo9WUpOCzYUFZEqU=
 github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=
@@ -1634,6 +1636,8 @@ github.com/jinzhu/inflection v0.0.0-20170102125226-1c35d901db3d/go.mod h1:h+uFLl
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.1/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
+github.com/jmespath-community/go-jmespath v1.1.1 h1:bFikPhsi/FdmlZhVgSCd2jj1e7G/rw+zyQfyg5UF+L4=
+github.com/jmespath-community/go-jmespath v1.1.1/go.mod h1:4gOyFJsR/Gk+05RgTKYrifT7tBPWD8Lubtb5jRrfy9I=
 github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeYCZ7fLUTSywik=
 github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9YPoQUg=
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=

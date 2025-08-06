@@ -38,6 +38,7 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - add `query_tables` collector for postgres (@matthewnolf)
 
 ### Enhancements
 
@@ -54,6 +55,8 @@ Main (unreleased)
 - Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
 - Set the publisher name in the Windows installer to "Grafana Labs". (@martincostello)
+
+- Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
 
 ### Bugfixes
 
@@ -72,6 +75,8 @@ Main (unreleased)
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
+
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
 - Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
