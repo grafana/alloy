@@ -78,6 +78,8 @@ Main (unreleased)
 
 - Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+
 v1.10.0
 -----------------
 
