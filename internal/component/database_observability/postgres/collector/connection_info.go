@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -13,10 +12,11 @@ import (
 const ConnectionInfoName = "connection_info"
 
 var (
-	rdsRegex     = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
-	versionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)
+	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
 )
+
+var engineVersionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)
 
 type ConnectionInfoArguments struct {
 	DSN           string
@@ -89,8 +89,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 	}
 
-	matches := versionRegex.FindStringSubmatch(c.EngineVersion)
-	fmt.Println(matches)
+	matches := engineVersionRegex.FindStringSubmatch(c.EngineVersion)
 	if len(matches) > 1 {
 		engineVersion = matches[1]
 	}
