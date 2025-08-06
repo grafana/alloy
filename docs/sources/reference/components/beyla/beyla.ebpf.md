@@ -318,8 +318,6 @@ beyla.ebpf "default" {
 }
 ```
 
-
-
 ### `traces`
 
 The `traces` block configures trace collection and sampling options for the beyla.ebpf component.
