@@ -379,7 +379,7 @@ The following arguments are supported:
 | `arg`  | `string` | The argument for the sampling strategy.   | `""`    | no       |
 | `name` | `string` | The name of the sampling strategy to use. | `""`    | no       |
 
-The following sampling strategies are supported:
+The supported values for `name` are:
 
 * `traceidratio`: Samples traces based on a ratio of trace IDs. The `arg` should be a decimal value between 0 and 1 (e.g., "0.1" for 10% sampling).
 * `always_on`: Always samples traces. No `arg` required.
