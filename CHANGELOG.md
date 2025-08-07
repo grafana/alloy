@@ -39,6 +39,8 @@ v1.10.1
 
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
+
 v1.10.0
 -----------------
 
