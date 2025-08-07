@@ -426,7 +426,7 @@ for example <PLACEHOLDER_NAME>.
 Always provide an explanation for each placeholder,
 typically in the text following the code block or in a configuration table.
 
-Never add new code block unless specifically asked to, for example,
+Never add new code blocks unless specifically asked to, for example,
 when asked to improve an article don't add new code.
 
 Never change existing code blocks unless specifically asked to, for example
