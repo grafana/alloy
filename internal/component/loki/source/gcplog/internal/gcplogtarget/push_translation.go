@@ -30,12 +30,10 @@ type PushMessageBody struct {
 }
 
 type PushMessage struct {
-	Attributes                 map[string]string `json:"attributes"`
-	Data                       string            `json:"data"`
-	MessageID                  string            `json:"messageId"`
-	DeprecatedMessageID        string            `json:"message_id"`
-	PublishTimestamp           string            `json:"publishTime"`
-	DeprecatedPublishTimestamp string            `json:"publish_time"`
+	Attributes          map[string]string `json:"attributes"`
+	Data                string            `json:"data"`
+	MessageID           string            `json:"messageId"`
+	DeprecatedMessageID string            `json:"message_id"`
 }
 
 // Validate checks that the required fields of a PushMessage are set.
@@ -57,13 +55,6 @@ func (pm PushMessageBody) ID() string {
 		return pm.Message.MessageID
 	}
 	return pm.Message.DeprecatedMessageID
-}
-
-func (pm PushMessageBody) PT() string {
-	if pm.Message.PublishTimestamp != "" {
-		return pm.Message.PublishTimestamp
-	}
-	return pm.Message.DeprecatedPublishTimestamp
 }
 
 // translate converts a GCP PushMessage into a loki.Entry. It parses the
