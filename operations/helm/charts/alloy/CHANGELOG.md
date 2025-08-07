@@ -17,6 +17,10 @@ Unreleased
 
 - Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
 
+- Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
+
+- Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
+
 1.2.0 (2025-07-16)
 ----------
 
