@@ -50,11 +50,12 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName        alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval       time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo             []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors      []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors     []string            `alloy:"disable_collectors,attr,optional"`
+	DisableQueryRedaction bool                `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -208,6 +209,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryTablesName: false,
+		collector.ActivityName:    false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -258,6 +260,26 @@ func (c *Component) startCollectors() error {
 			return err
 		}
 		c.collectors = append(c.collectors, qCollector)
+	}
+
+	if collectors[collector.ActivityName] {
+		aCollector, err := collector.NewActivity(collector.ActivityArguments{
+			DB:                    dbConnection,
+			InstanceKey:           c.instanceKey,
+			CollectInterval:       c.args.CollectInterval,
+			DisableQueryRedaction: c.args.DisableQueryRedaction,
+			EntryHandler:          entryHandler,
+			Logger:                c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create Activity collector", "err", err)
+			return err
+		}
+		if err := aCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start Activity collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, aCollector)
 	}
 
 	// Connection Info collector is always enabled

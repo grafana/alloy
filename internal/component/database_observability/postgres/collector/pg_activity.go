@@ -19,6 +19,7 @@ import (
 const (
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
+	ActivityName    = "activity"
 )
 
 const selectPgStatActivity = `
@@ -88,8 +89,6 @@ type ActivityInfo struct {
 	Query           sql.NullString
 	BlockedByPids   pq.Int64Array
 }
-
-const ActivityName = "activity"
 
 type ActivityArguments struct {
 	DB                    *sql.DB
