@@ -2,6 +2,13 @@
 applyTo: "**/*.md"
 ---
 
+<!--
+The `applyTo` frontmatter directive above is a GitHub Copilot configuration option.
+It specifies that the instructions in this file should apply to all markdown files (`*.md`)
+in the repository, using the glob pattern `"**/*.md"`. This means Copilot will use these
+instructions when assisting with any markdown file, regardless of its location in the repo.
+-->
+
 ## Role
 
 Act as an experienced software engineer and technical writer for Grafana Labs.
