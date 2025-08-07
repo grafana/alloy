@@ -62,6 +62,10 @@ Main (unreleased)
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
 
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
+
+- Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
+
 v1.10.1
 -----------------
 
@@ -86,10 +90,6 @@ v1.10.1
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
-
-- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
-
-- Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
 
 v1.10.0
 -----------------
