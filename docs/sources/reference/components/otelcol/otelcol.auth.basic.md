@@ -45,6 +45,7 @@ otelcol.auth.basic "<LABEL>" {
 ```
 
 ## Arguments
+
 Deprecated in favor of the [`client_auth`][client_auth] and [`htpasswd`][htpasswd] blocks.
 
 You can use the following arguments with `otelcol.auth.basic`:
@@ -70,15 +71,18 @@ You can use the following block with `otelcol.auth.basic`:
 [htpasswd]: #htpasswd
 
 ### `client_auth`
+
 The `client_auth` block configures how the client extensions will authenticate to servers.
 
 | Name       | Type     | Description                                       | Default | Required |
 |------------|----------|---------------------------------------------------|---------|----------|
-| `password` | `string` | Password to use for basic authentication requests |         | yes      |
 | `inline`   | `string` | Username to use for basic authentication requests |         | yes      |
+| `password` | `string` | Password to use for basic authentication requests |         | yes      |
 
-If both the `client_auth` block and the `username`/`password` attributes are specified, to more closely match the 
-upstream extension's behavior, the `username` and `password` are ignored in favor the `client_auth` block.
+If both the `htpasswd` block and the `username` and `password` attributes are specified, the `username` and `password`
+are appended to the `inline` attribute of this block.
+This is done to make sure that existing functionality continues to work, and to more closely match the behavior of the
+upstream extension.
 
 ### `debug_metrics`
 
