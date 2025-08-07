@@ -167,7 +167,7 @@ You can get pods logs through the log files on each node. In this guide, you get
 {{< /admonition >}}
 
 {{< admonition type="tip" >}}
-When deploying {{< param "PRODUCT_NAME" >}} as a daemonset, ensure that you have [configured discovery](discovery.kubernetes.daemonset) appropriately to only collect logs from the same node.
+When deploying {{< param "PRODUCT_NAME" >}} as a daemonset, ensure that you have [configured discovery][discovery.kubernetes.daemonset] appropriately to only collect logs from the same node.
 {{< /admonition >}}
 
 You need the following components:
