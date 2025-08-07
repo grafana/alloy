@@ -187,7 +187,7 @@ for example:
 - Project package (for example, pip or npm)
 
 You don't need to use the "Refer to..." syntax for next steps,
-use the list time text for the link text.
+use the list item text for the link text.
 
 ## Style
 
