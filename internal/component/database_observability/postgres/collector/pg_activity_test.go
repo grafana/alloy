@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -19,24 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
-
-// safeStringWriter provides a thread-safe wrapper around strings.Builder
-type safeStringWriter struct {
-	mu      sync.Mutex
-	builder strings.Builder
-}
-
-func (s *safeStringWriter) Write(p []byte) (n int, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.builder.Write(p)
-}
-
-func (s *safeStringWriter) String() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.builder.String()
-}
 
 func getWaitEventType(name string) sql.NullString {
 	if name == "wait event" {
