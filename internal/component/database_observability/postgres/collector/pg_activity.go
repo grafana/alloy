@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/go-kit/log"
@@ -62,6 +63,7 @@ const selectPgStatActivity = `
 				coalesce(TRIM(s.state), '') != ''
 			)
 		)
+		AND query_id > 0
 `
 
 type ActivityInfo struct {
@@ -180,6 +182,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *Activity) fetchActivity(ctx context.Context) error {
+	slog.Info("Fetching activity")
 	scrapeTime := time.Now()
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
