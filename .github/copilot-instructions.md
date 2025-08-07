@@ -305,16 +305,16 @@ Always use dashes for unordered lists, for example
 Never use asterisks for unordered lists, for example:
 
 ```markdown
-- List item 1 (wrong)
-- List item 2 (wrong)
-- List item 3 (wrong)
+* List item 1 (wrong)
+* List item 2 (wrong)
+* List item 3 (wrong)
 ```
 
 Never use full stops at the end of unordered list items, for example:
 
 ```markdown
 - Works with all languages and frameworks (correct)
-- Works with all languages and frameworks (wrong)
+- Works with all languages and frameworks. (wrong)
 ```
 
 Always start every ordered list item with 1, for example:
@@ -328,7 +328,7 @@ Always start every ordered list item with 1, for example:
 Never increment the numbers for ordered list items, for example:
 
 ```markdown
-1. Ordered list item 1. (wrong)
+1. Ordered list item 1.
 2. Ordered list item 2. (wrong)
 3. Ordered list item 3. (wrong)
 ```
