@@ -179,19 +179,27 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 			Action:       "keep",
 			Regex:        regex,
 		})
+	} else if ep.PortNumber != nil && *ep.PortNumber != 0 {
+		regex, err := relabel.NewRegexp(fmt.Sprint(*ep.PortNumber)) //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
+		if err != nil {
+			return nil, fmt.Errorf("parsing PortNumber as regex: %w", err)
+		}
+		relabels.add(&relabel.Config{
+			SourceLabels: model.LabelNames{"__meta_kubernetes_pod_container_port_number"},
+			Action:       "keep",
+			Regex:        regex,
+		})
 	} else if ep.TargetPort != nil { //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 		if ep.TargetPort.StrVal != "" { //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 			regex, err := relabel.NewRegexp(ep.TargetPort.String()) //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 			if err != nil {
 				return nil, fmt.Errorf("parsing TargetPort as regex: %w", err)
 			}
-			if ep.TargetPort.StrVal != "" { //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
-				relabels.add(&relabel.Config{
-					SourceLabels: model.LabelNames{"__meta_kubernetes_pod_container_port_name"},
-					Action:       "keep",
-					Regex:        regex,
-				})
-			}
+			relabels.add(&relabel.Config{
+				SourceLabels: model.LabelNames{"__meta_kubernetes_pod_container_port_name"},
+				Action:       "keep",
+				Regex:        regex,
+			})
 		} else if ep.TargetPort.IntVal != 0 { //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 			regex, err := relabel.NewRegexp(fmt.Sprint(ep.TargetPort.IntValue())) //nolint:staticcheck // Ignore SA1019 this field is marked as deprecated.
 			if err != nil {
