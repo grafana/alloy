@@ -84,15 +84,15 @@ Focus on Grafana and not the partner product, for example:
 - For an integration with Azure don't document Azure set up
 - For a migration from DataDog don't document DataDog set up or usage
 
-## frontmatter
+## Frontmatter
 
-Never remove front matter content at the start of the file.
+Never remove frontmatter content at the start of the file.
 This includes all content from the start of the file,
 in between a pair of triple dashes (---).
 
-Never remove YAML front matter metadata unless specifically asked to.
+Never remove YAML frontmatter metadata unless specifically asked to.
 
-For example, never remove or delete this or other front matter:
+For example, never remove or delete this or other frontmatter:
 
 ```markdown
 ---
@@ -107,10 +107,10 @@ cascade:
 Markdown content...
 ```
 
-Only edit front matter copy if specifically asked to.
+Only edit frontmatter copy if specifically asked to.
 When performing a copy edit task,
-ask the user if they'd like you to also edit the front matter copy.
-Still never remove front matter metadata properties.
+ask the user if they'd like you to also edit the frontmatter copy.
+Still never remove frontmatter metadata properties.
 
 ## Structure
 
