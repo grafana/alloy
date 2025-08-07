@@ -237,10 +237,9 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			}
 		}
 
-		// Prepare leader_pid for logging if it exists
 		leaderPID := ""
 		if activity.LeaderPID.Valid {
-			leaderPID = fmt.Sprintf(` leader_pid="%d"`, activity.LeaderPID.Int64)
+			leaderPID = fmt.Sprintf(`%d`, activity.LeaderPID.Int64)
 		}
 
 		stateDuration := calculateDuration(activity.StateChange, activity.Now)
@@ -292,7 +291,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d"%s user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d" leader_pid="%s" user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			activity.Now.Format(time.RFC3339Nano),
 			c.instanceKey,
 			applicationName,

@@ -69,7 +69,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="123" query="SELECT * FROM users WHERE id = ?" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="123" query="SELECT * FROM users WHERE id = ?" engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -87,7 +87,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="124" query="SELECT * FROM users WHERE id = 123" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="124" query="SELECT * FROM users WHERE id = 123" engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -105,7 +105,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ? /* comment ..." engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ? /* comment ..." engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -123,7 +123,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="126" query="SELECT * FROM users WHERE id = 123 /* comment ..." engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="126" query="SELECT * FROM users WHERE id = 123 /* comment ..." engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -141,7 +141,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="127" query="SELECT u.id, u.name, p.role FROM users u JOIN permissions p ON u.id = p.user_id WHERE u.id IN (?, ?) AND p.role = ?" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="127" query="SELECT u.id, u.name, p.role FROM users u JOIN permissions p ON u.id = p.user_id WHERE u.id IN (?, ?) AND p.role = ?" engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -159,7 +159,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="128" query="INSERT INTO users (id, name, email) VALUES (?, ?, ?)" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="128" query="INSERT INTO users (id, name, email) VALUES (?, ?, ?)" engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -178,7 +178,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="waiting" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ?" engine="postgres"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="waiting" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ?" engine="postgres"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -303,7 +303,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="500" xmin="400" query_time="%s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="500" xmin="400" query_time="%s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="%s"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -374,7 +374,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="waiting" pid="102" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
+				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="waiting" pid="102" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
 					now.Format(time.RFC3339Nano),
 					time.Duration(0).String(),
 					time.Duration(0).String(),

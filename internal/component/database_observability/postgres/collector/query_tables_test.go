@@ -372,6 +372,9 @@ func TestQueryTables(t *testing.T) {
 				return collector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
+			// Give time for goroutines to clean up
+			time.Sleep(100 * time.Millisecond)
+
 			err = mock.ExpectationsWereMet()
 			require.NoError(t, err)
 
@@ -442,6 +445,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
+		// Give time for goroutines to clean up
+		time.Sleep(100 * time.Millisecond)
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -502,6 +508,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
+		// Give time for goroutines to clean up
+		time.Sleep(100 * time.Millisecond)
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -559,6 +568,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
+
+		// Give time for goroutines to clean up
+		time.Sleep(100 * time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
