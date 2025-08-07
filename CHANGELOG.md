@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
 
+- Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
