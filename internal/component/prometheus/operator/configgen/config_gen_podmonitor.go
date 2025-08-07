@@ -1,6 +1,6 @@
 package configgen
 
-// SEE https://github.com/prometheus-operator/prometheus-operator/blob/aa8222d7e9b66e9293ed11c9291ea70173021029/pkg/prometheus/promcfg.go
+// SEE https://github.com/prometheus-operator/prometheus-operator/blob/4d008d5a5698e425e745daa6222a534357b93b57/pkg/prometheus/promcfg.go
 
 import (
 	"fmt"
