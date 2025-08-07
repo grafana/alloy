@@ -429,7 +429,7 @@ typically in the text following the code block or in a configuration table.
 Never add new code blocks unless specifically asked to, for example,
 when asked to improve an article don't add new code.
 
-Never change existing code blocks unless specifically asked to, for example
+Never change existing code blocks unless specifically asked to, for example,
 when asked to improve an article don't edit code.
 
 Always follow code samples with an explanation
