@@ -702,12 +702,7 @@ func printFileRedacted(f *ast.File) ([]byte, error) {
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
 	return func() (service.Host, error) {
-		svc, ok := host.GetService(remotecfg.ServiceName)
-		if !ok {
-			// This will never happen as the service dependency is explicit.
-			return nil, fmt.Errorf("failed to get the remotecfg service")
-		}
-		return svc.Data().(remotecfg.Data).Host, nil
+		return remotecfg.GetHost(host)
 	}
 }
 

@@ -7,6 +7,31 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.10.1
+-----------------
+
+### Bugfixes
+
+- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+
+- Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
+
+- Fix issues with statistics reporter not including components only configured with remotecfg. (@dehaansa)
+
+- Fix issues with `prometheus.exporter.windows` not propagating `dns` collector config. (@dehaansa)
+
+- Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
+
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
+
+- Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
+
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+
+- Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
+
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+
 v1.10.0
 -----------------
 
