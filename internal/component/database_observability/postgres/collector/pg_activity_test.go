@@ -425,7 +425,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 						"<insufficient privilege>", nil,
 					))
 			},
-			expectedError: false,
+			expectedError:  false,
 			expectedLabels: []model.LabelSet{}, // No Loki entries expected
 			expectedLines:  []string{},         // No Loki entries expected
 		},
@@ -449,7 +449,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 						"SELECT * FROM users", nil,
 					))
 			},
-			expectedError: false,
+			expectedError:  false,
 			expectedLabels: []model.LabelSet{}, // No Loki entries expected
 			expectedLines:  []string{},         // No Loki entries expected
 		},
