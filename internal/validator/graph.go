@@ -117,7 +117,6 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 					Message:  fmt.Sprintf("cycle detected: %s", strings.Join(cycleStr, ", ")),
 				})
 			}
-
 		}
 	}
 
@@ -128,7 +127,7 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 				Severity: diag.SeverityLevelError,
 				StartPos: ast.StartPos(n.Block()).Position(),
 				EndPos:   n.Block().LCurlyPos.Position(),
-				Message:  fmt.Sprintf("cannot reference self"),
+				Message:  "cannot reference self",
 			})
 		}
 	}
