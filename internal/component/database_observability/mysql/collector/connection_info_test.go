@@ -17,28 +17,32 @@ func TestConnectionInfo(t *testing.T) {
 	const baseExpectedMetrics = `
 	# HELP database_observability_connection_info Information about the connection
 	# TYPE database_observability_connection_info gauge
-	database_observability_connection_info{db_instance_identifier="%s",engine="%s",provider_name="%s",provider_region="%s"} 1
+	database_observability_connection_info{db_instance_identifier="%s",engine="%s",engine_version="%s",provider_name="%s",provider_region="%s"} 1
 `
 
 	testCases := []struct {
 		name            string
 		dsn             string
+		engineVersion   string
 		expectedMetrics string
 	}{
 		{
 			name:            "generic dsn",
 			dsn:             "user:pass@tcp(localhost:3306)/schema",
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "unknown", "mysql", "unknown", "unknown"),
+			engineVersion:   "8.0.32",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "unknown", "mysql", "8.0.32", "unknown", "unknown"),
 		},
 		{
 			name:            "AWS/RDS dsn",
 			dsn:             "user:pass@tcp(products-db.abc123xyz.us-east-1.rds.amazonaws.com:3306)/schema",
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "aws", "us-east-1"),
+			engineVersion:   "8.0.32",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "aws", "us-east-1"),
 		},
 		{
 			name:            "Azure flexibleservers dsn",
 			dsn:             "user:pass@tcp(products-db.mysql.database.azure.com:3306)/schema",
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "azure", "unknown"),
+			engineVersion:   "8.0.32",
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "mysql", "8.0.32", "azure", "unknown"),
 		},
 	}
 
@@ -46,8 +50,9 @@ func TestConnectionInfo(t *testing.T) {
 		reg := prometheus.NewRegistry()
 
 		collector, err := NewConnectionInfo(ConnectionInfoArguments{
-			DSN:      tc.dsn,
-			Registry: reg,
+			DSN:           tc.dsn,
+			Registry:      reg,
+			EngineVersion: tc.engineVersion,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
