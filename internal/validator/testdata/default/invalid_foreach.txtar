@@ -99,3 +99,25 @@ foreach "invalid_nested" {
 		}
 	}
 }
+
+foreach "reference_component_outside" {
+	collection = []
+	var        = "each"
+
+	template {
+		prometheus.exporter.redis "default" {
+			// This is the "__address__" label from discovery.kubernetes.
+			redis_addr = each["__address__"]
+		}
+
+		prometheus.scrape "default" {
+			targets    = prometheus.exporter.redis.default.targets
+			forward_to = []
+		}
+	}
+}
+
+prometheus.scrape "default" {
+	targets    = prometheus.exporter.redis.default.targets
+	forward_to = []
+}
