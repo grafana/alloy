@@ -123,7 +123,6 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]inter
 		return
 	}
 
-
 	names := r.matcher.Names()[:len(matches)]
 	for i, m := range matches {
 		name := names[i]
