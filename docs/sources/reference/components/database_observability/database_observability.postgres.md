@@ -34,10 +34,10 @@ You can use the following arguments with `database_observability.postgres`:
 
 The following collectors are configurable:
 
-| Name              | Description                                              | Enabled by default |
-|-------------------|----------------------------------------------------------|--------------------|
+| Name              | Description                                                                                               | Enabled by default |
+|-------------------|-----------------------------------------------------------------------------------------------------------|--------------------|
 | `activity`        | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events. | no                 |
-| `query_tables`    | Collect query table information.                         | no                 |
+| `query_tables`    | Collect query table information.                                                                          | no                 |
 
 ## Blocks
 
