@@ -65,6 +65,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.multiline`][stage.multiline]                     | Configures a `multiline` processing stage.                     | no       |
 | [`stage.output`][stage.output]                           | Configures an `output` processing stage.                       | no       |
 | [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
+| [`stage.pattern`][stage.pattern]                         | Configures a `pattern` processing stage.                       | no       |
 | [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
 | [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
@@ -95,6 +96,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.multiline]: #stagemultiline
 [stage.output]: #stageoutput
 [stage.pack]: #stagepack
+[stage.pattern]: #stagepattern
 [stage.regex]: #stageregex
 [stage.replace]: #stagereplace
 [stage.sampling]: #stagesampling
@@ -1120,6 +1122,109 @@ At query time, the Loki [`unpack` parser][unpack parser] can be used to access t
 [unpack parser]: https://grafana.com/docs/loki/latest/logql/log_queries/#unpack
 
 When combining several log streams to use with the `pack` stage, you can set `ingest_timestamp` to true to avoid interlaced timestamps and out-of-order ingestion issues.
+
+### `stage.pattern`
+
+The `stage.pattern` inner block configures a processing stage that parses log lines using
+[LogQL pattern][logql pattern] expressions and uses named captures to add data into the shared extracted map of values.
+
+The following arguments are supported:
+
+| Name                 | Type     | Description                                                            | Default | Required |
+| -------------------- | -------- | ---------------------------------------------------------------------- | ------- | -------- |
+| `pattern`            | `string` | A valid LogQL pattern expression. At least one capture must be named.  |         | yes      |
+| `source`             | `string` | Name from extracted data to parse. If empty, uses the log message.     | `""`    | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.           | `false` | no       |
+
+The `pattern` field needs to be a [LogQL pattern][logql pattern] expression.
+Every matched capture is added to the extracted map.
+The name of the capture is used as the key in the extracted map for the matched value.
+
+When `labels_from_groups` is set to true, any named captures from the pattern expression are automatically added as labels in addition to being added to the extracted map.
+If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
+
+If the `source` is empty or missing, then the stage parses the log line itself.
+If the `source` set, the stage parses a previously extracted value with the same name.
+
+Given the following log line and pattern stage, the extracted values are shown below:
+
+```alloy
+2019-01-01T01:00:00.000000001Z stderr P i'm a log message!
+
+stage.pattern {
+    pattern = "<time> <stream> <flags> <content>"
+}
+
+time: 2019-01-01T01:00:00.000000001Z,
+stream: stderr,
+flags: P,
+content: i'm a log message
+```
+
+If the `source` value is set, then the pattern expression is applied to the value stored in the shared map under that name.
+
+The following log line is put through this two-stage pipeline:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.pattern {
+    pattern = "<year>-<month>-<day>T<hour>:<minute>:<second>.<nano>Z"
+    source  = "time"
+}
+```
+
+The first stage adds the following key-value pair into the extracted map:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+```
+
+Then, the pattern stage parses the value for time from the shared values and appends the subsequent key-value pair back into the extracted values map:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+year: 2022
+month: 01
+day: 01
+hour: 01
+minute: 00
+second: 00
+nano: 000000001
+```
+
+The following example demonstrates how `labels_from_groups` can automatically add the matched groups as labels:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.pattern {
+    pattern            = "<year>-<month>-<day>T<hour>:<minute>:<second>.<nano>Z"
+    source             = "time"
+    labels_from_groups = true   // Sets up a label for each field parsed from the pattern
+}
+```
+
+This pipeline produces the same extracted values as before in addition to adding labels to the entry:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+year: 2022
+month: 01
+day: 01
+hour: 01
+minute: 00
+second: 00
+nano: 000000001
+```
+
+[logql pattern]: https://grafana.com/docs/loki/latest/query/log_queries/#pattern
 
 ### `stage.regex`
 
