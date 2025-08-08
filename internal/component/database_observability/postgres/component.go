@@ -260,6 +260,8 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qCollector)
 	}
 
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),
@@ -273,7 +275,25 @@ func (c *Component) startCollectors() error {
 		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
 		return err
 	}
+
 	c.collectors = append(c.collectors, ciCollector)
+
+	stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+		DB:              dbConnection,
+		InstanceKey:     c.instanceKey,
+		CollectInterval: c.args.CollectInterval,
+		EntryHandler:    entryHandler,
+		Logger:          c.opts.Logger,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
+		return err
+	}
+	if err := stCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
+		return err
+	}
+	c.collectors = append(c.collectors, stCollector)
 
 	return nil
 }
