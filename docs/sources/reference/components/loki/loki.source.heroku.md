@@ -55,13 +55,19 @@ The `relabel_rules` field can make use of the `rules` export value from a `loki.
 
 You can use the following blocks with `loki.source.heroku`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`grpc`][grpc] | Configures the gRPC server that receives requests. | no       |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
+| `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
 [grpc]: #grpc
+[tls]: #tls
 
 ### `grpc`
 
@@ -71,16 +77,22 @@ You can use the following blocks with `loki.source.heroku`:
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tls`
+
+The `tls` block configures TLS for the HTTP and GRPC servers.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Labels
 
 The `labels` map is applied to every message that the component reads.
 
 The following internal labels all prefixed with `__` are available but are discarded if not relabeled:
 
-* `__heroku_drain_app`
-* `__heroku_drain_host`
-* `__heroku_drain_log_id`
-* `__heroku_drain_proc`
+- `__heroku_drain_app`
+- `__heroku_drain_host`
+- `__heroku_drain_log_id`
+- `__heroku_drain_proc`
 
 All URL query parameters are translated to `__heroku_drain_param_<name>`
 
@@ -99,13 +111,13 @@ configuration.
 
 `loki.source.heroku` exposes some debug information per Heroku listener:
 
-* Whether the listener is currently running.
-* The listen address.
+- Whether the listener is currently running.
+- The listen address.
 
 ## Debug metrics
 
-* `loki_source_heroku_drain_entries_total` (counter): Number of successful entries received by the Heroku target.
-* `loki_source_heroku_drain_parsing_errors_total` (counter): Number of parsing errors while receiving Heroku messages.
+- `loki_source_heroku_drain_entries_total` (counter): Number of successful entries received by the Heroku target.
+- `loki_source_heroku_drain_parsing_errors_total` (counter): Number of parsing errors while receiving Heroku messages.
 
 ## Example
 
@@ -152,7 +164,6 @@ loki.write "local" {
 `loki.source.heroku` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

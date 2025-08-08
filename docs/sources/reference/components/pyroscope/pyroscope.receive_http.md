@@ -49,13 +49,23 @@ You can use the following block with `pyroscope.receive_http`:
 | Name           | Description                                        | Required |
 | -------------- | -------------------------------------------------- | -------- |
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
+[tls]: #tls
 
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

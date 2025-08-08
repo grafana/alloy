@@ -34,15 +34,15 @@ loki.source.api "<LABEL>" {
 
 The component starts an HTTP server on the configured port and address with the following endpoints:
 
-* `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
-* `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
-   This can be used to send NDJSON or plain text logs.
-   This is compatible with the Promtail push API endpoint.
-   Refer to the [Promtail documentation][promtail-push-api] for more information.
-   When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
-* `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
-* `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
-* `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
+- `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
+- `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
+  This can be used to send NDJSON or plain text logs.
+  This is compatible with the Promtail push API endpoint.
+  Refer to the [Promtail documentation][promtail-push-api] for more information.
+  When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
+- `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
+- `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
+- `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
 
 [promtail-push-api]: https://grafana.com/docs/loki/latest/clients/promtail/configuration/#loki_push_api
 
@@ -51,7 +51,7 @@ The component starts an HTTP server on the configured port and address with the 
 You can use the following arguments with `loki.source.api`:
 
 | Name                     | Type                 | Description                                             | Default    | Required |
-|--------------------------|----------------------|---------------------------------------------------------|------------|----------|
+| ------------------------ | -------------------- | ------------------------------------------------------- | ---------- | -------- |
 | `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.               |            | yes      |
 | `labels`                 | `map(string)`        | The labels to associate with each received logs record. | `{}`       | no       |
 | `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.               | `{}`       | no       |
@@ -66,15 +66,26 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 You can use the following block with `loki.source.api`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
+[tls]: #tls
 
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -89,10 +100,10 @@ You can use the following block with `loki.source.api`:
 The following are some of the metrics that are exposed when this component is used.
 The metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
-* `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-* `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
-* `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
-* `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
+- `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
+- `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
+- `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
+- `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
 
 ## Example
 
@@ -127,12 +138,12 @@ loki.source.api "loki_push_api" {
 
 Replace the following:
 
-* _`<USERNAME>`_: Your username.
-* _`<PASSWORD_FILE>`_: Your password file.
+- _`<USERNAME>`_: Your username.
+- _`<PASSWORD_FILE>`_: Your password file.
 
 ### Technical details
 
-`loki.source.api` filters out all labels that start with `__`, for example,  `__tenant_id__`.
+`loki.source.api` filters out all labels that start with `__`, for example, `__tenant_id__`.
 
 If you need to be able to set the tenant ID, you must either make sure the `X-Scope-OrgID` header is present or use the [`loki.process`][loki.process] component.
 
@@ -145,7 +156,6 @@ If you need to be able to set the tenant ID, you must either make sure the `X-Sc
 `loki.source.api` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.

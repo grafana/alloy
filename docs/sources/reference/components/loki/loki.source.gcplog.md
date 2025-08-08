@@ -44,12 +44,14 @@ You can use the following arguments with `loki.source.gcplog`:
 
 You can use the following blocks with `loki.source.gcplog`:
 
-| Name                    | Description                                                                   | Required |
-| ----------------------- | ----------------------------------------------------------------------------- | -------- |
-| [`pull`][pull]          | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
-| [`push`][push]          | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
-| `push` > [`grpc`][grpc] | Configures the gRPC server that receives requests when using the `push` mode. | no       |
-| `push` > [`http`][http] | Configures the HTTP server that receives requests when using the `push` mode. | no       |
+| Name                           | Description                                                                   | Required |
+| ------------------------------ | ----------------------------------------------------------------------------- | -------- |
+| [`pull`][pull]                 | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
+| [`push`][push]                 | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
+| `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
+| `push` > `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
+| `push` > [`http`][http]        | Configures the HTTP server that receives requests when using the `push` mode. | no       |
+| `push` > `http` > [`tls`][tls] | Configures TLS for the HTTP server.                                           | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `push` > `grpc` refers to a `grpc` block defined inside a `push` block.
@@ -62,6 +64,7 @@ The `http` and `grpc` block are just used when the `push` block is configured.
 [http]: #http
 [pull]: #pull
 [push]: #push
+[tls]: #tls
 
 ### `pull`
 
@@ -112,6 +115,12 @@ The `labels` map is applied to every entry that passes through the component.
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tls`
+
+The `tls` block configures TLS for the HTTP and GRPC servers.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Exported fields
 
 `loki.source.gcplog` doesn't export any fields.
@@ -124,22 +133,22 @@ The `labels` map is applied to every entry that passes through the component.
 
 `loki.source.gcplog` exposes some debug information per gcplog listener:
 
-* The configured strategy.
-* Their label set.
-* When using a `push` strategy, the listen address.
+- The configured strategy.
+- Their label set.
+- When using a `push` strategy, the listen address.
 
 ## Debug metrics
 
 When using the `pull` strategy, the component exposes the following debug metrics:
 
-* `loki_source_gcplog_pull_entries_total` (counter): Number of entries received by the gcplog target.
-* `loki_source_gcplog_pull_last_success_scrape` (gauge): Timestamp of target's last successful poll.
-* `loki_source_gcplog_pull_parsing_errors_total` (counter): Total number of parsing errors while receiving gcplog messages.
+- `loki_source_gcplog_pull_entries_total` (counter): Number of entries received by the gcplog target.
+- `loki_source_gcplog_pull_last_success_scrape` (gauge): Timestamp of target's last successful poll.
+- `loki_source_gcplog_pull_parsing_errors_total` (counter): Total number of parsing errors while receiving gcplog messages.
 
 When using the `push` strategy, the component exposes the following debug metrics:
 
-* `loki_source_gcplog_push_entries_total` (counter): Number of entries received by the gcplog target.
-* `loki_source_gcplog_push_entries_total` (counter): Number of parsing errors while receiving gcplog messages.
+- `loki_source_gcplog_push_entries_total` (counter): Number of entries received by the gcplog target.
+- `loki_source_gcplog_push_entries_total` (counter): Number of parsing errors while receiving gcplog messages.
 
 ## Example
 
@@ -186,7 +195,6 @@ loki.write "local" {
 `loki.source.gcplog` can accept arguments from the following components:
 
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
