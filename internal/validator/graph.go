@@ -13,24 +13,48 @@ import (
 	"github.com/grafana/alloy/syntax/typecheck"
 )
 
-func newGraph() *orderedGraph {
-	return &orderedGraph{
+func newGraph() *graph {
+	return &graph{
 		Graph: &dag.Graph{},
 	}
 }
 
-// orderedGraph wrapps dag.Graph and keep track of insert order of nodes.
-type orderedGraph struct {
-	ids []string
-	*dag.Graph
+func newGraphWithParent(p *graph) *graph {
+	return &graph{
+		Graph:  &dag.Graph{},
+		parent: p,
+	}
 }
 
-func (g *orderedGraph) Add(n dag.Node) {
+// graph wrapps dag.Graph and keep track of insert order of nodes.
+type graph struct {
+	ids []string
+	*dag.Graph
+	parent *graph
+}
+
+func (g *graph) Add(n dag.Node) {
 	g.ids = append(g.ids, n.NodeID())
 	g.Graph.Add(n)
 }
 
-func (g *orderedGraph) Iter() iter.Seq[dag.Node] {
+func (g *graph) GetByID(id string) dag.Node {
+	if n := g.Graph.GetByID(id); n != nil {
+		return n
+	}
+
+	if g.parent != nil {
+		return g.parent.GetByID(id)
+	}
+
+	return nil
+}
+
+func (g *graph) FromParent(n dag.Node) bool {
+	return g.Graph.GetByID(n.NodeID()) == nil && g.parent != nil
+}
+
+func (g *graph) Iter() iter.Seq[dag.Node] {
 	return func(yield func(dag.Node) bool) {
 		for _, id := range g.ids {
 			if !yield(g.Graph.GetByID(id)) {
@@ -40,7 +64,7 @@ func (g *orderedGraph) Iter() iter.Seq[dag.Node] {
 	}
 }
 
-func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) diag.Diagnostics {
+func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostics {
 	var diags diag.Diagnostics
 	for n := range s.graph.Iter() {
 		switch node := n.(type) {
@@ -75,19 +99,23 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 			if node.n.args != nil {
 				diags.Merge(typecheck.Block(node.n.block, node.n.args))
 			}
-			diags.Merge(validateGraph(node.state, minStability, false))
+			diags.Merge(validateGraph(node.state, minStability))
 		case *foreachNode:
 			diags.Merge(node.n.diags)
 			if node.n.args != nil {
 				diags.Merge(typecheck.Block(node.n.block, node.n.args))
 			}
-			diags.Merge(validateGraph(node.state, minStability, true))
+			diags.Merge(validateGraph(node.state, minStability))
 		}
 
-		if !skipRefs {
-			refs, refDiags := findReferences(n, s.graph.Graph, s.scope, minStability)
-			diags.Merge(refDiags)
-			for _, ref := range refs {
+		refs, refDiags := findReferences(n, s.graph, s.scope, minStability)
+		diags.Merge(refDiags)
+		for _, ref := range refs {
+			// Nodes within a foreach block can reference nodes from outside of the block
+			// but the otherway around is not possible. So we use a "sub" graph of the parent so
+			// we can find references from either it's own block or from the outside block.
+			// Because of this we only have to validate edges within the foreach block.
+			if !s.graph.FromParent(ref.Target) {
 				s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
 			}
 		}

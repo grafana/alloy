@@ -14,8 +14,12 @@ type Reference struct {
 	Traversal Traversal
 }
 
+type Graph interface {
+	GetByID(string) dag.Node
+}
+
 // ResolveTraversal will step trough the traversal and try to resolve a node from the graph.
-func ResolveTraversal(t Traversal, g *dag.Graph) (Reference, diag.Diagnostics) {
+func ResolveTraversal(t Traversal, g Graph) (Reference, diag.Diagnostics) {
 	var (
 		diags diag.Diagnostics
 

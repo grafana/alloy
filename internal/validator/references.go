@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-func findReferences(cn dag.Node, g *dag.Graph, scope *vm.Scope, minStability featuregate.Stability) ([]astutil.Reference, diag.Diagnostics) {
+func findReferences(cn dag.Node, g astutil.Graph, scope *vm.Scope, minStability featuregate.Stability) ([]astutil.Reference, diag.Diagnostics) {
 	var (
 		traversals []astutil.Traversal
 

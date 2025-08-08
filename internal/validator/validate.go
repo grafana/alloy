@@ -84,7 +84,7 @@ func (v *validator) run(cr *componentRegistry) error {
 		}),
 	}
 
-	diags := validateGraph(v.validate(rootState), v.minStability, false)
+	diags := validateGraph(v.validate(rootState), v.minStability)
 	if diags.HasErrors() {
 		return diags
 	}
@@ -96,7 +96,7 @@ type state struct {
 	root       bool
 	foreach    bool
 	scope      *vm.Scope
-	graph      *orderedGraph
+	graph      *graph
 	declares   []*ast.BlockStmt
 	configs    []*ast.BlockStmt
 	components []*ast.BlockStmt
@@ -330,7 +330,7 @@ func (v *validator) validateForeach(node *node, s *state) {
 	foreachState := &state{
 		root:       s.root,
 		foreach:    true,
-		graph:      newGraph(),
+		graph:      newGraphWithParent(s.graph),
 		declares:   declares,
 		configs:    configs,
 		services:   services,
