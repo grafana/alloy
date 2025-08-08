@@ -60,6 +60,8 @@ Main (unreleased)
 
 - Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
 
+- Add support to validate references, stdlib functions and arguments when using validate command. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
