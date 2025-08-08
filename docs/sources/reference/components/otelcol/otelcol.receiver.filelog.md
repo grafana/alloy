@@ -39,7 +39,7 @@ otelcol.receiver.filelog "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.filelog`:
 
 | Name                            | Type                       | Description                                                                                | Default   | Required |
-| ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | --------- | -------- |
+|---------------------------------|----------------------------|--------------------------------------------------------------------------------------------|-----------|----------|
 | `include`                       | `list(string)`             | A list of glob patterns to include files.                                                  |           | yes      |
 | `acquire_fs_lock`               | `bool`                     | Whether to acquire a file system lock while reading the file (Unix only).                  | `false`   | no       |
 | `attributes`                    | `map(string)`              | A map of attributes to add to each log entry.                                              | `{}`      | no       |
@@ -68,7 +68,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `start_at`                      | `string`                   | The position to start reading the file from.                                               | `"end"`   | no       |
 | `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |           | no       |
 
-`encoding` must be one of `utf-8`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
+`encoding` must be one of `utf-8`, `utf8-raw`, `utf-16le`, `utf-16be`, `ascii`, `big5`, or `nop`.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 `start_at` must be one of `beginning` or `end`. The `header` block may only be used if `start_at` is `beginning`.
@@ -105,7 +105,7 @@ otelcol.receiver.filelog "default" {
 You can use the following blocks with `otelcol.receiver.filelog`:
 
 | Block                                      | Description                                                                                     | Required |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+|--------------------------------------------|-------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                         | Configures where to send received telemetry data.                                               | yes      |
 | [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.                      | no       |
 | [`header`][header]                         | Configures rules for parsing a log header line                                                  | no       |
@@ -127,7 +127,7 @@ For example, `ordering_criteria` > `sort_by` refers to a `sort_by` block defined
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -142,7 +142,7 @@ It may only be used when `start_at` is set to `beginning`.
 The following arguments are supported:
 
 | Name                 | Type                | Description                                                 | Default | Required |
-| -------------------- | ------------------- | ----------------------------------------------------------- | ------- | -------- |
+|----------------------|---------------------|-------------------------------------------------------------|---------|----------|
 | `metadata_operators` | `lists(map(string)` | A list of operators used to parse metadata from the header. |         | yes      |
 | `pattern`            | `string`            | A regular expression that matches the header line.          |         | yes      |
 
@@ -180,7 +180,7 @@ The `multiline` block configures logic for splitting incoming log entries.
 The following arguments are supported:
 
 | Name                 | Type     | Description                                                     | Default | Required |
-| -------------------- | -------- | --------------------------------------------------------------- | ------- | -------- |
+|----------------------|----------|-----------------------------------------------------------------|---------|----------|
 | `line_end_pattern`   | `string` | A regular expression that matches the end of a log entry.       |         | yes*     |
 | `line_start_pattern` | `string` | A regular expression that matches the beginning of a log entry. |         | yes*     |
 | `omit_pattern`       | `bool`   | Omit the start/end pattern from the split log entries.          | `false` | no       |
@@ -195,7 +195,7 @@ The `ordering_criteria` block configures the order in which log files discovered
 The following arguments are supported:
 
 | Name       | Type     | Description                                                                            | Default | Required |
-| ---------- | -------- | -------------------------------------------------------------------------------------- | ------- | -------- |
+|------------|----------|----------------------------------------------------------------------------------------|---------|----------|
 | `group_by` | `string` | A named capture group from the `regex` attribute used for grouping pre-sort.           | `""`    | no       |
 | `regex`    | `string` | A regular expression to capture elements of log files to use in ordering calculations. | `""`    | no       |
 | `top_n`    | `int`    | The number of top log files to track when using file ordering.                         | `1`     | no       |
@@ -206,7 +206,7 @@ The `sort_by` repeatable block configures the way the fields parsed in the `orde
 The following arguments are supported:
 
 | Name        | Type     | Description                                                                  | Default | Required |
-| ----------- | -------- | ---------------------------------------------------------------------------- | ------- | -------- |
+|-------------|----------|------------------------------------------------------------------------------|---------|----------|
 | `sort_type` | `string` | The type of sorting to apply.                                                |         | yes      |
 | `ascending` | `bool`   | Whether to sort in ascending order.                                          | `true`  | no       |
 | `layout`    | `string` | The layout of the timestamp to be parsed from a named `regex` capture group. | `""`    | no       |
@@ -231,7 +231,7 @@ A backoff algorithm is used to delay the retry upon subsequent failures.
 The following arguments are supported:
 
 | Name               | Type       | Description                                                                                                               | Default | Required |
-| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|--------------------|------------|---------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `enabled`          | `bool`     | If set to `true` and an error occurs, the receiver will pause reading the log files and resend the current batch of logs. | `false` | no       |
 | `initial_interval` | `duration` | The time to wait after first failure to retry.                                                                            | `"1s"`  | no       |
 | `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                                | `"5m"`  | no       |

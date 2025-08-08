@@ -64,7 +64,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 
 	return &otelconfighttp.ServerConfig{
 		Endpoint:              args.Endpoint,
-		TLSSetting:            args.TLS.Convert(),
+		TLS:                   args.TLS.Convert(),
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
@@ -170,7 +170,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
+		TLS: *args.TLS.Convert(),
 
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
@@ -213,12 +213,14 @@ type Cookies struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
-func (c *Cookies) Convert() *otelconfighttp.CookiesConfig {
+func (c *Cookies) Convert() otelconfighttp.CookiesConfig {
 	if c == nil {
-		return nil
+		return otelconfighttp.CookiesConfig{
+			Enabled: false,
+		}
 	}
 
-	return &otelconfighttp.CookiesConfig{
+	return otelconfighttp.CookiesConfig{
 		Enabled: c.Enabled,
 	}
 }

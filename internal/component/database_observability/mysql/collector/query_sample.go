@@ -4,13 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -82,23 +82,32 @@ WHERE
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
+const updateSetupConsumers = `
+	UPDATE performance_schema.setup_consumers
+		SET enabled = 'yes'
+		WHERE name = 'events_statements_cpu'`
+
 type QuerySampleArguments struct {
-	DB                    *sql.DB
-	InstanceKey           string
-	CollectInterval       time.Duration
-	EntryHandler          loki.EntryHandler
-	DisableQueryRedaction bool
+	DB                          *sql.DB
+	InstanceKey                 string
+	CollectInterval             time.Duration
+	EntryHandler                loki.EntryHandler
+	DisableQueryRedaction       bool
+	AutoEnableSetupConsumers    bool
+	SetupConsumersCheckInterval time.Duration
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection          *sql.DB
-	instanceKey           string
-	collectInterval       time.Duration
-	entryHandler          loki.EntryHandler
-	sqlParser             parser.Parser
-	disableQueryRedaction bool
+	dbConnection                *sql.DB
+	instanceKey                 string
+	collectInterval             time.Duration
+	entryHandler                loki.EntryHandler
+	sqlParser                   parser.Parser
+	disableQueryRedaction       bool
+	autoEnableSetupConsumers    bool
+	setupConsumersCheckInterval time.Duration
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -111,14 +120,16 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:          args.DB,
-		instanceKey:           args.InstanceKey,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		sqlParser:             parser.NewTiDBSqlParser(),
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySampleName),
-		running:               &atomic.Bool{},
+		dbConnection:                args.DB,
+		instanceKey:                 args.InstanceKey,
+		collectInterval:             args.CollectInterval,
+		entryHandler:                args.EntryHandler,
+		sqlParser:                   parser.NewTiDBSqlParser(),
+		disableQueryRedaction:       args.DisableQueryRedaction,
+		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
+		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		logger:                      log.With(args.Logger, "collector", QuerySampleName),
+		running:                     &atomic.Bool{},
 	}
 
 	return c, nil
@@ -143,6 +154,11 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	if err := c.initializeBookmark(c.ctx); err != nil {
 		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
 		return err
+	}
+
+	// Start setup_consumers check goroutine if enabled
+	if c.autoEnableSetupConsumers {
+		go c.runSetupConsumersCheck()
 	}
 
 	go func() {
@@ -177,6 +193,23 @@ func (c *QuerySample) Stopped() bool {
 // Stop should be kept idempotent
 func (c *QuerySample) Stop() {
 	c.cancel()
+}
+
+func (c *QuerySample) runSetupConsumersCheck() {
+	ticker := time.NewTicker(c.setupConsumersCheckInterval)
+
+	for {
+		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
+			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+		}
+
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// continue loop
+		}
+	}
 }
 
 // initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
@@ -318,7 +351,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = c.calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64)
+		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 
 		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
 		if err != nil {
@@ -359,7 +392,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
 				c.instanceKey,
@@ -406,7 +439,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 			}
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.instanceKey,
@@ -417,31 +450,25 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over samples result set: %w", err)
 	}
 
 	return nil
 }
 
-func (c *QuerySample) calculateWallTime(serverStartTime, timer float64) float64 {
-	// timer indicates event timing since server startup.
-	// The timer value is in picoseconds with a column type of bigint unsigned. This value can overflow after about ~213 days.
-	// We need to account for this overflow when calculating the timestamp.
+func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
+	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
+	if err != nil {
+		return fmt.Errorf("failed to update performance_schema.setup_consumers: %w", err)
+	}
 
-	// Knowing the number of overflows that occurred, we can calculate how much overflow time to compensate.
-	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
-	overflowTime := float64(previousOverflows) * picosecondsOverflowInSeconds
-	// We then add this overflow compensation to the server start time, and also add the timer value (remember this is counted from server start).
-	// The resulting value is the timestamp in seconds at which an event happened.
-	timerSeconds := picosecondsToSeconds(timer)
-	timestampSeconds := serverStartTime + overflowTime + timerSeconds
+	rowsAffected, err := rs.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
+	}
+	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
-	return secondsToMilliseconds(timestampSeconds)
-}
-
-func calculateNumberOfOverflows(uptime float64) int {
-	return int(math.Floor(uptime / picosecondsOverflowInSeconds))
+	return nil
 }
 
 func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
@@ -460,40 +487,4 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
-}
-
-// uptimeSinceOverflow calculates the uptime "modulo" overflows (if any): it returns the remainder of the uptime value with any
-// overflowed time removed
-func uptimeSinceOverflow(uptime float64) float64 {
-	overflowAdjustment := float64(calculateNumberOfOverflows(uptime)) * picosecondsOverflowInSeconds
-	return secondsToPicoseconds(uptime - overflowAdjustment)
-}
-
-var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
-
-const (
-	picosecondsPerSecond      float64 = 1e12
-	millisecondsPerSecond     float64 = 1e3
-	millisecondsPerPicosecond float64 = 1e9
-	nanosecondsPerMillisecond float64 = 1e6
-)
-
-func picosecondsToSeconds(picoseconds float64) float64 {
-	return picoseconds / picosecondsPerSecond
-}
-
-func picosecondsToMilliseconds(picoseconds float64) float64 {
-	return picoseconds / millisecondsPerPicosecond
-}
-
-func millisecondsToNanoseconds(milliseconds float64) float64 {
-	return milliseconds * nanosecondsPerMillisecond
-}
-
-func secondsToPicoseconds(seconds float64) float64 {
-	return seconds * picosecondsPerSecond
-}
-
-func secondsToMilliseconds(seconds float64) float64 {
-	return seconds * millisecondsPerSecond
 }

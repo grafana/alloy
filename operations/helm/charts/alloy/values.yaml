@@ -58,6 +58,9 @@ alloy:
   # By default, data is lost between reboots.
   storagePath: /tmp/alloy
 
+  # -- Enables Grafana Alloy container's http server port.
+  enableHttpServerPort: true
+
   # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
   # containers.
   listenAddr: 0.0.0.0
@@ -67,6 +70,12 @@ alloy:
 
   # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
   listenScheme: HTTP
+
+  # -- Initial delay for readiness probe.
+  initialDelaySeconds: 10
+
+  # -- Timeout for readiness probe.
+  timeoutSeconds: 1
 
   # --  Base path where the UI is exposed.
   uiPathPrefix: /
@@ -188,6 +197,9 @@ controller:
 
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
   replicas: 1
+
+  # -- Extra labels to add to the controller.
+  extraLabels: {}
 
   # -- Annotations to add to controller.
   extraAnnotations: {}

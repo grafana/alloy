@@ -39,12 +39,12 @@ otelcol.processor.k8sattributes "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.k8sattributes`:
 
-| Name                        | Type       | Description                                                                    | Default           | Required |
-| --------------------------- | ---------- | ------------------------------------------------------------------------------ | ----------------- | -------- |
-| `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `"serviceAccount"`| no       |
-| `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`           | no       |
-| `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`           | no       |
-| `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`           | no       |
+| Name                        | Type       | Description                                                                    | Default            | Required |
+|-----------------------------|------------|--------------------------------------------------------------------------------|--------------------|----------|
+| `auth_type`                 | `string`   | Authentication method when connecting to the Kubernetes API.                   | `"serviceAccount"` | no       |
+| `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`            | no       |
+| `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`            | no       |
+| `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`            | no       |
 
 The supported values for `auth_type` are:
 
@@ -81,7 +81,7 @@ However, they may be unable to send telemetry to `otelcol.processor.k8sattribute
 You can use the following blocks with `otelcol.processor.k8sattributes`:
 
 | Block                                  | Description                                                                | Required |
-| -------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                     | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
 | [`exclude`][exclude]                   | Exclude pods from being processed.                                         | no       |
@@ -113,7 +113,7 @@ For example, `extract` > `annotation` refers to an `annotation` block defined in
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -136,7 +136,7 @@ The `pod` block configures a Pod to be excluded from the processor.
 The following attributes are supported:
 
 | Name   | Type     | Description         | Default | Required |
-| ------ | -------- | ------------------- | ------- | -------- |
+|--------|----------|---------------------|---------|----------|
 | `name` | `string` | The name of the Pod |         | yes      |
 
 ### `extract`
@@ -145,10 +145,10 @@ The `extract` block configures which metadata, annotations, and labels to extrac
 
 The following attributes are supported:
 
-| Name               | Type           | Description                                             | Default     | Required |
-| ------------------ | -------------- | ------------------------------------------------------- | ----------- | -------- |
-| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                    | _See below_ | no       |
-| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][]. | `false`     | no       |
+| Name               | Type           | Description                                                                 | Default     | Required |
+|--------------------|----------------|-----------------------------------------------------------------------------|-------------|----------|
+| `metadata`         | `list(string)` | Pre-configured metadata keys to add.                                        | _See below_ | no       |
+| `otel_annotations` | `bool`         | Whether to set the [recommended resource attributes][semantic conventions]. | `false`     | no       |
 
 The supported `metadata` keys are:
 
@@ -171,6 +171,12 @@ The supported `metadata` keys are:
 * `k8s.replicaset.uid`
 * `k8s.statefulset.name`
 * `k8s.statefulset.uid`
+* `service.instance.id`
+* `service.name`
+* `service.namespace`
+* `service.version`
+
+The `service.*` metadata are calculated following the OpenTelemetry [semantic conventions][].
 
 By default, if `metadata` isn't specified, the following fields are extracted and added to spans, metrics, and logs as resource attributes:
 
@@ -186,7 +192,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-[recommended resource attributes]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes/
+[semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 
 ### `annotation`
 
@@ -223,7 +229,7 @@ The `filter` block configures which nodes to get data from and which fields and 
 The following attributes are supported:
 
 | Name        | Type     | Description                                                             | Default | Required |
-| ----------- | -------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------|----------|-------------------------------------------------------------------------|---------|----------|
 | `node`      | `string` | Configures a Kubernetes node name or host name.                         | `""`    | no       |
 | `namespace` | `string` | Filters all pods by the provided namespace. All other pods are ignored. | `""`    | no       |
 
@@ -280,7 +286,7 @@ When multiple `source` blocks are specified inside a `pod_association` block, bo
 The following attributes are supported:
 
 | Name   | Type     | Description                                                                      | Default | Required |
-| ------ | -------- | -------------------------------------------------------------------------------- | ------- | -------- |
+|--------|----------|----------------------------------------------------------------------------------|---------|----------|
 | `from` | `string` | The association method. Currently supports `resource_attribute` and `connection` |         | yes      |
 | `name` | `string` | Name represents extracted key name. For example, `ip`, `pod_uid`, `k8s.pod.ip`   |         | no       |
 
@@ -289,7 +295,7 @@ The following attributes are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

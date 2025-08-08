@@ -31,6 +31,8 @@ import (
 
 const name = "database_observability.mysql"
 
+const selectEngineVersion = `SELECT VERSION()`
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -52,25 +54,49 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	CollectInterval               time.Duration       `alloy:"collect_interval,attr,optional"`
-	SetupConsumersCollectInterval time.Duration       `alloy:"setup_consumers_collect_interval,attr,optional"`
-	ExplainPlanCollectInterval    time.Duration       `alloy:"explain_plan_collect_interval,attr,optional"`
-	ExplainPlanPerCollectRatio    float64             `alloy:"explain_plan_per_collect_ratio,attr,optional"`
-	LocksCollectInterval          time.Duration       `alloy:"locks_collect_interval,attr,optional"`
-	LocksThreshold                time.Duration       `alloy:"locks_threshold,attr,optional"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
-	DisableQueryRedaction bool `alloy:"disable_query_redaction,attr,optional"`
+	// collector: 'setup_consumers'
+	SetupConsumersCollectInterval time.Duration `alloy:"setup_consumers_collect_interval,attr,optional"`
+
+	// collector: 'explain_plan'
+	ExplainPlanCollectInterval time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
+	ExplainPlanPerCollectRatio float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
+	ExplainPlanInitialLookback time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
+
+	// collector: 'locks'
+	LocksCollectInterval time.Duration `alloy:"locks_collect_interval,attr,optional"`
+	LocksThreshold       time.Duration `alloy:"locks_threshold,attr,optional"`
+
+	// collector: 'query_sample'
+	DisableQueryRedaction                  bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers               bool          `alloy:"query_sample_auto_enable_setup_consumers,attr,optional"`
+	QuerySampleSetupConsumersCheckInterval time.Duration `alloy:"query_sample_setup_consumers_check_interval,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
 	CollectInterval:               1 * time.Minute,
+	AllowUpdatePerfSchemaSettings: false,
+
+	// collector: 'setup_consumers'
 	SetupConsumersCollectInterval: 1 * time.Hour,
-	ExplainPlanCollectInterval:    1 * time.Minute,
-	ExplainPlanPerCollectRatio:    1.0,
-	LocksCollectInterval:          30 * time.Second,
-	LocksThreshold:                1 * time.Second,
+
+	// collector: 'explain_plan'
+	ExplainPlanCollectInterval: 1 * time.Minute,
+	ExplainPlanPerCollectRatio: 1.0,
+	ExplainPlanInitialLookback: 24 * time.Hour,
+
+	// collector: 'locks'
+	LocksCollectInterval: 30 * time.Second,
+	LocksThreshold:       1 * time.Second,
+
+	// collector: 'query_sample'
+	DisableQueryRedaction:                  false,
+	AutoEnableSetupConsumers:               false,
+	QuerySampleSetupConsumersCheckInterval: 1 * time.Hour,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -222,7 +248,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryTablesName:    true,
 		collector.SchemaTableName:    true,
 		collector.SetupConsumersName: true,
-		collector.QuerySampleName:    false,
+		collector.QuerySampleName:    true,
 		collector.ExplainPlanName:    false,
 		collector.LocksName:          false,
 	}
@@ -254,6 +280,19 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 	c.dbConnection = dbConnection
+
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
@@ -304,12 +343,14 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:                    dbConnection,
-			InstanceKey:           c.instanceKey,
-			CollectInterval:       c.args.CollectInterval,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.DisableQueryRedaction,
+			DB:                          dbConnection,
+			InstanceKey:                 c.instanceKey,
+			CollectInterval:             c.args.CollectInterval,
+			EntryHandler:                entryHandler,
+			Logger:                      c.opts.Logger,
+			DisableQueryRedaction:       c.args.DisableQueryRedaction,
+			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval: c.args.QuerySampleSetupConsumersCheckInterval,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
@@ -362,12 +403,14 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.ExplainPlanName] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:             dbConnection,
-			InstanceKey:    c.instanceKey,
-			ScrapeInterval: c.args.ExplainPlanCollectInterval,
-			PerScrapeRatio: c.args.ExplainPlanPerCollectRatio,
-			Logger:         c.opts.Logger,
-			EntryHandler:   entryHandler,
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			ScrapeInterval:  c.args.ExplainPlanCollectInterval,
+			PerScrapeRatio:  c.args.ExplainPlanPerCollectRatio,
+			Logger:          c.opts.Logger,
+			DBVersion:       engineVersion,
+			EntryHandler:    entryHandler,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlanInitialLookback),
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
@@ -382,8 +425,9 @@ func (c *Component) startCollectors() error {
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)

@@ -78,7 +78,7 @@
 include tools/make/*.mk
 
 ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:nanoserver-1809
+ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
@@ -119,10 +119,10 @@ VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
-VPREFIXSYNTAX := github.com/grafana/alloy/syntax/stdlib
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
-				-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
+		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -263,7 +263,7 @@ generate-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./docs
+	go generate ./internal/tools/docs_generator/
 endif
 
 generate-winmanifest:
@@ -282,6 +282,14 @@ else
 	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
 	go generate ./internal/static/integrations/snmp_exporter/common; \
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
 endif
 
 #

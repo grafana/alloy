@@ -13,17 +13,22 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
-var rdsRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+var (
+	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
+	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
+)
 
 type ConnectionInfoArguments struct {
-	DSN      string
-	Registry *prometheus.Registry
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
 }
 
 type ConnectionInfo struct {
-	DSN        string
-	Registry   *prometheus.Registry
-	InfoMetric *prometheus.GaugeVec
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
+	InfoMetric    *prometheus.GaugeVec
 
 	running *atomic.Bool
 }
@@ -33,15 +38,16 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version"})
 
 	args.Registry.MustRegister(infoMetric)
 
 	return &ConnectionInfo{
-		DSN:        args.DSN,
-		Registry:   args.Registry,
-		InfoMetric: infoMetric,
-		running:    &atomic.Bool{},
+		DSN:           args.DSN,
+		Registry:      args.Registry,
+		EngineVersion: args.EngineVersion,
+		InfoMetric:    infoMetric,
+		running:       &atomic.Bool{},
 	}, nil
 }
 
@@ -61,6 +67,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerName         = "unknown"
 		providerRegion       = "unknown"
 		dbInstanceIdentifier = "unknown"
+		engine               = "mysql"
 	)
 
 	host, _, err := net.SplitHostPort(cfg.Addr)
@@ -72,10 +79,16 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 				dbInstanceIdentifier = matches[1]
 				providerRegion = matches[3]
 			}
+		} else if strings.HasSuffix(host, "mysql.database.azure.com") {
+			providerName = "azure"
+			matches := azureRegex.FindStringSubmatch(host)
+			if len(matches) > 1 {
+				dbInstanceIdentifier = matches[1]
+			}
 		}
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
 	return nil
 }
 

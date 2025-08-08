@@ -207,7 +207,7 @@ func (args *Arguments) SetToDefault() {
 			RequiredAcks:    1,
 			Compression:     "none",
 			CompressionParams: CompressionParams{
-				Level: -1, // Default compression level
+				Level: 0, // Default compression level
 			},
 			FlushMaxMessages: 0,
 		},

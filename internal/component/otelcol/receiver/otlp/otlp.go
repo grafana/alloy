@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
@@ -97,8 +98,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: grpcProtocolArgs,
-			HTTP: httpProtocolArgs,
+			GRPC: convertOptional(grpcProtocolArgs),
+			HTTP: convertOptional(httpProtocolArgs),
 		},
 	}, nil
 }
@@ -199,4 +200,11 @@ func (args *HTTPConfigArguments) SetToDefault() {
 // DebugMetricsConfig implements receiver.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
+}
+
+func convertOptional[T any](it *T) configoptional.Optional[T] {
+	if it == nil {
+		return configoptional.None[T]()
+	}
+	return configoptional.Some[T](*it)
 }

@@ -18,7 +18,9 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/buger/jsonparser"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -31,18 +33,17 @@ const (
 
 const selectDigestsForExplainPlan = `
 	SELECT
-		CURRENT_SCHEMA,
+		SCHEMA_NAME,
 		DIGEST,
-		SQL_TEXT
-	FROM performance_schema.events_statements_history
-	WHERE TIMER_END > DATE_SUB(NOW(), INTERVAL 1 DAY)
-	AND SQL_TEXT IS NOT NULL
+		QUERY_SAMPLE_TEXT,
+		LAST_SEEN
+	FROM performance_schema.events_statements_summary_by_digest
+	WHERE LAST_SEEN > ?
+	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
+	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
-
-const selectDBSchemaVersion = `SELECT VERSION()`
 
 type explainPlanOutputOperation string
 
@@ -453,11 +454,13 @@ type queryInfo struct {
 }
 
 type ExplainPlanArguments struct {
-	DB             *sql.DB
-	InstanceKey    string
-	ScrapeInterval time.Duration
-	PerScrapeRatio float64
-	EntryHandler   loki.EntryHandler
+	DB              *sql.DB
+	InstanceKey     string
+	ScrapeInterval  time.Duration
+	PerScrapeRatio  float64
+	EntryHandler    loki.EntryHandler
+	InitialLookback time.Time
+	DBVersion       string
 
 	Logger log.Logger
 }
@@ -471,6 +474,7 @@ type ExplainPlan struct {
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
+	lastSeen         time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -479,24 +483,15 @@ type ExplainPlan struct {
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	rs := args.DB.QueryRowContext(context.Background(), selectDBSchemaVersion)
-	if rs.Err() != nil {
-		return nil, rs.Err()
-	}
-
-	var dbVersion string
-	if err := rs.Scan(&dbVersion); err != nil {
-		return nil, err
-	}
-
 	return &ExplainPlan{
 		dbConnection:   args.DB,
 		instanceKey:    args.InstanceKey,
-		dbVersion:      dbVersion,
+		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make([]queryInfo, 0),
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
+		lastSeen:       args.InitialLookback,
 		logger:         log.With(args.Logger, "collector", ExplainPlanName),
 		running:        atomic.NewBool(false),
 	}, nil
@@ -548,7 +543,7 @@ func (c *ExplainPlan) Stop() {
 }
 
 func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan)
+	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan, c.lastSeen)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return err
@@ -563,11 +558,15 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		}
 
 		var qi queryInfo
-		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText); err != nil {
+		var ls time.Time
+		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
 		c.queryCache = append(c.queryCache, qi)
+		if ls.After(c.lastSeen) {
+			c.lastSeen = ls
+		}
 	}
 	// Calculate batch size based on current cache size
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
@@ -607,22 +606,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 		logger = log.With(logger, "schema_name", *qi.schemaName)
-		if _, err := c.dbConnection.ExecContext(ctx, "USE "+*qi.schemaName); err != nil {
-			level.Error(logger).Log("msg", "failed to set schema", "err", err)
-			continue
-		}
 
-		rsExplain := c.dbConnection.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
-
-		if err := rsExplain.Err(); err != nil {
-			level.Error(logger).Log("msg", "failed to run explain plan", "err", err)
-
-			continue
-		}
-
-		var byteExplainPlanJSON []byte
-		if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
-			level.Error(logger).Log("msg", "failed to scan explain plan json", "err", err)
+		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, qi)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
 			continue
 		}
 
@@ -671,7 +658,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_EXPLAIN_PLAN_OUTPUT,
 			c.instanceKey,
@@ -682,6 +669,31 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+	conn, err := c.dbConnection.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connection: %w", err)
+	}
+	defer conn.Close()
+
+	useStatement := fmt.Sprintf("USE `%s`", *qi.schemaName)
+	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
+		return nil, fmt.Errorf("failed to set schema: %w", err)
+	}
+
+	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
+	if err := rsExplain.Err(); err != nil {
+		return nil, fmt.Errorf("failed to run explain plan: %w", err)
+	}
+
+	var byteExplainPlanJSON []byte
+	if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
+		return nil, fmt.Errorf("failed to scan explain plan json: %w", err)
+	}
+
+	return byteExplainPlanJSON, nil
 }
 
 func redactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {

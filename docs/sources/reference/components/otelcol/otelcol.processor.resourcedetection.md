@@ -42,7 +42,7 @@ otelcol.processor.resourcedetection "<LABEL>" {
 You can use the following arguments with `otelcol.processor.resourcedetection`:
 
 | Name        | Type           | Description                                                                        | Default   | Required |
-| ----------- | -------------- | ---------------------------------------------------------------------------------- | --------- | -------- |
+|-------------|----------------|------------------------------------------------------------------------------------|-----------|----------|
 | `detectors` | `list(string)` | An ordered list of named detectors used to detect resource information.            | `["env"]` | no       |
 | `override`  | `bool`         | Configures whether existing resource attributes should be overridden or preserved. | `true`    | no       |
 | `timeout`   | `duration`     | Timeout by which all specified detectors must complete.                            | `"5s"`    | no       |
@@ -95,7 +95,7 @@ The following order is recommended for AWS:
 You can use the following blocks with `otelcol.processor.resourcedetection`:
 
 | Block                                  | Description                                                                                             | Required |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------- |
+|----------------------------------------|---------------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                     | Configures where to send received telemetry data.                                                       | yes      |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                          | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                    | no       |
@@ -137,7 +137,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -148,7 +148,7 @@ The `aks` block adds resource attributes related to Azure AKS.
 The `aks` block supports the following blocks:
 
 | Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+|----------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#aks--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `aks` > `resource_attributes`
@@ -156,7 +156,7 @@ The `aks` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                              | Required |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+|------------------------------------|------------------------------------------------------------------------------------------|----------|
 | [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
 | [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
 | [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
@@ -189,14 +189,14 @@ The `azure` block queries the [Azure Instance Metadata Service][] to retrieve va
 
 The `azure` block supports the following blocks:
 
-| Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+| Block                                                | Description                                  | Required |
+|------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#azure--resource_attributes) | Configures which resource attributes to add. | no       |
 
 The `azure` block supports the following attributes:
 
 | Attribute | Type           | Description                                                                                     | Default | Required |
-| --------- | -------------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+|-----------|----------------|-------------------------------------------------------------------------------------------------|---------|----------|
 | `tags`    | `list(string)` | A list of regular expressions to match tag keys to add as resource attributes can be specified. | `[]`    | no       |
 
 #### `azure` > `resource_attributes`
@@ -204,7 +204,7 @@ The `azure` block supports the following attributes:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                      | Description                                                                                     | Required |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+|--------------------------------------------|-------------------------------------------------------------------------------------------------|----------|
 | [`azure.resourcegroup.name`][res-attr-cfg] | Toggles the `azure.resourcegroup.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`azure.vm.name`][res-attr-cfg]            | Toggles the `azure.vm.name` resource attribute. Sets `enabled` to `true` by default.            | no       |
 | [`azure.vm.scaleset.name`][res-attr-cfg]   | Toggles the `azure.vm.scaleset.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
@@ -228,7 +228,7 @@ The `consul` block queries a Consul agent and reads its configuration endpoint t
 The `consul` block supports the following attributes:
 
 | Attribute    | Type           | Description                                                                       | Default | Required |
-| ------------ | -------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+|--------------|----------------|-----------------------------------------------------------------------------------|---------|----------|
 | `address`    | `string`       | The address of the Consul server                                                  | `""`    | no       |
 | `datacenter` | `string`       | Data center to use. If not provided, the default agent data center is used.       | `""`    | no       |
 | `meta`       | `list(string)` | Allowlist of [Consul Metadata][] keys to use as resource attributes.              | `[]`    | no       |
@@ -243,7 +243,7 @@ The `consul` block supports the following attributes:
 The `consul` block supports the following blocks:
 
 | Block                                                 | Description                                  | Required |
-| ----------------------------------------------------- | -------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#consul--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `consul` > `resource_attributes`
@@ -251,7 +251,7 @@ The `consul` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                          | Description                                                                         | Required |
-| ------------------------------ | ----------------------------------------------------------------------------------- | -------- |
+|--------------------------------|-------------------------------------------------------------------------------------|----------|
 | [`cloud.region`][res-attr-cfg] | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`host.id`][res-attr-cfg]      | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.      | no       |
 | [`host.name`][res-attr-cfg]    | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.    | no       |
@@ -270,7 +270,7 @@ Docker detection doesn't work on MacOS.
 The `docker` block supports the following blocks:
 
 | Block                                                 | Description                                  | Required |
-| ----------------------------------------------------- | -------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#docker--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `docker` > `resource_attributes`
@@ -278,7 +278,7 @@ The `docker` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                       | Description                                                                      | Required |
-| --------------------------- | -------------------------------------------------------------------------------- | -------- |
+|-----------------------------|----------------------------------------------------------------------------------|----------|
 | [`host.name`][res-attr-cfg] | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`os.type`][res-attr-cfg]   | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.   | no       |
 
@@ -289,7 +289,7 @@ The `dynatrace` block loads resource information from the `dt_host_metadata.prop
 The `dynatrace` block supports the following blocks:
 
 | Block                                                    | Description                                  | Required |
-| -------------------------------------------------------- | -------------------------------------------- | -------- |
+|----------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#dynatrace--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `dynatrace` > `resource_attributes`
@@ -297,7 +297,7 @@ The `dynatrace` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                            | Description                                                                           | Required |
-| -------------------------------- | ------------------------------------------------------------------------------------- | -------- |
+|----------------------------------|---------------------------------------------------------------------------------------|----------|
 | [`host.name`][res-attr-cfg]      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
 | [`dt.entity.host`][res-attr-cfg] | Toggles the `dt.entity.host` resource attribute. Sets `enabled` to `true` by default. | no       |
 
@@ -308,7 +308,7 @@ The `ec2` block reads resource information from the [EC2 instance metadata API][
 The `ec2` block supports the following attributes:
 
 | Attribute      | Type           | Description                                                                 | Default | Required |
-| -------------- | -------------- | --------------------------------------------------------------------------- | ------- | -------- |
+|----------------|----------------|-----------------------------------------------------------------------------|---------|----------|
 | `max_attempts` | `int`          | The maximum number of attempts to retrieve metadata.                        | `3`     | no       |
 | `max_backoff`  | `duration`     | The maximum backoff time between retries.                                   | `"20s"` | no       |
 | `tags`         | `list(string)` | A list of regular expressions to match against tag keys of an EC2 instance. | `[]`    | no       |
@@ -334,8 +334,8 @@ To fetch EC2 tags, the IAM role assigned to the EC2 instance must have a policy 
 
 The `ec2` block supports the following blocks:
 
-| Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+| Block                           | Description                                  | Required |
+|---------------------------------|----------------------------------------------|----------|
 | [``](#ec2--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `ec2` > `resource_attributes`
@@ -343,7 +343,7 @@ The `ec2` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
+|-------------------------------------------|------------------------------------------------------------------------------------------------|----------|
 | [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
 | [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
@@ -372,7 +372,7 @@ The `ecs` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
+|-------------------------------------------|------------------------------------------------------------------------------------------------|----------|
 | [`aws.ecs.cluster.arn`][res-attr-cfg]     | Toggles the `aws.ecs.cluster.arn` resource attribute. Sets `enabled` to `true` by default.     | no       |
 | [`aws.ecs.launchtype`][res-attr-cfg]      | Toggles the `aws.ecs.launchtype` resource attribute. Sets `enabled` to `true` by default.      | no       |
 | [`aws.ecs.task.arn`][res-attr-cfg]        | Toggles the `aws.ecs.task.arn` resource attribute. Sets `enabled` to `true` by default.        | no       |
@@ -396,7 +396,7 @@ The `eks` block adds resource attributes for Amazon EKS.
 The `eks` block supports the following blocks:
 
 | Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+|----------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#eks--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `eks` > `resource_attributes`
@@ -404,7 +404,7 @@ The `eks` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                              | Required |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+|------------------------------------|------------------------------------------------------------------------------------------|----------|
 | [`cloud.account.id`][res-attr-cfg] | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `false` by default. | no       |
 | [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
 | [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
@@ -424,7 +424,7 @@ The `elasticbeanstalk` block reads the AWS X-Ray configuration file available on
 The `elasticbeanstalk` block supports the following blocks:
 
 | Block                                                           | Description                                  | Required |
-| --------------------------------------------------------------- | -------------------------------------------- | -------- |
+|-----------------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#elasticbeanstalk--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `elasticbeanstalk` > `resource_attributes`
@@ -432,7 +432,7 @@ The `elasticbeanstalk` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
-| ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+|------------------------------------|-----------------------------------------------------------------------------------------|----------|
 | [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
 | [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
 | [`deployment.envir`][res-attr-cfg] | Toggles the `deployment.envir` resource attribute. Sets `enabled` to `true` by default. | no       |
@@ -457,7 +457,7 @@ Use the `gcp` detector regardless of the GCP platform {{< param "PRODUCT_NAME" >
 The `gcp` block supports the following blocks:
 
 | Block                                              | Description                                  | Required |
-| -------------------------------------------------- | -------------------------------------------- | -------- |
+|----------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#gcp--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `gcp` > `resource_attributes`
@@ -465,7 +465,7 @@ The `gcp` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                                   | Description                                                                                                  | Required |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------- |
+|---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|----------|
 | [`cloud.account.id`][res-attr-cfg]                      | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.                      | no       |
 | [`cloud.availability_zone`][res-attr-cfg]               | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default.               | no       |
 | [`cloud.platform`][res-attr-cfg]                        | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                        | no       |
@@ -572,7 +572,7 @@ The `heroku` block adds resource attributes derived from [Heroku dyno metadata][
 The `heroku` block supports the following blocks:
 
 | Block                                                 | Description                                  | Required |
-| ----------------------------------------------------- | -------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#heroku--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `heroku` > `resource_attributes`
@@ -580,7 +580,7 @@ The `heroku` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                               | Description                                                                                              | Required |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
+|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------|----------|
 | [`cloud.provider`][res-attr-cfg]                    | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                    | no       |
 | [`heroku.app.id`][res-attr-cfg]                     | Toggles the `heroku.app.id` resource attribute. Sets `enabled` to `true` by default.                     | no       |
 | [`heroku.dyno.id`][res-attr-cfg]                    | Toggles the `heroku.dyno.id` resource attribute. Sets `enabled` to `true` by default.                    | no       |
@@ -594,7 +594,7 @@ When [Heroku dyno metadata][] is active, Heroku applications publish information
 These environment variables map to resource attributes as follows:
 
 | Dyno metadata environment variable | Resource attribute                  |
-| ---------------------------------- | ----------------------------------- |
+|------------------------------------|-------------------------------------|
 | `HEROKU_APP_ID`                    | `heroku.app.id`                     |
 | `HEROKU_APP_NAME`                  | `service.name`                      |
 | `HEROKU_DYNO_ID`                   | `service.instance.id`               |
@@ -615,7 +615,7 @@ The `kubeadm` block queries the Kubernetes API server to retrieve kubeadm resour
 The `kubeadm` block supports the following attributes:
 
 | Attribute   | Type     | Description                                                             | Default  | Required |
-| ----------- | -------- | ----------------------------------------------------------------------- | -------- | -------- |
+|-------------|----------|-------------------------------------------------------------------------|----------|----------|
 | `auth_type` | `string` | Configures how to authenticate to the Kubernetes API server.            | `"none"` | no       |
 | `context`   | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`. | `""`     | no       |
 
@@ -657,7 +657,7 @@ You can set `auth_type` to one of the following:
 The `kubeadm` block supports the following blocks:
 
 | Block                                                  | Description                                  | Required |
-| ------------------------------------------------------ | -------------------------------------------- | -------- |
+|--------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#kubeadm--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `kubeadm` > `resource_attributes`
@@ -665,7 +665,7 @@ The `kubeadm` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
-| ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+|------------------------------------|-----------------------------------------------------------------------------------------|----------|
 | [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`k8s.cluster.uid`][res-attr-cfg]  | Toggles the `k8s.cluster.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
 
@@ -676,7 +676,7 @@ The `kubernetes_node` block queries the Kubernetes API server to retrieve variou
 The `kubernetes_node` block supports the following attributes:
 
 | Attribute           | Type     | Description                                                               | Default           | Required |
-| ------------------- | -------- | ------------------------------------------------------------------------- | ----------------- | -------- |
+|---------------------|----------|---------------------------------------------------------------------------|-------------------|----------|
 | `auth_type`         | `string` | Configures how to authenticate to the K8s API server.                     | `"none"`          | no       |
 | `context`           | `string` | Override the current context when `auth_type` is set to `"kubeConfig"`.   | `""`              | no       |
 | `node_from_env_var` | `string` | The name of an environment variable from which to retrieve the node name. | `"K8S_NODE_NAME"` | no       |
@@ -702,7 +702,7 @@ rules:
 The `kubernetes_node` block supports the following blocks:
 
 | Block                                                          | Description                                  | Required |
-| -------------------------------------------------------------- | -------------------------------------------- | -------- |
+|----------------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#kubernetes_node--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `kubernetes_node` > `resource_attributes`
@@ -710,7 +710,7 @@ The `kubernetes_node` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                           | Description                                                                          | Required |
-| ------------------------------- | ------------------------------------------------------------------------------------ | -------- |
+|---------------------------------|--------------------------------------------------------------------------------------|----------|
 | [`k8s.node.name`][res-attr-cfg] | Toggles the `k8s.node.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`k8s.node.uid`][res-attr-cfg]  | Toggles the `k8s.node.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
 
@@ -731,7 +731,7 @@ The `lambda` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                  | Description                                                                                 | Required |
-| -------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+|----------------------------------------|---------------------------------------------------------------------------------------------|----------|
 | [`aws.log.group.names`][res-attr-cfg]  | Toggles the `aws.log.group.names` resource attribute. Sets `enabled` to `true` by default.  | no       |
 | [`aws.log.stream.names`][res-attr-cfg] | Toggles the `aws.log.stream.names` resource attribute. Sets `enabled` to `true` by default. | no       |
 | [`cloud.platform`][res-attr-cfg]       | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.       | no       |
@@ -772,7 +772,7 @@ The `openshift` block queries the OpenShift and Kubernetes APIs to retrieve vari
 The `openshift` block supports the following attributes:
 
 | Attribute | Type     | Description                                              | Default     | Required |
-| --------- | -------- | -------------------------------------------------------- | ----------- | -------- |
+|-----------|----------|----------------------------------------------------------|-------------|----------|
 | `address` | `string` | Address of the OpenShift API server.                     | _See below_ | no       |
 | `token`   | `string` | Token used to identify against the OpenShift API server. | ""          | no       |
 
@@ -795,7 +795,7 @@ The determination of the API address, `ca_file`, and the service token is skippe
 The `openshift` block supports the following blocks:
 
 | Block                                                    | Description                                             | Required |
-| -------------------------------------------------------- | ------------------------------------------------------- | -------- |
+|----------------------------------------------------------|---------------------------------------------------------|----------|
 | [`tls`](#openshift--tls)                                 | TLS settings for the connection with the OpenShift API. | yes      |
 | [`resource_attributes`](#openshift--resource_attributes) | Configures which resource attributes to add.            | no       |
 
@@ -816,7 +816,7 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
-| ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+|------------------------------------|-----------------------------------------------------------------------------------------|----------|
 | [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
 | [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
 | [`cloud.region`][res-attr-cfg]     | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.     | no       |
@@ -833,7 +833,7 @@ Use the [Docker](#docker) detector if running {{< param "PRODUCT_NAME" >}} as a 
 The `system` block supports the following attributes:
 
 | Attribute          | Type           | Description                                                         | Default         | Required |
-| ------------------ | -------------- | ------------------------------------------------------------------- | --------------- | -------- |
+|--------------------|----------------|---------------------------------------------------------------------|-----------------|----------|
 | `hostname_sources` | `list(string)` | A priority list of sources from which the hostname will be fetched. | `["dns", "os"]` | no       |
 
 The valid options for `hostname_sources` are:
@@ -854,7 +854,7 @@ If there is an error fetching a hostname from a source, the next source from the
 The `system` block supports the following blocks:
 
 | Block                                                 | Description                                  | Required |
-| ----------------------------------------------------- | -------------------------------------------- | -------- |
+|-------------------------------------------------------|----------------------------------------------|----------|
 | [`resource_attributes`](#system--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `system` > `resource_attributes`
@@ -862,7 +862,7 @@ The `system` block supports the following blocks:
 The `resource_attributes` block supports the following blocks:
 
 | Block                                    | Description                                                                                    | Required |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
+|------------------------------------------|------------------------------------------------------------------------------------------------|----------|
 | [`host.arch`][res-attr-cfg]              | Toggles the `host.arch` resource attribute. Sets `enabled` to `false` by default.              | no       |
 | [`host.cpu.cache.l2.size`][res-attr-cfg] | Toggles the `host.cpu.cache.l2.size` resource attribute. Sets `enabled` to `false` by default. | no       |
 | [`host.cpu.family`][res-attr-cfg]        | Toggles the `host.cpu.family` resource attribute. Sets `enabled` to `false` by default.        | no       |
@@ -871,10 +871,13 @@ The `resource_attributes` block supports the following blocks:
 | [`host.cpu.stepping`][res-attr-cfg]      | Toggles the `host.cpu.stepping` resource attribute. Sets `enabled` to `false` by default.      | no       |
 | [`host.cpu.vendor.id`][res-attr-cfg]     | Toggles the `host.cpu.vendor.id` resource attribute. Sets `enabled` to `false` by default.     | no       |
 | [`host.id`][res-attr-cfg]                | Toggles the `host.id` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`host.interface`][res-attr-cfg]         | Toggles the `host.interface` resource attribute. Sets `enabled` to `false` by default.         | no       |
 | [`host.ip`][res-attr-cfg]                | Toggles the `host.ip` resource attribute. Sets `enabled` to `false` by default.                | no       |
 | [`host.mac`][res-attr-cfg]               | Toggles the `host.mac` resource attribute. Sets `enabled` to `false` by default.               | no       |
 | [`host.name`][res-attr-cfg]              | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`os.build.id`][res-attr-cfg]            | Toggles the `os.build.id` resource attribute. Sets `enabled` to `false` by default.            | no       |
 | [`os.description`][res-attr-cfg]         | Toggles the `os.description` resource attribute. Sets `enabled` to `false` by default.         | no       |
+| [`os.name`][res-attr-cfg]                | Toggles the `os.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
 | [`os.type`][res-attr-cfg]                | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.                 | no       |
 | [`os.version`][res-attr-cfg]             | Toggles the `os.version` resource attribute. Sets `enabled` to `false` by default.             | no       |
 
@@ -890,7 +893,7 @@ For example, some resource attributes have `enabled` set to `true` by default, w
 The following attributes are supported:
 
 | Attribute | Type   | Description                                                                         | Default     | Required |
-| --------- | ------ | ----------------------------------------------------------------------------------- | ----------- | -------- |
+|-----------|--------|-------------------------------------------------------------------------------------|-------------|----------|
 | `enabled` | `bool` | Toggles whether to add the resource attribute to the span, log, or metric resource. | _See below_ | no       |
 
 To see the default value for `enabled`, refer to the tables in the sections above which list the resource attributes blocks.
@@ -907,7 +910,7 @@ or:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for any telemetry signal of these types:

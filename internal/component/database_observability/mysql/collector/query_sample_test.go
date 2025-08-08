@@ -1609,7 +1609,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1628,7 +1630,9 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2059,7 +2063,9 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySample(QuerySampleArguments{
+			DB: db,
+		})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -2152,54 +2158,6 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	})
 }
 
-func TestQuerySample_calculateWallTime(t *testing.T) {
-	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
-		c := &QuerySample{}
-		serverStartTime := float64(2)
-		timer := 2e12 // Timer indicates event timing, counted since server startup. 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-		assert.Equalf(t, float64(4000), result, "got %f, want 4000", result)
-	})
-
-	t.Run("calculates the timestamp, taking into account the overflows", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := 2e12 // 2 seconds in picoseconds
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 18446749073.709553, result, "got %f, want 18446749073.709553", result)
-	})
-
-	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
-		c := &QuerySample{lastUptime: picosecondsToSeconds(math.MaxUint64) + 1}
-		serverStartTime := float64(3)
-		timer := float64(math.MaxUint64 - 5)
-
-		result := c.calculateWallTime(serverStartTime, timer)
-
-		assert.Equalf(t, 3.6893491147419106e+10, result, "got %f, want 3.6893491147419106e+10", result)
-	})
-}
-
-func TestQuerySample_calculateNumberOfOverflows(t *testing.T) {
-	testCases := map[string]struct {
-		expected uint64
-		uptime   float64
-	}{
-		"0 overflows": {0, 5},
-		"1 overflow":  {1, picosecondsToSeconds(math.MaxUint64) + 5},
-		"2 overflows": {2, picosecondsToSeconds(math.MaxUint64)*2 + 5},
-	}
-
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			assert.EqualValues(t, tc.expected, calculateNumberOfOverflows(tc.uptime))
-		})
-	}
-}
-
 func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 	tests := map[string]struct {
 		lastUptime          float64
@@ -2245,4 +2203,169 @@ func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 			assert.Equal(t, tc.expectedLimit, actualLimit)
 		})
 	}
+}
+
+func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	t.Run("executes updateSetupConsumers query when autoEnableSetupConsumers is true", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                          db,
+			InstanceKey:                 "mysql-db",
+			CollectInterval:             time.Second,
+			EntryHandler:                lokiClient,
+			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers:    true,
+			SetupConsumersCheckInterval: time.Second,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"uptime",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				5,
+				1,
+			))
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.DIGEST_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.CPU_TIME",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from some_table where id = 1",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+	})
+
+	t.Run("handles updateSetupConsumers query error gracefully", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewQuerySample(QuerySampleArguments{
+			DB:                          db,
+			InstanceKey:                 "mysql-db",
+			CollectInterval:             time.Second,
+			EntryHandler:                lokiClient,
+			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			AutoEnableSetupConsumers:    true,
+			SetupConsumersCheckInterval: time.Second,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"uptime",
+				}).AddRow(
+					"1",
+				),
+			)
+
+		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnError(fmt.Errorf("setup consumers update failed"))
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return !collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+	})
 }

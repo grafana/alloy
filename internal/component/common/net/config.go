@@ -108,6 +108,7 @@ func newdskitDefaultConfig() dskit.Config {
 	// By default, do not register instrumentation since every metric is later registered
 	// inside a custom register
 	c.RegisterInstrumentation = false
+	c.GRPCCollectMaxStreamsByConn = false
 	return c
 }
 

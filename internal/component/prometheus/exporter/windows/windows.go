@@ -20,5 +20,5 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(opts.Logger), defaultInstanceKey)
 }

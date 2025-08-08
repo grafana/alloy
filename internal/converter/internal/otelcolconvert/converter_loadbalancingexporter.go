@@ -98,7 +98,7 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 			Client: loadbalancing.GRPCClientArguments{
 				Compression: otelcol.CompressionType(cfg.OTLP.ClientConfig.Compression),
 
-				TLS:       toTLSClientArguments(cfg.OTLP.ClientConfig.TLSSetting),
+				TLS:       toTLSClientArguments(cfg.OTLP.ClientConfig.TLS),
 				Keepalive: toKeepaliveClientArguments(cfg.OTLP.ClientConfig.Keepalive),
 
 				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ClientConfig.ReadBufferSize),

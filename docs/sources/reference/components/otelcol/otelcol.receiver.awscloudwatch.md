@@ -39,11 +39,12 @@ otelcol.receiver.awscloudwatch "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 
-| Name            | Type     | Description                      | Default | Required |
-| --------------- | -------- | -------------------------------- | ------- | -------- |
-| `region`        | `string` | AWS region to collect logs from. |         | yes      |
-| `imds_endpoint` | `string` | Custom EC2 IMDS endpoint to use. |         | no       |
-| `profile`       | `string` | AWS credentials profile to use.  |         | no       |
+| Name            | Type                       | Description                                                              | Default | Required |
+|-----------------|----------------------------|--------------------------------------------------------------------------|---------|----------|
+| `region`        | `string`                   | AWS region to collect logs from.                                         |         | yes      |
+| `imds_endpoint` | `string`                   | Custom EC2 IMDS endpoint to use.                                         |         | no       |
+| `profile`       | `string`                   | AWS credentials profile to use.                                          |         | no       |
+| `storage`       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state. |         | no       |
 
 If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
 
@@ -52,7 +53,7 @@ If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADA
 You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 
 | Block                            | Description                                                                | Required |
-| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`logs`][logs]                   | Configures the log collection settings.                                    | no       |
@@ -63,7 +64,7 @@ You can use the following blocks with `otelcol.receiver.awscloudwatch`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -78,14 +79,15 @@ The `logs` block configures how logs are collected from CloudWatch.
 The following arguments are supported:
 
 | Name                     | Type       | Description                                                    | Default | Required |
-| ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
+|--------------------------|------------|----------------------------------------------------------------|---------|----------|
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to CloudWatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
+| `start_from`             | `string`   | Timestamp in RFC3339 format where to start reading logs.       | `""`    | no       |
 
 The `logs` block supports the following blocks:
 
 | Block                   | Description                                  | Required |
-| ----------------------- | -------------------------------------------- | -------- |
+|-------------------------|----------------------------------------------|----------|
 | [groups](#logs--groups) | Configures which log groups to collect from. | no       |
 
 #### `logs` > `groups`
@@ -93,7 +95,7 @@ The `logs` block supports the following blocks:
 The `groups` block supports the following blocks:
 
 | Block                                       | Description                                     | Required |
-| ------------------------------------------- | ----------------------------------------------- | -------- |
+|---------------------------------------------|-------------------------------------------------|----------|
 | [autodiscover](#logs--groups--autodiscover) | Configures automatic discovery of log groups.   | no       |
 | [named](#logs--groups--named)               | Configures specific log groups to collect from. | no       |
 
@@ -106,14 +108,14 @@ The `autodiscover` block configures automatic discovery of log groups.
 The following arguments are supported:
 
 | Name     | Type     | Description                               | Default | Required |
-| -------- | -------- | ----------------------------------------- | ------- | -------- |
+|----------|----------|-------------------------------------------|---------|----------|
 | `limit`  | `int`    | Maximum number of log groups to discover. | `50`    | no       |
 | `prefix` | `string` | Prefix to filter log groups by.           |         | no       |
 
 The `autodiscover` block supports the following blocks:
 
-|                      Block                      |            Description            | Required |
-| ----------------------------------------------- | --------------------------------- | -------- |
+| Block                                           | Description                       | Required |
+|-------------------------------------------------|-----------------------------------|----------|
 | [streams](#logs--groups--autodiscover--streams) | Configures log streams filtering. | no       |
 
 #### `logs` > `groups` > `autodiscover` > `streams`
@@ -123,7 +125,7 @@ The `streams` block configures filtering of log streams for the autodiscovered l
 The following arguments are supported:
 
 | Name       | Type       | Description                            | Default | Required |
-| ---------- | ---------- | -------------------------------------- | ------- | -------- |
+|------------|------------|----------------------------------------|---------|----------|
 | `names`    | `[]string` | List of exact stream names to collect. |         | no       |
 | `prefixes` | `[]string` | List of prefixes to filter streams by. |         | no       |
 
@@ -133,8 +135,8 @@ The `named` block explicitly configures specific log groups to collect from. Mul
 
 The following arguments are supported:
 
-|     Name     |    Type    |              Description               | Required |
-| ------------ | ---------- | -------------------------------------- | -------- |
+| Name         | Type       | Description                            | Required |
+|--------------|------------|----------------------------------------|----------|
 | `group_name` | `string`   | Name of the CloudWatch log group.      | yes      |
 | `names`      | `[]string` | List of exact stream names to collect. | no       |
 | `prefixes`   | `[]string` | List of prefixes to filter streams by. | no       |

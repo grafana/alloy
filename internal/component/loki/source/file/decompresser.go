@@ -288,7 +288,9 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 		d.metrics.readLines.WithLabelValues(d.path).Inc()
 
 		entries <- loki.Entry{
-			Labels: model.LabelSet{},
+			// Allocate the expected size of labels. This matches the number of labels added by the middleware
+			// as configured in Run().
+			Labels: make(model.LabelSet, len(d.labels)+1),
 			Entry: logproto.Entry{
 				Timestamp: time.Now(),
 				Line:      finalText,

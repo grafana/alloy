@@ -42,7 +42,7 @@ otelcol.exporter.awss3 "<LABEL>" {
 You can use the following argument with `otelcol.exporter.awss3`:
 
 | Name      | Type       | Description                                      | Default | Required |
-| --------- | ---------- | ------------------------------------------------ | ------- | -------- |
+|-----------|------------|--------------------------------------------------|---------|----------|
 | `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
@@ -50,7 +50,7 @@ You can use the following argument with `otelcol.exporter.awss3`:
 You can use the following blocks with `otelcol.exporter.awss3`:
 
 | Block                                          | Description                                                                                              | Required |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
+|------------------------------------------------|----------------------------------------------------------------------------------------------------------|----------|
 | [`s3_uploader`][s3_uploader]                   | Configures the AWS S3 bucket details to send telemetry data to.                                          | yes      |
 | [`debug_metrics`][debug_metrics]               | Configures the metrics that this component generates to monitor its state.                               | no       |
 | [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
@@ -65,26 +65,33 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 
 ### `s3_uploader`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `s3_uploader` block configures the AWS S3 bucket details used by the component.
 
 The following arguments are supported:
 
-| Name                  | Type      | Description                                                                                           | Default                                       | Required |
-| --------------------- | --------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
-| `s3_bucket`           | `string`  | The S3 bucket.                                                                                        |                                               | yes      |
-| `s3_prefix`           | `string`  | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
-| `acl`                 | `string`  | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
-| `compression`         | `string`  | File compression method, `none` or `gzip`                                                             | `"none"`                                      | no       |
-| `disable_ssl`         | `boolean` | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
-| `endpoint`            | `string`  | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
-| `file_prefix`         | `string`  | The file prefix defined by the user.                                                                  |                                               | no       |
-| `region`              | `string`  | The AWS region.                                                                                       | `"us-east-1"`                                 | no       |
-| `role_arn`            | `string`  | The Role ARN to be assumed.                                                                           |                                               | no       |
-| `s3_force_path_style` | `boolean` | Set this to `true` to force the request to use [path-style requests][]                                | `false`                                       | no       |
-| `s3_partition_format` | `string`  | Filepath formatting for the partition; Refer to [`strftime`][strftime] for format specification.      | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no       |
-| `storage_class`       | `string`  | The storage class to use when uploading objects.                                                      | `"STANDARD"`                                  | no       |
+| Name                  | Type       | Description                                                                                           | Default                                       | Required |
+|-----------------------|------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
+| `s3_bucket`           | `string`   | The S3 bucket.                                                                                        |                                               | yes      |
+| `s3_prefix`           | `string`   | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
+| `acl`                 | `string`   | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
+| `compression`         | `string`   | File compression method, `none` or `gzip`                                                             | `"none"`                                      | no       |
+| `disable_ssl`         | `boolean`  | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
+| `endpoint`            | `string`   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
+| `file_prefix`         | `string`   | The file prefix defined by the user.                                                                  |                                               | no       |
+| `region`              | `string`   | The AWS region.                                                                                       | `"us-east-1"`                                 | no       |
+| `retry_max_attempts`  | `int`      | The max number of attempts for retrying a request.                                                    | `3`                                           | no       |
+| `retry_max_backoff`   | `duration` | The max backoff delay that can occur before retrying a request.                                       | `20s`                                         | no       |
+| `retry_mode`          | `string`   | The retryer implementation.                                                                           | `"standard"`                                  | no       |
+| `role_arn`            | `string`   | The Role ARN to be assumed.                                                                           |                                               | no       |
+| `s3_force_path_style` | `boolean`  | Set this to `true` to force the request to use [path-style requests][]                                | `false`                                       | no       |
+| `s3_partition_format` | `string`   | Filepath formatting for the partition; Refer to [`strftime`][strftime] for format specification.      | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no       |
+| `storage_class`       | `string`   | The storage class to use when uploading objects.                                                      | `"STANDARD"`                                  | no       |
+
+`retry_mode` must be one of `standard`, `adaptive`, or `nop`.
+If `retry_mode` is set to `nop`, the `aws.NopRetryer` implementation effectively disables the retry.
+Setting `retry_max_attempts` to 0 will allow the SDK to retry all retryable errors until the request succeeds, or a non-retryable error is returned.
 
 [path-style requests]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access
 [strftime]: https://www.man7.org/linux/man-pages/man3/strftime.3.html
@@ -108,7 +115,7 @@ Marshaler determines the format of data sent to AWS S3. Currently, the following
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default       | Required |
-| ------ | -------- | -------------------------------------- | ------------- | -------- |
+|--------|----------|----------------------------------------|---------------|----------|
 | `type` | `string` | Marshaler used to produce output data. | `"otlp_json"` | no       |
 
 ### `sending_queue`
@@ -122,7 +129,7 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 The following arguments are supported:
 
 | Name        | Type     | Description                                                                  | Default | Required |
-| ----------- | -------- | ---------------------------------------------------------------------------- | ------- | -------- |
+|-------------|----------|------------------------------------------------------------------------------|---------|----------|
 | `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
 
 When `s3_prefix` is set, it dynamically overrides [`s3_uploader`][s3_uploader] > `s3_prefix`.
@@ -140,7 +147,7 @@ Otherwise, [`s3_uploader`][s3_uploader] > `s3_prefix` will serve as the fallback
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

@@ -58,7 +58,7 @@ func toOtelcolExportersyslog(cfg *syslogexporter.Config) *syslog.Arguments {
 		Queue:               toQueueArguments(cfg.QueueSettings),
 		Retry:               toRetryArguments(cfg.BackOffConfig),
 		DebugMetrics:        common.DefaultValue[syslog.Arguments]().DebugMetrics,
-		TLS:                 toTLSClientArguments(cfg.TLSSetting),
+		TLS:                 toTLSClientArguments(cfg.TLS),
 		Endpoint:            cfg.Endpoint,
 		Port:                cfg.Port,
 		Network:             cfg.Network,

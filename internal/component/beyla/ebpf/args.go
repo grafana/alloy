@@ -61,8 +61,8 @@ type Selections []Selection
 
 type Selection struct {
 	Section string   `alloy:"attr,attr"`
-	Include []string `alloy:"include,attr"`
-	Exclude []string `alloy:"exclude,attr"`
+	Include []string `alloy:"include,attr,optional"`
+	Exclude []string `alloy:"exclude,attr,optional"`
 }
 
 type Services []Service
@@ -89,9 +89,10 @@ type KubernetesService struct {
 }
 
 type Discovery struct {
-	Services                        Services `alloy:"services,block"`
+	Services                        Services `alloy:"services,block,optional"`
 	ExcludeServices                 Services `alloy:"exclude_services,block,optional"`
 	DefaultExcludeServices          Services `alloy:"default_exclude_services,block,optional"`
+	Survey                          Services `alloy:"survey,block,optional"`
 	SkipGoSpecificTracers           bool     `alloy:"skip_go_specific_tracers,attr,optional"`
 	ExcludeOTelInstrumentedServices bool     `alloy:"exclude_otel_instrumented_services,attr,optional"`
 }

@@ -65,11 +65,14 @@ The following flags are supported:
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
 * `--stability.level`: The minimum permitted stability level of functionality. Supported values: `experimental`, `public-preview`, and `generally-available` (default `"generally-available"`).
 * `--feature.community-components.enabled`: Enable community components (default `false`).
-* `--feature.prometheus.metric-validation-scheme`: Prometheus metric validation scheme to use. Supported values: `legacy`, `utf-8`. NOTE: this is an experimental flag and may be removed in future releases (default `"legacy"`).
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [Public preview][] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+
+### Deprecated flags
+
+* `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
 
 [Public preview]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/
