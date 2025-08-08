@@ -79,7 +79,7 @@ For example, `http` > `tls` refers to a `tls` block defined inside an `http` blo
 
 ### `tls`
 
-The `tls` block configures TLS for the HTTP and GRPC servers.
+The `tls` block configures TLS for the HTTP and gRPC servers.
 
 {{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

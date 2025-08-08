@@ -117,7 +117,7 @@ The `labels` map is applied to every entry that passes through the component.
 
 ### `tls`
 
-The `tls` block configures TLS for the HTTP and GRPC servers.
+The `tls` block configures TLS for the HTTP and gRPC servers.
 
 {{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
