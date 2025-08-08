@@ -5,25 +5,34 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/ckit/memconn"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/grafana/alloy/syntax"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -124,6 +133,57 @@ func TestBadAlloyConfig(t *testing.T) {
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
+// contextCapturingAppendable is a test helper that captures the context when Appender is called
+type contextCapturingAppendable struct {
+	capturedCtx context.Context
+	next        storage.Appendable
+}
+
+func (c *contextCapturingAppendable) Appender(ctx context.Context) storage.Appender {
+	c.capturedCtx = ctx
+	if c.next != nil {
+		return c.next.Appender(ctx)
+	}
+	return &noopAppender{}
+}
+
+// noopAppender is a minimal appender implementation for testing
+type noopAppender struct{}
+
+func (n *noopAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n *noopAppender) SetOptions(opts *storage.AppendOptions) {}
+
+func (n *noopAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n *noopAppender) Commit() error {
+	return nil
+}
+
+func (n *noopAppender) Rollback() error {
+	return nil
+}
+
+func (n *noopAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n *noopAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n *noopAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n *noopAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
 func TestForwardingToAppendable(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),
@@ -154,6 +214,7 @@ func TestForwardingToAppendable(t *testing.T) {
 
 	var args Arguments
 	args.SetToDefault()
+	args.HonorMetadata = true
 	args.ForwardTo = nilReceivers
 
 	s, err := New(opts, args)
@@ -170,14 +231,27 @@ func TestForwardingToAppendable(t *testing.T) {
 	// Update the component with a mock receiver; it should be passed along to the Appendable.
 	var receivedTs int64
 	var receivedSamples labels.Labels
+	var receivedMetadataLabels labels.Labels
+	var receivedMetadata metadata.Metadata
 	ls := labelstore.New(nil, prometheus_client.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-		receivedTs = t
-		receivedSamples = l
-		return ref, nil
-	}))
+	fanout := prometheus.NewInterceptor(nil, ls,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			receivedTs = t
+			receivedSamples = l
+			return ref, nil
+		}),
+		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, _ storage.Appender) (storage.SeriesRef, error) {
+			receivedMetadataLabels = l
+			receivedMetadata = m
+			return ref, nil
+		}),
+	)
+
+	// Add a context-capturing appendable to test metadata store in context
+	contextCapture := &contextCapturingAppendable{next: fanout}
+
 	require.NoError(t, err)
-	args.ForwardTo = []storage.Appendable{fanout}
+	args.ForwardTo = []storage.Appendable{contextCapture}
 	err = s.Update(args)
 	require.NoError(t, err)
 
@@ -188,12 +262,47 @@ func TestForwardingToAppendable(t *testing.T) {
 	_, err = appender.Append(0, sample, timestamp, 42.0)
 	require.NoError(t, err)
 
+	// Forwarding metadata to the mock receiver should succeed.
+	testMetadata := metadata.Metadata{
+		Type: model.MetricTypeCounter,
+		Unit: "bytes",
+		Help: "Test metric for unit testing",
+	}
+	metadataLabels := labels.FromStrings("__name__", "test_metric")
+	_, err = appender.UpdateMetadata(0, metadataLabels, testMetadata)
+	require.NoError(t, err)
+
 	err = appender.Commit()
 	require.NoError(t, err)
 
 	require.Equal(t, receivedTs, timestamp)
 	require.Len(t, receivedSamples, 1)
 	require.Equal(t, receivedSamples, sample)
+
+	// Verify metadata was received correctly
+	require.Equal(t, receivedMetadataLabels, metadataLabels)
+	require.Equal(t, receivedMetadata.Type, model.MetricTypeCounter)
+	require.Equal(t, receivedMetadata.Unit, "bytes")
+	require.Equal(t, receivedMetadata.Help, "Test metric for unit testing")
+
+	// Test that the metadata store in the context has been set appropriately
+	require.NotNil(t, contextCapture.capturedCtx, "Context should have been captured")
+
+	// Extract metadata store from context
+	metadataStore, ok := scrape.MetricMetadataStoreFromContext(contextCapture.capturedCtx)
+	require.True(t, ok, "MetricMetadataStore should be present in context")
+	require.NotNil(t, metadataStore, "MetricMetadataStore should not be nil")
+
+	// Verify the metadata store contains the metadata we sent
+	storedMetadata, found := metadataStore.GetMetadata("test_metric")
+	require.True(t, found, "Metadata for 'test_metric' should be found in the store")
+	require.Equal(t, "test_metric", storedMetadata.MetricFamily)
+	require.Equal(t, model.MetricTypeCounter, storedMetadata.Type)
+	require.Equal(t, "bytes", storedMetadata.Unit)
+	require.Equal(t, "Test metric for unit testing", storedMetadata.Help)
+
+	// Verify that the metadata store is not empty/noop
+	require.Greater(t, metadataStore.LengthMetadata(), 0, "MetadataStore should contain at least one metadata entry")
 }
 
 // TestCustomDialer ensures that prometheus.scrape respects the custom dialer
@@ -585,4 +694,325 @@ func TestAlloyConfigDefaultsAndValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// setupTestCounter creates and initializes a test counter metric
+func setupTestCounter() prometheus_client.Counter {
+	counter := prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "test_counter_total",
+		Help: "A test counter metric",
+	})
+	counter.Add(42.5)
+	return counter
+}
+
+// setupTestGauge creates and initializes a test gauge metric
+func setupTestGauge() prometheus_client.Gauge {
+	gauge := prometheus_client.NewGauge(prometheus_client.GaugeOpts{
+		Name: "test_gauge",
+		Help: "A test gauge metric",
+	})
+	gauge.Set(123.45)
+	return gauge
+}
+
+// setupTestHistogram creates and initializes a test classic histogram metric
+func setupTestHistogram() prometheus_client.Histogram {
+	histogram := prometheus_client.NewHistogram(prometheus_client.HistogramOpts{
+		Name:    "test_histogram",
+		Help:    "A test histogram metric",
+		Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0},
+	})
+	// Add observations to match expected values
+	histogram.Observe(0.3) // Falls in 0.5 bucket
+	histogram.Observe(0.7) // Falls in 1.0 bucket
+	histogram.Observe(1.2) // Falls in 2.5 bucket
+	histogram.Observe(4.5) // Falls in 5.0 bucket
+	return histogram
+}
+
+// setupTestNativeHistogram creates and initializes a test native histogram metric
+func setupTestNativeHistogram() prometheus_client.Histogram {
+	nativeHistogram := prometheus_client.NewHistogram(prometheus_client.HistogramOpts{
+		Name:                            "test_native_histogram",
+		Help:                            "A test native histogram metric",
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
+	})
+	// Add observations to match expected values (total sum: 1.5 + 2.8 + 3.5 = 7.8)
+	nativeHistogram.Observe(1.5)
+	nativeHistogram.Observe(2.8)
+	nativeHistogram.Observe(3.5)
+	return nativeHistogram
+}
+
+// setupTestSummary creates and initializes a test summary metric
+func setupTestSummary() prometheus_client.Summary {
+	summary := prometheus_client.NewSummary(prometheus_client.SummaryOpts{
+		Name: "test_summary",
+		Help: "A test summary metric",
+		Objectives: map[float64]float64{
+			0.5:  0.05,
+			0.9:  0.01,
+			0.99: 0.001,
+		},
+	})
+	// Add observations to get expected count and sum (total sum: 0.5 + 0.9 + 1.5 + 0.0 = 2.9)
+	summary.Observe(0.5)
+	summary.Observe(0.9)
+	summary.Observe(1.5)
+	summary.Observe(0.0)
+	return summary
+}
+
+// setupTestMetrics creates a registry with all test metrics
+func setupTestMetrics() *prometheus_client.Registry {
+	reg := prometheus_client.NewRegistry()
+
+	counter := setupTestCounter()
+	gauge := setupTestGauge()
+	histogram := setupTestHistogram()
+	nativeHistogram := setupTestNativeHistogram()
+	summary := setupTestSummary()
+
+	reg.MustRegister(counter, gauge, histogram, nativeHistogram, summary)
+	return reg
+}
+
+func TestScrapingAllMetricTypes(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	expectedSamples := []struct {
+		name  string
+		value float64
+	}{
+		{name: "test_counter_total", value: 42.5},
+		{name: "test_gauge", value: 123.45},
+		// Histogram samples
+		{name: "test_histogram_count", value: 4.0},
+		{name: "test_histogram_sum", value: 6.7}, // 0.3 + 0.7 + 1.2 + 4.5
+		// Summary samples
+		{name: "test_summary_count", value: 4.0},
+		{name: "test_summary_sum", value: 2.9}, // 0.5 + 0.9 + 1.5 + 0.0
+	}
+
+	expectedMetadata := []struct {
+		name         string
+		expectedType model.MetricType
+		expectedHelp string
+	}{
+		{
+			name:         "test_counter_total",
+			expectedType: model.MetricTypeCounter,
+			expectedHelp: "A test counter metric",
+		},
+		{
+			name:         "test_gauge",
+			expectedType: model.MetricTypeGauge,
+			expectedHelp: "A test gauge metric",
+		},
+		{
+			name:         "test_histogram_bucket",
+			expectedType: model.MetricTypeHistogram,
+			expectedHelp: "A test histogram metric",
+		},
+		{
+			name:         "test_native_histogram",
+			expectedType: model.MetricTypeHistogram,
+			expectedHelp: "A test native histogram metric",
+		},
+		{
+			name:         "test_summary",
+			expectedType: model.MetricTypeSummary,
+			expectedHelp: "A test summary metric",
+		},
+	}
+
+	expectedHistograms := []struct {
+		name          string
+		expectedCount uint64
+		expectedSum   float64
+	}{
+		{
+			name:          "test_native_histogram",
+			expectedCount: 3,
+			expectedSum:   7.8,
+		},
+	}
+
+	// Create a Prometheus registry and metrics for protobuf format
+	reg := setupTestMetrics()
+
+	// Create HTTP server that serves metrics in protobuf format
+	server := &http.Server{
+		Addr: "127.0.0.1:0", // Let the OS choose a free port
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/metrics" {
+				// Create a promhttp handler that prefers protobuf format
+				handler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
+					EnableOpenMetrics: true,
+				})
+				handler.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}),
+	}
+
+	listener, err := net.Listen("tcp", server.Addr)
+	require.NoError(t, err)
+	serverAddr := listener.Addr().String()
+
+	go func() {
+		server.Serve(listener)
+	}()
+	defer server.Shutdown(ctx)
+
+	// Wait a moment for server to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Test that the server is working by making a direct request
+	resp, err := http.Get(fmt.Sprintf("http://%s/metrics", serverAddr))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// Set up test appender using the testappender utility
+	appender := testappender.NewCollectingAppender()
+
+	// Create appendable wrapper using testappender utility
+	mockAppendable := testappender.ConstantAppendable{Inner: appender}
+
+	// Set up component options
+	opts := component.Options{
+		Logger:     util.TestAlloyLogger(t),
+		Registerer: prometheus_client.NewRegistry(),
+		GetServiceData: func(name string) (interface{}, error) {
+			switch name {
+			case http_service.ServiceName:
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "alloy.internal:1245",
+					BaseHTTPPath:     "/",
+					DialFunc:         (&net.Dialer{}).DialContext,
+				}, nil
+			case cluster.ServiceName:
+				return cluster.Mock(), nil
+			case labelstore.ServiceName:
+				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
+			default:
+				return nil, fmt.Errorf("service %q does not exist", name)
+			}
+		},
+	}
+
+	// Configure scrape arguments
+	var args Arguments
+	args.SetToDefault()
+	args.HonorMetadata = true
+	args.Targets = []discovery.Target{
+		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
+	}
+	args.ForwardTo = []storage.Appendable{mockAppendable}
+	args.ScrapeInterval = 50 * time.Millisecond // Frequent scraping for test
+	args.ScrapeTimeout = 25 * time.Millisecond
+	args.JobName = "test_job"
+	args.MetricsPath = "/metrics"
+	args.ScrapeNativeHistograms = true // Enable native histogram scraping
+	args.ScrapeProtocols = []string{
+		"PrometheusProto",
+		"OpenMetricsText1.0.0",
+		"OpenMetricsText0.0.1",
+		"PrometheusText0.0.4",
+	}
+
+	// Validate arguments to set default values for validation and escaping schemes
+	require.NoError(t, args.Validate())
+
+	// Create and start the scrape component
+	scrapeComponent, err := New(opts, args)
+	require.NoError(t, err)
+
+	go scrapeComponent.Run(ctx)
+
+	// Wait for scraping to occur and commit data
+	require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+		// Check if appender has collected samples, metadata, and histograms
+		actualSamples := appender.CollectedSamples()
+		actualMetadata := appender.CollectedMetadata()
+		actualHistograms := appender.CollectedHistograms()
+
+		// Verify we have captured samples
+		require.Greater(collectT, len(actualSamples), 0, "Should have captured some samples")
+
+		// Verify we have captured metadata
+		require.Greater(collectT, len(actualMetadata), 0, "Should have captured some metadata")
+
+		// Verify we have captured native histograms (since we enabled native histogram scraping)
+		require.Greater(collectT, len(actualHistograms), 0, "Should have captured some native histograms")
+	}, 10*time.Second, 100*time.Millisecond, "Should have captured samples, metadata, and histograms")
+
+	// Get the collected samples and metadata
+	actualSamples := appender.CollectedSamples()
+	actualMetadata := appender.CollectedMetadata()
+	actualHistograms := appender.CollectedHistograms()
+
+	// First loop: Validate samples
+	for _, expected := range expectedSamples {
+		found := false
+		for _, sample := range actualSamples {
+			if sample.Labels.Get("__name__") == expected.name {
+				require.Equal(t, expected.value, sample.Value, "Value should match for sample %s", expected.name)
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Should have found expected sample: %s", expected.name)
+	}
+
+	// Second loop: Validate metadata
+	for _, expected := range expectedMetadata {
+		found := false
+		for labelString, meta := range actualMetadata {
+			// Check if this metadata entry is for our expected metric by looking for the metric name in the label string
+			if strings.Contains(labelString, fmt.Sprintf(`__name__="%s"`, expected.name)) {
+				require.Equal(t, expected.expectedType, meta.Type, "Metadata type should match for %s", expected.name)
+				require.Equal(t, expected.expectedHelp, meta.Help, "Metadata help should match for %s", expected.name)
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Should have found expected metadata: %s", expected.name)
+	}
+
+	// Third loop: Validate histograms
+	for _, expected := range expectedHistograms {
+		found := false
+		for _, histogram := range actualHistograms {
+			if histogram.Labels.Get("__name__") == expected.name {
+				if histogram.Histogram != nil {
+					require.Equal(t, expected.expectedCount, histogram.Histogram.Count, "Histogram count should match for %s", expected.name)
+					require.Equal(t, expected.expectedSum, histogram.Histogram.Sum, "Histogram sum should match for %s", expected.name)
+				} else if histogram.FloatHistogram != nil {
+					require.Equal(t, float64(expected.expectedCount), histogram.FloatHistogram.Count, "Float histogram count should match for %s", expected.name)
+					require.Equal(t, expected.expectedSum, histogram.FloatHistogram.Sum, "Float histogram sum should match for %s", expected.name)
+				}
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Should have found expected histogram: %s", expected.name)
+	}
+
+	// Verify job label was added correctly
+	for _, sample := range actualSamples {
+		job := sample.Labels.Get("job")
+		require.Equal(t, "test_job", job, "Job label should be added to all metrics")
+	}
+
+	t.Logf("Successfully scraped %d samples with %d metadata entries and %d histograms", len(actualSamples), len(actualMetadata), len(actualHistograms))
 }
