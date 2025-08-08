@@ -175,35 +175,5 @@ func Test_DisableQueryRedaction(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-
-		assert.False(t, args.DisableQueryRedaction)
-	})
-
-	t.Run("disable_query_redaction can be set to true", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		disable_query_redaction = true
-	`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.True(t, args.DisableQueryRedaction)
-	})
-
-	t.Run("disable_query_redaction can be set to false explicitly", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		disable_query_redaction = false
-	`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.False(t, args.DisableQueryRedaction)
 	})
 }

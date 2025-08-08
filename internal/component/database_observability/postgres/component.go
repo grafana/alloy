@@ -50,12 +50,11 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName        alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval       time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo             []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors      []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors     []string            `alloy:"disable_collectors,attr,optional"`
-	DisableQueryRedaction bool                `alloy:"disable_query_redaction,attr,optional"`
+	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
+	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -264,12 +263,11 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.ActivityName] {
 		aCollector, err := collector.NewActivity(collector.ActivityArguments{
-			DB:                    dbConnection,
-			InstanceKey:           c.instanceKey,
-			CollectInterval:       c.args.CollectInterval,
-			DisableQueryRedaction: c.args.DisableQueryRedaction,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
+			DB:              dbConnection,
+			InstanceKey:     c.instanceKey,
+			CollectInterval: c.args.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create Activity collector", "err", err)

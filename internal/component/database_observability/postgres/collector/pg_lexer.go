@@ -19,9 +19,3 @@ func ExtractTableNames(sql string) ([]string, error) {
 	// Return all table names, including those that end with "..." for truncated queries, as we can't know if the table name was truncated or not
 	return metadata.Tables, nil
 }
-
-// Redact obfuscates a SQL query by replacing literals with ? placeholders
-func Redact(sql string) string {
-	obfuscatedSql := sqllexer.NewObfuscator().Obfuscate(sql)
-	return obfuscatedSql
-}
