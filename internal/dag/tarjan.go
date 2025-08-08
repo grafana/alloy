@@ -1,8 +1,6 @@
 package dag
 
-import (
-	"slices"
-)
+import "slices"
 
 // StronglyConnectedComponents returns the list of strongly connected components
 // of the graph using Tarjan algorithm.
@@ -64,7 +62,7 @@ func (t *tarjan) tarjan(g *Graph, n Node) {
 			// Successor not visited, recurse on it
 			t.tarjan(g, succ)
 			t.lowLink[n] = min(t.lowLink[n], t.lowLink[succ])
-		} else if slices.Contains(t.stack, n) {
+		} else if t.onStack(succ) {
 			// Successor is in stack and hence in the current SCC
 			t.lowLink[n] = min(t.lowLink[n], t.nodes[succ])
 		}
@@ -104,4 +102,9 @@ func (t *tarjan) pop() Node {
 	node := t.stack[n-1]
 	t.stack = t.stack[:n-1]
 	return node
+}
+
+// onStack checks if node is in stack
+func (t *tarjan) onStack(n Node) bool {
+	return slices.Contains(t.stack, n)
 }
