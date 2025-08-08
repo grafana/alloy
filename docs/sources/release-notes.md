@@ -34,6 +34,32 @@ Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
 
 See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+### Breaking changes in `prometheus.exporter.windows`
+
+As the `windows_exporter` continues to be refactored upstream, there are various breaking changes in metrics.
+- `windows_process_start_time` -> `windows_process_start_time_seconds_timestamp` in the `process` collector.
+- `windows_time_clock_frequency_adjustment_ppb_total` -> `windows_time_clock_frequency_adjustment_ppb` in the `time` collector.
+- `windows_net_nic_info` -> `windows_net_nic_address_info` in `net` collector.
+- `windows_system_boot_time_timestamp_seconds` -> `windows_system_boot_time_timestamp` in `system` collector.
+- `windows_os_physical_memory_free_bytes` -> `windows_memory_physical_free_bytes` from `os` collector -> `memory` collector.
+- `windows_os_process_memory_limit_bytes` -> `windows_memory_process_memory_limit_bytes` from `os` collector -> `memory` collector.
+- `windows_os_processes` -> `windows_system_processes` from `os` collector -> `system` collector.
+- `windows_os_processes_limit` -> `windows_system_process_limit` from `os` collector -> `system` collector.
+- `windows_os_time` -> `windows_time_current_timestamp_seconds` from `os` collector -> `time` collector.
+- `windows_os_timezone` -> `windows_time_timezone` from `os` collector -> `time` collector.
+- `windows_os_users` from `os` collector can be reconstructed by aggregating `windows_terminal_services_session_info{state="active"}` in `terminal_services` collector.
+- `windows_os_virtual_memory_bytes` -> `windows_memory_commit_limit` from `os` collector -> `memory` collector.
+- `windows_os_virtual_memory_free_bytes` from `os` collector can be reconstructed by subtracting `windows_memory_committed_bytes` from `windows_memory_commit_limit` in `memory` collector.
+- `windows_os_visible_memory_bytes` -> `windows_memory_physical_total_bytes` from `os` collector -> `memory` collector.
+
+Deprecated collectors have been removed. Configuration of these collectors will be allowed in Alloy for at least one minor version, but will have no effect.
+- `logon` collector removed, use the `terminal_services` collector instead.
+- `cs` collector removed, use the `os`, `memory`, or `cpu` collectors instead.
+
+Refer to the [release notes][windows_exporter_31] for the windows_exporter version v0.31.0 for the breaking change details.
+
+[windows_exporter_31]: https://github.com/prometheus-community/windows_exporter/releases/tag/v0.31.0
+
 ## v1.9
 
 ### Breaking change: The `prometheus.exporter.oracledb` component now embeds a different exporter
