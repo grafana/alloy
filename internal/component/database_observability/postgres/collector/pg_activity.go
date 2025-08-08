@@ -93,18 +93,20 @@ type ActivityInfo struct {
 }
 
 type ActivityArguments struct {
-	DB              *sql.DB
-	InstanceKey     string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	Logger          log.Logger
+	DB                    *sql.DB
+	InstanceKey           string
+	CollectInterval       time.Duration
+	DisableQueryRedaction bool
+	EntryHandler          loki.EntryHandler
+	Logger                log.Logger
 }
 
 type Activity struct {
-	dbConnection    *sql.DB
-	instanceKey     string
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
+	dbConnection          *sql.DB
+	instanceKey           string
+	collectInterval       time.Duration
+	disableQueryRedaction bool
+	entryHandler          loki.EntryHandler
 
 	logger     log.Logger
 	running    *atomic.Bool
@@ -115,12 +117,13 @@ type Activity struct {
 
 func NewActivity(args ActivityArguments) (*Activity, error) {
 	return &Activity{
-		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", ActivityName),
-		running:         &atomic.Bool{},
+		dbConnection:          args.DB,
+		instanceKey:           args.InstanceKey,
+		collectInterval:       args.CollectInterval,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		entryHandler:          args.EntryHandler,
+		logger:                log.With(args.Logger, "collector", ActivityName),
+		running:               &atomic.Bool{},
 	}, nil
 }
 
@@ -229,6 +232,11 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		query := ""
 		if activity.Query.Valid {
 			query = activity.Query.String
+
+			if !c.disableQueryRedaction {
+				redactedQuery := Redact(query)
+				query = redactedQuery
+			}
 		}
 
 		leaderPID := ""
