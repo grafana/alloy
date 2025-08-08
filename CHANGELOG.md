@@ -32,6 +32,8 @@ Main (unreleased)
 
 ### Features
 
+- Add `prometheus.echo` component for local inspection of Prometheus metrics. The component writes received metrics to stdout in Prometheus exposition format, enabling easier debugging and testing of metrics flow. (@iamrajiv)
+
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
