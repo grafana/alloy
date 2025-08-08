@@ -87,7 +87,7 @@ The list of available `resource_type` values and their corresponding `metrics` c
 
 The list of available `regions` to your subscription can be found by running the Azure CLI command `az account list-locations --query '[].name'`.
 
-The `resource_graph_query_filter` can be embedded into a template query of the form `Resources | where type =~ "<resource_type>" <resource_graph_query_filter> | project id, tags`.
+The `resource_graph_query_filter` can be embedded into a template query of the form `Resources | where type =~ "<resource_type>" | <resource_graph_query_filter> | project id, tags`.
 
 Valid values for `metric_aggregations` are `minimum`, `maximum`, `average`, `total`, and `count`.
 If no aggregation is specified, the value is retrieved from the metric.
