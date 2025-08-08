@@ -1132,10 +1132,9 @@ The following arguments are supported:
 
 | Name                 | Type     | Description                                                            | Default | Required |
 | -------------------- | -------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `pattern`.           | `string` | A valid LogQL pattern expression. At least one capture must be named.  |         | yes      |
+| `pattern`            | `string` | A valid LogQL pattern expression. At least one capture must be named.  |         | yes      |
 | `source`             | `string` | Name from extracted data to parse. If empty, uses the log message.     | `""`    | no       |
 | `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.           | `false` | no       |
-
 
 The `pattern` field needs to be a [LogQL pattern][logql pattern] expression.
 Every matched capture is added to the extracted map.
@@ -1145,7 +1144,7 @@ When `labels_from_groups` is set to true, any named captures from the pattern ex
 If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
-If it's set, the stage parses a previously extracted value with the same name.
+If the `source` set, the stage parses a previously extracted value with the same name.
 
 Given the following log line and pattern stage, the extracted values are shown below:
 
@@ -1162,7 +1161,7 @@ flags: P,
 content: i'm a log message
 ```
 
-On the other hand, if the `source` value is set, then the pattern expression is applied to the value stored in the shared map under that name.
+If the `source` value is set, then the pattern expression is applied to the value stored in the shared map under that name.
 
 The following log line is put through this two-stage pipeline:
 
