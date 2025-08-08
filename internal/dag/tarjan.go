@@ -1,5 +1,9 @@
 package dag
 
+import (
+	"slices"
+)
+
 // StronglyConnectedComponents returns the list of strongly connected components
 // of the graph using Tarjan algorithm.
 func StronglyConnectedComponents(g *Graph) [][]Node {
@@ -9,7 +13,29 @@ func StronglyConnectedComponents(g *Graph) [][]Node {
 		lowLink: make(map[Node]int, len(nodes)),
 	}
 
-	for _, n := range g.Nodes() {
+	for _, n := range nodes {
+		// Calculate strong connect components for non-visited nodes
+		if t.nodes[n] == 0 {
+			t.tarjan(g, n)
+		}
+	}
+	return t.result
+}
+
+// StronglyConnectedComponentsOrdered returns the list of strongly connected components
+// of the graph using Tarjan algorithm in a stable order.
+func StronglyConnectedComponentsOrdered(g *Graph, order []string) [][]Node {
+	nodes := make([]Node, 0, len(order))
+	for _, id := range order {
+		nodes = append(nodes, g.GetByID(id))
+	}
+
+	t := tarjan{
+		nodes:   make(map[Node]int, len(nodes)),
+		lowLink: make(map[Node]int, len(nodes)),
+	}
+
+	for _, n := range nodes {
 		// Calculate strong connect components for non-visited nodes
 		if t.nodes[n] == 0 {
 			t.tarjan(g, n)
@@ -38,7 +64,7 @@ func (t *tarjan) tarjan(g *Graph, n Node) {
 			// Successor not visited, recurse on it
 			t.tarjan(g, succ)
 			t.lowLink[n] = min(t.lowLink[n], t.lowLink[succ])
-		} else if t.onStack(succ) {
+		} else if slices.Contains(t.stack, n) {
 			// Successor is in stack and hence in the current SCC
 			t.lowLink[n] = min(t.lowLink[n], t.nodes[succ])
 		}
@@ -66,18 +92,6 @@ func (t *tarjan) visit(n Node) {
 	t.index++
 	t.nodes[n] = t.index
 	t.lowLink[n] = t.index
-	t.push(n)
-}
-
-func min(a, b int) int {
-	if a <= b {
-		return a
-	}
-	return b
-}
-
-// push adds a node to the stack
-func (t *tarjan) push(n Node) {
 	t.stack = append(t.stack, n)
 }
 
@@ -90,14 +104,4 @@ func (t *tarjan) pop() Node {
 	node := t.stack[n-1]
 	t.stack = t.stack[:n-1]
 	return node
-}
-
-// onStack checks if node is in stack
-func (t *tarjan) onStack(n Node) bool {
-	for _, e := range t.stack {
-		if n == e {
-			return true
-		}
-	}
-	return false
 }

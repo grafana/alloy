@@ -30,7 +30,7 @@ func (g *orderedGraph) Add(n dag.Node) {
 	g.Graph.Add(n)
 }
 
-func (g *orderedGraph) Nodes() iter.Seq[dag.Node] {
+func (g *orderedGraph) Iter() iter.Seq[dag.Node] {
 	return func(yield func(dag.Node) bool) {
 		for _, id := range g.ids {
 			if !yield(g.Graph.GetByID(id)) {
@@ -42,7 +42,7 @@ func (g *orderedGraph) Nodes() iter.Seq[dag.Node] {
 
 func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) diag.Diagnostics {
 	var diags diag.Diagnostics
-	for n := range s.graph.Nodes() {
+	for n := range s.graph.Iter() {
 		switch node := n.(type) {
 		case *node:
 			// Add any diagnostic for node that should be before type check.
@@ -93,7 +93,7 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 		}
 	}
 
-	for _, cycle := range dag.StronglyConnectedComponents(s.graph.Graph) {
+	for _, cycle := range dag.StronglyConnectedComponentsOrdered(s.graph.Graph, s.graph.ids) {
 		if len(cycle) > 1 {
 			cycleStr := make([]string, len(cycle))
 
@@ -108,6 +108,7 @@ func validateGraph(s *state, minStability featuregate.Stability, skipRefs bool) 
 			for i, node := range cycle {
 				cycleStr[i] = node.NodeID()
 			}
+
 			for _, node := range cycle {
 				n := node.(blockNode)
 				diags.Add(diag.Diagnostic{
