@@ -19,8 +19,9 @@ var (
 	ErrEmptyPatternStageSource = errors.New("empty source")
 )
 
-// PatternConfig configures a processing stage uses regular expressions to
+// PatternConfig configures a processing stage uses logQL patterns to
 // extract values from log lines into the shared values map.
+// See https://grafana.com/docs/loki/latest/query/log_queries/#pattern
 type PatternConfig struct {
 	Pattern          string  `alloy:"pattern,attr"`
 	Source           *string `alloy:"source,attr,optional"`
@@ -122,15 +123,6 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]inter
 		return
 	}
 
-	// matches := l.matcher.Matches(line)
-	// names := l.names[:len(matches)]
-	// for i, m := range matches {
-	// 	name := names[i]
-	// 	if lbs.BaseHas(name) {
-	// 		name = name + duplicateSuffix
-	// 	}
-	// 	lbs.Set(ParsedLabel, name, string(m))
-	// }
 
 	names := r.matcher.Names()[:len(matches)]
 	for i, m := range matches {

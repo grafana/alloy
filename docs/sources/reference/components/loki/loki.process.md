@@ -1153,7 +1153,7 @@ Given the following log line and pattern stage, the extracted values are shown b
 2019-01-01T01:00:00.000000001Z stderr P i'm a log message!
 
 stage.pattern {
-    expression = "<time> <stream> <flags> <content>"
+    pattern = "<time> <stream> <flags> <content>"
 }
 
 time: 2019-01-01T01:00:00.000000001Z,
