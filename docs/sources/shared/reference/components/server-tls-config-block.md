@@ -16,7 +16,7 @@ headless: true
 
 The following pairs of arguments are mutually exclusive and can't both be set simultaneously:
 
-- `cert_pem` and `cert_file`
-- `key_pem` and `key_file`
+* `cert_pem` and `cert_file`
+* `key_pem` and `key_file`
 
 When configuring client authentication, both the client certificate (using `cert_pem` or `cert_file`) and the client key (using `key_pem` or `key_file`) must be provided.

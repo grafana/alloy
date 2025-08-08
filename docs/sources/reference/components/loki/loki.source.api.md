@@ -34,15 +34,15 @@ loki.source.api "<LABEL>" {
 
 The component starts an HTTP server on the configured port and address with the following endpoints:
 
-- `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
-- `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
+* `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
+* `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
   This can be used to send NDJSON or plain text logs.
   This is compatible with the Promtail push API endpoint.
   Refer to the [Promtail documentation][promtail-push-api] for more information.
   When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
-- `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
-- `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
-- `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
+* `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
+* `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
+* `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
 
 [promtail-push-api]: https://grafana.com/docs/loki/latest/clients/promtail/configuration/#loki_push_api
 
@@ -100,10 +100,10 @@ The `tls` block configures TLS for the HTTP server.
 The following are some of the metrics that are exposed when this component is used.
 The metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
-- `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-- `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
-- `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
-- `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
+* `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
+* `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
+* `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
+* `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
 
 ## Example
 
@@ -138,8 +138,8 @@ loki.source.api "loki_push_api" {
 
 Replace the following:
 
-- _`<USERNAME>`_: Your username.
-- _`<PASSWORD_FILE>`_: Your password file.
+* _`<USERNAME>`_: Your username.
+* _`<PASSWORD_FILE>`_: Your password file.
 
 ### Technical details
 

@@ -46,9 +46,9 @@ You can use the following argument with `pyroscope.receive_http`:
 
 You can use the following block with `pyroscope.receive_http`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
 The > symbol indicates deeper levels of nesting.
@@ -120,7 +120,6 @@ This flexibility allows you to design a setup that best fits your infrastructure
 `pyroscope.receive_http` can accept arguments from the following components:
 
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
