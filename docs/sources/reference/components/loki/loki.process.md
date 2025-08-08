@@ -1133,7 +1133,6 @@ The following arguments are supported:
 | `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
 | `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | `false` | no       |
 
-
 The `expression` field needs to be a RE2 regular expression string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
 The name of the capture group is then used as the key in the extracted map for the matched value.
@@ -1144,7 +1143,7 @@ When `labels_from_groups` is set to true, any named capture groups from the rege
 If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
 
 If the `source` is empty or missing, then the stage parses the log line itself.
-If it's set, the stage parses a previously extracted value with the same name.
+If the `source` is set, the stage parses a previously extracted value with the same name.
 
 Given the following log line and regular expression stage, the extracted values are shown below:
 
@@ -1161,7 +1160,7 @@ flags: P,
 content: i'm a log message
 ```
 
-On the other hand, if the `source` value is set, then the regular expression is applied to the value stored in the shared map under that name.
+If the `source` value is set, then the regular expression is applied to the value stored in the shared map under that name.
 
 The following log line is put through this two-stage pipeline:
 
