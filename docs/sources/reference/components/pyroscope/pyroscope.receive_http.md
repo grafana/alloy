@@ -121,6 +121,7 @@ This flexibility allows you to design a setup that best fits your infrastructure
 
 - Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
 
+
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
 Refer to the linked documentation for more details.
