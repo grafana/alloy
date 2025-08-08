@@ -58,6 +58,8 @@ Main (unreleased)
 
 - Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
 
+- Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
