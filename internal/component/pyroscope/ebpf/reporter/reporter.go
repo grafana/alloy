@@ -16,14 +16,13 @@ import (
 
 func New(
 	log log.Logger,
-	cgroups freelru.Cache[libpf.PID, string],
 	cfg *controller.Config,
 	sd pyrosd.TargetProducer,
 	nfs samples2.NativeSymbolResolver,
 	consumer PPROFConsumer,
 ) (reporter.Reporter, error) {
 
-	return NewPPROF(log, cgroups, &Config{
+	return NewPPROF(log, &Config{
 		ExtraNativeSymbolResolver: nfs,
 		CGroupCacheElements:       1024,
 		ReportInterval:            cfg.ReporterInterval,

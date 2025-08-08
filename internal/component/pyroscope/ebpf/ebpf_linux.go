@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
@@ -23,7 +24,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/table"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
 
@@ -46,31 +46,25 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize)
-	if err != nil {
-		return nil, err
-	}
 	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery := discovery2.NewTargetProducer(cgroups, args.targetsOptions(dynamicProfilingPolicy))
+	discovery := discovery2.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 
 	var nfs samples.NativeSymbolResolver
-	if cfg.SymbolizeNativeFrames {
-		tf := irsymcache.TableTableFactory{
-			Options: []table.Option{
-				table.WithFiles(),
-				table.WithLines(),
-			},
-		}
-		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
-			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
-			Path:        cfg.SymbCachePath,
-		})
-		if err != nil {
-			return nil, err
-		}
+	tf := irsymcache.TableTableFactory{
+		Options: []lidia.Option{
+			lidia.WithFiles(),
+			lidia.WithLines(),
+		},
+	}
+	nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
+		SizeEntries: uint32(cfg.SymbCacheSizeEntries),
+		Path:        cfg.SymbCachePath,
+	})
+	if err != nil {
+		return nil, err
 	}
 	cfg.FileObserver = nfs
 
@@ -91,7 +85,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+	cfg.Reporter, err = reporter.New(opts.Logger, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
 		res.sendProfiles(ctx, ps)
 	}))
 	if err != nil {
@@ -227,18 +221,17 @@ func (c *Component) checkTraceFS() {
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		GoEnabled:            false,
+		CollectInterval: 15 * time.Second,
+		SampleRate:      19,
+		Demangle:        "none",
+		PythonEnabled:   true,
+		PerlEnabled:     true,
+		PHPEnabled:      true,
+		HotspotEnabled:  true,
+		RubyEnabled:     true,
+		V8Enabled:       true,
+		DotNetEnabled:   true,
+		GoEnabled:       false,
 	}
 }
 

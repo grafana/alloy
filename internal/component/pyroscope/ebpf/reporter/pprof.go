@@ -54,7 +54,6 @@ type Config struct {
 type PPROFReporter struct {
 	cfg         *Config
 	log         log.Logger
-	cgroups     freelru.Cache[libpf.PID, string]
 	traceEvents xsync.RWMutex[map[libpf.Origin]samples.KeyToEventMapping]
 	Executables *freelru.SyncedLRU[libpf.FileID, samples.ExecInfo]
 	Frames      *lru.SyncedLRU[libpf.FrameID, samples.SourceInfo]
@@ -66,12 +65,9 @@ type PPROFReporter struct {
 
 func NewPPROF(
 	log log.Logger,
-	cgroups freelru.Cache[libpf.PID, string],
 	cfg *Config,
 	sd discovery.TargetProducer,
 ) (*PPROFReporter, error) {
-	// Set a lifetime to reduce risk of invalid data in case of PID reuse.
-	cgroups.SetLifetime(90 * time.Second)
 
 	originsMap := make(map[libpf.Origin]samples.KeyToEventMapping, 2)
 	for _, origin := range []libpf.Origin{support.TraceOriginSampling,
@@ -103,7 +99,6 @@ func NewPPROF(
 	return &PPROFReporter{
 		cfg:         cfg,
 		log:         log,
-		cgroups:     cgroups,
 		traceEvents: xsync.NewRWMutex(originsMap),
 		Executables: executables,
 		Frames:      frames,
@@ -174,13 +169,9 @@ func (p *PPROFReporter) FrameKnown(frameID libpf.FrameID) bool {
 
 func (p *PPROFReporter) FrameMetadata(args *reporter2.FrameMetadataArgs) {
 	si := samples.SourceInfo{
-		Frames: []samples.SourceInfoFrame{
-			{
-				LineNumber:   args.SourceLine,
-				FilePath:     args.SourceFile,
-				FunctionName: args.FunctionName,
-			},
-		},
+		LineNumber:   args.SourceLine,
+		FilePath:     args.SourceFile,
+		FunctionName: args.FunctionName,
 	}
 	p.Frames.Add(args.FrameID, si)
 }
@@ -226,7 +217,6 @@ func (p *PPROFReporter) Start(ctx context.Context) error {
 				if purge {
 					p.Executables.PurgeExpired()
 					p.Frames.PurgeExpired()
-					p.cgroups.PurgeExpired()
 					purge = false
 				}
 			case <-purgeTick.C:
@@ -291,7 +281,7 @@ func (p *PPROFReporter) createProfile(
 	})
 
 	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid))
+		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ContainerID)
 		if target == nil {
 			continue
 		}
@@ -347,14 +337,9 @@ func (p *PPROFReporter) createProfile(
 					var filePath string
 					var lineNo int64
 					if si, exists := p.Frames.GetAndRefresh(frameID, FramesCacheLifetime); exists {
-						if len(si.Frames) == 1 {
-							fr := si.Frames[0]
-							funcName = fr.FunctionName
-							filePath = fr.FilePath
-							lineNo = int64(fr.LineNumber)
-						} else {
-							funcName = "UNRESOLVED2"
-						}
+						funcName = si.FunctionName.String()
+						filePath = si.FilePath.String()
+						lineNo = int64(si.LineNumber)
 					} else {
 						funcName = "UNRESOLVED"
 					}
@@ -405,7 +390,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	traceInfo *samples.TraceEvents,
 	i int,
 ) {
-	if loc.Mapping.File == process.VdsoPathName {
+	if loc.Mapping.File == process.VdsoPathName.String() {
 		return
 	}
 	if p.cfg.ExtraNativeSymbolResolver == nil {
@@ -415,15 +400,14 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	addr := traceInfo.Linenos[i]
 	frameID := libpf.NewFrameID(fileID, addr)
 
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, p.Frames, loc.Mapping.File, frameID, func(si samples.SourceInfo) {
-		if len(si.Frames) > 0 {
+	mappingFile := libpf.Intern(loc.Mapping.File)
+	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, p.Frames, mappingFile, frameID, func(si samples.SourceInfo) {
+		if len(si.FunctionName.String()) > 0 {
 			loc.Mapping.HasFunctions = true
 		}
-		for _, fn := range si.Frames {
-			line := profile.Line{Function: b.Function(fn.FunctionName, fn.FilePath)}
-			line.Line = int64(fn.LineNumber)
-			loc.Line = append(loc.Line, line)
-		}
+		line := profile.Line{Function: b.Function(si.FunctionName.String(), si.FilePath.String())}
+		line.Line = int64(si.LineNumber)
+		loc.Line = append(loc.Line, line)
 	})
 }
 
