@@ -223,6 +223,6 @@ declare "pods_and_nodes" {
 pods_and_nodes "pan" {}
 
 prometheus.scrape "pan" {
-	targets = pods_and_nodes.pan.value
+	targets = pods_and_nodes.pan.kubernetes_resources
 	forward_to = []
 }
