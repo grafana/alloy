@@ -19,34 +19,6 @@ import (
 	"go.uber.org/goleak"
 )
 
-func getWaitEventType(name string) sql.NullString {
-	if name == "wait event" {
-		return sql.NullString{String: "Lock", Valid: true}
-	}
-	return sql.NullString{Valid: false}
-}
-
-func getWaitEvent(name string) sql.NullString {
-	if name == "wait event" {
-		return sql.NullString{String: "relation", Valid: true}
-	}
-	return sql.NullString{Valid: false}
-}
-
-func getState(name string) sql.NullString {
-	if name == "wait event" {
-		return sql.NullString{String: "waiting", Valid: true}
-	}
-	return sql.NullString{String: "active", Valid: true}
-}
-
-func getBlockedByPids(name string) pq.Int64Array {
-	if name == "wait event" {
-		return pq.Int64Array{103, 104}
-	}
-	return nil
-}
-
 func TestActivity_FetchActivity(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
