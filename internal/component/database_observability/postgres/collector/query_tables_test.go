@@ -178,7 +178,7 @@ func TestQueryTables(t *testing.T) {
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"xyz456\" querytext=\"INSERT INTO some_table...\" datname=\"some_database\" engine=\"postgres\"",
-				`level="info" queryid="xyz456" datname="some_database" table="some_table..." engine="postgres"`, // returning the table name with "..." as we can't know if the table name was truncated or not
+				`level="info" queryid="xyz456" datname="some_database" table="some_table" engine="postgres"`,
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM another_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
 				`level="info" queryid="abc123" datname="some_database" table="another_table" engine="postgres"`,
 			},
@@ -372,9 +372,6 @@ func TestQueryTables(t *testing.T) {
 				return collector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
-			// Give time for goroutines to clean up
-			time.Sleep(100 * time.Millisecond)
-
 			err = mock.ExpectationsWereMet()
 			require.NoError(t, err)
 
@@ -445,9 +442,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
-		// Give time for goroutines to clean up
-		time.Sleep(100 * time.Millisecond)
-
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -508,9 +502,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
-		// Give time for goroutines to clean up
-		time.Sleep(100 * time.Millisecond)
-
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -568,9 +559,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
-
-		// Give time for goroutines to clean up
-		time.Sleep(100 * time.Millisecond)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)

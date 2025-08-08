@@ -164,16 +164,3 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		}, actualCollectors)
 	})
 }
-
-func Test_DisableQueryRedaction(t *testing.T) {
-	t.Run("disable_query_redaction defaults to false", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-	`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-	})
-}
