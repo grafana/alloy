@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
@@ -110,7 +111,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
 	collector := lazycollector.New()
-	opts.Registerer.MustRegister(collector)
+	util.MustRegisterOrGet(opts.Registerer, collector)
 
 	// Immediately set our state with our consumer. The exports will never change
 	// throughout the lifetime of our component.

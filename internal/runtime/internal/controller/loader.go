@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -114,8 +115,8 @@ func NewLoader(opts LoaderOptions) *Loader {
 	l.cc = newControllerCollector(l, parent, id)
 
 	if globals.Registerer != nil {
-		globals.Registerer.MustRegister(l.cc)
-		globals.Registerer.MustRegister(l.cm)
+		util.MustRegisterOrGet(globals.Registerer, l.cm)
+		util.MustRegisterOrGet(globals.Registerer, l.cc)
 	}
 
 	return l

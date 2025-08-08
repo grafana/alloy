@@ -14,6 +14,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/zapadapter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
@@ -94,7 +95,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
 	collector := lazycollector.New()
-	opts.Registerer.MustRegister(collector)
+	util.MustRegisterOrGet(opts.Registerer, collector)
 
 	r := &Extension{
 		ctx:    ctx,

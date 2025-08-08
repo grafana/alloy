@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 const (
@@ -44,7 +45,7 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 		Help:      "Whether each performance_schema consumer is enabled (1) or disabled (0)",
 	}, []string{"consumer_name"})
 
-	args.Registry.MustRegister(setupConsumerMetric)
+	util.MustRegisterOrGet(args.Registry, setupConsumerMetric)
 
 	return &SetupConsumers{
 		dbConnection:         args.DB,
