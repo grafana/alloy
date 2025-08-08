@@ -21,7 +21,8 @@ func StronglyConnectedComponents(g *Graph) [][]Node {
 }
 
 // StronglyConnectedComponentsOrdered returns the list of strongly connected components
-// of the graph using Tarjan algorithm in a stable order.
+// of the graph using Tarjan algorithm in a provided order. Only nodes provided in order argument
+// will be considered and caller must ensure that ids provided in order are valid.
 func StronglyConnectedComponentsOrdered(g *Graph, order []string) [][]Node {
 	nodes := make([]Node, 0, len(order))
 	for _, id := range order {
