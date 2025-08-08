@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
+	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -55,6 +57,7 @@ type QueryTables struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+	normalizer      *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -68,6 +71,7 @@ func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
 	}, nil
@@ -136,7 +140,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			&databaseName,
 		)
 		if err != nil {
-			slog.Error("failed to scan result set from pg_stat_statements view", "err", err)
+			slog.Error("failed to scan result set for pg_stat_statements", "err", err)
 			continue
 		}
 
@@ -147,9 +151,9 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
-		tables, err := ExtractTableNames(queryText)
+		tables, err := c.tryTokenizeTableNames(queryText)
 		if err != nil {
-			slog.Error("failed to extract table names", "err", err)
+			slog.Error("failed to tokenize table names", "err", err)
 			continue
 		}
 
@@ -169,4 +173,14 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c QueryTables) tryTokenizeTableNames(sqlText string) ([]string, error) {
+	sqlText = strings.TrimSuffix(sqlText, "...")
+	_, metadata, err := c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	if err != nil {
+		return nil, fmt.Errorf("failed to tokenize sql text: %w", err)
+	}
+
+	return metadata.Tables, nil
 }
