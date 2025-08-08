@@ -31,6 +31,8 @@ import (
 
 const name = "database_observability.mysql"
 
+const selectEngineVersion = `SELECT VERSION()`
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -279,6 +281,19 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -393,6 +408,7 @@ func (c *Component) startCollectors() error {
 			ScrapeInterval:  c.args.ExplainPlanCollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlanPerCollectRatio,
 			Logger:          c.opts.Logger,
+			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlanInitialLookback),
 		})
@@ -409,8 +425,9 @@ func (c *Component) startCollectors() error {
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)

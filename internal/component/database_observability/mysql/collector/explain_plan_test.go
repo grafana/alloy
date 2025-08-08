@@ -1486,12 +1486,6 @@ func TestExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
-			"version",
-		}).AddRow(
-			"8.0.32",
-		))
-
 		lastSeen := time.Now().Add(-time.Hour)
 		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
@@ -1503,6 +1497,7 @@ func TestExplainPlan(t *testing.T) {
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
+			DBVersion:       "8.0.32",
 			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
@@ -1558,12 +1553,6 @@ func TestExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
-			"version",
-		}).AddRow(
-			"8.0.32",
-		))
-
 		lastSeen := time.Now().Add(-time.Hour)
 		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
@@ -1577,6 +1566,7 @@ func TestExplainPlan(t *testing.T) {
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
+			DBVersion:       "8.0.32",
 			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
