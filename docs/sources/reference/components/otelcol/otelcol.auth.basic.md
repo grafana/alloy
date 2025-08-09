@@ -46,7 +46,9 @@ otelcol.auth.basic "<LABEL>" {
 
 ## Arguments
 
-Deprecated in favor of the [`client_auth`][client_auth] and [`htpasswd`][htpasswd] blocks.
+{{< admonition type="caution" >}}
+The top-level `username` and `password` arguments are deprecated. Use the `client_auth` and `htpasswd` blocks instead.
+{{< /admonition >}}
 
 You can use the following arguments with `otelcol.auth.basic`:
 
@@ -76,13 +78,11 @@ The `client_auth` block configures how the client extensions will authenticate t
 
 | Name       | Type     | Description                                       | Default | Required |
 |------------|----------|---------------------------------------------------|---------|----------|
-| `inline`   | `string` | Username to use for basic authentication requests |         | yes      |
 | `password` | `string` | Password to use for basic authentication requests |         | yes      |
+| `username` | `string` | Username to use for basic authentication requests |         | yes      |
 
-If both the `htpasswd` block and the `username` and `password` attributes are specified, the `username` and `password`
-are appended to the `inline` attribute of this block.
-This is done to make sure that existing functionality continues to work, and to more closely match the behavior of the
-upstream extension.
+If both the `client_auth` block and the `username` and `password` attributes are specified, the top level `username` and
+`password` are ignored.
 
 ### `debug_metrics`
 
@@ -97,9 +97,10 @@ The `htpasswd` block configures how the server extensions will authenticate call
 | `file`   | `string` | Path to the htpasswd file to use for basic authentication requests | `""`    | no       |
 | `inline` | `string` | The htpasswd file inline content                                   | `""`    | no       |
 
-If both the `htpasswd` block and the `username`/`password` attributes are specified, to not break existing functionality
-and to more closely match the upstream extension's behavior, the `username` and `password` are appended to the `inline`
-attribute of this block.
+If both the `htpasswd` block and the `username` and `password` attributes are specified, the `username` and `password`
+are appended to the `inline` attribute of this block.
+This is done to make sure that existing functionality continues to work, and to more closely match the behavior of the
+upstream extension.
 
 ## Exported fields
 
@@ -139,7 +140,11 @@ otelcol.auth.basic "creds" {
 
 ### Authenticating requests for receivers
 
-#### Use Username/Password
+The following examples demonstrate how to perform basic authentication using either a username and password combination,
+the client authentication block, an htpasswd file or a combination of them.
+
+#### Use username and password (Deprecated)
+
 This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use basic authentication using a single
 username and password combination:
 
@@ -155,7 +160,7 @@ otelcol.receiver.otlp "example" {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
     traces  = [otelcol.exporter.debug.default.input]
-  } 
+  }
 }
 
 otelcol.exporter.debug "default" {}
@@ -166,7 +171,42 @@ otelcol.auth.basic "creds" {
 }
 ```
 
+#### Use client authentication
+
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication using a single
+username and password combination
+
+```alloy
+otelcol.receiver.otlp "example" {
+  grpc {
+    endpoint = "127.0.0.1:4317"
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+    logs    = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = "my-otlp-grpc-server:4317"
+    auth = otelcol.auth.basic.creds.handler
+  }
+}
+
+otelcol.auth.basic "creds" {
+  client_auth {
+    username = "demo"
+    password = sys.env("API_KEY")
+  }
+}
+```
+
+
 #### Use htpasswd file
+
 This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use basic authentication using an htpasswd 
 file containing the users to use for basic auth:
 
@@ -182,7 +222,7 @@ otelcol.receiver.otlp "example" {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
     traces  = [otelcol.exporter.debug.default.input]
-  } 
+  }
 }
 
 otelcol.exporter.debug "default" {}
@@ -195,6 +235,7 @@ otelcol.auth.basic "creds" {
 ```
 
 #### Combination of both
+
 This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use basic authentication using a combination
 of both an htpasswd file and username/password. Note that if the username provided also exists in the htpasswd file, it 
 takes precedence over the one in the htpasswd file:
@@ -211,7 +252,7 @@ otelcol.receiver.otlp "example" {
     metrics = [otelcol.exporter.debug.default.input]
     logs    = [otelcol.exporter.debug.default.input]
     traces  = [otelcol.exporter.debug.default.input]
-  } 
+  }
 }
 
 otelcol.exporter.debug "default" {}
@@ -226,5 +267,5 @@ otelcol.auth.basic "creds" {
 }
 ```
 
-
 [otelcol.receiver.otlp]: ../otelcol.receiver.otlp/
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
