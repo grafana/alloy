@@ -40,7 +40,7 @@ func findReferences(cn dag.Node, g astutil.Graph, scope *vm.Scope, minStability 
 					Severity: diag.SeverityLevelWarn,
 					Message:  "a component is shadowing an existing stdlib name",
 					StartPos: ast.StartPos(t[0]).Position(),
-					EndPos:   ast.StartPos(t[len(t)-1]).Position(),
+					EndPos:   ast.EndPos(t[0]).Position(),
 				})
 			}
 			refs = append(refs, ref)
@@ -49,7 +49,7 @@ func findReferences(cn dag.Node, g astutil.Graph, scope *vm.Scope, minStability 
 				Severity: diag.SeverityLevelWarn,
 				Message:  "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives",
 				StartPos: ast.StartPos(t[0]).Position(),
-				EndPos:   ast.StartPos(t[len(t)-1]).Position(),
+				EndPos:   ast.EndPos(t[len(t)-1]).Position(),
 			})
 		} else if funcName := t.String(); scope.IsStdlibExperimental(funcName) {
 			if err := featuregate.CheckAllowed(featuregate.StabilityExperimental, minStability, funcName); err != nil {
@@ -57,7 +57,7 @@ func findReferences(cn dag.Node, g astutil.Graph, scope *vm.Scope, minStability 
 					Severity: diag.SeverityLevelError,
 					Message:  err.Error(),
 					StartPos: ast.StartPos(t[0]).Position(),
-					EndPos:   ast.StartPos(t[len(t)-1]).Position(),
+					EndPos:   ast.EndPos(t[len(t)-1]).Position(),
 				})
 				continue
 			}

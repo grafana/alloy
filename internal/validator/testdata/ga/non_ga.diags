@@ -9,12 +9,12 @@ Error: main.alloy:10:16: array.combine_maps is at stability level "experimental"
 
  9 | prometheus.scrape "scrape" {
 10 |   targets    = array.combine_maps([], [], [])
-   |                ^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^^
 11 |   forward_to = array.combine_maps([], [], [])
 
 Error: main.alloy:11:16: array.combine_maps is at stability level "experimental", which is below the minimum allowed stability level "generally-available". Use --stability.level command-line flag to enable "experimental" features
 
 10 |   targets    = array.combine_maps([], [], [])
 11 |   forward_to = array.combine_maps([], [], [])
-   |                ^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^^
 12 | }
