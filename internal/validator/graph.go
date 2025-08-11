@@ -50,8 +50,8 @@ func (g *graph) GetByID(id string) dag.Node {
 	return nil
 }
 
-func (g *graph) FromParent(n dag.Node) bool {
-	return g.Graph.GetByID(n.NodeID()) == nil && g.parent != nil
+func (g *graph) IsFromParent(n dag.Node) bool {
+	return g.Graph.GetByID(n.NodeID()) == nil && g.parent != nil && g.parent.GetByID(n.NodeID()) != nil
 }
 
 func (g *graph) Iter() iter.Seq[dag.Node] {
@@ -115,7 +115,7 @@ func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostic
 			// but the other way around is not possible. So we use a "sub" graph of the parent so
 			// we can find references from either it's own block or from the outside block.
 			// Because of this we only have to validate edges within the foreach block.
-			if !s.graph.FromParent(ref.Target) {
+			if !s.graph.IsFromParent(ref.Target) {
 				s.graph.AddEdge(dag.Edge{From: n, To: ref.Target})
 			}
 		}
