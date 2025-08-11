@@ -12,7 +12,7 @@ func StronglyConnectedComponents(g *Graph) [][]Node {
 	}
 
 	for _, n := range nodes {
-		// Calculate strong connect components for non-visited nodes
+		// Calculate strongly connected components for non-visited nodes
 		if t.nodes[n] == 0 {
 			t.tarjan(g, n)
 		}
