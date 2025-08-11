@@ -112,7 +112,7 @@ func validateGraph(s *state, minStability featuregate.Stability) diag.Diagnostic
 		diags.Merge(refDiags)
 		for _, ref := range refs {
 			// Nodes within a foreach block can reference nodes from outside of the block
-			// but the otherway around is not possible. So we use a "sub" graph of the parent so
+			// but the other way around is not possible. So we use a "sub" graph of the parent so
 			// we can find references from either it's own block or from the outside block.
 			// Because of this we only have to validate edges within the foreach block.
 			if !s.graph.FromParent(ref.Target) {
