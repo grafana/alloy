@@ -111,5 +111,5 @@ Error: main.alloy:119:15: component "prometheus.exporter.redis.default.targets" 
 
 118 | prometheus.scrape "default" {
 119 |     targets    = prometheus.exporter.redis.default.targets
-    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 120 |     forward_to = []
