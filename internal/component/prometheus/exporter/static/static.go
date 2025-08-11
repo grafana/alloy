@@ -38,28 +38,6 @@ type Arguments struct {
 	Text string `alloy:"text,attr"`
 }
 
-type Counter struct {
-	Name   string            `alloy:"name,attr"`
-	Help   string            `alloy:"help,attr"`
-	Value  float64           `alloy:"value,attr"`
-	Labels map[string]string `alloy:"labels,attr"`
-}
-
-type Gauge struct {
-	Name   string            `alloy:"name,attr"`
-	Help   string            `alloy:"help,attr"`
-	Value  float64           `alloy:"value,attr"`
-	Labels map[string]string `alloy:"labels,attr"`
-}
-
-type Histogram struct {
-	Name    string            `alloy:"name,attr"`
-	Help    string            `alloy:"help,attr"`
-	Buckets []float64         `alloy:"buckets,attr"`
-	Values  []float64         `alloy:"values,attr"`
-	Labels  map[string]string `alloy:"labels,attr"`
-}
-
 var DefaultArguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
@@ -71,6 +49,7 @@ func (a *Arguments) SetToDefault() {
 func (a *Arguments) Validate() error {
 	var p expfmt.TextParser
 
+	// Fixme perform additional validation that parser do not handle
 	_, err := p.TextToMetricFamilies(strings.NewReader(a.Text))
 	return err
 }
