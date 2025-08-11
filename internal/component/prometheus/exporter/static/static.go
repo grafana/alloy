@@ -3,18 +3,19 @@ package static
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/expfmt"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	_ "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func init() {
@@ -34,12 +35,7 @@ func createExporter(opts component.Options, args component.Arguments, defaultIns
 }
 
 type Arguments struct {
-	Metrics []MetricEnum `alloy:"metric,enum"`
-}
-
-type MetricEnum struct {
-	Gauge   *Gauge   `alloy:"gauge,block,optional"`
-	Counter *Counter `alloy:"counter,block,optional"`
+	Text string `alloy:"text,attr"`
 }
 
 type Counter struct {
@@ -73,36 +69,20 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	// FIXME(kalleep): Validate name uniqueness acrrouss all static metrics
-	return nil
+	var p expfmt.TextParser
+
+	_, err := p.TextToMetricFamilies(strings.NewReader(a.Text))
+	return err
 }
 
 func (a *Arguments) Convert() *Config {
-	var (
-		gauges   []Gauge
-		counters []Counter
-	)
-
-	for _, m := range a.Metrics {
-		if m.Gauge != nil {
-			gauges = append(gauges, *m.Gauge)
-		}
-		if m.Counter != nil {
-			counters = append(counters, *m.Counter)
-		}
-	}
-
-	return &Config{
-		Counters: counters,
-	}
+	return &Config{a.Text}
 }
 
 var _ integrations.Config = (*Config)(nil)
 
 type Config struct {
-	Gauges     []Gauge
-	Counters   []Counter
-	Histograms []Histogram
+	text string
 }
 
 // InstanceKey implements integrations.Config.
@@ -127,50 +107,16 @@ type Integration struct {
 
 // MetricsHandler implements integrations.Integration.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
-	register(i.reg, i.cfg.Counters, func(m Counter) prometheus.Collector {
-		var counter = prometheus.NewCounter(prometheus.CounterOpts{
-			Name:        m.Name,
-			Help:        m.Help,
-			ConstLabels: m.Labels,
-		})
-
-		counter.Add(m.Value)
-		return counter
-	})
-
-	register(i.reg, i.cfg.Gauges, func(m Gauge) prometheus.Collector {
-		var gauge = prometheus.NewGauge(prometheus.GaugeOpts{
-			Name:        m.Name,
-			Help:        m.Help,
-			ConstLabels: m.Labels,
-		})
-
-		gauge.Set(m.Value)
-		return gauge
-	})
-
-	register(i.reg, i.cfg.Histograms, func(m Histogram) prometheus.Collector {
-		var histogram = prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:        m.Name,
-			Help:        m.Help,
-			Buckets:     m.Buckets,
-			ConstLabels: m.Labels,
-		})
-
-		for _, v := range m.Values {
-			histogram.Observe(v)
-		}
-		return histogram
-	})
-
-	return promhttp.HandlerFor(i.reg, promhttp.HandlerOpts{}), nil
-}
-
-func register[T any](reg prometheus.Registerer, metrics []T, creator func(m T) prometheus.Collector) {
-	for _, m := range metrics {
-		util.MustRegisterOrGet(reg, creator(m))
+	var p expfmt.TextParser
+	mf, err := p.TextToMetricFamilies(strings.NewReader(i.cfg.text))
+	// This should not happen because we have already validated that it is possible to parse it.
+	if err != nil {
+		return nil, err
 	}
 
+	return promhttp.HandlerFor(newStaticGatherer(mf), promhttp.HandlerOpts{
+		EnableOpenMetrics: true,
+	}), nil
 }
 
 // Run implements integrations.Integration.
