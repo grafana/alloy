@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/channelmeter/iso8601duration"
+	duration "github.com/channelmeter/iso8601duration"
 	"github.com/go-kit/log"
 	azure_config "github.com/webdevops/azure-metrics-exporter/config"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
