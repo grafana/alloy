@@ -69,6 +69,7 @@
         "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector",
         "github.com/KimMachineGun/automemlimit",
         "github.com/google/cadvisor",
+        "github.com/grafana/beyla/v2",
         "github.com/grafana/jfr-parser/pprof",
         "github.com/hashicorp/vault/api/**",
         "github.com/heroku/x",
