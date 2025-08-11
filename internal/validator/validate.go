@@ -85,7 +85,7 @@ func (v *validator) run(cr *componentRegistry) error {
 	}
 
 	diags := validateGraph(v.validate(rootState), v.minStability)
-	if diags.HasErrors() {
+	if len(diags) > 0 {
 		return diags
 	}
 

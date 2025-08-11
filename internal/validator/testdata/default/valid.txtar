@@ -226,3 +226,8 @@ prometheus.scrape "pan" {
 	targets = pods_and_nodes.pan.kubernetes_resources
 	forward_to = []
 }
+
+prometheus.scrape "stdlibexperimental" {
+  targets    = array.combine_maps([], [], [])
+  forward_to = array.combine_maps([], [], [])
+}
