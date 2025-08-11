@@ -19,7 +19,8 @@ func UnwrapBlockAttr(b *ast.BlockStmt, name string, defaultValue syntax.Value) s
 }
 
 // TryUnwrapBlockAttr tries to unwrap the attribute value.
-// If the attribute are not found or cannot be unwraped
+// If the attribute are not found or cannot be unwrapped
+// the second return argument is set to false.
 func TryUnwrapBlockAttr(b *ast.BlockStmt, name string, kind reflect.Kind) (syntax.Value, bool) {
 	aw := &attrWalker{target: name, targetKind: kind}
 	ast.Walk(aw, b)
