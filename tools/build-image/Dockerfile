@@ -61,11 +61,6 @@ RUN rm -f /etc/apt/sources.list \
  && echo "deb https://ftp.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list \
  && echo "deb https://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list
 
-# Install Yarn.
-#
-# See https://yarnpkg.com/getting-started/install#nodejs-1610
-RUN corepack enable
-
 # Install other dependencies.
 #
 # NOTE(rfratto): musl is installed so the Docker binaries from alpine work
