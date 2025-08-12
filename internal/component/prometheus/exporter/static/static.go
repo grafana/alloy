@@ -2,13 +2,13 @@ package static
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	_ "github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/expfmt"
 
 	"github.com/grafana/alloy/internal/component"
@@ -48,10 +48,11 @@ func (a *Arguments) SetToDefault() {
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	var p expfmt.TextParser
-
-	// Fixme perform additional validation that parser do not handle
 	_, err := p.TextToMetricFamilies(strings.NewReader(a.Text))
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to parse prom text: %w", err)
+	}
+	return nil
 }
 
 func (a *Arguments) Convert() *Config {
@@ -64,17 +65,14 @@ type Config struct {
 	text string
 }
 
-// InstanceKey implements integrations.Config.
 func (c *Config) InstanceKey(agentKey string) (string, error) {
 	return "static", nil
 }
 
-// Name implements integrations.Config.
 func (c *Config) Name() string {
 	return "static"
 }
 
-// NewIntegration implements integrations.Config.
 func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
 	return &Integration{cfg: *c, reg: prometheus.NewRegistry()}, nil
 }
@@ -84,13 +82,12 @@ type Integration struct {
 	reg *prometheus.Registry
 }
 
-// MetricsHandler implements integrations.Integration.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
 	var p expfmt.TextParser
 	mf, err := p.TextToMetricFamilies(strings.NewReader(i.cfg.text))
 	// This should not happen because we have already validated that it is possible to parse it.
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse prom text: %w", err)
 	}
 
 	return promhttp.HandlerFor(newStaticGatherer(mf), promhttp.HandlerOpts{
@@ -98,13 +95,11 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	}), nil
 }
 
-// Run implements integrations.Integration.
 func (i *Integration) Run(ctx context.Context) error {
 	<-ctx.Done()
-	return nil
+	return ctx.Err()
 }
 
-// ScrapeConfigs implements integrations.Integration.
 func (i *Integration) ScrapeConfigs() []config.ScrapeConfig {
 	return []config.ScrapeConfig{{
 		JobName:     i.cfg.Name(),
