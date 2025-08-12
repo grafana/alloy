@@ -216,6 +216,65 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "portnumber",
+			m: &promopv1.PodMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "podmonitor",
+				},
+			},
+			ep: promopv1.PodMetricsEndpoint{
+				PortNumber: ptr.To[int32](2000),
+			},
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: ["__meta_kubernetes_pod_container_port_number"]
+				  regex: "2000"
+				  action: "keep"
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- target_label: job
+				  replacement: operator/podmonitor
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:           "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Hour),
+				ScrapeTimeout:     model.Duration(42 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/metrics",
+				Scheme:            "http",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "pod",
+
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
+			},
+		},
+		{
 			name: "defaults_from_scrapeoptions",
 			m: &promopv1.PodMonitor{
 				ObjectMeta: metav1.ObjectMeta{
