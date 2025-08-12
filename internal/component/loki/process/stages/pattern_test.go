@@ -15,58 +15,57 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocolStr = "protocol"
-
-var testRegexAlloySingleStageWithoutSource = `
-stage.regex {
-    expression =  "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+var testPatternAlloySingleStageWithoutSource = `
+stage.pattern {
+    pattern = "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
 }
 `
 
-var testRegexAlloyMultiStageWithSource = `
-stage.regex {
-    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+var testPatternAlloyMultiStageWithSource = `
+stage.pattern {
+    pattern = "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
 }
-stage.regex {
-    expression = "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
+stage.pattern {
+    pattern    = "HTTP/<protocol_version>"
     source     = "protocol"
 }
 `
 
-var testRegexAlloyMultiStageWithSourceAndLabelFromGroups = `
-stage.regex {
-    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+// "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
+var testPatternAlloyMultiStageWithSourceAndLabelFromGroups = `
+stage.pattern {
+    pattern 	       = "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
 	labels_from_groups = true
 }
-stage.regex {
-    expression = "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
+stage.pattern {
+    pattern    = "HTTP/<protocol_version>"
     source     = "protocol"
 }
 `
 
-var testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups = `
+var testPatternAlloyMultiStageWithExistingLabelsAndLabelFromGroups = `
 stage.static_labels {
     values = {
       protocol = "HTTP/2",
     }
 }
-stage.regex {
-    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+stage.pattern {
+    pattern = "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
 	labels_from_groups = true
 }
 `
 
-var testRegexAlloySourceWithMissingKey = `
+var testPatternAlloySourceWithMissingKey = `
 stage.json {
     expressions = { "time" = "" }
 }
-stage.regex {
-    expression = "^(?P<year>\\d+)"
-    source     = "time"
+stage.pattern {
+    pattern = "<year>/<month>/<day>"
+    source  = "time"
 }
 `
 
-var testRegexLogLineWithMissingKey = `
+var testPatternLogLineWithMissingKey = `
 {
 	"app":"loki",
 	"component": ["parser","type"],
@@ -74,13 +73,13 @@ var testRegexLogLineWithMissingKey = `
 }
 `
 
-var testRegexLogLine = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
+var testPatternLogLine = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
 
 func init() {
 	Debug = true
 }
 
-func TestPipeline_Regex(t *testing.T) {
+func TestPipeline_Pattern(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -89,9 +88,9 @@ func TestPipeline_Regex(t *testing.T) {
 		expectedExtract map[string]interface{}
 		expectedLables  model.LabelSet
 	}{
-		"successfully run a pipeline with 1 regex stage without source": {
-			testRegexAlloySingleStageWithoutSource,
-			testRegexLogLine,
+		"successfully run a pipeline with 1 pattern stage without source": {
+			testPatternAlloySingleStageWithoutSource,
+			testPatternLogLine,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
@@ -107,9 +106,9 @@ func TestPipeline_Regex(t *testing.T) {
 			},
 			model.LabelSet{},
 		},
-		"successfully run a pipeline with 2 regex stages with source": {
-			testRegexAlloyMultiStageWithSource,
-			testRegexLogLine,
+		"successfully run a pipeline with 2 pattern stages with source": {
+			testPatternAlloyMultiStageWithSource,
+			testPatternLogLine,
 			map[string]interface{}{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
@@ -126,9 +125,9 @@ func TestPipeline_Regex(t *testing.T) {
 			},
 			model.LabelSet{},
 		},
-		"successfully run a pipeline with 2 regex stages with source and labels from groups": {
-			testRegexAlloyMultiStageWithSourceAndLabelFromGroups,
-			testRegexLogLine,
+		"successfully run a pipeline with 2 pattern stages with source and labels from groups": {
+			testPatternAlloyMultiStageWithSourceAndLabelFromGroups,
+			testPatternLogLine,
 			map[string]interface{}{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
@@ -157,9 +156,9 @@ func TestPipeline_Regex(t *testing.T) {
 				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
 			},
 		},
-		"successfully run a pipeline with regex stage labels overriding existing labels with labels_from_groups": {
-			testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
-			testRegexLogLine,
+		"successfully run a pipeline with pattern stage labels overriding existing labels with labels_from_groups": {
+			testPatternAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
+			testPatternLogLine,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
@@ -206,23 +205,23 @@ func TestPipeline_Regex(t *testing.T) {
 	}
 }
 
-func TestPipelineWithMissingKey_Regex(t *testing.T) {
+func TestPipelineWithMissingKey_Pattern(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testRegexAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger, loadConfig(testPatternAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = processEntries(pl, newEntry(nil, nil, testRegexLogLineWithMissingKey, time.Now()))[0]
+	_ = processEntries(pl, newEntry(nil, nil, testPatternLogLineWithMissingKey, time.Now()))[0]
 
-	expectedLog := "level=debug component=stage type=regex msg=\"failed to convert source value to string\" source=time err=\"can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug component=stage type=pattern msg=\"failed to convert source value to string\" source=time err=\"can't convert <nil> to string\" type=null"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
 }
 
-func TestRegexConfig_validate(t *testing.T) {
+func TestPatternConfig_validate(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
 		config interface{}
@@ -230,35 +229,35 @@ func TestRegexConfig_validate(t *testing.T) {
 	}{
 		"empty config": {
 			nil,
-			ErrExpressionRequired,
+			ErrPatternRequired,
 		},
-		"missing regex_expression": {
+		"missing pattern_expression": {
 			map[string]interface{}{},
-			ErrExpressionRequired,
+			ErrPatternRequired,
 		},
-		"invalid regex_expression": {
+		"invalid pattern_expression": {
 			map[string]interface{}{
-				"expression": "(?P<ts[0-9]+).*",
+				"pattern": "<_> <_>",
 			},
-			errors.New(ErrCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
+			errors.New("failed to parse pattern: at least one capture is required"),
 		},
 		"empty source": {
 			map[string]interface{}{
-				"expression": "(?P<ts>[0-9]+).*",
-				"source":     "",
+				"pattern": "(?P<ts>[0-9]+).*",
+				"source":  "",
 			},
-			ErrEmptyRegexStageSource,
+			ErrEmptyPatternStageSource,
 		},
 		"valid without source": {
 			map[string]interface{}{
-				"expression": "(?P<ts>[0-9]+).*",
+				"pattern": "(?P<ts>[0-9]+).*",
 			},
 			nil,
 		},
 		"valid with source": {
 			map[string]interface{}{
-				"expression": "(?P<ts>[0-9]+).*",
-				"source":     "log",
+				"pattern": "(?P<ts>[0-9]+).*",
+				"source":  "log",
 			},
 			nil,
 		},
@@ -266,29 +265,29 @@ func TestRegexConfig_validate(t *testing.T) {
 	for tName, tt := range tests {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
-			c, err := parseRegexConfig(tt.config)
+			c, err := parsePatternConfig(tt.config)
 			if err != nil {
 				t.Fatalf("failed to create config: %s", err)
 			}
-			_, err = validateRegexConfig(*c)
+			_, err = validatePatternConfig(*c)
 			if (err != nil) != (tt.err != nil) {
-				t.Errorf("RegexConfig.validate() expected error = %v, actual error = %v", tt.err, err)
+				t.Errorf("PatternConfig.validate() expected error = %v, actual error = %v", tt.err, err)
 				return
 			}
 			if (err != nil) && (err.Error() != tt.err.Error()) {
-				t.Errorf("RegexConfig.validate() expected error = %v, actual error = %v", tt.err, err)
+				t.Errorf("PatternConfig.validate() expected error = %v, actual error = %v", tt.err, err)
 				return
 			}
 		})
 	}
 }
 
-var regexLogFixture = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
+var patternLogFixture = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
 
-func TestRegexParser_Parse(t *testing.T) {
+func TestPatternParser_Parse(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
-		config          RegexConfig
+		config          PatternConfig
 		extracted       map[string]interface{}
 		labels          model.LabelSet
 		entry           string
@@ -296,12 +295,12 @@ func TestRegexParser_Parse(t *testing.T) {
 		expectedLabels  model.LabelSet
 	}{
 		"successfully match expression on entry": {
-			RegexConfig{
-				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
+			PatternConfig{
+				Pattern: "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
 			},
 			map[string]interface{}{},
 			model.LabelSet{},
-			regexLogFixture,
+			patternLogFixture,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
@@ -318,13 +317,13 @@ func TestRegexParser_Parse(t *testing.T) {
 			model.LabelSet{},
 		},
 		"successfully match expression on entry with label extracted from named capture groups": {
-			RegexConfig{
-				Expression:       "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
+			PatternConfig{
+				Pattern:          "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
 				LabelsFromGroups: true,
 			},
 			map[string]interface{}{},
 			model.LabelSet{},
-			regexLogFixture,
+			patternLogFixture,
 			map[string]interface{}{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
@@ -353,15 +352,15 @@ func TestRegexParser_Parse(t *testing.T) {
 			},
 		},
 		"successfully match expression on extracted[source]": {
-			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
-				Source:     &protocolStr,
+			PatternConfig{
+				Pattern: "HTTP/<protocol_version>",
+				Source:  &protocolStr,
 			},
 			map[string]interface{}{
 				"protocol": "HTTP/1.1",
 			},
 			model.LabelSet{},
-			regexLogFixture,
+			patternLogFixture,
 			map[string]interface{}{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
@@ -369,8 +368,8 @@ func TestRegexParser_Parse(t *testing.T) {
 			model.LabelSet{},
 		},
 		"successfully match expression on extracted[source] with label extracted from named capture groups": {
-			RegexConfig{
-				Expression:       "^HTTP\\/(?P<protocol_version>.*)$",
+			PatternConfig{
+				Pattern:          "HTTP/<protocol_version>",
 				Source:           &protocolStr,
 				LabelsFromGroups: true,
 			},
@@ -380,7 +379,7 @@ func TestRegexParser_Parse(t *testing.T) {
 			model.LabelSet{
 				"protocol": "HTTP/1.1",
 			},
-			regexLogFixture,
+			patternLogFixture,
 			map[string]interface{}{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
@@ -390,20 +389,25 @@ func TestRegexParser_Parse(t *testing.T) {
 				"protocol_version": "1.1",
 			},
 		},
-		"failed to match expression on entry": {
-			RegexConfig{
-				Expression: "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<message>.*)$",
+		"match a message that is not quoted": {
+			PatternConfig{
+				Pattern: "<time> <stream> <flags> <message>",
 			},
 			map[string]interface{}{},
 			model.LabelSet{},
-			"blahblahblah",
-			map[string]interface{}{},
+			"2019-01-01T01:00:00.000000001Z stderr P i'm a log message!",
+			map[string]interface{}{
+				"time":    "2019-01-01T01:00:00.000000001Z",
+				"stream":  "stderr",
+				"flags":   "P",
+				"message": "i'm a log message!",
+			},
 			model.LabelSet{},
 		},
 		"failed to match expression on extracted[source]": {
-			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
-				Source:     &protocolStr,
+			PatternConfig{
+				Pattern: "HTTP/<protocol_version>",
+				Source:  &protocolStr,
 			},
 			map[string]interface{}{
 				"protocol": "unknown",
@@ -415,22 +419,10 @@ func TestRegexParser_Parse(t *testing.T) {
 			},
 			model.LabelSet{},
 		},
-		"case insensitive": {
-			RegexConfig{
-				Expression: "(?i)(?P<bad>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)",
-			},
-			map[string]interface{}{},
-			model.LabelSet{},
-			"A Terrible Error has occurred!!!",
-			map[string]interface{}{
-				"bad": "Error",
-			},
-			model.LabelSet{},
-		},
 		"missing extracted[source]": {
-			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
-				Source:     &protocolStr,
+			PatternConfig{
+				Pattern: "HTTP/<protocol_version>",
+				Source:  &protocolStr,
 			},
 			map[string]interface{}{},
 			model.LabelSet{},
@@ -439,9 +431,9 @@ func TestRegexParser_Parse(t *testing.T) {
 			model.LabelSet{},
 		},
 		"invalid data type in extracted[source]": {
-			RegexConfig{
-				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
-				Source:     &protocolStr,
+			PatternConfig{
+				Pattern: "HTTP/<protocol_version>",
+				Source:  &protocolStr,
 			},
 			map[string]interface{}{
 				"protocol": true,
@@ -458,9 +450,9 @@ func TestRegexParser_Parse(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
-			p, err := New(logger, nil, StageConfig{RegexConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
+			p, err := New(logger, nil, StageConfig{PatternConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
-				t.Fatalf("failed to create regex parser: %s", err)
+				t.Fatalf("failed to create pattern parser: %s", err)
 			}
 			out := processEntries(p, newEntry(tt.extracted, tt.labels, tt.entry, time.Now()))[0]
 			assert.Equal(t, tt.expectedExtract, out.Extracted)
@@ -469,22 +461,23 @@ func TestRegexParser_Parse(t *testing.T) {
 	}
 }
 
-func BenchmarkRegexStage(b *testing.B) {
+func BenchmarkPatternStage(b *testing.B) {
 	benchmarks := []struct {
 		name   string
-		config RegexConfig
+		config PatternConfig
 		entry  string
 	}{
 		{"apache common log",
-			RegexConfig{
-				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"},
-			regexLogFixture,
+			PatternConfig{
+				Pattern: "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
+			},
+			patternLogFixture,
 		},
 	}
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			logger := util.TestAlloyLogger(b)
-			stage, err := New(logger, nil, StageConfig{RegexConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
+			stage, err := New(logger, nil, StageConfig{PatternConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				panic(err)
 			}

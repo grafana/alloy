@@ -58,9 +58,26 @@ Main (unreleased)
 
 - Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
 
+- Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
+
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
 ### Bugfixes
+
+- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
+
+- Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
+
+- Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
+
+v1.10.1
+-----------------
+
+### Bugfixes
+
+- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
 
 - Fix issues with propagating cluster peers change notifications to components configured with remotecfg. (@dehaansa)
 
@@ -70,17 +87,15 @@ Main (unreleased)
 
 - Fixed a bug in `prometheus.write.queue` which caused retries even when `max_retry_attempts` was set to `0`. (@ptodev)
 
-- Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
+- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
 
-- Fix issue with `faro.receiver` cors not allowing X-Scope-OrgID and traceparent headers. (@mar4uk)
+- Add `application_host` and `network_inter_zone` features to `beyla.ebpf` component. (@marctc)
 
-- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
+- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
-- Fixed a bug in `prometheus.write.queue` which caused labelling issues when providing more than one label in `external_labels`. (@dehaansa)
-
-- Fix issues in `loki.process` where `stage.multiline` did not pass through structured metadata. (@jan-mrm)
+- Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
 v1.10.0
 -----------------
