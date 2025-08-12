@@ -16,8 +16,7 @@ import (
 
 func TestAddingMarker(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
@@ -29,13 +28,11 @@ func TestAddingMarker(t *testing.T) {
 
 func TestAddingDifferentMarkers(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
-	l2 := labels.Labels{}
-	l2 = append(l2, labels.Label{
+	l2 := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "roar",
 	})
@@ -47,8 +44,7 @@ func TestAddingDifferentMarkers(t *testing.T) {
 
 func TestAddingLocalMapping(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
@@ -65,8 +61,7 @@ func TestAddingLocalMapping(t *testing.T) {
 
 func TestAddingLocalMappings(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
@@ -90,8 +85,7 @@ func TestAddingLocalMappings(t *testing.T) {
 
 func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
@@ -113,13 +107,11 @@ func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
 
 func TestStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
-	l2 := labels.Labels{}
-	l2 = append(l2, labels.Label{
+	l2 := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test2",
 	})
@@ -144,8 +136,7 @@ func TestStaleness(t *testing.T) {
 
 func TestRemovingStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
+	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "test",
 	})
