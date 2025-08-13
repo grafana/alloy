@@ -45,6 +45,9 @@ Main (unreleased)
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
 
+- (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
+  When set to `true`, it will propagate metric metadata to downstream components.
+  
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
