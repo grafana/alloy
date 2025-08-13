@@ -21,7 +21,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "prometheus.exporter.static",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   exporter.Exports{},
 
