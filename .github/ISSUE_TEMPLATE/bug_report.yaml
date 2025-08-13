@@ -121,8 +121,8 @@ body:
       - otelcol.receiver.awscloudwatch
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
-      - otelcol.receiver.file_stats
       - otelcol.receiver.filelog
+      - otelcol.receiver.file_stats
       - otelcol.receiver.fluentforward
       - otelcol.receiver.googlecloudpubsub
       - otelcol.receiver.influxdb
@@ -164,6 +164,7 @@ body:
       - prometheus.exporter.snmp
       - prometheus.exporter.snowflake
       - prometheus.exporter.squid
+      - prometheus.exporter.static
       - prometheus.exporter.statsd
       - prometheus.exporter.unix
       - prometheus.exporter.windows
