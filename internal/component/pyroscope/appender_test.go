@@ -13,9 +13,7 @@ import (
 
 func Test_FanOut(t *testing.T) {
 	totalAppend := atomic.NewInt32(0)
-	lbls := labels.Labels{
-		{Name: "foo", Value: "bar"},
-	}
+	lbls := labels.FromStrings("foo", "bar")
 	f := NewFanout([]Appendable{
 		AppendableFunc(func(_ context.Context, labels labels.Labels, _ []*RawSample) error {
 			require.Equal(t, lbls, labels)
@@ -56,7 +54,7 @@ func Test_FanOut_AppendIngest(t *testing.T) {
 	totalAppend := atomic.NewInt32(0)
 	profile := &IncomingProfile{
 		RawBody: []byte("test"),
-		Labels:  labels.Labels{{Name: "foo", Value: "bar"}},
+		Labels:  labels.FromStrings("foo", "bar"),
 	}
 
 	f := NewFanout([]Appendable{
