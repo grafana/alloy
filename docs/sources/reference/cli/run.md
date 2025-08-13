@@ -37,7 +37,7 @@ The HTTP server is also exposes a UI at `/` for debugging running components.
 
 The following flags are supported:
 
-* `--server.http.enable-pprof`: Enable /debug/pprof profiling endpoints. (default `true`).
+* `--server.http.enable-pprof`: Enable [`/debug/pprof`][] profiling endpoints. (default `true`).
 * `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `"alloy.internal:12345"`).
 * `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `"127.0.0.1:12345"`).
 * `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `"/"`).
@@ -202,3 +202,4 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page
 [estimate resource usage]: ../../../introduction/estimate-resource-usage/
+[`/debug/pprof`]: http://pkg.go.dev/net/http/pprof
