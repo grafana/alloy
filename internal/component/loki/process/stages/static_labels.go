@@ -17,7 +17,7 @@ type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
-func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, error) {
+func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig) (Stage, error) {
 	err := validateLabelStaticConfig(config)
 	if err != nil {
 		return nil, err
@@ -41,10 +41,7 @@ func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, 
 		values = append(values, n, s)
 	}
 
-	return toStage(&staticLabelStage{
-		logger: logger,
-		values: values,
-	}), nil
+	return toStage(&staticLabelStage{values}), nil
 }
 
 func validateLabelStaticConfig(c StaticLabelsConfig) error {
@@ -63,7 +60,6 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 
 // staticLabelStage implements Stage.
 type staticLabelStage struct {
-	logger log.Logger
 	// values packs both label names and label values and need to be divisible by 2.
 	values []string
 }
