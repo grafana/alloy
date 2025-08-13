@@ -139,7 +139,7 @@ func TestScrapeLoop(t *testing.T) {
 		if down.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		w.Write([]byte("ok"))
+		w.Write([]byte{0x0A, 0x02, 0x6F, 0x6B}) // Return valid protobuf data
 	}))
 	defer server.Close()
 	appendTotal := atomic.NewInt64(0)
@@ -155,7 +155,7 @@ func TestScrapeLoop(t *testing.T) {
 		server.Client(),
 		pyroscope.AppendableFunc(func(_ context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			appendTotal.Inc()
-			require.Equal(t, []byte("ok"), samples[0].RawProfile)
+			require.Equal(t, []byte{0x0A, 0x02, 0x6F, 0x6B}, samples[0].RawProfile)
 			return nil
 		}),
 		200*time.Millisecond, 30*time.Second, util.TestLogger(t))
@@ -240,5 +240,58 @@ func BenchmarkSync(b *testing.B) {
 		p.sync(groups1)
 		p.sync(groups2)
 		p.sync([]*targetgroup.Group{})
+	}
+}
+
+func TestValidateProfileData(t *testing.T) {
+	tests := []struct {
+		name        string
+		data        []byte
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "empty response",
+			data:        []byte{},
+			expectError: true,
+			errorMsg:    "empty response from profiling endpoint",
+		},
+		{
+			name:        "HTML error page",
+			data:        []byte(`<!DOCTYPE html><html><head><title>500 Error</title></head><body><h1>Internal Server Error</h1></body></html>`),
+			expectError: true,
+			errorMsg:    "text-based error response",
+		},
+		{
+			name:        "JSON error response",
+			data:        []byte(`{"error": "endpoint not found", "status": 404}`),
+			expectError: true,
+			errorMsg:    "text-based error response",
+		},
+		{
+			name:        "wireType 6 at start",
+			data:        []byte{0x1e, 0x01, 0x00, 0x12, 0x04, 't', 'e', 's', 't'},
+			expectError: true,
+			errorMsg:    "corrupted data detected",
+		},
+		{
+			name:        "valid protobuf data",
+			data:        []byte{0x0a, 0x04, 't', 'e', 's', 't', 0x10, 0x2a}, // field 1 string "test", field 2 varint 42
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateProfileData(tt.data)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, strings.ToLower(err.Error()), strings.ToLower(tt.errorMsg))
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }

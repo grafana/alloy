@@ -264,7 +264,6 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 			return err
 		}
 		req.Header.Set("User-Agent", userAgentHeader)
-
 		t.req = req
 	}
 
@@ -290,6 +289,11 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 	if len(b) == 0 {
 		return fmt.Errorf("empty %s profile from %s", profileType, t.req.URL.String())
 	}
+
+	if err := validateProfileData(b); err != nil {
+		return fmt.Errorf("invalid profile data from %s: %w", t.req.URL.String(), err)
+	}
+
 	return nil
 }
 
@@ -300,4 +304,90 @@ func (t *scrapeLoop) stop(wait bool) {
 	if wait {
 		t.wg.Wait()
 	}
+}
+
+// validateProfileData performs validation to ensure data is a valid pprof profile.
+func validateProfileData(data []byte) error {
+	if len(data) == 0 {
+		return fmt.Errorf("empty response from profiling endpoint")
+	}
+
+	if isTextContent(data) {
+		return fmt.Errorf("received text-based error response instead of pprof")
+	}
+
+	return validateBinaryContent(data)
+}
+
+// isTextContent uses some heuristics to detect text content without allocations.
+func isTextContent(data []byte) bool {
+	// Only check longer responses that are likely to be error pages
+	if len(data) < 10 {
+		return false
+	}
+
+	if hasHTMLPrefix(data) {
+		return true
+	}
+
+	// JSON detection
+	first := findFirstNonWhitespace(data)
+	if (first == '{' || first == '[') && len(data) > 20 {
+		return true
+	}
+
+	return false
+}
+
+// hasHTMLPrefix checks for HTML prefixes without allocations.
+func hasHTMLPrefix(data []byte) bool {
+	if len(data) < 2 || data[0] != '<' {
+		return false
+	}
+
+	// Check for DOCTYPE
+	if len(data) >= 9 && data[1] == '!' && (data[2] == 'D' || data[2] == 'd') {
+		return true
+	}
+
+	// Check for common HTML tags
+	if len(data) >= 5 {
+		second := data[1]
+		if (second == 'h' || second == 'H') || // <html>, <head>
+			(second == 'b' || second == 'B') || // <body>
+			(second == 't' || second == 'T') { // <title>
+
+			return true
+		}
+	}
+
+	return false
+}
+
+// findFirstNonWhitespace finds the first non-whitespace character.
+func findFirstNonWhitespace(data []byte) byte {
+	for i := 0; i < len(data) && i < 64; i++ { // Limit search to first 64 bytes
+		c := data[i]
+		if c != ' ' && c != '\t' && c != '\n' && c != '\r' {
+			return c
+		}
+	}
+	return 0
+}
+
+// validateBinaryContent validates binary format with simple checks
+func validateBinaryContent(data []byte) error {
+	if len(data) <= 2 {
+		return fmt.Errorf("data too short for binary format")
+	}
+
+	if isGzipData(data) {
+		return nil
+	}
+
+	if (data[0] & 0x07) >= 6 {
+		return fmt.Errorf("corrupted data detected")
+	}
+
+	return nil
 }
