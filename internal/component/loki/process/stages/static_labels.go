@@ -29,16 +29,12 @@ func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig) (Stage, error
 			continue
 		}
 
-		s, err := getString(*v)
-		if err != nil {
-			return nil, fmt.Errorf("faild to convert static label value: %w", err)
+		value := *v
+		if !model.LabelValue(value).IsValid() {
+			return nil, fmt.Errorf("invalid label value: %s", value)
 		}
 
-		if !model.LabelValue(s).IsValid() {
-			return nil, fmt.Errorf("invalid label value: %s", s)
-		}
-
-		values = append(values, n, s)
+		values = append(values, n, value)
 	}
 
 	return toStage(&staticLabelStage{values}), nil
