@@ -592,6 +592,3 @@ func TestUpdateArgs(t *testing.T) {
 	require.False(t, shutdown)
 
 }
-
-//todo write a test for deep reflect bug
-//todo write a test for default connection limit bug
