@@ -75,7 +75,7 @@ http_request_duration_seconds_count 144320
     `
 }
 
-// Configure a prometheus.scrape component to collect staic metrics.
+// Configure a prometheus.scrape component to collect static metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.static.demo.targets
   forward_to = [prometheus.remote_write.demo.receiver]
