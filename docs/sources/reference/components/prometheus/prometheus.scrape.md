@@ -53,6 +53,7 @@ You can use the following arguments with `prometheus.scrape`:
 | `http_headers`                       | `map(list(secret))`     | Custom HTTP headers to be sent along with each request. The map key is the header name.                                  |                                                                                                  | no       |
 | `honor_labels`                       | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                                          | `false`                                                                                          | no       |
 | `honor_timestamps`                   | `bool`                  | Indicator whether the scraped timestamps should be respected.                                                            | `true`                                                                                           | no       |
+| `honor_metadata`                     | `bool`                  | Indicator whether metric metadata should be sent to downstream components.                                               | `false`                                                                                          | no       |
 | `job_name`                           | `string`                | The value to use for the job label if not already set.                                                                   | component name                                                                                   | no       |
 | `label_limit`                        | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                                             |                                                                                                  | no       |
 | `label_name_length_limit`            | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                                       |                                                                                                  | no       |
@@ -78,6 +79,16 @@ You can use the following arguments with `prometheus.scrape`:
 | `scrape_timeout`                     | `duration`              | The timeout for scraping targets of this configuration.                                                                  | `"10s"`                                                                                          | no       |
 | `target_limit`                       | `uint`                  | More than this many targets after the target relabeling causes the scrapes to fail.                                      |                                                                                                  | no       |
 | `track_timestamps_staleness`         | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                                      | `false`                                                                                          | no       |
+
+> **EXPERIMENTAL**: The `honor_metadata` argument is an [experimental][] feature.
+> Enabling it may increase resource consumption, particularly if a lot of metrics with different names are ingested.
+> Not all downstream components may be compatible with Prometheus metadata yet.
+> For example, `otelcol.receiver.prometheus` may work, but `prometheus.remote_write` may not.
+> Support for more components will be added soon.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> The `stability.level` flag must be set to `experimental` to use the feature.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 At most, one of the following can be provided:
 
