@@ -590,5 +590,4 @@ func TestUpdateArgs(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.False(t, shutdown)
-
 }
