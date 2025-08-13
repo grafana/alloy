@@ -14,7 +14,7 @@ title: prometheus.exporter.static
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`prometheus.exporter.static` loads metrics from text specified in [`Prometheus exposition format`](https://prometheus.io/docs/instrumenting/exposition_formats/) and expose them for scraping.
+`prometheus.exporter.static` loads metrics from text specified in [`Prometheus exposition format`](https://prometheus.io/docs/instrumenting/exposition_formats/) and exposes them for scraping.
 
 You can specify multiple `prometheus.exporter.static` components by giving them different labels.
 
