@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
 
+- Add support to validate references, stdlib functions and arguments when using validate command. (@kalleep)
+
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
 ### Bugfixes
@@ -76,6 +78,8 @@ Main (unreleased)
 - Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
 
 - Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
+
+- Fix `pyroscope.receive_http` so it does not restart server if the server configuration has not changed. (@korniltsev)
 
 v1.10.1
 -----------------

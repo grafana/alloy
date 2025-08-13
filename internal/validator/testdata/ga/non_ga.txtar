@@ -7,3 +7,10 @@ foreach "foreach" {
 
 	template {}
 }
+
+prometheus.scrape "scrape" {
+  targets    = array.combine_maps([], [], [])
+  forward_to = array.combine_maps([], [], [])
+}
+
+
