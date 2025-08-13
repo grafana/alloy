@@ -31,7 +31,7 @@ You can use the following argument with `prometheus.exporter.static`:
 
 | Name   | Type     | Description                           | Default | Required |
 | ------ | -------- | ------------------------------------- | ------- | -------- |
-| `text` | `string` | Text in prometheus exposition format. | `""`    | no       |
+| `text` | `string` | Text in Prometheus exposition format. | `""`    | no       |
 
 ## Exported fields
 
