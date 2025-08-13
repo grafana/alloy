@@ -67,6 +67,8 @@ Main (unreleased)
 
 - Add support to validate references, stdlib functions and arguments when using validate command. (@kalleep)
 
+- Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
