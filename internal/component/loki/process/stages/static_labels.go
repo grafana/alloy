@@ -64,7 +64,7 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 // staticLabelStage implements Stage.
 type staticLabelStage struct {
 	logger log.Logger
-	// values packs both label names and label values and need to be devisable by 2.
+	// values packs both label names and label values and need to be divisible by 2.
 	values []string
 }
 
