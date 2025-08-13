@@ -6,13 +6,21 @@ headless: true
 
 Learn how to troubleshoot and resolve eBPF collection issues.
 
-### Profile interpreted languages
+### Supported higher level languages
 
-Profiling interpreted languages other than Python (like Ruby, JavaScript, etc.), isn't ideal using this implementation.
-The JIT-compiled methods in these languages are typically not in ELF file format, demanding additional steps for
-profiling. For instance, using perf-map-agent and enabling frame pointers for Java.
+Profiling higher level languages is possible on Alloy versions later than v1.11, as from that version the [Open-Telemetry eBPF profiler] is used for `pyroscope.ebpf`.
 
-Interpreted methods display the interpreter function’s name rather than the actual function.
+Hence the profiler has support for:
+
+- Hotspot JVM
+- Node.JS (v8)
+- PHP
+- Perl
+- Python
+- Ruby
+- .NET (on `amd64` architecture only)
+
+[Open-Telemetry eBPF profiler]:https://github.com/open-telemetry/opentelemetry-ebpf-profiler
 
 ### Troubleshoot unknown symbols
 
@@ -75,19 +83,24 @@ If your profiles show many shallow stack traces, typically 1-2 frames deep, your
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
 
 
-#### Ensure Python process data is discoverable
+### Troubleshoot missing Python frames
 
-This error indicates that Pyroscope cannot locate required Python runtime symbols, potentially due to nonstandard library naming:
+#### Ensure Python interpreter is discoverable
 
-`pyperf get python process data failed: missing symbols pyRuntimeAddr autoTLSkeyAddr`
- 
-This can occur if the application build process uses custom naming for libraries, such as:
+This can happen when `pyroscope.ebpf` cannot locate required Python runtime symbols, potentially due to nonstandard binary/library file naming:
 
-- `libpython3-custom.10.so.1.0`
+In order to be supported it needs pass the following regular expressions [source](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/c80acf3265fe868d107fe40e319ec144cf2983a7/interpreter/python/python.go#L42-L47)
 
-Pyroscope expects standard naming patterns like:
+```go
+// The following regexs are intended to match either a path to a Python binary or
+// library.
+var (
+	pythonRegex    = regexp.MustCompile(`^(?:.*/)?python(\d)\.(\d+)(d|m|dm)?$`)
+	libpythonRegex = regexp.MustCompile(`^(?:.*/)?libpython(\d)\.(\d+)[^/]*`)
+)
+```
 
-- `libpython3.10.so.1.0`
+This means that for example a library named `libpython3.10.so.1.0`, would match this, although `libpython3-custom.10.so.1.0` would not.
 
 To resolve this, ensure Python libraries follow standard naming conventions.
 
