@@ -31,7 +31,7 @@ func init() {
 
 func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), opts.ID)
 }
 
 type Arguments struct {
@@ -65,8 +65,8 @@ type Config struct {
 	text string
 }
 
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return "static", nil
+func (c *Config) InstanceKey(key string) (string, error) {
+	return key, nil
 }
 
 func (c *Config) Name() string {
