@@ -141,7 +141,8 @@ func (v *validator) validateDeclares(s *state) {
 		}
 
 		configs, declares, services, components := extractBlocks(node, node.block.Body, v.sm)
-		// We set an empty body here because they are evalutated in a sub graph.
+		// We need to empty the body of the declare block so that later when we call findReferences on nodes
+		// we don't find references that are only added to the "sub" graph and validated seperatly.
 		node.block.Body = ast.Body{}
 
 		moduleState := &state{
