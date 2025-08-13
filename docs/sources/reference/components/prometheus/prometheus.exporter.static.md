@@ -27,7 +27,7 @@ prometheus.exporter.static "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `prometheus.exporter.static`:
+You can use the following argument with `prometheus.exporter.static`:
 
 | Name   | Type     | Description                           | Default | Required |
 | ------ | -------- | ------------------------------------- | ------- | -------- |
