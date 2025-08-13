@@ -6,8 +6,10 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -590,4 +592,62 @@ func TestUpdateArgs(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.False(t, shutdown)
+}
+
+func TestConnectionLimit(t *testing.T) {
+	ports, err := freeport.GetFreePorts(1)
+	require.NoError(t, err)
+	forwardTo := []pyroscope.Appendable{testAppendable(nil)}
+	args := Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    ports[0],
+			},
+		},
+		ForwardTo: forwardTo,
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	comp, err := New(testOptions(t), args)
+	require.NoError(t, err)
+	go func() {
+		require.NoError(t, comp.Run(ctx))
+	}()
+	const N = 1333
+	wg := sync.WaitGroup{}
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer wg.Done()
+			cl := &http.Client{
+				Transport: &http.Transport{
+					DialContext: (&net.Dialer{
+						Timeout:   30 * time.Second,
+						KeepAlive: 30 * time.Second,
+					}).DialContext,
+					ForceAttemptHTTP2:     true,
+					MaxIdleConns:          100,
+					IdleConnTimeout:       90 * time.Second,
+					TLSHandshakeTimeout:   10 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+				},
+			}
+			requestContext, requestCancel := context.WithTimeout(t.Context(), time.Second)
+			defer requestCancel()
+			var req *http.Request
+			req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/ingest", ports[0]), bytes.NewReader([]byte("foo;bar 239")))
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			req = req.WithContext(requestContext)
+			_, err = cl.Do(req)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+		}()
+	}
+	wg.Wait()
 }

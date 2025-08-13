@@ -39,7 +39,7 @@ The component starts an HTTP server supporting the following endpoint.
 You can use the following argument with `pyroscope.receive_http`:
 
 | Name         | Type                     | Description                            | Default | Required |
-| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
+|--------------|--------------------------|----------------------------------------|---------|----------|
 | `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
 
 ## Blocks
@@ -47,7 +47,7 @@ You can use the following argument with `pyroscope.receive_http`:
 You can use the following block with `pyroscope.receive_http`:
 
 | Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
+|----------------|----------------------------------------------------|----------|
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
 
 [http]: #http
@@ -59,8 +59,8 @@ The `http` block configures the HTTP server.
 You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
 
 | Name                   | Type       | Description                                                                                                      | Default  | Required |
-| ---------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- | -------- | -------- |
-| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 100.                                                | `0`      | no       |
+|------------------------|------------|------------------------------------------------------------------------------------------------------------------|----------|----------|
+| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 0 (unlimited).                                      | `0`      | no       |
 | `listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no       |
 | `listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no       |
 | `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                | `"120s"` | no       |
