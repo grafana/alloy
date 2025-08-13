@@ -218,13 +218,8 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		err = c.validateActivity(activity)
 		if err != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "err", err)
+			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", activity.QueryID.Int64, "err", err)
 			continue
-		}
-
-		query := ""
-		if activity.Query.Valid {
-			query = activity.Query.String
 		}
 
 		leaderPID := ""
@@ -237,37 +232,12 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		xactDuration := calculateDuration(activity.XactStart, activity.Now)
 		backendDuration := calculateDuration(activity.BackendStart, activity.Now)
 
-		databaseName := ""
-		if activity.DatabaseName.Valid {
-			databaseName = activity.DatabaseName.String
-		}
-
-		userName := ""
-		if activity.Username.Valid {
-			userName = activity.Username.String
-		}
-
-		applicationName := ""
-		if activity.ApplicationName.Valid {
-			applicationName = activity.ApplicationName.String
-		}
-
-		state := ""
-		if activity.State.Valid {
-			state = activity.State.String
-		}
-
 		clientAddr := ""
 		if activity.ClientAddr.Valid {
 			clientAddr = activity.ClientAddr.String
 			if activity.ClientPort.Valid {
 				clientAddr = fmt.Sprintf("%s:%d", clientAddr, activity.ClientPort.Int32)
 			}
-		}
-
-		backendType := ""
-		if activity.BackendType.Valid {
-			backendType = activity.BackendType.String
 		}
 
 		waitEventFullName := ""
@@ -283,21 +253,21 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		sampleLabels := fmt.Sprintf(
 			`instance="%s" datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			c.instanceKey,
-			databaseName,
+			activity.DatabaseName.String,
 			activity.PID,
 			leaderPID,
-			userName,
-			applicationName,
+			activity.Username.String,
+			activity.ApplicationName.String,
 			clientAddr,
-			backendType,
+			activity.BackendType.String,
 			backendDuration,
 			activity.BackendXID.Int32,
 			activity.BackendXmin.Int32,
 			xactDuration,
-			state,
+			activity.State.String,
 			queryDuration,
 			activity.QueryID.Int64,
-			query,
+			activity.Query.String,
 		)
 
 		if !activity.WaitEventType.Valid && !activity.WaitEvent.Valid && activity.State.String == "active" {
@@ -318,16 +288,16 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			waitEventLabels := fmt.Sprintf(
 				`instance="%s" datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				c.instanceKey,
-				databaseName,
-				backendType,
-				state,
+				activity.DatabaseName.String,
+				activity.BackendType.String,
+				activity.State.String,
 				stateDuration,
 				waitEventType,
 				waitEvent,
 				waitEventFullName,
 				activity.BlockedByPIDs,
 				activity.QueryID.Int64,
-				query,
+				activity.Query.String,
 			)
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
