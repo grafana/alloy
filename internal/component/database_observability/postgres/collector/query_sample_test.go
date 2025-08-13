@@ -69,8 +69,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="123" query="SELECT * FROM users WHERE id = ?" engine="postgres" cpu_time="%s"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="123" query="SELECT * FROM users WHERE id = ?" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -87,8 +86,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="124" query="SELECT * FROM users WHERE id = 123" engine="postgres" cpu_time="%s"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="124" query="SELECT * FROM users WHERE id = 123" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -105,8 +103,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ? /* comment ..." engine="postgres" cpu_time="%s"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ? /* comment ..." engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -123,8 +120,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="126" query="SELECT * FROM users WHERE id = 123 /* comment ..." engine="postgres" cpu_time="%s"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="126" query="SELECT * FROM users WHERE id = 123 /* comment ..." engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -141,8 +137,7 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="active" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="127" query="SELECT u.id, u.name, p.role FROM users u JOIN permissions p ON u.id = p.user_id WHERE u.id IN (?, ?) AND p.role = ?" engine="postgres" cpu_time="%s"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="127" query="SELECT u.id, u.name, p.role FROM users u JOIN permissions p ON u.id = p.user_id WHERE u.id IN (?, ?) AND p.role = ?" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -178,14 +173,12 @@ func TestActivity_QueryRedaction(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" state="waiting" pid="100" leader_pid="" user="testuser" userid="1000" datname="testdb" datid="1" xact_time="%s" xid="0" xmin="0" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ?" engine="postgres"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="waiting" query_time="%s" queryid="125" query="SELECT * FROM users WHERE id = ?" engine="postgres"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 				),
-				fmt.Sprintf(`level="info" clock_timestamp="%s" instance="test" user="testuser" userid="1000" datname="testdb" datid="1" backend_type="client backend" state="waiting" wait_time="%s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" queryid="125" query="SELECT * FROM users WHERE id = ?" blocked_by_pids="[103 104]" engine="postgres"`,
-					now.Format(time.RFC3339Nano),
+				fmt.Sprintf(`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="%s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="125" query="SELECT * FROM users WHERE id = ?" engine="postgres"`,
 					time.Duration(0).String(),
 				),
 			},
@@ -216,22 +209,19 @@ func TestActivity_QueryRedaction(t *testing.T) {
 			// Setup mock expectations
 			mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 				WillReturnRows(sqlmock.NewRows([]string{
-					"datname", "datid", "pid", "leader_pid", "usesysid",
+					"now", "datname", "pid", "leader_pid",
 					"usename", "application_name", "client_addr", "client_port",
-					"state_change", "now", "backend_start", "xact_start",
-					"query_start", "wait_event_type", "wait_event", "state",
-					"backend_type", "backend_xid", "backend_xmin", "query_id",
-					"query", "blocked_by_pids",
+					"backend_type", "backend_start", "backend_xid", "backend_xmin",
+					"xact_start", "state", "state_change", "wait_event_type",
+					"wait_event", "blocked_by_pids", "query_start", "query_id",
+					"query",
 				}).AddRow(
-					sql.NullString{String: "testdb", Valid: true}, 1, 100, sql.NullInt64{}, 1000,
+					now, sql.NullString{String: "testdb", Valid: true}, 100, sql.NullInt64{},
 					"testuser", "testapp", "127.0.0.1", 5432,
-					now, now, now, now,
-					now, getWaitEventType(tc.name),
-					getWaitEvent(tc.name),
-					getState(tc.name),
-					"client backend", sql.NullInt32{}, sql.NullInt32{}, sql.NullInt64{Int64: tc.queryID, Valid: true},
+					"client backend", now, sql.NullInt32{}, sql.NullInt32{},
+					now, getState(tc.name), now, getWaitEventType(tc.name),
+					getWaitEvent(tc.name), getBlockedByPids(tc.name), now, sql.NullInt64{Int64: tc.queryID, Valid: true},
 					sql.NullString{String: tc.query, Valid: true},
-					getBlockedByPids(tc.name),
 				))
 
 			err = activity.Start(t.Context())
@@ -282,19 +272,19 @@ func TestActivity_FetchActivity(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
-						"datname", "datid", "pid", "leader_pid", "usesysid",
+						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
-						"state_change", "now", "backend_start", "xact_start",
-						"query_start", "wait_event_type", "wait_event", "state",
-						"backend_type", "backend_xid", "backend_xmin", "query_id",
-						"query", "blocked_by_pids",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
 					}).AddRow(
-						"testdb", 1, 100, sql.NullInt64{}, 1000,
+						now, "testdb", 100, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						now, now, now, now,
-						now, sql.NullString{}, sql.NullString{}, "active",
-						"client backend", sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true}, sql.NullInt64{Int64: 123, Valid: true},
-						"SELECT * FROM users", nil,
+						"client backend", now, sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true},
+						now, "active", now, sql.NullString{},
+						sql.NullString{}, nil, now, sql.NullInt64{Int64: 123, Valid: true},
+						"SELECT * FROM users",
 					))
 			},
 			expectedError: false,
@@ -317,19 +307,19 @@ func TestActivity_FetchActivity(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
-						"datname", "datid", "pid", "leader_pid", "usesysid",
+						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
-						"state_change", "now", "backend_start", "xact_start",
-						"query_start", "wait_event_type", "wait_event", "state",
-						"backend_type", "backend_xid", "backend_xmin", "query_id",
-						"query", "blocked_by_pids",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
 					}).AddRow(
-						"testdb", 1, 101, sql.NullInt64{Int64: 100, Valid: true}, 1000,
+						now, "testdb", 101, sql.NullInt64{Int64: 100, Valid: true},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						now, now, now, now,
-						now, sql.NullString{}, sql.NullString{}, "active",
-						"parallel worker", sql.NullInt32{}, sql.NullInt32{}, sql.NullInt64{Int64: 123, Valid: true},
-						"SELECT * FROM large_table", nil,
+						"parallel worker", now, sql.NullInt32{}, sql.NullInt32{},
+						now, "active", now, sql.NullString{},
+						sql.NullString{}, nil, now, sql.NullInt64{Int64: 123, Valid: true},
+						"SELECT * FROM large_table",
 					))
 			},
 			expectedError: false,
@@ -352,19 +342,19 @@ func TestActivity_FetchActivity(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
-						"datname", "datid", "pid", "leader_pid", "usesysid",
+						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
-						"state_change", "now", "backend_start", "xact_start",
-						"query_start", "wait_event_type", "wait_event", "state",
-						"backend_type", "backend_xid", "backend_xmin", "query_id",
-						"query", "blocked_by_pids",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
 					}).AddRow(
-						"testdb", 1, 102, sql.NullInt64{}, 1000,
+						now, "testdb", 102, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						now, now, now, now,
-						now, sql.NullString{String: "Lock", Valid: true}, sql.NullString{String: "relation", Valid: true}, "waiting",
-						"client backend", sql.NullInt32{}, sql.NullInt32{}, sql.NullInt64{Int64: 124, Valid: true},
-						"UPDATE users SET status = 'active'", pq.Int64Array{103, 104},
+						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
+						now, "waiting", now, sql.NullString{String: "Lock", Valid: true},
+						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
+						"UPDATE users SET status = 'active'",
 					))
 			},
 			expectedError: false,
@@ -391,19 +381,19 @@ func TestActivity_FetchActivity(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
-						"datname", "datid", "pid", "leader_pid", "usesysid",
+						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
-						"state_change", "now", "backend_start", "xact_start",
-						"query_start", "wait_event_type", "wait_event", "state",
-						"backend_type", "backend_xid", "backend_xmin", "query_id",
-						"query", "blocked_by_pids",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
 					}).AddRow(
-						"testdb", 1, 103, sql.NullInt64{}, 1000,
+						now, "testdb", 103, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						now, now, now, now,
-						now, sql.NullString{}, sql.NullString{}, "active",
-						"client backend", sql.NullInt32{}, sql.NullInt32{}, sql.NullInt64{Int64: 125, Valid: true},
-						"<insufficient privilege>", nil,
+						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
+						now, "active", now, sql.NullString{},
+						sql.NullString{}, nil, now, sql.NullInt64{Int64: 125, Valid: true},
+						"<insufficient privilege>",
 					))
 			},
 			expectedError:  false,
@@ -415,19 +405,19 @@ func TestActivity_FetchActivity(t *testing.T) {
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
-						"datname", "datid", "pid", "leader_pid", "usesysid",
+						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
-						"state_change", "now", "backend_start", "xact_start",
-						"query_start", "wait_event_type", "wait_event", "state",
-						"backend_type", "backend_xid", "backend_xmin", "query_id",
-						"query", "blocked_by_pids",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
 					}).AddRow(
-						sql.NullString{Valid: false}, 1, 104, sql.NullInt64{}, 1000, // null database name
+						now, sql.NullString{Valid: false}, 104, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						now, now, now, now,
-						now, sql.NullString{}, sql.NullString{}, "active",
-						"client backend", sql.NullInt32{}, sql.NullInt32{}, sql.NullInt64{Int64: 126, Valid: true},
-						"SELECT * FROM users", nil,
+						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
+						now, "active", now, sql.NullString{},
+						sql.NullString{}, nil, now, sql.NullInt64{Int64: 126, Valid: true},
+						"SELECT * FROM users",
 					))
 			},
 			expectedError:  false,
