@@ -28,6 +28,11 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+- `prometheus.exporter.windows` dependency has been updated to v0.31.1. (@dehaansa)
+  - There are various renamed metrics and two removed collectors (`cs`, `logon`), see the [v1.11 release notes][1_11-release-notes] for more information.
+
+    [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
+
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
 ### Features

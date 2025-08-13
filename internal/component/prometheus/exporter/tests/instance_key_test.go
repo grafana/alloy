@@ -387,7 +387,13 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "windows",
 			componentName: "prometheus.exporter.windows",
 			args: windows.Arguments{
-				EnabledCollectors: []string{"cpu", "cs", "logical_disk", "net", "os", "service", "system"},
+				EnabledCollectors: []string{"cpu", "logical_disk", "net", "os", "service", "system"},
+				LogicalDisk: windows.LogicalDiskConfig{
+					EnabledList: []string{"metrics"},
+				},
+				Net: windows.NetConfig{
+					EnabledList: []string{"metrics"},
+				},
 			},
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",
