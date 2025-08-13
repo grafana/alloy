@@ -76,7 +76,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
-	o.Registerer.MustRegister(c.serverMetrics)
+	util.MustRegisterOrGet(o.Registerer, c.serverMetrics)
 
 	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {

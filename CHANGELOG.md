@@ -98,6 +98,8 @@ v1.10.1
 
 - Fix URLs in the Windows installer being wrapped in quotes. (@martincostello)
 
+- Use MustRegisterOrGet to avoid panics during component reevaluations. (@dehaansa)
+
 - Fixed an issue where certain `otelcol.*` components could prevent Alloy from shutting down when provided invalid configuration. (@thampiotr)
 
 v1.10.0

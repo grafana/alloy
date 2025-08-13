@@ -68,7 +68,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 
 	uncheckedCollector := util.NewUncheckedCollector(nil)
-	opts.Registerer.MustRegister(uncheckedCollector)
+	util.MustRegisterOrGet(opts.Registerer, uncheckedCollector)
 
 	// TODO: Make these configurable in the future?
 	supportedRemoteWriteProtoMsgs := config.RemoteWriteProtoMsgs{config.RemoteWriteProtoMsgV1}

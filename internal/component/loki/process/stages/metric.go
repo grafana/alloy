@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // Metric types.
@@ -56,8 +57,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
+			util.MustRegisterOrGet(registry, collector)
 			metrics[cfg.Counter.Name] = cfgCollector{cfg: cfg, collector: collector}
 		case cfg.Gauge != nil:
 			customPrefix := ""
@@ -70,8 +70,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
+			util.MustRegisterOrGet(registry, collector)
 			metrics[cfg.Gauge.Name] = cfgCollector{cfg: cfg, collector: collector}
 		case cfg.Histogram != nil:
 			customPrefix := ""
@@ -84,8 +83,7 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			if err != nil {
 				return nil, err
 			}
-			// It is safe to .MustRegister here because the metric created above is unchecked.
-			registry.MustRegister(collector)
+			util.MustRegisterOrGet(registry, collector)
 			metrics[cfg.Histogram.Name] = cfgCollector{cfg: cfg, collector: collector}
 		default:
 			return nil, fmt.Errorf("undefined stage type in '%v', exiting", cfg)
