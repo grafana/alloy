@@ -3,13 +3,10 @@ package stages
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // ErrEmptyStaticLabelStageConfig error returned if the config is empty.
@@ -26,9 +23,27 @@ func newStaticLabelsStage(logger log.Logger, config StaticLabelsConfig) (Stage, 
 		return nil, err
 	}
 
+	values := make([]string, 0, len(config.Values)*2)
+	for n, v := range config.Values {
+		if v == nil || *v == "" {
+			continue
+		}
+
+		s, err := getString(*v)
+		if err != nil {
+			return nil, fmt.Errorf("faild to convert static label value: %w", err)
+		}
+
+		if !model.LabelValue(s).IsValid() {
+			return nil, fmt.Errorf("invalid label value: %s", s)
+		}
+
+		values = append(values, n, s)
+	}
+
 	return toStage(&staticLabelStage{
-		config: config,
 		logger: logger,
+		values: values,
 	}), nil
 }
 
@@ -48,28 +63,15 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 
 // staticLabelStage implements Stage.
 type staticLabelStage struct {
-	config StaticLabelsConfig
 	logger log.Logger
+	// values packs both label names and label values and need to be devisable by 2.
+	values []string
 }
 
 // Process implements Stage.
-func (l *staticLabelStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
-	for lName, lSrc := range l.config.Values {
-		if lSrc == nil || *lSrc == "" {
-			continue
-		}
-		s, err := getString(*lSrc)
-		if err != nil {
-			level.Debug(l.logger).Log("msg", "failed to convert static label value to string", "err", err, "type", reflect.TypeOf(lSrc))
-			continue
-		}
-		lvalue := model.LabelValue(s)
-		if !lvalue.IsValid() {
-			level.Debug(l.logger).Log("msg", "invalid label value parsed", "value", lvalue)
-			continue
-		}
-		lname := model.LabelName(lName)
-		labels[lname] = lvalue
+func (l *staticLabelStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+	for i := 0; i < len(l.values); i += 2 {
+		labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
 	}
 }
 
