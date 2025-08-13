@@ -781,7 +781,7 @@ func setupTestMetrics() *prometheus_client.Registry {
 }
 
 func TestScrapingAllMetricTypes(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	expectedSamples := []struct {
