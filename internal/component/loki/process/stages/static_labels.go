@@ -65,7 +65,7 @@ type staticLabelStage struct {
 }
 
 // Process implements Stage.
-func (l *staticLabelStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+func (l *staticLabelStage) Process(labels model.LabelSet, _ map[string]any, _ *time.Time, _ *string) {
 	for i := 0; i < len(l.values); i += 2 {
 		labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
 	}
