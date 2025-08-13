@@ -77,6 +77,8 @@ Main (unreleased)
 
 - Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
 
+- Fix `pyroscope.receive_http` so it does not restart server if the server configuration has not changed. (@korniltsev)
+
 v1.10.1
 -----------------
 
