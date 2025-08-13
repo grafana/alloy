@@ -25,29 +25,27 @@ const (
 
 const selectPgStatActivity = `
 	SELECT 
-		d.datname,
-		s.datid,
+		clock_timestamp() as now,
+		d.datname,		
 		s.pid,
 		s.leader_pid,
-		s.usesysid,
 		s.usename,		
 		s.application_name,
 		s.client_addr,
 		s.client_port,
-		s.state_change,
-		clock_timestamp() as now,
+		s.backend_type,
 		s.backend_start,
+		s.backend_xid,
+		s.backend_xmin,		
 		s.xact_start,
-		s.query_start,		
+		s.state,
+		s.state_change,		
 		s.wait_event_type,
 		s.wait_event,
-		s.state,
-		s.backend_type,
-		s.backend_xid,
-		s.backend_xmin,
+		pg_blocking_pids(s.pid) as blocked_by_pids,
+		s.query_start,
 		s.query_id,
-		s.query,
-		pg_blocking_pids(s.pid) as blocked_by_pids
+		s.query
 	FROM pg_stat_activity s 
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE 
@@ -89,7 +87,7 @@ type ActivityInfo struct {
 	BackendXmin     sql.NullInt32
 	QueryID         sql.NullInt64
 	Query           sql.NullString
-	BlockedByPids   pq.Int64Array
+	BlockedByPIDs   pq.Int64Array
 }
 
 type ActivityArguments struct {
@@ -179,7 +177,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *Activity) fetchActivity(ctx context.Context) error {
-	slog.Info("Fetching activity")
+	slog.Debug("Fetching activity")
 	scrapeTime := time.Now()
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
@@ -191,36 +189,34 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 	for rows.Next() {
 		activity := ActivityInfo{}
 		err := rows.Scan(
+			&activity.Now,
 			&activity.DatabaseName,
-			&activity.DatabaseID,
 			&activity.PID,
 			&activity.LeaderPID,
-			&activity.UserSysID,
 			&activity.Username,
 			&activity.ApplicationName,
 			&activity.ClientAddr,
 			&activity.ClientPort,
-			&activity.StateChange,
-			&activity.Now,
-			&activity.BackendStart,
-			&activity.XactStart,
-			&activity.QueryStart,
-			&activity.WaitEventType,
-			&activity.WaitEvent,
-			&activity.State,
 			&activity.BackendType,
+			&activity.BackendStart,
 			&activity.BackendXID,
 			&activity.BackendXmin,
+			&activity.XactStart,
+			&activity.State,
+			&activity.StateChange,
+			&activity.WaitEventType,
+			&activity.WaitEvent,
+			&activity.BlockedByPIDs,
+			&activity.QueryStart,
 			&activity.QueryID,
 			&activity.Query,
-			&activity.BlockedByPids,
 		)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity set", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", err)
 			continue
 		}
 
-		_, err = c.validateActivity(activity)
+		err = c.validateActivity(activity)
 		if err != nil {
 			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "err", err)
 			continue
@@ -285,23 +281,20 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`clock_timestamp="%s" instance="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" state="%s" pid="%d" leader_pid="%s" user="%s" userid="%d" datname="%s" datid="%d" xact_time="%s" xid="%d" xmin="%d" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
-			activity.Now.Format(time.RFC3339Nano),
+			`instance="%s" datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			c.instanceKey,
+			databaseName,
+			activity.PID,
+			leaderPID,
+			userName,
 			applicationName,
 			clientAddr,
 			backendType,
 			backendDuration,
-			state,
-			activity.PID,
-			leaderPID,
-			userName,
-			activity.UserSysID,
-			databaseName,
-			activity.DatabaseID,
-			xactDuration,
 			activity.BackendXID.Int32,
 			activity.BackendXmin.Int32,
+			xactDuration,
+			state,
 			queryDuration,
 			activity.QueryID.Int64,
 			query,
@@ -313,38 +306,36 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			sampleLabels = fmt.Sprintf(`%s cpu_time="%s"`, sampleLabels, stateDuration)
 		}
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			sampleLabels,
+			activity.Now.Unix(),
 		)
 
 		if waitEvent != "" {
 			waitEventLabels := fmt.Sprintf(
-				`clock_timestamp="%s" instance="%s" user="%s" userid="%d" datname="%s" datid="%d" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" queryid="%d" query="%s" blocked_by_pids="%v" engine="postgres"`,
-				activity.Now.Format(time.RFC3339Nano),
+				`instance="%s" datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				c.instanceKey,
-				userName,
-				activity.UserSysID,
 				databaseName,
-				activity.DatabaseID,
 				backendType,
 				state,
 				stateDuration,
 				waitEventType,
 				waitEvent,
 				waitEventFullName,
+				activity.BlockedByPIDs,
 				activity.QueryID.Int64,
 				query,
-				activity.BlockedByPids,
 			)
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.instanceKey,
 				waitEventLabels,
+				activity.Now.Unix(),
 			)
 		}
 	}
@@ -360,14 +351,14 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 	return nil
 }
 
-func (c Activity) validateActivity(activity ActivityInfo) (bool, error) {
+func (c Activity) validateActivity(activity ActivityInfo) error {
 	if activity.Query.Valid && activity.Query.String == "<insufficient privilege>" {
-		return false, fmt.Errorf("insufficient privilege to access query. activity set: %+v", activity)
+		return fmt.Errorf("insufficient privilege to access query. activity set: %+v", activity)
 	}
 
 	if !activity.DatabaseName.Valid {
-		return false, fmt.Errorf("database name is not valid. activity set: %+v", activity)
+		return fmt.Errorf("database name is not valid. activity set: %+v", activity)
 	}
 
-	return true, nil
+	return nil
 }
