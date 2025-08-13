@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
 
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
