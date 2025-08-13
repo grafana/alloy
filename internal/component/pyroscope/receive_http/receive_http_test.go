@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -577,4 +578,16 @@ func TestUpdateArgs(t *testing.T) {
 	})
 
 	waitForServerReady(t, ports[1])
+
+	shutdown, err := comp.update(Arguments{
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    ports[1],
+			},
+		},
+		ForwardTo: forwardTo,
+	})
+	require.NoError(t, err)
+	require.False(t, shutdown)
 }
