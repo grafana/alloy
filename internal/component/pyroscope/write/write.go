@@ -306,28 +306,28 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 	var (
 		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
 		protoSamples = make([]*pushv1.RawSample, 0, len(samples))
-		lbsBuilder   = labels.NewBuilder(nil)
+		lbsBuilder   = labels.NewBuilder(labels.EmptyLabels())
 	)
 
-	for _, label := range lbs {
+	lbs.Range(func(l labels.Label) {
 		// filter reserved labels, with exceptions for __name__ and __delta__.
-		if strings.HasPrefix(label.Name, model.ReservedLabelPrefix) &&
-			label.Name != labels.MetricName &&
-			label.Name != pyroscope.LabelNameDelta {
-
-			continue
+		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) &&
+			l.Name != labels.MetricName &&
+			l.Name != pyroscope.LabelNameDelta {
+			return
 		}
-		lbsBuilder.Set(label.Name, label.Value)
-	}
+		lbsBuilder.Set(l.Name, l.Value)
+
+	})
 	for name, value := range f.config.ExternalLabels {
 		lbsBuilder.Set(name, value)
 	}
-	for _, l := range lbsBuilder.Labels() {
+	lbsBuilder.Labels().Range(func(l labels.Label) {
 		protoLabels = append(protoLabels, &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})
-	}
+	})
 	for _, sample := range samples {
 		protoSamples = append(protoSamples, &pushv1.RawSample{
 			RawProfile: sample.RawProfile,
@@ -495,10 +495,13 @@ func validateLabels(lbls labels.Labels) error {
 		return labelset.ErrServiceNameIsRequired
 	}
 
+	// FIXME(kalleep): We need to find a workaround for this if we ever want to use stringlabels.
+	// They do not support being sorted but are assumed to be in sorted order, are we sure they can get here
+	// not already sorted?
 	sort.Sort(lbls)
 
 	lastLabelName := ""
-	for _, l := range lbls {
+	return lbls.Validate(func(l labels.Label) error {
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
 			return fmt.Errorf("duplicate label name: %s", l.Name)
 		}
@@ -517,7 +520,6 @@ func validateLabels(lbls labels.Labels) error {
 		}
 
 		lastLabelName = l.Name
-	}
-
-	return nil
+		return nil
+	})
 }
