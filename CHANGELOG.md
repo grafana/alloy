@@ -72,7 +72,7 @@ Main (unreleased)
 
 - Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
 
-- Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.5 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.5) (@marctc)
+- Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
 
 ### Bugfixes
 
