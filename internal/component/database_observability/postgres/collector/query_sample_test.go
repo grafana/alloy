@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
-func TestActivity_FetchActivity(t *testing.T) {
+func TestQuerySample_FetchQuerySample(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	now := time.Now()
@@ -222,7 +222,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 			logger := log.NewLogfmtLogger(os.Stderr)
 			lokiClient := loki_fake.NewClient(func() {})
 
-			activity, err := NewActivity(ActivityArguments{
+			sampleCollector, err := NewQuerySample(QuerySampleArguments{
 				DB:                    db,
 				InstanceKey:           "test",
 				CollectInterval:       time.Second * 5,
@@ -231,12 +231,12 @@ func TestActivity_FetchActivity(t *testing.T) {
 				DisableQueryRedaction: tc.disableQueryRedaction,
 			})
 			require.NoError(t, err)
-			require.NotNil(t, activity)
+			require.NotNil(t, sampleCollector)
 
 			// Setup mock expectations
 			tc.setupMock(mock)
 
-			err = activity.Start(t.Context())
+			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
 			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
@@ -261,11 +261,11 @@ func TestActivity_FetchActivity(t *testing.T) {
 				return true
 			}, 5*time.Second, 100*time.Millisecond)
 
-			activity.Stop()
+			sampleCollector.Stop()
 
 			// Wait for the collector to stop
 			require.Eventually(t, func() bool {
-				return activity.Stopped()
+				return sampleCollector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
 			lokiClient.Stop()

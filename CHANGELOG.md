@@ -44,8 +44,8 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
-  - add `activity` collector for postgres (@gaantunes)
-  - add a DisableQueryRedaction argument to the postgres `activity` collector, and redact queries by default (@gaantunes)
+  - add `query_sample` collector for postgres (@gaantunes)
+  - add a DisableQueryRedaction argument to the `query_sample` postgres collector, and redact queries by default (@gaantunes)  
 
 ### Enhancements
 

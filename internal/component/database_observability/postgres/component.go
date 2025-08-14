@@ -209,7 +209,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryTablesName: false,
-		collector.ActivityName:    false,
+		collector.QuerySampleName: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -262,8 +262,8 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	if collectors[collector.ActivityName] {
-		aCollector, err := collector.NewActivity(collector.ActivityArguments{
+	if collectors[collector.QuerySampleName] {
+		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                    dbConnection,
 			InstanceKey:           c.instanceKey,
 			CollectInterval:       c.args.CollectInterval,
@@ -272,11 +272,11 @@ func (c *Component) startCollectors() error {
 			DisableQueryRedaction: c.args.DisableQueryRedaction,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create Activity collector", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
 			return err
 		}
 		if err := aCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start Activity collector", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
 			return err
 		}
 		c.collectors = append(c.collectors, aCollector)

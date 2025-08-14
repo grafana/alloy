@@ -25,7 +25,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 
@@ -44,7 +44,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 
@@ -63,7 +63,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 
@@ -83,7 +83,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 
@@ -103,15 +103,15 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 
-	t.Run("enable activity collector", func(t *testing.T) {
+	t.Run("enable query_sample collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["activity"]
+		enable_collectors = ["query_sample"]
 	`
 
 		var args Arguments
@@ -122,7 +122,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
-			collector.ActivityName:    true,
+			collector.QuerySampleName: true,
 		}, actualCollectors)
 	})
 
@@ -130,7 +130,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["query_tables", "activity"]
+		enable_collectors = ["query_tables", "query_sample"]
 	`
 
 		var args Arguments
@@ -141,15 +141,15 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
-			collector.ActivityName:    true,
+			collector.QuerySampleName: true,
 		}, actualCollectors)
 	})
 
-	t.Run("disable activity collector", func(t *testing.T) {
+	t.Run("disable query_sample collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		disable_collectors = ["activity"]
+		disable_collectors = ["query_sample"]
 	`
 
 		var args Arguments
@@ -160,7 +160,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
-			collector.ActivityName:    false,
+			collector.QuerySampleName: false,
 		}, actualCollectors)
 	})
 }
@@ -170,7 +170,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["activity"]
+		enable_collectors = ["query_sample"]
 	`
 
 		var args Arguments
@@ -183,7 +183,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["activity"]
+		enable_collectors = ["query_sample"]
 		disable_query_redaction = true
 	`
 
@@ -197,7 +197,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["activity"]
+		enable_collectors = ["query_sample"]
 		disable_query_redaction = false
 	`
 
