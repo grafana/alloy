@@ -45,6 +45,8 @@ Main (unreleased)
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
 
+- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+
 ### Enhancements
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
