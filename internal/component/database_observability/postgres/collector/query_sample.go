@@ -279,7 +279,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			OP_QUERY_SAMPLE,
 			c.instanceKey,
 			sampleLabels,
-			activity.Now.Unix(),
+			activity.Now.UnixNano(),
 		)
 
 		if waitEvent != "" {
@@ -303,7 +303,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 				OP_WAIT_EVENT,
 				c.instanceKey,
 				waitEventLabels,
-				activity.Now.Unix(),
+				activity.Now.UnixNano(),
 			)
 		}
 	}

@@ -11,12 +11,13 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 func TestActivity_FetchActivity(t *testing.T) {
@@ -213,7 +214,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 			err = activity.Start(t.Context())
 			require.NoError(t, err)
 
-			// Wait for Loki entries to be generated
+			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
 			require.Eventually(t, func() bool {
 				entries := lokiClient.Received()
 				if len(entries) != len(tc.expectedLines) {
@@ -224,6 +225,11 @@ func TestActivity_FetchActivity(t *testing.T) {
 						return false
 					}
 					if !strings.Contains(entry.Line, tc.expectedLines[i]) {
+						return false
+					}
+					// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
+					expectedTimestamp := time.Unix(0, now.UnixNano())
+					if !entry.Timestamp.Equal(expectedTimestamp) {
 						return false
 					}
 				}
