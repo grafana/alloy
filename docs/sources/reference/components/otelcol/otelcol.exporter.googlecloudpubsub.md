@@ -166,7 +166,7 @@ otelcol.processor.batch "gcp" {
 
 otelcol.exporter.googlecloudpubsub "default" {
   project = "my-gcp-project"
-  topic = "projects/<my-gcp-project/topics/my-pubsub-topic"
+  topic = "projects/<my-gcp-project>/topics/my-pubsub-topic"
 }
 ```
 
