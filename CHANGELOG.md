@@ -44,6 +44,7 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
+  - add `activity` collector for postgres (@gaantunes)
 
 ### Enhancements
 
