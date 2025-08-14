@@ -24,6 +24,11 @@ func TestActivity_FetchActivity(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	now := time.Now()
+	// Define different timestamps for testing durations
+	stateChangeTime := now.Add(-10 * time.Second) // 10 seconds ago
+	queryStartTime := now.Add(-30 * time.Second)  // 30 seconds ago
+	xactStartTime := now.Add(-2 * time.Minute)    // 2 minutes ago
+	backendStartTime := now.Add(-1 * time.Hour)   // 1 hour ago
 
 	testCases := []struct {
 		name           string
@@ -46,9 +51,9 @@ func TestActivity_FetchActivity(t *testing.T) {
 					}).AddRow(
 						now, "testdb", 100, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						"client backend", now, sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true},
-						now, "active", now, sql.NullString{},
-						sql.NullString{}, nil, now, sql.NullInt64{Int64: 123, Valid: true},
+						"client backend", backendStartTime, sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true},
+						xactStartTime, "active", stateChangeTime, sql.NullString{},
+						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 123, Valid: true},
 						"SELECT * FROM users",
 					))
 			},
@@ -58,12 +63,7 @@ func TestActivity_FetchActivity(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="500" xmin="400" xact_time="%s" state="active" query_time="%s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="%s"`,
-					time.Duration(0).String(),
-					time.Duration(0).String(),
-					time.Duration(0).String(),
-					time.Duration(0).String(),
-				),
+				`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="500" xmin="400" xact_time="2m0s" state="active" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
 			},
 		},
 		{
@@ -114,8 +114,8 @@ func TestActivity_FetchActivity(t *testing.T) {
 					}).AddRow(
 						now, "testdb", 102, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
-						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
-						now, "waiting", now, sql.NullString{String: "Lock", Valid: true},
+						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+						xactStartTime, "waiting", stateChangeTime, sql.NullString{String: "Lock", Valid: true},
 						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
 						"UPDATE users SET status = 'active'",
 					))
@@ -127,14 +127,8 @@ func TestActivity_FetchActivity(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="waiting" query_time="%s" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
-					time.Duration(0).String(),
-					time.Duration(0).String(),
-					time.Duration(0).String(),
-				),
-				fmt.Sprintf(`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="%s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
-					time.Duration(0).String(),
-				),
+				`level="info" instance="test" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
+				`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
 			},
 		},
 		{
