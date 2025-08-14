@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"regexp"
 	"strings"
