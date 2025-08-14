@@ -29,6 +29,8 @@ You can specify multiple `otelcol.exporter.googlecloudpubsub` components by givi
 
 ```alloy
 otelcol.exporter.googlecloudpubsub "<LABEL>" {
+    project = "project-id"
+    topic   = "projects/project-id/topics/topic-name"
 }
 ```
 
