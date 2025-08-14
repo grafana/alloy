@@ -38,7 +38,7 @@ otelcol.exporter.googlecloudpubsub "<LABEL>" {
 
 Refer to the original [Google Cloud Pub/Sub Exporter][] document.
 
-[Google Cloud Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/googlecloudpubsubexporter/README.md
+[Google Cloud Pub/Sub Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/googlecloudpubsubexporter/README.md
 
 ## Arguments
 
