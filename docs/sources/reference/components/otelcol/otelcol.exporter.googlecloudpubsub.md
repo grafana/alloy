@@ -75,11 +75,11 @@ You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 
 The following arguments are supported:
 
-| Name                        | Type     | Description                                                                                                                                                                                                       | Default | Required |
-|-----------------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `enabled`                   | `bool`   | Enables the ordering.                                                                                                                                                                                             | `false` | no       |
-| `from_resource_attribute`   | `string` | Resource attribute that will be used as the ordering key. Required when ordering.enabled is true. If the resource attribute is missing or has an empty value, the messages will not be ordered for this resource. | `""`    | no       |
-| `remove_resource_attribute` | `string` | If the ordering key resource attribute specified `from_resource_attribute` should be removed from the resource attributes.                                                                                        | `""`    | no       |
+| Name                        | Type     | Description                                                                                                                                                                            | Default | Required |
+| --------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`                   | `bool`   | Enables ordering.                                                                                                                                                                      | `false` | no       |
+| `from_resource_attribute`   | `string` | Resource attribute used as the ordering key. Required when `enabled` is `true`. If the resource attribute is missing or has an empty value, messages aren't ordered for this resource. | `""`    | no       |
+| `remove_resource_attribute` | `string` | Whether the ordering key resource attribute specified `from_resource_attribute` should be removed from the resource attributes.                                                        | `""`    | no       |
 
 ### `retry_on_failure`
 
