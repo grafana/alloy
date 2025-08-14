@@ -1125,6 +1125,37 @@ func TestArguments_Validate(t *testing.T) {
 				// No metrics features defined
 			},
 		},
+		{
+			name: "invalid global sampler configuration",
+			args: Arguments{
+				Traces: Traces{
+					Sampler: SamplerConfig{
+						Name: "invalid_sampler",
+					},
+				},
+			},
+			wantErr: "invalid global sampler configuration: invalid sampler name",
+		},
+		{
+			name: "invalid service sampler configuration",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{
+							OpenPorts: "80",
+							Sampler: SamplerConfig{
+								Name: "traceidratio",
+								// Missing required Arg
+							},
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1354,6 +1385,68 @@ func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestServices_Convert_SamplerConfig(t *testing.T) {
+	tests := []struct {
+		name                 string
+		services             Services
+		expectSamplerConfig  bool
+		expectedSamplerName  string
+	}{
+		{
+			name: "service with empty sampler config",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler:   SamplerConfig{}, // Empty sampler
+				},
+			},
+			expectSamplerConfig: false,
+		},
+		{
+			name: "service with sampler config",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler: SamplerConfig{
+						Name: "traceidratio",
+						Arg:  "0.5",
+					},
+				},
+			},
+			expectSamplerConfig: true,
+			expectedSamplerName: "traceidratio",
+		},
+		{
+			name: "service with only sampler name",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler: SamplerConfig{
+						Name: "always_on",
+					},
+				},
+			},
+			expectSamplerConfig: true,
+			expectedSamplerName: "always_on",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.services.Convert()
+			require.NoError(t, err)
+			require.Len(t, result, 1)
+
+			if tt.expectSamplerConfig {
+				require.NotNil(t, result[0].SamplerConfig)
+				require.Equal(t, tt.expectedSamplerName, result[0].SamplerConfig.Name)
+			} else {
+				require.Nil(t, result[0].SamplerConfig)
+			}
 		})
 	}
 }

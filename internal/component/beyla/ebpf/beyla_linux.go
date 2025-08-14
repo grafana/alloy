@@ -130,15 +130,6 @@ func (args SamplerConfig) Validate() error {
 }
 
 func (args SamplerConfig) Convert() services.SamplerConfig {
-	// Validate the sampler config and return default if invalid
-	if err := args.Validate(); err != nil {
-		// Log the validation error and fall back to default
-		return services.SamplerConfig{
-			Name: SamplerParentBasedAlwaysOn,
-			Arg:  "",
-		}
-	}
-
 	return services.SamplerConfig{
 		Name: args.Name,
 		Arg:  args.Arg,
@@ -275,7 +266,11 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			return nil, err
 		}
 
-		samplerConfig := s.Sampler.Convert()
+		var samplerConfig *services.SamplerConfig
+		if s.Sampler.Name != "" || s.Sampler.Arg != "" {
+			config := s.Sampler.Convert()
+			samplerConfig = &config
+		}
 		attrs = append(attrs, services.RegexSelector{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -286,7 +281,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
 			ExportModes:    s.ExportModes,
-			SamplerConfig:  &samplerConfig,
+			SamplerConfig:  samplerConfig,
 		})
 	}
 	return attrs, nil
@@ -305,7 +300,11 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			return nil, err
 		}
 
-		samplerConfig := s.Sampler.Convert()
+		var samplerConfig *services.SamplerConfig
+		if s.Sampler.Name != "" || s.Sampler.Arg != "" {
+			config := s.Sampler.Convert()
+			samplerConfig = &config
+		}
 		attrs = append(attrs, services.GlobAttributes{
 			Name:           s.Name,
 			Namespace:      s.Namespace,
@@ -316,7 +315,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
 			ExportModes:    s.ExportModes,
-			SamplerConfig:  &samplerConfig,
+			SamplerConfig:  samplerConfig,
 		})
 	}
 	return attrs, nil
