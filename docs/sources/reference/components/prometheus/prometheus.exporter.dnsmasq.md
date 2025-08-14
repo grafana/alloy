@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.dnsmasq
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.dnsmasq
 ---
 
@@ -31,7 +33,7 @@ You can use the following arguments with `prometheus.exporter.dnsmasq`:
 
 ## Blocks
 
-The `prometheus.exporter.dsnmasq` component doesn't support any blocks. You can configure this component with arguments.
+The `prometheus.exporter.dnsmasq` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

@@ -1,29 +1,33 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.processor.groupbyattrs/
 description: Learn about otelcol.processor.groupbyattrs
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.groupbyattrs
 ---
 
-# otelcol.processor.groupbyattrs
+# `otelcol.processor.groupbyattrs`
 
-`otelcol.processor.groupbyattrs` accepts spans, metrics, and traces from other `otelcol`
-components and groups them under the same resource.
+`otelcol.processor.groupbyattrs` accepts spans, metrics, and traces from other `otelcol` components and groups them under the same resource.
 
-{{% admonition type="note" %}}
-`otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry
-Collector `groupbyattrs` processor. If necessary, bug reports or feature requests
-will be redirected to the upstream repository.
-{{% /admonition %}}
+{{< admonition type="note" >}}
+`otelcol.processor.groupbyattrs` is a wrapper over the upstream OpenTelemetry Collector [`groupbyattrs`][] processor.
+If necessary, bug reports or feature requests will be redirected to the upstream repository.
 
-We recommend you use the groupbyattrs processor together with [otelcol.processor.batch][], as a consecutive step. This will reduce the fragmentation of data by grouping records together under the matching Resource/Instrumentation Library.
+[`groupbyattrs`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/groupbyattrsprocessor
+{{< /admonition >}}
 
-You can specify multiple `otelcol.processor.groupbyattrs` components by giving them
-different labels.
+We recommend you use the groupbyattrs processor together with [`otelcol.processor.batch`][otelcol.processor.batch], as a consecutive step.
+This will reduce the fragmentation of data by grouping records together under the matching Resource/Instrumentation Library.
+
+You can specify multiple `otelcol.processor.groupbyattrs` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.processor.groupbyattrs "LABEL" {
+otelcol.processor.groupbyattrs "<LABEL>" {
   output {
     metrics = [...]
     logs    = [...]
@@ -34,32 +38,34 @@ otelcol.processor.groupbyattrs "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following argument with `otelcol.processor.groupbyattrs`:
 
-| Name            | Type              | Description                                                                             | Default | Required |
-|-----------------|-------------------|-----------------------------------------------------------------------------------------|---------|----------|
-| `keys`          | `list(string)`    | Keys that will be used to group the spans, log records, or metric data points together. | `[]`    | no       |
+| Name   | Type           | Description                                                                             | Default | Required |
+| ------ | -------------- | --------------------------------------------------------------------------------------- | ------- | -------- |
+| `keys` | `list(string)` | Keys that will be used to group the spans, log records, or metric data points together. | `[]`    | no       |
 
-`keys` is a string array that is used for grouping the data. 
-If it is empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
+`keys` is a string array that's used for grouping the data.
+If it's empty, the processor performs compaction and reassociates all spans with matching Resource and InstrumentationLibrary.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.processor.groupbyattrs`:
+You can use the following blocks with `otelcol.processor.groupbyattrs`:
 
-Hierarchy | Block       | Description                                       | Required
---------- | ----------- | ------------------------------------------------- | --------
-output    | [output][]  | Configures where to send received telemetry data. | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### output block
+### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -68,21 +74,18 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                   |
-|---------|--------------------|---------------------------------------------------------------|
+| ------- | ------------------ | ------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | Accepts `otelcol.Consumer` data for metrics, logs, or traces. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
-logs, or traces).
+`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
 ## Component health
 
-`otelcol.processor.groupbyattrs` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.processor.groupbyattrs` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.processor.groupbyattrs` doesn't expose any component-specific debug
-information.
+`otelcol.processor.groupbyattrs` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
@@ -90,11 +93,11 @@ information.
 
 ## Examples
 
-### Grouping metrics
+### Group metrics
 
 Consider the following metrics, all originally associated to the same Resource:
 
-```
+```text
 Resource {host.name="localhost",source="prom"}
   Metric "gauge-1" (GAUGE)
     DataPoint {host.name="host-A",id="eth0"}
@@ -126,9 +129,9 @@ otelcol.processor.groupbyattrs "default" {
 }
 ```
 
-The output of the processor will therefore be:
+The output of the processor is:
 
-```
+```text
 Resource {host.name="localhost",source="prom"}
   Metric "dont-move" (Gauge)
     DataPoint {id="eth0"}
@@ -154,22 +157,22 @@ Resource {host.name="host-B",source="prom"}
 
 This output demonstrates how `otelcol.processor.groupbyattrs` works in various situations:
 
-- The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
-- The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics have not been merged under the same Metric, because their DataType is different.
-- The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
-- The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
-- The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
-- While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
+* The DataPoints for the `gauge-1` (GAUGE) metric were originally split under 2 Metric instances and have been merged in the output.
+* The DataPoints of the `mixed-type` (GAUGE) and `mixed-type` (SUM) metrics haven't been merged under the same Metric, because their DataType is different.
+* The `dont-move` metric DataPoints don't have a `host.name` attribute and therefore remained under the original Resource.
+* The new Resources inherited the attributes from the original Resource (`source="prom"`), plus the specified attributes from the processed metrics (`host.name="host-A"` or `host.name="host-B"`).
+* The specified "grouping" attributes that are set on the new Resources are also removed from the metric DataPoints.
+* While not shown in the above example, the processor also merges collections of records under matching InstrumentationLibrary.
 
 ### Compaction
 
 Sometimes telemetry data can become fragmented due to multiple duplicated ResourceSpans/ResourceLogs/ResourceMetrics objects.
-This leads to additional memory consumption, increased processing costs, inefficient serialization and increase of the export requests. 
+This leads to additional memory consumption, increased processing costs, inefficient serialization and increase of the export requests.
 In such situations, `otelcol.processor.groupbyattrs` can be used to compact the data with matching Resource and InstrumentationLibrary properties.
 
 For example, consider this input data:
 
-```
+```text
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
@@ -194,7 +197,8 @@ Resource {host.name="otherhost"}
     Span {span_id=5, ...}
 ```
 
-You can use `otelcol.processor.groupbyattrs` with its default configuration to compact the data: 
+You can use `otelcol.processor.groupbyattrs` with its default configuration to compact the data:
+
 ```alloy
 otelcol.processor.groupbyattrs "default" {
   output {
@@ -203,9 +207,9 @@ otelcol.processor.groupbyattrs "default" {
 }
 ```
 
-The output will be:
+The output is:
 
-```
+```text
 Resource {host.name="localhost"}
   InstrumentationLibrary {name="MyLibrary"}
   Spans
@@ -221,7 +225,9 @@ Resource {host.name="otherhost"}
   Spans
     Span {span_id=5, ...}
 ```
+
 [otelcol.processor.batch]: ../otelcol.processor.batch/
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

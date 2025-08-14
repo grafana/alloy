@@ -23,8 +23,9 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression string  `alloy:"expression,attr"`
-	Source     *string `alloy:"source,attr,optional"`
+	Expression       string  `alloy:"expression,attr"`
+	Source           *string `alloy:"source,attr,optional"`
+	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
 // validateRegexConfig validates the config and return a regex
@@ -118,6 +119,35 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 	for i, name := range r.expression.SubexpNames() {
 		if i != 0 && name != "" {
 			extracted[name] = match[i]
+			if r.config.LabelsFromGroups {
+				labelName := model.LabelName(name)
+				labelValue := model.LabelValue(match[i])
+
+				// TODO: add support for different validation schemes.
+				//nolint:staticcheck
+				if !labelName.IsValid() {
+					if Debug {
+						level.Debug(r.logger).Log("msg", "invalid label name from regex capture group", "labelName", labelName)
+					}
+					continue
+				}
+
+				if !labelValue.IsValid() {
+					if Debug {
+						level.Debug(r.logger).Log("msg", "invalid label value from regex capture group", "labelName", labelName, "labelValue", labelValue)
+					}
+					continue
+				}
+
+				oldLabelValue, ok := labels[labelName]
+
+				// Label from capture group will override existing label with same name
+				if Debug && ok {
+					level.Debug(r.logger).Log("msg", "label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
+				}
+
+				labels[labelName] = labelValue
+			}
 		}
 	}
 	if Debug {

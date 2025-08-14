@@ -1461,6 +1461,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					host.cpu.stepping { enabled = true }
 					host.cpu.vendor.id { enabled = false }
 					host.id { enabled = false }
+					host.interface { enabled = true }
 					host.name { enabled = false }
 					// os.description { enabled = false }
 					// os.type { enabled = true }
@@ -1499,14 +1500,26 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.id": map[string]interface{}{
 							"enabled": false,
 						},
+						"host.interface": map[string]interface{}{
+							"enabled": true,
+						},
 						"host.name": map[string]interface{}{
+							"enabled": false,
+						},
+						"os.build.id": map[string]interface{}{
 							"enabled": false,
 						},
 						"os.description": map[string]interface{}{
 							"enabled": false,
 						},
+						"os.name": map[string]interface{}{
+							"enabled": false,
+						},
 						"os.type": map[string]interface{}{
 							"enabled": true,
+						},
+						"os.version": map[string]interface{}{
+							"enabled": false,
 						},
 					},
 				},

@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/static/traces/pushreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/pipeline"
-	"gopkg.in/yaml.v2"
 )
 
 func tmpFile(t *testing.T, content string) (*os.File, func()) {
@@ -72,11 +73,45 @@ receivers:
 			name: "empty receiver config",
 			cfg: `
 receivers:
-  jaeger:
+  jaeger: {}
 remote_write:
   - endpoint: example.com:12345
 `,
 			expectedError: true,
+		},
+		{
+			name: "nil jaeger config",
+			cfg: `
+receivers:
+  jaeger:
+remote_write:
+  - endpoint: example.com:12345
+`,
+			expectedError: false,
+			expectedConfig: `
+receivers:
+  push_receiver: {}
+  jaeger:
+    protocols:
+      grpc:
+      thrift_http:
+      thrift_binary:
+      thrift_compact:
+exporters:
+  otlp/0:
+    endpoint: example.com:12345
+    compression: gzip
+    retry_on_failure:
+      max_elapsed_time: 60s
+processors: {}
+extensions: {}
+service:
+  pipelines:
+    traces:
+      exporters: ["otlp/0"]
+      processors: []
+      receivers: ["push_receiver", "jaeger"]
+`,
 		},
 		{
 			name: "basic config",
@@ -364,36 +399,6 @@ service:
       receivers: ["push_receiver", "jaeger"]
   extensions: ["jaegerremotesampling/0", "jaegerremotesampling/1"]
 `,
-		},
-		{
-			name: "push_config and remote_write",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
-		},
-		{
-			name: "push_config.batch and batch",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-  batch:
-    timeout: 5s
-    send_batch_size: 100
-batch:
-  timeout: 5s
-  send_batch_size: 100
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
 		},
 		{
 			name: "one backend with remote_write",
@@ -1742,10 +1747,13 @@ load_balancing:
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
 					var p pipeline.ID
+					signal := pipeline.Signal{}
+					err = signal.UnmarshalText([]byte(componentID.Type().String()))
+					require.NoError(t, err)
 					if componentID.Name() != "" {
-						p = pipeline.MustNewIDWithName(componentID.Type().String(), componentID.Name())
+						p = pipeline.NewIDWithName(signal, componentID.Name())
 					} else {
-						p = pipeline.MustNewID(componentID.Type().String())
+						p = pipeline.NewID(signal)
 					}
 
 					assert.NotNil(t, actualConfig.Service.Pipelines[p])

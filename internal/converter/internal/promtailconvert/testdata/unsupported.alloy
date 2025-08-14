@@ -1,0 +1,7 @@
+loki.write "default" {
+	endpoint {
+		url               = "http://localhost/loki/api/v1/push"
+		retry_on_http_429 = false
+	}
+	external_labels = {}
+}

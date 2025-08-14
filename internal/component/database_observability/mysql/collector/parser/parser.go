@@ -1,24 +1,16 @@
 package parser
 
-import "github.com/go-kit/log"
+import (
+	"github.com/pingcap/tidb/pkg/parser/ast"
+)
 
 type Parser interface {
-	Parse(sql string) (any, error)
+	Parse(sql string) (StatementAstNode, error)
 	Redact(sql string) (string, error)
-	StmtType(stmt any) StatementType
-	ParseTableName(t any) string
-	ExtractTableNames(logger log.Logger, digest string, stmt any) []string
+	ExtractTableNames(stmt StatementAstNode) []string
 	CleanTruncatedText(sql string) (string, error)
 }
 
-type StatementType string
+type StatementAstNode ast.StmtNode
 
-var (
-	StatementTypeSelect StatementType = "select"
-	StatementTypeInsert StatementType = "insert"
-	StatementTypeUpdate StatementType = "update"
-	StatementTypeDelete StatementType = "delete"
-
-	_ Parser = (*XwbSqlParser)(nil)
-	_ Parser = (*TiDBSqlParser)(nil)
-)
+var _ Parser = (*TiDBSqlParser)(nil)

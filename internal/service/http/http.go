@@ -233,8 +233,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			return
 		}
 
-		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintln(w, "All Alloy components are healthy.")
 	})
 
 	r.Handle(
@@ -434,6 +434,7 @@ func (s *Service) componentHandler(getHost func() (service.Host, error), pathPre
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = fmt.Fprintf(w, "failed to parse URL path %q: %s\n", r.URL.Path, err)
+			return
 		}
 
 		info, err := host.GetComponent(componentID, component.InfoOptions{})
@@ -701,12 +702,7 @@ func printFileRedacted(f *ast.File) ([]byte, error) {
 
 func remoteCfgHostProvider(host service.Host) func() (service.Host, error) {
 	return func() (service.Host, error) {
-		svc, ok := host.GetService(remotecfg.ServiceName)
-		if !ok {
-			// This will never happen as the service dependency is explicit.
-			return nil, fmt.Errorf("failed to get the remotecfg service")
-		}
-		return svc.Data().(remotecfg.Data).Host, nil
+		return remotecfg.GetHost(host)
 	}
 }
 

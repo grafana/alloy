@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -36,7 +37,7 @@ const (
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.receive_http",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))
@@ -63,6 +64,7 @@ func (a *Arguments) SetToDefault() {
 type Component struct {
 	opts               component.Options
 	server             *fnet.TargetServer
+	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
 	mut                sync.Mutex
@@ -98,6 +100,13 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) Update(args component.Arguments) error {
+	_, err := c.update(args)
+	return err
+}
+
+// returns true if the server was shutdown
+func (c *Component) update(args component.Arguments) (bool, error) {
+	shutdown := false
 	newArgs := args.(Arguments)
 
 	c.mut.Lock()
@@ -122,12 +131,14 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	serverNeedsRestarting := c.server == nil || !reflect.DeepEqual(c.server, *newArgs.Server.HTTP)
+	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {
-		return nil
+		return shutdown, nil
 	}
-
+	shutdown = true
 	c.shutdownServer()
+	c.server = nil
+	c.serverConfig = nil
 
 	// [server.Server] registers new metrics every time it is created. To
 	// avoid issues with re-registering metrics with the same name, we create a
@@ -138,11 +149,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	srv, err := fnet.NewTargetServer(c.opts.Logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
-		return fmt.Errorf("failed to create server: %w", err)
+		return shutdown, fmt.Errorf("failed to create server: %w", err)
 	}
 	c.server = srv
+	c.serverConfig = newArgs.Server.HTTP
 
-	return c.server.MountAndRun(func(router *mux.Router) {
+	return shutdown, c.server.MountAndRun(func(router *mux.Router) {
 		// this mounts the og pyroscope ingest API, mostly used by SDKs
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
 

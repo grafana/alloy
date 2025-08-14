@@ -1,10 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.googlecloud/
 description: Learn about otelcol.exporter.googlecloud
+labels:
+  products:
+    - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.googlecloud
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Community</span>
 
 # `otelcol.exporter.googlecloud`
 
@@ -13,8 +17,10 @@ title: otelcol.exporter.googlecloud
 `otelcol.exporter.googlecloud` accepts metrics, traces, and logs from other `otelcol` components and sends it to Google Cloud.
 
 {{< admonition type="note" >}}
-`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector `googlecloud` exporter from the `otelcol-contrib`  distribution.
+`otelcol.exporter.googlecloud` is a wrapper over the upstream OpenTelemetry Collector [`googlecloud`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`googlecloud`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudexporter
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.googlecloud` components by giving them different labels.
@@ -36,11 +42,11 @@ Refer to the original [Google Cloud Exporter][] document.
 
 You can use the following arguments with `otelcol.exporter.googlecloud`:
 
-| Name                        | Type     | Description                                                                                                                                                                                                                        | Default                                       | Required |
-|-----------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
-| `project`                   | `string` | GCP project identifier.                                                                                                                                                                                                            | Fetch from credentials                        | no       |
-| `destination_project_quota` | `bool`   | Counts quota for traces and metrics against the project to which the data is sent as opposed to the project associated with the Collector's service account. For example, when setting `project_id` or using multi-project export. | `false`                                       | no       |
-| `user_agent`                | `string` | Override the user agent string sent on requests to Cloud Monitoring (currently only applies to metrics). Specify `{{version}}` to include the application version number.                                                          | `opentelemetry-collector-contrib {{version}}` | no       |
+| Name                        | Type     | Description                                                                                                                                                                                                                        | Default                                         | Required |
+|-----------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|----------|
+| `project`                   | `string` | GCP project identifier.                                                                                                                                                                                                            | Fetch from credentials                          | no       |
+| `destination_project_quota` | `bool`   | Counts quota for traces and metrics against the project to which the data is sent as opposed to the project associated with the Collector's service account. For example, when setting `project_id` or using multi-project export. | `false`                                         | no       |
+| `user_agent`                | `string` | Override the user agent string sent on requests to Cloud Monitoring (currently only applies to metrics). Specify `{{version}}` to include the application version number.                                                          | `"opentelemetry-collector-contrib {{version}}"` | no       |
 
 ## Blocks
 
@@ -50,7 +56,7 @@ You can use the following blocks with `otelcol.exporter.googlecloud`:
 |---------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
 | [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
-| [`log`][log]                                      | Configuration for sending metrics to Cloud Logging.                        | no       |
+| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
 | [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
 | [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
 | [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
@@ -79,7 +85,7 @@ The following arguments are supported:
 |--------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `target_principal` | `string`       | TargetPrincipal is the email address of the service account to impersonate.                                                                                                                  |         | yes      |
 | `delegates`        | `list(string)` | Delegates are the service account email addresses in a delegation chain. Each service account must be granted roles/iam.serviceAccountTokenCreator on the next service account in the chain. | `[]`    | no       |
-| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you wish to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
+| `subject`          | `string`       | Subject is the sub field of a JWT. This field should only be set if you need to impersonate as a user. This feature is useful when using domain wide delegation.                             | `""`    | no       |
 
 ### `log`
 
@@ -96,30 +102,30 @@ The following arguments are supported:
 | `resource_filters` > `prefix` | `string`       | Match resource keys by prefix.                                                                                                                                                                             | `""`                         | no       |
 | `resource_filters` > `regex`  | `string`       | Match resource keys by regular expression.                                                                                                                                                                 | `""`                         | no       |
 | `service_resource_labels`     | `bool`         | If true, the exporter copies the OTel service.name, service.namespace, and service.instance.id resource attributes into the GCM timeseries metric labels.                                                  | `true`                       | no       |
-| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint is not `""`.                                                                                                                 | `false`                      | no       |
+| `use_insecure`                | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                  | `false`                      | no       |
 
 ### `metric`
 
 The following arguments are supported:
 
-| Name                                   | Type           | Description                                                                                                                                                                                                                 | Default                                                  | Required |
-|----------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|----------|
-| `compression`                          | `string`       | Compression format for Metrics gRPC requests. Supported values: [`gzip`].                                                                                                                                                   | `""` (no compression)                                    | no       |
-| `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the  channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                             | `10`                                                     | no       |
-| `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                  | no       |
-| `cumulative_normalization`             | `bool`         | If true, normalizes cumulative metrics without start times or with explicit reset points by subtracting subsequent points from the initial point. Since it caches starting points, it may result in increased memory usage. | `true`                                                   | no       |
-| `endpoint`                             | `string`       | Endpoint where metric data is sent to.                                                                                                                                                                                      | `monitoring.googleapis.com:443`                          | no       |
-| `grpc_pool_size`                       | `number`       | Sets the size of the connection pool in the GCP client.                                                                                                                                                                     | `1`                                                      | no       |
-| `instrumentation_library_labels`       | `bool`         | If true, set the `instrumentation_source` and `instrumentation_version` labels.                                                                                                                                             | `true`                                                   | no       |
-| `known_domains`                        | `list(string)` | If a metric belongs to one of these domains it doesn't get a prefix.                                                                                                                                                        | `[googleapis.com, kubernetes.io, istio.io, knative.dev]` | no       |
-| `prefix`                               | `string`       | The prefix to add to metrics.                                                                                                                                                                                               | `workload.googleapis.com`                                | no       |
-| `resource_filters.prefix`              | `string`       | Match resource keys by prefix.                                                                                                                                                                                              | `""`                                                     | no       |
-| `resource_filters.regex`               | `string`       | Match resource keys by regular expression.                                                                                                                                                                                  | `""`                                                     | no       |
-| `resource_filters`                     | `list(object)` | If provided, resource attributes matching any filter is included in metric labels. Can be defined by `prefix`, `regex`, or `prefix` AND `regex`. Each object must contain one of `prefix` or `regex` or both.               | `[]`                                                     | no       |
-| `service_resource_labels`              | `bool`         | If true, the exporter copies the OTel service.name, service.namespace, and service.instance.id resource attributes into the GCM timeseries metric labels.                                                                   | `true`                                                   | no       |
-| `skip_create_descriptor`               | `bool`         | If set to true, don't send metric descriptors to GCM.                                                                                                                                                                       | `false`                                                  | no       |
-| `sum_of_squared_deviation`             | `bool`         | If true, enables calculation of an estimated sum of squared deviation. It's an estimate, and isn't exact.                                                                                                                   | `false`                                                  | no       |
-| `use_insecure`                         | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                                   | `false`                                                  | no       |
+| Name                                   | Type           | Description                                                                                                                                                                                                                 | Default                                                          | Required |
+|----------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|----------|
+| `compression`                          | `string`       | Compression format for Metrics gRPC requests. Supported values: [`gzip`].                                                                                                                                                   | `""` (no compression)                                            | no       |
+| `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the  channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                             | `10`                                                             | no       |
+| `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                          | no       |
+| `cumulative_normalization`             | `bool`         | If true, normalizes cumulative metrics without start times or with explicit reset points by subtracting subsequent points from the initial point. Since it caches starting points, it may result in increased memory usage. | `true`                                                           | no       |
+| `endpoint`                             | `string`       | Endpoint where metric data is sent to.                                                                                                                                                                                      | `"monitoring.googleapis.com:443"`                                | no       |
+| `grpc_pool_size`                       | `number`       | Sets the size of the connection pool in the GCP client.                                                                                                                                                                     | `1`                                                              | no       |
+| `instrumentation_library_labels`       | `bool`         | If true, set the `instrumentation_source` and `instrumentation_version` labels.                                                                                                                                             | `true`                                                           | no       |
+| `known_domains`                        | `list(string)` | If a metric belongs to one of these domains it doesn't get a prefix.                                                                                                                                                        | `["googleapis.com", "kubernetes.io", "istio.io", "knative.dev"]` | no       |
+| `prefix`                               | `string`       | The prefix to add to metrics.                                                                                                                                                                                               | `"workload.googleapis.com"`                                      | no       |
+| `resource_filters.prefix`              | `string`       | Match resource keys by prefix.                                                                                                                                                                                              | `""`                                                             | no       |
+| `resource_filters.regex`               | `string`       | Match resource keys by regular expression.                                                                                                                                                                                  | `""`                                                             | no       |
+| `resource_filters`                     | `list(object)` | If provided, resource attributes matching any filter is included in metric labels. Can be defined by `prefix`, `regex`, or `prefix` AND `regex`. Each object must contain one of `prefix` or `regex` or both.               | `[]`                                                             | no       |
+| `service_resource_labels`              | `bool`         | If true, the exporter copies the OTel service.name, service.namespace, and service.instance.id resource attributes into the GCM timeseries metric labels.                                                                   | `true`                                                           | no       |
+| `skip_create_descriptor`               | `bool`         | If set to true, don't send metric descriptors to GCM.                                                                                                                                                                       | `false`                                                          | no       |
+| `sum_of_squared_deviation`             | `bool`         | If true, enables calculation of an estimated sum of squared deviation. It's an estimate, and isn't exact.                                                                                                                   | `false`                                                          | no       |
+| `use_insecure`                         | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                                                                   | `false`                                                          | no       |
 
 ### `experimental_wal`
 
@@ -127,8 +133,8 @@ The following arguments are supported:
 
 | Name          | Type     | Description                                                                              | Default | Required |
 |---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
-| `directory`   | `string` | Path to local directory for the WAL file.                                                | `./`    | yes      |
-| `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `1h`    | no       |
+| `directory`   | `string` | Path to local directory for the WAL file.                                                | `"./"`  | yes      |
+| `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `"1h"`  | no       |
 
 ### `sending_queue`
 
@@ -138,14 +144,14 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 
 ### `trace`
 
-| Name                                 | Type           | Description                                                                                                                                                                      | Default                         | Required |
-|--------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|----------|
-| `attribute_mappings`                 | `list(object)` | Determines how to map from OpenTelemetry attribute keys to Google Cloud Trace keys. By default, it changes HTTP and service keys so that they appear more prominently in the UI. | `[]`                            | no       |
-| `attribute_mappings` > `key`         | `string`       | The OpenTelemetry attribute key.                                                                                                                                                 | `""`                            | no       |
-| `attribute_mappings` > `replacement` | `string`       | The attribute sent to Google Cloud Trace.                                                                                                                                        | `""`                            | no       |
-| `endpoint`                           | `string`       | Endpoint where trace data is sent.                                                                                                                                               | `cloudtrace.googleapis.com:443` | no       |
-| `grpc_pool_size`                     | `int`          | Sets the size of the connection pool in the GCP client. Defaults to a single connection.                                                                                         | `1`                             | no       |
-| `use_insecure`                       | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                        | `false`                         | no       |
+| Name                                 | Type           | Description                                                                                                                                                                      | Default                           | Required |
+|--------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|----------|
+| `attribute_mappings`                 | `list(object)` | Determines how to map from OpenTelemetry attribute keys to Google Cloud Trace keys. By default, it changes HTTP and service keys so that they appear more prominently in the UI. | `[]`                              | no       |
+| `attribute_mappings` > `key`         | `string`       | The OpenTelemetry attribute key.                                                                                                                                                 | `""`                              | no       |
+| `attribute_mappings` > `replacement` | `string`       | The attribute sent to Google Cloud Trace.                                                                                                                                        | `""`                              | no       |
+| `endpoint`                           | `string`       | Endpoint where trace data is sent.                                                                                                                                               | `"cloudtrace.googleapis.com:443"` | no       |
+| `grpc_pool_size`                     | `int`          | Sets the size of the connection pool in the GCP client. Defaults to a single connection.                                                                                         | `1`                               | no       |
+| `use_insecure`                       | `bool`         | If true, disables gRPC client transport security. Only has effect if Endpoint isn't `""`.                                                                                        | `false`                           | no       |
 
 ## Exported fields
 

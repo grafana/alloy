@@ -40,7 +40,7 @@ func (lc *loggerCore) Enabled(zapcore.Level) bool {
 // With implements zapcore.Core, returning a new logger core with ff appended
 // to the list of fields.
 func (lc *loggerCore) With(ff []zapcore.Field) zapcore.Core {
-	// Encode all of the fields so that they're go-kit compatible and create a
+	// Encode all the fields so that they're go-kit compatible and create a
 	// new logger from it.
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
@@ -132,30 +132,34 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	enc := newArrayFieldEncoder()
-	err := marshaler.MarshalLogArray(enc)
-	if err != nil {
-		return err
-	}
-	b, err := enc.jsonMarshal()
-	if err != nil {
-		return err
-	}
-	fe.fields = append(fe.fields, fe.keyName(key), string(b))
+	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
+		enc := newArrayFieldEncoder()
+		err := marshaler.MarshalLogArray(enc)
+		if err != nil {
+			return err.Error()
+		}
+		b, err := enc.jsonMarshal()
+		if err != nil {
+			return err.Error()
+		}
+		return string(b)
+	}})
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	enc := newObjectFieldEncoder()
-	err := marshaler.MarshalLogObject(enc)
-	if err != nil {
-		return err
-	}
-	b, err := enc.jsonMarshal()
-	if err != nil {
-		return err
-	}
-	fe.fields = append(fe.fields, fe.keyName(key), string(b))
+	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
+		enc := newObjectFieldEncoder()
+		err := marshaler.MarshalLogObject(enc)
+		if err != nil {
+			return err.Error()
+		}
+		b, err := enc.jsonMarshal()
+		if err != nil {
+			return err.Error()
+		}
+		return string(b)
+	}})
 	return nil
 }
 
@@ -487,4 +491,12 @@ func (fe *arrayFieldEncoder) AppendUintptr(value uintptr) {
 func (fe *arrayFieldEncoder) AppendReflected(value interface{}) error {
 	fe.arr = append(fe.arr, value)
 	return nil
+}
+
+type lazyStringer struct {
+	f func() string
+}
+
+func (l lazyStringer) String() string {
+	return l.f()
 }

@@ -56,8 +56,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -319,9 +319,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
-		ComponentBlocks: source.components,
-		ConfigBlocks:    source.configBlocks,
-		DeclareBlocks:   source.declareBlocks,
+		ComponentBlocks: source.Components(),
+		ConfigBlocks:    source.Configs(),
+		DeclareBlocks:   source.Declares(),
 		ArgScope: vm.NewScope(map[string]interface{}{
 			importsource.ModulePath: modulePath,
 		}),
@@ -332,9 +332,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
-		ComponentBlocks:         source.components,
-		ConfigBlocks:            source.configBlocks,
-		DeclareBlocks:           source.declareBlocks,
+		ComponentBlocks:         source.Components(),
+		ConfigBlocks:            source.Configs(),
+		DeclareBlocks:           source.Declares(),
 		CustomComponentRegistry: customComponentRegistry,
 		ArgScope:                customComponentRegistry.Scope(),
 	})

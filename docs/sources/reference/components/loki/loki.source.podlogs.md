@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.source.podlogs
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.podlogs
 ---
 
@@ -35,14 +37,20 @@ loki.source.podlogs "<LABEL>" {
 
 The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
-`loki.source.podlogs` supports the following arguments:
+You can use the following arguments with `loki.source.podlogs`:
 
-| Name         | Type                 | Description                               | Default | Required |
-| ------------ | -------------------- | ----------------------------------------- | ------- | -------- |
-| `forward_to` | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
+| Name            | Type                 | Description                                                                       | Default | Required |
+| ------------    | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                         |         | yes      |
+| `tail_from_end` | `bool`               | Start reading from the end of the log stream for newly discovered Pod containers. | `false` | no       |
 
 `loki.source.podlogs` searches for `PodLogs` resources on Kubernetes.
 Each `PodLogs` resource describes a set of pods to tail logs from.
+
+When `tail_from_end` is `false` (the default), `loki.source.podlogs` reads all available logs from the Kubernetes API for newly discovered Pod containers.
+For long-running Pods, this can result in a large volume of logs being processed, which may be rejected by the downstream Loki instance if they are too old.
+Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer. 
+If a last-read offset is already saved for a Pod, `loki.source.podlogs` will resume from that position and ignore the `tail_from_end` argument.
 
 ## `PodLogs` custom resource
 
@@ -121,6 +129,7 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`clustering`][clustering]                                    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`namespace_selector`][selector]                              | Label selector for which namespaces to discover `PodLogs` in.                               | no       |
 | `namespace_selector` > [`match_expression`][match_expression] | Label selector expression for which namespaces to discover `PodLogs` in.                    | no       |
+| [`node_filter`][node_filter]                                  | Filter Pods by node to limit discovery scope.                                               | no       |
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
@@ -132,6 +141,7 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [match_expression]: #match_expression
+[node_filter]: #node_filter
 [oauth2]: #oauth2
 [selector]: #selector-and-namespace_selector
 [tls_config]: #tls_config
@@ -144,13 +154,13 @@ If the `client` block isn't provided, the default in-cluster configuration with 
 The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
-|--------------------------|---------------------|--------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
 | `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
@@ -204,6 +214,37 @@ Clustering looks only at the following labels for determining the shard key:
 * `namespace`
 
 [using clustering]: ../../../../get-started/clustering/
+
+### `node_filter`
+
+The `node_filter` block configures node-based filtering for Pod discovery.
+
+The following arguments are supported: 
+
+| Name        | Type     | Description                                                                               | Default | Required |
+| ----------- | -------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+| `enabled`   | `bool`   | Enable node-based filtering for Pod discovery.                                            | `false` | no       |
+| `node_name` | `string` | Node name to filter Pods by. Falls back to the `NODE_NAME` environment variable if empty. | `""`    | no       |
+
+When you set `enabled` to `true`, `loki.source.podlogs` only discovers and collects logs from Pods running on the specified node.
+This is particularly useful when running {{< param "PRODUCT_NAME" >}} as a DaemonSet to avoid collecting logs from Pods on other nodes.
+
+If you don't specify `node_name`, `loki.source.podlogs` attempts to use the `NODE_NAME` environment variable.
+This allows for easy configuration in DaemonSet deployments where you can inject the node name with the [Kubernetes downward API][].
+
+[Kubernetes downward API]: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
+
+Example DaemonSet configuration:
+
+```yaml
+env:
+  - name: NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+```
+
+Node filtering significantly reduces API server load and network traffic by limiting Pod discovery to only the local node, making it highly recommended for DaemonSet deployments in large clusters.
 
 ### `match_expression`
 
@@ -275,6 +316,25 @@ This example discovers all `PodLogs` resources and forwards collected logs to a 
 ```alloy
 loki.source.podlogs "default" {
   forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+}
+```
+
+This example shows how to use node filtering for DaemonSet deployments to collect logs only from Pods running on the current node:
+
+```alloy
+loki.source.podlogs "daemonset" {
+  forward_to = [loki.write.local.receiver]
+  
+  node_filter {
+    enabled = true
+    // node_name will be automatically read from NODE_NAME environment variable
+  }
 }
 
 loki.write "local" {

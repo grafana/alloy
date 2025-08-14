@@ -58,17 +58,18 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 
 func toDatadogExporter(cfg *datadogOtelconfig.Config) *datadog.Arguments {
 	return &datadog.Arguments{
-		Client:       toDatadogHTTPClientArguments(cfg.ClientConfig),
-		Retry:        toRetryArguments(cfg.BackOffConfig),
-		Queue:        toQueueArguments(cfg.QueueSettings),
-		APISettings:  toDatadogAPIArguments(cfg.API),
-		Traces:       toDatadogTracesArguments(cfg.Traces),
-		Metrics:      toDatadogMetricsArguments(cfg.Metrics),
-		Logs:         toDatadogLogsArguments(cfg.Logs),
-		HostMetadata: toDatadogHostMetadataArguments(cfg.HostMetadata),
-		OnlyMetadata: cfg.OnlyMetadata,
-		Hostname:     cfg.Hostname,
-		DebugMetrics: common.DefaultValue[datadog.Arguments]().DebugMetrics,
+		Client:                   toDatadogHTTPClientArguments(cfg.ClientConfig),
+		Retry:                    toRetryArguments(cfg.BackOffConfig),
+		Queue:                    toQueueArguments(cfg.QueueSettings),
+		APISettings:              toDatadogAPIArguments(cfg.API),
+		Traces:                   toDatadogTracesArguments(cfg.Traces),
+		Metrics:                  toDatadogMetricsArguments(cfg.Metrics),
+		Logs:                     toDatadogLogsArguments(cfg.Logs),
+		HostMetadata:             toDatadogHostMetadataArguments(cfg.HostMetadata),
+		OnlyMetadata:             cfg.OnlyMetadata,
+		HostnameDetectionTimeout: cfg.HostnameDetectionTimeout,
+		Hostname:                 cfg.Hostname,
+		DebugMetrics:             common.DefaultValue[datadog.Arguments]().DebugMetrics,
 	}
 }
 
@@ -82,7 +83,7 @@ func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.Da
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     cfg.IdleConnTimeout,
 		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLSSetting.Insecure,
+		InsecureSkipVerify:  cfg.TLS.Insecure,
 	}
 }
 

@@ -45,17 +45,13 @@ func (f fanout) Rollback() error {
 }
 
 func (f fanout) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
-	// Exemplars are disabled due to https://github.com/grafana/alloy/issues/1915
-	return ref, nil
-	/*
-		for _, child := range f.children {
-			_, err := child.AppendExemplar(ref, l, e)
-			if err != nil {
-				return ref, err
-			}
+	for _, child := range f.children {
+		_, err := child.AppendExemplar(ref, l, e)
+		if err != nil {
+			return ref, err
 		}
-		return ref, nil
-	*/
+	}
+	return ref, nil
 }
 
 func (f fanout) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
@@ -86,4 +82,20 @@ func (f fanout) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct
 		}
 	}
 	return ref, nil
+}
+
+func (f fanout) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	for _, child := range f.children {
+		_, err := child.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+		if err != nil {
+			return ref, err
+		}
+	}
+	return ref, nil
+}
+
+func (f fanout) SetOptions(opts *storage.AppendOptions) {
+	for _, child := range f.children {
+		child.SetOptions(opts)
+	}
 }

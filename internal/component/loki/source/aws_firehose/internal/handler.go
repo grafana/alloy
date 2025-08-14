@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/logproto"
-	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
+	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -194,6 +194,8 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 		}
 
 		// ignore invalid labels
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
 			continue
 		}
@@ -274,6 +276,9 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	cwLogsLabels.Set("__aws_cw_msg_type", cwRecord.MessageType)
 
 	for _, event := range cwRecord.LogEvents {
+		if h.useIncomingTs {
+			timestamp = time.UnixMilli(event.Timestamp)
+		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
 			Entry: logproto.Entry{
@@ -316,12 +321,16 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !labelName.IsValidLegacy() {
 			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
 
 			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
+			// TODO: add support for different validation schemes.
+			//nolint:staticcheck
 			if !labelName.IsValidLegacy() {
 				// This situation can happen when:
 				// - the header with label information is a valid JSON

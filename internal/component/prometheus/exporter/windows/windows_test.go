@@ -3,6 +3,7 @@ package windows
 import (
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -32,8 +33,8 @@ var (
 		}
 
         service {
-            where_clause        = "where"
-			enable_v2_collector = "true"
+            include = ".*"
+			exclude = "alloy"
         }
 
 		physical_disk {
@@ -68,13 +69,29 @@ var (
 			enabled_classes = ["accessmethods"]
 		}
 		
-		msmq {
-            where_clause = "where"
-		}
-		
 		logical_disk {
 			include = ".+"
 			exclude = ""
+		}
+
+		tcp {
+			enabled_list = ["example"]
+		}
+
+		filetime {
+			file_patterns = ["example"]
+		}
+
+		performancecounter {
+			objects =   "---" +
+						"	- name: \"Processor\"" +
+						"		counters:" +
+						"			- name: \"% Processor Time\"" +
+						"			  instance: \"_Total\"" +
+						"			  type: \"counter\"" +
+						"			  labels:" +
+						"				  state: idle"
+
 		}
 		`
 )
@@ -90,10 +107,11 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, ".+", args.IIS.SiteInclude)
 	require.Equal(t, "", args.IIS.AppExclude)
 	require.Equal(t, ".+", args.IIS.AppInclude)
-	require.Equal(t, "C:", args.TextFile.TextFileDirectory)
+	require.Equal(t, "C:", args.TextFileDeprecated.TextFileDirectory)
 	require.Equal(t, "", args.SMTP.Exclude)
 	require.Equal(t, ".+", args.SMTP.Include)
-	require.Equal(t, "where", args.Service.Where)
+	require.Equal(t, ".*", args.Service.Include)
+	require.Equal(t, "alloy", args.Service.Exclude)
 	require.Equal(t, "", args.PhysicalDisk.Exclude)
 	require.Equal(t, ".+", args.PhysicalDisk.Include)
 	require.Equal(t, "", args.Printer.Exclude)
@@ -105,9 +123,13 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.Equal(t, "", args.Network.Exclude)
 	require.Equal(t, ".+", args.Network.Include)
 	require.Equal(t, []string{"accessmethods"}, args.MSSQL.EnabledClasses)
-	require.Equal(t, "where", args.MSMQ.Where)
 	require.Equal(t, "", args.LogicalDisk.Exclude)
 	require.Equal(t, ".+", args.LogicalDisk.Include)
+
+	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
+	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
+	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
+	require.Equal(t, "---\t- name: \"Processor\"\t\tcounters:\t\t\t- name: \"% Processor Time\"\t\t\t  instance: \"_Total\"\t\t\t  type: \"counter\"\t\t\t  labels:\t\t\t\t  state: idle", args.PerformanceCounter.Objects)
 }
 
 func TestConvert(t *testing.T) {
@@ -115,7 +137,7 @@ func TestConvert(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 
-	conf := args.Convert()
+	conf := args.Convert(log.NewNopLogger())
 
 	require.Equal(t, "textfile,cpu", conf.EnabledCollectors)
 	require.Equal(t, "example", conf.Exchange.EnabledList)
@@ -126,8 +148,8 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "C:", conf.TextFile.TextFileDirectory)
 	require.Equal(t, "^(?:)$", conf.SMTP.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.SMTP.Include)
-	require.Equal(t, "where", conf.Service.Where)
-	require.Equal(t, "true", conf.Service.V2)
+	require.Equal(t, "^(?:.*)$", conf.Service.Include)
+	require.Equal(t, "^(?:alloy)$", conf.Service.Exclude)
 	require.Equal(t, "^(?:)$", conf.PhysicalDisk.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.PhysicalDisk.Include)
 	require.Equal(t, "^(?:)$", conf.Process.Exclude)
@@ -139,7 +161,8 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:)$", conf.Network.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.Network.Include)
 	require.Equal(t, "accessmethods", conf.MSSQL.EnabledClasses)
-	require.Equal(t, "where", conf.MSMQ.Where)
 	require.Equal(t, "^(?:)$", conf.LogicalDisk.Exclude)
 	require.Equal(t, "^(?:.+)$", conf.LogicalDisk.Include)
+	require.Equal(t, "example", conf.TCP.EnabledList)
+	require.Equal(t, []string{"example"}, conf.Filetime.FilePatterns)
 }

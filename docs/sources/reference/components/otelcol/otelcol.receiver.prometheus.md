@@ -3,24 +3,29 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.prometheus/ # /docs/alloy/latest/reference/otelcol.receiver.prometheus/
 description: Learn about otelcol.receiver.prometheus
+labels:
+  stage: public-preview
+  products:
+    - oss
 title: otelcol.receiver.prometheus
 ---
 
-# otelcol.receiver.prometheus
+# `otelcol.receiver.prometheus`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.prometheus` receives Prometheus metrics, converts them to the
-OpenTelemetry metrics format, and forwards them to other `otelcol.*`
-components.
+`otelcol.receiver.prometheus` receives Prometheus metrics, converts them to the OpenTelemetry metrics format, and forwards them to other `otelcol.*` components.
 
-Multiple `otelcol.receiver.prometheus` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.prometheus` components by giving them different labels.
+
+{{< admonition type="note" >}}
+`otelcol.receiver.prometheus` is a custom component built on a fork of the upstream OpenTelemetry receiver.
+{{< /admonition >}}
 
 ## Usage
 
 ```alloy
-otelcol.receiver.prometheus "LABEL" {
+otelcol.receiver.prometheus "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -29,21 +34,21 @@ otelcol.receiver.prometheus "LABEL" {
 
 ## Arguments
 
-`otelcol.receiver.prometheus` doesn't support any arguments and is configured fully
-through inner blocks.
+The `otelcol.receiver.prometheus` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.receiver.prometheus`:
+You can use the following block with `otelcol.receiver.prometheus`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send received telemetry data. | yes
+| Block              | Description                                       | Required |
+|--------------------|---------------------------------------------------|----------|
+| [`output`][output] | Configures where to send received telemetry data. | yes      |
 
-[output]: #output-block
+[output]: #output
 
-### output block
+### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -51,28 +56,23 @@ output | [output][] | Configures where to send received telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `MetricsReceiver` | A value that other components can use to send Prometheus metrics to.
+| Name       | Type              | Description                                                          |
+|------------|-------------------|----------------------------------------------------------------------|
+| `receiver` | `MetricsReceiver` | A value that other components can use to send Prometheus metrics to. |
 
 ## Component health
 
-`otelcol.receiver.prometheus` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.receiver.prometheus` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.receiver.prometheus` does not expose any component-specific debug
-information.
+`otelcol.receiver.prometheus` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example uses the `otelcol.receiver.prometheus` component as a bridge
-between the Prometheus and OpenTelemetry ecosystems. The component exposes a
-receiver which the `prometheus.scrape` component uses to send Prometheus metric
-data to. The metrics are converted to the OTLP format before they are forwarded
-to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable
-endpoint:
+This example uses the `otelcol.receiver.prometheus` component as a bridge between the Prometheus and OpenTelemetry ecosystems.
+The component exposes a receiver which the `prometheus.scrape` component uses to send Prometheus metric data to.
+The metrics are converted to the OTLP format before they're forwarded to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable endpoint:
 
 ```alloy
 prometheus.scrape "default" {

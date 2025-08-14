@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.scrape
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.scrape
 ---
 
@@ -35,40 +37,47 @@ If conflicting attributes are passed, for example, defining both a BearerToken a
 
 You can use the following arguments with `prometheus.scrape`:
 
-| Name                          | Type                    | Description                                                                                            | Default                                                                   | Required |
-| ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | -------- |
-| `forward_to`                  | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                          |                                                                           | yes      |
-| `targets`                     | `list(map(string))`     | List of targets to scrape.                                                                             |                                                                           | yes      |
-| `bearer_token_file`           | `string`                | File containing a bearer token to authenticate with.                                                   |                                                                           | no       |
-| `bearer_token`                | `secret`                | Bearer token to authenticate with.                                                                     |                                                                           | no       |
-| `body_size_limit`             | `int`                   | An uncompressed response body larger than this many bytes causes the scrape to fail. 0 means no limit. |                                                                           | no       |
-| `enable_http2`                | `bool`                  | Whether HTTP2 is supported for requests.                                                               | `true`                                                                    | no       |
-| `enable_protobuf_negotiation` | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                            | `false`                                                                   | no       |
-| `extra_metrics`               | `bool`                  | Whether extra metrics should be generated for scrape targets.                                          | `false`                                                                   | no       |
-| `follow_redirects`            | `bool`                  | Whether redirects returned by the server should be followed.                                           | `true`                                                                    | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
-| `honor_labels`                | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                        | `false`                                                                   | no       |
-| `honor_timestamps`            | `bool`                  | Indicator whether the scraped timestamps should be respected.                                          | `true`                                                                    | no       |
-| `job_name`                    | `string`                | The value to use for the job label if not already set.                                                 | component name                                                            | no       |
-| `label_limit`                 | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                           |                                                                           | no       |
-| `label_name_length_limit`     | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                     |                                                                           | no       |
-| `label_value_length_limit`    | `uint`                  | More than this label value length post metric-relabeling causes the scrape to fail.                    |                                                                           | no       |
-| `metrics_path`                | `string`                | The HTTP resource path on which to fetch metrics from targets.                                         | `/metrics`                                                                | no       |
-| `no_proxy`                    | `string`                | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.       |                                                                           | no       |
-| `params`                      | `map(list(string))`     | A set of query parameters with which the target is scraped.                                            |                                                                           | no       |
-| `proxy_connect_header`        | `map(list(secret))`     | Specifies headers to send to proxies during CONNECT requests.                                          |                                                                           | no       |
-| `proxy_from_environment`      | `bool`                  | Use the proxy URL indicated by environment variables.                                                  | `false`                                                                   | no       |
-| `proxy_url`                   | `string`                | HTTP proxy to send requests through.                                                                   |                                                                           | no       |
-| `sample_limit`                | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                           |                                                                           | no       |
-| `scheme`                      | `string`                | The URL scheme with which to fetch metrics from targets.                                               |                                                                           | no       |
-| `scrape_classic_histograms`   | `bool`                  | Whether to scrape a classic histogram that's also exposed as a native histogram.                       | `false`                                                                   | no       |
-| `scrape_failure_log_file`     | `string`                | File to which scrape failures are logged.                                                              | `""`                                                                   | no       |
-| `scrape_interval`             | `duration`              | How frequently to scrape the targets of this scrape configuration.                                     | `"60s"`                                                                   | no       |
-| `scrape_native_histograms`    | `bool`                  | Whether to scrape native histograms.                                                                   | `true`                                                                    | no       |
-| `scrape_protocols`            | `list(string)`          | The protocols to negotiate during a scrape, in order of preference. See below for available values.    | `["OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` | no       |
-| `scrape_timeout`              | `duration`              | The timeout for scraping targets of this configuration.                                                | `"10s"`                                                                   | no       |
-| `target_limit`                | `uint`                  | More than this many targets after the target relabeling causes the scrapes to fail.                    |                                                                           | no       |
-| `track_timestamps_staleness`  | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                    | `false`                                                                   | no       |
+| Name                                 | Type                    | Description                                                                                                              | Default                                                                                          | Required |
+|--------------------------------------|-------------------------|--------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|----------|
+| `forward_to`                         | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                                            |                                                                                                  | yes      |
+| `targets`                            | `list(map(string))`     | List of targets to scrape.                                                                                               |                                                                                                  | yes      |
+| `bearer_token_file`                  | `string`                | File containing a bearer token to authenticate with.                                                                     |                                                                                                  | no       |
+| `bearer_token`                       | `secret`                | Bearer token to authenticate with.                                                                                       |                                                                                                  | no       |
+| `body_size_limit`                    | `int`                   | An uncompressed response body larger than this many bytes causes the scrape to fail. 0 means no limit.                   |                                                                                                  | no       |
+| `convert_classic_histograms_to_nhcb` | `bool`                  | Whether to convert classic histograms to native histograms with custom buckets (NHCB).                                   | `false`                                                                                          | no       |
+| `enable_compression`                 | `bool`                  | Whether compression is enabled for the scrape.                                                                           | `true`                                                                                           | no       |
+| `enable_http2`                       | `bool`                  | Whether HTTP2 is supported for requests.                                                                                 | `true`                                                                                           | no       |
+| `enable_protobuf_negotiation`        | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                                              | `false`                                                                                          | no       |
+| `extra_metrics`                      | `bool`                  | Whether extra metrics should be generated for scrape targets. Currently, cannot be updated at runtime.                   | `false`                                                                                          | no       |
+| `follow_redirects`                   | `bool`                  | Whether redirects returned by the server should be followed.                                                             | `true`                                                                                           | no       |
+| `http_headers`                       | `map(list(secret))`     | Custom HTTP headers to be sent along with each request. The map key is the header name.                                  |                                                                                                  | no       |
+| `honor_labels`                       | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                                          | `false`                                                                                          | no       |
+| `honor_timestamps`                   | `bool`                  | Indicator whether the scraped timestamps should be respected.                                                            | `true`                                                                                           | no       |
+| `job_name`                           | `string`                | The value to use for the job label if not already set.                                                                   | component name                                                                                   | no       |
+| `label_limit`                        | `uint`                  | More than this many labels post metric-relabeling causes the scrape to fail.                                             |                                                                                                  | no       |
+| `label_name_length_limit`            | `uint`                  | More than this label name length post metric-relabeling causes the scrape to fail.                                       |                                                                                                  | no       |
+| `label_value_length_limit`           | `uint`                  | More than this label value length post metric-relabeling causes the scrape to fail.                                      |                                                                                                  | no       |
+| `metric_name_escaping_scheme`        | `string`                | The escaping scheme to use for metric names. See below for available values.                                             | `"underscores"`                                                                                  | no       |
+| `metric_name_validation_scheme`      | `string`                | The validation scheme to use for metric names. See below for available values.                                           | `"legacy"`                                                                                       | no       |
+| `metrics_path`                       | `string`                | The HTTP resource path on which to fetch metrics from targets.                                                           | `"/metrics"`                                                                                     | no       |
+| `native_histogram_bucket_limit`      | `uint`                  | Native histogram buckets will be merged to stay within this limit. Disabled when set to zero.                            | `0`                                                                                              | no       |
+| `native_histogram_min_bucket_factor` | `float64`               | If the growth from one bucket to the next is smaller than this, buckets will be merged. Disabled when set to zero.       | `0`                                                                                              | no       |
+| `no_proxy`                           | `string`                | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                         |                                                                                                  | no       |
+| `params`                             | `map(list(string))`     | A set of query parameters with which the target is scraped.                                                              |                                                                                                  | no       |
+| `proxy_connect_header`               | `map(list(secret))`     | Specifies headers to send to proxies during CONNECT requests.                                                            |                                                                                                  | no       |
+| `proxy_from_environment`             | `bool`                  | Use the proxy URL indicated by environment variables.                                                                    | `false`                                                                                          | no       |
+| `proxy_url`                          | `string`                | HTTP proxy to send requests through.                                                                                     |                                                                                                  | no       |
+| `sample_limit`                       | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                                             |                                                                                                  | no       |
+| `scheme`                             | `string`                | The URL scheme with which to fetch metrics from targets.                                                                 |                                                                                                  | no       |
+| `scrape_classic_histograms`          | `bool`                  | Whether to scrape a classic histogram that's also exposed as a native histogram.                                         | `false`                                                                                          | no       |
+| `scrape_failure_log_file`            | `string`                | File to which scrape failures are logged.                                                                                | `""`                                                                                             | no       |
+| `scrape_fallback_protocol`           | `string`                | The fallback protocol to use if the target does not provide a valid Content-Type header. See below for available values. | `PrometheusText0_0_4`                                                                            | no       |
+| `scrape_interval`                    | `duration`              | How frequently to scrape the targets of this scrape configuration.                                                       | `"60s"`                                                                                          | no       |
+| `scrape_native_histograms`           | `bool`                  | Whether to scrape native histograms. Currently, cannot be updated at runtime.                                            | `false`                                                                                          | no       |
+| `scrape_protocols`                   | `list(string)`          | The protocols to negotiate during a scrape, in order of preference. See below for available values.                      | `["OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText1.0.0", "PrometheusText0.0.4"]` | no       |
+| `scrape_timeout`                     | `duration`              | The timeout for scraping targets of this configuration.                                                                  | `"10s"`                                                                                          | no       |
+| `target_limit`                       | `uint`                  | More than this many targets after the target relabeling causes the scrapes to fail.                                      |                                                                                                  | no       |
+| `track_timestamps_staleness`         | `bool`                  | Indicator whether to track the staleness of the scraped timestamps.                                                      | `false`                                                                                          | no       |
 
 At most, one of the following can be provided:
 
@@ -85,11 +94,31 @@ The following values are supported:
 * `OpenMetricsText1.0.0`
 * `PrometheusProto`
 * `PrometheusText0.0.4`
+* `PrometheusText1.0.0`
+
+You can also use the `scrape_fallback_protocol` argument to specify a fallback protocol to use if the target does not provide a valid Content-Type header.
 
 If you were using the deprecated `enable_protobuf_negotiation` argument, switch to using `scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]` instead.
 
 For now, native histograms are only available through the Prometheus Protobuf exposition format.
 To scrape native histograms, `scrape_native_histograms` must be set to `true` and the first item in `scrape_protocols` must be `PrometheusProto`.
+
+The default value for `scrape_protocols` changes to `["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText1.0.0", "PrometheusText0.0.4"]` when
+`scrape_native_histograms` is set to `true`.
+
+The `metric_name_validation_scheme` controls how metric names are validated. The following values are supported:
+
+* `"utf8"` - Uses UTF-8 validation scheme.
+* `"legacy"` - Uses legacy validation scheme which was default in Prometheus v2 (default).
+
+The `metric_name_escaping_scheme` controls how metric names are escaped. The following values are supported:
+
+* `"allow-utf-8"` - Allows UTF-8 characters in metric names. No escaping is required. (default when validation scheme is "utf8")
+* `"underscores"` - Replaces all legacy-invalid characters with underscores (default when validation scheme is "legacy")
+* `"dots"` - Replaces all legacy-invalid characters with dots except that dots are converted to `_dot_` and pre-existing underscores are converted to `__`.
+* `"values"` - Prepends the name with `U__` and replaces all invalid characters with the unicode value, surrounded by underscores. Single underscores are replaced with double underscores.
+
+Note: `metric_name_escaping_scheme` cannot be set to `"allow-utf-8"` while `metric_name_validation_scheme` is not set to `"utf8"`.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -242,7 +271,7 @@ prometheus.scrape "prometheus" {
 }
 ```
 
-The`scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present.
+The`scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present. It's an equivalent to the `always_scrape_classic_histograms` argument in Prometheus v3.
 
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/

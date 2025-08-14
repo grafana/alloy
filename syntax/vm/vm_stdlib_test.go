@@ -203,6 +203,11 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 func TestStdlibCoalesce(t *testing.T) {
 	t.Setenv("TEST_VAR2", "Hello!")
 
+	scope := vm.NewScope(map[string]any{
+		"optionalSecretStr": alloytypes.OptionalSecret{Value: "bar"},
+		"optionalSecretInt": alloytypes.OptionalSecret{Value: "123", IsSecret: false},
+	})
+
 	tt := []struct {
 		name   string
 		input  string
@@ -221,6 +226,10 @@ func TestStdlibCoalesce(t *testing.T) {
 		{"coalesce(object, true) and return true", `coalesce(encoding.from_json("{}"), true)`, true},
 		{"coalesce(object, false) and return false", `coalesce(encoding.from_json("{}"), false)`, false},
 		{"coalesce(list, nil)", `coalesce([],null)`, value.Null},
+		{"optional secret str first in coalesce", `coalesce(optionalSecretStr, 1)`, string("bar")},
+		{"optional secret str second in coalesce", `coalesce("foo", optionalSecretStr)`, string("foo")},
+		{"optional secret int first in coalesce", `coalesce(optionalSecretInt, 1)`, int(123)},
+		{"optional secret int second in coalesce", `coalesce(1, optionalSecretInt)`, int(1)},
 	}
 
 	for _, tc := range tt {
@@ -231,7 +240,7 @@ func TestStdlibCoalesce(t *testing.T) {
 			eval := vm.New(expr)
 
 			rv := reflect.New(reflect.TypeOf(tc.expect))
-			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
+			require.NoError(t, eval.Evaluate(scope, rv.Interface()))
 			require.Equal(t, tc.expect, rv.Elem().Interface())
 		})
 	}
@@ -427,5 +436,146 @@ func BenchmarkConcat(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var b Body
 		_ = eval.Evaluate(scope, &b)
+	}
+}
+
+func TestStdlibGroupBy(t *testing.T) {
+	tt := []struct {
+		name   string
+		input  string
+		expect interface{}
+	}{
+		{
+			"basic grouping",
+			`array.group_by([{"type" = "fruit", "name" = "apple"}, {"type" = "fruit", "name" = "banana"}, {"type" = "vegetable", "name" = "carrot"}], "type", false)`,
+			[]map[string]interface{}{
+				{"type": "fruit", "items": []interface{}{
+					map[string]interface{}{"type": "fruit", "name": "apple"},
+					map[string]interface{}{"type": "fruit", "name": "banana"},
+				}},
+				{"type": "vegetable", "items": []interface{}{
+					map[string]interface{}{"type": "vegetable", "name": "carrot"},
+				}},
+			},
+		},
+		{
+			"drop missing keys",
+			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", true)`,
+			[]map[string]interface{}{
+				{"age": "20", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": "20"},
+				}},
+				{"age": "30", "items": []interface{}{
+					map[string]interface{}{"name": "charlie", "age": "30"},
+				}},
+			},
+		},
+		{
+			"keep missing keys",
+			`array.group_by([{"name" = "alice", "age" = "20"}, {"name" = "bob"}, {"name" = "charlie", "age" = "30"}], "age", false)`,
+			[]map[string]interface{}{
+				{"age": "20", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": "20"},
+				}},
+				{"age": "30", "items": []interface{}{
+					map[string]interface{}{"name": "charlie", "age": "30"},
+				}},
+				{"age": "", "items": []interface{}{
+					map[string]interface{}{"name": "bob"},
+				}},
+			},
+		},
+		{
+			"empty array",
+			`array.group_by([], "age", false)`,
+			[]map[string]interface{}{},
+		},
+		{
+			"all items missing key",
+			`array.group_by([{"name" = "alice"}, {"name" = "bob"}], "age", false)`,
+			[]map[string]interface{}{
+				{"age": "", "items": []interface{}{
+					map[string]interface{}{"name": "alice"},
+					map[string]interface{}{"name": "bob"},
+				}},
+			},
+		},
+		{
+			"key refers to a nested object",
+			`array.group_by([{"name" = "alice", "age" = 20, "address" = {"city" = "New York", "state" = "NY"}}], "address.city", false)`,
+			// The key should be present at the top level of the object. In this case, the group_by assumes that the key is missing.
+			[]map[string]interface{}{
+				{"address.city": "", "items": []interface{}{
+					map[string]interface{}{"name": "alice", "age": 20, "address": map[string]interface{}{"city": "New York", "state": "NY"}},
+				}},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf(tc.expect))
+			require.NoError(t, eval.Evaluate(nil, rv.Interface()))
+			result := rv.Elem().Interface().([]map[string]interface{})
+			expected := tc.expect.([]map[string]interface{})
+			require.ElementsMatch(t, expected, result, "groups should match without order")
+		})
+	}
+}
+
+func TestStdlibGroupBy_Errors(t *testing.T) {
+	tt := []struct {
+		name        string
+		input       string
+		expectedErr string
+	}{
+		{
+			"wrong number of arguments",
+			`array.group_by([{"name" = "alice"}], "age")`,
+			`group_by: expected 3 arguments, got 2`,
+		},
+		{
+			"first argument not array",
+			`array.group_by("not an array", "age", false)`,
+			`"not an array" should be array, got string`,
+		},
+		{
+			"second argument not string",
+			`array.group_by([{"name" = "alice"}], 123, false)`,
+			`123 should be string, got number`,
+		},
+		{
+			"third argument not bool",
+			`array.group_by([{"name" = "alice"}], "age", "not a bool")`,
+			`"not a bool" should be bool, got string`,
+		},
+		{
+			"array element not object",
+			`array.group_by(["not an object"], "age", false)`,
+			`"not an object" should be object, got string`,
+		},
+		{
+			"key value not string",
+			`array.group_by([{"name" = "alice", "age" = 20}], "age", false)`,
+			`20 should be string, got number`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			rv := reflect.New(reflect.TypeOf([]map[string]interface{}{}))
+			err = eval.Evaluate(nil, rv.Interface())
+			require.ErrorContains(t, err, tc.expectedErr)
+		})
 	}
 }

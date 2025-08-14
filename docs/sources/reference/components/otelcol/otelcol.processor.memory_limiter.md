@@ -3,35 +3,36 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.memory_limiter/ # /docs/alloy/latest/reference/otelcol.processor.memory_limiter/
 description: Learn about otelcol.processor.memory_limiter
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.processor.memory_limiter
 ---
 
-# otelcol.processor.memory_limiter
+# `otelcol.processor.memory_limiter`
 
-`otelcol.processor.memory_limiter` is used to prevent out of memory situations
-on a telemetry pipeline by performing periodic checks of memory usage. If
-usage exceeds the defined limits, data is dropped and garbage collections
-are triggered to reduce it.
+`otelcol.processor.memory_limiter` is used to prevent out of memory situations on a telemetry pipeline by performing periodic checks of memory usage.
+If usage exceeds the defined limits, data is dropped and garbage collections are triggered to reduce it.
 
-The `memory_limiter` component uses both soft and hard limits, where the hard limit
-is always equal or larger than the soft limit. When memory usage goes above the
-soft limit, the processor component drops data and returns errors to the
-preceding components in the pipeline. When usage exceeds the hard
-limit, the processor forces a garbage collection in order to try and free
-memory. When usage is below the soft limit, no data is dropped and no forced
-garbage collection is performed.
+The `memory_limiter` component uses both soft and hard limits, where the hard limit is always equal or larger than the soft limit.
+When memory usage goes above the soft limit, the processor component drops data and returns errors to the preceding components in the pipeline.
+When usage exceeds the hard limit, the processor forces a garbage collection to try and free memory.
+When usage is below the soft limit, no data is dropped and no forced garbage collection is performed.
 
-> **NOTE**: `otelcol.processor.memory_limiter` is a wrapper over the upstream
-> OpenTelemetry Collector `memorylimiter` processor. Bug reports or feature
-> requests will be redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector [`memorylimiter`][] processor.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 
-Multiple `otelcol.processor.memory_limiter` components can be specified by
-giving them different labels.
+[`memorylimiter`]: https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/processor/memorylimiterprocessor
+{{< /admonition >}}
+
+You can specify multiple `otelcol.processor.memory_limiter` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.processor.memory_limiter "LABEL" {
+otelcol.processor.memory_limiter "<LABEL>" {
   check_interval = "1s"
 
   limit = "50MiB" // alternatively, set `limit_percentage` and `spike_limit_percentage`
@@ -46,48 +47,46 @@ otelcol.processor.memory_limiter "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.memory_limiter` supports the following arguments:
+You can use the following arguments with `otelcol.processor.memory_limiter`:
 
-Name                     | Type       | Description                                                                            | Default        | Required
--------------------------|------------|----------------------------------------------------------------------------------------|----------------|---------
-`check_interval`         | `duration` | How often to check memory usage.                                                       |                | yes
-`limit`                  | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no
-`spike_limit`            | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no
-`limit_percentage`       | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no
-`spike_limit_percentage` | ` int`     | Maximum spike expected between the measurements of memory usage.                       | `0`            | no
+| Name                     | Type       | Description                                                                            | Default        | Required |
+|--------------------------|------------|----------------------------------------------------------------------------------------|----------------|----------|
+| `check_interval`         | `duration` | How often to check memory usage.                                                       |                | yes      |
+| `limit_percentage`       | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no       |
+| `limit`                  | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no       |
+| `spike_limit_percentage` | `int`      | Maximum spike expected between the measurements of memory usage.                       | `0`            | no       |
+| `spike_limit`            | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no       |
 
-The arguments must define either `limit` or the `limit_percentage,
-spike_limit_percentage` pair, but not both.
+The arguments must define either `limit` or the `limit_percentage, spike_limit_percentage` pair, but not both.
 
-The configuration options `limit` and `limit_percentage` define the hard
-limits. The soft limits are then calculated as the hard limit minus the
-`spike_limit` or `spike_limit_percentage` values respectively. The recommended
-value for spike limits is about 20% of the corresponding hard limit.
+The configuration options `limit` and `limit_percentage` define the hard limits.
+The soft limits are then calculated as the hard limit minus the `spike_limit` or `spike_limit_percentage` values respectively.
+The recommended value for spike limits is about 20% of the corresponding hard limit.
 
-The recommended `check_interval` value is 1 second. If the traffic through the
-component is spiky in nature, it is recommended to either decrease the interval
-or increase the spike limit to avoid going over the hard limit.
+The recommended `check_interval` value is 1 second.
+If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
 
 The `limit` and `spike_limit` values must be larger than 1 MiB.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.processor.memory_limiter`:
+You can use the following blocks with `otelcol.processor.memory_limiter`:
 
-Hierarchy | Block      | Description                                       | Required
-----------|------------|---------------------------------------------------|---------
-output    | [output][] | Configures where to send received telemetry data. | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+|----------------------------------|----------------------------------------------------------------------------|----------|
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### output block
+### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -95,22 +94,20 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+|---------|--------------------|------------------------------------------------------------------|
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics,
-logs, or traces).
+`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
 
 ## Component health
 
-`otelcol.processor.memory_limiter` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.processor.memory_limiter` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.processor.memory_limiter` does not expose any component-specific debug
-information.
+`otelcol.processor.memory_limiter` doesn't expose any component-specific debug information.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

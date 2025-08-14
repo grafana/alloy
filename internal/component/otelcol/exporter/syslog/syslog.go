@@ -85,7 +85,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Port:                args.Port,
 		Network:             args.Network,
 		Protocol:            string(args.Protocol),
-		TLSSetting:          *args.TLS.Convert(),
+		TLS:                 *args.TLS.Convert(),
 		EnableOctetCounting: args.EnableOctetCounting,
 	}, nil
 }

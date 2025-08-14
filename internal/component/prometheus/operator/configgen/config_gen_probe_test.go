@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -100,6 +101,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -129,10 +133,10 @@ func TestGenerateProbeConfig(t *testing.T) {
 							Labels: map[string]string{
 								"static": "label",
 							},
-							RelabelConfigs: []*promopv1.RelabelConfig{
+							RelabelConfigs: []promopv1.RelabelConfig{
 								{
 									TargetLabel: "foo",
-									Replacement: "bar",
+									Replacement: stringPtr("bar"),
 									Action:      "replace",
 								},
 							},
@@ -189,6 +193,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -220,10 +227,10 @@ func TestGenerateProbeConfig(t *testing.T) {
 							Labels: map[string]string{
 								"static": "label",
 							},
-							RelabelConfigs: []*promopv1.RelabelConfig{
+							RelabelConfigs: []promopv1.RelabelConfig{
 								{
 									TargetLabel: "foo",
-									Replacement: "bar",
+									Replacement: stringPtr("bar"),
 									Action:      "replace",
 								},
 							},
@@ -280,6 +287,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}

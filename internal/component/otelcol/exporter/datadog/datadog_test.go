@@ -29,7 +29,7 @@ func TestConfigConversion(t *testing.T) {
 		// from the official exporter; as such as need to init it all here
 		defaultExporterSettings = datadogOtelconfig.MetricsExporterConfig{
 			ResourceAttributesAsTags:           false,
-			InstrumentationScopeMetadataAsTags: false,
+			InstrumentationScopeMetadataAsTags: true,
 		}
 		defaultHistSettings = datadogOtelconfig.HistogramConfig{
 			Mode:             "distributions",
@@ -59,7 +59,8 @@ func TestConfigConversion(t *testing.T) {
 		{
 			testName: "full customise",
 			alloyCfg: `
-				hostname = "customhostname" 
+				hostname = "customhostname"
+				hostname_detection_timeout = "5s"
 
 				client {
 					timeout = "10s"
@@ -84,6 +85,7 @@ func TestConfigConversion(t *testing.T) {
 					delta_ttl = 1200
 					exporter {
 						resource_attributes_as_tags = true
+						instrumentation_scope_metadata_as_tags = false
 					}
 					histograms {
 						mode = "counters"
@@ -97,11 +99,12 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second},
-				QueueSettings: defaultQueueConfig,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogOtelconfig.TagsConfig{Hostname: "customhostname"},
-				OnlyMetadata:  false,
+				ClientConfig:             confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second},
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{Hostname: "customhostname"},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 5 * time.Second,
 				API: datadogOtelconfig.APIConfig{
 					Key:              configopaque.String("abc"),
 					Site:             "datadoghq.com",
@@ -163,12 +166,13 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueConfig,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogOtelconfig.TagsConfig{},
-				OnlyMetadata:  false,
-				API:           datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "datadoghq.com"},
+				ClientConfig:             defaultClient,
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 25 * time.Second,
+				API:                      datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "datadoghq.com"},
 				Logs: datadogOtelconfig.LogsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://http-intake.logs.datadoghq.com",
@@ -215,12 +219,13 @@ func TestConfigConversion(t *testing.T) {
     			}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueConfig,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogOtelconfig.TagsConfig{},
-				OnlyMetadata:  false,
-				API:           datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "ap1.datadoghq.com"},
+				ClientConfig:             defaultClient,
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 25 * time.Second,
+				API:                      datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "ap1.datadoghq.com"},
 				Logs: datadogOtelconfig.LogsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://http-intake.logs.ap1.datadoghq.com",

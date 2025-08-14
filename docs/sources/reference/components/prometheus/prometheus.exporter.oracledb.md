@@ -5,13 +5,15 @@ aliases:
 description: Learn about prometheus.exporter.oracledb
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.oracledb
 ---
 
 # `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[`oracledb_exporter`](https://github.com/iamseth/oracledb_exporter) for collecting statistics from a OracleDB server.
+[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from a OracleDB server.
 
 ## Usage
 
@@ -25,17 +27,30 @@ prometheus.exporter.oracledb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.oracledb`:
 
-| Name                | Type     | Description                                                  | Default | Required |
-| ------------------- | -------- | ------------------------------------------------------------ | ------- | -------- |
-| `connection_string` | `secret` | The connection string used to connect to an Oracle Database. |         | yes      |
-| `max_idle_conns`    | `int`    | Number of maximum idle connections in the connection pool.   | `0`     | no       |
-| `max_open_conns`    | `int`    | Number of maximum open connections in the connection pool.   | `10`    | no       |
-| `query_timeout`     | `int`    | The query timeout in seconds.                                | `5`     | no       |
+| Name                | Type           | Description                                                    | Default | Required |
+| ------------------- | -------------- | -------------------------------------------------------------- | ------- | -------- |
+| `connection_string` | `secret`       | The connection string used to connect to an Oracle Database.   |         | yes      |
+| `username`          | `string`       | The username to use for authentication to the Oracle Database. |         | no       |
+| `password`          | `secret`       | The password to use for authentication to the Oracle Database. |         | no       |
+| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool.     | `0`     | no       |
+| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool.     | `10`    | no       |
+| `query_timeout`     | `int`          | The query timeout in seconds.                                  | `5`     | no       |
+| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)            |         | no       |
+| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)           |         | no       |
 
-The [`oracledb_exporter` running](https://github.com/iamseth/oracledb_exporter/tree/master#running) documentation shows the format and provides examples of the `connection_string` argument:
+Examples of TOML metrics files can be found in the [oracledb_exporter repository](https://github.com/oracle/oracle-db-appdev-monitoring).
+
+For backward compatibility, the `username` and `password` arguments can still be provided in the `connection_string` argument:
 
 ```conn
-oracle://user:pass@server/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+```
+
+If the `connection_string` argument doesn't contain the `username` and `password`, the `username` and `password` arguments must be provided.
+In this case, the URL must have the format:
+
+```conn
+host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
 ## Blocks
@@ -65,7 +80,9 @@ The following example uses a [`prometheus.scrape` component][scrape] to collect 
 
 ```alloy
 prometheus.exporter.oracledb "example" {
-  connection_string = "oracle://user:password@localhost:1521/orcl.localnet"
+  connection_string = "localhost:1521/orcl.localnet"
+  username = "system"
+  password = "YourPassword123"
 }
 
 // Configure a prometheus.scrape component to collect oracledb metrics.

@@ -5,10 +5,10 @@ description: Grafana Alloy is a vendor-neutral distribution of the OTel Collecto
 weight: 350
 cascade:
   ALLOY_RELEASE: $ALLOY_VERSION
-  OTEL_VERSION: v0.122.0
-  PROM_WIN_EXP_VERSION: v0.27.3
-  SNMP_VERSION: v0.28.0
-  BEYLA_VERSION: v2.1
+  OTEL_VERSION: v0.128.0
+  PROM_WIN_EXP_VERSION: v0.31.1
+  SNMP_VERSION: v0.29.0
+  BEYLA_VERSION: v2.2.5
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
 hero:

@@ -3,11 +3,15 @@
 package otelcolconvert_test
 
 import (
+	"flag"
 	"testing"
 
 	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
 	"github.com/grafana/alloy/internal/converter/internal/test_common"
 )
+
+// Set this flag to update snapshots e.g. `go test -v ./interal/converter/internal/otelcolconverter/...` -fix-tests
+var fixTestsFlag = flag.Bool("fix-tests", false, "update the test files with the current generated content")
 
 var diagsToIgnore map[string]struct{}
 
@@ -21,24 +25,23 @@ func init() {
 }
 
 func TestConvert(t *testing.T) {
-	// TODO(rfratto): support -update flag.
-	test_common.TestDirectory(t, "testdata", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert)
-	test_common.TestDirectory(t, "testdata/otelcol_dedup", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert)
-	test_common.TestDirectory(t, "testdata/otelcol_without_validation", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.ConvertWithoutValidation)
+	test_common.TestDirectory(t, "testdata", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert, *fixTestsFlag)
+	test_common.TestDirectory(t, "testdata/otelcol_dedup", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert, *fixTestsFlag)
+	test_common.TestDirectory(t, "testdata/otelcol_without_validation", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.ConvertWithoutValidation, *fixTestsFlag)
 }
 
 // TestConvertErrors tests errors specifically regarding the reading of
 // OpenTelemetry configurations.
 func TestConvertErrors(t *testing.T) {
 	test_common.TestDirectory(t, "testdata/otelcol_errors", ".yaml", true, []string{},
-		diagsToIgnore, otelcolconvert.Convert)
+		diagsToIgnore, otelcolconvert.Convert, *fixTestsFlag)
 }
 
 func TestConvertTelemetry(t *testing.T) {
 	test_common.TestDirectory(t, "testdata/otelcol_telemetry", ".yaml", true, []string{},
-		map[string]struct{}{}, otelcolconvert.Convert)
+		map[string]struct{}{}, otelcolconvert.Convert, *fixTestsFlag)
 }
 
 func TestConvertEnvvars(t *testing.T) {
-	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert)
+	test_common.TestDirectory(t, "testdata/envvars", ".yaml", true, []string{}, diagsToIgnore, otelcolconvert.Convert, *fixTestsFlag)
 }

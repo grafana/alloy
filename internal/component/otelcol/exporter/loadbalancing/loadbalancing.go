@@ -93,6 +93,10 @@ func (args *Arguments) SetToDefault() {
 	}
 	args.DebugMetrics.SetToDefault()
 	args.Protocol.OTLP.SetToDefault()
+	// Do not set these two to their default values.
+	// Upstream doesn't do that for backwards compatibility.
+	// args.Retry.SetToDefault()
+	// args.Queue.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -408,14 +412,14 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authentication *otelconfigauth.Authentication
+	var authentication *otelconfigauth.Config
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		authentication = &otelconfigauth.Authentication{AuthenticatorID: ext.ID}
+		authentication = &otelconfigauth.Config{AuthenticatorID: ext.ID}
 	}
 
 	balancerName := args.BalancerName
@@ -426,8 +430,8 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	return &otelconfiggrpc.ClientConfig{
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
-		Keepalive:  args.Keepalive.Convert(),
+		TLS:       *args.TLS.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 
 		ReadBufferSize:  int(args.ReadBufferSize),
 		WriteBufferSize: int(args.WriteBufferSize),

@@ -9,12 +9,15 @@ metadata:
   namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    {{- with .Values.controller.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with .Values.controller.extraAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.controller.autoscaling.enabled }}
+  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled)) }}
   replicas: {{ .Values.controller.replicas }}
   {{- end }}
   {{- if .Values.controller.parallelRollout }}

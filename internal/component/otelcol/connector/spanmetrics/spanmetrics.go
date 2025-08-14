@@ -40,6 +40,7 @@ type Arguments struct {
 	// The dimensions will be fetched from the span's attributes. Examples of some conventionally used attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector/blob/main/model/semconv/opentelemetry.go.
 	Dimensions        []Dimension `alloy:"dimension,block,optional"`
+	CallsDimensions   []Dimension `alloy:"calls_dimension,block,optional"`
 	ExcludeDimensions []string    `alloy:"exclude_dimensions,attr,optional"`
 
 	// DimensionsCacheSize defines the size of cache for storing Dimensions, which helps to avoid cache memory growing
@@ -58,6 +59,8 @@ type Arguments struct {
 	// e.g. ["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]
 	// See https://opentelemetry.io/docs/specs/semconv/resource/ for possible attributes.
 	ResourceMetricsKeyAttributes []string `alloy:"resource_metrics_key_attributes,attr,optional"`
+
+	AggregationCardinalityLimit int `alloy:"aggregation_cardinality_limit,attr,optional"`
 
 	AggregationTemporality string `alloy:"aggregation_temporality,attr,optional"`
 
@@ -87,6 +90,8 @@ type Arguments struct {
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+
+	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
 }
 
 var (
@@ -102,7 +107,6 @@ const (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	DimensionsCacheSize:      1000,
 	AggregationTemporality:   AggregationTemporalityCumulative,
 	MetricsFlushInterval:     60 * time.Second,
 	MetricsExpiration:        0,
@@ -119,12 +123,6 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.DimensionsCacheSize <= 0 {
-		return fmt.Errorf(
-			"invalid cache size: %v, the maximum number of the items in the cache should be positive",
-			args.DimensionsCacheSize)
-	}
-
 	if args.MetricsFlushInterval <= 0 {
 		return fmt.Errorf("metrics_flush_interval must be greater than 0")
 	}
@@ -134,6 +132,14 @@ func (args *Arguments) Validate() error {
 		// Valid
 	default:
 		return fmt.Errorf("invalid aggregation_temporality: %v", args.AggregationTemporality)
+	}
+
+	if args.AggregationCardinalityLimit < 0 {
+		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", args.AggregationCardinalityLimit)
+	}
+
+	if args.AggregationTemporality == AggregationTemporalityDelta && args.TimestampCacheSize <= 0 {
+		return fmt.Errorf("invalid metric_timestamp_cache_size: %v, the cache size should be positive", args.TimestampCacheSize)
 	}
 
 	return nil
@@ -168,6 +174,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		dimensions = append(dimensions, d.Convert())
 	}
 
+	callsDimensions := make([]spanmetricsconnector.Dimension, 0, len(args.CallsDimensions))
+	for _, d := range args.CallsDimensions {
+		callsDimensions = append(callsDimensions, d.Convert())
+	}
+
 	histogram, err := args.Histogram.Convert()
 	if err != nil {
 		return nil, err
@@ -184,11 +195,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &spanmetricsconnector.Config{
 		Dimensions:                   dimensions,
+		CallsDimensions:              callsDimensions,
 		ExcludeDimensions:            excludeDimensions,
 		DimensionsCacheSize:          args.DimensionsCacheSize,
 		ResourceMetricsCacheSize:     args.ResourceMetricsCacheSize,
 		TimestampCacheSize:           &timestampCacheSize,
 		ResourceMetricsKeyAttributes: args.ResourceMetricsKeyAttributes,
+		AggregationCardinalityLimit:  args.AggregationCardinalityLimit,
 		AggregationTemporality:       aggregationTemporality,
 		Histogram:                    *histogram,
 		MetricsFlushInterval:         args.MetricsFlushInterval,
@@ -196,6 +209,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Namespace:                    args.Namespace,
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),
+		IncludeInstrumentationScope:  args.IncludeInstrumentationScope,
 	}, nil
 }
 

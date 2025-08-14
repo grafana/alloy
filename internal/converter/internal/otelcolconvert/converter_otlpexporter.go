@@ -40,7 +40,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlpexporter.Config).Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
@@ -63,7 +63,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	return &otlp.Arguments{
-		Timeout: cfg.Timeout,
+		Timeout: cfg.TimeoutConfig.Timeout,
 
 		Queue: toQueueArguments(cfg.QueueConfig),
 		Retry: toRetryArguments(cfg.RetryConfig),
@@ -74,12 +74,19 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueConfig) otelcol.QueueArguments {
+func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArguments {
+	sizer, err := cfg.Sizer.MarshalText()
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal sizer: %w", err))
+	}
+
 	q := otelcol.QueueArguments{
-		Enabled:      cfg.Enabled,
-		NumConsumers: cfg.NumConsumers,
-		QueueSize:    cfg.QueueSize,
-		Blocking:     cfg.Blocking,
+		Enabled:         cfg.Enabled,
+		NumConsumers:    cfg.NumConsumers,
+		QueueSize:       cfg.QueueSize,
+		Blocking:        cfg.Blocking, //nolint:staticcheck
+		BlockOnOverflow: cfg.BlockOnOverflow,
+		Sizer:           string(sizer),
 	}
 
 	if cfg.StorageID != nil {
@@ -118,7 +125,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 
 		Compression: otelcol.CompressionType(cfg.Compression),
 
-		TLS:       toTLSClientArguments(cfg.TLSSetting),
+		TLS:       toTLSClientArguments(cfg.TLS),
 		Keepalive: toKeepaliveClientArguments(cfg.Keepalive),
 
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),

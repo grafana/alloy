@@ -66,6 +66,7 @@ type TLSSetting struct {
 	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
 	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
 	CurvePreferences         []string          `alloy:"curve_preferences,attr,optional"`
+	TPMConfig                *TPMConfig        `alloy:"tpm,block,optional"`
 }
 
 func (args *TLSSetting) Convert() *otelconfigtls.Config {
@@ -73,7 +74,7 @@ func (args *TLSSetting) Convert() *otelconfigtls.Config {
 		return nil
 	}
 
-	return &otelconfigtls.Config{
+	t := &otelconfigtls.Config{
 		CAPem:                    configopaque.String(args.CA),
 		CAFile:                   args.CAFile,
 		CertPem:                  configopaque.String(args.Cert),
@@ -86,7 +87,9 @@ func (args *TLSSetting) Convert() *otelconfigtls.Config {
 		CipherSuites:             args.CipherSuites,
 		IncludeSystemCACertsPool: args.IncludeSystemCACertsPool,
 		CurvePreferences:         args.CurvePreferences,
+		TPMConfig:                args.TPMConfig.Convert(),
 	}
+	return t
 }
 
 // Validate implements syntax.Validator.
@@ -113,4 +116,24 @@ func (t *TLSSetting) Validate() error {
 	}
 
 	return nil
+}
+
+type TPMConfig struct {
+	Enabled   bool   `alloy:"enabled,attr,optional"`
+	Path      string `alloy:"path,attr,optional"`
+	OwnerAuth string `alloy:"owner_auth,attr,optional"`
+	Auth      string `alloy:"auth,attr,optional"`
+}
+
+func (t *TPMConfig) Convert() otelconfigtls.TPMConfig {
+	if t == nil {
+		return otelconfigtls.TPMConfig{}
+	}
+
+	return otelconfigtls.TPMConfig{
+		Enabled:   t.Enabled,
+		Path:      t.Path,
+		OwnerAuth: t.OwnerAuth,
+		Auth:      t.Auth,
+	}
 }

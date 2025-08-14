@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.squid
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.squid
 ---
 
@@ -22,7 +24,7 @@ prometheus.exporter.squid "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments to configure the exporter's behavior.`prometheus.exporter.squid`
+You can use the following arguments with `prometheus.exporter.squid`:
 
 | Name       | Type     | Description                                           | Default | Required |
 | ---------- | -------- | ----------------------------------------------------- | ------- | -------- |

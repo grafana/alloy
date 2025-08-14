@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
@@ -124,7 +123,6 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "DROP TABLE IF EXISTS some_table",
 			tables: []string{"some_table"},
 		},
-		// the following tests pass only with tidb parser
 		{
 			name:   "show create table",
 			sql:    "SHOW CREATE TABLE some_table",
@@ -145,6 +143,11 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			sql:    "SELECT TRIM (TRAILING '/' FROM url)",
 			tables: nil,
 		},
+		{
+			name:   "if with redacted values",
+			sql:    "SELECT IF(`some_table`.`url` IS NULL, ?, ...) AS `url` FROM `some_table`",
+			tables: []string{"some_table"},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -153,7 +156,7 @@ func TestParserTiDB_ExtractTableNames(t *testing.T) {
 			stmt, err := p.Parse(tc.sql)
 			require.NoError(t, err)
 
-			got := p.ExtractTableNames(log.NewNopLogger(), "", stmt)
+			got := p.ExtractTableNames(stmt)
 			require.ElementsMatch(t, tc.tables, got)
 		})
 	}

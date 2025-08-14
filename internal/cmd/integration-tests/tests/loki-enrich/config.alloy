@@ -50,7 +50,7 @@ loki.enrich "enricher" {
 // Write enriched logs to Loki
 loki.write "enriched" {
   endpoint {
-    url = "http://127.0.0.1:3100/loki/api/v1/push"
+    url = "http://loki:3100/loki/api/v1/push"
   }
   external_labels = {
     test_name = "network_device_enriched",

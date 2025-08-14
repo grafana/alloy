@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -26,6 +26,7 @@ import (
 )
 
 func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
+	HTTPS := "HTTPS"
 	suite := []struct {
 		name                   string
 		m                      *promopv1alpha1.ScrapeConfig
@@ -44,7 +45,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 			},
 			ep: promopv1alpha1.StaticConfig{
 				Targets: []promopv1alpha1.Target{"foo", "bar"},
-				Labels: map[promopv1.LabelName]string{
+				Labels: map[string]string{
 					"foo": "bar",
 				},
 			},
@@ -82,6 +83,62 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
+			},
+		},
+		{
+			name: "lowercase schema",
+			m: &promopv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "scrapeconfig",
+				},
+				Spec: promopv1alpha1.ScrapeConfigSpec{
+					Scheme: &HTTPS,
+				},
+			},
+			ep: promopv1alpha1.StaticConfig{
+				Targets: []promopv1alpha1.Target{"foo", "bar"},
+			},
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- replacement: operator
+				  target_label: __meta_kubernetes_scrapeconfig_namespace
+				- replacement: scrapeconfig
+				  target_label: __meta_kubernetes_scrapeconfig_name
+				- source_labels: [__address__]
+				  target_label: instance
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:           "scrapeConfig/operator/scrapeconfig/static/1",
+				HonorTimestamps:   true,
+				ScrapeInterval:    model.Duration(time.Hour),
+				ScrapeTimeout:     model.Duration(42 * time.Second),
+				ScrapeProtocols:   config.DefaultScrapeProtocols,
+				EnableCompression: true,
+				MetricsPath:       "/metrics",
+				Scheme:            "https",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					discovery.StaticConfig{
+						&targetgroup.Group{
+							Targets: []model.LabelSet{{model.AddressLabel: model.LabelValue("foo")}, {model.AddressLabel: model.LabelValue("bar")}},
+							Labels:  model.LabelSet{},
+							Source:  "scrapeConfig/operator/scrapeconfig/static/1",
+						},
+					},
+				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}

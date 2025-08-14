@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
+	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
@@ -33,6 +35,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
 	compscrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
@@ -133,7 +136,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 
 	// Start prometheus service discovery manager
-	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
+	c.discoveryManager = discovery.NewManager(ctx, slog.New(logging.NewSlogGoKitHandler(c.logger)), unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
 		err := c.discoveryManager.Run()
 		if err != nil {
@@ -144,7 +147,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, c.logger, nil, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(opts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
@@ -162,7 +165,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	if err := c.runInformers(restConfig, ctx); err != nil {
 		return err
 	}
-	level.Info(c.logger).Log("msg", "informers  started")
+	level.Info(c.logger).Log("msg", "informers started")
 
 	var cachedTargets map[string][]*targetgroup.Group
 	// Start the target discovery loop to update the scrape manager with new targets.
@@ -323,6 +326,23 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 	return nil
 }
 
+func getInformer(ctx context.Context, informers cache.Informers, prototype client.Object, timeout time.Duration) (cache.Informer, error) {
+	informerCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	informer, err := informers.GetInformer(informerCtx, prototype)
+	if err != nil {
+		if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
+			return nil, fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
+				" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %T", prototype)
+		}
+
+		return nil, err
+	}
+
+	return informer, err
+}
+
 // configureInformers configures the informers for the CRDManager to watch for crd changes.
 func (c *crdManager) configureInformers(ctx context.Context, informers cache.Informers) error {
 	var prototype client.Object
@@ -339,18 +359,32 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
 	}
 
-	informerCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
-	defer cancel()
+	// On node restart, the API server is not always immediately available.
+	// Retry with backoff to give time for the network to initialize.
+	var informer cache.Informer
+	var err error
 
-	informer, err := informers.GetInformer(informerCtx, prototype)
-	if err != nil {
-		if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
-			return fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
-				" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %v", prototype)
+	backoff := backoff.New(
+		ctx,
+		backoff.Config{
+			MinBackoff: 1 * time.Second,
+			MaxBackoff: 10 * time.Second,
+			MaxRetries: 3, // retry up to 3 times
+		},
+	)
+	for backoff.Ongoing() {
+		// Retry to get the informer in case of a timeout.
+		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
+		if err == nil {
+			break
 		}
-
+		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", backoff.NextDelay(), "err", err)
+		backoff.Wait()
+	}
+	if err != nil {
 		return err
 	}
+
 	const resync = 5 * time.Minute
 	switch c.kind {
 	case KindPodMonitor:

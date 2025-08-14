@@ -64,6 +64,172 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "TransformWithConditions",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				context = "span"
+				statements = [
+					` + backtick + `set(name, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "datapoint"
+				statements = [
+					` + backtick + `set(metric.name, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "log"
+				statements = [
+					` + backtick + `set(body, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "span",
+						"statements": []interface{}{
+							`set(name, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"context": "datapoint",
+						"statements": []interface{}{
+							`set(metric.name, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "log",
+						"statements": []interface{}{
+							`set(body, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+			},
+		},
+		{
+			testName: "TransformWithContextStatementsErrorMode",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				error_mode = "propagate"
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "propagate")` + backtick + `,
+				]
+			}
+			trace_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "resource"
+				error_mode = "silent"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "silent")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "resource"
+				error_mode = "propagate"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "propagate")` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "propagate",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "propagate")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "silent",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "silent")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "propagate",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "propagate")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+			},
+		},
+		{
 			testName: "RenameAttribute1",
 			cfg: `
 			error_mode = "ignore"
@@ -240,7 +406,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to infer context from statements, path's first segment must be a valid context name:`,
+			errorMsg: `inferred context "metric" is not a valid candidate`,
 		},
 		{
 			testName: "RenameAttribute2",

@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup" //nolint:depguard
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -49,13 +50,13 @@ func init() {
 }
 
 type Component struct {
-	opts      component.Options
-	mut       sync.Mutex
-	args      Arguments
-	reload    chan struct{}
-	reg       *prometheus.Registry
-	healthMut sync.RWMutex
-	health    component.Health
+	opts       component.Options
+	mut        sync.Mutex
+	args       Arguments
+	argsUpdate chan Arguments
+	reg        *prometheus.Registry
+	healthMut  sync.RWMutex
+	health     component.Health
 }
 
 var _ component.HealthComponent = (*Component)(nil)
@@ -114,6 +115,8 @@ func (args Selections) Convert() attributes.Selection {
 
 func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
+
+	// Services
 	srv, err := args.Services.Convert()
 	if err != nil {
 		return d, err
@@ -131,6 +134,15 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 		}
 		d.DefaultExcludeServices = defaultExcludeSrv
 	}
+
+	// Survey
+	survey, err := args.Survey.ConvertGlob()
+	if err != nil {
+		return d, err
+	}
+	d.Survey = survey
+
+	// Common fields
 	d.SkipGoSpecificTracers = args.SkipGoSpecificTracers
 	if args.ExcludeOTelInstrumentedServices {
 		d.ExcludeOTelInstrumentedServices = args.ExcludeOTelInstrumentedServices
@@ -138,37 +150,97 @@ func (args Discovery) Convert() (services.DiscoveryConfig, error) {
 	return d, nil
 }
 
-func (args Services) Convert() (services.DefinitionCriteria, error) {
-	var attrs services.DefinitionCriteria
+func serviceConvert[Attr any](
+	s Service,
+	convertFunc func(string) (Attr, error),
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, error) {
+
+	var paths Attr
+	var kubernetes map[string]*Attr
+	var podLabels map[string]*Attr
+	var podAnnotations map[string]*Attr
+
+	ports, err := stringToPortEnum(s.OpenPorts)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	paths, err = convertFunc(s.Path)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	kubernetes, err = convertKubernetesFunc(s.Kubernetes)
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, err
+	}
+	podLabels = map[string]*Attr{}
+	for k, v := range s.Kubernetes.PodLabels {
+		label, err := convertFunc(v)
+		if err != nil {
+			return ports, paths, kubernetes, podLabels, podAnnotations, err
+		}
+		podLabels[k] = &label
+	}
+	// Convert pod annotations to attributes
+	podAnnotations = map[string]*Attr{}
+	for k, v := range s.Kubernetes.PodAnnotations {
+		annotation, err := convertFunc(v)
+		if err != nil {
+			return ports, paths, kubernetes, podLabels, podAnnotations, err
+		}
+		podAnnotations[k] = &annotation
+	}
+	return ports, paths, kubernetes, podLabels, podAnnotations, nil
+}
+
+func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
+	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, err := stringToPortEnum(s.OpenPorts)
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+			s,
+			stringToRegexpAttr,
+			convertKubernetes,
+		)
+
 		if err != nil {
 			return nil, err
-		}
-		paths, err := stringToRegexpAttr(s.Path)
-		if err != nil {
-			return nil, err
-		}
-		kubernetes, err := s.Kubernetes.Convert()
-		if err != nil {
-			return nil, err
-		}
-		podLabels := map[string]*services.RegexpAttr{}
-		for k, v := range s.Kubernetes.PodLabels {
-			label, err := stringToRegexpAttr(v)
-			if err != nil {
-				return nil, err
-			}
-			podLabels[k] = &label
 		}
 
-		attrs = append(attrs, services.Attributes{
-			Name:      s.Name,
-			Namespace: s.Namespace,
-			OpenPorts: ports,
-			Path:      paths,
-			Metadata:  kubernetes,
-			PodLabels: podLabels,
+		attrs = append(attrs, services.RegexSelector{
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
+		})
+	}
+	return attrs, nil
+}
+
+func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
+	var attrs services.GlobDefinitionCriteria
+	for _, s := range args {
+		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+			s,
+			stringToGlobAttr,
+			convertKubernetesGlob,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attrs = append(attrs, services.GlobAttributes{
+			Name:           s.Name,
+			Namespace:      s.Namespace,
+			OpenPorts:      ports,
+			Path:           paths,
+			Metadata:       kubernetes,
+			PodLabels:      podLabels,
+			ContainersOnly: s.ContainersOnly,
+			PodAnnotations: podAnnotations,
 		})
 	}
 	return attrs, nil
@@ -193,58 +265,44 @@ func (args Services) Validate() error {
 	return nil
 }
 
-func (args KubernetesService) Convert() (map[string]*services.RegexpAttr, error) {
-	metadata := map[string]*services.RegexpAttr{}
-	if args.Namespace != "" {
-		namespace, err := stringToRegexpAttr(args.Namespace)
-		metadata[services.AttrNamespace] = &namespace
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.PodName != "" {
-		podName, err := stringToRegexpAttr(args.PodName)
-		metadata[services.AttrPodName] = &podName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.DeploymentName != "" {
-		deploymentName, err := stringToRegexpAttr(args.DeploymentName)
-		metadata[services.AttrDeploymentName] = &deploymentName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.ReplicaSetName != "" {
-		replicaSetName, err := stringToRegexpAttr(args.ReplicaSetName)
-		metadata[services.AttrReplicaSetName] = &replicaSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.StatefulSetName != "" {
-		statefulSetName, err := stringToRegexpAttr(args.StatefulSetName)
-		metadata[services.AttrStatefulSetName] = &statefulSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.DaemonSetName != "" {
-		daemonSetName, err := stringToRegexpAttr(args.DaemonSetName)
-		metadata[services.AttrDaemonSetName] = &daemonSetName
-		if err != nil {
-			return nil, err
-		}
-	}
-	if args.OwnerName != "" {
-		ownerName, err := stringToRegexpAttr(args.OwnerName)
-		metadata[services.AttrOwnerName] = &ownerName
-		if err != nil {
-			return nil, err
+func convertKubernetesAttributes[T any, Attr any](
+	args T,
+	getters []func(T) (string, string),
+	convertFunc func(string) (Attr, error),
+) (map[string]*Attr, error) {
+
+	metadata := map[string]*Attr{}
+	for _, getter := range getters {
+		alloyAttr, beylaAttr := getter(args)
+		if alloyAttr != "" {
+			attr, err := convertFunc(alloyAttr)
+			if err != nil {
+				return nil, err
+			}
+			metadata[beylaAttr] = &attr
 		}
 	}
 	return metadata, nil
+}
+
+var kubernetesGetters = []func(KubernetesService) (string, string){
+	func(a KubernetesService) (string, string) { return a.Namespace, services.AttrNamespace },
+	func(a KubernetesService) (string, string) { return a.PodName, services.AttrPodName },
+	func(a KubernetesService) (string, string) { return a.DeploymentName, services.AttrDeploymentName },
+	func(a KubernetesService) (string, string) { return a.ReplicaSetName, services.AttrReplicaSetName },
+	func(a KubernetesService) (string, string) { return a.StatefulSetName, services.AttrStatefulSetName },
+	func(a KubernetesService) (string, string) { return a.DaemonSetName, services.AttrDaemonSetName },
+	func(a KubernetesService) (string, string) { return a.OwnerName, services.AttrOwnerName },
+}
+
+// Convert to RegexpAttr
+func convertKubernetes(args KubernetesService) (map[string]*services.RegexpAttr, error) {
+	return convertKubernetesAttributes(args, kubernetesGetters, stringToRegexpAttr)
+}
+
+// Convert to GlobAttr
+func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAttr, error) {
+	return convertKubernetesAttributes(args, kubernetesGetters, stringToGlobAttr)
 }
 
 func (args Metrics) Convert() prom.PrometheusConfig {
@@ -271,7 +329,7 @@ func (args Metrics) hasNetworkFeature() bool {
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
-		case "application", "application_span", "application_service_graph", "application_process":
+		case "application", "application_host", "application_span", "application_service_graph", "application_process":
 			return true
 		}
 	}
@@ -289,9 +347,9 @@ func (args Metrics) Validate() error {
 	}
 
 	validFeatures := map[string]struct{}{
-		"application": {}, "application_span": {},
+		"application": {}, "application_span": {}, "application_host": {},
 		"application_service_graph": {}, "application_process": {},
-		"network": {},
+		"network": {}, "network_inter_zone": {},
 	}
 	for _, feature := range args.Features {
 		if _, ok := validFeatures[feature]; !ok {
@@ -336,17 +394,29 @@ func (args Network) Convert(enable bool) beyla.NetworkConfig {
 	return networks
 }
 
-func (args EBPF) Convert() beylaCfg.EBPFTracer {
+func (args EBPF) Convert() (*beylaCfg.EBPFTracer, error) {
 	ebpf := beyla.DefaultConfig.EBPF
 	if args.HTTPRequestTimeout != 0 {
 		ebpf.HTTPRequestTimeout = args.HTTPRequestTimeout
 	}
-	ebpf.ContextPropagationEnabled = args.ContextPropagationEnabled
+
+	if args.ContextPropagation == "" {
+		args.ContextPropagation = "disabled"
+	}
+	var contextPropagationMode beylaCfg.ContextPropagationMode
+	err := contextPropagationMode.UnmarshalText([]byte(args.ContextPropagation))
+	if err != nil {
+		return nil, err
+	}
+	ebpf.ContextPropagation = contextPropagationMode
+
 	ebpf.WakeupLen = args.WakeupLen
 	ebpf.TrackRequestHeaders = args.TrackRequestHeaders
 	ebpf.HighRequestVolume = args.HighRequestVolume
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
-	return ebpf
+	ebpf.BpfDebug = args.BpfDebug
+	ebpf.ProtocolDebug = args.ProtocolDebug
+	return &ebpf, nil
 }
 
 func (args Filters) Convert() filter.AttributesConfig {
@@ -370,12 +440,10 @@ func (args Filters) Convert() filter.AttributesConfig {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	reg := prometheus.NewRegistry()
 	c := &Component{
-		opts:   opts,
-		args:   args,
-		reload: make(chan struct{}, 1),
-		reg:    reg,
+		opts:       opts,
+		args:       args,
+		argsUpdate: make(chan Arguments, 1),
 	}
 
 	if err := c.Update(args); err != nil {
@@ -395,15 +463,27 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 
 	var cancel context.CancelFunc
+	var cancelG *errgroup.Group
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-c.reload:
-			// cancel any previously running Beyla instance
+		case newArgs := <-c.argsUpdate:
+			newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+			c.args = newArgs
 			if cancel != nil {
+				// cancel any previously running Beyla instance
 				cancel()
+				level.Info(c.opts.Logger).Log("msg", "waiting for Beyla to terminate")
+				if err := cancelG.Wait(); err != nil {
+					level.Error(c.opts.Logger).Log("msg", "failed to terminate Beyla", "err", err)
+					c.reportUnhealthy(err)
+					return err
+				}
 			}
+
+			level.Info(c.opts.Logger).Log("msg", "starting Beyla component")
+
 			newCtx, cancelFunc := context.WithCancel(ctx)
 			cancel = cancelFunc
 
@@ -415,15 +495,33 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.Unlock()
 				continue
 			}
+			c.reg = prometheus.NewRegistry()
 			c.reportHealthy()
 			cfg.Prometheus.Registry = c.reg
 			c.mut.Unlock()
-			err = components.RunBeyla(newCtx, cfg)
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
-				c.reportUnhealthy(err)
-				continue
-			}
+
+			g, launchCtx := errgroup.WithContext(newCtx)
+			cancelG = g
+
+			g.Go(func() error {
+				err := components.RunBeyla(launchCtx, cfg)
+				if err != nil {
+					level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
+					c.reportUnhealthy(err)
+				}
+				return err
+			})
+		}
+	}
+}
+
+func getLatestArgsFromChannel[A any](ch chan A, current A) A {
+	for {
+		select {
+		case x := <-ch:
+			current = x
+		default:
+			return current
 		}
 	}
 }
@@ -439,10 +537,9 @@ func (c *Component) Update(args component.Arguments) error {
 	c.opts.OnStateChange(Exports{
 		Targets: []discovery.Target{baseTarget},
 	})
-	select {
-	case c.reload <- struct{}{}:
-	default:
-	}
+
+	newArgs := args.(Arguments)
+	c.argsUpdate <- newArgs
 	return nil
 }
 
@@ -507,7 +604,13 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	cfg.Prometheus = a.Metrics.Convert()
 	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
 	cfg.EnforceSysCaps = a.EnforceSysCaps
-	cfg.EBPF = a.EBPF.Convert()
+
+	ebpf, err := a.EBPF.Convert()
+	if err != nil {
+		return nil, err
+	}
+	cfg.EBPF = *ebpf
+
 	cfg.Filters = a.Filters.Convert()
 	cfg.TracePrinter = debug.TracePrinter(a.TracePrinter)
 
@@ -524,40 +627,38 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 }
 
 func (args *Arguments) Validate() error {
-	hasNetworkFeature := args.Metrics.hasNetworkFeature()
 	hasAppFeature := args.Metrics.hasAppFeature()
 
-	// Validate TracePrinter
 	if args.TracePrinter == "" {
 		args.TracePrinter = string(debug.TracePrinterDisabled)
 	} else if !debug.TracePrinter(args.TracePrinter).Valid() {
 		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
 	}
 
-	// Services are required only when application observability is enabled
+	if err := args.Metrics.Validate(); err != nil {
+		return err
+	}
+
 	if hasAppFeature {
-		if len(args.Discovery.Services) == 0 {
-			return fmt.Errorf("discovery.services is required when application features are enabled")
+		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
+			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
 		}
-		if err := args.Discovery.Services.Validate(); err != nil {
-			return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+		if len(args.Discovery.Services) > 0 {
+			if err := args.Discovery.Services.Validate(); err != nil {
+				return fmt.Errorf("invalid discovery configuration: %s", err.Error())
+			}
+		}
+		if len(args.Discovery.Survey) > 0 {
+			if err := args.Discovery.Survey.Validate(); err != nil {
+				return fmt.Errorf("invalid survey configuration: %s", err.Error())
+			}
 		}
 	}
 
-	// Only validate exclude_services if they are defined (empty is valid)
 	if len(args.Discovery.ExcludeServices) > 0 {
 		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
-	}
-
-	// Check that at least one feature type is enabled
-	if !hasNetworkFeature && !hasAppFeature {
-		return fmt.Errorf("metrics.features must include at least one of: network, application, application_span, application_service_graph, or application_process")
-	}
-
-	if err := args.Metrics.Validate(); err != nil {
-		return err
 	}
 	return nil
 }
@@ -571,6 +672,20 @@ func stringToRegexpAttr(s string) (services.RegexpAttr, error) {
 		return services.RegexpAttr{}, err
 	}
 	return services.NewPathRegexp(re), nil
+}
+
+func stringToGlobAttr(s string) (services.GlobAttr, error) {
+	if s == "" {
+		return services.GlobAttr{}, nil
+	}
+
+	globAttr := services.GlobAttr{}
+	err := globAttr.UnmarshalText([]byte(s))
+
+	if err != nil {
+		return services.GlobAttr{}, err
+	}
+	return globAttr, nil
 }
 
 func stringToPortEnum(s string) (services.PortEnum, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"math/rand"
 	"os"
 	"regexp"
@@ -105,6 +106,24 @@ var customGitleaksConfig = map[string]string{
 		[allowlist]
 		regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
 	`,
+	`with_low_entropy`: `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "sha1-secret"
+		description = "Identified a fake secret"
+		regex = '''(?i)\b(?:[0-9a-f]{40})\b'''
+		entropy = 2.0
+	`,
+	`with_high_entropy`: `
+		title = "gitleaks custom config"
+
+		[[rules]]
+		id = "sha1-secret"
+		description = "Identified a fake secret"
+		regex = '''(?i)\b(?:[0-9a-f]{40})\b'''
+		entropy = 4.5
+	`,
 }
 
 var defaultRedactionString = "REDACTED-SECRET"
@@ -160,6 +179,16 @@ var testConfigs = map[string]string{
 		types = ["sha1-secret"]
 		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
 	`,
+	"with_entropy": `
+		forward_to = []
+		enable_entropy = true
+		gitleaks_config = "not-empty" // This will be replaced with the actual path to the temporary gitleaks config file
+	`,
+	"with_entropy_and_generic_default_config": `
+		forward_to = []
+		enable_entropy = true
+		include_generic = true
+	`,
 }
 
 // List of fake secrets to use for testing
@@ -182,7 +211,7 @@ var fakeSecrets = map[string]fakeSecret{
 	"generic": {
 		name:   "generic-api-key",
 		prefix: "tok" + "en" + ":",
-		value:  "tok" + "en" + ":" + strings.Repeat("A", 15),
+		value:  "tok" + "en" + ":" + "1" + strings.Repeat("A", 15), // All letters are not considered as token
 	},
 	"custom-fake-secret": {
 		name:  "my-fake-secret",
@@ -199,6 +228,20 @@ var fakeSecrets = map[string]fakeSecret{
 	"sha1-secret": {
 		name:  "sha1-secret",
 		value: "0123456789abcdef0123456789abcdef01234567",
+	},
+	"sha1-secret-low-entropy": {
+		name:  "sha1-secret-low-entropy",
+		value: "0000000000000000000111111111111111111111",
+	},
+	"generic-api-key-high-entropy": {
+		name:   "generic-api-key",
+		prefix: "tok" + "en" + "=",
+		value:  "tok" + "en" + "=" + "abcdefghijklmnopqrstuvwxyz12345",
+	},
+	"generic-api-key-low-entropy": {
+		name:   "generic-api-key",
+		prefix: "tok" + "en" + "=",
+		value:  "tok" + "en" + "=" + "aaa123aaa123aaa123aaa123aaa123",
 	},
 }
 
@@ -263,6 +306,24 @@ var testLogs = map[string]testLog{
 			"message": "This is a simple log message with a secret value ` + fakeSecrets["sha1-secret"].value + ` !
 		}`,
 		secrets: []fakeSecret{fakeSecrets["sha1-secret"]},
+	},
+	"sha1_low_entropy_secret": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["sha1-secret-low-entropy"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["sha1-secret-low-entropy"]},
+	},
+	"generic_api_key_high_entropy": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["generic-api-key-high-entropy"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["generic-api-key-high-entropy"]},
+	},
+	"generic_api_key_low_entropy": {
+		log: `{
+			"message": "This is a simple log message with a secret value ` + fakeSecrets["generic-api-key-low-entropy"].value + ` !
+		}`,
+		secrets: []fakeSecret{fakeSecrets["generic-api-key"]},
 	},
 }
 
@@ -427,6 +488,62 @@ var tt = []struct {
 		customGitleaksConfig["sha1_secret"],
 		testLogs["sha1_secret"].log,
 		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, true, defaultRedactionString),
+	},
+	{
+		"sha1_secret_entropy",
+		testConfigs["with_entropy"],
+		customGitleaksConfig["with_low_entropy"],
+		testLogs["sha1_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"sha1_secret_secret_low_entropy",
+		testConfigs["with_entropy"],
+		customGitleaksConfig["with_low_entropy"],
+		testLogs["sha1_low_entropy_secret"].log,
+		testLogs["sha1_low_entropy_secret"].log, // Entropy of the secret too low, no redaction expected
+	},
+	{
+		"sha1_secret_secret_low_entropy_no_entropy_enabled",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["with_low_entropy"],
+		testLogs["sha1_low_entropy_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"sha1_secret_config_high_entropy",
+		testConfigs["with_entropy"],
+		customGitleaksConfig["with_high_entropy"],
+		testLogs["sha1_secret"].log,
+		testLogs["sha1_secret"].log, // Entropy threshold in the rule too high for the secret, no redaction expected
+	},
+	{
+		"sha1_secret_entropy_not_enabled",
+		testConfigs["custom_gitleaks_file_simple"],
+		customGitleaksConfig["with_high_entropy"],
+		testLogs["sha1_secret"].log,
+		replaceSecrets(testLogs["sha1_secret"].log, testLogs["sha1_secret"].secrets, false, false, defaultRedactionString),
+	},
+	{
+		"generic_api_key_high_entropy",
+		testConfigs["with_entropy_and_generic_default_config"],
+		"",
+		testLogs["generic_api_key_high_entropy"].log,
+		replaceSecrets(testLogs["generic_api_key_high_entropy"].log, testLogs["generic_api_key_high_entropy"].secrets, true, false, defaultRedactionString),
+	},
+	{
+		"generic_api_key_low_entropy",
+		testConfigs["with_entropy_and_generic_default_config"],
+		"",
+		testLogs["generic_api_key_low_entropy"].log,
+		testLogs["generic_api_key_low_entropy"].log, // Entropy of the secret too low, no redaction expected
+	},
+	{
+		"generic_api_key_high_entropy_secret_no_entropy_enabled",
+		testConfigs["include_generic"],
+		"",
+		testLogs["generic_api_key_high_entropy"].log,
+		replaceSecrets(testLogs["generic_api_key_high_entropy"].log, testLogs["generic_api_key_high_entropy"].secrets, true, false, defaultRedactionString),
 	},
 }
 
@@ -830,10 +947,13 @@ func TestMetrics(t *testing.T) {
 	tests := []struct {
 		name                        string
 		inputLog                    string
+		entropyEnabled              bool
 		expectedRedactedTotal       int
 		expectedRedactedByRule      map[string]int
 		expectedAllowlistedBySource map[string]int
+		expectedEntropyByRule       map[string]int
 		allowlist                   []string
+		customConfig                string
 	}{
 		{
 			name:                  "No secrets",
@@ -866,6 +986,17 @@ func TestMetrics(t *testing.T) {
 			},
 			allowlist: []string{fakeSecrets["grafana-api-key"].value},
 		},
+		{
+			name:                   "Not redacted because of entropy",
+			inputLog:               testLogs["sha1_low_entropy_secret"].log,
+			expectedRedactedTotal:  0,
+			expectedRedactedByRule: map[string]int{},
+			expectedEntropyByRule: map[string]int{
+				"sha1-secret": 1,
+			},
+			entropyEnabled: true,
+			customConfig:   customGitleaksConfig["with_high_entropy"],
+		},
 	}
 
 	for _, tc := range tests {
@@ -877,6 +1008,14 @@ func TestMetrics(t *testing.T) {
 			args := Arguments{
 				ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 				OriginLabel: "job",
+			}
+
+			if tc.customConfig != "" {
+				args.GitleaksConfig = createTempGitleaksConfig(t, tc.customConfig)
+			}
+
+			if tc.entropyEnabled {
+				args.EnableEntropy = true
 			}
 
 			// Set allowlist if provided
@@ -977,6 +1116,23 @@ func TestMetrics(t *testing.T) {
 						"loki_secretfilter_secrets_redacted_by_origin"))
 			}
 
+			// Check entropy metrics
+			if len(tc.expectedEntropyByRule) > 0 {
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_skipped_entropy_by_rule_total Number of secrets that matched a rule but whose entropy was too low to be redacted, partitioned by rule name.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_skipped_entropy_by_rule_total counter\n")
+				// Add each rule metric
+				for ruleName, expectedCount := range tc.expectedEntropyByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_skipped_entropy_by_rule_total{rule="%s"} %d`,
+						ruleName, expectedCount)
+					metricStrings.WriteString(metric + "\n")
+				}
+				// Compare the metrics
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_skipped_entropy_by_rule_total"))
+			}
+
 			// Check processingDuration metric
 			// We don't validate the exact value since it will vary, but we verify it exists and has the right structure
 			count, err := testutil.GatherAndCount(registry, "loki_secretfilter_processing_duration_seconds")
@@ -1032,6 +1188,7 @@ func TestMetricsRegistration(t *testing.T) {
 	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
 	c.metrics.secretsRedactedByOrigin.WithLabelValues("test_value").Inc()
 	c.metrics.secretsAllowlistedTotal.WithLabelValues("test_source").Inc()
+	c.metrics.secretsSkippedByEntropy.WithLabelValues("test_rule").Inc()
 	c.metrics.processingDuration.Observe(0.123)
 
 	// Check that the metrics are registered
@@ -1040,11 +1197,12 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create a map of expected metrics
 	expectedMetrics := map[string]bool{
-		"loki_secretfilter_secrets_redacted_total":         false,
-		"loki_secretfilter_secrets_redacted_by_rule_total": false,
-		"loki_secretfilter_secrets_redacted_by_origin":     false,
-		"loki_secretfilter_secrets_allowlisted_total":      false,
-		"loki_secretfilter_processing_duration_seconds":    false,
+		"loki_secretfilter_secrets_redacted_total":                false,
+		"loki_secretfilter_secrets_redacted_by_rule_total":        false,
+		"loki_secretfilter_secrets_redacted_by_origin":            false,
+		"loki_secretfilter_secrets_allowlisted_total":             false,
+		"loki_secretfilter_processing_duration_seconds":           false,
+		"loki_secretfilter_secrets_skipped_entropy_by_rule_total": false,
 	}
 
 	// Check each metric family
@@ -1327,4 +1485,33 @@ func TestArgumentsUpdate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEntropy(t *testing.T) {
+	tc := []struct {
+		input    string
+		expected float64
+	}{
+		{"", 0.0},
+		{"Hello world!", 3.022055},
+		{"c0535e4be2b79ffd93291305436bf889314e4a3faec05ecffcbb7df31ad9e51a", 3.857009},
+	}
+	for _, test := range tc {
+		t.Run(test.input, func(t *testing.T) {
+			result := calculateEntropy(test.input)
+			// Use a tolerance for float comparison
+			tolerance := 1e-6
+			require.True(t, compareFloats(result, test.expected, tolerance),
+				"Expected entropy for '%s' to be %f, got %f", test.input, test.expected, result)
+		})
+	}
+}
+
+func compareFloats(a, b float64, tolerance float64) bool {
+	if a == b {
+		return true
+	}
+
+	// Compare two floats with a tolerance
+	return math.Abs(a-b) < tolerance
 }

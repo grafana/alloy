@@ -12,27 +12,25 @@ on:
       - 'Dockerfile'
       - 'tools/ci/docker-containers'
       - '.github/workflows/check-linux-container.yml'
+
+permissions:
+  contents: read
+
 jobs:
-  publish_windows_container:
-    name: Check Linux container
-    container: grafana/alloy-build-image:v0.1.17
-    runs-on:
-      labels: github-hosted-ubuntu-x64-large
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  check-linux-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel
+      push: false
 
-    - name: Set ownership
-      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
-      run: |
-          # this is to fix GIT not liking owner of the checkout dir
-          chown -R $(id -u):$(id -g) $PWD
-
-    - name: Set up Go
-      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
-      with:
-        go-version-file: go.mod
-        cache: false
-
-    - run: |
-        make alloy-image
+  check-linux-boringcrypto-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-boringcrypto
+      push: false

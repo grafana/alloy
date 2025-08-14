@@ -3,6 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 description: Learn about prometheus.write.queue
 labels:
   stage: experimental
+  products:
+    - oss
 title: prometheus.write.queue
 ---
 
@@ -35,9 +37,9 @@ prometheus.write.queue "<LABEL>" {
 
 You can use the following argument with `prometheus.write.queue`:
 
-| Name  | Type   | Description | Default                                                          | Required |     |
-| ----- | ------ | ----------- | ---------------------------------------------------------------- | -------- | --- |
-| `ttl` | `time` | `duration`  | How long the samples can be queued for before they're discarded. | `2h`     | no  |
+| Name  | Type      | Description                                                        | Default   | Required |
+| ----- | --------- | ------------------------------------------------------------------ | --------- | -------- |
+| `ttl` | `duration`| How long the samples can be queued for before they're discarded.   | `"2h"`    | no       |
 
 ## Blocks
 
@@ -68,21 +70,21 @@ Each `endpoint` has its own WAL folder.
 
 The following arguments are supported:
 
-| Name                     | Type                   | Description                                                                      | Default | Required |
-| ------------------------ | ---------------------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `url`                    | `string`               | Full URL to send metrics to.                                                     |         | yes      |
-| `batch_count`            | `uint`                 | How many series to queue in each queue.                                          | `1000`  | no       |
-| `bearer_token`           | `secret`               | Bearer token to authenticate with.                                               |         | no       |
-| `enable_round_robin`     | `bool`                 | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
-| `external_labels`        | `map(string)`          | Labels to add to metrics sent over the network.                                  |         | no       |
-| `flush_interval`         | `duration`             | How long to wait until sending if `batch_count` isn't triggered.                 | `1s`    | no       |
-| `headers`                | `map(secret)`          | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
-| `max_retry_attempts`     | `uint`                 | Maximum number of retries before dropping the batch.                             | `0`     | no       |
-| `proxy_url`              | `string`               | URL of the HTTP proxy to use for requests.                                       |         | no       |
-| `proxy_from_environment` | `bool`                 | Whether to read proxy configuration from environment variables.                  | `false` | no       |
-| `proxy_connect_headers`  | `map(secret)`          | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
-| `retry_backoff`          | `duration`             | How long to wait between retries.                                                | `1s`    | no       |
-| `write_timeout`          | `duration`             | Timeout for requests made to the URL.                                            | `"30s"` | no       |
+| Name                     | Type          | Description                                                                      | Default | Required |
+| ------------------------ | ------------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `url`                    | `string`      | Full URL to send metrics to.                                                     |         | yes      |
+| `batch_count`            | `uint`        | How many series to queue in each queue.                                          | `1000`  | no       |
+| `bearer_token`           | `secret`      | Bearer token to authenticate with.                                               |         | no       |
+| `enable_round_robin`     | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
+| `external_labels`        | `map(string)` | Labels to add to metrics sent over the network.                                  |         | no       |
+| `flush_interval`         | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `"1s"`  | no       |
+| `headers`                | `map(secret)` | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
+| `max_retry_attempts`     | `uint`        | Maximum number of retries before dropping the batch.                             | `0`     | no       |
+| `proxy_url`              | `string`      | URL of the HTTP proxy to use for requests.                                       |         | no       |
+| `proxy_from_environment` | `bool`        | Whether to read proxy configuration from environment variables.                  | `false` | no       |
+| `proxy_connect_headers`  | `map(secret)` | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
+| `retry_backoff`          | `duration`    | How long to wait between retries.                                                | `"1s"`  | no       |
+| `write_timeout`          | `duration`    | Timeout for requests made to the URL.                                            | `"30s"` | no       |
 
 ### `basic_auth`
 
@@ -105,13 +107,13 @@ The following arguments are supported:
 | Name                             | Type       | Description                                                                                                                       | Default | Required |
 | -------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `allowed_network_error_fraction` | `float`    | The allowed error rate before scaling down. For example `0.50` allows 50% error rate.                                             | `0.50`  | no       |
-| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                      | `5s`    | no       |
-| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                | `5m`    | no       |
-| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `30`    | no       |
-| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections. | `60`    | no       |
+| `desired_check_interval`         | `duration` | The length of time between checking for desired connections.                                                                      | `"5s"`  | no       |
+| `desired_connections_lookback`   | `duration` | The length of time that previous desired connections are kept for determining desired connections.                                | `"5m"`  | no       |
+| `drift_scale_down`               | `duration` | The minimum amount of time between the timestamps of incoming signals and outgoing signals before decreasing desired connections. | `"30s"` | no       |
+| `drift_scale_up`                 | `duration` | The maximum amount of time between the timestamps of incoming signals and outgoing signals before increasing desired connections. | `"60s"` | no       |
 | `max_connections`                | `uint`     | The maximum number of desired connections.                                                                                        | `50`    | no       |
 | `min_connections`                | `uint`     | The minimum number of desired connections.                                                                                        | `2`     | no       |
-| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                              | `1m`    | no       |
+| `network_flush_interval`         | `duration` | The length of time that network successes and failures are kept for determining desired connections.                              | `"1m"`  | no       |
 
 Parallelism determines when to scale up or down the number of desired connections.
 
@@ -140,7 +142,7 @@ The following arguments are supported:
 
 | Name                   | Type       | Description                                                                 | Default | Required |
 | ---------------------- | ---------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` isn't reached. | `5s`    | no       |
+| `batch_interval`       | `duration` | How often to batch signals to disk if `max_signals_to_batch` isn't reached. | `"5s"`  | no       |
 | `max_signals_to_batch` | `uint`     | The maximum number of signals before they're batched to disk.               | `10000` | no       |
 
 ## Exported fields
@@ -165,26 +167,27 @@ In those cases, exported fields are kept at their last healthy values.
 The following metrics are provided for backward compatibility.
 They generally behave the same, but there are likely edge cases where they differ.
 
-* `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
+<!-- * `prometheus_remote_storage_enqueue_retries_total` (counter): Total number of times enqueue has failed because a shard's queue was full.
 * `prometheus_remote_storage_exemplars_dropped_total` (counter): Total number of exemplars that were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
 * `prometheus_remote_storage_exemplars_failed_total` (counter): Total number of exemplars that failed to send to remote storage due to non-recoverable errors.
 * `prometheus_remote_storage_exemplars_in_total` (counter): Exemplars read into remote storage.
 * `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of exemplars that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage.
+* `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage. -->
 * `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors.
 * `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors.
 * `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage.
 * `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge): Unix timestamp of the latest WAL sample successfully sent by a queue.
-* `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
+* `prometheus_remote_storage_highest_timestamp_in_seconds` TODO
+<!-- * `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID. -->
 * `prometheus_remote_storage_samples_failed_total` (counter): Total number of samples that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage.
-* `prometheus_remote_storage_samples_retries_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
+<!-- * `prometheus_remote_storage_samples_in_total` (counter): Samples read into remote storage. -->
+* `prometheus_remote_storage_samples_retried_total` (counter): Total number of samples that failed to send to remote storage but were retried due to recoverable errors.
 * `prometheus_remote_storage_samples_total` (counter): Total number of samples sent to remote storage.
 * `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
-* `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL.
-* `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL.
-* `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
-* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL.
+<!-- * `prometheus_remote_write_wal_exemplars_appended_total` (counter): Total number of exemplars appended to the WAL. -->
+<!-- * `prometheus_remote_write_wal_samples_appended_total` (counter): Total number of samples appended to the WAL. -->
+<!-- * `prometheus_remote_write_wal_storage_created_series_total` (counter): Total number of created series appended to the WAL.
+* `prometheus_remote_write_wal_storage_removed_series_total` (counter): Total number of series removed from the WAL. -->
 * `prometheus_remote_storage_bytes_total` (counter): Total number of bytes of data sent by queues after compression.
 * `prometheus_remote_storage_sent_bytes_total` (counter): Total number of bytes of data sent by queues after compression. (same as `prometheus_remote_storage_bytes_total`)
 * `prometheus_remote_storage_sent_batch_duration_seconds` (histogram): Duration of send calls to remote storage.
@@ -197,22 +200,23 @@ Metrics that are new to `prometheus.write.queue`. These are highly subject to ch
 * `alloy_queue_metadata_network_sent_total` (counter): Number of metadata sent successfully.
 * `alloy_queue_metadata_serializer_errors_total` (counter): Number of errors for metadata written to serializer.
 * `alloy_queue_metadata_serializer_incoming_signals_total` (counter): Total number of metadata written to serialization.
-* `alloy_queue_network_metadata_failed_total` (counter): Number of metadata failed.
-* `alloy_queue_network_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
-* `alloy_queue_network_metadata_network_errors_total` (counter): Number of errors writing metadata to network.
-* `alloy_queue_network_metadata_retried_429_total` (counter): Number of metadata retried due to status code 429.
-* `alloy_queue_network_metadata_retried_5xx_total` (counter): Number of metadata retried due to status code 5xx.
-* `alloy_queue_network_metadata_retried_total` (counter): Number of metadata retried due to network issues.
-* `alloy_queue_network_series_failed_total` (counter): Number of series failed.
-* `alloy_queue_network_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
-* `alloy_queue_network_series_network_errors_total` (counter): Number of errors writing series to network.
-* `alloy_queue_network_series_retried_429_total` (counter): Number of series retried due to status code 429.
-* `alloy_queue_network_series_retried_5xx_total` (counter): Number of series retried due to status code 5xx.
-* `alloy_queue_network_series_retried_total` (counter): Number of series retried due to network issues.
+* `alloy_queue_metadata_network_failed_total` (counter): Number of metadata failed.
+* `alloy_queue_metadata_network_duration_seconds` (histogram): Duration writing metadata to endpoint.
+* `alloy_queue_metadata_network_errors_total` (counter): Number of errors writing metadata to network.
+* `alloy_queue_metadata_network_retried_429_total` (counter): Number of metadata retried due to status code 429.
+* `alloy_queue_metadata_network_retried_5xx_total` (counter): Number of metadata retried due to status code 5xx.
+* `alloy_queue_metadata_network_retried_total` (counter): Number of metadata retried due to network issues.
+* `alloy_queue_series_network_failed_total` (counter): Number of series failed.
+* `alloy_queue_series_network_duration_seconds` (histogram): Duration writing series to endpoint.
+* `alloy_queue_series_network_errors_total` (counter): Number of errors writing series to network.
+* `alloy_queue_series_network_retried_429_total` (counter): Number of series retried due to status code 429.
+* `alloy_queue_series_network_retried_5xx_total` (counter): Number of series retried due to status code 5xx.
+* `alloy_queue_series_network_retried_total` (counter): Number of series retried due to network issues.
 * `alloy_queue_series_network_sent_total` (counter): Number of series sent successfully.
 * `alloy_queue_series_network_timestamp_seconds` (gauge): Highest timestamp written to an endpoint.
 * `alloy_queue_series_serializer_errors_total` (counter): Number of errors for series written to serializer.
 * `alloy_queue_series_serializer_incoming_signals_total` (counter): Total number of series written to serialization.
+* `alloy_queue_series_serializer_incoming_exemplars_total` (counter): Total number of exemplars written to serialization.
 * `alloy_queue_series_serializer_incoming_timestamp_seconds` (gauge): Highest timestamp of incoming series.
 * `alloy_queue_series_disk_compressed_bytes_read_total` (counter): Total number of compressed bytes read from disk.
 * `alloy_queue_series_disk_compressed_bytes_written_total` (counter): Total number of compressed bytes written to disk.

@@ -81,8 +81,6 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	updateMut sync.Mutex
-
 	mut       sync.RWMutex
 	args      Arguments
 	handler   loki.LogsReceiver
@@ -164,12 +162,34 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RUnlock()
 		case <-c.updateReaders:
 			c.mut.Lock()
+
+			// When we are updating tasks we need to continue to read from handler.Chan().
+			// This is done to avoid a race condition where stopping a reader is
+			// flushing its data, but nothing is reading from handler.Chan().
+			readCtx, cancel := context.WithCancel(ctx)
+			go func() {
+				for {
+					select {
+					case entry := <-c.handler.Chan():
+						for _, receiver := range c.receivers {
+							receiver.Chan() <- entry
+						}
+					case <-readCtx.Done():
+						return
+					}
+				}
+			}()
+
 			var tasks []*runnerTask
 			level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
 			for _, entry := range c.tasks {
 				tasks = append(tasks, &entry)
 			}
 			err := runner.ApplyTasks(ctx, tasks)
+
+			// We cancel readCtx because we are done updating tasks and the main loop will continue to
+			// read from it.
+			cancel()
 			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 			c.mut.Unlock()
 
@@ -182,9 +202,6 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.updateMut.Lock()
-	defer c.updateMut.Unlock()
-
 	newArgs := args.(Arguments)
 
 	c.mut.Lock()

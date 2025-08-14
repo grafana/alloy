@@ -26,6 +26,7 @@ import (
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
@@ -47,6 +48,8 @@ const baseJitter = 100 * time.Millisecond
 const disablePollingFrequency = math.MaxInt64 - baseJitter
 
 var errNotModified = errors.New("config not modified since last fetch")
+
+var userAgent = useragent.Get()
 
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
@@ -183,6 +186,7 @@ func New(opts Options) (*Service, error) {
 				httpClient,
 				args.URL,
 				connect.WithHTTPGet(),
+				connect.WithInterceptors(&agentInterceptor{userAgent}),
 			), nil
 		},
 	}, nil
@@ -249,6 +253,12 @@ func (s *Service) registerMetrics() {
 // caller.
 // Data must only be called after Run.
 func (s *Service) Data() any {
+	// While the contract specifies that Data must be called after Run,
+	// the other services start in parallel and Cluster attempts to access
+	// the controller via Data, this locking prevents a race.
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+
 	if s.ctrl == nil {
 		return Data{Host: nil}
 	}
@@ -278,7 +288,11 @@ var _ service.Service = (*Service)(nil)
 // Run implements [service.Service] and starts the remotecfg service. It will
 // run until the provided context is canceled or there is a fatal error.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
+	// We need to use the mtx here as the cluster service will
+	// start in parallel and attempt to access the controller via Data()
+	s.mut.Lock()
 	s.ctrl = host.NewController(ServiceName)
+	s.mut.Unlock()
 
 	s.fetch()
 	err := s.registerCollector()
@@ -563,4 +577,40 @@ func (s *Service) setPollFrequency(t time.Duration) {
 	case s.updateTickerChan <- struct{}{}:
 	default:
 	}
+}
+
+type agentInterceptor struct {
+	agent string
+}
+
+func (i *agentInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		req.Header().Set("User-Agent", i.agent)
+		return next(ctx, req)
+	}
+}
+
+func (i *agentInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return func(ctx context.Context, spec connect.Spec) connect.StreamingClientConn {
+		conn := next(ctx, spec)
+		conn.RequestHeader().Set("User-Agent", i.agent)
+		return conn
+	}
+}
+
+func (i *agentInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return next
+}
+
+func GetHost(host service.Host) (service.Host, error) {
+	svc, found := host.GetService(ServiceName)
+	if !found {
+		return nil, fmt.Errorf("remote config service not available")
+	}
+
+	data := svc.Data().(Data)
+	if data.Host == nil {
+		return nil, fmt.Errorf("remote config service startup in progress")
+	}
+	return data.Host, nil
 }

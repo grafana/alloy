@@ -5,6 +5,8 @@ aliases:
 description: Learn about loki.process
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.process
 ---
 
@@ -63,9 +65,10 @@ You can use the following blocks with `loki.process`:
 | [`stage.multiline`][stage.multiline]                     | Configures a `multiline` processing stage.                     | no       |
 | [`stage.output`][stage.output]                           | Configures an `output` processing stage.                       | no       |
 | [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
+| [`stage.pattern`][stage.pattern]                         | Configures a `pattern` processing stage.                       | no       |
 | [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
-| [`stage.sampling`][stage.sampling]                       | Samples logs at a given rate.                                  | no       |
+| [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
 | [`stage.static_labels`][stage.static_labels]             | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata] | Configures a structured metadata processing stage.             | no       |
 | [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |
@@ -93,6 +96,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.multiline]: #stagemultiline
 [stage.output]: #stageoutput
 [stage.pack]: #stagepack
+[stage.pattern]: #stagepattern
 [stage.regex]: #stageregex
 [stage.replace]: #stagereplace
 [stage.sampling]: #stagesampling
@@ -255,11 +259,11 @@ The `eventlogmessage` stage extracts data from the Message string that appears i
 
 The following arguments are supported:
 
-| Name                  | Type     | Description                                           | Default   | Required |
-| --------------------- | -------- | ----------------------------------------------------- | --------- | -------- |
-| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`   | no       |
-| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`   | no       |
-| `source`              | `string` | Name of the field in the extracted data to parse.     | `message` | no       |
+| Name                  | Type     | Description                                           | Default     | Required |
+| --------------------- | -------- | ----------------------------------------------------- | ----------- | -------- |
+| `drop_invalid_labels` | `bool`   | Whether to drop fields that aren't valid label names. | `false`     | no       |
+| `overwrite_existing`  | `bool`   | Whether to overwrite existing extracted data fields.  | `false`     | no       |
+| `source`              | `string` | Name of the field in the extracted data to parse.     | `"message"` | no       |
 
 When `drop_invalid_labels` is set to `true`, the stage drops fields that aren't valid label names.
 If set to `false`, the stage automatically converts them into valid labels replacing invalid characters with underscores.
@@ -482,7 +486,7 @@ Then the extracted `ip` value is given as source to `geoip` stage. The `geoip` s
 
 The `stage.json` inner block configures a JSON processing stage that parses incoming log lines or previously extracted values as JSON and uses [JMESPath expressions][] to extract new values from them.
 
-[JMESPath expressions]: https://jmespath.org/tutorial.html
+[JMESPath expressions]: https://jmespath.site/main/#tutorial
 
 The following arguments are supported:
 
@@ -751,7 +755,7 @@ stage.labels {
 }
 
 stage.match {
-    selector = "{applbl=\"examplelabel\"}"
+    selector = "{applbl=\"example1\"}"
 
     stage.json {
         expressions = { "msg" = "message" }
@@ -766,7 +770,7 @@ stage.match {
 }
 
 stage.match {
-    selector = "{applbl=\"bar\"} |~ \".*noisy error.*\""
+    selector = "{applbl=\"example2\"} |~ \".*noisy error.*\""
     action   = "drop"
 
     drop_counter_reason = "discard_noisy_errors"
@@ -779,7 +783,7 @@ stage.output {
 
 The first two stages parse the log lines as JSON, decode the `app` value into the shared extracted map as `appname`, and use its value as the `applbl` label.
 
-The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="examplelabel"`.
+The third stage uses the LogQL selector to only execute the nested stages on lines where the `applbl="example1"`.
 So, for the first line, the nested JSON stage adds `msg="app1 log line"` into the extracted map.
 
 The fourth stage uses the LogQL selector to only execute on lines where `applbl="qux"`. This means it won't match any of the input, and the nested JSON stage doesn't run.
@@ -864,7 +868,7 @@ The following arguments are supported:
 
 | Name                | Type          | Description                                                                         | Default                  | Required |
 | ------------------- | ------------- | ----------------------------------------------------------------------------------- | ------------------------ | -------- |
-| `buckets`           | `list(float)` | Predefined buckets                                                                    |                          | yes      |
+| `buckets`           | `list(float)` | Predefined buckets                                                                  |                          | yes      |
 | `name`              | `string`      | The metric name.                                                                    |                          | yes      |
 | `description`       | `string`      | The metric's description and help text.                                             | `""`                     | no       |
 | `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as 'stale' and removed.   | `"5m"`                   | no       |
@@ -1119,16 +1123,120 @@ At query time, the Loki [`unpack` parser][unpack parser] can be used to access t
 
 When combining several log streams to use with the `pack` stage, you can set `ingest_timestamp` to true to avoid interlaced timestamps and out-of-order ingestion issues.
 
+### `stage.pattern`
+
+The `stage.pattern` inner block configures a processing stage that parses log lines using
+[LogQL pattern][logql pattern] expressions and uses named captures to add data into the shared extracted map of values.
+
+The following arguments are supported:
+
+| Name                 | Type     | Description                                                            | Default | Required |
+| -------------------- | -------- | ---------------------------------------------------------------------- | ------- | -------- |
+| `pattern`            | `string` | A valid LogQL pattern expression. At least one capture must be named.  |         | yes      |
+| `source`             | `string` | Name from extracted data to parse. If empty, uses the log message.     | `""`    | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.           | `false` | no       |
+
+The `pattern` field needs to be a [LogQL pattern][logql pattern] expression.
+Every matched capture is added to the extracted map.
+The name of the capture is used as the key in the extracted map for the matched value.
+
+When `labels_from_groups` is set to true, any named captures from the pattern expression are automatically added as labels in addition to being added to the extracted map.
+If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
+
+If the `source` is empty or missing, then the stage parses the log line itself.
+If the `source` set, the stage parses a previously extracted value with the same name.
+
+Given the following log line and pattern stage, the extracted values are shown below:
+
+```alloy
+2019-01-01T01:00:00.000000001Z stderr P i'm a log message!
+
+stage.pattern {
+    pattern = "<time> <stream> <flags> <content>"
+}
+
+time: 2019-01-01T01:00:00.000000001Z,
+stream: stderr,
+flags: P,
+content: i'm a log message
+```
+
+If the `source` value is set, then the pattern expression is applied to the value stored in the shared map under that name.
+
+The following log line is put through this two-stage pipeline:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.pattern {
+    pattern = "<year>-<month>-<day>T<hour>:<minute>:<second>.<nano>Z"
+    source  = "time"
+}
+```
+
+The first stage adds the following key-value pair into the extracted map:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+```
+
+Then, the pattern stage parses the value for time from the shared values and appends the subsequent key-value pair back into the extracted values map:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+year: 2022
+month: 01
+day: 01
+hour: 01
+minute: 00
+second: 00
+nano: 000000001
+```
+
+The following example demonstrates how `labels_from_groups` can automatically add the matched groups as labels:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.pattern {
+    pattern            = "<year>-<month>-<day>T<hour>:<minute>:<second>.<nano>Z"
+    source             = "time"
+    labels_from_groups = true   // Sets up a label for each field parsed from the pattern
+}
+```
+
+This pipeline produces the same extracted values as before in addition to adding labels to the entry:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
+year: 2022
+month: 01
+day: 01
+hour: 01
+minute: 00
+second: 00
+nano: 000000001
+```
+
+[logql pattern]: https://grafana.com/docs/loki/latest/query/log_queries/#pattern
+
 ### `stage.regex`
 
 The `stage.regex` inner block configures a processing stage that parses log lines using regular expressions and uses named capture groups for adding data into the shared extracted map of values.
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                                        | Default | Required |
-| ------------ | -------- | ------------------------------------------------------------------ | ------- | -------- |
-| `expression` | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
-| `source`     | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| Name                 | Type     | Description                                                        | Default | Required |
+| -------------------- | -------- | ------------------------------------------------------------------ | ------- | -------- |
+| `expression`         | `string` | A valid RE2 regular expression. Each capture group must be named.  |         | yes      |
+| `source`             | `string` | Name from extracted data to parse. If empty, uses the log message. | `""`    | no       |
+| `labels_from_groups` | `bool`   | Whether to automatically add named capture groups as labels.       | `false` | no       |
 
 The `expression` field needs to be a RE2 regular expression string.
 Every matched capture group is added to the extracted map, so it must be named like: `(?P<name>re)`.
@@ -1136,8 +1244,11 @@ The name of the capture group is then used as the key in the extracted map for t
 
 Because of how {{< param "PRODUCT_NAME" >}} syntax strings work, any backslashes in `expression` must be escaped with a double backslash, for example, `"\\w"` or `"\\S+"`.
 
+When `labels_from_groups` is set to true, any named capture groups from the regex expression are automatically added as labels in addition to being added to the extracted map.
+If a capture group name matches an existing label name, the existing label's value will be overridden by the extracted value.
+
 If the `source` is empty or missing, then the stage parses the log line itself.
-If it's set, the stage parses a previously extracted value with the same name.
+If the `source` is set, the stage parses a previously extracted value with the same name.
 
 Given the following log line and regular expression stage, the extracted values are shown below:
 
@@ -1154,7 +1265,7 @@ flags: P,
 content: i'm a log message
 ```
 
-On the other hand, if the `source` value is set, then the regular expression is applied to the value stored in the shared map under that name.
+If the `source` value is set, then the regular expression is applied to the value stored in the shared map under that name.
 
 The following log line is put through this two-stage pipeline:
 
@@ -1179,6 +1290,28 @@ time: 2022-01-01T01:00:00.000000001Z
 Then, the regular expression stage parses the value for time from the shared values and appends the subsequent key-value pair back into the extracted values map:
 
 ```text
+year: 2022
+```
+
+The following example demonstrates how `labels_from_groups` can automatically add the matched groups as labels:
+
+```alloy
+{"timestamp":"2022-01-01T01:00:00.000000001Z"}
+
+stage.json {
+    expressions = { time = "timestamp" }
+}
+stage.regex {
+    expression = "^(?P<year>\\d+)"
+    source = "time"
+    labels_from_groups = true   // Sets up an 'year' label, based on the 'year' capture group's value.
+}
+```
+
+This pipeline produces the same extracted values as before:
+
+```text
+time: 2022-01-01T01:00:00.000000001Z
 year: 2022
 ```
 

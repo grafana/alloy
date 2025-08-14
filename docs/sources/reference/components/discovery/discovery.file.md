@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.file
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.file
 ---
 
@@ -27,7 +29,7 @@ You can use the following arguments with `discovery.file`:
 | Name               | Type           | Description                              | Default | Required |
 | ------------------ | -------------- | ---------------------------------------- | ------- | -------- |
 | `files`            | `list(string)` | Files to read and discover targets from. |         | yes      |
-| `refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no       |
+| `refresh_interval` | `duration`     | How often to sync targets.               | `"5m"`  | no       |
 
 The last path segment of each element in `files` may contain a single `*` that matches any character sequence, for example, `my/path/tg_*.json`.
 

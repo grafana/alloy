@@ -36,6 +36,7 @@ loki.source.api "fun" {
 	}
 	relabel_rules          = discovery.relabel.fun.rules
 	use_incoming_timestamp = true
+	max_send_message_size  = "0B"
 }
 
 loki.write "default" {

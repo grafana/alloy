@@ -6,6 +6,8 @@ aliases:
 description: Learn about loki.source.azure_event_hubs
 labels:
   stage: general-availability
+  products:
+    - oss
 title: loki.source.azure_event_hubs
 ---
 
@@ -41,7 +43,7 @@ loki.source.azure_event_hubs "<LABEL>" {
 You can use the following arguments with `loki.source.azure_event_hubs`:
 
 | Name                        | Type                 | Description                                                                         | Default                          | Required |
-| --------------------------- | -------------------- | ----------------------------------------------------------------------------------- | -------------------------------- | -------- |
+|-----------------------------|----------------------|-------------------------------------------------------------------------------------|----------------------------------|----------|
 | `event_hubs`                | `list(string)`       | Event Hubs to consume.                                                              |                                  | yes      |
 | `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                           |                                  | yes      |
 | `fully_qualified_namespace` | `string`             | Event hub namespace.                                                                |                                  | yes      |
@@ -50,7 +52,7 @@ You can use the following arguments with `loki.source.azure_event_hubs`:
 | `group_id`                  | `string`             | The Kafka consumer group ID.                                                        | `"loki.source.azure_event_hubs"` | no       |
 | `labels`                    | `map(string)`        | The labels to associate with each received event.                                   | `{}`                             | no       |
 | `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                           | `{}`                             | no       |
-| `use_incoming_timestamp`    | `bool`               | Whether or not to use the timestamp received from Azure Event Hub.                  | `false`                          | no       |
+| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from Azure Event Hub.                         | `false`                          | no       |
 
 The `fully_qualified_namespace` argument must refer to a full `HOST:PORT` that points to your event hub, such as `NAMESPACE.servicebus.windows.net:9093`.
 The `assignor` argument must be set to one of `"range"`, `"roundrobin"`, or `"sticky"`.
@@ -79,19 +81,19 @@ The following internal labels prefixed with `__` are available but are discarded
 You can use the following block with `loki.source.azure_event_hubs`:
 
 | Name                               | Description                                        | Required |
-| ---------------------------------- | -------------------------------------------------- | -------- |
+|------------------------------------|----------------------------------------------------|----------|
 | [`authentication`][authentication] | Authentication configuration with Azure Event Hub. | yes      |
 
 [authentication]: #authentication
 
 ### `authentication`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `authentication` block defines the authentication method when communicating with Azure Event Hub.
 
 | Name                | Type           | Description                                                               | Default | Required |
-| ------------------- | -------------- | ------------------------------------------------------------------------- | ------- | -------- |
+|---------------------|----------------|---------------------------------------------------------------------------|---------|----------|
 | `mechanism`         | `string`       | Authentication mechanism.                                                 |         | yes      |
 | `connection_string` | `secret`       | Event Hubs ConnectionString for authentication on Azure Cloud.            |         | no       |
 | `scopes`            | `list(string)` | Access token scopes. Default is `fully_qualified_namespace` without port. |         | no       |

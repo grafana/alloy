@@ -5,6 +5,8 @@ aliases:
 description: Learn about discovery.lightsail
 labels:
   stage: general-availability
+  products:
+    - oss
 title: discovery.lightsail
 ---
 
@@ -31,14 +33,14 @@ You can use the following arguments with `discovery.lightsail`:
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                | `true`  | no       |
 | `endpoint`               | `string`            | Custom endpoint to be used.                                                                                             |         | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                            | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                                 |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                        |         | no       |
-| `port`                   | `int`               | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | 80      | no       |
+| `port`                   | `int`               | The port to scrape metrics from. If using the public IP address, this must instead be specified in the relabeling rule. | `80`    | no       |
 | `profile`                | `string`            | Named AWS profile used to connect to the API.                                                                           |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                           |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                   | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                    |         | no       |
-| `refresh_interval`       | `string`            | Refresh interval to re-read the instance list.                                                                          | 60s     | no       |
+| `refresh_interval`       | `duration`          | Refresh interval to re-read the instance list.                                                                          | `"60s"` | no       |
 | `region`                 | `string`            | The AWS region. If blank, the region from the instance metadata is used.                                                |         | no       |
 | `role_arn`               | `string`            | AWS Role ARN, an alternative to using AWS API keys.                                                                     |         | no       |
 | `secret_key`             | `string`            | The AWS API key secret. If blank, the environment variable `AWS_SECRET_ACCESS_KEY` is used.                             |         | no       |

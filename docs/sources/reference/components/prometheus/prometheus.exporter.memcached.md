@@ -5,6 +5,8 @@ aliases:
 description: Learn about prometheus.exporter.memcached
 labels:
   stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.memcached
 ---
 
@@ -70,7 +72,7 @@ prometheus.exporter.memcached "example" {
 }
 
 prometheus.scrape "example" {
-  targets    = [prometheus.exporter.memcached.example.targets]
+  targets    = prometheus.exporter.memcached.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 

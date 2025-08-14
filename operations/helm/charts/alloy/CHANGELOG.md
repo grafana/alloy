@@ -10,6 +10,69 @@ internal API changes are not present.
 Unreleased
 ----------
 
+- Add support to provide extraLabels to alloy.controler (@evkuzin)
+- Add option to not expose http server port. (@kun98-liu)
+
+### Enhancements
+
+- Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
+
+1.2.1 (2025-08-07)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.1. (@kalleep)
+
+1.2.0 (2025-07-16)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.0. (@ptodev)
+
+1.1.2 (2025-06-26)
+----------
+- Add NetworkPolicy support. (@TheRealNoob)
+
+- Update to Grafana Alloy v1.9.2. (@ptodev)
+
+1.1.1 (2025-06-05)
+----------
+
+### Bug fixes
+
+- Fix `alloy.mounts.extra` incorrect list after templating. (@sentoz)
+
+- Update to Grafana Alloy v1.9.1. (@thampiotr)
+
+1.1.0 (2025-06-02)
+----------
+
+### Bug fixes
+
+- Fix VPA issue not rendering correctly. (@mattdurham)
+
+- Fix `app.kubernetes.io/version` label not being set correctly. (@wildum)
+
+### Enhancements
+
+- Update to Grafana Alloy v1.9.0. (@wildum)
+
+1.0.3 (2025-05-05)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.3. (@kalleep)
+
+1.0.2 (2025-04-23)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.2. (@kalleep)
+
 1.0.1 (2025-04-10)
 ----------
 
