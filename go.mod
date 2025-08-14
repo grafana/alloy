@@ -796,7 +796,7 @@ require (
 	github.com/ncabatoff/go-seq v0.0.0-20180805175032-b08ef85ed833 // indirect
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
-	github.com/ohler55/ojg v1.20.1 // indirect
+	github.com/ohler55/ojg v1.26.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.128.0 // indirect
