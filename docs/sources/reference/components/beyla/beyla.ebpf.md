@@ -332,9 +332,6 @@ Without an output configuration, traces are collected but not exported.
 |-------------------|----------------|------------------------------------------------------------------|---------|----------|
 | `instrumentations` | `list(string)` | List of instrumentations to enable for trace collection.        | `["*"]` | no       |
 
-The `traces` block contains the following sub-blocks:
-
-- [`sampler`][sampler] - configures global trace sampling settings. See the [`sampler`][sampler] section for detailed configuration options.
 
 The supported values for `instrumentations` are:
 
