@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -44,6 +45,7 @@ SELECT
 	statements.END_EVENT_ID,
 	statements.DIGEST,
 	statements.DIGEST_TEXT,
+	statements.SQL_TEXT,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
 	statements.CPU_TIME,
@@ -59,7 +61,6 @@ SELECT
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
 	waits.timer_wait as WAIT_TIMER_WAIT
-	%s
 FROM
 	performance_schema.events_statements_history AS statements
 LEFT JOIN
@@ -69,7 +70,8 @@ LEFT JOIN
 WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	%s %s`
+	AND statements.DIGEST_TEXT IS NOT NULL
+	%s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -227,16 +229,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	var textField, textNotNullClause string
-	if c.disableQueryRedaction {
-		textField = sqlTextField
-		textNotNullClause = sqlTextNotNullClause
-	} else {
-		textField = ""
-		textNotNullClause = digestTextNotNullClause
-	}
-
-	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+	query := fmt.Sprintf(selectQuerySamples, timerClause)
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
@@ -294,6 +287,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.StatementEndEventID,
 			&row.Digest,
 			&row.DigestText,
+			&row.SQLText,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
 			&row.CPUTime,
@@ -309,9 +303,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectName,
 			&row.WaitObjectType,
 			&row.WaitTime,
-		}
-		if c.disableQueryRedaction {
-			scanArgs = append(scanArgs, &row.SQLText)
 		}
 
 		err := rs.Scan(scanArgs...)
@@ -343,8 +334,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
+		traceParent := tryExtractTraceParent(row.SQLText.String)
+
 		logMessage := fmt.Sprintf(
-			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" traceparent="%s"`,
 			row.Schema.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
@@ -358,6 +351,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			cpuTime,
 			elapsedTime,
 			elapsedTime,
+			traceParent,
 		)
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
@@ -379,7 +373,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		if row.WaitEventID.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
-				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms" traceparent="%s"`,
 				row.Schema.String,
 				row.ThreadID.String,
 				row.Digest.String,
@@ -391,6 +385,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				row.WaitObjectName.String,
 				row.WaitObjectType.String,
 				waitTime,
+				traceParent,
 			)
 
 			if c.disableQueryRedaction && row.SQLText.Valid {
@@ -445,4 +440,35 @@ func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, floa
 	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
+}
+
+// tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
+// block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
+// It returns the traceparent string when matched, otherwise an empty string.
+func tryExtractTraceParent(sqlText string) string {
+	if strings.HasSuffix(sqlText, "...") {
+		return ""
+	}
+
+	idx := strings.LastIndex(strings.ToLower(sqlText), "traceparent=")
+	if idx < 0 {
+		return ""
+	}
+	tp := sqlText[idx+len("traceparent="):]
+
+	quote := tp[0]
+	if quote == '\'' || quote == '"' {
+		tp = tp[1:]
+		end := strings.IndexByte(tp, byte(quote))
+		if end < 0 {
+			end = len(tp)
+		}
+		return strings.TrimSpace(tp[:end])
+	}
+
+	if end := strings.Index(tp, "*/"); end > 0 {
+		tp = tp[:end]
+	}
+
+	return tp
 }
