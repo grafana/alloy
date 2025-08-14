@@ -524,7 +524,6 @@ func (a *testAppender) Append(_ context.Context, lbls labels.Labels, samples []*
 }
 
 func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.IncomingProfile) error {
-	fmt.Println("AppendIngest")
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	newProfile := &pyroscope.IncomingProfile{
