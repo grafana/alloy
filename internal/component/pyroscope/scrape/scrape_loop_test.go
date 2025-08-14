@@ -298,7 +298,7 @@ func TestValidateProfileData(t *testing.T) {
 			data:        []byte{0x1e, 0x01, 0x00, 0x12, 0x04, 't', 'e', 's', 't'},
 			contentType: "application/octet-stream",
 			expectError: true,
-			errorMsg:    "invalid protobuf data: illegal wireType 6",
+			errorMsg:    "invalid protobuf data: illegal wireType 6 (expected 0-5), first bytes: 1e0100120474657374",
 		},
 		{
 			name:        "valid protobuf data",

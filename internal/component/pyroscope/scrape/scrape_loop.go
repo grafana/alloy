@@ -346,6 +346,15 @@ func getFirstBytes(data []byte, n int) string {
 	return string(data)
 }
 
+// getHexBytes returns the first n bytes as hex-encoded string for debugging binary data
+func getHexBytes(data []byte, n int) string {
+	end := n
+	if len(data) < n {
+		end = len(data)
+	}
+	return fmt.Sprintf("%x", data[:end])
+}
+
 // isWhitespace checks if a byte is whitespace
 func isWhitespace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
@@ -436,7 +445,8 @@ func validateBinaryContent(data []byte) error {
 	// Check protobuf wireType in first byte. Valid wireTypes are 0-5, invalid are 6-7.
 	// This catches corrupted data that would cause "proto: illegal wireType 6/7" errors.
 	if (data[0] & 0x07) >= 6 {
-		return fmt.Errorf("invalid protobuf data: illegal wireType %d (expected 0-5)", data[0]&0x07)
+		preview := getHexBytes(data, 16)
+		return fmt.Errorf("invalid protobuf data: illegal wireType %d (expected 0-5), first bytes: %s", data[0]&0x07, preview)
 	}
 
 	return nil
