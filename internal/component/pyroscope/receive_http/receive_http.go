@@ -50,6 +50,7 @@ func (a *Arguments) SetToDefault() {
 	*a = Arguments{
 		Server: fnet.DefaultServerConfig(),
 	}
+	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
@@ -301,4 +302,8 @@ func ensureServiceName(lbls labels.Labels) labels.Labels {
 	}
 
 	return builder.Labels()
+}
+
+func defaultConnectionLimit() int {
+	return 100
 }

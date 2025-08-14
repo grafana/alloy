@@ -79,7 +79,7 @@ Main (unreleased)
 
 - Fix `pyroscope.receive_http` so it does not restart server if the server configuration has not changed. (@korniltsev)
 
-- Fix default connection limit in `pyroscope.receive_http`. (@korniltsev)
+- Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
 v1.10.1
 -----------------

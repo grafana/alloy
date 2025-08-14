@@ -60,7 +60,7 @@ You can use the following arguments to configure the `http` block. Any omitted f
 
 | Name                   | Type       | Description                                                                                                      | Default  | Required |
 |------------------------|------------|------------------------------------------------------------------------------------------------------------------|----------|----------|
-| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 0 (unlimited).                                      | `0`      | no       |
+| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 16384.                                              | `16384`  | no       |
 | `listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no       |
 | `listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no       |
 | `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                | `"120s"` | no       |
@@ -74,6 +74,37 @@ You can use the following arguments to configure the `http` block. Any omitted f
 ## Component health
 
 `pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+
+## Debug metrics
+
+`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
+`pyroscope_receive_http_tcp_connections_limit` (gauge): The max number of TCP connections that can be accepted (0 means no limit).
+
+## Troubleshooting
+
+### Connection limit errors
+
+If you see errors like `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"` in components that push to `pyroscope.receive_http` (such as `pyroscope.write`), this may be caused by reaching the TCP connection limit of `pyroscope.receive_http`.
+
+To diagnose this issue:
+
+1. Check the `pyroscope_receive_http_tcp_connections` metric to see if it's approaching or at the `pyroscope_receive_http_tcp_connections_limit`.
+2. If the connection limit is being reached, you have several options:
+
+   **Option A: Increase the connection limit**
+   ```alloy
+   pyroscope.receive_http "default" {
+     http {
+       conn_limit = 32768  // Increase from default 16384
+       // ... other settings
+     }
+     // ... rest of configuration
+   }
+   ```
+
+   **Option B: Horizontal scaling**
+   
+   Deploy multiple instances of `pyroscope.receive_http` behind a load balancer to distribute the connection load across multiple receivers. This approach provides better scalability and fault tolerance.
 
 ## Example
 
