@@ -59,13 +59,13 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 
 You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 
-| Block                                  | Description                                                                                                                  | Required |
-|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------|----------|
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                                                   | no       |
-| [`ordering`][ordering]                 | Configures the [PubSub ordering](https://cloud.google.com/pubsub/docs/ordering) feature, see ordering section for more info. | no       |
-| [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline.                              | no       |
-| [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                                                                  | no       |
-| [`watermark`][watermark]               | Behaviour of how the ce-time attribute is set (see watermark section for more info)                                          | no       |
+| Block                                  | Description                                                                                     | Required |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
+| [`ordering`][ordering]                 | Configures the [Pub/Sub ordering](https://cloud.google.com/pubsub/docs/ordering) feature.       | no       |
+| [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
+| [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                                     | no       |
+| [`watermark`][watermark]               | Behaviour of how the ce-time attribute is set.                                                  | no       |
 
 ### `debug_metrics`
 
