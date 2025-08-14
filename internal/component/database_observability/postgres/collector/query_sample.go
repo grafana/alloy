@@ -241,12 +241,10 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		}
 
 		waitEventFullName := ""
-		waitEvent := ""
-		waitEventType := ""
+		waitEvent := activity.WaitEvent.String
+		waitEventType := activity.WaitEventType.String
 		if activity.WaitEventType.Valid && activity.WaitEvent.Valid {
 			waitEventFullName = fmt.Sprintf("%s:%s", activity.WaitEventType.String, activity.WaitEvent.String)
-			waitEvent = activity.WaitEvent.String
-			waitEventType = activity.WaitEventType.String
 		}
 
 		// Build query sample entry
