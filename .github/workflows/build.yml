@@ -98,7 +98,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
