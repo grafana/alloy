@@ -91,18 +91,20 @@ type ActivityInfo struct {
 }
 
 type ActivityArguments struct {
-	DB              *sql.DB
-	InstanceKey     string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
-	Logger          log.Logger
+	DB                    *sql.DB
+	InstanceKey           string
+	CollectInterval       time.Duration
+	EntryHandler          loki.EntryHandler
+	Logger                log.Logger
+	DisableQueryRedaction bool
 }
 
 type Activity struct {
-	dbConnection    *sql.DB
-	instanceKey     string
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
+	dbConnection          *sql.DB
+	instanceKey           string
+	collectInterval       time.Duration
+	entryHandler          loki.EntryHandler
+	disableQueryRedaction bool
 
 	logger     log.Logger
 	running    *atomic.Bool
@@ -113,12 +115,13 @@ type Activity struct {
 
 func NewActivity(args ActivityArguments) (*Activity, error) {
 	return &Activity{
-		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", ActivityName),
-		running:         &atomic.Bool{},
+		dbConnection:          args.DB,
+		instanceKey:           args.InstanceKey,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", ActivityName),
+		running:               &atomic.Bool{},
 	}, nil
 }
 
@@ -247,6 +250,12 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			waitEventFullName = fmt.Sprintf("%s:%s", activity.WaitEventType.String, activity.WaitEvent.String)
 		}
 
+		// Get query string and redact if needed
+		queryStr := activity.Query.String
+		if !c.disableQueryRedaction {
+			queryStr = redact(queryStr)
+		}
+
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
 			`instance="%s" datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
@@ -265,7 +274,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			activity.State.String,
 			queryDuration,
 			activity.QueryID.Int64,
-			activity.Query.String,
+			queryStr,
 		)
 
 		if !activity.WaitEventType.Valid && !activity.WaitEvent.Valid && activity.State.String == "active" {
@@ -295,7 +304,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 				waitEventFullName,
 				activity.BlockedByPIDs,
 				activity.QueryID.Int64,
-				activity.Query.String,
+				queryStr,
 			)
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(

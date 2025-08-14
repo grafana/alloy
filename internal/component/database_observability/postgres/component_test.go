@@ -164,3 +164,46 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		}, actualCollectors)
 	})
 }
+
+func TestQueryRedactionConfig(t *testing.T) {
+	t.Run("default behavior - query redaction enabled", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		enable_collectors = ["activity"]
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.False(t, args.DisableQueryRedaction, "query redaction should be enabled by default")
+	})
+
+	t.Run("explicitly disable query redaction", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		enable_collectors = ["activity"]
+		disable_query_redaction = true
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.True(t, args.DisableQueryRedaction, "query redaction should be disabled when explicitly set")
+	})
+
+	t.Run("explicitly enable query redaction", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		enable_collectors = ["activity"]
+		disable_query_redaction = false
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.False(t, args.DisableQueryRedaction, "query redaction should be enabled when explicitly set to false")
+	})
+}
