@@ -488,6 +488,7 @@ func testAppendable(appendErr error) pyroscope.Appendable {
 }
 
 type testAppender struct {
+	mu          sync.Mutex
 	appendErr   error
 	lastProfile *pyroscope.IncomingProfile
 
@@ -516,12 +517,16 @@ func (a *testAppender) Appender() pyroscope.Appender {
 }
 
 func (a *testAppender) Append(_ context.Context, lbls labels.Labels, samples []*pyroscope.RawSample) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.pushedLabels = append(a.pushedLabels, lbls)
 	a.pushedSamples = append(a.pushedSamples, samples)
 	return a.appendErr
 }
 
 func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.IncomingProfile) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	newProfile := &pyroscope.IncomingProfile{
 		RawBody:     profile.RawBody,
 		ContentType: profile.ContentType,
@@ -595,6 +600,36 @@ func TestUpdateArgs(t *testing.T) {
 }
 
 func TestConnectionLimit(t *testing.T) {
+	ingest := func(wg *sync.WaitGroup, port int) {
+		defer wg.Done()
+		cl := &http.Client{
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		}
+		requestContext, requestCancel := context.WithTimeout(t.Context(), time.Second)
+		defer requestCancel()
+		req, err := http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/ingest", port), bytes.NewReader([]byte("foo;bar 239")))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		req = req.WithContext(requestContext)
+		_, err = cl.Do(req)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
 	ports, err := freeport.GetFreePorts(1)
 	require.NoError(t, err)
 	forwardTo := []pyroscope.Appendable{testAppendable(nil)}
@@ -615,38 +650,11 @@ func TestConnectionLimit(t *testing.T) {
 		require.NoError(t, comp.Run(ctx))
 	}()
 	const N = 1333
-	wg := sync.WaitGroup{}
+	wg := new(sync.WaitGroup)
 	wg.Add(N)
 	for i := 0; i < N; i++ {
 		go func() {
-			defer wg.Done()
-			cl := &http.Client{
-				Transport: &http.Transport{
-					DialContext: (&net.Dialer{
-						Timeout:   30 * time.Second,
-						KeepAlive: 30 * time.Second,
-					}).DialContext,
-					ForceAttemptHTTP2:     true,
-					MaxIdleConns:          100,
-					IdleConnTimeout:       90 * time.Second,
-					TLSHandshakeTimeout:   10 * time.Second,
-					ExpectContinueTimeout: 1 * time.Second,
-				},
-			}
-			requestContext, requestCancel := context.WithTimeout(t.Context(), time.Second)
-			defer requestCancel()
-			var req *http.Request
-			req, err = http.NewRequest("POST", fmt.Sprintf("http://localhost:%d/ingest", ports[0]), bytes.NewReader([]byte("foo;bar 239")))
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			req = req.WithContext(requestContext)
-			_, err = cl.Do(req)
-			if err != nil {
-				t.Error(err)
-				return
-			}
+			ingest(wg, ports[0])
 		}()
 	}
 	wg.Wait()
