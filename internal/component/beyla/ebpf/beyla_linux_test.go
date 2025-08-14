@@ -1391,10 +1391,10 @@ func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
 
 func TestServices_Convert_SamplerConfig(t *testing.T) {
 	tests := []struct {
-		name                 string
-		services             Services
-		expectSamplerConfig  bool
-		expectedSamplerName  string
+		name                string
+		services            Services
+		expectSamplerConfig bool
+		expectedSamplerName string
 	}{
 		{
 			name: "service with empty sampler config",
