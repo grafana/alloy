@@ -303,7 +303,3 @@ func ensureServiceName(lbls labels.Labels) labels.Labels {
 
 	return builder.Labels()
 }
-
-func defaultConnectionLimit() int {
-	return 100
-}
