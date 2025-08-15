@@ -30,10 +30,10 @@ You can use the following arguments with `database_observability.postgres`:
 | `data_source_name`                 | `secret`             | [Data Source Name][] for the Postgres server to connect to.                                    |         | yes      |
 | `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
 | `collect_interval`                 | `duration`           | How frequently to collect information from database.                                           | `"1m"`  | no       |
-| `query_sample_collect_interval`    | `duration`           | How frequently to collect query samples from database.                                         | `"15s"` | no       |
 | `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
 | `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                        | `false` | no       |
 | `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
+| `query_sample_collect_interval`    | `duration`           | How frequently to collect query samples from database.                                         | `"15s"` | no       |
 
 The following collectors are configurable:
 
