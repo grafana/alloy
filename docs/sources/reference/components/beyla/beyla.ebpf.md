@@ -368,7 +368,7 @@ For per-service sampling configuration, use the `sampler` block within the `disc
 The `sampler` block configures trace sampling settings. This block can be used in two contexts:
 
 1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
-2. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
+1. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
 
 The following arguments are supported: 
 
