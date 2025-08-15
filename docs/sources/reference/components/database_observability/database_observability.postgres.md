@@ -39,7 +39,7 @@ The following collectors are configurable:
 
 | Name              | Description                                                                                               | Enabled by default |
 |-------------------|-----------------------------------------------------------------------------------------------------------|--------------------|
-| `activity`        | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events.   | no                 |
+| `query_sample`    | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events.   | no                 |
 | `query_tables`    | Collect query table information.                                                                          | no                 |
 
 ## Blocks
