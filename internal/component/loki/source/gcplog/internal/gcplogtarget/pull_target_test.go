@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	//nolint:staticcheck // TODO: upgrade to v2
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"

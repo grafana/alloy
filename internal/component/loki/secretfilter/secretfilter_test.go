@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"regexp"
 	"strings"
@@ -102,7 +102,7 @@ var customGitleaksConfig = map[string]string{
 		[[rules]]
 		id = "my-fake-secret"
 		description = "Identified a fake secret"
-		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''	
+		regex = '''(?i)\b(fakeSecret\d{5})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
 		[allowlist]
 		regexes = ["abc\\d{3}", "fakeSecret[9]{5}"]
 	`,
@@ -756,7 +756,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	require.NoError(b, err)
 
 	// Generate fake log entries with a fixed seed so that it's reproducible
-	fake := faker.NewWithSeed(rand.NewSource(2014))
+	fake := faker.NewWithSeed(rand.NewPCG(uint64(2014), uint64(2014)))
 	nbLogs := 100
 	benchInputs := make([]string, nbLogs)
 	for i := range benchInputs {
