@@ -1,0 +1,23 @@
+extensions:
+  alloyflow:
+    config_path: example-config.alloy
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+
+exporters:
+  debug:
+
+service:
+  extensions: [alloyflow]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

@@ -1,6 +1,6 @@
 services:
   grafana:
-    image: grafana/grafana:11.5.1
+    image: grafana/grafana:12.1.1
     restart: on-failure
     command:
       - --config=/etc/grafana-config/grafana.ini
@@ -58,7 +58,7 @@ services:
       - MIMIR_ADDRESS=http://mimir:9009
       - MIMIR_TENANT_ID=fake
     volumes:
-      - ../operations/alloy-mixin:/etc/alloy-mixin
+      - ../../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
     command: grr watch . ./grizzly.jsonnet
 

@@ -6,7 +6,10 @@ include:
 
 services:
   alloy:
-    image: grafana/alloy:v1.5.1
+    image: alloy-local:dev
+    build:
+      context: ../../
+      dockerfile: Dockerfile
     pull_policy: always
     profiles: ["alloy"]
     restart: on-failure
@@ -17,16 +20,17 @@ services:
       LOKI_HOST: loki:3100
       TEMPO_HOST: tempo:4317
       PYROSCOPE_HOST: pyroscope:4040
+      OTELCOL_OTLP_ENDPOINT: localhost:4317
     depends_on:
       - mimir
       - loki
       - tempo
       - pyroscope
     command:
-      - run
-      - /etc/alloy/config.alloy
-      - --storage.path=/var/lib/alloy/data
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --stability.level=experimental # Enable all functionality
+      - otel
+      - --config=/etc/alloy/config-otel.yaml
     ports:
       - "12345:12345"
+      - "1777:1777"   # pprof
+      - "55679:55679" # zpages
+      - "8888:8888"   # internal metrics (Prometheus)

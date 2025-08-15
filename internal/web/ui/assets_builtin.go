@@ -1,4 +1,4 @@
-//go:build builtinassets
+//go:build embedalloyui
 
 package ui
 

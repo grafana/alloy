@@ -34,8 +34,8 @@ compiling and testing your changes do:
 
 ```bash
 # For building:
-go build .
-./alloy run <CONFIG_FILE>
+make alloy
+./build/alloy run <CONFIG_FILE>
 
 # For testing:
 make lint test # Make sure all the tests pass before you commit and push :)
