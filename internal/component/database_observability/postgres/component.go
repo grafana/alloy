@@ -50,16 +50,18 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName        alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval       time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo             []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors      []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors     []string            `alloy:"disable_collectors,attr,optional"`
-	DisableQueryRedaction bool                `alloy:"disable_query_redaction,attr,optional"`
+	DataSourceName             alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval            time.Duration       `alloy:"collect_interval,attr,optional"`
+	QuerySampleCollectInterval time.Duration       `alloy:"query_sample_collect_interval,attr,optional"`
+	ForwardTo                  []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors           []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors          []string            `alloy:"disable_collectors,attr,optional"`
+	DisableQueryRedaction      bool                `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 1 * time.Minute,
+	CollectInterval:            1 * time.Minute,
+	QuerySampleCollectInterval: 15 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -266,7 +268,7 @@ func (c *Component) startCollectors() error {
 		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                    dbConnection,
 			InstanceKey:           c.instanceKey,
-			CollectInterval:       c.args.CollectInterval,
+			CollectInterval:       c.args.QuerySampleCollectInterval,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.DisableQueryRedaction,
