@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,5 +206,63 @@ func TestQueryRedactionConfig(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 		assert.False(t, args.DisableQueryRedaction, "query redaction should be enabled when explicitly set to false")
+	})
+}
+
+func TestCollectionIntervals(t *testing.T) {
+	t.Run("default intervals", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.Equal(t, DefaultArguments.CollectInterval, args.CollectInterval, "collect_interval should default to 1 minute")
+		assert.Equal(t, DefaultArguments.QuerySampleCollectInterval, args.QuerySampleCollectInterval, "query_sample_collect_interval should default to 15 seconds")
+	})
+
+	t.Run("custom intervals", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		collect_interval = "30s"
+		query_sample_collect_interval = "5s"
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.Equal(t, 30*time.Second, args.CollectInterval, "collect_interval should be set to 30 seconds")
+		assert.Equal(t, 5*time.Second, args.QuerySampleCollectInterval, "query_sample_collect_interval should be set to 5 seconds")
+	})
+
+	t.Run("only collect_interval set", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		collect_interval = "30s"
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.Equal(t, 30*time.Second, args.CollectInterval, "collect_interval should be set to 30 seconds")
+		assert.Equal(t, DefaultArguments.QuerySampleCollectInterval, args.QuerySampleCollectInterval, "query_sample_collect_interval should default to 15 seconds")
+	})
+
+	t.Run("only query_sample_collect_interval set", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		query_sample_collect_interval = "5s"
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+		assert.Equal(t, DefaultArguments.CollectInterval, args.CollectInterval, "collect_interval should default to 1 minute")
+		assert.Equal(t, 5*time.Second, args.QuerySampleCollectInterval, "query_sample_collect_interval should be set to 5 seconds")
 	})
 }
