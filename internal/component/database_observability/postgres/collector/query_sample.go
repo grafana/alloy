@@ -251,7 +251,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 		}
 
 		// Get query string and redact if needed
-		queryStr := sample.Query.String
+		queryText := sample.Query.String
 		if !c.disableQueryRedaction {
 			queryStr = redact(queryStr)
 		}
