@@ -80,7 +80,7 @@ You can use the following arguments to configure the `http` block. Any omitted f
 `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
 `pyroscope_receive_http_tcp_connections_limit` (gauge): The max number of TCP connections that can be accepted (0 means no limit).
 
-## Troubleshooting
+## Troubleshoot
 
 ### Connection limit errors
 
