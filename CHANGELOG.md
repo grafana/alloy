@@ -70,6 +70,8 @@ Main (unreleased)
 
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
+- Remove unnecessary allocations in `stage.static_labels`. (@kalleep) 
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
