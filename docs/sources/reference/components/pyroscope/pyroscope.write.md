@@ -147,6 +147,7 @@ To resolve this issue:
 2. If the connection limit is being reached, you have several options:
 
    **Option A: Increase the connection limit** in the `pyroscope.receive_http` configuration:
+   
    ```alloy
    pyroscope.receive_http "example" {
      http {
