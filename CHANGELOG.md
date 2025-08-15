@@ -45,7 +45,6 @@ Main (unreleased)
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `query_sample` collector for postgres (@gaantunes)
-  - add a DisableQueryRedaction argument to the `query_sample` postgres collector, and redact queries by default (@gaantunes)  
 
 ### Enhancements
 
