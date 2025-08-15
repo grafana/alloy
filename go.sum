@@ -1320,8 +1320,8 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec/go.mod h1:1qoZ74W1muNrTyeP2fUzUbg2UKD8AeX435xSCJNub7Y=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.4 h1:Kvy8r4l6Cj3mMR6lRyHBl/KVVa6rL49TFlaBSOGNgDE=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.4/go.mod h1:NdbPrGj8eEbtzIf2Yl0NruvNj10f6p+/jNflz2VpaxI=
+github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7 h1:TZz7cn2u9McG9q3809VBFFgqnm6lRxO3uzYg2Apzb7k=
+github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7/go.mod h1:NdbPrGj8eEbtzIf2Yl0NruvNj10f6p+/jNflz2VpaxI=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc h1:Qv8+wIvDB5c1liVKAcTNxgKTf/gEQSyPEAiVZXrSLR8=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc/go.mod h1:W40JSh7omwYanKBorFhknIBujk//sNY65rDfXqG++/4=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
