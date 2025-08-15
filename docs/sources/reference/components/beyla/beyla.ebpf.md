@@ -267,7 +267,9 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
-`exports` specifies what types of telemetry data to export for the matching service. You can specify `"metrics"`, `"traces"`, or both. If empty, the service will export both metrics and traces by default.
+`exports` specifies what types of telemetry data to export for the matching service.
+You can specify `"metrics"`, `"traces"`, or both.
+If empty, the service will export both metrics and traces by default.
 
 If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
 This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
