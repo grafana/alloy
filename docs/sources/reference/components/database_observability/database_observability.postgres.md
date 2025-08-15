@@ -31,6 +31,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
 | `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
 | `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
+| `disable_query_redaction`          | `bool`               | Collect unredacted SQL query text including parameters.                                        | `false` | no       |
 
 The following collectors are configurable:
 

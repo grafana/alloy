@@ -253,7 +253,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 		// Get query string and redact if needed
 		queryText := sample.Query.String
 		if !c.disableQueryRedaction {
-			queryStr = redact(queryStr)
+			queryText = redact(queryText)
 		}
 
 		// Build query sample entry
@@ -274,7 +274,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 			sample.State.String,
 			queryDuration,
 			sample.QueryID.Int64,
-			queryStr,
+			queryText,
 		)
 
 		if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == "active" {
@@ -304,7 +304,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 				waitEventFullName,
 				sample.BlockedByPIDs,
 				sample.QueryID.Int64,
-				queryStr,
+				queryText,
 			)
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
