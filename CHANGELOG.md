@@ -70,7 +70,9 @@ Main (unreleased)
 
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
-- Remove unnecessary allocations in `stage.static_labels`. (@kalleep) 
+- Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
+
+- Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
 
 ### Bugfixes
 
