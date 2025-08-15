@@ -379,7 +379,7 @@ The following arguments are supported:
 
 The supported values for `name` are:
 
-* `traceidratio`: Samples traces based on a ratio of trace IDs. The `arg` must be a decimal value between 0 and 1 (e.g., "0.1" for 10% sampling).
+* `traceidratio`: Samples traces based on a ratio of trace IDs. The `arg` must be a decimal value between 0 and 1. For example, `"0.1"` for 10% sampling.
 * `always_on`: Always samples traces. No `arg` required.
 * `always_off`: Never samples traces. No `arg` required.
 * `parentbased_always_on`: Uses parent-based sampling that always samples when there's no parent span. This is the default behavior.
