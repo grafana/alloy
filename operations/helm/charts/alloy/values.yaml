@@ -153,6 +153,8 @@ image:
 rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
+  # -- Optional additional rules to Alloy ClusterRole
+  extraRules: []
 
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
