@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
-func TestActivity_FetchActivity(t *testing.T) {
+func TestQuerySample_FetchQuerySample(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	now := time.Now()
@@ -31,11 +31,12 @@ func TestActivity_FetchActivity(t *testing.T) {
 	backendStartTime := now.Add(-1 * time.Hour)   // 1 hour ago
 
 	testCases := []struct {
-		name           string
-		setupMock      func(mock sqlmock.Sqlmock)
-		expectedError  bool
-		expectedLabels []model.LabelSet
-		expectedLines  []string
+		name                  string
+		setupMock             func(mock sqlmock.Sqlmock)
+		disableQueryRedaction bool
+		expectedError         bool
+		expectedLabels        []model.LabelSet
+		expectedLines         []string
 	}{
 		{
 			name: "active query without wait event",
@@ -127,8 +128,8 @@ func TestActivity_FetchActivity(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
 			},
 			expectedLines: []string{
-				`level="info" instance="test" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
-				`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = 'active'" engine="postgres"`,
+				`level="info" instance="test" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
 			},
 		},
 		{
@@ -179,6 +180,35 @@ func TestActivity_FetchActivity(t *testing.T) {
 			expectedLabels: []model.LabelSet{}, // No Loki entries expected
 			expectedLines:  []string{},         // No Loki entries expected
 		},
+		{
+			name: "query with redaction disabled",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+					WillReturnRows(sqlmock.NewRows([]string{
+						"now", "datname", "pid", "leader_pid",
+						"usename", "application_name", "client_addr", "client_port",
+						"backend_type", "backend_start", "backend_xid", "backend_xmin",
+						"xact_start", "state", "state_change", "wait_event_type",
+						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"query",
+					}).AddRow(
+						now, "testdb", 106, sql.NullInt64{},
+						"testuser", "testapp", "127.0.0.1", 5432,
+						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+						xactStartTime, "active", stateChangeTime, sql.NullString{},
+						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 128, Valid: true},
+						"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
+					))
+			},
+			disableQueryRedaction: true,
+			expectedError:         false,
+			expectedLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
+			},
+			expectedLines: []string{
+				`level="info" instance="test" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="active" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -192,20 +222,21 @@ func TestActivity_FetchActivity(t *testing.T) {
 			logger := log.NewLogfmtLogger(os.Stderr)
 			lokiClient := loki_fake.NewClient(func() {})
 
-			activity, err := NewActivity(ActivityArguments{
-				DB:              db,
-				InstanceKey:     "test",
-				CollectInterval: time.Second * 5,
-				EntryHandler:    lokiClient,
-				Logger:          logger,
+			sampleCollector, err := NewQuerySample(QuerySampleArguments{
+				DB:                    db,
+				InstanceKey:           "test",
+				CollectInterval:       time.Second * 5,
+				EntryHandler:          lokiClient,
+				Logger:                logger,
+				DisableQueryRedaction: tc.disableQueryRedaction,
 			})
 			require.NoError(t, err)
-			require.NotNil(t, activity)
+			require.NotNil(t, sampleCollector)
 
 			// Setup mock expectations
 			tc.setupMock(mock)
 
-			err = activity.Start(t.Context())
+			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
 			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
@@ -230,11 +261,11 @@ func TestActivity_FetchActivity(t *testing.T) {
 				return true
 			}, 5*time.Second, 100*time.Millisecond)
 
-			activity.Stop()
+			sampleCollector.Stop()
 
 			// Wait for the collector to stop
 			require.Eventually(t, func() bool {
-				return activity.Stopped()
+				return sampleCollector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
 			lokiClient.Stop()
