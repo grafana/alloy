@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -486,6 +487,7 @@ func testAppendable(appendErr error) pyroscope.Appendable {
 }
 
 type testAppender struct {
+	mu          sync.Mutex
 	appendErr   error
 	lastProfile *pyroscope.IncomingProfile
 
@@ -514,12 +516,16 @@ func (a *testAppender) Appender() pyroscope.Appender {
 }
 
 func (a *testAppender) Append(_ context.Context, lbls labels.Labels, samples []*pyroscope.RawSample) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.pushedLabels = append(a.pushedLabels, lbls)
 	a.pushedSamples = append(a.pushedSamples, samples)
 	return a.appendErr
 }
 
 func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.IncomingProfile) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	newProfile := &pyroscope.IncomingProfile{
 		RawBody:     profile.RawBody,
 		ContentType: profile.ContentType,
