@@ -36,9 +36,11 @@ otelcol.exporter.googlecloudpubsub "<LABEL>" {
 
 ### Authenticating
 
-Refer to the original [Google Cloud Pub/Sub Exporter][] document.
+Refer to the [Google Cloud Pub/Sub Exporter][] and [Google Cloud Exporter][] documentation for more detailed information about authentication.
 
 [Google Cloud Pub/Sub Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/googlecloudpubsubexporter/README.md
+[Google Cloud Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/googlecloudexporter#prerequisite-authenticating
+
 
 ## Arguments
 
