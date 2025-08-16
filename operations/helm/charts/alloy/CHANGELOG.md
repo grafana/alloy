@@ -9,6 +9,7 @@ internal API changes are not present.
 
 Unreleased
 ----------
+- Add clustering waitForSize and waitTimeout. (@evanfreed)
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
 - Add option to not expose http server port. (@kun98-liu)
