@@ -41,7 +41,7 @@ type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
 	since         int64
-	last          int64
+	last          atomic.Int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -73,7 +73,6 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		logger:        logger,
 		handler:       handler,
 		since:         since,
-		last:          last,
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
@@ -84,6 +83,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		client:  client,
 		running: atomic.NewBool(false),
 	}
+	t.last.Store(last)
 
 	// NOTE (@tpaschalis) The original Promtail implementation would call
 	// t.StartIfNotRunning() right here to start tailing.
@@ -224,7 +224,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
 		t.since = ts.Unix()
-		t.last = time.Now().Unix()
+		t.last.Store(time.Now().Unix())
 	}
 }
 
@@ -273,7 +273,7 @@ func (t *Target) Path() string {
 }
 
 // Last returns the unix timestamp of the target's last processing loop.
-func (t *Target) Last() int64 { return t.last }
+func (t *Target) Last() int64 { return t.last.Load() }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
