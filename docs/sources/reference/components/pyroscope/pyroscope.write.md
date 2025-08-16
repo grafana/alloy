@@ -144,7 +144,7 @@ If you encounter errors like `"failed to push to endpoint" err="deadline_exceede
 To resolve this issue:
 
 1. Check the `pyroscope_receive_http_tcp_connections` and `pyroscope_receive_http_tcp_connections_limit` metrics on the `pyroscope.receive_http` component.
-2. If the connection limit is being reached, you have several options:
+1. If the connection limit is being reached, you have several options:
 
    **Option A: Increase the connection limit** in the `pyroscope.receive_http` configuration:
    
