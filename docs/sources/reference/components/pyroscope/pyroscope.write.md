@@ -135,9 +135,7 @@ In those cases, exported fields are kept at their last healthy values.
 
 `pyroscope.write` doesn't expose any component-specific debug information.
 
-## Troubleshoot
-
-### Deadline exceeded errors
+## Connection limit errors
 
 If you encounter errors like `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"` when `pyroscope.write` is pushing to a `pyroscope.receive_http` component, this may indicate that the receiving component has reached its TCP connection limit.
 

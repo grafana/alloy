@@ -80,9 +80,8 @@ You can use the following arguments to configure the `http` block. Any omitted f
 `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
 `pyroscope_receive_http_tcp_connections_limit` (gauge): The max number of TCP connections that can be accepted (0 means no limit).
 
-## Troubleshoot
 
-### Connection limit errors
+## Connection limit errors
 
 If you see errors like `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"` in components that push to `pyroscope.receive_http` (such as `pyroscope.write`), this may be caused by reaching the TCP connection limit of `pyroscope.receive_http`.
 
