@@ -158,6 +158,8 @@ database_observability.mysql "mysql_<your_DB_name>" {
   forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
   collect_interval  = "1m"
 
+  targets = prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>
+
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
   enable_collectors = ["query_sample"]
 
@@ -182,7 +184,7 @@ loki.relabel "database_observability_mysql_<your_DB_name>" {
 }
 
 discovery.relabel "database_observability_mysql_<your_DB_name>" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>.targets, database_observability.mysql.mysql_<your_DB_name>.targets)
+  targets = database_observability.mysql.mysql_<your_DB_name>.targets
 
   rule {
     target_label = "job"
@@ -302,6 +304,7 @@ database_observability.mysql "mysql_example_db_1" {
   forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
   collect_interval  = "1m"
   enable_collectors = ["query_sample"]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1
 }
 
 loki.relabel "database_observability_mysql_example_db_1" {
@@ -309,7 +312,7 @@ loki.relabel "database_observability_mysql_example_db_1" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_1" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1.targets, database_observability.mysql.mysql_example_db_1.targets)
+  targets = database_observability.mysql.mysql_example_db_1.targets
 
   rule {
     target_label = "job"
@@ -341,6 +344,7 @@ database_observability.mysql "mysql_example_db_2" {
   forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
   collect_interval  = "1m"
   enable_collectors = ["query_sample"]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2
 }
 
 loki.relabel "database_observability_mysql_example_db_2" {
@@ -348,7 +352,7 @@ loki.relabel "database_observability_mysql_example_db_2" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_2" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2.targets, database_observability.mysql.mysql_example_db_2.targets)
+  targets = database_observability.mysql.mysql_example_db_2.targets
 
   rule {
     target_label = "job"
