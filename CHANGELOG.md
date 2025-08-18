@@ -74,6 +74,8 @@ Main (unreleased)
 
 - Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
 
+- `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
