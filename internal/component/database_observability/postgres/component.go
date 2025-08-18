@@ -280,8 +280,6 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, aCollector)
 	}
 
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:      string(c.args.DataSourceName),

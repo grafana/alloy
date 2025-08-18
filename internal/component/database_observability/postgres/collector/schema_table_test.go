@@ -382,7 +382,6 @@ func TestSchemaTable(t *testing.T) {
 
 		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
 	})
-
 }
 
 func Test_collector_detects_auto_increment_column(t *testing.T) {
