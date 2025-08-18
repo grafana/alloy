@@ -284,6 +284,14 @@ else
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
 endif
 
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
+endif
+
 #
 # Other targets
 #

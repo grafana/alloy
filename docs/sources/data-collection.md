@@ -58,5 +58,19 @@ If you want to opt out of anonymous usage statistics reporting, set the [CLI fla
           CUSTOM_ARGS: "--disable-reporting"
 ```
 
+### Example: Opt-out of data collection on Linux
+
+1. Edit the environment file for the service:
+
+   * Debian-based systems: edit `/etc/default/alloy`
+   * RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
+
+1. Add `--disable-reporting` to the `CUSTOM_ARGS` environment variable.
+1. Restart the Alloy service:
+
+   ```shell
+   sudo systemctl restart alloy
+   ```
+
 [components]: ../get-started/components/
 [command line flag]: ../reference/cli/run/

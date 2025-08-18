@@ -11,13 +11,15 @@ import (
 	"go.uber.org/goleak"
 )
 
+const testTimeout = 3 * time.Second
+
 func TestWorkerPool(t *testing.T) {
 	t.Run("worker pool", func(t *testing.T) {
 		t.Run("should start and stop cleanly", func(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			pool := NewFixedWorkerPool(4, 1)
 			require.Equal(t, 0, pool.QueueSize())
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 		})
 
 		t.Run("should reject invalid worker count", func(t *testing.T) {
@@ -43,7 +45,7 @@ func TestWorkerPool(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			done := make(chan struct{})
 			pool := NewFixedWorkerPool(4, 1)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 
 			err := pool.SubmitWithKey("123", func() {
 				done <- struct{}{}
@@ -62,7 +64,7 @@ func TestWorkerPool(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			done := make(chan struct{})
 			pool := NewFixedWorkerPool(4, 1)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 
 			err := pool.SubmitWithKey("testKey", func() {
 				done <- struct{}{}
@@ -80,7 +82,7 @@ func TestWorkerPool(t *testing.T) {
 		t.Run("should not queue duplicated keys", func(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			pool := NewFixedWorkerPool(4, 10)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 			tasksDone := atomic.Int32{}
 
 			// First task will block the worker
@@ -129,7 +131,7 @@ func TestWorkerPool(t *testing.T) {
 		t.Run("should concurrently process for different keys", func(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			pool := NewFixedWorkerPool(4, 10)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 			tasksDone := atomic.Int32{}
 
 			// First task will block the worker
@@ -169,7 +171,7 @@ func TestWorkerPool(t *testing.T) {
 			defer goleak.VerifyNone(t)
 			// Pool with one worker and queue size of 1 - all work goes to one queue
 			pool := NewFixedWorkerPool(1, 2)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 			tasksDone := atomic.Int32{}
 
 			// First task will block the worker
@@ -204,7 +206,7 @@ func TestWorkerPool(t *testing.T) {
 
 			// Queue size is sufficient to queue all tasks
 			pool := NewFixedWorkerPool(3, tasksCount+1)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 			tasksDone := atomic.Int32{}
 
 			// First task will block
@@ -240,7 +242,7 @@ func TestWorkerPool(t *testing.T) {
 
 			// Queue size is sufficient to queue all tasks
 			pool := NewFixedWorkerPool(10, 10)
-			defer pool.Stop()
+			defer pool.Stop(testTimeout)
 			tasksDone := atomic.Int32{}
 
 			// First task will block
@@ -277,6 +279,54 @@ func TestWorkerPool(t *testing.T) {
 			require.Eventually(t, func() bool {
 				return tasksDone.Load() == 2
 			}, 3*time.Second, 1*time.Millisecond)
+		})
+
+		t.Run("should timeout when stopping with stuck workers", func(t *testing.T) {
+			defer goleak.VerifyNone(t)
+			pool := NewFixedWorkerPool(2, 5)
+
+			// Submit a task that will block indefinitely
+			blockTask := make(chan struct{})
+			taskRunning := make(chan struct{})
+			taskDone := make(chan struct{})
+			err := pool.SubmitWithKey("blocking-task", func() {
+				taskRunning <- struct{}{}
+				<-blockTask // This will block forever
+				close(taskDone)
+			})
+			require.NoError(t, err)
+
+			// Wait for the task to start running
+			<-taskRunning
+
+			// Try to stop with a short timeout - should time out
+			shortTimeout := 100 * time.Millisecond
+			err = pool.Stop(shortTimeout)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "worker pool did not stop within 100ms timeout")
+
+			// Clean up the blocking task
+			close(blockTask)
+			<-taskDone
+		})
+
+		t.Run("should stop successfully when no tasks are running", func(t *testing.T) {
+			defer goleak.VerifyNone(t, goleak.IgnoreAnyFunction("github.com/grafana/alloy/internal/runtime/internal/worker.(*fixedWorkerPool).Stop.func1"))
+			pool := NewFixedWorkerPool(2, 5)
+
+			// Submit a quick task that completes immediately
+			done := make(chan struct{}, 1)
+			err := pool.SubmitWithKey("quick-task", func() {
+				done <- struct{}{}
+			})
+			require.NoError(t, err)
+
+			// Wait for the task to complete
+			<-done
+
+			// Stop should succeed immediately
+			err = pool.Stop(testTimeout)
+			require.NoError(t, err)
 		})
 	})
 }

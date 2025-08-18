@@ -10,6 +10,20 @@ internal API changes are not present.
 Unreleased
 ----------
 
+- Add support to provide extraLabels to alloy.controler (@evkuzin)
+- Add option to not expose http server port. (@kun98-liu)
+
+### Enhancements
+
+- Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
+
+1.2.1 (2025-08-07)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.1. (@kalleep)
+
 1.2.0 (2025-07-16)
 ----------
 

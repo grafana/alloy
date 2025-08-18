@@ -44,7 +44,7 @@ otelcol.receiver.file_stats "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.file_stats`:
 
 | Name                  | Type       | Description                                        | Default | Required |
-| --------------------- | ---------- | -------------------------------------------------- | ------- | -------- |
+|-----------------------|------------|----------------------------------------------------|---------|----------|
 | `include`             | `string`   | Glob path for paths to collect stats from.         |         | yes      |
 | `collection_interval` | `duration` | How often to collect statistics.                   | `"1m"`  | no       |
 | `initial_delay`       | `duration` | Initial time to wait before collecting statistics. | `"1s"`  | no       |
@@ -62,7 +62,7 @@ The timeout applies to the entire collection process across all paths matched by
 You can use the following blocks with `otelcol.receiver.file_stats`:
 
 | Block                                                                      | Description                                                                | Required |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                                         | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]                                           | Configures the metrics that this component generates to monitor its state. | no       |
 | [`metrics`][metrics]                                                       | Configures which metrics will be sent to downstream components.            | no       |
@@ -95,7 +95,7 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -122,7 +122,7 @@ The `file.atime` block configures the `file.atime` metric.
 `file.atime` tracks the elapsed time since the last access of the file or folder in Unix seconds since the epoch.
 
 | Name      | Type      | Description                                 | Default | Required |
-| --------- | --------- | ------------------------------------------- | ------- | -------- |
+|-----------|-----------|---------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to collect the `file.atime` metric. | `false` | no       |
 
 ### `file.count`
@@ -131,7 +131,7 @@ The `file.count` block configures the `file.count` metric.
 `file.count` tracks the number of files and folders in the specified glob pattern.
 
 | Name      | Type      | Description                                 | Default | Required |
-| --------- | --------- | ------------------------------------------- | ------- | -------- |
+|-----------|-----------|---------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to collect the `file.count` metric. | `false` | no       |
 
 ### `file.ctime`
@@ -141,7 +141,7 @@ The `file.ctime` block configures the `file.ctime` metric.
 Changes include permissions, ownership, and timestamps.
 
 | Name      | Type      | Description                                 | Default | Required |
-| --------- | --------- | ------------------------------------------- | ------- | -------- |
+|-----------|-----------|---------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to collect the `file.ctime` metric. | `false` | no       |
 
 ### `file.mtime`
@@ -150,7 +150,7 @@ The `file.mtime` block configures the `file.mtime` metric.
 `file.mtime` tracks the elapsed time since the last modification of the file or folder in Unix seconds since the epoch.
 
 | Name      | Type      | Description                                 | Default | Required |
-| --------- | --------- | ------------------------------------------- | ------- | -------- |
+|-----------|-----------|---------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to collect the `file.mtime` metric. | `true`  | no       |
 
 ### `file.size`
@@ -159,7 +159,7 @@ The `file.size` block configures the `file.size` metric.
 `file.size` tracks the size of the file or folder in bytes.
 
 | Name      | Type      | Description                                | Default | Required |
-| --------- | --------- | ------------------------------------------ | ------- | -------- |
+|-----------|-----------|--------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to collect the `file.size` metric. | `true`  | no       |
 
 ### `resource_attributes`
@@ -177,7 +177,7 @@ Refer to the documentation of individual resource attribute blocks for whether t
 The `file.name` block configures the `file.name` resource attribute.
 
 | Name      | Type      | Description                                            | Default | Required |
-| --------- | --------- | ------------------------------------------------------ | ------- | -------- |
+|-----------|-----------|--------------------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to include the `file.name` resource attribute. | `true`  | no       |
 
 When `enabled` is true, the `file.name` attribute is included in all metrics.
@@ -191,7 +191,7 @@ The `metrics_exclude` block configures a filter for excluding metrics.
 The `metrics_exclude` block may be specified multiple times.
 
 | Name     | Type     | Description                                      | Default | Required |
-| -------- | -------- | ------------------------------------------------ | ------- | -------- |
+|----------|----------|--------------------------------------------------|---------|----------|
 | `strict` | `string` | The exact name of the metric to exclude.         |         | yes*     |
 | `regexp` | `string` | A regular expression for the metrics to exclude. |         | yes*     |
 
@@ -203,7 +203,7 @@ The `metrics_include` block configures a filter for matching metrics.
 The `metrics_include` block may be specified multiple times.
 
 | Name     | Type     | Description                                      | Default | Required |
-| -------- | -------- | ------------------------------------------------ | ------- | -------- |
+|----------|----------|--------------------------------------------------|---------|----------|
 | `strict` | `string` | The exact name of the metric to include.         |         | yes*     |
 | `regexp` | `string` | A regular expression for the metrics to include. |         | yes*     |
 
@@ -214,7 +214,7 @@ Exactly one of `strict` or `regexp` must be specified.
 The `file.path` block configures the `file.path` resource attribute.
 
 | Name      | Type      | Description                                            | Default | Required |
-| --------- | --------- | ------------------------------------------------------ | ------- | -------- |
+|-----------|-----------|--------------------------------------------------------|---------|----------|
 | `enabled` | `boolean` | Whether to include the `file.path` resource attribute. | `false` | no       |
 
 When `enabled` is true, the `file.path` attribute is included in all metrics.

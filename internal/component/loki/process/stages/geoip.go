@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/go-kit/log"
-	"github.com/jmespath/go-jmespath"
+	"github.com/jmespath-community/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/common/model"
@@ -62,7 +62,7 @@ type GeoIPConfig struct {
 	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
 }
 
-func validateGeoIPConfig(c GeoIPConfig) (map[string]*jmespath.JMESPath, error) {
+func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 	if c.DB == "" {
 		return nil, ErrEmptyDBPathGeoIPStageConfig
 	}
@@ -84,7 +84,7 @@ func validateGeoIPConfig(c GeoIPConfig) (map[string]*jmespath.JMESPath, error) {
 		return nil, nil
 	}
 
-	expressions := map[string]*jmespath.JMESPath{}
+	expressions := map[string]jmespath.JMESPath{}
 	for key, expr := range c.CustomLookups {
 		var err error
 		jmes := expr
@@ -125,7 +125,7 @@ type geoIPStage struct {
 	logger            log.Logger
 	mmdb              *maxminddb.Reader
 	cfgs              GeoIPConfig
-	valuesExpressions map[string]*jmespath.JMESPath
+	valuesExpressions map[string]jmespath.JMESPath
 }
 
 // Run implements Stage

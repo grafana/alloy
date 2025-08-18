@@ -139,7 +139,7 @@ func TestScrapeLoop(t *testing.T) {
 		if down.Load() {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		w.Write([]byte("ok"))
+		w.Write([]byte{0x0A, 0x02, 0x6F, 0x6B}) // Return valid protobuf data
 	}))
 	defer server.Close()
 	appendTotal := atomic.NewInt64(0)
@@ -155,7 +155,7 @@ func TestScrapeLoop(t *testing.T) {
 		server.Client(),
 		pyroscope.AppendableFunc(func(_ context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			appendTotal.Inc()
-			require.Equal(t, []byte("ok"), samples[0].RawProfile)
+			require.Equal(t, []byte{0x0A, 0x02, 0x6F, 0x6B}, samples[0].RawProfile)
 			return nil
 		}),
 		200*time.Millisecond, 30*time.Second, util.TestLogger(t))

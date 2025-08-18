@@ -18,7 +18,9 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/buger/jsonparser"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -42,8 +44,6 @@ const selectDigestsForExplainPlan = `
 	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
-
-const selectDBSchemaVersion = `SELECT VERSION()`
 
 type explainPlanOutputOperation string
 
@@ -460,6 +460,7 @@ type ExplainPlanArguments struct {
 	PerScrapeRatio  float64
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
+	DBVersion       string
 
 	Logger log.Logger
 }
@@ -482,20 +483,10 @@ type ExplainPlan struct {
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	rs := args.DB.QueryRowContext(context.Background(), selectDBSchemaVersion)
-	if rs.Err() != nil {
-		return nil, rs.Err()
-	}
-
-	var dbVersion string
-	if err := rs.Scan(&dbVersion); err != nil {
-		return nil, err
-	}
-
 	return &ExplainPlan{
 		dbConnection:   args.DB,
 		instanceKey:    args.InstanceKey,
-		dbVersion:      dbVersion,
+		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make([]queryInfo, 0),
 		perScrapeRatio: args.PerScrapeRatio,
@@ -667,7 +658,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 		)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_EXPLAIN_PLAN_OUTPUT,
 			c.instanceKey,

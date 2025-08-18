@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![AppVersion: v1.10.0](https://img.shields.io/badge/AppVersion-v1.10.0-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.2.1](https://img.shields.io/badge/Version-1.2.1-informational?style=flat-square) ![AppVersion: v1.10.1](https://img.shields.io/badge/AppVersion-v1.10.1-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -40,12 +40,14 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |
 | alloy.configMap.key | string | `nil` | Key in ConfigMap to get config from. |
 | alloy.configMap.name | string | `nil` | Name of existing ConfigMap to use. Used when create is false. |
+| alloy.enableHttpServerPort | bool | `true` | Enables Grafana Alloy container's http server port. |
 | alloy.enableReporting | bool | `true` | Enables sending Grafana Labs anonymous usage stats to help improve Grafana Alloy. |
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
 | alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
+| alloy.initialDelaySeconds | int | `10` | Initial delay for readiness probe. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
 | alloy.listenAddr | string | `"0.0.0.0"` | Address to listen for traffic on. 0.0.0.0 exposes the UI to other containers. |
 | alloy.listenPort | int | `12345` | Port to listen for traffic on. |
@@ -58,6 +60,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.securityContext | object | `{}` | Security context to apply to the Grafana Alloy container. |
 | alloy.stabilityLevel | string | `"generally-available"` | Minimum stability level of components and behavior to enable. Must be one of "experimental", "public-preview", or "generally-available". |
 | alloy.storagePath | string | `"/tmp/alloy"` | Path to where Grafana Alloy stores data (for example, the Write-Ahead Log). By default, data is lost between reboots. |
+| alloy.timeoutSeconds | int | `1` | Timeout for readiness probe. |
 | alloy.uiPathPrefix | string | `"/"` | Base path where the UI is exposed. |
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |
@@ -105,6 +108,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |
 | controller.extraContainers | list | `[]` | Additional containers to run alongside the Alloy container and initContainers. |
+| controller.extraLabels | object | `{}` | Extra labels to add to the controller. |
 | controller.hostNetwork | bool | `false` | Configures Pods to use the host network. When set to true, the ports that will be used must be specified. |
 | controller.hostPID | bool | `false` | Configures Pods to use the host PID namespace. |
 | controller.initContainers | list | `[]` |  |

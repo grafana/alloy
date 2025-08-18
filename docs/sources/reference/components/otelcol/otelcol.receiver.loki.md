@@ -39,14 +39,14 @@ The `otelcol.receiver.loki` component doesn't support any arguments. You can con
 You can use the following blocks with `otelcol.receiver.loki`:
 
 | Block              | Description                                        | Required |
-| ------------------ | -------------------------------------------------- | -------- |
+|--------------------|----------------------------------------------------|----------|
 | [`output`][output] | Configures where to send converted telemetry data. | yes      |
 
 [output]: #output
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -55,7 +55,7 @@ You can use the following blocks with `otelcol.receiver.loki`:
 The following fields are exported and can be referenced by other components:
 
 | Name       | Type           | Description                                                 |
-| ---------- | -------------- | ----------------------------------------------------------- |
+|------------|----------------|-------------------------------------------------------------|
 | `receiver` | `LogsReceiver` | A value that other components can use to send Loki logs to. |
 
 ## Component health

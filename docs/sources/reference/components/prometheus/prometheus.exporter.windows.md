@@ -37,7 +37,7 @@ You can use the following arguments with `prometheus.exporter.windows`:
 
 | Name                 | Type           | Description                   | Default                                                     | Required |
 | -------------------- | -------------- | ----------------------------- | ----------------------------------------------------------- | -------- |
-| `enabled_collectors` | `list(string)` | List of collectors to enable. | `["cpu","cs","logical_disk","net","os","service","system"]` | no       |
+| `enabled_collectors` | `list(string)` | List of collectors to enable. | `["cpu","logical_disk","net","os","service","system"]`      | no       |
 
 `enabled_collectors` defines a hand-picked list of enabled-by-default collectors.
 If set, anything not provided in that list is disabled by default.
@@ -47,30 +47,38 @@ Refer to the [Collectors list](#collectors-list) for the default set.
 
 You can use the following blocks with `prometheus.exporter.windows`:
 
-| Name                                       | Description                                    | Required |
-| ------------------------------------------ | ---------------------------------------------- | -------- |
-| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.               | no       |
-| [`dns`][dns]                               | Configures the `dns` collector.                | no       |
-| [`exchange`][exchange]                     | Configures the `exchange` collector.           | no       |
-| [`filetime`][filetime]                     | Configures the `filetime` collector.           | no       |
-| [`iis`][iis]                               | Configures the `iis` collector.                | no       |
-| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.       | no       |
-| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.          | no       |
-| [`mssql`][mssql]                           | Configures the `mssql` collector.              | no       |
-| [`netframework`][netframework]             | Configures the `netframework` collector.       | no       |
-| [`network`][network]                       | Configures the `network` collector.            | no       |
-| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector. | no       |
-| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.      | no       |
-| [`printer`][printer]                       | Configures the `printer` collector.            | no       |
-| [`process`][process]                       | Configures the `process` collector.            | no       |
-| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.     | no       |
-| [`service`][service]                       | Configures the `service` collector.            | no       |
-| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.         | no       |
-| [`smb`][smb]                               | Configures the `smb` collector.                | no       |
-| [`smtp`][smtp]                             | Configures the `smtp` collector.               | no       |
-| [`tcp`][tcp]                               | Configures the `tcp` collector.                | no       |
-| [`text_file`][text_file]                   | Configures the `text_file` collector.          | no       |
-| [`update`][update]                         | Configures the `update` collector.          | no       |
+| Name                                       | Description                                                               | Required |
+|--------------------------------------------|---------------------------------------------------------------------------|----------|
+| [`dfsr`][dfsr]                             | Configures the `dfsr` collector.                                          | no       |
+| [`dns`][dns]                               | Configures the `dns` collector.                                           | no       |
+| [`exchange`][exchange]                     | Configures the `exchange` collector.                                      | no       |
+| [`filetime`][filetime]                     | Configures the `filetime` collector.                                      | no       |
+| [`iis`][iis]                               | Configures the `iis` collector.                                           | no       |
+| [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.                                  | no       |
+| [`mscluster`][mscluster]                   | Configures the `mscluster` collector.                                     | no       |
+| [`mssql`][mssql]                           | Configures the `mssql` collector.                                         | no       |
+| [`netframework`][netframework]             | Configures the `netframework` collector.                                  | no       |
+| [`net`][net]                               | Configures the `net` collector.                                           | no       |
+| [`network`][network]                       | Configures the `network` collector.                                       | no       |
+| [`performancecounter`][performancecounter] | Configures the `performancecounter` collector.                            | no       |
+| [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.                                 | no       |
+| [`printer`][printer]                       | Configures the `printer` collector.                                       | no       |
+| [`process`][process]                       | Configures the `process` collector.                                       | no       |
+| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.                                | no       |
+| [`service`][service]                       | Configures the `service` collector.                                       | no       |
+| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.                                    | no       |
+| [`smb`][smb]                               | Configures the `smb` collector.                                           | no       |
+| [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
+| [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
+| [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
+| [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
+| [`update`][update]                         | Configures the `update` collector.                                        | no       |
+
+{{< admonition type="caution" >}}
+Starting with v1.11.0, the `text_file ` block is deprecated.
+It will be removed in a future release.
+Use the `textfile` block to configure the `textfile` collector.
+{{< /admonition >}}
 
 {{< admonition type="note" >}}
 Starting with release 1.9.0, the `msmq` block is deprecated.
@@ -86,6 +94,7 @@ You can still include this block in your configuration files. However, its usage
 [logical_disk]: #logical_disk
 [mscluster]: #mscluster
 [mssql]: #mssql
+[net]: #net
 [netframework]: #netframework
 [network]: #network
 [performancecounter]: #performancecounter
@@ -97,7 +106,7 @@ You can still include this block in your configuration files. However, its usage
 [smb_client]: #smb_client
 [smb]: #smb
 [smtp]: #smtp
-[text_file]: #text_file
+[textfile]: #textfile
 [tcp]: #tcp
 [update]: #update
 
@@ -138,10 +147,16 @@ User-supplied `app_exclude`, `app_include`, `site_exclude` and `site_include` st
 
 ### `logical_disk`
 
-| Name      | Type     | Description                               | Default  | Required |
-| --------- | -------- | ----------------------------------------- | -------- | -------- |
-| `exclude` | `string` | Regular expression of volumes to exclude. | `"^$"`   | no       |
-| `include` | `string` | Regular expression of volumes to include. | `"^.+$"` | no       |
+| Name           | Type           | Description                               | Default       | Required |
+|----------------|----------------|-------------------------------------------|---------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use.              | `["metrics"]` | no       |
+| `exclude`      | `string`       | Regular expression of volumes to exclude. | `"^$"`        | no       |
+| `include`      | `string`       | Regular expression of volumes to include. | `"^.+$"`      | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+* `metrics`
+* `bitlocker_status`
 
 Volume names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
@@ -168,6 +183,23 @@ For example, you can set `enabled_list` to `["cluster"]`.
 | Name              | Type           | Description                         | Default                                                                                                                                                              | Required |
 | ----------------- | -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `enabled_classes` | `list(string)` | A list of MSSQL WMI classes to use. | `["accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"]` | no       |
+
+### `net`
+
+| Name           | Type           | Description                            | Default                   | Required |
+|----------------|----------------|----------------------------------------|---------------------------|----------|
+| `enabled_list` | `list(string)` | A list of collectors to use.           | `["metrics", "nic_info"]` | no       |
+| `exclude`      | `string`       | Regular expression of NICs to exclude. | `"^$"`                    | no       |
+| `include`      | `string`       | Regular expression of NICs to include. | `"^.+$"`                  | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+* `metrics`
+* `nic_info`
+
+NIC names must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
+
+User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 ### `network`
 
@@ -225,6 +257,17 @@ prometheus.exporter.windows "default" {
 }
 ```
 
+The `performance_counters.yaml` file should be a YAML file that represents an array of objects matching the schema in the documentation, like the example below.
+
+```yaml
+- name: memory
+  object: "Memory"
+  counters:
+    - name: "Cache Faults/sec"
+      type: "counter" # optional
+
+```
+
 [documentation]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.performancecounter.md
 [raw-strings]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings
 
@@ -250,17 +293,26 @@ User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a reg
 
 ### `process`
 
-| Name                        | Type     | Description                                   | Default  | Required |
-|-----------------------------|----------|-----------------------------------------------|----------|----------|
-| `exclude`                   | `string` | Regular expression of processes to exclude.   | `"^$"`   | no       |
-| `include`                   | `string` | Regular expression of processes to include.   | `"^.+$"` | no       |
-| `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries | `false`  | no       |
+| Name                        | Type     | Description                                    | Default  | Required |
+|-----------------------------|----------|------------------------------------------------|----------|----------|
+| `counter_version`           | `int`    | Version of the process collector to use.       | `0`      | no       |
+| `enable_iis_worker_process` | `string` | Enable IIS collectWorker process name queries. | `false`  | no       |
+| `exclude`                   | `string` | Regular expression of processes to exclude.    | `"^$"`   | no       |
+| `include`                   | `string` | Regular expression of processes to include.    | `"^.+$"` | no       |
+
+The `counter_version` may be `0`, `1`, or `2`.
+* A value of `1` uses the Windows `Process` performance counters via the [registry][] API.
+* A value of `2` uses the Windows `Process V2` performance counters via the [pdh][] API. These are available starting in Windows 11.
+* A value of `0` checks to see if `Process V2` counters are available, and falls back to `Process` counters if they are not available.
 
 Processes must match the regular expression specified by `include` and must _not_ match the regular expression specified by `exclude` to be included.
 
 User-supplied `exclude` and `include` strings are [wrapped][wrap-regex] in a regular expression.
 
 There is a warning in the upstream collector that use of `enable_iis_worker_process` may leak memory. Use with caution.
+
+[pdh]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
+[registry]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/using-the-registry-functions-to-consume-counter-data
 
 ### `scheduled_task`
 
@@ -338,17 +390,47 @@ The collectors specified by `enabled_list` can include the following:
 
 For example, you can set `enabled_list` to `["metrics"]`.
 
-### `text_file`
+### `textfile`
 
-| Name                  | Type     | Description                                        | Default       | Required |
-| --------------------- | -------- | -------------------------------------------------- | ------------- | -------- |
-| `text_file_directory` | `string` | The directory containing the files to be ingested. | __see below__ | no       |
+| Name                  | Type           | Description                                                    | Default       | Required |
+|-----------------------|----------------|----------------------------------------------------------------|---------------|----------|
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | __see below__ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
 
-The default value for `text_file_directory` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
-By default, `text_file_directory` is set to the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
-For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `C:\Program Files\GrafanaLabs\Alloy\textfile_inputs`.
+For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
+If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
 
-When `text_file_directory` is set, only files with the extension `.prom` inside the specified directory are read.
+The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
+Until the deprecated field is removed, the default value will be left in `text_file_directory` to ensure backward compatibility.
+
+The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
+By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
+For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+
+Only files with the extension `.prom` inside the specified directories are read.
+
+{{< admonition type="note" >}}
+The `.prom` files must end with an empty line feed for the component to recognize and read them.
+{{< /admonition >}}
+
+### `text_file` (Deprecated: use `textfile` instead)
+
+| Name                  | Type           | Description                                                    | Default       | Required |
+|-----------------------|----------------|----------------------------------------------------------------|---------------|----------|
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | __see below__ | no       |
+| `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
+
+For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
+If both `text_file` and `textfile` are configured, the distinct values from each will be concatenated.
+
+The `text_file_directory` will be split by `,` and appended to the list provided in `directories` if they are both configured.
+Until the deprecated field is removed, the default value will be left in `text_file_directory` to ensure backward compatibility.
+
+The default value for `directories` is relative to the location of the {{< param "PRODUCT_NAME" >}} executable.
+By default, `directories` contains the `textfile_inputs` directory in the installation directory of {{< param "PRODUCT_NAME" >}}.
+For example, if {{< param "PRODUCT_NAME" >}} is installed in `C:\Program Files\GrafanaLabs\Alloy\`, the default is `["C:\Program Files\GrafanaLabs\Alloy\textfile_inputs"]`.
+
+Only files with the extension `.prom` inside the specified directories are read.
 
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
@@ -411,7 +493,6 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`cache`][cache]                                                     | Cache metrics                                                        |                    |
 | [`cpu`][cpu]                                                         | CPU usage                                                            | Yes                |
 | [`cpu_info`][cpu_info]                                               | CPU Information                                                      |                    |
-| [`cs`][cs]                                                           | "Computer System" metrics (system properties, num cpus/total memory) | Yes                |
 | [`container`][container]                                             | Container metrics                                                    |                    |
 | [`dfsr`][dfsr]                                                       | DFSR metrics                                                         |                    |
 | [`dhcp`][dhcp]                                                       | DHCP Server                                                          |                    |
@@ -419,10 +500,10 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`exchange`][exchange]                                               | Exchange metrics                                                     |                    |
 | [`filetime`][filetime]                                               | File modification time metrics                                       |                    |
 | [`fsrmquota`][fsrmquota]                                             | Microsoft File Server Resource Manager (FSRM) Quotas collector       |                    |
+| [`gpu`][gpu]                                                         | GPU usage and memory consumption                                     |                    |
 | [`hyperv`][hyperv]                                                   | Hyper-V hosts                                                        |                    |
 | [`iis`][iis]                                                         | IIS sites and applications                                           |                    |
 | [`logical_disk`][logical_disk]                                       | Logical disks, disk I/O                                              | Yes                |
-| [`logon`][logon]                                                     | User logon sessions                                                  |                    |
 | [`memory`][memory]                                                   | Memory usage metrics                                                 |                    |
 | [`mscluster`][mscluster]                                             | MSCluster metrics                                                    |                    |
 | [`msmq`][msmq]                                                       | MSMQ queues                                                          |                    |
@@ -432,7 +513,7 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 | [`os`][os]                                                           | OS metrics (memory, processes, users)                                | Yes                |
 | [`pagefile`][pagefile]                                               | Pagefile metrics                                                     |                    |
 | [`performancecounter`][performancecounter]                           | Performance Counter metrics                                          |                    |
-| [`physical_disk`][physical_disk]                                     | Physical disks                                                       | Yes                |
+| [`physical_disk`][physical_disk]                                     | Physical disks                                                       |                    |
 | [`printer`][printer]                                                 | Printer metrics                                                      |                    |
 | [`process`][process]                                                 | Per-process metrics                                                  |                    |
 | [`remote_fx`][remote_fx]                                             | RemoteFX protocol (RDP) metrics                                      |                    |
@@ -465,10 +546,10 @@ Users can choose to enable a subset of collectors to limit the amount of metrics
 [exchange]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.exchange.md
 [filetime]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.filetime.md
 [fsrmquota]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.fsrmquota.md
+[gpu]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.gpu.md
 [hyperv]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.hyperv.md
 [iis]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.iis.md
 [logical_disk]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.logical_disk.md
-[logon]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.logon.md
 [memory]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.memory.md
 [mscluster]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.mscluster.md
 [msmq]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.msmq.md
@@ -504,7 +585,8 @@ Refer to the linked documentation on each collector for more information on repo
 Certain collectors cause {{< param "PRODUCT_NAME" >}} to crash if those collectors are used and the required infrastructure isn't installed.
 These include but aren't limited to `mscluster`, `vmware`, `nps`, `dns`, `msmq`, `ad`, `hyperv`, and `scheduled_task`.
 
-The `cs` collector has been deprecated and may be removed in future versions of the exporter.
+The `cs` and `logon` collectors are deprecated and have been removed from the exporter.
+You can continue to use the configuration for these collectors, however this option will be removed in the future.
 {{< /admonition >}}
 
 ## Example
