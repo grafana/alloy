@@ -2055,6 +2055,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthext
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.128.0/go.mod h1:gDkW4vL4fFj45t2t1cCCPyLQ9lLolODpiW/mRePmdAU=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.128.0 h1:VU7Tm78M+raJ4Xeqi5mYtoYQC2hHy1yH0oM49V5ol54=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.128.0/go.mod h1:TcaRp4IfHsCj/IVJwPIekrXyjn3x/bDh+BmNmRG5/Jg=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.128.0 h1:2giwBhzphziivj9PV9YwCFitxWCtdzDcw0qVh0gMDM4=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.128.0/go.mod h1:GjYTjQcig/Je3o+X7D5P9ADqWA/6j6jBGI8AYGMAOjQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.128.0 h1:eCLDs1+yvnCPjEmAPlGN+6wNXQ8WXVgfMZLBglYD8Yg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.128.0/go.mod h1:zO9hJE9rFbRpYvypv8Ffu7tMlBtGDcuGLmZwbhKS5Og=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.128.0 h1:4IjcixaFWpcomy+WvbUw9/lkc4KXQ5w1lhWPdo5MBUQ=
@@ -2179,6 +2181,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsrece
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0/go.mod h1:i3jLyma0OruFlVTJIlCh5QT291qZW5ZyZgcUEMrm0Fc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0 h1:EkSbn2vBOD5u389jTiQpssrdSUT7rQdltzYBYFBGR0g=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0/go.mod h1:SwARiAxarYR+aElfGriPQ5WqHf5YfIkGiE0KVJonoSo=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.128.0 h1:5x3V4J4nTP9KsHb4ufQZIOqEGzN9VG7nWVy2Y0vwm+w=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.128.0/go.mod h1:c1I1zYaE6fQtsiHI8vIm0+bMta4O9EmKxnwzrhISgGA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.128.0 h1:LUrfwhcqP0k/lwtT8nxKX7L11RxU7xvw/NwXN/r91/A=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.128.0/go.mod h1:1jWL8z4+7JhoamkAzfSAzVLp+joDOgcf0HuAkMbK0AE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.128.0 h1:robqWLRsdalVuZhjW6oBqiHn0am5VRqQPJ5FfPZaHUk=

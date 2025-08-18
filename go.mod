@@ -157,6 +157,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.128.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.128.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.128.0
@@ -1037,6 +1038,8 @@ require (
 	github.com/jmespath-community/go-jmespath v1.1.1
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
+
+require github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.128.0 // indirect
 
 // NOTE: replace directives below must always be *temporary*.
 //
