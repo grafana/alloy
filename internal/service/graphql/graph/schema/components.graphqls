@@ -1,0 +1,48 @@
+extend type Query {
+  """
+  All components running in Alloy.
+  """
+  components: [Component!]!
+
+  """
+  Component by ID.
+  """
+  component(id: ID!): Component
+}
+
+type Component {
+  "Arguments of the component."
+  arguments: String!
+
+  "Connection status of the component."
+  connectionStatus: String!
+
+  "Debug information of the component."
+  debugInfo: String!
+
+  "All endpoints known by this component."
+  endpoints: [Endpoint!]!
+
+  "Exports of the component."
+  exports: String!
+
+  "Health status of the component."
+  health: Health!
+
+  "Fully-qualified ID of the component."
+  id: ID!
+
+  "Name of the component."
+  name: String!
+}
+
+"""
+Health status of the component.
+"""
+type Health {
+  "Message of the health status."
+  message: String!
+
+  "Last updated time of the health status."
+  lastUpdated: Time!
+}

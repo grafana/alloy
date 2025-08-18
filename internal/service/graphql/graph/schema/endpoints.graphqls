@@ -1,0 +1,49 @@
+extend type Query {
+  """
+  All known endpoints within Alloy.
+  """
+  endpoints: [Endpoint!]!
+
+  """
+  Endpoint for a given host and port.
+  """
+  endpoint(host: String!, port: Int!): Endpoint!
+}
+
+"""
+Type of endpoint used by Alloy for different communication purposes.
+"""
+enum EndpointType {
+  "Target (e.g. discovery, scrape, etc.)."
+  TARGET
+
+  "Remote read/write endpoint for querying/sending metrics data."
+  REMOTE
+
+  "Receiver endpoint for receiving data."
+  RECEIVER
+
+  "Unknown or unclassified endpoint type."
+  UNKNOWN
+}
+
+"""
+Represents any communication endpoint used by Alloy (e.g. discovery target, remote write endpoint,
+etc.). Can also be composed arbitrarily from a host/port pair.
+"""
+type Endpoint {
+  "Resolved hostname of the endpoint"
+  hostname: String
+
+  "Resolved IP address of the endpoint"
+  ip: String
+
+  "Port of the endpoint"
+  port: Int!
+
+  "Connection status of the endpoint"
+  status: String!
+
+  "Type of the endpoint"
+  type: EndpointType!
+}
