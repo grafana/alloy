@@ -44,6 +44,7 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
+  - add `activity` collector for postgres (@gaantunes)
 
 ### Enhancements
 
@@ -69,6 +70,12 @@ Main (unreleased)
 
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
+- Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
+
+- Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
+
+- `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -80,6 +87,12 @@ Main (unreleased)
 - Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
 
 - Fix `pyroscope.receive_http` so it does not restart server if the server configuration has not changed. (@korniltsev)
+
+- Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
+
+- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+
+- Fix issue in `prometheus.write.queue` causing inability to increase shard count if existing WAL data was present on start. (@kgeckhart)
 
 v1.10.1
 -----------------
