@@ -126,7 +126,7 @@ The following fields are exported and can be referenced by other components:
 
 This example scrapes logs from local files through a receiver for conversion to OpenTelemetry format before finally sending them to Pub/Sub.
 
-This configuration includes the recommended `memory_limiter` and `batch` plugins, which avoid high latency for reporting telemetry, and ensure that the collector itself will stay stable (not run out of memory) by dropping telemetry if needed.
+This configuration includes the recommended `memory_limiter` and `batch` plugins, which avoid high reporting latency and ensure the collector stays stable by dropping telemetry when memory limits are reached.
 
 ```alloy
 local.file_match "logs" {
