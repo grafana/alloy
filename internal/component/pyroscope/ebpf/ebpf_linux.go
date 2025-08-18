@@ -129,6 +129,7 @@ func (c *Component) Run(ctx context.Context) error {
 		err = ctlr.Start(ctx)
 		if err != nil {
 			c.reportUnhealthy(err)
+			c.metrics.profilingSessionsFailingTotal.Inc()
 			time.Sleep(c.cfg.ReporterInterval)
 			continue
 		}
@@ -138,6 +139,7 @@ func (c *Component) Run(ctx context.Context) error {
 		return err
 	}
 	c.reportHealthy()
+	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
 		if c.cfg.FileObserver != nil {
@@ -155,6 +157,7 @@ func (c *Component) Run(ctx context.Context) error {
 				c.args = newArgs
 				c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
 				c.appendable.UpdateChildren(newArgs.ForwardTo)
+				c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
 			}
 		}
 	}, func(error) {})

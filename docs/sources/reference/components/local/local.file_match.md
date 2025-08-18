@@ -42,6 +42,8 @@ You can use the following arguments with `local.file_match`:
 
 `local.file_match` doesn't ignore files when `ignore_older_than` is set to the default, `0s`.
 
+When `__path_exclude__` is provided, any files matching the `__path__` pattern that also match the `__path_exclude__` pattern will be excluded from the exported list.
+
 ## Blocks
 
 The `local.file_match` component doesn't support any blocks. You can configure this component with arguments.
@@ -77,12 +79,12 @@ The following examples show you how to use `local.file_match` to find and send l
 
 ### Send `/tmp/logs/*.log` files to Loki
 
-This example discovers all files and folders under `/tmp/logs`.
+This example discovers all files and folders under `/tmp/logs` except for files in the `/tmp/logs/excluded` directory.
 The absolute paths are used by `loki.source.file.files` targets.
 
 ```alloy
 local.file_match "tmp" {
-  path_targets = [{"__path__" = "/tmp/logs/**/*.log"}]
+  path_targets = [{"__path__" = "/tmp/logs/**/*.log", "__path_exclude__" = "/tmp/logs/excluded/*.log"}]
 }
 
 loki.source.file "files" {

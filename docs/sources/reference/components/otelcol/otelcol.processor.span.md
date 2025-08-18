@@ -43,7 +43,7 @@ The `otelcol.processor.span` component doesn't support any arguments. You can co
 You can use the following blocks with `otelcol.processor.span`:
 
 | Block                                     | Description                                                                | Required |
-| ----------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|-------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                        | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]          | Configures the metrics that this component generates to monitor its state. | no       |
 | [`exclude`][exclude]                      | Filter for data excluded from this processor's actions                     | no       |
@@ -79,7 +79,7 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-traces.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -94,7 +94,7 @@ The `exclude` block provides an option to exclude data from being fed into the [
 The following arguments are supported:
 
 | Name         | Type           | Description                                          | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------------|---------|----------|
 | `match_type` | `string`       | Controls how items to match against are interpreted. |         | yes      |
 | `services`   | `list(string)` | A list of items to match the service name against.   | `[]`    | no       |
 | `span_kinds` | `list(string)` | A list of items to match the span kind against.      | `[]`    | no       |
@@ -129,7 +129,7 @@ The `include` block provides an option to include data being fed into the [`name
 The following arguments are supported:
 
 | Name         | Type           | Description                                          | Default | Required |
-| ------------ | -------------- | ---------------------------------------------------- | ------- | -------- |
+|--------------|----------------|------------------------------------------------------|---------|----------|
 | `match_type` | `string`       | Controls how items to match against are interpreted. |         | yes      |
 | `services`   | `list(string)` | A list of items to match the service name against.   | `[]`    | no       |
 | `span_kinds` | `list(string)` | A list of items to match the span kind against.      | `[]`    | no       |
@@ -148,7 +148,7 @@ The `name` block configures how to rename a span and add attributes.
 The following attributes are supported:
 
 | Name              | Type           | Description                                                      | Default | Required |
-| ----------------- | -------------- | ---------------------------------------------------------------- | ------- | -------- |
+|-------------------|----------------|------------------------------------------------------------------|---------|----------|
 | `from_attributes` | `list(string)` | Attribute keys to pull values from, to generate a new span name. | `[]`    | no       |
 | `separator`       | `string`       | Separates attributes values in the new span name.                | `""`    | no       |
 
@@ -172,7 +172,7 @@ The `to_attributes` block configures how to create attributes from a span name.
 The following attributes are supported:
 
 | Name                 | Type           | Description                                                                     | Default | Required |
-| -------------------- | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
+|----------------------|----------------|---------------------------------------------------------------------------------|---------|----------|
 | `rules`              | `list(string)` | A list of regular expression rules to extract attribute values from span name.  |         | yes      |
 | `break_after_match`  | `bool`         | Configures if processing of rules should stop after the first match.            | `false` | no       |
 | `keep_original_name` | `bool`         | Configures if the original span name should be kept after processing the rules. | `false` | no       |
@@ -200,7 +200,7 @@ The `status` block specifies a status which should be set for this span.
 The following attributes are supported:
 
 | Name          | Type     | Description                                       | Default | Required |
-| ------------- | -------- | ------------------------------------------------- | ------- | -------- |
+|---------------|----------|---------------------------------------------------|---------|----------|
 | `code`        | `string` | A status code.                                    |         | yes      |
 | `description` | `string` | An optional field documenting Error status codes. | `""`    | no       |
 
@@ -217,7 +217,7 @@ The supported values for `code` are:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` OTLP-formatted data for traces telemetry signals.

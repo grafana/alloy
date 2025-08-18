@@ -39,9 +39,12 @@
   envFrom:
     {{- toYaml $values.envFrom | nindent 4 }}
   {{- end }}
+  {{- if or $values.enableHttpServerPort (gt (len $values.extraPorts) 0) }}
   ports:
+    {{- if $values.enableHttpServerPort }}
     - containerPort: {{ $values.listenPort }}
       name: http-metrics
+    {{- end }}
     {{- range $portMap := $values.extraPorts }}
     - containerPort: {{ $portMap.targetPort }}
       {{- if $portMap.hostPort }}
@@ -50,13 +53,25 @@
       name: {{ $portMap.name }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
     {{- end }}
+  {{- end }}
+  {{- if $values.enableHttpServerPort }}
   readinessProbe:
     httpGet:
       path: /-/ready
       port: {{ $values.listenPort }}
       scheme: {{ $values.listenScheme }}
-    initialDelaySeconds: 10
-    timeoutSeconds: 1
+    initialDelaySeconds: {{ $values.initialDelaySeconds }}
+    timeoutSeconds: {{ $values.timeoutSeconds }}
+  {{- else }}
+  readinessProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - curl -f {{ $values.listenScheme }}://localhost:{{ $values.listenPort }}/-/ready || exit 1
+    initialDelaySeconds: {{ $values.initialDelaySeconds }}
+    timeoutSeconds: {{ $values.timeoutSeconds }}
+  {{- end }}
   {{- with $values.livenessProbe }}
   livenessProbe:
     {{- toYaml . | nindent 4 }}

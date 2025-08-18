@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	astutil "github.com/grafana/alloy/internal/util/ast"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -291,7 +292,11 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 // Cleanup unregisters any existing metrics and optionally stops the worker pool.
 func (l *Loader) Cleanup(stopWorkerPool bool) {
 	if stopWorkerPool {
-		l.workerPool.Stop()
+		// Wait at most 5 seconds for currently evaluating components to finish.
+		err := l.workerPool.Stop(time.Second * 5)
+		if err != nil {
+			level.Warn(l.log).Log("msg", "timed out stopping worker pool", "err", err)
+		}
 	}
 	if l.globals.Registerer == nil {
 		return
@@ -982,7 +987,7 @@ func splitPath(id string) (string, string) {
 	return "/" + parent, id
 }
 
-func setDataFlowEdges(n dag.Node, refs []Reference) {
+func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
 	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()

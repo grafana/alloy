@@ -35,6 +35,7 @@ type StageConfig struct {
 	MultilineConfig       *MultilineConfig       `alloy:"multiline,block,optional"`
 	OutputConfig          *OutputConfig          `alloy:"output,block,optional"`
 	PackConfig            *PackConfig            `alloy:"pack,block,optional"`
+	PatternConfig         *PatternConfig         `alloy:"pattern,block,optional"`
 	RegexConfig           *RegexConfig           `alloy:"regex,block,optional"`
 	ReplaceConfig         *ReplaceConfig         `alloy:"replace,block,optional"`
 	StaticLabelsConfig    *StaticLabelsConfig    `alloy:"static_labels,block,optional"`

@@ -27,8 +27,17 @@ You can use the following arguments with `database_observability.postgres`:
 
 | Name                               | Type                 | Description                                                                                    | Default | Required |
 |------------------------------------|----------------------|------------------------------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                 | `secret`             | [Data Source Name][] for the Postgres server to connect to.                                       |         | yes      |
+| `data_source_name`                 | `secret`             | [Data Source Name][] for the Postgres server to connect to.                                    |         | yes      |
 | `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
+| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
+| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
+
+The following collectors are configurable:
+
+| Name              | Description                                                                                               | Enabled by default |
+|-------------------|-----------------------------------------------------------------------------------------------------------|--------------------|
+| `activity`        | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events.   | no                 |
+| `query_tables`    | Collect query table information.                                                                          | no                 |
 
 ## Blocks
 
@@ -40,6 +49,7 @@ The `database_observability.postgres` component doesn't support any blocks. You 
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/mydb"
   forward_to = [loki.write.logs_service.receiver]
+  enable_collectors = ["activity", "query_tables"]
 }
 
 prometheus.scrape "orders_db" {
