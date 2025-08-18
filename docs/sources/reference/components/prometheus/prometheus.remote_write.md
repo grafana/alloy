@@ -88,24 +88,24 @@ You can define multiple `endpoint` blocks to send metrics to multiple locations.
 
 The following arguments are supported:
 
-| Name                     | Type                | Description                                                                                                             | Default                     | Required |
-|--------------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------|-----------------------------|----------|
-| `url`                    | `string`            | Full URL to send metrics to.                                                                                            |                             | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                    |                             | no       |
-| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                      |                             | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                | `false`                     | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                            | `true`                      | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                                 |                             | no       |
-| `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                                              |                             | no       |
-| `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                                                      |                             | no       |
-| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                        |                             | no       |
-| `protobuf_message`       | `string`            | Protobuf message format to use for remote write. Must be `prometheus.WriteRequest` or `io.prometheus.write.v2.Request`. | `"prometheus.WriteRequest"` | no       |
-| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                           |                             | no       |
-| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                   | `false`                     | no       |
-| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                    |                             | no       |
-| `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                                                   | `"30s"`                     | no       |
-| `send_exemplars`         | `bool`              | Whether exemplars should be sent.                                                                                       | `true`                      | no       |
-| `send_native_histograms` | `bool`              | Whether native histograms should be sent.                                                                               | `false`                     | no       |
+| Name                     | Type                | Description                                                                                                                          | Default                     | Required |
+|--------------------------|---------------------|--------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|----------|
+| `url`                    | `string`            | Full URL to send metrics to.                                                                                                         |                             | yes      |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                                                                 |                             | no       |
+| `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                                                                   |                             | no       |
+| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                                                             | `false`                     | no       |
+| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                                                         | `true`                      | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.                                              |                             | no       |
+| `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                                                           |                             | no       |
+| `name`                   | `string`            | Optional name to identify the endpoint in metrics.                                                                                   |                             | no       |
+| `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.                                     |                             | no       |
+| `protobuf_message`       | `string`            | Protobuf message format to use for remote write. Must be `prometheus.WriteRequest` or experimental `io.prometheus.write.v2.Request`. | `"prometheus.WriteRequest"` | no       |
+| `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                                                        |                             | no       |
+| `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                                | `false`                     | no       |
+| `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                                 |                             | no       |
+| `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                                                                | `"30s"`                     | no       |
+| `send_exemplars`         | `bool`              | Whether exemplars should be sent.                                                                                                    | `true`                      | no       |
+| `send_native_histograms` | `bool`              | Whether native histograms should be sent.                                                                                            | `false`                     | no       |
 
  At most, one of the following can be provided:
 
@@ -348,7 +348,10 @@ prometheus.remote_write "staging" {
 }
 ```
 
-### Send metrics using Remote Write v2 protocol
+### Experimental: Send metrics using Remote Write v2 protocol
+
+To enable and use an [experimental][] feature, you must set the `stability.level` [flag][] to `experimental`. 
+This feature has not yet been tested thoroughly and may change or be removed in future releases. 
 
 You can configure `prometheus.remote_write` to use the Remote Write v2 protocol if your endpoint supports it:
 
@@ -360,6 +363,9 @@ prometheus.remote_write "v2_example" {
   }
 }
 ```
+
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
+[experimental]: https://grafana.com/docs/release-life-cycle/
 
 ### Send metrics to a managed service
 
