@@ -1038,8 +1038,9 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
 
+require cloud.google.com/go/pubsub/v2 v2.0.0
+
 require (
-	cloud.google.com/go/pubsub/v2 v2.0.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.3 // indirect
 )
