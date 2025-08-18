@@ -88,20 +88,17 @@ func TestValidate(t *testing.T) {
 		{
 			name: "valid config",
 			cfg: &Arguments{
-				Subscription: "projects/project-id/subscription/subscription-name",
+				Subscription: "projects/project-id/subscriptions/subscription-name",
 			},
 			expectErr: false,
 		},
-		/*
-			https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42069
-			{
-				name: "invalid config",
-				cfg: &Arguments{
-					Subscription: "name",
-				},
-				expectErr: true,
+		{
+			name: "invalid config",
+			cfg: &Arguments{
+				Subscription: "name",
 			},
-		*/
+			expectErr: true,
+		},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
