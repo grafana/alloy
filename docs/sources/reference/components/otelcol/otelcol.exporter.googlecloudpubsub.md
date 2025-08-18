@@ -99,10 +99,10 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 
 The following arguments are supported:
 
-| Name          | Type       | Description                                                                                                                                                                                        | Default | Required |
-| ------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `behavior`    | `string`   | `current` sets the `ce-time` attribute to the system clock, `earliest` sets the attribute to the smallest timestamp of all the messages.                                                           | `""`    | no       |
-| `allow_drift` | `Duration` | The maximum difference the `ce-time` attribute can be set from the system clock. If `allow_drift` is set to `0s` and `behavior` is set to `earliest`, the maximum drift from the clock is allowed. | `0s`    | no       |
+| Name          | Type       | Description                                                                                                                                                                                | Default | Required |
+| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| `behavior`    | `string`   | `current` sets the `ce-time` attribute to the system clock, `earliest` sets the attribute to the smallest timestamp of all the messages.                                                   | `""`    | no       |
+| `allow_drift` | `Duration` | The maximum difference the `ce-time` attribute can have from the system clock. If you set `allow_drift` to `0s` and `behavior` to `earliest`, the maximum drift from the clock is allowed. | `0s`    | no       |
 
 ## Exported fields
 
