@@ -92,6 +92,8 @@ Main (unreleased)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
+- Fix issue in `prometheus.write.queue` causing inability to increase shard count if existing WAL data was present on start. (@kgeckhart)
+
 v1.10.1
 -----------------
 
