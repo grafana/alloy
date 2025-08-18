@@ -52,7 +52,7 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 | `compression` | `string` | Set the payload compression. Only `gzip` is supported. Default is no compression.                                                                                   | `""`                                            | no       |
 | `endpoint`    | `string` | Override the default Pub/Sub Endpoint, useful when connecting to the PubSub emulator instance or switching between [global and regional service endpoints][].       | `""`                                            | no       |
 | `insecure`    | `bool`   | Allows performing “insecure” SSL connections and transfers, useful when connecting to a local emulator instance. Only has effect if Endpoint isn't ""               | `""`                                            | no       |
-| `project`     | `string` | GCP project identifier.                                                                                                                                             | Fetch from credentials                          | no       |
+| `project`     | `string` | Google Cloud Platform project identifier.                                                                                                                           | Fetch from credentials                          | no       |
 | `user_agent`  | `string` | Override the user agent string sent on requests to Cloud Monitoring. This only applies to metrics. Specify `{{version}}` to include the application version number. | `"opentelemetry-collector-contrib {{version}}"` | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
