@@ -29,9 +29,9 @@ pyroscope.receive_http "<LABEL>" {
 
 The component starts an HTTP server supporting the following endpoints:
 
-* `POST /ingest` - Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
+* `POST /ingest`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope ingest API.
-* `POST /push.v1.PusherService/Push` - Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
+* `POST /push.v1.PusherService/Push`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope pushv1.PusherService Connect API.
 
 ## Arguments
