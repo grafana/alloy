@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -17,7 +17,10 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestStorage_InvalidSeries(t *testing.T) {
@@ -337,6 +340,82 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
+func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
+	// Ensure the WAL can handle duplicate SeriesRefs by hash when being loaded.
+	walDir := t.TempDir()
+
+	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	app := s.Appender(t.Context())
+
+	var payload seriesList
+	for i, metricName := range []string{"foo", "bar", "baz", "blerg"} {
+		payload = append(payload, &series{
+			name: metricName,
+			samples: []sample{
+				{int64(i), float64(i * 10.0)},
+				{int64(i * 10), float64(i * 100.0)},
+			},
+		})
+	}
+
+	originalSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.Write(t, app)
+		originalSeriesRefs = append(originalSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+
+	// Forcefully create a bunch of new segments so when we truncate
+	// there's enough segments to be considered for truncation.
+	for i := 0; i < 3; i++ {
+		_, err := s.wal.NextSegmentSync()
+		require.NoError(t, err)
+	}
+	// Series are still active
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Force GC of all the series, but they will stay in the checkpoint
+	keepTs := payload[len(payload)-1].samples[1].ts + 1
+	err = s.Truncate(keepTs)
+	require.NoError(t, err)
+	// No more active series because they were GC'ed with Truncate
+	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Publish new samples that will create new SeriesRefs for the same labels.
+	duplicateSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.samples = metric.samples[1:]
+		metric.samples[0].ts = metric.samples[0].ts * 10
+		metric.Write(t, app)
+
+		duplicateSeriesRefs = append(duplicateSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+	// We should be back to 4 active series now
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Close the WAL before we have a chance to remove the first RefIDs
+	err = s.Close()
+	require.NoError(t, err)
+
+	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	// There should only be 4 active series after we reload the WAL
+	assert.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+	// The original SeriesRefs should be in series
+	for _, ref := range originalSeriesRefs {
+		assert.NotNil(t, s.series.GetByID(ref))
+	}
+
+	// The duplicated SeriesRefs should be considered deleted
+	for _, ref := range duplicateSeriesRefs {
+		assert.Contains(t, s.deleted, ref)
+	}
+}
+
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
 	walDir := t.TempDir()
 
@@ -519,7 +598,11 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	// Write other data points with AddFast
 	for _, sample := range s.samples[offset:] {
-		_, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		ref, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		// The ref we had changed stop using the old value
+		if *s.ref != ref {
+			s.ref = &ref
+		}
 		require.NoError(t, err)
 	}
 

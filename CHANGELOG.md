@@ -90,6 +90,8 @@ Main (unreleased)
 
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
+- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+
 v1.10.1
 -----------------
 
