@@ -1,6 +1,8 @@
 package googlecloudpubsub
 
 import (
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver"
@@ -45,6 +47,8 @@ type Arguments struct {
 }
 
 var (
+	subscriptionMatcher = regexp.MustCompile(`projects/[a-z][a-z0-9\-]*/subscriptions/`)
+
 	_ receiver.Arguments = Arguments{}
 	_ syntax.Defaulter   = &Arguments{}
 	_ syntax.Validator   = &Arguments{}
@@ -58,19 +62,28 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args *Arguments) Validate() error {
-	_, err := args.Convert()
+	otelConfig, err := args.Convert()
 	if err != nil {
 		return err
 	}
 
-	return nil
-	/*
-		https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42069
-		validate() function from googlecloudpubsubreceiver.Config is not exported
+	// duplicate the logic from (*googlecloudpubsubreceiver.Config).validate()
+	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42069
 
-		googleCloudPubSubCfg, ok := otelConfig.(*googlecloudpubsubreceiver.Config)
-		return googleCloudPubSubCfg.validate()
-	*/
+	googleCloudPubSubCfg, _ := otelConfig.(*googlecloudpubsubreceiver.Config)
+
+	if !subscriptionMatcher.MatchString(googleCloudPubSubCfg.Subscription) {
+		return fmt.Errorf("subscription '%s' is not a valid format, use 'projects/<project_id>/subscriptions/<name>'", googleCloudPubSubCfg.Subscription)
+	}
+
+	switch googleCloudPubSubCfg.Compression {
+	case "":
+	case "gzip":
+	default:
+		return fmt.Errorf("compression %v is not supported.  supported compression formats include [gzip]", googleCloudPubSubCfg.Compression)
+	}
+
+	return nil
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
