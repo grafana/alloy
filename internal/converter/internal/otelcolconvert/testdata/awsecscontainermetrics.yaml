@@ -7,8 +7,7 @@ processors:
     error_mode: ignore
     metrics:
       metric:
-          - 'name == "ecs.task.memory.reserved"'
-          - 'name == "ecs.task.memory.utilized"'
+          - 'metric.name != "ecs.task.memory.reserved" and metric.name != "ecs.task.memory.utilized"'
 
 exporters:
   otlp:

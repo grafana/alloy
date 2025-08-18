@@ -95,14 +95,16 @@ otelcol.processor.filter "default" {
 
   metrics {
     metric = [
-      `name == "ecs.task.memory.reserved"`,
-      `name == "ecs.task.memory.utilized"`,
-      `name == "ecs.task.cpu.reserved"`,
-      `name == "ecs.task.cpu.utilized"`,
-      `name == "ecs.task.network.rate.rx"`,
-      `name == "ecs.task.network.rate.tx"`,
-      `name == "ecs.task.storage.read_bytes"`,
-      `name == "ecs.task.storage.write_bytes"`,
+      string.join([
+        `metric.name != "ecs.task.memory.reserved"`,
+        `metric.name != "ecs.task.memory.utilized"`,
+        `metric.name != "ecs.task.cpu.reserved"`,
+        `metric.name != "ecs.task.cpu.utilized"`,
+        `metric.name != "ecs.task.network.rate.rx"`,
+        `metric.name != "ecs.task.network.rate.tx"`,
+        `metric.name != "ecs.task.storage.read_bytes"`,
+        `metric.name != "ecs.task.storage.write_bytes"`,
+      ], " and "),
     ]
   }
 
