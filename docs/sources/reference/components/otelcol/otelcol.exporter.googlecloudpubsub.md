@@ -41,7 +41,6 @@ Refer to the [Google Cloud Pub/Sub Exporter][] and [Google Cloud Exporter][] doc
 [Google Cloud Pub/Sub Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/googlecloudpubsubexporter/README.md
 [Google Cloud Exporter]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/googlecloudexporter#prerequisite-authenticating
 
-
 ## Arguments
 
 You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
@@ -51,7 +50,7 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 | `topic`       | `string` | The topic name to send OTLP data over. The topic name should be a fully qualified resource name, for example, `projects/otel-project/topics/otlp`.                  | `""`                                            | yes      |
 | `compression` | `string` | Set the payload compression. Only `gzip` is supported. Default is no compression.                                                                                   | `""`                                            | no       |
 | `endpoint`    | `string` | Override the default Pub/Sub Endpoint, useful when connecting to the PubSub emulator instance or switching between [global and regional service endpoints][].       | `""`                                            | no       |
-| `insecure`    | `bool`   | Allows performing “insecure” SSL connections and transfers, useful when connecting to a local emulator instance. Only has effect if Endpoint isn't ""               | `""`                                            | no       |
+| `insecure`    | `bool`   | Allows performing "insecure" SSL connections and transfers, useful when connecting to a local emulator instance. Only has effect if Endpoint isn't ""               | `false`                                         | no       |
 | `project`     | `string` | Google Cloud Platform project identifier.                                                                                                                           | Fetch from credentials                          | no       |
 | `user_agent`  | `string` | Override the user agent string sent on requests to Cloud Monitoring. This only applies to metrics. Specify `{{version}}` to include the application version number. | `"opentelemetry-collector-contrib {{version}}"` | no       |
 
