@@ -76,7 +76,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250806200024-8857bde78364 // alloy-1.10 branch to cherry pick fixes w/o prom3 update
+	github.com/grafana/walqueue v0.0.0-20250818155145-61b631a3f799 // alloy-1.10 branch to cherry pick fixes w/o prom3 update
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/hashicorp/go-discover v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -528,7 +528,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/deneonet/benc v1.1.8 // indirect
+	github.com/deneonet/benc v1.1.7 // indirect
 	github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 // indirect
 	github.com/dennwc/ioctl v1.0.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
@@ -1102,3 +1102,6 @@ replace github.com/prometheus/procfs => github.com/prometheus/procfs v0.12.0
 
 // Use v0.62.0 of prometheus/common for all dependencies until mongodb_exporter is updated to support 0.63.0
 replace github.com/prometheus/common => github.com/prometheus/common v0.62.0
+
+// Do not remove this until the bug breaking backwards compatibility is resolved & included in walqueue: https://github.com/deneonet/benc/issues/13
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
