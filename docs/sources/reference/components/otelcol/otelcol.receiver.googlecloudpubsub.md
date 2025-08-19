@@ -5,14 +5,17 @@ labels:
   stage: experimental
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.receiver.googlecloudpubsub
 ---
 
 # `otelcol.receiver.googlecloudpubsub`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.googlecloudpubsub` receives signals from a Google Cloud Pub/Sub subscription and forwards them to other `otelcol.*` components.
+`otelcol.receiver.googlecloudpubsub` receives OpenTelemetry signals from a Google Cloud Pub/Sub subscription and forwards them to other `otelcol.*` components for processing or export.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.googlecloudpubsub` is a wrapper over the upstream OpenTelemetry Collector [`googlecloudpubsub`][] receiver.
@@ -41,15 +44,15 @@ otelcol.receiver.googlecloudpubsub "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 
-| Name                    | Type     | Description                                                                                                                                                                                                                                                     | Default | Required |
-|-------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `subscription`          | `string` | The subscription name to receive OTLP data from. The subscription name should be a fully qualified resource name (eg: `projects/otel-project/subscriptions/otlp`).                                                                                              | `""`    | yes      |
-| `compression`           | `string` | The compression that will be used on received data from the subscription. When set it can only be `gzip`. This will only be used as a fallback, when no content-encoding attribute is present.                                                                  | `""`    | no       |
-| `encoding`              | `string` | The encoding that will be used to received data from the subscription. This can either be `otlp_proto_trace`, `otlp_proto_metric`, `otlp_proto_log` or and encoding extension. This will only be used as a fallback, when no content-type attribute is present. | `""`    | no       |
-| `endpoint`              | `string` | Override the default Pubsub Endpoint, useful when connecting to the PubSub emulator instance or switching between [global and regional service endpoints][].                                                                                                    | `""`    | no       |
-| `ignore_encoding_error` | `bool`   | Ignore errors when the configured encoder fails to decoding a PubSub messages. Ignoring the error will cause the receiver to drop the message.                                                                                                                  | false   | no       |
-| `insecure`              | `bool`   | Allows performing “insecure” SSL connections and transfers, useful when connecting to a local emulator instance. Only has effect if Endpoint is set.                                                                                                            | false   | no       |
-| `project`               | `string` | The Google Cloud Project of the client connects to.                                                                                                                                                                                                             | `""`    | no       |
+| Name                    | Type     | Description                                                                                                                                                                                                                | Default | Required |
+| ----------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `subscription`          | `string` | The subscription name to receive OTLP data from. The subscription name should be a fully qualified resource name, for example: `projects/otel-project/subscriptions/otlp`.                                                 | `""`    | yes      |
+| `compression`           | `string` | The compression used on data received from the subscription. Only `gzip` is supported. This is only used when no content-encoding attribute is present.                                                                    | `""`    | no       |
+| `encoding`              | `string` | The encoding used to receive data from the subscription. This can either be `otlp_proto_trace`, `otlp_proto_metric`, `otlp_proto_log` or an encoding extension. This is only used when no media type attribute is present. | `""`    | no       |
+| `endpoint`              | `string` | Override the default Pub/Sub endpoint. This is useful when connecting to the Pub/Sub emulator instance or switching between [global and regional service endpoints][].                                                     | `""`    | no       |
+| `ignore_encoding_error` | `bool`   | Ignore errors when the configured encoder fails to decode Pub/Sub messages. Ignoring the error causes the receiver to drop the message.                                                                                    | false   | no       |
+| `insecure`              | `bool`   | Allows performing insecure SSL connections and transfers. This is useful when connecting to a local emulator instance. Only has effect if you set `endpoint`.                                                              | false   | no       |
+| `project`               | `string` | The Google Cloud Project  project identifier.                                                                                                                                                                              | `""`    | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
 
