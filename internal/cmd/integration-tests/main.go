@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,18 +41,25 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	compose, err := tc.NewDockerCompose("./docker-compose.yaml")
+	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles("./docker-compose.yaml"), tc.StackIdentifier("alloy-integration-tests"))
 	if err != nil {
 		panic(fmt.Errorf("failed to parse the docker compose file: %v", err))
 	}
 
-	ctx := context.Background()
+	ctx := cmd.Context()
+
 	fmt.Println("Start test containers with docker compose config")
-	err = compose.Up(ctx)
-	if err != nil {
+	if err = compose.Up(ctx, tc.Wait(true), tc.RemoveOrphans(true)); err != nil {
 		panic(fmt.Errorf("could not start the docker compose: %v", err))
 	}
-	defer compose.Down(context.Background(), tc.RemoveImagesAll)
+
+	defer func() {
+		fmt.Println("Stop test containers with docker compose config")
+		err := compose.Down(ctx, tc.RemoveImagesAll)
+		if err != nil {
+			panic(fmt.Errorf("could not remove the docker compose: %v", err))
+		}
+	}()
 
 	fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
 	time.Sleep(10 * time.Second)
