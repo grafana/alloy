@@ -350,8 +350,7 @@ prometheus.remote_write "staging" {
 
 ### Experimental: Send metrics using Remote Write v2 protocol
 
-To enable and use an [experimental][] feature, you must set the `stability.level` [flag][] to `experimental`. 
-This feature has not yet been tested thoroughly and may change or be removed in future releases. 
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 You can configure `prometheus.remote_write` to use the Remote Write v2 protocol if your endpoint supports it:
 
@@ -363,10 +362,6 @@ prometheus.remote_write "v2_example" {
   }
 }
 ```
-
-[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-[experimental]: https://grafana.com/docs/release-life-cycle/
-
 ### Send metrics to a managed service
 
 You can create a `prometheus.remote_write` component that sends your metrics to a managed service, for example, Grafana Cloud.
