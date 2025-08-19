@@ -364,9 +364,12 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
-	var wg sync.WaitGroup
-	var errorMut sync.Mutex
-	var errs error
+	var (
+		wg                    sync.WaitGroup
+		errs                  error
+		errorMut              sync.Mutex
+		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
+	)
 
 	// Handle labels
 	query := profile.URL.Query()
@@ -390,59 +393,96 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 	// Send to each endpoint concurrently
 	for endpointIdx, endpoint := range f.config.Endpoints {
+		var (
+			endpoint = endpoint
+			i        = endpointIdx
+			backoff  = backoff.New(ctx, backoff.Config{
+				MinBackoff: f.config.Endpoints[i].MinBackoff,
+				MaxBackoff: f.config.Endpoints[i].MaxBackoff,
+				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
+			})
+			err error
+		)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			u, err := url.Parse(endpoint.URL)
-			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("parse URL for endpoint[%d]: %w", endpointIdx, err), &errorMut)
-				return
-			}
 
-			u.Path = path.Join(u.Path, profile.URL.Path)
+			for {
+				err = func() error {
+					u, err := url.Parse(endpoint.URL)
+					if err != nil {
+						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
+					}
 
-			// attch labels
-			u.RawQuery = query.Encode()
+					u.Path = path.Join(u.Path, profile.URL.Path)
 
-			req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
-			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("create request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
-				return
-			}
+					// attach labels
+					u.RawQuery = query.Encode()
 
-			// set headers from endpoint
-			for k, v := range endpoint.Headers {
-				req.Header.Set(k, v)
-			}
+					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
+					defer cancel()
 
-			// now set profile content type, overwrite what existed
-			for idx := range profile.ContentType {
-				if idx == 0 {
-					req.Header.Set(pyroscope.HeaderContentType, profile.ContentType[idx])
-					continue
+					req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
+					if err != nil {
+						return fmt.Errorf("create request for endpoint[%d]: %w", i, err)
+					}
+
+					// set headers from endpoint
+					for k, v := range endpoint.Headers {
+						req.Header.Set(k, v)
+					}
+
+					// now set profile content type, overwrite what existed
+					for idx := range profile.ContentType {
+						if idx == 0 {
+							req.Header.Set(pyroscope.HeaderContentType, profile.ContentType[idx])
+							continue
+						}
+						req.Header.Add(pyroscope.HeaderContentType, profile.ContentType[idx])
+					}
+
+					resp, err := f.ingestClients[endpoint].Do(req)
+					if err != nil {
+						return fmt.Errorf("do request for endpoint[%d]: %w", i, err)
+					}
+					defer resp.Body.Close()
+
+					if resp.StatusCode != http.StatusOK {
+						wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
+						wErr.readBody(resp)
+						return fmt.Errorf("remote error for endpoint[%d]: %w", i, wErr)
+					}
+
+					// Ensure full body is read to keep http connection Keep-Alive
+					_, err = io.Copy(io.Discard, resp.Body)
+					if err != nil {
+						return fmt.Errorf("reading response body for endpoint[%d]: %w", i, err)
+					}
+
+					return nil
+				}()
+				if err == nil {
+					f.metrics.sentBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
+					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
+					break
 				}
-				req.Header.Add(pyroscope.HeaderContentType, profile.ContentType[idx])
+				level.Warn(f.opts.Logger).
+					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				if !shouldRetry(err) {
+					break
+				}
+				backoff.Wait()
+				if !backoff.Ongoing() {
+					break
+				}
+				f.metrics.retries.WithLabelValues(f.config.Endpoints[i].URL).Inc()
 			}
-
-			resp, err := f.ingestClients[endpoint].Do(req)
 			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("do request for endpoint[%d]: %w", endpointIdx, err), &errorMut)
-				return
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
-				wErr.readBody(resp)
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("remote error for endpoint[%d]: %w", endpointIdx, wErr), &errorMut)
-				return
-			}
-
-			// Ensure full body is read to keep http connection Keep-Alive
-			_, err = io.Copy(io.Discard, resp.Body)
-			if err != nil {
-				util.ErrorsJoinConcurrent(&errs, fmt.Errorf("reading response body for endpoint[%d]: %w", endpointIdx, err), &errorMut)
-				return
+				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
+				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
+				level.Warn(f.opts.Logger).
+					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
 	}
