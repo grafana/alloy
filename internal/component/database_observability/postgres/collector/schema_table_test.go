@@ -270,14 +270,14 @@ func TestSchemaTable(t *testing.T) {
 			return len(lokiClient.Received()) == 0
 		}, 2*time.Second, 100*time.Millisecond)
 
-		lokiEntries := lokiClient.Received()
-
-		assert.Len(t, lokiEntries, 0)
+		collector.Stop()
+		lokiClient.Stop()
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
-		lokiClient.Stop()
+		lokiEntries := lokiClient.Received()
+		assert.Len(t, lokiEntries, 0)
 	})
 
 	t.Run("collector handles column with no default value", func(t *testing.T) {
