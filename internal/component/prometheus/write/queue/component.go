@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -120,11 +122,9 @@ func (s *Queue) Update(args component.Arguments) error {
 		}
 		s.endpoints[epCfg.Name] = end
 	}
+
 	// Now we need to figure out the endpoints that were not touched and able to be deleted.
-	for name := range deletableEndpoints {
-		s.endpoints[name].Stop()
-		delete(s.endpoints, name)
-	}
+	s.cleanupEndpoints(deletableEndpoints)
 	return nil
 }
 
@@ -138,6 +138,18 @@ func (s *Queue) createEndpoints() error {
 		s.endpoints[ep.Name] = end
 	}
 	return nil
+}
+
+func (s *Queue) cleanupEndpoints(endpoints map[string]struct{}) {
+	for name := range endpoints {
+		if ep, ok := s.endpoints[name]; ok {
+			ep.Stop()
+			delete(s.endpoints, name)
+		}
+		if err := os.RemoveAll(filepath.Join(s.opts.DataPath, name)); err != nil {
+			level.Error(s.log).Log("msg", "failed to cleanup orphaned wal directory", "endpoint", name, "err", err)
+		}
+	}
 }
 
 // Appender returns a new appender for the storage. The implementation
