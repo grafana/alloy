@@ -37,39 +37,32 @@ const (
 	WHERE 
 	    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
 	    AND nspname NOT LIKE 'pg_temp_%'
-	    AND nspname NOT LIKE 'pg_toast_temp_%'
 	    AND nspname NOT LIKE 'pg_toast_%'`
 
 	selectTableNames = `
 	SELECT 
-		pg_class.relname as table_name,
-		CASE pg_class.relkind 
-			WHEN 'r' THEN 'BASE TABLE'
-			WHEN 'v' THEN 'VIEW'
-			WHEN 'm' THEN 'MATERIALIZED VIEW'
-			WHEN 'f' THEN 'FOREIGN TABLE'
-			WHEN 'p' THEN 'PARTITIONED TABLE'
-			ELSE 'OTHER'
-		END as table_type
+		pg_class.relname as table_name
 	FROM pg_catalog.pg_class pg_class
 	JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-	WHERE pg_namespace.nspname = $1 
-		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')`
+	WHERE pg_namespace.nspname = $1`
 
 	selectColumnNames = `
 	SELECT
 		attr.attname as column_name,
 		attr.atttypid::regtype as column_type,
-		NOT attr.attnotnull as is_nullable,
-		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default,
+		attr.attnotnull as not_nullable,
+		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default, -- PostgreSQL system function used to convert stored default value expressions back into human-readable SQL text
 		attr.attidentity as identity_generation, -- IDENTITY column will be flagged as auto-increment: identity generation type, if any
-		CASE WHEN constraint_pk.contype = 'p' THEN true ELSE false END as is_primary_key
+		CASE 
+		    WHEN constraint_pk.contype = 'p' THEN true 
+		    ELSE false 
+		END as is_primary_key
 	FROM
 		pg_attribute attr -- pg_attribute stores column information
 		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum -- pg_attrdef stores default values for columns
 		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p' -- pg_constraint stores primary key information
 	WHERE
-		attr.attrelid = $1::regclass
+		attr.attrelid = $1::regclass -- filter by the table name
 		AND attr.attnum > 0  -- no system columns
 		AND NOT attr.attisdropped -- no dropped columns`
 )
@@ -78,7 +71,6 @@ type tableInfo struct {
 	database     string
 	schema       string
 	tableName    string
-	tableType    string
 	updateTime   time.Time
 	b64TableSpec string
 }
@@ -241,8 +233,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 
 		for rs.Next() {
 			var tableName string
-			var tableType string
-			if err := rs.Scan(&tableName, &tableType); err != nil {
+			if err := rs.Scan(&tableName); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 				break
 			}
@@ -250,7 +241,6 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 				database:   dbName,
 				schema:     schema,
 				tableName:  tableName,
-				tableType:  tableType,
 				updateTime: time.Now(),
 			})
 
@@ -285,7 +275,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			OP_CREATE_STATEMENT,
 			c.instanceKey,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`,
+				`database="%s" schema="%s" table="%s" table_spec="%s"`, // TODO: No CreateStatement here, if we don't need table_spec, we may be able to remove this
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
@@ -325,15 +315,15 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 	for colRS.Next() {
 		var columnName, columnType, identityGeneration string
 		var columnDefault sql.NullString
-		var isNullable, isPrimaryKey bool
-		if err := colRS.Scan(&columnName, &columnType, &isNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
+		var notNullable, isPrimaryKey bool
+		if err := colRS.Scan(&columnName, &columnType, &notNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan table columns", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
-		columnDefaultValue := "null"
+		defaultValue := ""
 		if columnDefault.Valid {
-			columnDefaultValue = columnDefault.String
+			defaultValue = columnDefault.String
 		}
 
 		// detect auto-increment: either SERIAL or IDENTITY columns
@@ -343,10 +333,10 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 		colSpec := columnSpec{
 			Name:          columnName,
 			Type:          columnType,
-			NotNull:       !isNullable,
+			NotNull:       notNullable,
 			AutoIncrement: isAutoIncrement,
 			PrimaryKey:    isPrimaryKey,
-			DefaultValue:  columnDefaultValue,
+			DefaultValue:  defaultValue,
 		}
 		tblSpec.Columns = append(tblSpec.Columns, colSpec)
 	}
