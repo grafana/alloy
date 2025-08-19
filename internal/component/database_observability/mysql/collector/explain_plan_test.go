@@ -1677,12 +1677,6 @@ func TestQueryFailureDenylist(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
-		"version",
-	}).AddRow(
-		"8.0.32",
-	))
-
 	lastSeen := time.Now().Add(-time.Hour)
 	lokiClient := loki_fake.NewClient(func() {})
 	defer lokiClient.Stop()
@@ -1774,12 +1768,6 @@ func TestSchemaDenylist(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
-
-	mock.ExpectQuery(selectDBSchemaVersion).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{
-		"version",
-	}).AddRow(
-		"8.0.32",
-	))
 
 	lastSeen := time.Now().Add(-time.Hour)
 	lokiClient := loki_fake.NewClient(func() {})

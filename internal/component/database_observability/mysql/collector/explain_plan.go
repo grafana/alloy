@@ -586,6 +586,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
 			return strings.EqualFold(schema, qi.schemaName)
 		}) {
+
 			continue
 		}
 		if _, ok := c.queryDenylist[qi.key()]; !ok {
