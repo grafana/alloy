@@ -119,9 +119,13 @@ Main (unreleased)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
+<<<<<<< HEAD
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
+=======
+- Fix issue in `prometheus.write.queue` where wal directories left orphaned if endpoint was removed. (@kalleep)
+>>>>>>> cf2d1574e (update changelog)
 
 v1.10.2
 -----------------
