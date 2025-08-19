@@ -249,7 +249,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,

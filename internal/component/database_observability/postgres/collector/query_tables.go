@@ -54,7 +54,6 @@ type QueryTablesArguments struct {
 
 type QueryTables struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 	normalizer      *sqllexer.Normalizer
@@ -68,7 +67,6 @@ type QueryTables struct {
 func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 	return &QueryTables{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),

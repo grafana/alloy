@@ -109,7 +109,6 @@ type SchemaTableArguments struct {
 
 type SchemaTable struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 

@@ -100,7 +100,6 @@ type ActivityArguments struct {
 
 type Activity struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -114,7 +113,6 @@ type Activity struct {
 func NewActivity(args ActivityArguments) (*Activity, error) {
 	return &Activity{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", ActivityName),
@@ -249,8 +247,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`instance="%s" datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
-			c.instanceKey,
+			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			activity.DatabaseName.String,
 			activity.PID,
 			leaderPID,
@@ -283,8 +280,7 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 
 		if waitEvent != "" {
 			waitEventLabels := fmt.Sprintf(
-				`instance="%s" datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
-				c.instanceKey,
+				`datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				activity.DatabaseName.String,
 				activity.BackendType.String,
 				activity.State.String,
