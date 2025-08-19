@@ -277,7 +277,6 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
-			c.instanceKey,
 			sampleLabels,
 			activity.Now.UnixNano(),
 		)
@@ -301,7 +300,6 @@ func (c *Activity) fetchActivity(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
-				c.instanceKey,
 				waitEventLabels,
 				activity.Now.UnixNano(),
 			)

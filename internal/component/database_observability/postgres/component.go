@@ -239,6 +239,10 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(c.instanceKey),
+	}).Wrap(entryHandler)
 
 	collectors := enableOrDisableCollectors(c.args)
 
