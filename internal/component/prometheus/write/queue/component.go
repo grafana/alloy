@@ -35,10 +35,15 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		endpoints: map[string]promqueue.Queue{},
 	}
 	s.opts.OnStateChange(Exports{Receiver: s})
-	err := s.createEndpoints()
-	if err != nil {
+
+	if err := s.createEndpoints(); err != nil {
 		return nil, err
 	}
+
+	if err := s.cleanupOrphanedEndpoints(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -137,6 +142,31 @@ func (s *Queue) createEndpoints() error {
 		}
 		s.endpoints[ep.Name] = end
 	}
+	return nil
+}
+
+// cleanupOrphanedEndpoints identifies any wal directory that is no longer connected to an endpoint
+// and clean it up.
+func (s *Queue) cleanupOrphanedEndpoints() error {
+	entries, err := os.ReadDir(s.opts.DataPath)
+	if err != nil {
+		return err
+	}
+
+	orphaned := make(map[string]struct{})
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+
+		// We asume that all directories within the data path for this component contains
+		// wal dir and we should clean them up.
+		if _, ok := s.endpoints[e.Name()]; !ok {
+			orphaned[e.Name()] = struct{}{}
+		}
+	}
+
+	s.cleanupEndpoints(orphaned)
 	return nil
 }
 
