@@ -78,6 +78,8 @@ Main (unreleased)
 
 - `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
 
+- `prometheus.write.queue` now remove wal dir if endpoint is removed. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
