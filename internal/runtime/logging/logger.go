@@ -33,6 +33,10 @@ type Logger struct {
 	writer       *writerVar           // Current configured multiwriter (inner + write_to).
 	handler      *handler             // Handler which handles logs.
 	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
+
+	// Windows Event Log specific fields
+	windowsEventLogHandler *windowsEventLogHandler // Windows Event Log handler
+	useWindowsEventLog     bool                    // Whether to use Windows Event Log
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -108,8 +112,39 @@ func (l *Logger) Update(o Options) error {
 
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
+	l.useWindowsEventLog = o.WindowsEventLog
 
-	l.writer.SetInnerWriter(l.inner)
+	// Handle Windows Event Log configuration
+	if o.WindowsEventLog {
+		// Close existing Windows Event Log handler if it exists
+		if l.windowsEventLogHandler != nil {
+			_ = l.windowsEventLogHandler.Close()
+		}
+
+		// Create new Windows Event Log handler
+		var err error
+		l.windowsEventLogHandler, err = newWindowsEventLogHandler("Alloy", l.level, replace)
+		if err != nil {
+			return fmt.Errorf("failed to create Windows Event Log handler: %w", err)
+		}
+	} else {
+		// Close Windows Event Log handler if it exists and we're not using it
+		if l.windowsEventLogHandler != nil {
+			_ = l.windowsEventLogHandler.Close()
+			l.windowsEventLogHandler = nil
+		}
+	}
+
+	// Configure standard writers (always configure these, even with Windows Event Log)
+	if !o.WindowsEventLog {
+		// Only write to inner writer when Windows Event Log is disabled
+		l.writer.SetInnerWriter(l.inner)
+	} else {
+		// When Windows Event Log is enabled, don't write to stderr/stdout
+		l.writer.SetInnerWriter(io.Discard)
+	}
+
+	// Always configure Loki writers regardless of Windows Event Log setting
 	if len(o.WriteTo) > 0 {
 		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
@@ -123,9 +158,20 @@ func (l *Logger) Update(o Options) error {
 		if len(bufferedLogChunk.kvps) > 0 {
 			// the buffered logs are currently only sent to the standard output
 			// because the components with the receivers are not running yet
+			if l.useWindowsEventLog && l.windowsEventLogHandler != nil {
+				// For Windows Event Log, we need to convert go-kit/log format
+				slogadapter.GoKit(l.windowsEventLogHandler).Log(bufferedLogChunk.kvps...)
+			}
+			// Always also send to regular handler for write_to functionality
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
 			// We now can check to see if if our buffered log is at the right level.
+			if l.useWindowsEventLog && l.windowsEventLogHandler != nil {
+				if l.windowsEventLogHandler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
+					_ = l.windowsEventLogHandler.Handle(context.Background(), bufferedLogChunk.record)
+				}
+			}
+			// Always also send to regular handler for write_to functionality
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
 				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
@@ -165,7 +211,16 @@ func (l *Logger) Log(kvps ...any) error {
 
 	// NOTE(rfratto): this method is a temporary shim while log/slog is still
 	// being adopted throughout the codebase.
-	return slogadapter.GoKit(l.handler).Log(kvps...)
+	var err error
+	if l.useWindowsEventLog && l.windowsEventLogHandler != nil {
+		// Send to Windows Event Log
+		err = slogadapter.GoKit(l.windowsEventLogHandler).Log(kvps...)
+	}
+	// Always also send to regular handler for write_to functionality
+	if regularErr := slogadapter.GoKit(l.handler).Log(kvps...); regularErr != nil {
+		return regularErr
+	}
+	return err
 }
 
 func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
