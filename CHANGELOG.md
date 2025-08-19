@@ -7,6 +7,15 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.10.2
+-----------------
+
+### Bugfixes
+
+- Fix issue in `prometheus.write.queue` causing inability to increase shard count if existing WAL data was present on start. (@kgeckhart)
+
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
+
 v1.10.1
 -----------------
 
