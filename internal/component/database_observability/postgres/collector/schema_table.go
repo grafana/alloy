@@ -19,11 +19,10 @@ import (
 )
 
 const (
-	OP_DATABASE_DETECTION = "database_detection"
-	OP_SCHEMA_DETECTION   = "schema_detection"
-	OP_TABLE_DETECTION    = "table_detection"
-	OP_CREATE_STATEMENT   = "create_statement"
-	SchemaTableName       = "schema_table"
+	OP_SCHEMA_DETECTION = "schema_detection"
+	OP_TABLE_DETECTION  = "table_detection"
+	OP_CREATE_STATEMENT = "create_statement"
+	SchemaTableName     = "schema_table"
 )
 
 const (
@@ -173,17 +172,6 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	var dbName string
 	if err := rs.Scan(&dbName); err != nil {
 		level.Error(c.logger).Log("msg", "failed to scan pg_database", "err", err)
-	}
-
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-		logging.LevelInfo,
-		OP_DATABASE_DETECTION,
-		c.instanceKey,
-		fmt.Sprintf(`database="%s"`, dbName),
-	)
-
-	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over result set", "err", err)
 		return err
 	}
 

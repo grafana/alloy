@@ -82,7 +82,7 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
+			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -93,16 +93,14 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 4)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="books_store"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="public"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
+		assert.Len(t, lokiEntries, 3)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="books_store" schema="public"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 
 	t.Run("collector selects and logs multiple schemas and multiple tables", func(t *testing.T) {
@@ -196,7 +194,7 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 9
+			return len(lokiClient.Received()) == 8
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -207,29 +205,27 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 9)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="books_store"`, lokiEntries[0].Line)
+		assert.Len(t, lokiEntries, 8)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="books_store" schema="public"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="public"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="postgis"`, lokiEntries[2].Line)
+		require.Equal(t, `level="info" database="books_store" schema="postgis"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
+		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[2].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[3].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[3].Line)
+		require.Equal(t, `level="info" database="books_store" schema="public" table="categories"`, lokiEntries[3].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[4].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="public" table="categories"`, lokiEntries[4].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[5].Labels)
-		require.Equal(t, `level="info" database="books_store" schema="postgis" table="spatial_ref_sys"`, lokiEntries[5].Line)
+		require.Equal(t, `level="info" database="books_store" schema="postgis" table="spatial_ref_sys"`, lokiEntries[4].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[5].Labels)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[6].Labels)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[7].Labels)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[8].Labels)
 
 		expectedAuthorsTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))
 		expectedCategoriesTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))
 		expectedSpatialTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"srid","type":"integer","not_null":true,"primary_key":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedAuthorsTableSpec), lokiEntries[6].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="categories" table_spec="%s"`, expectedCategoriesTableSpec), lokiEntries[7].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[8].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedAuthorsTableSpec), lokiEntries[5].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="categories" table_spec="%s"`, expectedCategoriesTableSpec), lokiEntries[6].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[7].Line)
 	})
 
 	t.Run("no schemas found", func(t *testing.T) {
@@ -271,14 +267,12 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
+			return len(lokiClient.Received()) == 0
 		}, 2*time.Second, 100*time.Millisecond)
 
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 1)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="books_store"`, lokiEntries[0].Line)
+		assert.Len(t, lokiEntries, 0)
 
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
@@ -346,7 +340,7 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
+			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -356,16 +350,14 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 4)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="test_db"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" database="test_db" schema="public"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" database="test_db" schema="public" table="test_table"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
+		assert.Len(t, lokiEntries, 3)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" database="test_db" schema="public" table="test_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)","default_value":"John Doe"}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 }
 
@@ -431,7 +423,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
+			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -441,16 +433,14 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 4)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="serial_test_db"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" database="serial_test_db" schema="public"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" database="serial_test_db" schema="public" table="users"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
+		assert.Len(t, lokiEntries, 3)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="serial_test_db" schema="public"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" database="serial_test_db" schema="public" table="users"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"nextval('users_id_seq'::regclass)"},{"name":"username","type":"character varying(255)","not_null":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" database="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 
 	t.Run("collector detects identity column", func(t *testing.T) {
@@ -513,7 +503,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
+			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -523,15 +513,13 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 4)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_DATABASE_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" database="identity_test_db"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" database="identity_test_db" schema="public"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" database="identity_test_db" schema="public" table="products"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[3].Labels)
+		assert.Len(t, lokiEntries, 3)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_SCHEMA_DETECTION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" database="identity_test_db" schema="public"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" database="identity_test_db" schema="public" table="products"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" database="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" database="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 }
