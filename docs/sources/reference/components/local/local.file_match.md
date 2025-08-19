@@ -127,8 +127,7 @@ Replace the following:
 
 This example shows how to include additional labels with discovered files.
 The component preserves the additional labels in the exported targets and you can use them for filtering or enrichment.
-
-For example, the component attaches the additional labels `instance`, `job`, and `service` to each discovered file.
+It attaches the additional labels `instance`, `job`, and `service` to each discovered file.
 Downstream components like `loki.source.file` can access these labels for processing and enrichment.
 
 ```alloy
