@@ -22,12 +22,14 @@ type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
+	ServerID      string
 }
 
 type ConnectionInfo struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
+	ServerID      string
 	InfoMetric    *prometheus.GaugeVec
 
 	running *atomic.Bool
@@ -38,7 +40,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version", "server_id"})
 
 	args.Registry.MustRegister(infoMetric)
 
@@ -88,7 +90,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, c.EngineVersion, c.ServerID).Set(1)
 	return nil
 }
 

@@ -31,7 +31,9 @@ import (
 
 const name = "database_observability.mysql"
 
-const selectEngineVersion = `SELECT VERSION()`
+const (
+	selectServerDetails = `SELECT @@server_uuid, VERSION()`
+)
 
 func init() {
 	component.Register(component.Registration{
@@ -281,15 +283,15 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerDetails)
 	err = rs.Err()
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
 		return err
 	}
 
-	var engineVersion string
-	if err := rs.Scan(&engineVersion); err != nil {
+	var serverID, engineVersion string
+	if err := rs.Scan(&serverID, &engineVersion); err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
 		return err
 	}
@@ -428,6 +430,7 @@ func (c *Component) startCollectors() error {
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		ServerID:      serverID,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
