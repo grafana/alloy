@@ -171,13 +171,13 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
 	var dbName string
 	if err := rs.Scan(&dbName); err != nil {
-		level.Error(c.logger).Log("msg", "failed to scan pg_database", "err", err)
+		level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
 		return err
 	}
 
 	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_namespace", "err", err)
+		level.Error(c.logger).Log("msg", "failed to query pg_namespace", "database", dbName, "err", err)
 		return err
 	}
 	defer schemaRs.Close()
@@ -186,7 +186,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "database", dbName, "err", err)
 			break
 		}
 		schemas = append(schemas, schema)
@@ -200,12 +200,12 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	}
 
 	if err := schemaRs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over pg_namespace result set", "err", err)
+		level.Error(c.logger).Log("msg", "error during iterating over pg_namespace result set", "database", dbName, "err", err)
 		return err
 	}
 
 	if len(schemas) == 0 {
-		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace")
+		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace", "database", dbName)
 		return nil
 	}
 
@@ -214,7 +214,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	for _, schema := range schemas {
 		rs, err := c.dbConnection.QueryContext(ctx, selectTableNames, schema)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to query tables", "schema", schema, "err", err)
+			level.Error(c.logger).Log("msg", "failed to query tables", "database", dbName, "schema", schema, "err", err)
 			break
 		}
 		defer rs.Close()
@@ -222,7 +222,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		for rs.Next() {
 			var tableName string
 			if err := rs.Scan(&tableName); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan tables", "database", dbName, "schema", schema, "err", err)
 				break
 			}
 			tables = append(tables, &tableInfo{
@@ -247,14 +247,14 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	}
 
 	if len(tables) == 0 {
-		level.Info(c.logger).Log("msg", "no tables detected from pg_tables")
+		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "database", dbName)
 		return nil
 	}
 
 	for _, table := range tables {
 		table, err = c.fetchTableDefinitions(ctx, table)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to get table definitions", "schema", table.schema, "table", table.tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to get table definitions", "database", dbName, "schema", table.schema, "err", err)
 			continue
 		}
 
@@ -263,7 +263,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			OP_CREATE_STATEMENT,
 			c.instanceKey,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`, // TODO: No CreateStatement here, if we don't need table_spec, we may be able to remove this
+				`database="%s" schema="%s" table="%s" table_spec="%s"`, // TODO: No create statement here -- if we don't need table_spec, we may be able to remove this
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
@@ -293,7 +293,7 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
 	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query table columns", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
