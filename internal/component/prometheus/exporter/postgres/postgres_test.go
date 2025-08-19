@@ -16,6 +16,11 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 	disable_settings_metrics = true
 	disable_default_metrics = true
 	custom_queries_config_path = "/tmp/queries.yaml"
+
+	stat_statements {
+	  include_query = true
+		query_length = 200
+	}
 	
 	autodiscovery {
 		enabled = false
@@ -37,6 +42,10 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 		},
 		DisableDefaultMetrics:   true,
 		CustomQueriesConfigPath: "/tmp/queries.yaml",
+		StatStatementFlags: StatStatementFlags{
+			IncludeQuery: true,
+			QueryLength:  200,
+		},
 	}
 
 	require.Equal(t, expected, args)
