@@ -465,6 +465,10 @@ const (
 	accessDeniedSQLCode knownSQLCodes = "1044"
 )
 
+var unrecoverableSQLCodes = []knownSQLCodes{
+	accessDeniedSQLCode,
+}
+
 type ExplainPlanArguments struct {
 	DB              *sql.DB
 	InstanceKey     string
@@ -479,22 +483,21 @@ type ExplainPlanArguments struct {
 }
 
 type ExplainPlan struct {
-	dbConnection          *sql.DB
-	instanceKey           string
-	dbVersion             string
-	scrapeInterval        time.Duration
-	queryCache            map[string]*queryInfo
-	queryDenylist         map[string]*queryInfo
-	excludeSchemas        []string
-	unrecoverableSQLCodes []knownSQLCodes
-	perScrapeRatio        float64
-	currentBatchSize      int
-	entryHandler          loki.EntryHandler
-	lastSeen              time.Time
-	logger                log.Logger
-	running               *atomic.Bool
-	ctx                   context.Context
-	cancel                context.CancelFunc
+	dbConnection     *sql.DB
+	instanceKey      string
+	dbVersion        string
+	scrapeInterval   time.Duration
+	queryCache       map[string]*queryInfo
+	queryDenylist    map[string]*queryInfo
+	excludeSchemas   []string
+	perScrapeRatio   float64
+	currentBatchSize int
+	entryHandler     loki.EntryHandler
+	lastSeen         time.Time
+	logger           log.Logger
+	running          *atomic.Bool
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
@@ -506,9 +509,6 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]*queryInfo),
 		excludeSchemas: args.ExcludeSchemas,
-		unrecoverableSQLCodes: []knownSQLCodes{
-			accessDeniedSQLCode,
-		},
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
 		lastSeen:       args.InitialLookback,
@@ -640,7 +640,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
-			for _, code := range c.unrecoverableSQLCodes {
+			for _, code := range unrecoverableSQLCodes {
 				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
 					nonRecoverableFailureOccurred = true
 					break
