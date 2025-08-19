@@ -78,8 +78,6 @@ Main (unreleased)
 
 - `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
 
-- `prometheus.write.queue` now remove wal dir if endpoint is removed. (@kalleep)
-
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -93,6 +91,8 @@ Main (unreleased)
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+
+- Fix issue in `prometheus.write.queue` where wal directories left orphaned if endpoint was removed. (@kalleep)
 
 v1.10.2
 -----------------
