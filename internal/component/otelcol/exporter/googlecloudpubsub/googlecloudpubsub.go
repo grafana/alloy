@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloudpubsub/config"
+	googlecloudpubsubconfig "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloudpubsub/config"
 	"github.com/grafana/alloy/syntax"
 )
 

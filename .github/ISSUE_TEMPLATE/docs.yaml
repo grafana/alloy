@@ -96,6 +96,7 @@ body:
       - otelcol.exporter.debug
       - otelcol.exporter.faro
       - otelcol.exporter.googlecloud
+      - otelcol.exporter.googlecloudpubsub
       - otelcol.exporter.kafka
       - otelcol.exporter.loadbalancing
       - otelcol.exporter.loki
