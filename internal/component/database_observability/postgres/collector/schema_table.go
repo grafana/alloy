@@ -43,7 +43,8 @@ const (
 		pg_class.relname as table_name
 	FROM pg_catalog.pg_class pg_class
 	JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-	WHERE pg_namespace.nspname = $1`
+	WHERE pg_namespace.nspname = $1 
+		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')`
 
 	selectColumnNames = `
 	SELECT
