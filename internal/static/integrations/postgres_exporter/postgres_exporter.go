@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -39,6 +40,9 @@ type Config struct {
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
 	// user-facing docs for more information.
 	EnabledCollectors []string
+
+	IncludeQuery bool
+	QueryLength  uint
 }
 
 // Name returns the name of the integration this config is for.
@@ -171,6 +175,20 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 	if cfg.DisableDefaultMetrics {
 		// Don't include the collector metrics if the default metrics are disabled.
 		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
+	}
+
+	// This is a hack to force the command line flag values for the stat_statements collector.
+	// These flags are not exposed outside the package and cannot be mutated afterwards.
+	if cfg.IncludeQuery {
+		iqf := kingpin.CommandLine.GetFlag("collector.stat_statements.include_query")
+		qlf := kingpin.CommandLine.GetFlag("collector.stat_statements.query_length")
+
+		if iqf == nil || qlf == nil {
+			return nil, fmt.Errorf("failed to find collector.stat_statements.include_query or collector.stat_statements.query_length in postgres_exporter")
+		}
+
+		iqf.Model().Value.Set("true")
+		qlf.Model().Value.Set(fmt.Sprintf("%d", cfg.QueryLength))
 	}
 
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
