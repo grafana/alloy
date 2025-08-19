@@ -22,6 +22,12 @@ tracing {
 	write_to = [otelcol.exporter.otlp.tempo.input]
 }
 
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "http://tempo:3001"
+	}
+}
+
 local.file_match "applogs" {
 	path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
 }
@@ -196,3 +202,32 @@ shadow_me "test" {}
 declare "b" { a "test" {} }
 
 declare "a" { }
+
+declare "pods_and_nodes" {
+	discovery.kubernetes "pods" {
+		role = "pod"
+	}
+
+	discovery.kubernetes "nodes" {
+		role = "node"
+	}
+
+	export "kubernetes_resources" {
+		value = array.concat(
+			discovery.kubernetes.pods.targets,
+			discovery.kubernetes.nodes.targets,
+		)
+	}
+}
+
+pods_and_nodes "pan" {}
+
+prometheus.scrape "pan" {
+	targets = pods_and_nodes.pan.kubernetes_resources
+	forward_to = []
+}
+
+prometheus.scrape "stdlibexperimental" {
+  targets    = array.combine_maps([], [], [])
+  forward_to = array.combine_maps([], [], [])
+}

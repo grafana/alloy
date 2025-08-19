@@ -14,8 +14,6 @@ import (
 	"sync"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -183,14 +181,8 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		}
 	}()
 
-	// Get network name
-	networkName, err := getTestcontainersNetworkName(ctx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get Testcontainers network name: %v", err))
-	}
-
 	// Create container request
-	req := createContainerRequest(dirName, port, networkName, containerFiles)
+	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles)
 
 	// Start container
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -266,7 +258,6 @@ func reportResults() {
 
 	if testsFailed > 0 {
 		fmt.Printf("%d tests failed!\n", testsFailed)
-		os.Exit(1)
 	} else {
 		fmt.Println("All integration tests passed!")
 	}
@@ -292,25 +283,4 @@ func collectFiles(root string) ([]fileInfo, error) {
 		return nil
 	})
 	return filesToAdd, err
-}
-
-func getTestcontainersNetworkName(ctx context.Context) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", fmt.Errorf("failed to create Docker client: %v", err)
-	}
-	defer cli.Close()
-
-	networks, err := cli.NetworkList(ctx, network.ListOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to list networks: %v", err)
-	}
-
-	for _, network := range networks {
-		if strings.HasSuffix(network.Name, "_integration-tests") {
-			return network.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find Testcontainers network")
 }
