@@ -270,6 +270,16 @@ func shouldRetry(err error) bool {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
+
+	var writeErr *PyroscopeWriteError
+	if errors.As(err, &writeErr) {
+		status := writeErr.StatusCode
+		if status == http.StatusTooManyRequests || status == http.StatusRequestTimeout {
+			return true
+		}
+		return status >= http.StatusInternalServerError
+	}
+
 	switch connect.CodeOf(err) {
 	case connect.CodeDeadlineExceeded, connect.CodeUnknown,
 		connect.CodeResourceExhausted, connect.CodeInternal,
