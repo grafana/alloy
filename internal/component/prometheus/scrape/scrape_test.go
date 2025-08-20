@@ -275,15 +275,15 @@ func TestForwardingToAppendable(t *testing.T) {
 	err = appender.Commit()
 	require.NoError(t, err)
 
-	require.Equal(t, receivedTs, timestamp)
+	require.Equal(t, timestamp, receivedTs)
 	require.Len(t, receivedSamples, 1)
-	require.Equal(t, receivedSamples, sample)
+	require.Equal(t, sample, receivedSamples)
 
 	// Verify metadata was received correctly
-	require.Equal(t, receivedMetadataLabels, metadataLabels)
-	require.Equal(t, receivedMetadata.Type, model.MetricTypeCounter)
-	require.Equal(t, receivedMetadata.Unit, "bytes")
-	require.Equal(t, receivedMetadata.Help, "Test metric for unit testing")
+	require.Equal(t, metadataLabels, receivedMetadataLabels)
+	require.Equal(t, model.MetricTypeCounter, receivedMetadata.Type)
+	require.Equal(t, "bytes", receivedMetadata.Unit)
+	require.Equal(t, "Test metric for unit testing", receivedMetadata.Help)
 
 	// Test that the metadata store in the context has been set appropriately
 	require.NotNil(t, contextCapture.capturedCtx, "Context should have been captured")
@@ -293,6 +293,9 @@ func TestForwardingToAppendable(t *testing.T) {
 	require.True(t, ok, "MetricMetadataStore should be present in context")
 	require.NotNil(t, metadataStore, "MetricMetadataStore should not be nil")
 
+	// Verify that the metadata store is not empty/noop
+	require.Greater(t, metadataStore.LengthMetadata(), 0, "MetadataStore should contain at least one metadata entry")
+
 	// Verify the metadata store contains the metadata we sent
 	storedMetadata, found := metadataStore.GetMetadata("test_metric")
 	require.True(t, found, "Metadata for 'test_metric' should be found in the store")
@@ -300,9 +303,6 @@ func TestForwardingToAppendable(t *testing.T) {
 	require.Equal(t, model.MetricTypeCounter, storedMetadata.Type)
 	require.Equal(t, "bytes", storedMetadata.Unit)
 	require.Equal(t, "Test metric for unit testing", storedMetadata.Help)
-
-	// Verify that the metadata store is not empty/noop
-	require.Greater(t, metadataStore.LengthMetadata(), 0, "MetadataStore should contain at least one metadata entry")
 }
 
 // TestCustomDialer ensures that prometheus.scrape respects the custom dialer

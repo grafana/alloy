@@ -129,7 +129,7 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 > **EXPERIMENTAL**: This is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
 
@@ -151,7 +151,7 @@ The following arguments are supported:
 
 > **EXPERIMENTAL**: This is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 The optional `wal` block configures the Write-Ahead Log (WAL) used in the Loki remote-write client.
 To enable the WAL, you must include the `wal` block in your configuration.
