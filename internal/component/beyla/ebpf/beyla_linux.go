@@ -550,9 +550,8 @@ func (c *Component) Run(ctx context.Context) error {
 				cancel()
 				level.Info(c.opts.Logger).Log("msg", "waiting for Beyla to terminate")
 				if err := cancelG.Wait(); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "failed to terminate Beyla", "err", err)
+					level.Error(c.opts.Logger).Log("msg", "Beyla terminated with error", "err", err)
 					c.reportUnhealthy(err)
-					return err
 				}
 			}
 
