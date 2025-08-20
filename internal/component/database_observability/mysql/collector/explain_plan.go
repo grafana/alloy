@@ -3,7 +3,6 @@ package collector
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -453,10 +452,16 @@ type queryInfo struct {
 	digest       string
 	queryText    string
 	failureCount int
+	uniqueKey    string
 }
 
-func (qi *queryInfo) key() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(qi.schemaName+"|"+qi.digest)))
+func newQueryInfo(schemaName, digest, queryText string) *queryInfo {
+	return &queryInfo{
+		schemaName: schemaName,
+		digest:     digest,
+		queryText:  queryText,
+		uniqueKey:  schemaName + digest,
+	}
 }
 
 type knownSQLCodes string
@@ -577,20 +582,22 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 			return err
 		}
 
-		qi := &queryInfo{failureCount: 0}
+		var schemaName, digest, queryText string
 		var ls time.Time
-		if err = rs.Scan(&qi.schemaName, &qi.digest, &qi.queryText, &ls); err != nil {
+		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan digest for explain plans", "err", err)
 			return err
 		}
 		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
-			return strings.EqualFold(schema, qi.schemaName)
+			return strings.EqualFold(schema, schemaName)
 		}) {
 
 			continue
 		}
-		if _, ok := c.queryDenylist[qi.key()]; !ok {
-			c.queryCache[qi.key()] = qi
+
+		qi := newQueryInfo(schemaName, digest, queryText)
+		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
+			c.queryCache[qi.uniqueKey] = qi
 		}
 		if ls.After(c.lastSeen) {
 			c.lastSeen = ls
@@ -620,10 +627,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		defer func(nonRecoverableFailureOccurred *bool) {
 			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
-				c.queryDenylist[qi.key()] = qi
+				c.queryDenylist[qi.uniqueKey] = qi
 				level.Info(c.logger).Log("msg", "query denylisted", "digest", qi.digest)
 			}
-			delete(c.queryCache, qi.key())
+			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
 		}(&nonRecoverableFailureOccurred)
 

@@ -2,7 +2,6 @@ package collector
 
 import (
 	"bytes"
-	"crypto/md5"
 	"fmt"
 	"os"
 	"testing"
@@ -1683,7 +1682,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 
 	logBuffer := bytes.NewBuffer(nil)
 
-	queryUnderTestHash := fmt.Sprintf("%x", md5.Sum([]byte("some_schema|some_digest1")))
+	queryUnderTestHash := "some_schemasome_digest1"
 
 	c, err := NewExplainPlan(ExplainPlanArguments{
 		DB:              db,
