@@ -159,7 +159,7 @@ func (s *Queue) cleanupOrphanedEndpoints() error {
 			continue
 		}
 
-		// We asume that all directories within the data path for this component contains
+		// We assume that all directories within the data path for this component contains
 		// wal dir and we should clean them up.
 		if _, ok := s.endpoints[e.Name()]; !ok {
 			orphaned[e.Name()] = struct{}{}
