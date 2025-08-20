@@ -136,9 +136,12 @@ func newTestEnvironment(
 		},
 	}
 
+	ctrl, err := componenttest.NewControllerFromReg(util.TestLogger(t), reg)
+	require.NoError(t, err)
+
 	return &testEnvironment{
 		t:          t,
-		Controller: componenttest.NewControllerFromReg(util.TestLogger(t), reg),
+		Controller: ctrl,
 	}
 }
 
