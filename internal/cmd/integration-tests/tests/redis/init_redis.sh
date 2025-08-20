@@ -26,7 +26,3 @@ redis-cli -h redis -p 6379 -n 1 SET db1_key_2 "db1_value2" EX 1800
 echo "Redis test data populated successfully"
 echo "Keys in DB 0: $(redis-cli -h redis -p 6379 DBSIZE)"
 echo "Keys in DB 1: $(redis-cli -h redis -p 6379 -n 1 DBSIZE)"
-
-echo "Sleeping for 30 seconds to satisfy testcontainers"
-sleep 30
-echo "Existing redis-init container"
