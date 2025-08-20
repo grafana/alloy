@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -57,7 +56,6 @@ type QueryTables struct {
 	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-	normalizer      *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -71,7 +69,6 @@ func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
 	}, nil
@@ -177,10 +174,10 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 
 func (c QueryTables) tryTokenizeTableNames(sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
-	_, metadata, err := c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	tables, err := extractTableNames(sqlText)
 	if err != nil {
-		return nil, fmt.Errorf("failed to tokenize sql text: %w", err)
+		return nil, fmt.Errorf("failed to extract table names: %w", err)
 	}
 
-	return metadata.Tables, nil
+	return tables, nil
 }
