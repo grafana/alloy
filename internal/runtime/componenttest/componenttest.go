@@ -24,8 +24,9 @@ import (
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
-	reg component.Registration
-	log log.Logger
+	reg      component.Registration
+	log      log.Logger
+	dataPath string
 
 	onRun    sync.Once
 	running  chan struct{}
@@ -46,24 +47,29 @@ func NewControllerFromID(l log.Logger, componentName string) (*Controller, error
 	if !ok {
 		return nil, fmt.Errorf("no such component %q", componentName)
 	}
-	return NewControllerFromReg(l, reg), nil
+	return NewControllerFromReg(l, reg)
 }
 
 // NewControllerFromReg registers a new testing Controller for a component with
 // the given registration. This can be used for testing fake components which
 // aren't really registered.
-func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller {
+func NewControllerFromReg(l log.Logger, reg component.Registration) (*Controller, error) {
 	if l == nil {
 		l = log.NewNopLogger()
 	}
 
-	return &Controller{
-		reg: reg,
-		log: l,
+	dataPath, err := os.MkdirTemp("", "controller-*")
+	if err != nil {
+		return nil, err
+	}
 
+	return &Controller{
+		reg:       reg,
+		log:       l,
+		dataPath:  dataPath,
 		running:   make(chan struct{}, 1),
 		exportsCh: make(chan struct{}, 1),
-	}
+	}, nil
 }
 
 func (c *Controller) onStateChange(e component.Exports) {
@@ -119,15 +125,17 @@ func (c *Controller) Exports() component.Exports {
 //
 // Run may only be called once per Controller.
 func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
-	dataPath, err := os.MkdirTemp("", "controller-*")
-	if err != nil {
-		return err
+	if _, err := os.Stat(c.dataPath); err != nil {
+		if _, err := os.MkdirTemp("", c.dataPath); err != nil {
+			return err
+		}
 	}
+
 	defer func() {
-		_ = os.RemoveAll(dataPath)
+		_ = os.RemoveAll(c.dataPath)
 	}()
 
-	run, err := c.buildComponent(dataPath, args)
+	run, err := c.buildComponent(args)
 
 	// We close c.running before checking the error, since the component will
 	// never run if we return an error anyway.
@@ -142,7 +150,11 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 	return run.Run(ctx)
 }
 
-func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {
+func (c *Controller) DataPath() string {
+	return c.dataPath
+}
+
+func (c *Controller) buildComponent(args component.Arguments) (component.Component, error) {
 	c.innerMut.Lock()
 	defer c.innerMut.Unlock()
 
@@ -159,7 +171,7 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 		ID:            c.reg.Name + ".test",
 		Logger:        l,
 		Tracer:        noop.NewTracerProvider(),
-		DataPath:      dataPath,
+		DataPath:      c.dataPath,
 		OnStateChange: c.onStateChange,
 		Registerer:    prometheus.NewRegistry(),
 		GetServiceData: func(name string) (interface{}, error) {
