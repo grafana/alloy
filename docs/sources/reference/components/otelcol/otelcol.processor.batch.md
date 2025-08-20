@@ -160,7 +160,7 @@ otelcol.exporter.otlp "production" {
 }
 ```
 
-### Batch with timeout
+### Batching with a timeout
 
 This example buffers up to 10,000 spans, log records, or metric data points for up to 10 seconds.
 Because `send_batch_max_size` isn't set and defaults to 0, the actual batch size may exceed 10,000 if large amounts of data arrive simultaneously.
@@ -184,7 +184,7 @@ otelcol.exporter.otlp "production" {
 }
 ```
 
-### Metadata-based batch
+### Metadata-based batching
 
 Batching by metadata enables support for multi-tenant OpenTelemetry pipelines with batching over groups of data having the same authorization metadata.
 
