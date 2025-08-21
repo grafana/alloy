@@ -38,7 +38,8 @@ Main (unreleased)
 - OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.129.0. (@ptodev)
   - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
     Use `block_on_overflow` instead.
-  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Remove the broken `SASL/AWS_MSK_IAM` authentication mechanism.
+  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
+    Also removed the `SASL/AWS_MSK_IAM` authentication mechanism.
   - [`otelcol.exporter.splunkhec`] The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
   - [`otelcol.exporter.loadbalancing`] Use a linear probe to decrease variance caused by hash collisions, which was causing a non-uniform distribution of loadbalancing.
   - [`otelcol.connector.servicegraph`] The `database_name_attribute` argument has been removed.

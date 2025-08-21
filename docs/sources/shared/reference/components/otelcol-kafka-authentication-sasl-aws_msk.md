@@ -9,5 +9,4 @@ The following arguments are supported:
 
 | Name          | Type     | Description                                   | Default | Required |
 | ------------- | -------- | --------------------------------------------- | ------- | -------- |
-| `broker_addr` | `string` | MSK address to connect to for authentication. |         | yes      |
 | `region`      | `string` | AWS region the MSK cluster is based in.       |         | yes      |

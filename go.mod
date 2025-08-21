@@ -1083,6 +1083,8 @@ replace (
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
 	// leodido fork his project to continue support
 	github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.2.0
+	// Loki needs a NormalizeLabel function which has been removed from the latest version of the translator
+	github.com/prometheus/otlptranslator => github.com/prometheus/otlptranslator v0.0.0-20250414121140-35db323fe9fb
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 )
 

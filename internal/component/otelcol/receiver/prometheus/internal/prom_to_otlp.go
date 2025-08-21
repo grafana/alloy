@@ -16,6 +16,9 @@ import (
 
 const removeOldSemconvFeatureGateID = "receiver.prometheusreceiver.RemoveLegacyResourceAttributes"
 
+// TODO: Find a way to enable this feature gate again, at least for 1-2 more versions of Alloy.
+// Those conventions were deprecated a really long time ago:
+// https://www.honeycomb.io/blog/opentelemetry-http-attributes
 var removeOldSemconvFeatureGate = featuregate.GlobalRegistry().MustRegister(
 	removeOldSemconvFeatureGateID,
 	featuregate.StageAlpha,

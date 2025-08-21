@@ -244,13 +244,6 @@ func (args *SplunkHecClientArguments) Validate() error {
 }
 
 func (args *SplunkConf) SetToDefault() {
-	args.DeprecatedBatcher = DeprecatedBatchConfig{
-		Enabled:      false,
-		FlushTimeout: 200 * time.Millisecond,
-		MinSize:      8192,
-		MaxSize:      0,
-		Sizer:        "items",
-	}
 	args.LogDataEnabled = true
 	args.ProfilingDataEnabled = true
 	args.Source = ""

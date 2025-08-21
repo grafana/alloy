@@ -28,7 +28,6 @@ receivers:
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:
@@ -59,7 +58,6 @@ exporters:
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:
