@@ -74,7 +74,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "traces.span.metrics",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
-					Enabled: false,
+					Enabled:         false,
+					MaxPerDataPoint: 5,
 				},
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,
@@ -111,6 +112,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Enabled:    false,
 					Dimensions: []spanmetricsconnector.Dimension{},
 				},
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
+				},
 			},
 		},
 		{
@@ -146,6 +151,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			namespace = "test.namespace"
 			exemplars {
 				enabled = true
+				max_per_data_point = 10
 			}
 			events {
 				enabled = true
@@ -186,7 +192,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				MetricsExpiration:    44 * time.Second,
 				Namespace:            "test.namespace",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
-					Enabled: true,
+					Enabled:         true,
+					MaxPerDataPoint: 10,
 				},
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled: true,
@@ -225,6 +232,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Events: spanmetricsconnector.EventsConfig{
 					Enabled:    false,
 					Dimensions: []spanmetricsconnector.Dimension{},
+				},
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
 				},
 			},
 		},
