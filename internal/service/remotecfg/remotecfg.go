@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -332,4 +334,25 @@ func (s *Service) getContext() context.Context {
 		return s.runCtx
 	}
 	return context.Background()
+}
+
+// GetHost returns the host for the remotecfg service.
+func GetHost(host service.Host) (service.Host, error) {
+	svc, found := host.GetService(ServiceName)
+	if !found {
+		return nil, fmt.Errorf("remote config service not available")
+	}
+
+	data := svc.Data().(Data)
+	if data.Host == nil {
+		return nil, fmt.Errorf("remote config service startup in progress")
+	}
+	return data.Host, nil
+}
+
+// GetCachedAstFile returns the AST file that was parsed from the configuration.
+func (s *Service) GetCachedAstFile() *ast.File {
+	s.mut.RLock()
+	defer s.mut.RUnlock()
+	return s.cm.getAstFile()
 }
