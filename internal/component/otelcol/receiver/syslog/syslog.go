@@ -10,10 +10,11 @@ import (
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/textutils"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/hashicorp/go-multierror"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/helper"
 	stanzainputsyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/syslog"
 	stanzainputtcp "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/input/tcp"
@@ -250,7 +251,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, fmt.Errorf("invalid non_transparent_framing_trailer, must be one of 'LF', 'NUL': %s", *args.NonTransparentFramingTrailer))
 		}
 
-		_, err := decode.LookupEncoding(args.TCP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
+		_, err := textutils.LookupEncoding(args.TCP.Encoding)
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid tcp.encoding: %w", err))
 		}
@@ -265,7 +266,7 @@ func (args *Arguments) Validate() error {
 			errs = multierror.Append(errs, err)
 		}
 
-		_, err := decode.LookupEncoding(args.UDP.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
+		_, err := textutils.LookupEncoding(args.UDP.Encoding)
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("invalid udp.encoding: %w", err))
 		}

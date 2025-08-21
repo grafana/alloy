@@ -74,7 +74,7 @@ func (args KafkaSASLArguments) Convert() map[string]interface{} {
 }
 
 // KafkaAWSMSKArguments exposes additional SASL authentication measures required to
-// use the AWS_MSK_IAM mechanism.
+// use the AWS_MSK_IAM_OAUTHBEARER mechanism.
 type KafkaAWSMSKArguments struct {
 	Region     string `alloy:"region,attr"`
 	BrokerAddr string `alloy:"broker_addr,attr"`

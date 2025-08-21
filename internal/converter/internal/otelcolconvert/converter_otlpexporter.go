@@ -84,7 +84,6 @@ func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArgument
 		Enabled:         cfg.Enabled,
 		NumConsumers:    cfg.NumConsumers,
 		QueueSize:       cfg.QueueSize,
-		Blocking:        cfg.Blocking, //nolint:staticcheck
 		BlockOnOverflow: cfg.BlockOnOverflow,
 		Sizer:           string(sizer),
 	}

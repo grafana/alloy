@@ -28,7 +28,7 @@ otelcol.receiver.kafka "default" {
 		sasl {
 			username  = "fakeusername"
 			password  = "fakepassword"
-			mechanism = "AWS_MSK_IAM"
+			mechanism = "AWS_MSK_IAM_OAUTHBEARER"
 			version   = 1
 
 			aws_msk {
