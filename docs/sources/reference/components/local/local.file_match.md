@@ -63,7 +63,7 @@ The `local.file_match` component doesn't support any blocks. You can configure t
 
 ## Exported fields
 
-The following fields export and other components can reference them:
+The following fields are exported and can be referenced by other components:
 
 | Name      | Type                | Description                                        |
 |-----------|---------------------|----------------------------------------------------|
