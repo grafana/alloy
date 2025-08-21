@@ -43,6 +43,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				compression = "gzip"
 				ignore_encoding_error = true
 				client_id = "123"
+				timeout = "15s"
 
 				output {}
 			`,
@@ -57,7 +58,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				IgnoreEncodingError: true,
 				ClientID:            "123",
 				TimeoutSettings: exporterhelper.TimeoutConfig{
-					Timeout: 12 * time.Second,
+					Timeout: 15 * time.Second,
 				},
 			},
 		},

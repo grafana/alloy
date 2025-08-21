@@ -7,6 +7,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
 
 	"github.com/grafana/alloy/internal/component"
@@ -29,15 +30,16 @@ func init() {
 }
 
 type Arguments struct {
-	ProjectID           string `alloy:"project,attr,optional"`
-	UserAgent           string `alloy:"user_agent,attr,optional"`
-	Endpoint            string `alloy:"endpoint,attr,optional"`
-	Insecure            bool   `alloy:"insecure,attr,optional"`
-	Subscription        string `alloy:"subscription,attr"`
-	Encoding            string `alloy:"encoding,attr,optional"`
-	Compression         string `alloy:"compression,attr,optional"`
-	IgnoreEncodingError bool   `alloy:"ignore_encoding_error,attr,optional"`
-	ClientID            string `alloy:"client_id,attr,optional"`
+	ProjectID           string        `alloy:"project,attr,optional"`
+	UserAgent           string        `alloy:"user_agent,attr,optional"`
+	Endpoint            string        `alloy:"endpoint,attr,optional"`
+	Insecure            bool          `alloy:"insecure,attr,optional"`
+	Subscription        string        `alloy:"subscription,attr"`
+	Encoding            string        `alloy:"encoding,attr,optional"`
+	Compression         string        `alloy:"compression,attr,optional"`
+	IgnoreEncodingError bool          `alloy:"ignore_encoding_error,attr,optional"`
+	ClientID            string        `alloy:"client_id,attr,optional"`
+	Timeout             time.Duration `alloy:"timeout,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -59,28 +61,22 @@ func (args *Arguments) SetToDefault() {
 
 	args.UserAgent = "opentelemetry-collector-contrib {{version}}"
 	args.DebugMetrics.SetToDefault()
+	args.Timeout = time.Second * 12
 }
 
 func (args *Arguments) Validate() error {
-	otelConfig, err := args.Convert()
-	if err != nil {
-		return err
-	}
-
 	// duplicate the logic from (*googlecloudpubsubreceiver.Config).validate()
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42069
 
-	googleCloudPubSubCfg, _ := otelConfig.(*googlecloudpubsubreceiver.Config)
-
-	if !subscriptionMatcher.MatchString(googleCloudPubSubCfg.Subscription) {
-		return fmt.Errorf("subscription '%s' is not a valid format, use 'projects/<project_id>/subscriptions/<name>'", googleCloudPubSubCfg.Subscription)
+	if !subscriptionMatcher.MatchString(args.Subscription) {
+		return fmt.Errorf("subscription '%s' is not a valid format, use 'projects/<project_id>/subscriptions/<name>'", args.Subscription)
 	}
 
-	switch googleCloudPubSubCfg.Compression {
+	switch args.Compression {
 	case "":
 	case "gzip":
 	default:
-		return fmt.Errorf("compression %v is not supported.  supported compression formats include [gzip]", googleCloudPubSubCfg.Compression)
+		return fmt.Errorf("compression %v is not supported.  supported compression formats include [gzip]", args.Compression)
 	}
 
 	return nil
@@ -97,10 +93,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Compression:         args.Compression,
 		IgnoreEncodingError: args.IgnoreEncodingError,
 		ClientID:            args.ClientID,
+		TimeoutSettings: exporterhelper.TimeoutConfig{
+			Timeout: args.Timeout,
+		},
 	}
-
-	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/googlecloudpubsubreceiver/config.go#L24
-	otelConfig.TimeoutSettings.Timeout = 12 * time.Second
 
 	return otelConfig, nil
 }
