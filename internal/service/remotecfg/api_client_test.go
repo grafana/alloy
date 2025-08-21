@@ -109,11 +109,18 @@ func TestAPIClient_InterfaceCompliance(t *testing.T) {
 	_ = client
 }
 
-func TestAPIClient_GetConfig_Success(t *testing.T) {
+// newMockAPIClient creates a fresh mock API client for testing
+func newMockAPIClient(t *testing.T) (*apiClient, *mockCollectorClient, *metrics) {
+	t.Helper()
 	mockClient := &mockCollectorClient{}
 	reg := prometheus.NewRegistry()
 	metrics := registerMetrics(reg)
 	client := newAPIClientWithClient(mockClient, metrics)
+	return client, mockClient, metrics
+}
+
+func TestAPIClient_GetConfig_Success(t *testing.T) {
+	client, mockClient, metrics := newMockAPIClient(t)
 
 	ctx := t.Context()
 	req := &connect.Request[collectorv1.GetConfigRequest]{
@@ -150,10 +157,7 @@ func TestAPIClient_GetConfig_Success(t *testing.T) {
 }
 
 func TestAPIClient_GetConfig_NotModified(t *testing.T) {
-	mockClient := &mockCollectorClient{}
-	reg := prometheus.NewRegistry()
-	metrics := registerMetrics(reg)
-	client := newAPIClientWithClient(mockClient, metrics)
+	client, mockClient, metrics := newMockAPIClient(t)
 
 	ctx := t.Context()
 	req := &connect.Request[collectorv1.GetConfigRequest]{
@@ -187,10 +191,7 @@ func TestAPIClient_GetConfig_NotModified(t *testing.T) {
 }
 
 func TestAPIClient_GetConfig_Error(t *testing.T) {
-	mockClient := &mockCollectorClient{}
-	reg := prometheus.NewRegistry()
-	metrics := registerMetrics(reg)
-	client := newAPIClientWithClient(mockClient, metrics)
+	client, mockClient, metrics := newMockAPIClient(t)
 
 	ctx := t.Context()
 	req := &connect.Request[collectorv1.GetConfigRequest]{
@@ -219,9 +220,7 @@ func TestAPIClient_GetConfig_Error(t *testing.T) {
 }
 
 func TestAPIClient_RegisterCollector_Success(t *testing.T) {
-	mockClient := &mockCollectorClient{}
-	metrics := registerMetrics(prometheus.NewRegistry())
-	client := newAPIClientWithClient(mockClient, metrics)
+	client, mockClient, _ := newMockAPIClient(t)
 
 	ctx := t.Context()
 	req := &connect.Request[collectorv1.RegisterCollectorRequest]{
@@ -247,10 +246,7 @@ func TestAPIClient_RegisterCollector_Success(t *testing.T) {
 }
 
 func TestAPIClient_GetConfig_MetricsTiming(t *testing.T) {
-	mockClient := &mockCollectorClient{}
-	reg := prometheus.NewRegistry()
-	metrics := registerMetrics(reg)
-	client := newAPIClientWithClient(mockClient, metrics)
+	client, mockClient, metrics := newMockAPIClient(t)
 
 	ctx := t.Context()
 	req := &connect.Request[collectorv1.GetConfigRequest]{
