@@ -38,7 +38,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version", "engine_version_suffix"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version"})
 
 	args.Registry.MustRegister(infoMetric)
 
@@ -64,7 +64,6 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		dbInstanceIdentifier = "unknown"
 		engine               = "postgres"
 		engineVersion        = "unknown"
-		engineVersionSuffix  = "none"
 	)
 
 	parts, err := ParseURL(c.DSN)
@@ -93,11 +92,8 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	if len(matches) > 1 {
 		engineVersion = matches[1]
 	}
-	if len(matches) > 2 && matches[2] != "" {
-		engineVersionSuffix = strings.TrimSpace(matches[2])
-	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion, engineVersionSuffix).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(1)
 	return nil
 }
 
