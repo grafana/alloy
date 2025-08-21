@@ -147,8 +147,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
+			collector.QuerySampleName: false,
 			collector.QueryTablesName: false,
-			collector.ActivityName:    false,
 			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
