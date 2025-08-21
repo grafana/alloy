@@ -23,7 +23,7 @@ const (
 	OP_SCHEMA_DETECTION = "schema_detection"
 	OP_TABLE_DETECTION  = "table_detection"
 	OP_CREATE_STATEMENT = "create_statement"
-	SchemaTableName     = "schema_table"
+	SchemaTableName     = "schema_details"
 )
 
 const (

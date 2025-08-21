@@ -28,7 +28,7 @@ import (
 
 const (
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	ExplainPlanName        = "explain_plan"
+	ExplainPlanName        = "explain_plans"
 )
 
 const selectDigestsForExplainPlan = `
