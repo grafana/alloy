@@ -3,6 +3,7 @@ package filter_test
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/filter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -179,10 +180,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			// Validate
 			require.NoError(t, actual.Validate())
-			require.NoError(t, expectedCfg.Validate())
+			// Don't validate expectedCfg, because it contains internal slices
+			// with functions that aren't part of the config -
+			// they are just a way to store internal state.
+			// The validation would fail because those functions won't be registered.
+			// You'd have to register those functions by creating a factory first.
 
-			// Compare
-			require.Equal(t, expectedCfg, *actual)
+			// Compare the two configs by marshaling to JSON.
+			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
 }

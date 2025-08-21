@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: Add a test using the sending_queue > batch block.
+// TODO: Add a test using the deprecated batcher block together with the sending_queue > batch block.
 func TestUnmarshalSplunkHecClientArguments(t *testing.T) {
 	for _, tt := range []struct {
 		name      string

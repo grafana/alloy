@@ -12,6 +12,10 @@ title: otelcol.receiver.opencensus
 
 # `otelcol.receiver.opencensus`
 
+{{< admonition type="warning" >}}
+The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release.
+{{< /admonition >}}
+
 `otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP using the [OpenCensus](https://opencensus.io/) format and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}

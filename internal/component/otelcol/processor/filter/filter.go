@@ -89,14 +89,14 @@ func (args Arguments) convertImpl() (*filterprocessor.Config, error) {
 		input["logs"] = args.Logs.convert()
 	}
 
-	var result filterprocessor.Config
-	err := mapstructure.Decode(input, &result)
+	result := filterprocessor.NewFactory().CreateDefaultConfig().(*filterprocessor.Config)
+	err := mapstructure.Decode(input, result)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 // Extensions implements processor.Arguments.

@@ -462,6 +462,14 @@ func TestQuerySamples(t *testing.T) {
 				return len(lokiClient.Received()) == len(tc.logsLines)
 			}, 5*time.Second, 100*time.Millisecond)
 
+			// TODO: Check whether more conditions are satisfied before stopping the collector.
+			// This would help in two situations:
+			// 1. If no log lines are expected, the collector will currently stop immediately before it has a chance to do anything.
+			// 2. If some queries do not produce log lines, the collector may stop prematurely before it has a chance to fail generating logs.
+			//
+			// Fixing this is not as simple as moving `mock.ExpectationsWereMet()` before `collector.Stop()`.
+			// We'd also need a way to check that the collector failed to generate a certain amount of logs.
+
 			collector.Stop()
 			lokiClient.Stop()
 

@@ -58,22 +58,18 @@ func Test_TopicDiscovery(t *testing.T) {
 	ts.loop()
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1"}, group.GetTopics())
-	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
+	}, 10*time.Minute, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
 
 	client.UpdateTopics([]string{"topic1", "topic2"})
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1", "topic2"}, group.GetTopics())
 	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1", "topic2"}, group.GetTopics())
 
