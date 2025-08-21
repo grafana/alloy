@@ -69,7 +69,6 @@ func sendTestLogsForDevice(t *testing.T, hostname string, testName string) {
 	}
 
 	now := time.Now()
-	t.Logf("Sending %d log lines for host %s starting at %d", len(networkLogs), hostname, now.Unix())
 	values := make([][2]string, 0, len(networkLogs))
 	for _, msg := range networkLogs {
 		values = append(values, [2]string{
