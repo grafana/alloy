@@ -54,24 +54,12 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
 # dependencies.
 FROM rfratto/viceroy:v0.4.0
 
-# Install NodeJS LTS. This is needed because the most recent version of NodeJS
-# from official Debian packages is v12, and we need version v18.
-#
-# This must be done before installing other dependencies, otherwise nodesource
-# will fail on installing NodeJS for all platforms instead of just our host
-# platform.
-# Source: https://github.com/nodesource/distributions#installation-instructions
-
-RUN  apt-get update && apt-get install -qy ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings  \
- &&  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
- &&  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
- &&  apt-get update && apt-get install -qy nodejs \
- &&  rm -rf /var/lib/apt/lists/*
-
-# Install Yarn.
-#
-# See https://yarnpkg.com/getting-started/install#nodejs-1610
-RUN corepack enable
+# Fix apt sources - restrict main bullseye to supported architectures
+RUN rm -f /etc/apt/sources.list \
+ && rm -rf /etc/apt/sources.list.d/* \
+ && echo "deb [arch=amd64,arm64,armhf,i386] https://ftp.debian.org/debian bullseye main" > /etc/apt/sources.list \
+ && echo "deb https://ftp.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list \
+ && echo "deb https://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list
 
 # Install other dependencies.
 #
@@ -92,6 +80,13 @@ COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
 COPY --from=nsis     /usr/share/nsis/Plugins/x86-unicode /usr/share/nsis/Plugins/x86-unicode
 COPY --from=golang   /usr/local/go                       /usr/local/go
 COPY --from=golang   /go/bin                             /go/bin
+
+# Install Node.js 20 directly from NodeSource repository
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+  && apt-get install -y nodejs \
+  && corepack enable \
+  && node -v \
+  && yarn -v
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository

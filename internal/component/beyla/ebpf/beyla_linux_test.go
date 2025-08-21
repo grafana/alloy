@@ -13,12 +13,13 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
-	"github.com/grafana/beyla/v2/pkg/export/attributes"
-	"github.com/grafana/beyla/v2/pkg/export/debug"
-	"github.com/grafana/beyla/v2/pkg/filter"
-	"github.com/grafana/beyla/v2/pkg/kubeflags"
-	"github.com/grafana/beyla/v2/pkg/services"
-	"github.com/grafana/beyla/v2/pkg/transform"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
+	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-kit/log"
@@ -61,6 +62,11 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				kubernetes {
 					namespace = "default"
 				}
+				exports = ["metrics", "traces"]
+				sampler {
+					name = "traceidratio"
+					arg = "0.5"
+				}
 			}
 			services {
 				name = "test2"
@@ -71,6 +77,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 						test = "test",
 					}
 				}
+				exports = ["metrics"]
 			}
 			exclude_services {
 				exe_path = "test3"
@@ -79,7 +86,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 		}
 		metrics {
 			features = ["application", "network"]
-			instrumentations = ["redis", "sql"]
+			instrumentations = ["redis", "sql", "gpu", "mongo"]
 			network {
 				agent_ip = "0.0.0.0"
 				interfaces = ["eth0"]
@@ -94,6 +101,13 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				agent_ip_iface = "local"
 				agent_ip_type = "ipv4"
 				exclude_interfaces = []
+			}
+		}
+		traces {
+			instrumentations = ["http", "grpc", "kafka"]
+			sampler {
+				name = "traceidratio"
+				arg = "0.1"
 			}
 		}
 		ebpf {
@@ -157,12 +171,15 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
 	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportMetrics))
+	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Services[0].SamplerConfig)
 	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
 	require.Len(t, cfg.Discovery.ExcludeServices, 1)
 	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
 	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
-	require.Equal(t, []string{"redis", "sql"}, cfg.Prometheus.Instrumentations)
+	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
@@ -177,6 +194,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
 	require.Equal(t, filter.MatchDefinition{Match: "53"}, cfg.Filters.Network["dst_port"])
 	require.Equal(t, debug.TracePrinter("json"), cfg.TracePrinter)
+	require.Equal(t, []string{"http", "grpc", "kafka"}, cfg.TracesReceiver.Instrumentations)
+	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
+	require.Len(t, cfg.TracesReceiver.Traces, 0)
 }
 
 func TestArguments_TracePrinterDebug(t *testing.T) {
@@ -254,7 +274,7 @@ func TestArguments_ValidationErrors(t *testing.T) {
 					features = ["application"]
 				}
 			`,
-			wantErr: "error parsing regexp: missing closing ]: `[`",
+			wantErr: "invalid regular expression \"[\": error parsing regexp: missing closing ]: `[`",
 		},
 		{
 			name: "invalid port range",
@@ -282,6 +302,148 @@ func TestArguments_ValidationErrors(t *testing.T) {
 	}
 }
 
+func TestArguments_InvalidExportModes(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "invalid selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["foo"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "empty selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = [""]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "one invalid selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics", "not traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			require.Error(t, syntax.Unmarshal([]byte(tt.config), &args))
+		})
+	}
+}
+
+func TestArguments_ValidExportModes(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "empty selector",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = []
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "traces",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "metrics",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "metrics and traces",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["metrics", "traces"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+		{
+			name: "traces and metrics",
+			config: `
+				discovery {
+					services {
+						open_ports = "8000"
+						exports = ["traces", "metrics"]
+					}
+				}
+				metrics {
+					features = ["application"]
+				}
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
+		})
+	}
+}
+
 func TestConvert_Routes(t *testing.T) {
 	args := Routes{
 		Unmatch:        "wildcard",
@@ -301,6 +463,198 @@ func TestConvert_Routes(t *testing.T) {
 	config := args.Convert()
 
 	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_SamplerConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     SamplerConfig
+		expected services.SamplerConfig
+	}{
+		{
+			name: "with name and arg",
+			args: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.5",
+			},
+			expected: services.SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.5",
+			},
+		},
+		{
+			name: "empty config",
+			args: SamplerConfig{},
+			expected: services.SamplerConfig{
+				Name: "",
+				Arg:  "",
+			},
+		},
+		{
+			name: "only name",
+			args: SamplerConfig{
+				Name: "always_on",
+			},
+			expected: services.SamplerConfig{
+				Name: "always_on",
+				Arg:  "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tt.args.Convert()
+			require.Equal(t, tt.expected, config)
+		})
+	}
+}
+
+func TestSamplerConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      SamplerConfig
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "empty config is valid",
+			config:      SamplerConfig{},
+			expectError: false,
+		},
+		{
+			name: "valid always_on",
+			config: SamplerConfig{
+				Name: "always_on",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid always_off",
+			config: SamplerConfig{
+				Name: "always_off",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid traceidratio with arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0.1",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_always_on",
+			config: SamplerConfig{
+				Name: "parentbased_always_on",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_always_off",
+			config: SamplerConfig{
+				Name: "parentbased_always_off",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid parentbased_traceidratio with arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+				Arg:  "0.5",
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid sampler name",
+			config: SamplerConfig{
+				Name: "invalid_sampler",
+			},
+			expectError: true,
+			errorMsg:    "invalid sampler name",
+		},
+		{
+			name: "traceidratio without arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+			},
+			expectError: true,
+			errorMsg:    "requires an arg parameter",
+		},
+		{
+			name: "parentbased_traceidratio without arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+			},
+			expectError: true,
+			errorMsg:    "requires an arg parameter",
+		},
+		{
+			name: "traceidratio with invalid arg",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "invalid",
+			},
+			expectError: true,
+			errorMsg:    "must be a valid decimal number",
+		},
+		{
+			name: "traceidratio with negative ratio",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "-0.1",
+			},
+			expectError: true,
+			errorMsg:    "ratio must be between 0 and 1",
+		},
+		{
+			name: "traceidratio with ratio > 1",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "1.5",
+			},
+			expectError: true,
+			errorMsg:    "ratio must be between 0 and 1",
+		},
+		{
+			name: "parentbased_traceidratio with invalid arg",
+			config: SamplerConfig{
+				Name: "parentbased_traceidratio",
+				Arg:  "not_a_number",
+			},
+			expectError: true,
+			errorMsg:    "must be a valid decimal number",
+		},
+		{
+			name: "traceidratio with boundary values - 0",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "0",
+			},
+			expectError: false,
+		},
+		{
+			name: "traceidratio with boundary values - 1",
+			config: SamplerConfig{
+				Name: "traceidratio",
+				Arg:  "1",
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestConvert_Attributes(t *testing.T) {
@@ -354,6 +708,11 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
+				ExportModes:    services.ExportModes{services.ExportMetrics},
+				Sampler: SamplerConfig{
+					Arg:  "0.5",
+					Name: "traceidratio",
+				},
 			},
 			{
 				Kubernetes: KubernetesService{
@@ -391,6 +750,9 @@ func TestConvert_Discovery(t *testing.T) {
 	require.Equal(t, "default", config.Services[0].Namespace)
 	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
 	require.True(t, config.Services[0].ContainersOnly)
+	require.True(t, config.Services[0].ExportModes.CanExport(services.ExportMetrics))
+	require.False(t, config.Services[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Services[0].SamplerConfig)
 	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
 	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
 	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
@@ -607,7 +969,7 @@ func TestMetrics_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
 			},
 		},
 		{
@@ -763,6 +1125,37 @@ func TestArguments_Validate(t *testing.T) {
 				// No metrics features defined
 			},
 		},
+		{
+			name: "invalid global sampler configuration",
+			args: Arguments{
+				Traces: Traces{
+					Sampler: SamplerConfig{
+						Name: "invalid_sampler",
+					},
+				},
+			},
+			wantErr: "invalid global sampler configuration: invalid sampler name",
+		},
+		{
+			name: "invalid service sampler configuration",
+			args: Arguments{
+				Discovery: Discovery{
+					Services: Services{
+						{
+							OpenPorts: "80",
+							Sampler: SamplerConfig{
+								Name: "traceidratio",
+								// Missing required Arg
+							},
+						},
+					},
+				},
+				Metrics: Metrics{
+					Features: []string{"application"},
+				},
+			},
+			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
+		},
 	}
 
 	for _, tt := range tests {
@@ -819,4 +1212,241 @@ func TestDeprecatedFields(t *testing.T) {
 			strings.Contains(output, "open_port' field is deprecated") &&
 			strings.Contains(output, "executable_name' field is deprecated")
 	}, time.Second, time.Millisecond*10)
+}
+
+func TestTraces_Convert(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      Traces
+		consumers []otelcol.Consumer
+		expected  beyla.TracesReceiverConfig
+	}{
+		{
+			name:      "empty config uses default instrumentations",
+			args:      Traces{},
+			consumers: nil,
+			expected: beyla.TracesReceiverConfig{
+				Traces: []beyla.Consumer{},
+				Instrumentations: []string{
+					instrumentations.InstrumentationALL,
+				},
+			},
+		},
+		{
+			name: "custom instrumentations",
+			args: Traces{
+				Instrumentations: []string{"http", "grpc"},
+			},
+			consumers: nil,
+			expected: beyla.TracesReceiverConfig{
+				Traces:           []beyla.Consumer{},
+				Instrumentations: []string{"http", "grpc"},
+			},
+		},
+		{
+			name: "with consumers",
+			args: Traces{
+				Instrumentations: []string{"kafka"},
+			},
+			consumers: []otelcol.Consumer{
+				// Mock consumer would go here in real test
+			},
+			expected: beyla.TracesReceiverConfig{
+				Traces:           []beyla.Consumer{},
+				Instrumentations: []string{"kafka"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.args.Convert(tt.consumers)
+			require.Equal(t, tt.expected.Instrumentations, result.Instrumentations)
+			require.Len(t, result.Traces, len(tt.expected.Traces))
+		})
+	}
+}
+
+func TestTraces_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Traces
+		wantErr string
+	}{
+		{
+			name: "valid empty config",
+			args: Traces{},
+		},
+		{
+			name: "valid instrumentations",
+			args: Traces{
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+			},
+		},
+		{
+			name: "invalid instrumentation",
+			args: Traces{
+				Instrumentations: []string{"invalid"},
+			},
+			wantErr: `traces.instrumentations: invalid value "invalid"`,
+		},
+		{
+			name: "valid sampler config",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "traceidratio",
+					Arg:  "0.5",
+				},
+			},
+		},
+		{
+			name: "invalid sampler config",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "invalid_sampler",
+				},
+			},
+			wantErr: "invalid global sampler configuration",
+		},
+		{
+			name: "sampler with invalid arg",
+			args: Traces{
+				Sampler: SamplerConfig{
+					Name: "traceidratio",
+					Arg:  "invalid",
+				},
+			},
+			wantErr: "invalid global sampler configuration",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name: "traces with instrumentations but no output",
+			args: Arguments{
+				Traces: Traces{
+					Instrumentations: []string{"http"},
+				},
+			},
+			wantErr: "traces block is defined but output section is missing",
+		},
+		{
+			name: "traces with sampler but no output",
+			args: Arguments{
+				Traces: Traces{
+					Sampler: SamplerConfig{
+						Name: "always_on",
+					},
+				},
+			},
+			wantErr: "traces block is defined but output section is missing",
+		},
+		{
+			name: "traces with output is valid",
+			args: Arguments{
+				Traces: Traces{
+					Instrumentations: []string{"http"},
+				},
+				Output: &otelcol.ConsumerArguments{},
+			},
+		},
+		{
+			name: "empty traces block is valid without output",
+			args: Arguments{
+				Traces: Traces{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestServices_Convert_SamplerConfig(t *testing.T) {
+	tests := []struct {
+		name                string
+		services            Services
+		expectSamplerConfig bool
+		expectedSamplerName string
+	}{
+		{
+			name: "service with empty sampler config",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler:   SamplerConfig{}, // Empty sampler
+				},
+			},
+			expectSamplerConfig: false,
+		},
+		{
+			name: "service with sampler config",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler: SamplerConfig{
+						Name: "traceidratio",
+						Arg:  "0.5",
+					},
+				},
+			},
+			expectSamplerConfig: true,
+			expectedSamplerName: "traceidratio",
+		},
+		{
+			name: "service with only sampler name",
+			services: Services{
+				{
+					OpenPorts: "80",
+					Sampler: SamplerConfig{
+						Name: "always_on",
+					},
+				},
+			},
+			expectSamplerConfig: true,
+			expectedSamplerName: "always_on",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.services.Convert()
+			require.NoError(t, err)
+			require.Len(t, result, 1)
+
+			if tt.expectSamplerConfig {
+				require.NotNil(t, result[0].SamplerConfig)
+				require.Equal(t, tt.expectedSamplerName, result[0].SamplerConfig.Name)
+			} else {
+				require.Nil(t, result[0].SamplerConfig)
+			}
+		})
+	}
 }

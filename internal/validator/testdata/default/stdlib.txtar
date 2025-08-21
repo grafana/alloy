@@ -1,0 +1,18 @@
+stdlib references
+-- main.alloy --
+
+declare "sys" {
+	export "env" {
+		value = "test"
+	}
+}
+
+sys "sys" {}
+
+local.file "file" {
+	filename = sys.sys.env
+}
+
+local.file "file2" {
+	filename = env("test")
+}
