@@ -171,10 +171,15 @@ type fetchContext struct {
 
 // fetchLoadConfig attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
-func (cm *configManager) fetchLoadConfig(ctx fetchContext) {
+// If allowCacheFallback is false, it will not attempt to load from cache on remote failure.
+func (cm *configManager) fetchLoadConfig(ctx fetchContext, allowCacheFallback bool) {
 	if err := cm.fetchLoadRemoteConfig(ctx); err != nil && err != errNotModified {
-		cm.logger.Log("level", "error", "msg", "failed to fetch remote config", "err", err)
-		cm.fetchLoadLocalConfig()
+		if allowCacheFallback {
+			cm.logger.Log("level", "error", "msg", "failed to fetch remote config, falling back to cache", "err", err)
+			cm.fetchLoadLocalConfig()
+		} else {
+			cm.logger.Log("level", "debug", "msg", "failed to fetch remote config, continuing with current config", "err", err)
+		}
 	}
 }
 

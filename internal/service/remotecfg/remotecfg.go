@@ -135,7 +135,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		s.mut.Unlock()
 	}()
 
-	s.fetchLoadConfig()
+	s.fetchLoadConfig(true) // Allow cache fallback on startup
 	err := s.registerCollector()
 	if err != nil && err != errNoopClient {
 		s.opts.Logger.Log("level", "error", "msg", "failed to register collector during service startup", "err", err)
@@ -150,7 +150,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	for {
 		select {
 		case <-s.cm.getTickerC():
-			s.fetchLoadConfig()
+			s.fetchLoadConfig(false) // Don't reload cache during periodic polling
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
 		case <-ctx.Done():
@@ -185,7 +185,7 @@ func (s *Service) Update(newConfig any) error {
 	// If we've already called Run, then immediately trigger an API call with
 	// the updated Arguments, and/or fall back to the updated cache location.
 	if s.cm.getController() != nil && s.cm.getController().Ready() {
-		s.fetchLoadConfig()
+		s.fetchLoadConfig(true) // Allow cache fallback when config is updated
 	}
 
 	return nil
@@ -260,7 +260,8 @@ func (s *Service) updateHandleArgs(newArgs Arguments) error {
 
 // fetchLoadConfig attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference.
-func (s *Service) fetchLoadConfig() {
+// If allowCacheFallback is false, it will not attempt to load from cache on remote failure.
+func (s *Service) fetchLoadConfig(allowCacheFallback bool) {
 	if !s.isEnabled() {
 		return
 	}
@@ -268,7 +269,7 @@ func (s *Service) fetchLoadConfig() {
 	fetchContext := fetchContext{
 		getAPIConfig: func() (*collectorv1.GetConfigResponse, error) { return s.getConfig() },
 	}
-	s.cm.fetchLoadConfig(fetchContext)
+	s.cm.fetchLoadConfig(fetchContext, allowCacheFallback)
 }
 
 func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
