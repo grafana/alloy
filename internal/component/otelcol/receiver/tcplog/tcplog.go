@@ -92,10 +92,11 @@ func (args *Arguments) SetToDefault() {
 // into an OpenTelemetry Collector config object for the tcplogreceiver.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	c := stanzainputtcp.NewConfig()
+	tls := args.TLS.Convert()
 	c.BaseConfig = stanzainputtcp.BaseConfig{
 		MaxLogSize:      helper.ByteSize(args.MaxLogSize),
 		ListenAddress:   args.ListenAddress,
-		TLS:             args.TLS.Convert(),
+		TLS:             tls.Get(),
 		AddAttributes:   args.AddAttributes,
 		OneLogPerPacket: args.OneLogPerPacket,
 		Encoding:        args.Encoding,

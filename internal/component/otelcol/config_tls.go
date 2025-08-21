@@ -6,6 +6,8 @@ import (
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configtls"
 	otelconfigtls "go.opentelemetry.io/collector/config/configtls"
 )
 
@@ -18,15 +20,18 @@ type TLSServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *TLSServerArguments) Convert() *otelconfigtls.ServerConfig {
+func (args *TLSServerArguments) Convert() configoptional.Optional[configtls.ServerConfig] {
+	var res configoptional.Optional[configtls.ServerConfig]
 	if args == nil {
-		return nil
+		return res
 	}
 
-	return &otelconfigtls.ServerConfig{
+	res = configoptional.Some(otelconfigtls.ServerConfig{
 		Config:       *args.TLSSetting.Convert(),
 		ClientCAFile: args.ClientCAFile,
-	}
+	})
+
+	return res
 }
 
 // TLSClientArguments holds shared TLS settings for components which launch

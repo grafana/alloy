@@ -21,6 +21,7 @@ import (
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/pipeline"
@@ -412,14 +413,14 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authentication *otelconfigauth.Config
+	var authentication configoptional.Optional[otelconfigauth.Config]
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		authentication = &otelconfigauth.Config{AuthenticatorID: ext.ID}
+		authentication = configoptional.Some(otelconfigauth.Config{AuthenticatorID: ext.ID})
 	}
 
 	balancerName := args.BalancerName

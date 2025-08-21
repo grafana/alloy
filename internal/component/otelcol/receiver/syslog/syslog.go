@@ -158,11 +158,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		c.BaseConfig.NonTransparentFramingTrailer = &s
 	}
 
+	tls := args.TCP.TLS.Convert()
+
 	if args.TCP != nil {
 		c.TCP = &stanzainputtcp.BaseConfig{
 			MaxLogSize:      helper.ByteSize(args.TCP.MaxLogSize),
 			ListenAddress:   args.TCP.ListenAddress,
-			TLS:             args.TCP.TLS.Convert(),
+			TLS:             tls.Get(),
 			AddAttributes:   args.TCP.AddAttributes,
 			OneLogPerPacket: args.TCP.OneLogPerPacket,
 			Encoding:        args.TCP.Encoding,
