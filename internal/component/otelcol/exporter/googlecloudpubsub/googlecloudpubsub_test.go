@@ -86,6 +86,8 @@ func TestConfigConversion(t *testing.T) {
 					num_consumers = 57
 					queue_size = 567
 				}
+
+				timeout = "15s"
 			`,
 			expected: googlecloudpubsubexporter.Config{
 				BackOffConfig: configretry.BackOffConfig{
@@ -112,7 +114,7 @@ func TestConfigConversion(t *testing.T) {
 					RemoveResourceAttribute: true,
 				},
 				TimeoutSettings: exporterhelper.TimeoutConfig{
-					Timeout: 12 * time.Second,
+					Timeout: 15 * time.Second,
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Enabled:      false,

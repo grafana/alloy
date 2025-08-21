@@ -42,6 +42,7 @@ type Arguments struct {
 	Endpoint    string                                                           `alloy:"endpoint,attr,optional"`
 	Insecure    bool                                                             `alloy:"insecure,attr,optional"`
 	Ordering    googlecloudpubsubconfig.GoogleCloudPubSubOrderingConfigArguments `alloy:"ordering,block,optional"`
+	Timeout     time.Duration                                                    `alloy:"timeout,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -62,6 +63,7 @@ func (args *Arguments) SetToDefault() {
 	args.UserAgent = "opentelemetry-collector-contrib {{version}}"
 	args.Watermark.SetToDefault()
 	args.Ordering.SetToDefault()
+	args.Timeout = time.Second * 12
 
 	args.DebugMetrics.SetToDefault()
 }
@@ -71,7 +73,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	result.BackOffConfig = *args.Retry.Convert()
 
-	result.TimeoutSettings.Timeout = 12 * time.Second // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/release/v0.128.x/exporter/googlecloudpubsubexporter/factory.go#L79
 	q, err := args.Queue.Convert()
 	if err != nil {
 		return nil, err
@@ -86,6 +87,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Endpoint = args.Endpoint
 	result.Insecure = args.Insecure
 	result.Ordering = args.Ordering.Convert()
+	result.TimeoutSettings.Timeout = args.Timeout
 
 	return &result, nil
 }
