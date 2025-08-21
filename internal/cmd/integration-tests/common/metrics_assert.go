@@ -42,16 +42,24 @@ var OtelDefaultHistogramMetrics = []string{
 
 // MetricQuery returns a formatted Prometheus metric query with a given metricName and the given test_name label.
 func MetricQuery(metricName string, testName string) string {
+	// https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries
 	return fmt.Sprintf("%squery?query=%s{test_name='%s'}", promURL, metricName, testName)
 }
 
 // MetricsQuery returns the list of available metrics matching the given test_name label.
 func MetricsQuery(testName string) string {
-	return fmt.Sprintf("%sseries?match[]={test_name='%s'}", promURL, testName)
+	// https://prometheus.io/docs/prometheus/latest/querying/api/#finding-series-by-label-matchers
+	query := fmt.Sprintf("%sseries?match[]={test_name='%s'}", promURL, testName)
+	if startingAt := AlloyStartTimeUnix(); startingAt > 0 {
+		query += fmt.Sprintf("&start=%d", startingAt)
+	}
+	return query
 }
 
 // MimirMetricsTest checks that all given metrics are stored in Mimir.
 func MimirMetricsTest(t *testing.T, metrics []string, histogramMetrics []string, testName string) {
+	AssertStatefulTestEnv(t)
+
 	AssertMetricsAvailable(t, metrics, histogramMetrics, testName)
 	for _, metric := range metrics {
 		metric := metric

@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,11 +13,22 @@ const lokiURL = "http://localhost:3100/loki/api/v1/"
 
 // LogQuery returns a formatted Loki query with the given test_name label
 func LogQuery(testName string) string {
-	return fmt.Sprintf("%squery_range?query=%%7Btest_name%%3D%%22%s%%22%%7D", lokiURL, testName)
+	// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-logs-within-a-range-of-time
+	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
+	query := fmt.Sprintf("%squery_range?query=%s", lokiURL, url.QueryEscape(queryFilter))
+
+	// Loki queries require a nanosecond unix timestamp for the start time.
+	if startingAt := AlloyStartTimeUnixNano(); startingAt > 0 {
+		query += fmt.Sprintf("&start=%d", startingAt)
+	}
+
+	return query
 }
 
 // AssertLogsPresent checks that logs are present in Loki and match expected labels
 func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]string, expectedCount int) {
+	AssertStatefulTestEnv(t)
+
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := FetchDataFromURL(LogQuery(testName), &logResponse)
@@ -38,6 +50,8 @@ func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]
 
 // AssertLogsMissing checks that logs with specific labels are not present in Loki
 func AssertLogsMissing(t *testing.T, testName string, labels ...string) {
+	AssertStatefulTestEnv(t)
+
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := FetchDataFromURL(LogQuery(testName), &logResponse)
