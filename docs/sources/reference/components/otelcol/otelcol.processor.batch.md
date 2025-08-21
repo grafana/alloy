@@ -18,7 +18,7 @@ This processor supports both size and time based batching.
 
 Grafana Labs strongly recommends that you configure the batch processor on every {{< param "PRODUCT_NAME" >}} that uses OpenTelemetry (otelcol) {{< param "PRODUCT_NAME" >}} components.
 Define the batch processor in the pipeline after the `otelcol.processor.memory_limiter` as well as any sampling processors.
-Batching should happen after any data drops such as sampling.
+Batching should happen after any processing that drops data such as sampling.
 
 {{< admonition type="note" >}}
 `otelcol.processor.batch` is a wrapper over the upstream OpenTelemetry Collector [`batch`][] processor.
