@@ -1670,3 +1670,140 @@ func TestExplainPlan(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestQueryFailureDenylist(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki_fake.NewClient(func() {})
+	defer lokiClient.Stop()
+
+	logBuffer := bytes.NewBuffer(nil)
+
+	queryUnderTestHash := "some_schemasome_digest1"
+
+	c, err := NewExplainPlan(ExplainPlanArguments{
+		DB:              db,
+		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		InstanceKey:     "mysql-db",
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest1",
+		"select * from some_table where id = 1",
+		lastSeen,
+	))
+
+	c.populateQueryCache(t.Context())
+	t.Run("non-recoverable sql error denylists query", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnError(fmt.Errorf("Error 1044: Access denied for user 'some_user'@'some_host' to database 'some_schema'"))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
+		require.Equal(t, 1, c.queryDenylist[queryUnderTestHash].failureCount)
+	})
+
+	t.Run("denylisted queries are not added to query cache", func(t *testing.T) {
+		lokiClient.Clear()
+		logBuffer.Reset()
+
+		mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+			"schema_name",
+			"digest",
+			"query_sample_text",
+			"last_seen",
+		}).AddRow(
+			"some_schema",
+			"some_digest1",
+			"select * from some_table where id = 1",
+			lastSeen,
+		).AddRow(
+			"some_schema",
+			"some_digest2",
+			"select * from some_table where id = 2",
+			lastSeen,
+		))
+
+		err = c.populateQueryCache(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 1, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
+
+		mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 2").WillReturnRows(sqlmock.NewRows([]string{
+			"json",
+		}).AddRow(
+			[]byte(`{"query_block": {"select_id": 1}}`),
+		))
+
+		err = c.fetchExplainPlans(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, 0, len(c.queryCache))
+		require.Equal(t, 1, len(c.queryDenylist))
+	})
+}
+
+func TestSchemaDenylist(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki_fake.NewClient(func() {})
+	defer lokiClient.Stop()
+
+	logBuffer := bytes.NewBuffer(nil)
+
+	c, err := NewExplainPlan(ExplainPlanArguments{
+		DB:              db,
+		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		InstanceKey:     "mysql-db",
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		ExcludeSchemas:  []string{"some_schema"},
+		EntryHandler:    lokiClient,
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest1",
+		"select * from some_table where id = 1",
+		lastSeen,
+	).AddRow(
+		"different_schema",
+		"some_digest2",
+		"select * from some_table where id = 2",
+		lastSeen,
+	))
+
+	c.populateQueryCache(t.Context())
+	require.Equal(t, 1, len(c.queryCache))
+	require.Equal(t, 0, len(c.queryDenylist))
+}
