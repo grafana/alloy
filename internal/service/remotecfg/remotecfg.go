@@ -209,6 +209,7 @@ func (s *Service) updateHandleEmptyUrl(args Arguments) {
 	}
 	s.cm = newConfigManager(s.metrics, s.opts.Logger, remotecfgPath, nil, configPath)
 	s.cm.setLastLoadedCfgHash("")
+	s.cm.setLastReceivedCfgHash("")
 	s.cm.setPollFrequency(disablePollingFrequency)
 }
 

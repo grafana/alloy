@@ -56,11 +56,15 @@ type configManager struct {
 	// This is the base frequency at which we poll the API for configuration changes. A jitter is applied to this value.
 	pollFrequency time.Duration
 
-	// This is the hash of the last loaded configuration. It is used to determine if
-	// the configuration has changed since the last fetch.
+	// This is the hash of the last successfully loaded and running configuration.
+	// Used to track what config is actually active in the controller.
 	lastLoadedConfigHash string
 
-	// This is the hash received from the API. It is used to determine if
+	// This is the hash of the last configuration received from the remote API.
+	// Used to avoid re-fetching the same config, regardless of whether it loaded successfully.
+	lastReceivedConfigHash string
+
+	// This is the hash received from the API in the current request. It is used to determine if
 	// the configuration has changed since the last fetch
 	remoteHash string
 
@@ -123,6 +127,18 @@ func (cm *configManager) getLastLoadedCfgHash() string {
 	cm.mut.RLock()
 	defer cm.mut.RUnlock()
 	return cm.lastLoadedConfigHash
+}
+
+func (cm *configManager) getLastReceivedCfgHash() string {
+	cm.mut.RLock()
+	defer cm.mut.RUnlock()
+	return cm.lastReceivedConfigHash
+}
+
+func (cm *configManager) setLastReceivedCfgHash(h string) {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+	cm.lastReceivedConfigHash = h
 }
 
 func (cm *configManager) parseAndLoad(b []byte) error {
@@ -218,28 +234,34 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 	b := []byte(gcr.GetContent())
 	newConfigHash := getHash(b)
 
-	// Check if we already have this config loaded
-	cm.mut.RLock()
-	alreadyLoaded := cm.lastLoadedConfigHash == newConfigHash
-	cm.mut.RUnlock()
+	// Check if we already received this exact config from remote
+	alreadyReceived := cm.getLastReceivedCfgHash() == newConfigHash
+	alreadyLoaded := cm.getLastLoadedCfgHash() == newConfigHash
 
-	if alreadyLoaded {
-		cm.logger.Log("level", "debug", "msg", "skipping over API response since it matched the last loaded one")
+	if alreadyReceived {
+		cm.logger.Log("level", "debug", "msg", "skipping over API response since it matched the last received one",
+			"config_hash", newConfigHash, "already_loaded", alreadyLoaded)
 		return nil
 	}
 
-	// Set the hash before parsing, so even if parsing fails, we record the attempted config hash
-	cm.setLastLoadedCfgHash(newConfigHash)
+	// Record that we received this config from remote (regardless of parse success)
+	cm.setLastReceivedCfgHash(newConfigHash)
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
-		// Failed to parse/load the configuration
+		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
+		cm.logger.Log("level", "error", "msg", "failed to parse remote config",
+			"received_hash", newConfigHash, "loaded_hash", cm.getLastLoadedCfgHash(), "err", err)
 		cm.metrics.lastLoadSuccess.Set(0)
 		return err
 	}
 
-	// Successfully loaded the configuration
+	// Successfully loaded the configuration - now update the loaded hash
+	cm.setLastLoadedCfgHash(newConfigHash)
 	cm.metrics.lastLoadSuccess.Set(1)
+
+	cm.logger.Log("level", "info", "msg", "successfully loaded remote configuration",
+		"config_hash", newConfigHash, "config_size", len(b))
 
 	// If successful, flush to disk and keep a copy.
 	cm.setCachedConfig(b)
@@ -247,16 +269,25 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 }
 
 func (cm *configManager) fetchLoadLocalConfig() {
+	cachePath := cm.getCachedConfigPath()
 	b, err := cm.getCachedConfig()
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to read from cache", "err", err)
+		cm.logger.Log("level", "error", "msg", "failed to read from cache", "cache_path", cachePath, "err", err)
 		return
 	}
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to load from cache", "err", err)
+		cm.logger.Log("level", "error", "msg", "failed to load from cache", "cache_path", cachePath, "err", err)
+		return
 	}
+
+	// Successfully loaded from cache - update the loaded hash (but not received hash, since this came from cache)
+	cacheHash := getHash(b)
+	cm.setLastLoadedCfgHash(cacheHash)
+
+	cm.logger.Log("level", "info", "msg", "successfully loaded configuration from cache",
+		"config_hash", cacheHash, "config_size", len(b), "cache_path", cachePath)
 }
 
 // cleanup properly stops and cleans up the configManager's resources.
