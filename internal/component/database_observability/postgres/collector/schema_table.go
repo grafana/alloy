@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -66,6 +67,56 @@ const (
 		attr.attrelid = $1::regclass -- filter by the table name
 		AND attr.attnum > 0  -- no system columns
 		AND NOT attr.attisdropped -- no dropped columns`
+
+	selectIndexesBasicInfo = `
+	SELECT 
+		index_relations.relname as index_name,
+		pg_am.amname as index_type,
+		pg_index.indisunique as unique
+	FROM pg_class table_relations -- pg_class entry for tables
+	JOIN pg_index ON table_relations.oid = pg_index.indrelid -- pg_index has additional information about indexes
+	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid -- pg_class entry for indexes
+	JOIN pg_am ON index_relations.relam = pg_am.oid -- stores information about index access methods
+	WHERE table_relations.relname = $2 -- filter by table name
+		AND table_relations.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1) -- filter by schema name
+	ORDER BY index_name -- consistent output
+`
+
+	selectIndexColumns = `
+	SELECT 
+		index_relations.relname as index_name,
+		pg_am.amname as index_type,
+		pg_index.indisunique as unique,
+		array_agg(pg_attribute.attname ORDER BY array_position(pg_index.indkey, pg_attribute.attnum)) as column_names
+	FROM pg_class table_relations -- pg_class entry for tables
+	JOIN pg_index ON table_relations.oid = pg_index.indrelid -- pg_index has additional information about indexes
+	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid -- pg_class entry for indexes
+	JOIN pg_am ON index_relations.relam = pg_am.oid -- stores information about index access methods
+	JOIN pg_attribute ON table_relations.oid = pg_attribute.attrelid -- pg_attribute stores column information
+		AND pg_attribute.attnum = ANY(pg_index.indkey) -- match column number with pg_index columns array
+		AND pg_attribute.attnum != 0 -- only regular columns, not expressions
+	WHERE table_relations.relname = $2 -- filter by table name
+		AND table_relations.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1) -- filter by schema name
+		AND NOT pg_attribute.attisdropped -- no dropped columns
+	GROUP BY index_relations.relname, pg_am.amname, pg_index.indisunique
+	ORDER BY index_name -- consistent output
+`
+
+	// Get expression-based index components
+	selectIndexExpressions = `
+	SELECT 
+		index_relations.relname as index_name,
+		pos as seq_in_index,
+		pg_get_indexdef(pg_index.indexrelid, pos, true) as expression
+	FROM pg_class table_relations -- pg_class entry for tables
+	JOIN pg_index ON table_relations.oid = pg_index.indrelid -- pg_index has additional information about indexes
+	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid -- pg_class entry for indexes
+	JOIN generate_subscripts(pg_index.indkey, 1) AS pos ON true -- generate position for each index component
+	WHERE table_relations.relname = $2 -- filter by table name
+		AND table_relations.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1) -- filter by schema name
+		AND pg_index.indkey[pos-1] = 0 -- only expression-based components (0 = expression, not column)
+	ORDER BY index_relations.relname, pos -- consistent output ordered by index name and component position
+`
 )
 
 type tableInfo struct {
@@ -78,6 +129,7 @@ type tableInfo struct {
 
 type tableSpec struct {
 	Columns []columnSpec `json:"columns"`
+	Indexes []indexSpec  `json:"indexes,omitempty"`
 }
 
 type columnSpec struct {
@@ -87,6 +139,15 @@ type columnSpec struct {
 	AutoIncrement bool   `json:"auto_increment,omitempty"`
 	PrimaryKey    bool   `json:"primary_key,omitempty"`
 	DefaultValue  string `json:"default_value,omitempty"`
+}
+
+type indexSpec struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Columns     []string `json:"columns"`
+	Expressions []string `json:"expressions,omitempty"`
+	Unique      bool     `json:"unique"`
+	Nullable    bool     `json:"nullable"`
 }
 
 type SchemaTableArguments struct {
@@ -334,6 +395,80 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 	if err := colRS.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
+	}
+
+	indexes := make(map[string]*indexSpec)
+
+	// Get column-based indexes with array aggregation
+	columnsRS, err := c.dbConnection.QueryContext(ctx, selectIndexColumns, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query index columns", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer columnsRS.Close()
+
+	for columnsRS.Next() {
+		var indexName, indexType string
+		var unique bool
+		var columnNames pq.StringArray
+
+		if err := columnsRS.Scan(&indexName, &indexType, &unique, &columnNames); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan index columns", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		indexes[indexName] = &indexSpec{
+			Name:    indexName,
+			Type:    indexType,
+			Unique:  unique,
+			Columns: columnNames,
+			// Nullable: TODO: how do we handle nullable and multi-column indexes? also for MySQL
+		}
+	}
+	if err := columnsRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over index columns", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	// Get expression-based components
+	expressionsRS, err := c.dbConnection.QueryContext(ctx, selectIndexExpressions, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query index expressions", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer expressionsRS.Close()
+
+	for expressionsRS.Next() {
+		var indexName, expression string
+		var seqInIndex int
+
+		if err := expressionsRS.Scan(&indexName, &seqInIndex, &expression); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan index expressions", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		if idx, exists := indexes[indexName]; exists {
+			// Ensure we have enough space in the slice
+			for len(idx.Expressions) < seqInIndex {
+				idx.Expressions = append(idx.Expressions, "")
+			}
+			// Set the expression at the correct position (seq_in_index is 1-based)
+			if seqInIndex > 0 && seqInIndex <= len(idx.Expressions) {
+				idx.Expressions[seqInIndex-1] = expression
+			}
+			// Expressions are generally nullable
+			idx.Nullable = true
+		}
+	}
+
+	if err := expressionsRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over index expressions", "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	// Convert map to slice for consistent ordering
+	for _, idx := range indexes {
+		tblSpec.Indexes = append(tblSpec.Indexes, *idx)
 	}
 
 	return tblSpec, nil
