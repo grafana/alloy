@@ -94,7 +94,7 @@ The following examples show you how to use `local.file_match` to find and send l
 ### Send `/tmp/logs/*.log` files to Loki
 
 This example discovers all files and folders under `/tmp/logs` except for files in the `/tmp/logs/excluded` directory.
-`loki.source.file.files` targets use the absolute paths.
+`loki.source.file.files` targets use absolute paths in the `__path__` label.
 
 ```alloy
 local.file_match "tmp" {
