@@ -265,7 +265,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 			OP_CREATE_STATEMENT,
 			c.instanceKey,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`, // TODO: No create statement here -- if we don't need table_spec, we may be able to remove this
+				`database="%s" schema="%s" table="%s" table_spec="%s"`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)

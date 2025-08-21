@@ -23,7 +23,7 @@ func TestSchemaTable(t *testing.T) {
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
-	t.Run("collector selects and logs database, schema, tables", func(t *testing.T) {
+	t.Run("collector selects and logs schema and table", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -280,7 +280,7 @@ func TestSchemaTable(t *testing.T) {
 		assert.Len(t, lokiEntries, 0)
 	})
 
-	t.Run("collector handles column with no default value", func(t *testing.T) {
+	t.Run("collector logs column with null and empty string default values", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -333,7 +333,7 @@ func TestSchemaTable(t *testing.T) {
 					"is_primary_key",
 				}).
 					AddRow("id", "integer", true, nil, "", true).
-					AddRow("name", "character varying(255)", false, "John Doe", "", false),
+					AddRow("name", "character varying(255)", false, "", "", false),
 			)
 
 		err = collector.Start(t.Context())
@@ -356,7 +356,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_TABLE_DETECTION, "instance": "postgres-db"}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" database="test_db" schema="public" table="test_table"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_CREATE_STATEMENT, "instance": "postgres-db"}, lokiEntries[2].Labels)
-		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)","default_value":"John Doe"}]}`))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" database="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 }
