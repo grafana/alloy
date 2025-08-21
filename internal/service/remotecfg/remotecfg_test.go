@@ -133,7 +133,7 @@ func TestGoodBadGood(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-	
+
 	// But we should have recorded the bad config as received (for API optimization)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
