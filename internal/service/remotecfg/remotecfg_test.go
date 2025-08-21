@@ -121,16 +121,22 @@ func TestGoodBadGood(t *testing.T) {
 	client.mut.Unlock()
 
 	// Verify that the service has still the same "good" configuration has
-	// loaded and flushed on disk, but also recorded the "bad" hash saved for
-	// comparison.
+	// loaded and flushed on disk, and that the loaded hash still reflects the good config
+	// (since the bad config failed to parse and was never actually loaded).
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		b, err := env.svc.cm.getCachedConfig()
 		assert.NoError(c, err)
 		assert.Equal(c, cfgGood, string(b))
 	}, 1*time.Second, 10*time.Millisecond)
 
+	// The loaded hash should still be the good config since bad config failed to parse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+	
+	// But we should have recorded the bad config as received (for API optimization)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
 	// Update the response returned by the API to the previous "good"
