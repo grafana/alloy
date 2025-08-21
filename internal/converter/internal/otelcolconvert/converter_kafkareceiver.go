@@ -160,8 +160,7 @@ func toKafkaAWSMSK(cfg map[string]any) otelcol.KafkaAWSMSKArguments {
 	}
 
 	return otelcol.KafkaAWSMSKArguments{
-		Region:     cfg["region"].(string),
-		BrokerAddr: cfg["broker_addr"].(string),
+		Region: cfg["region"].(string),
 	}
 }
 
