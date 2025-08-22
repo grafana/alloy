@@ -123,7 +123,7 @@ func TestExplainPlanOutput(t *testing.T) {
 																			Details: database_observability.ExplainPlanNodeDetails{
 																				EstimatedRows: 141178,
 																				EstimatedCost: floatPtr(4598.26),
-																				Condition:     stringPtr("(to_date = '9999-01-01'::date)"),
+																				Condition:     stringPtr("(to_date = ?::date)"),
 																				Alias:         stringPtr("de"),
 																			},
 																		},

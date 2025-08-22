@@ -84,7 +84,8 @@ func (p *PlanNode) ToExplainPlanOutputNode() (database_observability.ExplainPlan
 	}
 
 	if !strings.EqualFold(p.Filter, "") {
-		output.Details.Condition = &p.Filter
+		redacted := redact(p.Filter)
+		output.Details.Condition = &redacted
 	}
 
 	if !strings.EqualFold(p.Alias, "") {
