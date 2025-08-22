@@ -60,6 +60,44 @@ func Test_collectSQLText(t *testing.T) {
 	})
 }
 
+func Test_parseCloudProvider(t *testing.T) {
+	t.Run("parse cloud provider block", func(t *testing.T) {
+		t.Parallel()
+
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		disable_query_redaction = true
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
+	})
+	t.Run("empty cloud provider block", func(t *testing.T) {
+		t.Parallel()
+
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		disable_query_redaction = true
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Nil(t, args.CloudProvider)
+	})
+}
+
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
