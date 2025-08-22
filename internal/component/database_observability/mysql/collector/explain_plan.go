@@ -489,7 +489,6 @@ type ExplainPlanArguments struct {
 
 type ExplainPlan struct {
 	dbConnection     *sql.DB
-	instanceKey      string
 	dbVersion        string
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
@@ -508,7 +507,6 @@ type ExplainPlan struct {
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	return &ExplainPlan{
 		dbConnection:   args.DB,
-		instanceKey:    args.InstanceKey,
 		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		queryCache:     make(map[string]*queryInfo),
@@ -709,7 +707,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_EXPLAIN_PLAN_OUTPUT,
-			c.instanceKey,
 			logMessage,
 		)
 		// TODO: Add context to logging when errors occur so the original node can be found.

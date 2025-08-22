@@ -17,7 +17,6 @@ import (
 	"go.uber.org/goleak"
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 func TestQuerySample_FetchQuerySample(t *testing.T) {
@@ -61,10 +60,10 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
+				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" instance="test" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="500" xmin="400" xact_time="2m0s" state="active" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="500" xmin="400" xact_time="2m0s" state="active" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
 			},
 		},
 		{
@@ -90,10 +89,10 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
+				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" instance="test" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -124,12 +123,12 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
-				{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "test"},
+				{"op": OP_QUERY_SAMPLE},
+				{"op": OP_WAIT_EVENT},
 			},
 			expectedLines: []string{
-				`level="info" instance="test" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
-				`level="info" instance="test" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
 			},
 		},
 		{
@@ -203,10 +202,10 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			disableQueryRedaction: true,
 			expectedError:         false,
 			expectedLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "test"},
+				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" instance="test" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="active" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="active" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
 			},
 		},
 	}
@@ -224,7 +223,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 
 			sampleCollector, err := NewQuerySample(QuerySampleArguments{
 				DB:                    db,
-				InstanceKey:           "test",
 				CollectInterval:       time.Second * 5,
 				EntryHandler:          lokiClient,
 				Logger:                logger,
