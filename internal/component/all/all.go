@@ -105,6 +105,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/faro"                    // Import otelcol.receiver.faro
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/filelog"                 // Import otelcol.receiver.filelog
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/githubactions"           // Import otelcol.receiver.githubactions
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka

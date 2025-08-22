@@ -1,0 +1,23 @@
+{
+  "resource_spans": [{
+    "resource": {
+      "attributes": [{
+        "key": "host.name",
+        "value": { "stringValue": "example" }
+      }]
+    },
+    "scope_spans": [{
+      "spans": [
+        {
+          "trace_id": "5B8EFFF798038103D269B633813FC60C",
+          "span_id": "EEE19B7EC3C1B174",
+          "parent_span_id": "EEE19B7EC3C1B173",
+          "name": "testSpan",
+          "start_time_unix_nano": 1544712660300000000,
+          "end_time_unix_nano": 1544712660600000000,
+          "kind": "SPAN_KIND_CLIENT"
+        }
+      ]
+    }]
+  }]
+}
