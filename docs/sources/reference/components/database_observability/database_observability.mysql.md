@@ -36,6 +36,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `explain_plan_collect_interval`    | `duration`           | How frequently to collect explain plan information from database.                              | `"1m"`  | no       |
 | `explain_plan_per_collect_ratio`   | `float`              | Ratio of explain plan queries to collect per collect interval.                                 | `1.0`   | no       |
 | `explain_plan_initial_lookback`    | `duration`           | How far back to look for explain plan queries on the first collection interval.                | `"24h"` | no       |
+| `explain_plan_exclude_schemas`     | `list(string)`       | List of schemas to exclude from explain plan collection.                                       |         | no       |
 | `locks_collect_interval`           | `duration`           | How frequently to collect locks information from database.                                     | `"30s"` | no       |
 | `locks_threshold`                  | `duration`           | Threshold for locks to be considered slow. If a lock exceeds this duration, it will be logged. | `"1s"`  | no       |
 | `setup_consumers_collect_interval` | `duration`           | How frequently to collect `performance_schema.setup_consumers` information from the database.    | `"1h"`  | no       |

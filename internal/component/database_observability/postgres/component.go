@@ -31,6 +31,8 @@ import (
 
 const name = "database_observability.postgres"
 
+const selectEngineVersion = `SHOW server_version`
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -50,15 +52,18 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	CollectInterval   time.Duration       `alloy:"collect_interval,attr,optional"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
+	DataSourceName             alloytypes.Secret   `alloy:"data_source_name,attr"`
+	CollectInterval            time.Duration       `alloy:"collect_interval,attr,optional"`
+	QuerySampleCollectInterval time.Duration       `alloy:"query_sample_collect_interval,attr,optional"`
+	ForwardTo                  []loki.LogsReceiver `alloy:"forward_to,attr"`
+	EnableCollectors           []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors          []string            `alloy:"disable_collectors,attr,optional"`
+	DisableQueryRedaction      bool                `alloy:"disable_query_redaction,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	CollectInterval: 1 * time.Minute,
+	CollectInterval:            1 * time.Minute,
+	QuerySampleCollectInterval: 15 * time.Second,
 }
 
 func (a *Arguments) SetToDefault() {
@@ -208,7 +213,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
 		collector.QueryTablesName: false,
-		collector.ActivityName:    false,
+		collector.QuerySampleName: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -238,14 +243,13 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 	c.dbConnection = dbConnection
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -261,29 +265,43 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	if collectors[collector.ActivityName] {
-		aCollector, err := collector.NewActivity(collector.ActivityArguments{
-			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
-			CollectInterval: c.args.CollectInterval,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+	if collectors[collector.QuerySampleName] {
+		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+			DB:                    dbConnection,
+			CollectInterval:       c.args.QuerySampleCollectInterval,
+			EntryHandler:          entryHandler,
+			Logger:                c.opts.Logger,
+			DisableQueryRedaction: c.args.DisableQueryRedaction,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create Activity collector", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
 			return err
 		}
 		if err := aCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start Activity collector", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
 			return err
 		}
 		c.collectors = append(c.collectors, aCollector)
 	}
 
+	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
@@ -358,4 +376,13 @@ func instanceKey(dsn string) (string, error) {
 		hostport += fmt.Sprintf(":%s", p)
 	}
 	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
+}
+
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(instanceKey),
+	}).Wrap(entryHandler)
+
+	return entryHandler
 }

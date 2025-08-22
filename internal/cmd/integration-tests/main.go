@@ -49,7 +49,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	ctx := cmd.Context()
 
 	fmt.Println("Start test containers with docker compose config")
-	if err = compose.Up(ctx, tc.Wait(true), tc.RemoveOrphans(true)); err != nil {
+	if err = compose.Up(ctx, tc.RemoveOrphans(true)); err != nil {
 		panic(fmt.Errorf("could not start the docker compose: %v", err))
 	}
 

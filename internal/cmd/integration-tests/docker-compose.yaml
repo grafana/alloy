@@ -9,8 +9,8 @@ services:
     ports:
       - "9009:9009"
     networks:
-      - integration-tests      
-  
+      - integration-tests
+
   tempo:
     image: grafana/tempo:2.6.1
     command: [ "-config.file=/etc/tempo.yaml" ]
@@ -89,6 +89,16 @@ services:
     image: redis:6.0.9-alpine
     ports:
       - "6379:6379"
+    networks:
+      - integration-tests
+
+  redis-init:
+    image: redis:6.0.9-alpine
+    depends_on:
+      - redis
+    volumes:
+      - ./tests/redis/init_redis.sh:/init_redis.sh
+    command: sh /init_redis.sh
     networks:
       - integration-tests
 

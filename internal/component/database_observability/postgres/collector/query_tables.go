@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -54,10 +53,8 @@ type QueryTablesArguments struct {
 
 type QueryTables struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-	normalizer      *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -68,10 +65,8 @@ type QueryTables struct {
 func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 	return &QueryTables{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
 	}, nil
@@ -147,7 +142,6 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			c.instanceKey,
 			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
@@ -161,7 +155,6 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				c.instanceKey,
 				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
 			)
 		}
@@ -177,10 +170,10 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 
 func (c QueryTables) tryTokenizeTableNames(sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
-	_, metadata, err := c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	tables, err := extractTableNames(sqlText)
 	if err != nil {
-		return nil, fmt.Errorf("failed to tokenize sql text: %w", err)
+		return nil, fmt.Errorf("failed to extract table names: %w", err)
 	}
 
-	return metadata.Tables, nil
+	return tables, nil
 }
