@@ -71,12 +71,12 @@ The component detail page shows the following information for each component:
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
 
 {{< admonition type="note" >}}
-Values marked as a [secret][] display as the text `(secret)`.
+Values marked as a [secret][] display only as the text `(secret)`.
 
 [secret]: ../../get-started/configuration-syntax/expressions/types_and_values/#secrets
 {{< /admonition >}}
 
-### View clustering information
+### Clustering page
 
 {{< figure src="/media/docs/alloy/ui_clustering_page.png" alt="Alloy UI clustering page" >}}
 
@@ -94,7 +94,7 @@ The clustering page shows the following information for each cluster node:
 Live debugging provides a real-time stream of debugging data from a component. You can access this page from the corresponding [Component detail page](#component-detail-page).
 
 {{< admonition type="caution" >}}
-Live debugging defaults to disabled to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [`livedebugging` block][livedebugging].
+Live debugging defaults to disabled to avoid accidentally displaying sensitive telemetry data. To enable live debugging, configure the [`livedebugging`][livedebugging] block.
 
 [livedebugging]: ../../reference/config-blocks/livedebugging/
 {{< /admonition >}}
