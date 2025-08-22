@@ -243,7 +243,7 @@ It contains the following blocks:
 
 #### `instrument`
 
-The `instrument` block configures the services to discover and instrument using glob patterns.
+The `instrument` block configures the services to discover and instrument using [glob patterns](https://github.com/gobwas/glob).
 
 | Name              | Type           | Description                                                                     | Default | Required |
 |-------------------|----------------|---------------------------------------------------------------------------------|---------|----------|

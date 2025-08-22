@@ -146,14 +146,12 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	cfg, err := args.Convert()
 	require.NoError(t, err)
 
-	// Test routes configuration
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
 	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
 	require.Equal(t, "*", cfg.Routes.WildcardChar)
 
-	// Test attributes configuration
 	require.Equal(t, kubeflags.EnabledTrue, cfg.Attributes.Kubernetes.Enable)
 	require.Equal(t, 15*time.Second, cfg.Attributes.Kubernetes.InformersSyncTimeout)
 	require.Equal(t, 30*time.Minute, cfg.Attributes.Kubernetes.InformersResyncPeriod)
@@ -166,7 +164,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"*"}, sel.Include)
 	require.Equal(t, []string{"db_statement"}, sel.Exclude)
 
-	// Test network configuration
 	require.True(t, cfg.NetworkFlows.Enable)
 	require.Equal(t, "0.0.0.0", cfg.NetworkFlows.AgentIP)
 	require.Equal(t, []string{"eth0"}, cfg.NetworkFlows.Interfaces)
@@ -181,7 +178,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "ipv4", cfg.NetworkFlows.AgentIPType)
 	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
 
-	// Test discovery configuration with new instrument fields
 	require.Len(t, cfg.Discovery.Instrument, 2)
 	require.Equal(t, "test", cfg.Discovery.Instrument[0].Name)
 	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
@@ -194,23 +190,19 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportMetrics))
 	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportTraces))
 
-	// Test exclude_instrument configuration
 	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
 	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
 	require.Equal(t, "default", cfg.Discovery.ExcludeInstrument[0].Namespace)
 
-	// Test survey configuration (glob patterns for file system scanning)
 	require.Len(t, cfg.Discovery.Survey, 1)
 	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
 	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportMetrics))
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportTraces))
 
-	// Test metrics configuration
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
 
-	// Test other configurations
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
@@ -229,23 +221,17 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
 	require.Len(t, cfg.TracesReceiver.Traces, 0)
 
-	// Test that glob patterns work properly in conversion
-	// Instrument: ConvertGlob() uses glob conversion - patterns are treated as file globs
 	instrumentConverted, err := args.Discovery.Instrument.ConvertGlob()
 	require.NoError(t, err)
 	require.Len(t, instrumentConverted, 2)
 
-	// Survey: ConvertGlob() uses glob conversion - patterns are treated as file globs
 	surveyConverted, err := args.Discovery.Survey.ConvertGlob()
 	require.NoError(t, err)
 	require.Len(t, surveyConverted, 1)
 
-	// Verify that both conversion methods succeed with glob patterns,
-	// demonstrating that users can use glob syntax for service discovery
 	require.NoError(t, args.Discovery.Instrument.Validate())
 	require.NoError(t, args.Discovery.Survey.Validate())
 
-	// Verify that the converted configurations enable instrumentation
 	require.True(t, len(cfg.Discovery.Instrument) > 0 || len(cfg.Discovery.Survey) > 0)
 }
 
@@ -1087,8 +1073,8 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 				Discovery: Discovery{
-					Instrument: Services{}, // Empty instrument and
-					Survey:     Services{}, // survey blocks.
+					Instrument: Services{},
+					Survey:     Services{},
 				},
 			},
 			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
@@ -1113,7 +1099,7 @@ func TestArguments_Validate(t *testing.T) {
 			args: Arguments{
 				Discovery: Discovery{
 					Services: Services{
-						{}, // Empty service
+						{},
 					},
 				},
 				Metrics: Metrics{
