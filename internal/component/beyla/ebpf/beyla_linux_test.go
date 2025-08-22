@@ -55,10 +55,11 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			}
 		}
 		discovery {
-			services {
+			instrument {
 				name = "test"
 				namespace = "default"
 				open_ports = "80,443"
+				exe_path = "/usr/bin/app*"
 				kubernetes {
 					namespace = "default"
 				}
@@ -68,10 +69,11 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 					arg = "0.5"
 				}
 			}
-			services {
+			instrument {
 				name = "test2"
 				namespace = "default"
-				open_ports = "80,443"
+				open_ports = "8080"
+				exe_path = "/opt/*/bin/service"
 				kubernetes {
 					pod_labels = {
 						test = "test",
@@ -79,9 +81,14 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				}
 				exports = ["metrics"]
 			}
-			exclude_services {
-				exe_path = "test3"
+			exclude_instrument {
+				exe_path = "/usr/bin/test*"
 				namespace = "default"
+			}
+			survey {
+				exe_path = "/app/microservice-*"
+				name = "microservice"
+				exports = ["metrics", "traces"]
 			}
 		}
 		metrics {
@@ -138,11 +145,15 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 	cfg, err := args.Convert()
 	require.NoError(t, err)
+
+	// Test routes configuration
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
 	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
 	require.Equal(t, "*", cfg.Routes.WildcardChar)
+
+	// Test attributes configuration
 	require.Equal(t, kubeflags.EnabledTrue, cfg.Attributes.Kubernetes.Enable)
 	require.Equal(t, 15*time.Second, cfg.Attributes.Kubernetes.InformersSyncTimeout)
 	require.Equal(t, 30*time.Minute, cfg.Attributes.Kubernetes.InformersResyncPeriod)
@@ -154,6 +165,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, []string{"*"}, sel.Include)
 	require.Equal(t, []string{"db_statement"}, sel.Exclude)
+
+	// Test network configuration
 	require.True(t, cfg.NetworkFlows.Enable)
 	require.Equal(t, "0.0.0.0", cfg.NetworkFlows.AgentIP)
 	require.Equal(t, []string{"eth0"}, cfg.NetworkFlows.Interfaces)
@@ -167,19 +180,37 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "local", cfg.NetworkFlows.AgentIPIface)
 	require.Equal(t, "ipv4", cfg.NetworkFlows.AgentIPType)
 	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
-	require.Len(t, cfg.Discovery.Services, 2)
-	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
-	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
-	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportMetrics))
-	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportTraces))
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Services[0].SamplerConfig)
-	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
-	require.Len(t, cfg.Discovery.ExcludeServices, 1)
-	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
-	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
+
+	// Test discovery configuration with new instrument fields
+	require.Len(t, cfg.Discovery.Instrument, 2)
+	require.Equal(t, "test", cfg.Discovery.Instrument[0].Name)
+	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
+	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
+	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExport(services.ExportMetrics))
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Instrument[0].SamplerConfig)
+	require.True(t, cfg.Discovery.Instrument[1].PodLabels["test"].IsSet())
+	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportMetrics))
+	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExport(services.ExportTraces))
+
+	// Test exclude_instrument configuration
+	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
+	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
+	require.Equal(t, "default", cfg.Discovery.ExcludeInstrument[0].Namespace)
+
+	// Test survey configuration (glob patterns for file system scanning)
+	require.Len(t, cfg.Discovery.Survey, 1)
+	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
+	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportMetrics))
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExport(services.ExportTraces))
+
+	// Test metrics configuration
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
+
+	// Test other configurations
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
@@ -197,6 +228,25 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"http", "grpc", "kafka"}, cfg.TracesReceiver.Instrumentations)
 	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
 	require.Len(t, cfg.TracesReceiver.Traces, 0)
+
+	// Test that glob patterns work properly in conversion
+	// Instrument: ConvertGlob() uses glob conversion - patterns are treated as file globs
+	instrumentConverted, err := args.Discovery.Instrument.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, instrumentConverted, 2)
+
+	// Survey: ConvertGlob() uses glob conversion - patterns are treated as file globs
+	surveyConverted, err := args.Discovery.Survey.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, surveyConverted, 1)
+
+	// Verify that both conversion methods succeed with glob patterns,
+	// demonstrating that users can use glob syntax for service discovery
+	require.NoError(t, args.Discovery.Instrument.Validate())
+	require.NoError(t, args.Discovery.Survey.Validate())
+
+	// Verify that the converted configurations enable instrumentation
+	require.True(t, len(cfg.Discovery.Instrument) > 0 || len(cfg.Discovery.Survey) > 0)
 }
 
 func TestArguments_TracePrinterDebug(t *testing.T) {
@@ -702,7 +752,7 @@ func TestConvert_Attributes(t *testing.T) {
 
 func TestConvert_Discovery(t *testing.T) {
 	args := Discovery{
-		Services: []Service{
+		Instrument: []Service{
 			{
 				Name:           "test",
 				Namespace:      "default",
@@ -734,44 +784,43 @@ func TestConvert_Discovery(t *testing.T) {
 				},
 			},
 		},
-		ExcludeServices: []Service{
+		ExcludeInstrument: []Service{
 			{
 				Name:      "test",
 				Namespace: "default",
 			},
 		},
-		DefaultExcludeServices: []Service{},
+		DefaultExcludeInstrument: []Service{},
 	}
 	config, err := args.Convert()
 
 	require.NoError(t, err)
-	require.Len(t, config.Services, 3)
-	require.Equal(t, "test", config.Services[0].Name)
-	require.Equal(t, "default", config.Services[0].Namespace)
-	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
-	require.True(t, config.Services[0].ContainersOnly)
-	require.True(t, config.Services[0].ExportModes.CanExport(services.ExportMetrics))
-	require.False(t, config.Services[0].ExportModes.CanExport(services.ExportTraces))
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Services[0].SamplerConfig)
-	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
-	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
+	require.Len(t, config.Instrument, 3)
+	require.Equal(t, "test", config.Instrument[0].Name)
+	require.Equal(t, "default", config.Instrument[0].Namespace)
+	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
+	require.True(t, config.Instrument[0].ContainersOnly)
+	require.True(t, config.Instrument[0].ExportModes.CanExport(services.ExportMetrics))
+	require.False(t, config.Instrument[0].ExportModes.CanExport(services.ExportTraces))
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Instrument[0].SamplerConfig)
+	require.True(t, config.Instrument[1].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Instrument[1].Metadata[services.AttrDeploymentName].IsSet())
+	_, exists := config.Instrument[1].Metadata[services.AttrDaemonSetName]
 	require.False(t, exists)
-	require.True(t, config.Services[2].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrPodName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrDeploymentName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrReplicaSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrStatefulSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrDaemonSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
-	require.True(t, config.Services[2].PodLabels["test"].IsSet())
-	require.True(t, config.Services[2].PodAnnotations["test"].IsSet())
-	require.NoError(t, config.Services.Validate())
-	require.Len(t, config.ExcludeServices, 1)
-	require.Equal(t, "test", config.ExcludeServices[0].Name)
-	require.Equal(t, "default", config.ExcludeServices[0].Namespace)
+	require.True(t, config.Instrument[2].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrPodName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrDeploymentName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrReplicaSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrStatefulSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrDaemonSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrOwnerName].IsSet())
+	require.True(t, config.Instrument[2].PodLabels["test"].IsSet())
+	require.True(t, config.Instrument[2].PodAnnotations["test"].IsSet())
+	require.NoError(t, config.Instrument.Validate())
+	require.Len(t, config.ExcludeInstrument, 1)
+	require.Equal(t, "test", config.ExcludeInstrument[0].Name)
+	require.Equal(t, "default", config.ExcludeInstrument[0].Namespace)
 	require.Equal(t, true, config.ExcludeOTelInstrumentedServices)
-	require.Empty(t, config.DefaultExcludeServices)
 }
 
 func TestConvert_Prometheus(t *testing.T) {
@@ -1038,17 +1087,17 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 				Discovery: Discovery{
-					Services: Services{}, // Empty services and
-					Survey:   Services{}, // survey blocks.
+					Instrument: Services{}, // Empty instrument and
+					Survey:     Services{}, // survey blocks.
 				},
 			},
-			wantErr: "discovery.services or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
 		},
 		{
 			name: "valid application configuration",
 			args: Arguments{
 				Discovery: Discovery{
-					Services: Services{
+					Instrument: Services{
 						{
 							OpenPorts: "80",
 						},
