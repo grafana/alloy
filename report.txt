@@ -1,0 +1,66 @@
+User reporter error messages  in logs
+
+
+Aug 14 16:02:27 xxx.com alloy[1811339]: ts=2025-08-14T16:02:27.047374198Z level=warn msg="failed to push to endpoint" component_path=/ component_id=pyroscope.write.endpoint endpoint=https://profiles-prod-008.grafana.net err="deadline_exceeded: context deadline exceeded"
+Aug 14 16:02:27 xxx.com alloy[1811339]: ts=2025-08-14T16:02:27.047434291Z level=warn msg="final error sending to profiles to endpoint" \
+    component_path=/ component_id=pyroscope.write.endpoint endpoint=https://profiles-prod-008.grafana.net \
+    err="deadline_exceeded: context deadline exceeded"
+Aug 14 16:02:27 xxx.com alloy[1811339]: ts=2025-08-14T16:02:27.047472964Z level=error msg="Failed to forward profiles requests" component_path=/ component_id=pyroscope.receive_http.aggregate err="unable to append series {AZ_ONLY=\"b\", ...} to appendable 0: deadline_exceeded: context deadline exceeded"
+Aug 14 16:02:27 xxx.com alloy[1811339]: ts=2025-08-14T16:02:27.04759138Z level=warn msg="POST /push.v1.PusherService/Push (500) 10.000290261s" component_path=/ component_id=pyroscope.receive_http.aggregate
+
+this is their config
+
+pyroscope.receive_http "aggregate" {
+  http {
+    listen_address = "...."
+    listen_port = 4041
+    conn_limit = 65536
+  }
+  forward_to = [ pyroscope.write.endpoint.receiver ]
+}
+
+some extra info
+
+Hi Grafana team!
+We just started our POC / Pyroscope evaluation for one of our internal components.
+We provisioned a Pyroscope instance on Grafana Cloud, and a single Grafana Alloy "Proxy" instance on an AWS EC2.
+Each dev host runs its own Grafana Alloy + eBPF profiler, and sends the profiles to this proxy.
+This proxy then sends the profiles to Pyroscope using a given token.
+Now my question is, this has been working pretty well with a small number of dev machines.
+However, it started failing to send profiles to Pyroscope when we enabled this in our CI/CD pipeline that creates a lot more machines.
+I'm seeing errors and warnings on the Alloy Proxy.
+Please see the logs in the :thread: below.
+It would be great if you could help us resolving this.
+
+it seem to happen when there are a lot of machines sending data to the proxy.
+
+
+
+
+NOTES
+
+===
+found thi on serverss, need investigate why
+25-08-21 06:54:50.045WARNts=2025-08-21T06:54:50.020759912Z caller=client.go:261 level=warn \
+    component=segment-writer-client tenant=999542 shard=5 instance_addr=10.11.182.220:9095 \
+    instance_id=pyroscope-segment-writer-1 attempts_left=5 \
+    msg="failed attempt to push data to segment writer" err="rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+
+make sure request id is propagated and visible in debug logs on pyroscope
+update loadgent to spawn 300 requests per second, smaller profile size, use faster internet connection - from the aws VM
+
+
+On customer side
+run the debug version
+check metrics
+    - pyroscope_fanout_latency
+    - new receive_http latency
+
+=== alloy patches ===
++ backport ID propagation
++ add latency metric histogram
+backport extra tracing
+
+
+
+

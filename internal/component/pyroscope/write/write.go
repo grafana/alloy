@@ -1,13 +1,19 @@
 package write
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/go-kit/log"
 	"io"
+	"math/rand"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -161,6 +167,7 @@ type fanOutClient struct {
 	config        Arguments
 	opts          component.Options
 	metrics       *metrics
+	debugLogger   log.Logger
 }
 
 // NewFanOut creates a new fan out client that will fan out to all endpoints.
@@ -185,12 +192,28 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		)
 		ingestClients[endpoint] = httpClient
 	}
+	debugLogger := opts.Logger
+	loggerFile := os.Getenv("PYROSCOPE_WRITE_TRACE_LOGGER")
+	if loggerFile != "" {
+		ff, err := os.Create(loggerFile)
+		if err != nil {
+			level.Error(debugLogger).Log("file", loggerFile, "err", err.Error(),
+				"msg", "falling back to the default component logger")
+		} else {
+			debugLogger = log.NewLogfmtLogger(log.NewSyncWriter(bufio.NewWriter(ff)))
+			debugLogger = log.With(debugLogger, "ts", log.DefaultTimestampUTC)
+		}
+	}
+	debugLogger = log.With(debugLogger,
+		alloyseed.HeaderName, uid,
+		"op", "pyroscope.write http trace")
 	return &fanOutClient{
 		pushClients:   pushClients,
 		ingestClients: ingestClients,
 		config:        config,
 		opts:          opts,
 		metrics:       metrics,
+		debugLogger:   debugLogger,
 	}, nil
 }
 
@@ -200,12 +223,33 @@ func (f *fanOutClient) Push(
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
 
+	defer f.observeLatency("-", "push_total")()
+
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
 		reqSize, profileCount = requestSize(req)
+		reqId                 = getDebugRequestId(req)
+		l                     = log.With(f.opts.Logger,
+			"debug_request_id", reqId,
+			"profile_size", reqSize,
+			"profile_count", profileCount,
+			//"endpoint", f.config.Endpoints[i].URL,
+			"time_push", TimeSince(time.Now()),
+		)
+		dl = log.With(f.debugLogger,
+			"debug_request_id", reqId,
+			"profile_size", reqSize,
+			"profile_count", profileCount,
+			//"endpoint", f.config.Endpoints[i].URL,
+			"time_push", TimeSince(time.Now()),
+		)
 	)
+	if deadline, ok := ctx.Deadline(); ok {
+		l = log.With(l, "push_deadline_ts", deadline, "push_deadline", Deadline(deadline))
+		dl = log.With(dl, "push_deadline_ts", deadline, "push_deadline", Deadline(deadline))
+	}
 
 	for i, client := range f.pushClients {
 		var (
@@ -220,17 +264,36 @@ func (f *fanOutClient) Push(
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(f.config.Endpoints[i].URL, "push_endpoint")()
 			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
 				req.Header().Set(k, v)
 			}
+			req.Header().Set("X-Debug-Request-ID", reqId)
+			tryNo := 0
 			for {
 				err = func() error {
+					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
 					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
 					defer cancel()
+					tryNo += 1
+					if deadline, ok := ctx.Deadline(); ok {
+						dl = log.With(dl, "ds_deadline_ts", deadline, "ds_deadline", Deadline(deadline))
+					}
+					reqdl := log.With(dl,
+						"time_req", TimeSince(time.Now()),
+						"try_no", tryNo,
+					)
+					reqdl.Log("msg", "push start")
+					ctx = httptrace.WithClientTrace(ctx, f.trace(reqdl))
 
 					_, err := client.Push(ctx, req)
+					if err != nil {
+						reqdl.Log("msg", "push failed", "err", err)
+					} else {
+						reqdl.Log("msg", "push OK")
+					}
 					return err
 				}()
 				if err == nil {
@@ -238,8 +301,9 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(l).
+					Log("msg", "failed to push to endpoint", "err", err)
+
 				if !shouldRetry(err) {
 					break
 				}
@@ -252,9 +316,12 @@ func (f *fanOutClient) Push(
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(l).
+					Log("msg", "final error sending to profiles to endpoint",
+						"err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
+			} else {
+				level.Debug(l).Log("msg", "successfully pushed to endpoint")
 			}
 		}()
 	}
@@ -264,6 +331,78 @@ func (f *fanOutClient) Push(
 		return nil, errs
 	}
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
+}
+
+func TimeSince(ts time.Time) log.Valuer {
+	return func() interface{} { return time.Since(ts).String() }
+}
+
+func Deadline(dl time.Time) log.Valuer {
+	return func() interface{} {
+		return dl.Sub(time.Now()).String()
+	}
+}
+
+func (f *fanOutClient) trace(l log.Logger) *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		GetConn: func(hostPort string) {
+			l.Log("msg", "get connection ", "hostPort", hostPort)
+		},
+		GotConn: func(info httptrace.GotConnInfo) {
+			l.Log("msg", "got connection ", "hostPort", fmt.Sprintf("%+v", info))
+		},
+		PutIdleConn: func(err error) {
+			l.Log("msg", "put idle connection", "err", err)
+		},
+		GotFirstResponseByte: func() {
+			l.Log("msg", "got a first response byte")
+		},
+		Got100Continue: nil,
+		Got1xxResponse: nil,
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			l.Log("msg", "DNS start", "info", fmt.Sprintf("%+v", info))
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			l.Log("msg", "DNS Done", "info", fmt.Sprintf("%+v", info))
+		},
+		ConnectStart: func(network, addr string) {
+			l.Log("msg", "connect start", "addr", addr, "network", network)
+		},
+		ConnectDone: func(network, addr string, err error) {
+			l.Log("msg", "connect done", "addr", addr, "network", network, "err", err)
+		},
+		TLSHandshakeStart: func() {
+			l.Log("msg", "TLS handshake start")
+		},
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+			l.Log("msg", "TLS handshake done", "state", fmt.Sprintf("%+v", state), "err", err)
+		},
+		WroteHeaderField: nil,
+		WroteHeaders: func() {
+			l.Log("msg", "wrote headers")
+		},
+		Wait100Continue: nil,
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			l.Log("msg", "wrote request", "info", fmt.Sprintf("%+v", info))
+		},
+	}
+}
+
+func getDebugRequestId(req *connect.Request[pushv1.PushRequest]) string {
+	ids := []string{}
+
+	for _, series := range req.Msg.Series {
+		for _, sample := range series.Samples {
+			if sample.ID != "" {
+				ids = append(ids, sample.ID)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		ids = append(ids, fmt.Sprintf("%016x", rand.Uint64()))
+	}
+	reqId := strings.Join(ids, ",")
+	return reqId
 }
 
 func shouldRetry(err error) bool {
@@ -375,6 +514,7 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	defer f.observeLatency("-", "ingest_total")()
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
@@ -416,10 +556,12 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
 			defer wg.Done()
 
 			for {
 				err = func() error {
+					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
 					u, err := url.Parse(endpoint.URL)
 					if err != nil {
 						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
@@ -501,6 +643,13 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {
+	t := time.Now()
+	return func() {
+		f.metrics.latency.WithLabelValues(endpoint, latencyType).Observe(time.Since(t).Seconds())
+	}
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.

@@ -50,6 +50,8 @@ Main (unreleased)
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
 
+- Add comprehensive latency metrics to `pyroscope.write` component with endpoint-specific tracking for both push and ingest operations. (@korniltsev, @claude)
+
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
 - Add `max_send_message_size` configuration option to `loki.source.api` component to control the maximum size of requests to the push API. (@thampiotr)

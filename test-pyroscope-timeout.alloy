@@ -1,0 +1,30 @@
+pyroscope.receive_http "proxy" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port = 4041
+    conn_limit = 65536
+  }
+  forward_to = [pyroscope.write.endpoint.receiver]
+}
+
+pyroscope.write "endpoint" {
+  endpoint {
+    //url = "https://profiles-prod-008.grafana.net"
+    url = "http://localhost:4040/"
+
+    basic_auth {
+      username = "1351761"
+      password = "glc_..."
+    }
+    
+
+    remote_timeout = "10s"
+
+  }
+}
+
+
+logging {
+  level = "debug"
+  format = "logfmt"
+}
