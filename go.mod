@@ -1125,9 +1125,9 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 replace k8s.io/client-go => k8s.io/client-go v0.32.6
 
 // Required for Beyla and OBI to work with Grafana's fork of the OpenTelemetry eBPF instrumentation (OBI)
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7
+replace go.opentelemetry.io/obi => github.com/ptodev/opentelemetry-ebpf-instrumentation v0.0.0-20250822161156-a5d73ec67bbe
 
-replace github.com/open-telemetry/opentelemetry-ebpf-instrumentation => github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7
+replace github.com/open-telemetry/opentelemetry-ebpf-instrumentation => github.com/ptodev/opentelemetry-ebpf-instrumentation v0.0.0-20250822161156-a5d73ec67bbe
 
 // Do not remove this until the bug breaking backwards compatibility is resolved & included in walqueue: https://github.com/deneonet/benc/issues/13
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7

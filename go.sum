@@ -1260,8 +1260,6 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec/go.mod h1:1qoZ74W1muNrTyeP2fUzUbg2UKD8AeX435xSCJNub7Y=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7 h1:TZz7cn2u9McG9q3809VBFFgqnm6lRxO3uzYg2Apzb7k=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.1.7/go.mod h1:NdbPrGj8eEbtzIf2Yl0NruvNj10f6p+/jNflz2VpaxI=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc h1:Qv8+wIvDB5c1liVKAcTNxgKTf/gEQSyPEAiVZXrSLR8=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc/go.mod h1:W40JSh7omwYanKBorFhknIBujk//sNY65rDfXqG++/4=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
@@ -2276,6 +2274,8 @@ github.com/prometheus/statsd_exporter v0.28.0/go.mod h1:Lq41vNkMLfiPANmI+uHb5/rp
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/protocolbuffers/protoscope v0.0.0-20221109213918-8e7a6aafa2c9 h1:arwj11zP0yJIxIRiDn22E0H8PxfF7TsTrc2wIPFIsf4=
 github.com/protocolbuffers/protoscope v0.0.0-20221109213918-8e7a6aafa2c9/go.mod h1:SKZx6stCn03JN3BOWTwvVIO2ajMkb/zQdTceXYhKw/4=
+github.com/ptodev/opentelemetry-ebpf-instrumentation v0.0.0-20250822161156-a5d73ec67bbe h1:NOg15u92bU+Jvhvlo2y2FM+4TyqD7uMrOjZBtOxx+rM=
+github.com/ptodev/opentelemetry-ebpf-instrumentation v0.0.0-20250822161156-a5d73ec67bbe/go.mod h1:TI4WWc8NvCzAWXllV7nHTR8f5hoGHlZ1+jNboFQjyaw=
 github.com/puzpuzpuz/xsync/v3 v3.5.1 h1:GJYJZwO6IdxN/IKbneznS6yPkVC+c3zyY/j19c++5Fg=
 github.com/puzpuzpuz/xsync/v3 v3.5.1/go.mod h1:VjzYrABPabuM4KyBh1Ftq6u8nhwY5tBPKP9jpmh0nnA=
 github.com/r3labs/diff/v3 v3.0.1 h1:CBKqf3XmNRHXKmdU7mZP1w7TV0pDyVCis1AUHtA4Xtg=
