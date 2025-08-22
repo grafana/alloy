@@ -53,7 +53,7 @@ You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 | `ignore_encoding_error` | `bool`     | Ignore errors when the configured encoder fails to decode Pub/Sub messages. Ignoring the error causes the receiver to drop the message.                                                                                    | false   | no       |
 | `insecure`              | `bool`     | Allows performing insecure SSL connections and transfers. This is useful when connecting to a local emulator instance. Only has effect if you set `endpoint`.                                                              | false   | no       |
 | `project`               | `string`   | The Google Cloud Project project identifier.                                                                                                                                                                               | `""`    | no       |
-| `timeout`               | `Duration` | Timeout for calls to Pub/Sub API                                                                                                                                                                                           | `"12s"` | no       |
+| `timeout`               | `Duration` | Timeout for calls to the Pub/Sub API.                                                                                                                                                                                      | `"12s"` | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
 
