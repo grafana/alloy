@@ -44,9 +44,11 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
-  - add `activity` collector for postgres (@gaantunes)
+  - add `query_sample` collector for postgres (@gaantunes)
 
 ### Enhancements
+
+- Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
@@ -80,8 +82,6 @@ Main (unreleased)
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
 
-- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
-
 - Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
 
 - Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
@@ -92,7 +92,14 @@ Main (unreleased)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
+v1.10.2
+-----------------
+
+### Bugfixes
+
 - Fix issue in `prometheus.write.queue` causing inability to increase shard count if existing WAL data was present on start. (@kgeckhart)
+
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
 
 v1.10.1
 -----------------

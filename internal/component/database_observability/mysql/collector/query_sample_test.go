@@ -2233,7 +2233,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 				),
 			)
 
-		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(updateSetupConsumers).WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 3))
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{

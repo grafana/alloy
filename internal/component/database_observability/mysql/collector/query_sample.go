@@ -74,7 +74,7 @@ WHERE
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
 		SET enabled = 'yes'
-		WHERE name = 'events_statements_cpu'`
+		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
 type QuerySampleArguments struct {
 	DB                          *sql.DB
