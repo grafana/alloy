@@ -131,7 +131,7 @@ func (hc HistogramConfig) Convert() (*spanmetricsconnector.HistogramConfig, erro
 
 type ExemplarsConfig struct {
 	Enabled         bool `alloy:"enabled,attr,optional"`
-	MaxPerDataPoint *int `alloy:"max_per_data_point,attr,optional"`
+	MaxPerDataPoint int  `alloy:"max_per_data_point,attr,optional"`
 }
 
 func (ec ExemplarsConfig) Convert() *spanmetricsconnector.ExemplarsConfig {

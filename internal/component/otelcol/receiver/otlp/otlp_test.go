@@ -142,8 +142,8 @@ func TestUnmarshalDefault(t *testing.T) {
 				},
 				ReadBufferSize: 524288,
 				Keepalive: configoptional.Some[configgrpc.KeepaliveServerConfig](configgrpc.KeepaliveServerConfig{
-					ServerParameters:  &configgrpc.KeepaliveServerParameters{},
-					EnforcementPolicy: &configgrpc.KeepaliveEnforcementPolicy{},
+					ServerParameters:  configoptional.Some[configgrpc.KeepaliveServerParameters](configgrpc.KeepaliveServerParameters{}),
+					EnforcementPolicy: configoptional.Some[configgrpc.KeepaliveEnforcementPolicy](configgrpc.KeepaliveEnforcementPolicy{}),
 				}),
 			}),
 			HTTP: configoptional.Some[otlpreceiver.HTTPConfig](otlpreceiver.HTTPConfig{

@@ -220,14 +220,14 @@ type StaticResolver struct {
 	Hostnames []string `alloy:"hostnames,attr"`
 }
 
-func (r *StaticResolver) Convert() *loadbalancingexporter.StaticResolver {
+func (r *StaticResolver) Convert() configoptional.Optional[loadbalancingexporter.StaticResolver] {
 	if r == nil {
-		return nil
+		return configoptional.None[loadbalancingexporter.StaticResolver]()
 	}
 
-	return &loadbalancingexporter.StaticResolver{
+	return configoptional.Some(loadbalancingexporter.StaticResolver{
 		Hostnames: r.Hostnames,
-	}
+	})
 }
 
 // DNSResolver defines the configuration for the DNS resolver
@@ -249,17 +249,17 @@ func (r *DNSResolver) SetToDefault() {
 	}
 }
 
-func (r *DNSResolver) Convert() *loadbalancingexporter.DNSResolver {
+func (r *DNSResolver) Convert() configoptional.Optional[loadbalancingexporter.DNSResolver] {
 	if r == nil {
-		return nil
+		return configoptional.None[loadbalancingexporter.DNSResolver]()
 	}
 
-	return &loadbalancingexporter.DNSResolver{
+	return configoptional.Some(loadbalancingexporter.DNSResolver{
 		Hostname: r.Hostname,
 		Port:     r.Port,
 		Interval: r.Interval,
 		Timeout:  r.Timeout,
-	}
+	})
 }
 
 // KubernetesResolver defines the configuration for the k8s resolver
@@ -280,17 +280,17 @@ func (r *KubernetesResolver) SetToDefault() {
 	}
 }
 
-func (r *KubernetesResolver) Convert() *loadbalancingexporter.K8sSvcResolver {
+func (r *KubernetesResolver) Convert() configoptional.Optional[loadbalancingexporter.K8sSvcResolver] {
 	if r == nil {
-		return nil
+		return configoptional.None[loadbalancingexporter.K8sSvcResolver]()
 	}
 
-	return &loadbalancingexporter.K8sSvcResolver{
+	return configoptional.Some(loadbalancingexporter.K8sSvcResolver{
 		Service:         r.Service,
 		Ports:           append([]int32{}, r.Ports...),
 		Timeout:         r.Timeout,
 		ReturnHostnames: r.ReturnHostnames,
-	}
+	})
 }
 
 // Possible values for "health_status"
@@ -339,9 +339,9 @@ func (r *AWSCloudMapResolver) Validate() error {
 	}
 }
 
-func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolver {
+func (r *AWSCloudMapResolver) Convert() configoptional.Optional[loadbalancingexporter.AWSCloudMapResolver] {
 	if r == nil {
-		return nil
+		return configoptional.None[loadbalancingexporter.AWSCloudMapResolver]()
 	}
 
 	// Deep copy the port
@@ -351,14 +351,14 @@ func (r *AWSCloudMapResolver) Convert() *loadbalancingexporter.AWSCloudMapResolv
 		port = &portNum
 	}
 
-	return &loadbalancingexporter.AWSCloudMapResolver{
+	return configoptional.Some(loadbalancingexporter.AWSCloudMapResolver{
 		NamespaceName: r.NamespaceName,
 		ServiceName:   r.ServiceName,
 		HealthStatus:  types.HealthStatusFilter(r.HealthStatus),
 		Interval:      r.Interval,
 		Timeout:       r.Timeout,
 		Port:          port,
-	}
+	})
 }
 
 // Extensions implements exporter.Arguments.

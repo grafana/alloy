@@ -116,10 +116,10 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 
 func toResolver(cfg loadbalancingexporter.ResolverSettings) loadbalancing.ResolverSettings {
 	return loadbalancing.ResolverSettings{
-		Static:      toStaticResolver(cfg.Static),
-		DNS:         toDNSResolver(cfg.DNS),
-		Kubernetes:  toKubernetesResolver(cfg.K8sSvc),
-		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap),
+		Static:      toStaticResolver(cfg.Static.Get()),
+		DNS:         toDNSResolver(cfg.DNS.Get()),
+		Kubernetes:  toKubernetesResolver(cfg.K8sSvc.Get()),
+		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap.Get()),
 	}
 }
 
