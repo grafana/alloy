@@ -243,8 +243,7 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 	c.dbConnection = dbConnection
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	entryHandler = addLokiLabels(entryHandler, c.instanceKey)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
