@@ -37,6 +37,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"select * from some_table where id = 1",
 				"70000000",
 				"20000000",
@@ -58,7 +59,40 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
+			},
+		},
+		{
+			name: "select query with traceparent",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"890",
+				"123",
+				"234",
+				"some_digest",
+				"select * from some_table where id = ?",
+				"select * from some_table where id = 1 /*traceparent='00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01'*/",
+				"70000000",
+				"20000000",
+				"10000000",
+				"5",
+				"5",
+				"0",
+				"0",
+				"456",
+				"457",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			}},
+			logsLabels: []model.LabelSet{
+				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01\"",
 			},
 		},
 		{
@@ -70,6 +104,7 @@ func TestQuerySample(t *testing.T) {
 				"234",
 				"some_digest",
 				"insert into some_table (`id1`, `id2`, `id3`, `id...",
+				"insert into some_table (`id1`, `id2`, `id3`, `id...)",
 				"70000000",
 				"20000000",
 				"10000000",
@@ -91,6 +126,7 @@ func TestQuerySample(t *testing.T) {
 				"124",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"select * from some_table where id = 1",
 				"70000000",
 				"20000000",
@@ -112,7 +148,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"124\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"124\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 		{
@@ -123,6 +159,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ? /*traceparent='00-abc...",
 				"select * from some_table where id = 1 /*traceparent='00-abc...",
 				"70000000",
 				"20000000",
@@ -144,7 +181,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 		{
@@ -155,6 +192,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ? /* comment that's closed */ and name = 'test...",
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
 				"70000000",
 				"20000000",
@@ -184,6 +222,7 @@ func TestQuerySample(t *testing.T) {
 				"234",
 				"some_digest",
 				"START TRANSACTION",
+				"START TRANSACTION",
 				"70000000",
 				"20000000",
 				"10000000",
@@ -204,7 +243,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				`level="info" schema="some_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" digest_text="start transaction" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+				`level="info" schema="some_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" digest_text="start transaction" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" traceparent=""`,
 			},
 		},
 		{
@@ -215,6 +254,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"select * from some_table where id = 1",
 				"70000000",
 				"20000000",
@@ -238,6 +278,7 @@ func TestQuerySample(t *testing.T) {
 				"234",
 				"some_digest",
 				"insert into...",
+				"insert into...",
 				"70000000",
 				"20000000",
 				"10000000",
@@ -258,7 +299,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 		{
@@ -269,6 +310,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"select * from some_table where id = 1",
 				"70000000",
 				"20000000",
@@ -291,6 +333,7 @@ func TestQuerySample(t *testing.T) {
 				"124",
 				"235",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"select * from some_table where id = 1",
 				"70000000",
 				"20000000",
@@ -313,8 +356,8 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-				"level=\"info\" schema=\"some_other_schema\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
+				"level=\"info\" schema=\"some_other_schema\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 		{
@@ -325,6 +368,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
 				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
 				"70000000",
 				"20000000",
@@ -346,7 +390,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from ( select `id` , `name` from `employees_us_east` union select `id` , `name` from `employees_us_west` ) as `employees_us` union select `id` , `name` from `employees_emea`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from ( select `id` , `name` from `employees_us_east` union select `id` , `name` from `employees_us_west` ) as `employees_us` union select `id` , `name` from `employees_emea`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 		{
@@ -357,6 +401,7 @@ func TestQuerySample(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"SHOW CREATE TABLE some_table",
 				"SHOW CREATE TABLE some_table",
 				"70000000",
 				"20000000",
@@ -378,7 +423,7 @@ func TestQuerySample(t *testing.T) {
 				{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"show create table `some_table`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"show create table `some_table`\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"",
 			},
 		},
 	}
@@ -421,7 +466,7 @@ func TestQuerySample(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 				1e12, // initial timerBookmark
 				1e12,
 			).RowsWillBeClosed().
@@ -433,6 +478,7 @@ func TestQuerySample(t *testing.T) {
 						"statements.END_EVENT_ID",
 						"statements.DIGEST",
 						"statements.DIGEST_TEXT",
+						"statements.SQL_TEXT",
 						"statements.TIMER_END",
 						"statements.TIMER_WAIT",
 						"statements.CPU_TIME",
@@ -502,7 +548,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -514,6 +560,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -536,6 +583,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						"select * from some_table where id = ?",
 						"select * from some_table where id = 1",
 						"70000000",
 						"20000000",
@@ -575,9 +623,9 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" traceparent=\"\"", lokiEntries[1].Line)
 	})
 
 	t.Run("query sample and multiple wait events are collected", func(t *testing.T) {
@@ -599,7 +647,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -611,6 +659,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -634,6 +683,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"234",
 						"some_digest",
 						"select * from some_table where id = 1",
+						"select * from some_table where id = ?",
 						"70000000",
 						"20000000",
 						"10000000",
@@ -657,6 +707,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"234",
 						"some_digest",
 						"select * from some_table where id = 1",
+						"select * from some_table where id = ?",
 						"70000000",
 						"20000000",
 						"10000000",
@@ -679,6 +730,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						"select * from some_table where id = ?",
 						"select * from some_table where id = 1",
 						"70000000",
 						"20000000",
@@ -702,6 +754,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						"select * from some_table where id = ?",
 						"select * from some_table where id = 1",
 						"70000000",
 						"20000000",
@@ -741,15 +794,15 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\" traceparent=\"\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\" traceparent=\"\"", lokiEntries[2].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[3].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[3].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\" traceparent=\"\"", lokiEntries[3].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[4].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[4].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\" traceparent=\"\"", lokiEntries[4].Line)
 	})
 
 	t.Run("query sample and its wait event and another query sample are collected", func(t *testing.T) {
@@ -771,7 +824,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -783,6 +836,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -805,6 +859,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						"select * from some_table where id = ?",
 						"select * from some_table where id = 1",
 						"70000000",
 						"20000000",
@@ -828,6 +883,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 						"126",
 						"234",
 						"another_digest",
+						"select * from another_table where id = ?",
 						"select * from another_table where id = 1",
 						"70000000",
 						"20000000",
@@ -867,11 +923,11 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\" traceparent=\"\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[2].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" digest_text=\"select * from `another_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" digest_text=\"select * from `another_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[2].Line)
 	})
 
 	t.Run("wait event with disabled sql redaction", func(t *testing.T) {
@@ -910,7 +966,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, sqlTextField, sqlTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			1e12,
 		).RowsWillBeClosed().
@@ -922,6 +978,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -937,7 +994,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
-					"statements.SQL_TEXT",
 				}).AddRow(
 					"some_schema",
 					"890",
@@ -945,6 +1001,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"234",
 					"some_digest",
 					"select * from some_table where id = ?",
+					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
 					"10000000",
@@ -960,7 +1017,6 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 					"wait_object_name",
 					"wait_object_type",
 					"100000000",
-					"select * from some_table where id = 1",
 				),
 			)
 
@@ -983,9 +1039,9 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_WAIT_EVENT, "instance": "mysql-db"}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" traceparent=\"\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
 	})
 }
 
@@ -1028,7 +1084,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, sqlTextField, sqlTextNotNullClause, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1037,6 +1093,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -1052,7 +1109,6 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
-					"statements.SQL_TEXT",
 				}).AddRow(
 					"some_schema",
 					"890",
@@ -1060,6 +1116,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"234",
 					"some_digest",
 					"select * from some_table where id = ?",
+					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
 					"10000000",
@@ -1075,7 +1132,6 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
-					"select * from some_table where id = 1",
 				),
 			)
 
@@ -1098,7 +1154,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -1138,7 +1194,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1147,6 +1203,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -1169,6 +1226,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 					"234",
 					"some_digest",
 					"select * from some_table where id = ?",
+					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
 					"10000000",
@@ -1206,7 +1264,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1249,7 +1307,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1269,7 +1327,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1281,6 +1339,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -1302,6 +1361,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = ?",
 					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
@@ -1340,7 +1400,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -1379,7 +1439,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1388,6 +1448,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -1409,6 +1470,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = ?",
 					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
@@ -1431,6 +1493,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"124",
 					"235",
 					"some_digest",
+					"select * from some_table where id = ?",
 					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
@@ -1469,7 +1532,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -1508,7 +1571,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).WillReturnError(fmt.Errorf("connection error"))
@@ -1522,7 +1585,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).RowsWillBeClosed().
@@ -1534,6 +1597,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -1555,6 +1619,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = ?",
 					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
@@ -1593,7 +1658,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_SAMPLE, "instance": "mysql-db"}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1656,7 +1721,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1666,6 +1731,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"statements.END_EVENT_ID",
 			"statements.DIGEST",
 			"statements.DIGEST_TEXT",
+			"statements.SQL_TEXT",
 			"statements.TIMER_END",
 			"statements.TIMER_WAIT",
 			"statements.CPU_TIME",
@@ -1689,6 +1755,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				234,                   // END_EVENT_ID
 				"some digest",         // digest
 				"SELECT * FROM users", // digest_text
+				"SELECT * FROM users", // sql_text
 				2e12,                  // timer_end
 				2e12,                  // timer_wait
 				555555,                // cpu_time
@@ -1734,7 +1801,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"op":       OP_QUERY_SAMPLE,
 			"instance": "some instance key",
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" digest_text=\"select * from `users`\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" digest_text=\"select * from `users`\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\" traceparent=\"\"", lokiClient.Received()[0].Line)
 	})
 
 	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {
@@ -1763,6 +1830,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				statements.END_EVENT_ID,
 				statements.DIGEST,
 				statements.DIGEST_TEXT,
+				statements.SQL_TEXT,
 				statements.TIMER_END,
 				statements.TIMER_WAIT,
 				statements.CPU_TIME,
@@ -1797,6 +1865,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"end_event_id",
 			"digest",
 			"digest_text",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"cpu_time",
@@ -1840,7 +1909,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
 			3e12,
 			10e12, // uptimeLimit is calculated as uptime "modulo" overflows: (uptime - 1 overflow) in picoseconds
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1850,6 +1919,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"end_event_id",
 			"digest",
 			"digest_text",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"cpu_time",
@@ -1891,7 +1961,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, beginningAndEndOfTimeline)).WithArgs(
 			3e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1902,6 +1972,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"current_schema",
 			"digest_text",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"cpu_time",
 			"rows_examined",
@@ -1933,7 +2004,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+13,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
 			10e12, // asserts timerBookmark has been updated to the previous uptimeLimit
 			13e12, // asserts uptimeLimit is now updated to the current uptime "modulo" overflows
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1976,7 +2047,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 				10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2020,7 +2091,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2080,7 +2151,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
 		c := &QuerySample{
 			dbConnection:  db,
@@ -2097,7 +2168,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			2e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2249,7 +2320,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -2261,6 +2332,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
 					"statements.DIGEST_TEXT",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.CPU_TIME",
@@ -2282,6 +2354,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = ?",
 					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
