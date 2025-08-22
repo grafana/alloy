@@ -296,10 +296,7 @@ func (c *Component) startCollectors() error {
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
-		"job":      database_observability.JobName,
-		"instance": model.LabelValue(c.instanceKey),
-	}).Wrap(entryHandler)
+	entryHandler = addLokiLabels(entryHandler, c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -512,4 +509,13 @@ func formatDSN(dsn string, params ...string) string {
 		dsn = dsn + "?"
 	}
 	return dsn + strings.Join(params, "&")
+}
+
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(instanceKey),
+	}).Wrap(entryHandler)
+
+	return entryHandler
 }
