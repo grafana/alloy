@@ -86,8 +86,6 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			return err
 		}
 
-		c.running.Store(true)
-
 		host, _, err := net.SplitHostPort(cfg.Addr)
 		if err == nil && host != "" {
 			if strings.HasSuffix(host, "rds.amazonaws.com") {
@@ -106,6 +104,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			}
 		}
 	}
+	c.running.Store(true)
 
 	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
 	return nil
