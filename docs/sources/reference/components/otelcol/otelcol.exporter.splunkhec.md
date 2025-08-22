@@ -49,7 +49,7 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | Block                                                      | Description                                                                    | Required |
 |------------------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`splunk`][splunk]                                         | Configures the Splunk HEC exporter.                                            | yes      |
-| `splunk` > [`batcher`][batcher]                            | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `splunk` > [`batcher`][batcher]                            | (Deprecated) Configures batching requests based on a timeout and a minimum number of items. | no       |
 | `splunk` > [`heartbeat`][heartbeat]                        | Configures the exporters heartbeat settings.                                   | no       |
 | `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields]      | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
 | `splunk` > [`telemetry`][telemetry]                        | Configures the exporters telemetry.                                            | no       |
@@ -102,6 +102,10 @@ The following arguments are supported:
 | `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                        | no       |
 
 #### `batcher`
+
+{{< admonition type="warning" >}}
+The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
+{{< /admonition >}}
 
 | Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
 |-----------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|

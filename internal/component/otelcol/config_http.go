@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/collector/config/configcompression"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 // HTTPServerArguments holds shared settings for components which launch HTTP
@@ -48,18 +49,18 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 
 	// If auth is set by the user retrieve the associated extension from the handler.
 	// if the extension does not support server auth an error will be returned.
-	var authentication *otelconfighttp.AuthConfig
+	var authentication configoptional.Optional[otelconfighttp.AuthConfig]
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
 			return nil, err
 		}
 
-		authentication = &otelconfighttp.AuthConfig{
+		authentication = configoptional.Some(otelconfighttp.AuthConfig{
 			Config: otelconfigauth.Config{
 				AuthenticatorID: ext.ID,
 			},
-		}
+		})
 	}
 
 	return &otelconfighttp.ServerConfig{
@@ -97,17 +98,20 @@ type CORSArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *CORSArguments) Convert() *otelconfighttp.CORSConfig {
+func (args *CORSArguments) Convert() configoptional.Optional[otelconfighttp.CORSConfig] {
+	var res configoptional.Optional[otelconfighttp.CORSConfig]
 	if args == nil {
-		return nil
+		return res
 	}
 
-	return &otelconfighttp.CORSConfig{
+	res = configoptional.Some(otelconfighttp.CORSConfig{
 		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
 		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
 
 		MaxAge: args.MaxAge,
-	}
+	})
+
+	return res
 }
 
 // HTTPClientArguments holds shared HTTP settings for components which launch
@@ -149,13 +153,13 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 	}
 
 	// Configure the authentication if args.Auth is set.
-	var authentication *otelconfigauth.Config
+	var authentication configoptional.Optional[otelconfigauth.Config]
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
-		authentication = &otelconfigauth.Config{AuthenticatorID: ext.ID}
+		authentication = configoptional.Some(otelconfigauth.Config{AuthenticatorID: ext.ID})
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)

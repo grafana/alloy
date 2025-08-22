@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -41,7 +42,7 @@ func TestConfigConversion(t *testing.T) {
 			WriteBufferSize:      0,
 			Timeout:              10000000000,
 			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Config)(nil),
+			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -67,18 +68,12 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
-				MinSize: 8192,
-				MaxSize: 0,
-				Sizer: func() exporterhelper.RequestSizerType {
-					var s exporterhelper.RequestSizerType
-					require.NoError(t, s.UnmarshalText([]byte("items")))
-					return s
-				}(),
-			},
+			Sizer:        exporterhelper.RequestSizerTypeItems,
+			MinSize:      8192,
+			MaxSize:      0,
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -131,7 +126,7 @@ func TestConfigConversion(t *testing.T) {
 			WriteBufferSize:      0,
 			Timeout:              15000000000,
 			Headers:              map[string]configopaque.String(nil),
-			Auth:                 (*configauth.Config)(nil),
+			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
 			MaxIdleConns:         100,
 			MaxIdleConnsPerHost:  0,
@@ -156,18 +151,11 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
 		},
-		BatcherConfig: exporterhelper.BatcherConfig{ //nolint:staticcheck
+		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
 			Enabled:      false,
 			FlushTimeout: 200000000,
-			SizeConfig: exporterhelper.SizeConfig{ //nolint:staticcheck
-				MinSize: 8192,
-				MaxSize: 0,
-				Sizer: func() exporterhelper.RequestSizerType {
-					var s exporterhelper.RequestSizerType
-					require.NoError(t, s.UnmarshalText([]byte("items")))
-					return s
-				}(),
-			},
+			Sizer:        exporterhelper.RequestSizerTypeItems,
+			MinSize:      8192,
 		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
