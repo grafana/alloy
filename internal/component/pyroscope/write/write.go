@@ -199,6 +199,7 @@ func (f *fanOutClient) Push(
 	ctx context.Context,
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
+
 	defer f.observeLatency("-", "push_total")()
 	var (
 		wg                    sync.WaitGroup
