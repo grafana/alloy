@@ -137,13 +137,120 @@ To debug using the UI:
 
 ## Examine logs
 
-Logs may also help debug issues with {{< param "PRODUCT_NAME" >}}.
+{{< param "PRODUCT_NAME" >}} provides different log levels that help you determine the root cause of issues.
+You can configure the log level by using the [`--log.level` flag](../reference/cli/run.md#logging).
 
-To reduce logging noise, many components hide debugging info behind debug-level log lines.
-It's recommended that you configure the [`logging` block][logging] to show debug-level log lines when debugging issues with {{< param "PRODUCT_NAME" >}}.
+{{< admonition type="note" >}}
+Refer to [logging][] for details on log configuration options in the configuration file.
 
-The location of {{< param "PRODUCT_NAME" >}} logs is different based on how it's deployed.
-Refer to the [`logging` block][logging] page to see how to find logs for your system.
+[logging]: ../../reference/config-blocks/logging/
+{{< /admonition >}}
+
+Logs from {{< param "PRODUCT_NAME" >}} are in `logfmt` format.
+You can retrieve the logs in different ways depending on your platform and installation method:
+
+**Linux:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} with systemd, use `journalctl -u alloy`.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**macOS:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} with Homebrew as a service, use `brew services info alloy` to check status and `tail -f $(brew --prefix)/var/log/alloy.log` for logs.
+* If you're running {{< param "PRODUCT_NAME" >}} with launchd, use `log show --predicate 'process == "alloy"' --info` or check `/usr/local/var/log/alloy.log`.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**Windows:**
+
+* If you're running {{< param "PRODUCT_NAME" >}} as a Windows service, check the Windows Event Viewer under **Windows Logs** > **Application** for Alloy-related events.
+* If you're running {{< param "PRODUCT_NAME" >}} with Chocolatey or manually installed, check the log files in `%PROGRAMDATA%\Grafana\Alloy\logs\` or the directory specified in your configuration.
+* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
+
+**All platforms:**
+
+* {{< param "PRODUCT_NAME" >}} writes logs to `stdout` if started directly without a service manager.
+
+### Common log messages
+
+The following log messages are normal during {{< param "PRODUCT_NAME" >}} operation:
+
+#### Component lifecycle messages
+
+During normal startup and operation, you'll see messages about component lifecycle:
+
+**Component startup and initialization:**
+
+```text
+level=info msg="starting controller"
+level=info msg="starting server"
+level=info msg="starting server" addr=localhost:8080
+level=info msg="started scheduled components"
+```
+
+**Component updates and configuration changes:**
+
+```text
+level=info msg="configuration loaded"
+level=info msg="module content loaded"
+level=info msg="started scheduled components"
+level=info msg="terminating server"
+```
+
+**Component health reporting:**
+
+```text
+level=info msg="started scheduled components"
+level=warn msg="failed to start scheduled component" err="connection refused"
+level=warn msg="the discovery.process component only works on linux; enabling it otherwise will do nothing"
+```
+
+#### Cluster operation messages
+
+If clustering is enabled, you'll see messages about cluster operations:
+
+**Normal startup and peer discovery:**
+
+```text
+level=info msg="starting cluster node" peers_count=2 peers=192.168.1.10:12345,192.168.1.11:12345 advertise_addr=192.168.1.12:12345
+level=info msg="using provided peers for discovery" join_peers="192.168.1.10:12345, 192.168.1.11:12345"
+level=info msg="discovered peers" peers_count=3 peers=192.168.1.10:12345,192.168.1.11:12345,192.168.1.12:12345
+level=info msg="rejoining peers" peers_count=2 peers=192.168.1.10:12345,192.168.1.11:12345
+```
+
+**Cluster size management:**
+
+```text
+level=info msg="minimum cluster size reached, marking cluster as ready to admit traffic" minimum_cluster_size=3 peers_count=3
+level=warn msg="minimum cluster size requirements are not met - marking cluster as not ready for traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
+level=warn msg="deadline passed, marking cluster as ready to admit traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
+```
+
+**Normal cluster operations:**
+
+```text
+level=debug msg="found an IP cluster join address" addr=192.168.1.10:12345
+level=debug msg="received DNS query response" addr=cluster.example.com record_type=A records_count=3
+```
+
+#### Expected warnings
+
+Some warnings are normal during startup or cluster changes:
+
+```text
+level=warn msg="failed to get peers to join at startup; will create a new cluster" err="no peers available"
+level=warn msg="failed to connect to peers; bootstrapping a new cluster" err="connection refused"
+level=warn msg="failed to resolve provided join address" addr=unavailable-node:12345
+```
+
+#### Problematic messages
+
+These messages indicate issues that require attention:
+
+```text
+level=error msg="failed to bootstrap a fresh cluster with no peers" err="bind: address already in use"
+level=error msg="failed to rejoin list of peers" err="connection timeout"
+level=warn msg="failed to refresh list of peers" err="dns resolution failed"
+```
 
 ## Debug clustering issues
 
@@ -167,5 +274,4 @@ To debug issues when using [clustering][], check for the following symptoms.
 Some issues that appear to be clustering issues may be symptoms of other issues, for example, problems with scraping or service discovery can result in missing metrics for an Alloy instance that can be interpreted as a node not joining the cluster.
 {{< /admonition >}}
 
-[logging]: ../../reference/config-blocks/logging/
 [clustering]: ../../get-started/clustering/
