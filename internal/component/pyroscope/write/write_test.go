@@ -56,6 +56,7 @@ func Test_Write_FanOut(t *testing.T) {
 					{Name: "job", Value: "foo"},
 				}, req.Msg.Series[0].Labels)
 				require.Equal(t, []byte("pprofraw"), req.Msg.Series[0].Samples[0].RawProfile)
+				require.Equal(t, "test-request-id", req.Msg.Series[0].Samples[0].ID)
 				return &connect.Response[pushv1.PushResponse]{}, err
 			},
 		))
@@ -116,7 +117,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.EqualErrorf(t, err, "unknown: test", "expected error to be test")
 		require.Equal(t, serverCount, pushTotal.Load())
@@ -132,7 +133,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.NoError(t, err)
 		require.Equal(t, serverCount-1, pushTotal.Load())
@@ -149,7 +150,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.Error(t, err)
 		require.Equal(t, int32(3), pushTotal.Load())
