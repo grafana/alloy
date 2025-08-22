@@ -69,12 +69,13 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 
-
 ### `cloud_provider`
 
-The `cloud_provider`block has no attributes.
-The `cloudprovider` block enables you to supply information related to the cloud provider that hosts the database under observation. This information will be appended to metrics collected as labels for easier filtering and grouping.
-It contains an [`aws`][aws] block.
+The `cloud_provider` block has no attributes.
+It contains zero or more [`aws`][aws] blocks.
+You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
+This information is appended as labels to the collected metrics.
+The labels make it easier for you to filter and group your metrics.
 
 ### `aws`
 
