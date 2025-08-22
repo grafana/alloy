@@ -233,6 +233,5 @@ func Test_addLokiLabels(t *testing.T) {
 			"instance": model.LabelValue("some-instance-key"),
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
-
 	})
 }

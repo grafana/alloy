@@ -244,10 +244,7 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
-		"job":      database_observability.JobName,
-		"instance": model.LabelValue(c.instanceKey),
-	}).Wrap(entryHandler)
+	entryHandler = addLokiLabels(entryHandler, c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -272,7 +269,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QuerySampleName] {
 		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                    dbConnection,
-			InstanceKey:           c.instanceKey,
 			CollectInterval:       c.args.QuerySampleCollectInterval,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
@@ -381,4 +377,13 @@ func instanceKey(dsn string) (string, error) {
 		hostport += fmt.Sprintf(":%s", p)
 	}
 	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
+}
+
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(instanceKey),
+	}).Wrap(entryHandler)
+
+	return entryHandler
 }
