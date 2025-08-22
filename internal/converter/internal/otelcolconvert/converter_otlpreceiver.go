@@ -124,8 +124,8 @@ func toKeepaliveServerArguments(cfg *configgrpc.KeepaliveServerConfig) *otelcol.
 	}
 
 	return &otelcol.KeepaliveServerArguments{
-		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters),
-		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy),
+		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters.Get()),
+		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy.Get()),
 	}
 }
 

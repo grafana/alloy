@@ -121,18 +121,21 @@ type KeepaliveServerParamaters struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveServerParamaters) Convert() *otelconfiggrpc.KeepaliveServerParameters {
+func (args *KeepaliveServerParamaters) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters] {
+	var res configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters]
 	if args == nil {
-		return nil
+		return res
 	}
 
-	return &otelconfiggrpc.KeepaliveServerParameters{
+	res = configoptional.Some(otelconfiggrpc.KeepaliveServerParameters{
 		MaxConnectionIdle:     args.MaxConnectionIdle,
 		MaxConnectionAge:      args.MaxConnectionAge,
 		MaxConnectionAgeGrace: args.MaxConnectionAgeGrace,
 		Time:                  args.Time,
 		Timeout:               args.Timeout,
-	}
+	})
+
+	return res
 }
 
 // KeepaliveEnforcementPolicy holds shared keepalive settings for components
@@ -143,15 +146,18 @@ type KeepaliveEnforcementPolicy struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveEnforcementPolicy) Convert() *otelconfiggrpc.KeepaliveEnforcementPolicy {
+func (args *KeepaliveEnforcementPolicy) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy] {
+	var res configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy]
 	if args == nil {
-		return nil
+		return res
 	}
 
-	return &otelconfiggrpc.KeepaliveEnforcementPolicy{
+	res = configoptional.Some(otelconfiggrpc.KeepaliveEnforcementPolicy{
 		MinTime:             args.MinTime,
 		PermitWithoutStream: args.PermitWithoutStream,
-	}
+	})
+
+	return res
 }
 
 // GRPCClientArguments holds shared gRPC settings for components which launch
