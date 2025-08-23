@@ -28,6 +28,7 @@ const (
 const (
 	selectDatabaseName = `SELECT current_database()`
 
+	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
 	SELECT 
 	    nspname as schema_name
@@ -38,34 +39,49 @@ const (
 	    AND nspname NOT LIKE 'pg_temp_%'
 	    AND nspname NOT LIKE 'pg_toast_%'`
 
+	// selectTableNames gets table names for a specific schema
+	/*
+		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')  -- filter for application-facing objects
+	*/
 	selectTableNames = `
 	SELECT 
 		pg_class.relname as table_name
 	FROM pg_catalog.pg_class pg_class
 	JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
 	WHERE pg_namespace.nspname = $1 
-		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')  -- filter for application-facing objects
+		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')
 		AND pg_class.relname NOT LIKE 'pg_%'`
 
+	// selectColumnNames retrieves information about columns in a specified table
+	/*
+		pg_catalog.pg_get_expr: system function used to convert stored default value expressions back into human-readable SQL text
+		attidentity: indicates if column is an IDENTITY column (part of auto-increment detection)
+		pg_attribute: stores column information
+		pg_attrdef: stores default values for columns
+		pg_constraint: stores primary key information
+		attr.attrelid = $1::regclass -- filter by the table name
+		AND attr.attnum > 0  -- no system columns
+		AND NOT attr.attisdropped -- no dropped columns`
+	*/
 	selectColumnNames = `
 	SELECT
 		attr.attname as column_name,
 		attr.atttypid::regtype as column_type,
 		attr.attnotnull as not_nullable,
-		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default, -- PostgreSQL system function used to convert stored default value expressions back into human-readable SQL text
-		attr.attidentity as identity_generation, -- IDENTITY column will be flagged as auto-increment: identity generation type, if any
+		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default,
+		attr.attidentity as identity_generation,
 		CASE 
 		    WHEN constraint_pk.contype = 'p' THEN true 
 		    ELSE false 
 		END as is_primary_key
 	FROM
-		pg_attribute attr -- pg_attribute stores column information
-		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum -- pg_attrdef stores default values for columns
-		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p' -- pg_constraint stores primary key information
+		pg_attribute attr
+		LEFT JOIN pg_catalog.pg_attrdef def ON attr.attrelid = def.adrelid AND attr.attnum = def.adnum
+		LEFT JOIN pg_catalog.pg_constraint constraint_pk ON attr.attrelid = constraint_pk.conrelid AND attr.attnum = ANY(constraint_pk.conkey) AND constraint_pk.contype = 'p'
 	WHERE
-		attr.attrelid = $1::regclass -- filter by the table name
-		AND attr.attnum > 0  -- no system columns
-		AND NOT attr.attisdropped -- no dropped columns`
+		attr.attrelid = $1::regclass
+		AND attr.attnum > 0
+		AND NOT attr.attisdropped`
 )
 
 type tableInfo struct {
