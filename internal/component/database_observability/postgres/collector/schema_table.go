@@ -106,10 +106,9 @@ type columnSpec struct {
 }
 
 type SchemaTableArguments struct {
-	DB              *sql.DB
-	InstanceKey     string
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
+	DB           *sql.DB
+	InstanceKey  string
+	EntryHandler loki.EntryHandler
 
 	Logger log.Logger
 }
@@ -130,7 +129,7 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
 		instanceKey:     args.InstanceKey,
-		collectInterval: args.CollectInterval,
+		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaTableName),
 		running:         &atomic.Bool{},
