@@ -5,14 +5,19 @@ labels:
   stage: experimental
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.receiver.awsecscontainermetrics
 ---
 
 # `otelcol.receiver.awsecscontainermetrics`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}  
 
-`otelcol.receiver.awsecscontainermetrics` reads AWS ECS task- and container-level metadata and resource usage metrics (such as CPU, memory, network, and disk) and forwards them to other `otelcol.*` components.
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}  
+
+`otelcol.receiver.awsecscontainermetrics` reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other `otelcol.*` components.  
 
 {{< admonition type="note" >}}
 `otelcol.receiver.awsecscontainermetrics` is a wrapper over the upstream OpenTelemetry Collector [`awsecscontainermetrics`][] receiver.
@@ -21,9 +26,13 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 [`awsecscontainermetrics`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awsecscontainermetricsreceiver
 {{< /admonition >}}
 
-This receiver supports ECS Fargate and ECS on EC2 (it requires the [ECS Task Metadata Endpoint V4](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html) which is automatically available within the task's containers). Therefore, you should run the Alloy collector using this receiver as a sidecar within the task you wish to monitor. Check the upstream receiver documentation for more details.
-
+This receiver supports ECS Fargate and ECS on EC2.  
+It requires the [ECS Task Metadata Endpoint V4](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html) which is automatically available within the task's containers.  
+Therefore, you should run the {{< param "PRODUCT_NAME" >}} collector using this receiver as a sidecar within the task you want to monitor.  
+Refer to the upstream  [`awsecscontainermetrics`][] receiver documentation for more details.  
 You can specify multiple `otelcol.receiver.awsecscontainermetrics` components by giving them different labels.
+
+[`awsecscontainermetrics`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awsecscontainermetricsreceiver
 
 ## Usage
 
@@ -79,7 +88,7 @@ You can use the following blocks with `otelcol.receiver.awsecscontainermetrics`:
 
 ## Example
 
-The following example collects 8 task-level metrics (out of 52 metrics) from an ECS task by forwarding the metrics to a filter processor.
+The following example collects eight task-level metrics from the 52 metrics available in an ECS task and forwards them to a filter processor.  
 
 ```alloy
 otelcol.receiver.awsecscontainermetrics "default" {
