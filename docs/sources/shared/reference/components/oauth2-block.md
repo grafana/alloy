@@ -22,6 +22,7 @@ headless: true
 {{< admonition type="warning" >}}
 Using client_secret_file leads to file being read on every outgoing request. Prefer to use `local.file` component
 with client_secret attribute instead to avoid unnecessary reads.
+{{< /admonition >}}
 
 The `oauth2` block may also contain a separate `tls_config` sub-block.
 
