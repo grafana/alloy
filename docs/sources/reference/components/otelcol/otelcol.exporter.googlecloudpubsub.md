@@ -52,7 +52,7 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 | `endpoint`    | `string`   | Override the default Pub/Sub endpoint. This is useful when connecting to the Pub/Sub emulator instance or switching between [global and regional service endpoints][]. | `""`                                            | no       |
 | `insecure`    | `bool`     | Allows performing insecure SSL connections and transfers. This is useful when connecting to a local emulator instance. Only has effect if you set `endpoint`.          | `false`                                         | no       |
 | `project`     | `string`   | Google Cloud Platform project identifier.                                                                                                                              | Fetch from credentials                          | no       |
-| `timeout`     | `Duration` | Timeout for calls to Pub/Sub API                                                                                                                                       | `"12s"`                                         | no       |
+| `timeout`     | `Duration` | Timeout for calls to the Pub/Sub API.                                                                                                                                  | `"12s"`                                         | no       |
 | `user_agent`  | `string`   | Override the user agent string on requests to Cloud Monitoring. This only applies to metrics. Specify `{{version}}` to include the application version number.         | `"opentelemetry-collector-contrib {{version}}"` | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
