@@ -200,6 +200,7 @@ func (f *fanOutClient) Push(
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
 
+	defer f.observeLatency("-", "push_total")()
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
@@ -220,6 +221,7 @@ func (f *fanOutClient) Push(
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(f.config.Endpoints[i].URL, "push_endpoint")()
 			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
@@ -227,6 +229,7 @@ func (f *fanOutClient) Push(
 			}
 			for {
 				err = func() error {
+					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
 					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
 					defer cancel()
 
@@ -375,6 +378,7 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	defer f.observeLatency("-", "ingest_total")()
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
@@ -416,10 +420,12 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
 			defer wg.Done()
 
 			for {
 				err = func() error {
+					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
 					u, err := url.Parse(endpoint.URL)
 					if err != nil {
 						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
@@ -501,6 +507,13 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {
+	t := time.Now()
+	return func() {
+		f.metrics.latency.WithLabelValues(endpoint, latencyType).Observe(time.Since(t).Seconds())
+	}
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.
