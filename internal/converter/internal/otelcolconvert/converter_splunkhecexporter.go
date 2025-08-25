@@ -118,9 +118,13 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 	}
 }
 
-func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) splunkhec_config.DeprecatedBatchConfig { //nolint:staticcheck
+func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) *splunkhec_config.DeprecatedBatchConfig {
+	if !cfg.Enabled {
+		return nil
+	}
+	//nolint:staticcheck
 	sizer, _ := cfg.Sizer.MarshalText()
-	return splunkhec_config.DeprecatedBatchConfig{
+	return &splunkhec_config.DeprecatedBatchConfig{
 		Enabled:      cfg.Enabled,
 		FlushTimeout: cfg.FlushTimeout,
 		MinSize:      cfg.MinSize,
