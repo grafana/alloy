@@ -1,0 +1,74 @@
+discovery.file "network_devices" {
+   files = ["/etc/alloy/devices.json"]
+}
+
+prometheus.scrape "scrape_prom_metrics" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+  scrape_classic_histograms = true
+
+  forward_to = [prometheus.enrich.enrich_prom_metrics.receiver, prometheus.enrich.enrich_mismatched.receiver]
+
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+
+prometheus.enrich "enrich_prom_metrics" {
+	targets = discovery.file.network_devices.targets
+
+	target_match_label = "hostname"
+	metrics_match_label = "instance"
+
+	labels_to_copy = ["datacenter", "environment"]
+
+	forward_to = [prometheus.remote_write.enrich_prom_metrics.receiver]
+}
+
+prometheus.enrich "enrich_mismatched" {
+	targets = discovery.file.network_devices.targets
+
+	target_match_label = "role"
+	metrics_match_label = "instance"
+
+	labels_to_copy = ["datacenter", "environment"]
+
+	forward_to = [prometheus.remote_write.enrich_mismatched.receiver]
+}
+
+prometheus.remote_write "enrich_prom_metrics" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    send_native_histograms = true
+
+
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "enrich_prom_metrics",
+  }
+}
+
+prometheus.remote_write "enrich_mismatched" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    send_native_histograms = true
+
+
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "enrich_mismatched",
+  }
+}
