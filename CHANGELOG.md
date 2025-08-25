@@ -45,6 +45,7 @@ Main (unreleased)
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `query_sample` collector for postgres (@gaantunes)
+  - add `schema_table` collector for postgres (@fridgepoet)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
