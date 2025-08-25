@@ -303,11 +303,10 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
-			CollectInterval: c.args.CollectInterval,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:           dbConnection,
+			InstanceKey:  c.instanceKey,
+			EntryHandler: entryHandler,
+			Logger:       c.opts.Logger,
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)

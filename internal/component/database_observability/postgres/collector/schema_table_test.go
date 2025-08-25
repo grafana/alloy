@@ -33,11 +33,10 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: 10 * time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -113,11 +112,10 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: 10 * time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -238,11 +236,10 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -290,11 +287,10 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: 10 * time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -374,11 +370,10 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: 10 * time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -453,11 +448,10 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
-			DB:              db,
-			InstanceKey:     "postgres-db",
-			CollectInterval: 10 * time.Second,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:           db,
+			InstanceKey:  "postgres-db",
+			EntryHandler: lokiClient,
+			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
