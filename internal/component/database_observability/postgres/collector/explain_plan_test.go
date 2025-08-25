@@ -28,13 +28,15 @@ func explainPlanJoinAlgorithmPtr(s database_observability.ExplainPlanJoinAlgorit
 	return &s
 }
 
-func iterateChildren(t *testing.T, expectChildren, actualChildren []database_observability.ExplainPlanNode) {
-	require.Len(t, expectChildren, len(actualChildren))
-	for i := range expectChildren {
-		require.Equal(t, expectChildren[i].Operation, actualChildren[i].Operation)
-		require.Equal(t, expectChildren[i].Details, actualChildren[i].Details)
-		iterateChildren(t, expectChildren[i].Children, actualChildren[i].Children)
-	}
+func validatePlan(t *testing.T, expect, actual database_observability.ExplainPlanNode) {
+	t.Run(string(expect.Operation), func(t *testing.T) {
+		require.Equal(t, expect.Operation, actual.Operation)
+		require.Equal(t, expect.Details, actual.Details)
+		require.Equal(t, len(expect.Children), len(actual.Children))
+		for i := range expect.Children {
+			validatePlan(t, expect.Children[i], actual.Children[i])
+		}
+	})
 }
 
 func TestExplainPlanOutput(t *testing.T) {
@@ -91,16 +93,18 @@ func TestExplainPlanOutput(t *testing.T) {
 													Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
 													Details: database_observability.ExplainPlanNodeDetails{
 														JoinType:      stringPtr("Inner"),
+														JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
 														EstimatedRows: 141178,
-														EstimatedCost: floatPtr(546.3),
+														EstimatedCost: floatPtr(545.21),
 													},
 													Children: []database_observability.ExplainPlanNode{
 														{
 															Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash Join"),
 															Details: database_observability.ExplainPlanNodeDetails{
 																EstimatedRows: 141178,
-																EstimatedCost: floatPtr(7855.26),
+																EstimatedCost: floatPtr(3257),
 																JoinType:      stringPtr("Inner"),
+																JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
 															},
 															Children: []database_observability.ExplainPlanNode{
 																{
@@ -160,6 +164,617 @@ func TestExplainPlanOutput(t *testing.T) {
 				},
 			},
 		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "complex_join_with_aggregate_subquery",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Simple Hashed Aggregate"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						GroupByKeys:   []string{"d.id"},
+						EstimatedRows: 9,
+						EstimatedCost: floatPtr(464092.26),
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								JoinType:      stringPtr("Inner"),
+								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+								EstimatedRows: 240003,
+								EstimatedCost: floatPtr(926.79),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										JoinType:      stringPtr("Inner"),
+										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+										EstimatedRows: 240003,
+										EstimatedCost: floatPtr(9068.32),
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												Alias:         stringPtr("de"),
+												EstimatedRows: 240003,
+												EstimatedCost: floatPtr(6305.04),
+												Condition:     stringPtr("(to_date = ?::date)"),
+											},
+										},
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												EstimatedRows: 300024,
+												EstimatedCost: floatPtr(0),
+											},
+											Children: []database_observability.ExplainPlanNode{
+												{
+													Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+													Details: database_observability.ExplainPlanNodeDetails{
+														Alias:         stringPtr("e"),
+														EstimatedRows: 300024,
+														EstimatedCost: floatPtr(5504.24),
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										EstimatedRows: 9,
+										EstimatedCost: floatPtr(0),
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												Alias:         stringPtr("d"),
+												EstimatedRows: 9,
+												EstimatedCost: floatPtr(1.09),
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Simple Aggregate"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 1,
+								EstimatedCost: floatPtr(57.66),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										JoinType:      stringPtr("Inner"),
+										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+										EstimatedRows: 23059,
+										EstimatedCost: floatPtr(969.17),
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												Alias:         stringPtr("s2"),
+												EstimatedRows: 242218,
+												EstimatedCost: floatPtr(53710.59),
+												Condition:     stringPtr("(to_date = ?::date)"),
+											},
+										},
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												EstimatedRows: 26667,
+												EstimatedCost: floatPtr(0),
+											},
+											Children: []database_observability.ExplainPlanNode{
+												{
+													Operation: database_observability.ExplainPlanOutputOperation("Bitmap Heap Scan"),
+													Details: database_observability.ExplainPlanNodeDetails{
+														Alias:         stringPtr("de2"),
+														EstimatedRows: 26667,
+														EstimatedCost: floatPtr(2719.34),
+														Condition:     stringPtr("(to_date = ?::date)"),
+													},
+													Children: []database_observability.ExplainPlanNode{
+														{
+															Operation: database_observability.ExplainPlanOutputOperation("Bitmap Index Scan"),
+															Details: database_observability.ExplainPlanNodeDetails{
+																EstimatedRows: 36845,
+																EstimatedCost: floatPtr(404.76),
+																KeyUsed:       stringPtr("idx_16982_dept_no"),
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "complex_query_with_multiple_conditions",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Incremental Sort"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						EstimatedRows: 21,
+						EstimatedCost: floatPtr(0.57),
+						SortKeys:      []string{"d.dept_name", "(avg(s.amount)) DESC"},
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 21,
+								EstimatedCost: floatPtr(2.05),
+								Condition:     stringPtr("(avg(s.amount) > ?::numeric)"),
+								GroupByKeys:   []string{"d.dept_name", "t.title"},
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Gather Merge"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										EstimatedRows: 63,
+										EstimatedCost: floatPtr(1007.1),
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Sort"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												EstimatedRows: 63,
+												EstimatedCost: floatPtr(2.04),
+												SortKeys:      []string{"d.dept_name", "t.title"},
+											},
+											Children: []database_observability.ExplainPlanNode{
+												{
+													Operation: database_observability.ExplainPlanOutputOperation("Partial Hashed Aggregate"),
+													Details: database_observability.ExplainPlanNodeDetails{
+														EstimatedRows: 63,
+														EstimatedCost: floatPtr(2275.93),
+														GroupByKeys:   []string{"d.dept_name", "t.title"},
+													},
+													Children: []database_observability.ExplainPlanNode{
+														{
+															Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+															Details: database_observability.ExplainPlanNodeDetails{
+																EstimatedRows: 91006,
+																EstimatedCost: floatPtr(351.5),
+																JoinType:      stringPtr("Inner"),
+																JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+															},
+															Children: []database_observability.ExplainPlanNode{
+																{
+																	Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash Join"),
+																	Details: database_observability.ExplainPlanNodeDetails{
+																		EstimatedRows: 91006,
+																		EstimatedCost: floatPtr(2021.24),
+																		JoinType:      stringPtr("Inner"),
+																		JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+																	},
+																	Children: []database_observability.ExplainPlanNode{
+																		{
+																			Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																			Details: database_observability.ExplainPlanNodeDetails{
+																				Alias:         stringPtr("e"),
+																				Condition:     stringPtr("(hire_date > ?::date)"),
+																				EstimatedRows: 176468,
+																				EstimatedCost: floatPtr(4710.06),
+																			},
+																		},
+																		{
+																			Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash"),
+																			Details: database_observability.ExplainPlanNodeDetails{
+																				EstimatedRows: 73958,
+																				EstimatedCost: floatPtr(0),
+																			},
+																			Children: []database_observability.ExplainPlanNode{
+																				{
+																					Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash Join"),
+																					Details: database_observability.ExplainPlanNodeDetails{
+																						JoinType:      stringPtr("Inner"),
+																						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+																						EstimatedRows: 73958,
+																						EstimatedCost: floatPtr(1763.4),
+																					},
+																					Children: []database_observability.ExplainPlanNode{
+																						{
+																							Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																							Details: database_observability.ExplainPlanNodeDetails{
+																								Alias:         stringPtr("t"),
+																								Condition:     stringPtr("(to_date = ?::date)"),
+																								EstimatedRows: 99824,
+																								EstimatedCost: floatPtr(5508.9),
+																							},
+																						},
+																						{
+																							Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash"),
+																							Details: database_observability.ExplainPlanNodeDetails{
+																								EstimatedRows: 86472,
+																								EstimatedCost: floatPtr(0),
+																							},
+																							Children: []database_observability.ExplainPlanNode{
+																								{
+																									Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash Join"),
+																									Details: database_observability.ExplainPlanNodeDetails{
+																										JoinType:      stringPtr("Inner"),
+																										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+																										EstimatedRows: 86472,
+																										EstimatedCost: floatPtr(2651.85),
+																									},
+																									Children: []database_observability.ExplainPlanNode{
+																										{
+																											Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																											Details: database_observability.ExplainPlanNodeDetails{
+																												Alias:         stringPtr("s"),
+																												Condition:     stringPtr("(to_date = ?::date)"),
+																												EstimatedRows: 100924,
+																												EstimatedCost: floatPtr(32972.74),
+																											},
+																										},
+																										{
+																											Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash"),
+																											Details: database_observability.ExplainPlanNodeDetails{
+																												EstimatedRows: 141178,
+																												EstimatedCost: floatPtr(0),
+																											},
+																											Children: []database_observability.ExplainPlanNode{
+																												{
+																													Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																													Details: database_observability.ExplainPlanNodeDetails{
+																														Alias:         stringPtr("de"),
+																														Condition:     stringPtr("(to_date = ?::date)"),
+																														EstimatedRows: 141178,
+																														EstimatedCost: floatPtr(4598.26),
+																													},
+																												},
+																											},
+																										},
+																									},
+																								},
+																							},
+																						},
+																					},
+																				},
+																			},
+																		},
+																	},
+																},
+																{
+																	Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+																	Details: database_observability.ExplainPlanNodeDetails{
+																		EstimatedRows: 9,
+																		EstimatedCost: floatPtr(0),
+																	},
+																	Children: []database_observability.ExplainPlanNode{
+																		{
+																			Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+																			Details: database_observability.ExplainPlanNodeDetails{
+																				Alias:         stringPtr("d"),
+																				EstimatedRows: 9,
+																				EstimatedCost: floatPtr(1.09),
+																			},
+																		},
+																	},
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "complex_subquery_in_select_clause",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Index Scan"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						Alias:         stringPtr("e"),
+						EstimatedRows: 49,
+						EstimatedCost: floatPtr(962.45),
+						KeyUsed:       stringPtr("idx_16988_primary"),
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Nested Loop"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 1,
+								EstimatedCost: floatPtr(0.11),
+								JoinType:      stringPtr("Inner"),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Index Scan"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										Alias:         stringPtr("de"),
+										Condition:     stringPtr("(to_date = ?::date)"),
+										EstimatedRows: 1,
+										EstimatedCost: floatPtr(8.44),
+										KeyUsed:       stringPtr("idx_16982_primary"),
+									},
+								},
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										Alias:         stringPtr("d"),
+										EstimatedRows: 9,
+										EstimatedCost: floatPtr(1.09),
+									},
+								},
+							},
+						},
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Index Scan"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								Alias:         stringPtr("t"),
+								Condition:     stringPtr("(to_date = ?::date)"),
+								EstimatedRows: 1,
+								EstimatedCost: floatPtr(10.21),
+								KeyUsed:       stringPtr("idx_16994_primary"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "conditional_aggregation_with_case",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Finalize Group Aggregate"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						EstimatedRows: 5065,
+						EstimatedCost: floatPtr(113.96),
+						GroupByKeys:   []string{"(EXTRACT(year FROM hire_date))"},
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Gather Merge"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 5065,
+								EstimatedCost: floatPtr(1569.82),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Sort"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										EstimatedRows: 5065,
+										EstimatedCost: floatPtr(324.32),
+										SortKeys:      []string{"(EXTRACT(year FROM hire_date))"},
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Partial Hashed Aggregate"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												EstimatedRows: 5065,
+												EstimatedCost: floatPtr(2710.59),
+												GroupByKeys:   []string{"EXTRACT(year FROM hire_date)"},
+											},
+											Children: []database_observability.ExplainPlanNode{
+												{
+													Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+													Details: database_observability.ExplainPlanNodeDetails{
+														Alias:         stringPtr("employee"),
+														EstimatedRows: 176485,
+														EstimatedCost: floatPtr(4710.06),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "correlated_subquery",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						EstimatedRows: 239578,
+						EstimatedCost: floatPtr(10703.2),
+						JoinType:      stringPtr("Inner"),
+						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Hash Join"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 239578,
+								EstimatedCost: floatPtr(3294.29),
+								JoinType:      stringPtr("Inner"),
+								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										Alias:         stringPtr("t"),
+										Condition:     stringPtr("(to_date = ?::date)"),
+										EstimatedRows: 239578,
+										EstimatedCost: floatPtr(8741.35),
+									},
+								},
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										EstimatedRows: 7,
+										EstimatedCost: floatPtr(0),
+									},
+									Children: []database_observability.ExplainPlanNode{
+										{
+											Operation: database_observability.ExplainPlanOutputOperation("Simple Hashed Aggregate"),
+											Details: database_observability.ExplainPlanNodeDetails{
+												EstimatedRows: 7,
+												EstimatedCost: floatPtr(34.77),
+												GroupByKeys:   []string{"(title.title)::text"},
+											},
+											Children: []database_observability.ExplainPlanNode{
+												{
+													Operation: database_observability.ExplainPlanOutputOperation("Gather"),
+													Details: database_observability.ExplainPlanNodeDetails{
+														EstimatedRows: 13883,
+														EstimatedCost: floatPtr(2388.3),
+													},
+													Children: []database_observability.ExplainPlanNode{
+														{
+															Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash Join"),
+															Details: database_observability.ExplainPlanNodeDetails{
+																EstimatedRows: 5785,
+																EstimatedCost: floatPtr(622.29),
+																JoinType:      stringPtr("Semi"),
+																JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
+															},
+															Children: []database_observability.ExplainPlanNode{
+																{
+																	Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																	Details: database_observability.ExplainPlanNodeDetails{
+																		Alias:         stringPtr("title"),
+																		EstimatedRows: 184712,
+																		EstimatedCost: floatPtr(5047.12),
+																	},
+																},
+																{
+																	Operation: database_observability.ExplainPlanOutputOperation("Parallel Hash"),
+																	Details: database_observability.ExplainPlanNodeDetails{
+																		EstimatedRows: 3532,
+																		EstimatedCost: floatPtr(0),
+																	},
+																	Children: []database_observability.ExplainPlanNode{
+																		{
+																			Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+																			Details: database_observability.ExplainPlanNodeDetails{
+																				Alias:         stringPtr("salary"),
+																				Condition:     stringPtr("((amount > ?) AND (to_date = ?::date))"),
+																				EstimatedRows: 3532,
+																				EstimatedCost: floatPtr(35935.29),
+																			},
+																		},
+																	},
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Hash"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								EstimatedRows: 300024,
+								EstimatedCost: floatPtr(0),
+							},
+							Children: []database_observability.ExplainPlanNode{
+								{
+									Operation: database_observability.ExplainPlanOutputOperation("Seq Scan"),
+									Details: database_observability.ExplainPlanNodeDetails{
+										Alias:         stringPtr("e"),
+										EstimatedRows: 300024,
+										EstimatedCost: floatPtr(5504.24),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			engineVersion: "14.1",
+			queryid:       "1234567890",
+			fname:         "date_manipulation_with_conditions",
+			result: &database_observability.ExplainPlanOutput{
+				Metadata: database_observability.ExplainPlanMetadataInfo{
+					DatabaseEngine:  "PostgreSQL",
+					DatabaseVersion: "14.1",
+					QueryIdentifier: "1234567890",
+					GeneratedAt:     currentTime,
+				},
+				Plan: database_observability.ExplainPlanNode{
+					Operation: database_observability.ExplainPlanOutputOperation("Gather"),
+					Details: database_observability.ExplainPlanNodeDetails{
+						EstimatedRows: 827,
+						EstimatedCost: floatPtr(1082.7),
+					},
+					Children: []database_observability.ExplainPlanNode{
+						{
+							Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
+							Details: database_observability.ExplainPlanNodeDetails{
+								Alias:         stringPtr("e"),
+								Condition:     stringPtr("((hire_date < ?::date) AND (EXTRACT(month FROM hire_date) = EXTRACT(month FROM CURRENT_DATE)))"),
+								EstimatedRows: 486,
+								EstimatedCost: floatPtr(6476.12),
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -176,7 +791,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			// Override the generated at time to ensure the test is deterministic
 			output.Metadata.GeneratedAt = currentTime
 			require.Equal(t, tt.result.Metadata, output.Metadata)
-			iterateChildren(t, tt.result.Plan.Children, output.Plan.Children)
+			validatePlan(t, tt.result.Plan, output.Plan)
 		})
 	}
 }

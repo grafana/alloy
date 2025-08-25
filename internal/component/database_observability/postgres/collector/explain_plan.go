@@ -35,6 +35,7 @@ type PlanNode struct {
 	WorkersPlanned     int64      `json:"Workers Planned"`
 	PlannedPartitions  int64      `json:"Planned Partitions"`
 	Plans              []PlanNode `json:"Plans"`
+	IndexName          string     `json:"Index Name"`
 }
 
 func newExplainPlanOutput(logger log.Logger, dbVersion string, queryId string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
@@ -92,6 +93,15 @@ func (p *PlanNode) ToExplainPlanOutputNode() (database_observability.ExplainPlan
 		output.Details.Alias = &p.Alias
 	}
 
+	if !strings.EqualFold(p.IndexName, "") {
+		output.Details.KeyUsed = &p.IndexName
+	}
+
+	if strings.EqualFold(p.NodeType, "Hash Join") {
+		algo := database_observability.ExplainPlanJoinAlgorithmHash
+		output.Details.JoinAlgorithm = &algo
+	}
+
 	for _, child := range p.Plans {
 		childNode, err := child.ToExplainPlanOutputNode()
 		if err != nil {
@@ -114,6 +124,8 @@ func (p *PlanNode) explainPlanNodeOperation() database_observability.ExplainPlan
 		switch p.Strategy {
 		case "Sorted":
 			stringbuilder.WriteString("Group ")
+		case "Plain":
+			break
 		default:
 			stringbuilder.WriteString(p.Strategy)
 			stringbuilder.WriteString(" ")
@@ -129,11 +141,11 @@ func (p *PlanNode) explainPlanNodeOperation() database_observability.ExplainPlan
 }
 
 func (p *PlanNode) totalCost() *float64 {
-	if len(p.Plans) > 0 {
-		var result float64
-		result = p.TotalCost - p.Plans[0].TotalCost
-		result = math.Round(result*100) / 100
-		return &result
+	var result float64
+	result = p.TotalCost
+	for _, plan := range p.Plans {
+		result -= plan.TotalCost
 	}
-	return &p.TotalCost
+	result = math.Round(result*100) / 100
+	return &result
 }
