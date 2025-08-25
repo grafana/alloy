@@ -177,7 +177,7 @@ func (args Selections) Convert() attributes.Selection {
 func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
 
-	// Services
+	// Services (deprecated)
 	srv, err := args.Services.Convert()
 	if err != nil {
 		return d, err
@@ -194,6 +194,30 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 			return d, err
 		}
 		d.DefaultExcludeServices = defaultExcludeSrv
+	}
+
+	if len(args.Instrument) > 0 {
+		instrument, err := args.Instrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.Instrument = instrument
+	}
+
+	if len(args.ExcludeInstrument) > 0 {
+		excludeInstrument, err := args.ExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.ExcludeInstrument = excludeInstrument
+	}
+
+	if len(args.DefaultExcludeInstrument) > 0 {
+		defaultExcludeInstrument, err := args.DefaultExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.DefaultExcludeInstrument = defaultExcludeInstrument
 	}
 
 	// Survey
@@ -536,6 +560,17 @@ func (c *Component) Run(ctx context.Context) error {
 		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
 	}
 
+	// Add deprecation warnings for legacy discovery fields
+	if len(c.args.Discovery.Services) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.services is deprecated, use discovery.instrument instead")
+	}
+	if len(c.args.Discovery.ExcludeServices) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.exclude_services is deprecated, use discovery.exclude_instrument instead")
+	}
+	if len(c.args.Discovery.DefaultExcludeServices) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.default_exclude_services is deprecated, use discovery.default_exclude_instrument instead")
+	}
+
 	var cancel context.CancelFunc
 	var cancelG *errgroup.Group
 	for {
@@ -726,30 +761,76 @@ func (args *Arguments) Validate() error {
 	}
 
 	if hasAppFeature {
-		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
-			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
+		// Check if any discovery method is configured (new or legacy)
+		hasAnyDiscovery := len(args.Discovery.Services) > 0 ||
+			len(args.Discovery.Survey) > 0 ||
+			len(args.Discovery.Instrument) > 0
+
+		if !hasAnyDiscovery {
+			return fmt.Errorf("discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled")
 		}
+
+		// Validate legacy services field
 		if len(args.Discovery.Services) > 0 {
 			if err := args.Discovery.Services.Validate(); err != nil {
 				return fmt.Errorf("invalid discovery configuration: %s", err.Error())
 			}
 		}
+
+		// Validate survey field
 		if len(args.Discovery.Survey) > 0 {
 			if err := args.Discovery.Survey.Validate(); err != nil {
 				return fmt.Errorf("invalid survey configuration: %s", err.Error())
 			}
 		}
+
+		// Validate new instrument field
+		if len(args.Discovery.Instrument) > 0 {
+			if err := args.Discovery.Instrument.Validate(); err != nil {
+				return fmt.Errorf("invalid instrument configuration: %s", err.Error())
+			}
+		}
 	}
 
+	// Validate legacy exclude_services field
 	if len(args.Discovery.ExcludeServices) > 0 {
 		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
 
+	// Validate new exclude_instrument field
+	if len(args.Discovery.ExcludeInstrument) > 0 {
+		if err := args.Discovery.ExcludeInstrument.Validate(); err != nil {
+			return fmt.Errorf("invalid exclude_instrument configuration: %s", err.Error())
+		}
+	}
+
+	// Validate new default_exclude_instrument field
+	if len(args.Discovery.DefaultExcludeInstrument) > 0 {
+		if err := args.Discovery.DefaultExcludeInstrument.Validate(); err != nil {
+			return fmt.Errorf("invalid default_exclude_instrument configuration: %s", err.Error())
+		}
+	}
+
+	// Validate per-service samplers for legacy services
 	for i, service := range args.Discovery.Services {
 		if err := service.Sampler.Validate(); err != nil {
 			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
+		}
+	}
+
+	// Validate per-service samplers for new instrument field
+	for i, service := range args.Discovery.Instrument {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.instrument[%d]: %s", i, err.Error())
+		}
+	}
+
+	// Validate per-service samplers for survey field
+	for i, service := range args.Discovery.Survey {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.survey[%d]: %s", i, err.Error())
 		}
 	}
 
