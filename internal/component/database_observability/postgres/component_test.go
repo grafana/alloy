@@ -32,6 +32,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -51,6 +52,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -70,6 +72,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -90,6 +93,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -110,6 +114,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -129,6 +134,27 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
 			collector.QuerySampleName: true,
+			collector.SchemaTableName: false,
+		}, actualCollectors)
+	})
+
+	t.Run("enable schema table", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		enable_collectors = ["schema_table"]
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		actualCollectors := enableOrDisableCollectors(args)
+
+		assert.Equal(t, map[string]bool{
+			collector.QuerySampleName: false,
+			collector.QueryTablesName: false,
+			collector.SchemaTableName: true,
 		}, actualCollectors)
 	})
 
@@ -148,6 +174,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: true,
 			collector.QuerySampleName: true,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 
@@ -167,6 +194,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryTablesName: false,
 			collector.QuerySampleName: false,
+			collector.SchemaTableName: false,
 		}, actualCollectors)
 	})
 }

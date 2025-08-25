@@ -214,6 +214,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.QueryTablesName: false,
 		collector.QuerySampleName: false,
+		collector.SchemaTableName: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -311,8 +312,26 @@ func (c *Component) startCollectors() error {
 		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
 		return err
 	}
+
 	c.collectors = append(c.collectors, ciCollector)
 
+	if collectors[collector.SchemaTableName] {
+		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+			DB:           dbConnection,
+			InstanceKey:  c.instanceKey,
+			EntryHandler: entryHandler,
+			Logger:       c.opts.Logger,
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
+			return err
+		}
+		if err := stCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, stCollector)
+	}
 	return nil
 }
 
