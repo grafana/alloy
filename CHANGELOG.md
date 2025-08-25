@@ -48,6 +48,9 @@ Main (unreleased)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
+- (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
+  When set to `true`, it will propagate metric metadata to downstream components.
+  
 ### Enhancements
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)

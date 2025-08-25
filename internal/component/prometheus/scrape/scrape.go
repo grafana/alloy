@@ -138,6 +138,8 @@ type Arguments struct {
 	// If the growth factor of one bucket to the next is smaller than this,
 	// buckets will be merged to stay within the limit. Disabled when set zero.
 	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
+	// Whether the metric metadata should be passed to the downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -304,7 +306,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	if args.HonorMetadata && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
+	var metadataStore prometheus.UpdateableMetadataStore
+	if args.HonorMetadata {
+		metadataStore = prometheus.NewMetadataStore()
+	} else {
+		metadataStore = prometheus.NoopMetadataStore{}
+	}
+
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
@@ -313,6 +326,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		},
 		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
+		AppendMetadata:                  args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
