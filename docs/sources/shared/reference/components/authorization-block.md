@@ -11,3 +11,7 @@ headless: true
 | `type`             | `string` | Authorization type, for example, "Bearer". |         | no       |
 
 `credential` and `credentials_file` are mutually exclusive, and only one can be provided inside an `authorization` block.
+
+{{< admonition type="warning" >}}
+Using credentials_file leads to file being read on every outgoing request. Prefer to use `local.file` component
+with credentials attribute instead to avoid unnecessary reads.

@@ -19,6 +19,10 @@ headless: true
 
 `client_secret` and `client_secret_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
+{{< admonition type="warning" >}}
+Using client_secret_file leads to file being read on every outgoing request. Prefer to use `local.file` component
+with client_secret attribute instead to avoid unnecessary reads.
+
 The `oauth2` block may also contain a separate `tls_config` sub-block.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
