@@ -46,6 +46,8 @@ Main (unreleased)
   - add `query_tables` collector for postgres (@matthewnolf)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+  
+- Add otel collector converter for `otelcol.exporter.googlecloudpubsub`. (@eraac)
 
 ### Enhancements
 
