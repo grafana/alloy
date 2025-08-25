@@ -1,5 +1,3 @@
-//go:build !race
-
 package docker
 
 import (
@@ -25,6 +23,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 )
 
 const targetRestartInterval = 20 * time.Millisecond
@@ -106,10 +105,11 @@ func TestDuplicateTargets(t *testing.T) {
 
 func TestRestart(t *testing.T) {
 	finishedAt := "2024-05-02T13:11:55.879889Z"
-	runningState := true
+	var runningState atomic.Bool
+	runningState.Store(true)
 	client := clientMock{
 		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running:    func() bool { return runningState },
+		running:    func() bool { return runningState.Load() },
 		finishedAt: func() string { return finishedAt },
 	}
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
@@ -126,14 +126,14 @@ func TestRestart(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit.")
 
 	// Stops the container.
-	runningState = false
+	runningState.Store(false)
 	time.Sleep(targetRestartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
 	entryHandler.Clear()
 	time.Sleep(targetRestartInterval + 10*time.Millisecond)
 	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
 
 	// Restart the container and expect log lines.
-	runningState = true
+	runningState.Store(true)
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		logLines := entryHandler.Received()
 		if assert.NotEmpty(c, logLines) {
