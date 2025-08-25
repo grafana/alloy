@@ -46,7 +46,6 @@ const (
 
 type LockArguments struct {
 	DB                *sql.DB
-	InstanceKey       string
 	CollectInterval   time.Duration
 	LockWaitThreshold time.Duration
 	EntryHandler      loki.EntryHandler
@@ -56,7 +55,6 @@ type LockArguments struct {
 
 type LockCollector struct {
 	mySQLClient     *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	logger          log.Logger
 	entryHandler    loki.EntryHandler
@@ -84,7 +82,6 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 
 	return &LockCollector{
 		mySQLClient:       args.DB,
-		instanceKey:       args.InstanceKey,
 		collectInterval:   args.CollectInterval,
 		lockTimeThreshold: args.LockWaitThreshold,
 		entryHandler:      args.EntryHandler,
@@ -168,7 +165,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 				picosecondsToMilliseconds(blockingLockTime),
 			)
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, lockMsg)
 		}
 	}
 

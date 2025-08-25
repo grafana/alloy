@@ -66,6 +66,7 @@ type Arguments struct {
 	ExplainPlanCollectInterval time.Duration `alloy:"explain_plan_collect_interval,attr,optional"`
 	ExplainPlanPerCollectRatio float64       `alloy:"explain_plan_per_collect_ratio,attr,optional"`
 	ExplainPlanInitialLookback time.Duration `alloy:"explain_plan_initial_lookback,attr,optional"`
+	ExplainPlanExcludeSchemas  []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 
 	// collector: 'locks'
 	LocksCollectInterval time.Duration `alloy:"locks_collect_interval,attr,optional"`
@@ -294,14 +295,13 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QueryTablesName] {
 		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -320,7 +320,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -344,7 +343,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                          dbConnection,
-			InstanceKey:                 c.instanceKey,
 			CollectInterval:             c.args.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
@@ -384,7 +382,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.LocksName] {
 		locksCollector, err := collector.NewLock(collector.LockArguments{
 			DB:                dbConnection,
-			InstanceKey:       c.instanceKey,
 			CollectInterval:   c.args.LocksCollectInterval,
 			LockWaitThreshold: c.args.LocksThreshold,
 			Logger:            c.opts.Logger,
@@ -404,9 +401,9 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.ExplainPlanName] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			ScrapeInterval:  c.args.ExplainPlanCollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlanPerCollectRatio,
+			ExcludeSchemas:  c.args.ExplainPlanExcludeSchemas,
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
@@ -511,4 +508,13 @@ func formatDSN(dsn string, params ...string) string {
 		dsn = dsn + "?"
 	}
 	return dsn + strings.Join(params, "&")
+}
+
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(instanceKey),
+	}).Wrap(entryHandler)
+
+	return entryHandler
 }

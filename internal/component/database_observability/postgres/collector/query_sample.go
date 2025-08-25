@@ -92,7 +92,6 @@ type QuerySampleInfo struct {
 
 type QuerySampleArguments struct {
 	DB                    *sql.DB
-	InstanceKey           string
 	CollectInterval       time.Duration
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
@@ -101,7 +100,6 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection          *sql.DB
-	instanceKey           string
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
@@ -116,7 +114,6 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	return &QuerySample{
 		dbConnection:          args.DB,
-		instanceKey:           args.InstanceKey,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
@@ -258,8 +255,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`instance="%s" datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
-			c.instanceKey,
+			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			sample.DatabaseName.String,
 			sample.PID,
 			leaderPID,
@@ -286,15 +282,13 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
-			c.instanceKey,
 			sampleLabels,
 			sample.Now.UnixNano(),
 		)
 
 		if waitEvent != "" {
 			waitEventLabels := fmt.Sprintf(
-				`instance="%s" datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
-				c.instanceKey,
+				`datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				sample.DatabaseName.String,
 				sample.BackendType.String,
 				sample.State.String,
@@ -310,7 +304,6 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
-				c.instanceKey,
 				waitEventLabels,
 				sample.Now.UnixNano(),
 			)

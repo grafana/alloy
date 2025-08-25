@@ -31,6 +31,8 @@ import (
 
 const name = "database_observability.postgres"
 
+const selectEngineVersion = `SHOW server_version`
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -242,14 +244,13 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 	c.dbConnection = dbConnection
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              dbConnection,
-			InstanceKey:     c.instanceKey,
 			CollectInterval: c.args.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -268,7 +269,6 @@ func (c *Component) startCollectors() error {
 	if collectors[collector.QuerySampleName] {
 		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                    dbConnection,
-			InstanceKey:           c.instanceKey,
 			CollectInterval:       c.args.QuerySampleCollectInterval,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
@@ -285,10 +285,24 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, aCollector)
 	}
 
+	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:      string(c.args.DataSourceName),
-		Registry: c.registry,
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
@@ -381,4 +395,13 @@ func instanceKey(dsn string) (string, error) {
 		hostport += fmt.Sprintf(":%s", p)
 	}
 	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
+}
+
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+		"job":      database_observability.JobName,
+		"instance": model.LabelValue(instanceKey),
+	}).Wrap(entryHandler)
+
+	return entryHandler
 }

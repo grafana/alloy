@@ -4,9 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/syntax"
 )
@@ -292,5 +297,34 @@ func TestCollectionIntervals(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, DefaultArguments.CollectInterval, args.CollectInterval, "collect_interval should default to 1 minute")
 		assert.Equal(t, 5*time.Second, args.QuerySampleCollectInterval, "query_sample_collect_interval should be set to 5 seconds")
+	})
+}
+
+func Test_addLokiLabels(t *testing.T) {
+	t.Run("add required labels to loki entries", func(t *testing.T) {
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+		entryHandler := addLokiLabels(lokiClient, "some-instance-key")
+
+		go func() {
+			ts := time.Now().UnixNano()
+			entryHandler.Chan() <- loki.Entry{
+				Entry: logproto.Entry{
+					Timestamp: time.Unix(0, ts),
+					Line:      "some-message",
+				},
+			}
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Len(t, lokiClient.Received(), 1)
+		assert.Equal(t, model.LabelSet{
+			"job":      database_observability.JobName,
+			"instance": model.LabelValue("some-instance-key"),
+		}, lokiClient.Received()[0].Labels)
+		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
 }
