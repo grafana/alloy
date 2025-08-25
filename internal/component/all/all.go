@@ -148,6 +148,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/statsd"               // Import prometheus.exporter.statsd
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/unix"                 // Import prometheus.exporter.unix
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/windows"              // Import prometheus.exporter.windows
+	_ "github.com/grafana/alloy/internal/component/prometheus/mapping"                       // Import prometheus.mapping
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/podmonitors"          // Import prometheus.operator.podmonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/probes"               // Import prometheus.operator.probes
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/scrapeconfigs"        // Import prometheus.operator.scrapeconfigs
