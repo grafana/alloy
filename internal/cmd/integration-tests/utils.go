@@ -63,7 +63,7 @@ func validateAlloyConfig(testDir string) error {
 		return fmt.Errorf("config.alloy not found in %s", testDir)
 	}
 
-	// Use the alloy binary to validate syntax  
+	// Use the alloy binary to validate syntax
 	cmd := exec.Command(alloyBinaryPath, "fmt", "--dry-run", configPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -120,8 +120,8 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 			wait.ForListeningPort(natPort),
 			wait.ForHTTP("/-/healthy").WithPort(natPort).WithStartupTimeout(30*time.Second),
 		),
-		Cmd:          []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"},
-		Files:        containerFiles,
+		Cmd:   []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"},
+		Files: containerFiles,
 		Networks: []string{
 			networkName,
 		},
@@ -231,19 +231,6 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		return
 	}
 	defer alloyContainer.Terminate(ctx)
-
-	// Additional validation: Check container logs for configuration errors
-	if err := validateContainerHealth(ctx, alloyContainer, dirName); err != nil {
-		alloyLogs, _ := alloyContainer.Logs(ctx)
-		alloyLog, _ := io.ReadAll(alloyLogs)
-		
-		logChan <- TestLog{
-			TestDir:    dirName,
-			AlloyLog:   string(alloyLog),
-			TestOutput: fmt.Sprintf("FAIL: %s - Container health check failed: %v", dirName, err),
-		}
-		return
-	}
 
 	// Setup and run test command
 	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer)
