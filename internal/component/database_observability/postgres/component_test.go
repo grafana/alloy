@@ -142,7 +142,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
-		enable_collectors = ["schema_table"]
+		enable_collectors = ["schema_details"]
 	`
 
 		var args Arguments

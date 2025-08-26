@@ -76,7 +76,6 @@ func Test_parseCloudProvider(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_query_redaction = true
 		cloud_provider {
 			aws {
 				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
@@ -96,7 +95,6 @@ func Test_parseCloudProvider(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_query_redaction = true
 	`
 
 		var args Arguments
