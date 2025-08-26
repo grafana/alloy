@@ -110,18 +110,18 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 ### `explain_plans`
 
-| Name                | Type       | Description                                                                     | Default | Required |
-|---------------------|------------|---------------------------------------------------------------------------------|---------|----------|
-| `collect_interval`  | `duration` | How frequently to collect information from database.                            | `"1m"`  | no       |
-| `per_collect_ratio` | `float`    | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
-| `initial_lookback`  | `duration` | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
-| `explain_plan_exclude_schemas`     | `list(string)`       | List of schemas to exclude from explain plan collection.                                       |         | no       |
+| Name                           | Type           | Description                                                                     | Default | Required |
+| ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
+| `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
+| `explain_plan_exclude_schemas` | `list(string)` | List of schemas to exclude from explain plan collection.                        |         | no       |
+| `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
+| `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
 
 ### `locks`
 
-| Name               | Type       | Description                                                                                    | Default | Required |
-|--------------------|------------|------------------------------------------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database.                                           | `"1m"`  | no       |
+| Name               | Type       | Description                                                                            | Default | Required |
+| ------------------ | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
+| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"1m"`  | no       |
 | `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
 
 ### `query_samples`
