@@ -145,8 +145,10 @@ Each target includes the following labels:
 Each discovered container maps to one target per unique combination of networks and port mappings used by the container.
 
 {{< admonition type="note" >}}
-Any dot (`.`) in the labelname will be converted to an underscore (`_`) in the resulting label. For example: to get a docker compose service name, use `__meta_docker_container_label_com_docker_compose_service` instead of `com.docker.compose.service`. This conversion is lossy and two labels that would be normalized to the same value will result in one clobbering the other.
-{{< /admonition >}}
+{{< param "PRODUCT_NAME" >}} sanitizes Docker label names in `__meta_docker_container_label_<labelname>` and `__meta_docker_network_label_<labelname>` to comply with Prometheus label naming requirements.
+The component converts dots and other non-alphanumeric characters to underscores. Underscores remain unchanged.
+For example, a Docker label `com.example.app.name` becomes `__meta_docker_container_label_com_example_app_name`.
+{{< /admonition >}
 
 ## Component health
 
