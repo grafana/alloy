@@ -43,6 +43,9 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - include `server_id` label on log entries (@matthewnolf)
+
+- (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_table` collector for postgres (@fridgepoet)
