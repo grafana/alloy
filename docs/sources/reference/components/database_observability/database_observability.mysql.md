@@ -56,14 +56,46 @@ The following collectors are configurable:
 
 ## Blocks
 
-The `database_observability.mysql` component doesn't support any blocks. You can configure this component with arguments.
+You can use the following blocks with `database_observability.mysql`:
+
+| Block                              | Description                            | Required |
+|------------------------------------|----------------------------------------|----------|
+| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.    | no       |
+| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information. | no       | 
+
+The > symbol indicates deeper levels of nesting.
+For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
+
+[cloud_provider]: #cloud_provider
+[aws]: #aws
+
+### `cloud_provider`
+
+The `cloud_provider` block has no attributes.
+It contains zero or more [`aws`][aws] blocks.
+You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
+This information is appended as labels to the collected metrics.
+The labels make it easier for you to filter and group your metrics.
+
+### `aws`
+
+The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
+
+| Name  | Type     | Description                                             | Default | Required |
+|-------|----------|---------------------------------------------------------|---------|----------|
+| `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
 
 ## Example
 
 ```alloy
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
-  forward_to = [loki.write.logs_service.receiver]
+  forward_to       = [loki.write.logs_service.receiver]
+  cloud_provider   = {
+    aws = {
+      arn = "your-db-arn"
+    }
+  }
 }
 
 prometheus.scrape "orders_db" {

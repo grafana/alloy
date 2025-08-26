@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -76,6 +77,16 @@ type Arguments struct {
 	DisableQueryRedaction                  bool          `alloy:"disable_query_redaction,attr,optional"`
 	AutoEnableSetupConsumers               bool          `alloy:"query_sample_auto_enable_setup_consumers,attr,optional"`
 	QuerySampleSetupConsumersCheckInterval time.Duration `alloy:"query_sample_setup_consumers_check_interval,attr,optional"`
+
+	CloudProvider *CloudProvider `alloy:"cloud_provider,block,optional"`
+}
+
+type CloudProvider struct {
+	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
 }
 
 var DefaultArguments = Arguments{
@@ -295,6 +306,20 @@ func (c *Component) startCollectors() error {
 		return err
 	}
 
+	var cloudProviderInfo *database_observability.CloudProvider
+	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
+		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
+			return err
+		}
+		cloudProviderInfo = &database_observability.CloudProvider{
+			AWS: &database_observability.AWSCloudProviderInfo{
+				ARN: arn,
+			},
+		}
+	}
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -425,6 +450,7 @@ func (c *Component) startCollectors() error {
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
 	})
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)

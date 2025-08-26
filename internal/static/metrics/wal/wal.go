@@ -399,6 +399,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 		case []record.RefSample:
 			for _, s := range v {
 				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
+					// Make sure we keep the duplicate SeriesRef in checkpoints until we get past the current segment.
+					w.deleted[s.Ref] = currentSegmentOrCheckpoint
 					s.Ref = ref
 				}
 				series := w.series.GetByID(s.Ref)
