@@ -46,6 +46,11 @@ Main (unreleased)
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
+  - add `schema_table` collector for postgres (@fridgepoet)
+
+- Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
+
+- Add otel collector converter for `otelcol.receiver.googlecloudpubsub`. (@kalleep)
 
 ### Enhancements
 
@@ -92,6 +97,8 @@ Main (unreleased)
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+
+- Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
 v1.10.2
 -----------------

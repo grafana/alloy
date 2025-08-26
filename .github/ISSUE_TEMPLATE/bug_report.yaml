@@ -123,6 +123,7 @@ body:
       - otelcol.receiver.file_stats
       - otelcol.receiver.filelog
       - otelcol.receiver.fluentforward
+      - otelcol.receiver.googlecloudpubsub
       - otelcol.receiver.influxdb
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka

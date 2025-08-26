@@ -151,6 +151,7 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 	)
 	for i := range alloy {
 		alloy[i] = &pyroscope.RawSample{
+			ID:         api[i].ID,
 			RawProfile: api[i].RawProfile,
 		}
 	}

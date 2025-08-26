@@ -37,10 +37,11 @@ You can use the following arguments with `database_observability.postgres`:
 
 The following collectors are configurable:
 
-| Name              | Description                                                                                               | Enabled by default |
-|-------------------|-----------------------------------------------------------------------------------------------------------|--------------------|
-| `query_sample`    | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events.   | no                 |
-| `query_tables`    | Collect query table information.                                                                          | no                 |
+| Name           | Description                                                                                             | Enabled by default |
+|----------------|---------------------------------------------------------------------------------------------------------|--------------------|
+| `query_sample` | Collect PostgreSQL activity information from pg_stat_activity, including query samples and wait events. | no                 |
+| `query_tables` | Collect query table information.                                                                        | no                 |
+| `schema_table` | Collect schemas, tables, and columns from PostgreSQL system catalogs.                                   | no                 |
 
 ## Blocks
 
@@ -52,7 +53,7 @@ The `database_observability.postgres` component doesn't support any blocks. You 
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/mydb"
   forward_to = [loki.write.logs_service.receiver]
-  enable_collectors = ["activity", "query_tables"]
+  enable_collectors = ["query_sample", "query_tables", "schema_table"]
 }
 
 prometheus.scrape "orders_db" {

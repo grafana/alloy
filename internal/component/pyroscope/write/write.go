@@ -340,6 +340,7 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 	}
 	for _, sample := range samples {
 		protoSamples = append(protoSamples, &pushv1.RawSample{
+			ID:         sample.ID,
 			RawProfile: sample.RawProfile,
 		})
 	}

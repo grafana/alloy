@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -53,7 +52,6 @@ type QueryTablesArguments struct {
 
 type QueryTables struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -66,7 +64,6 @@ type QueryTables struct {
 func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 	return &QueryTables{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
@@ -121,10 +118,9 @@ func (c *QueryTables) Stop() {
 }
 
 func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
-	slog.Info("Fetching and associating queries")
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		slog.Error("failed to fetch statements from pg_stat_statements view", "err", err)
+		level.Error(c.logger).Log("msg", "failed to fetch statements from pg_stat_statements view", "err", err)
 		return err
 	}
 	defer rs.Close()
@@ -137,20 +133,19 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			&databaseName,
 		)
 		if err != nil {
-			slog.Error("failed to scan result set for pg_stat_statements", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
 			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			c.instanceKey,
 			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
 		tables, err := c.tryTokenizeTableNames(queryText)
 		if err != nil {
-			slog.Error("failed to tokenize table names", "err", err)
+			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
 			continue
 		}
 
@@ -158,14 +153,13 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				c.instanceKey,
 				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
 			)
 		}
 	}
 
 	if err := rs.Err(); err != nil {
-		slog.Error("failed to iterate rs", "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
 		return err
 	}
 
