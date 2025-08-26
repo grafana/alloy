@@ -42,7 +42,7 @@ This component alternatively joins targets by `__meta_kubernetes_pod_container_i
 which allows a simple integration with the output from other discovery components like `discovery.kubernetes`,
 as shown in [this example][example_discovery_kubernetes].
 
-For example, if `join` is specified as follows:
+For example, if `join` is specified as the following _external targets_:
 
 ```json
 [
@@ -57,7 +57,7 @@ For example, if `join` is specified as follows:
 ]
 ```
 
-And the discovered processes are:
+And the discovered _process targets_ are:
 
 ```json
 [
@@ -93,6 +93,13 @@ The resulting targets are:
   }
 ]
 ```
+
+Explanation of the four resulting targets in this example:
+
+1. The first _external target_ merged with the first discovered _process target_, joint by `__container_id__=1`.
+2. The second discovered _process target_, joint with no matching _external target_.
+3. The first original _external target_, joint with no matching discovered _process target_.
+4. The second original _external target_, joint with no matching discovered _process target_.
 
 [example_discovery_kubernetes]: #example-discovering-processes-on-the-local-host-and-joining-with-discoverykubernetes
 
