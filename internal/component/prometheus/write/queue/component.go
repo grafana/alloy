@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
@@ -33,10 +35,15 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		endpoints: map[string]promqueue.Queue{},
 	}
 	s.opts.OnStateChange(Exports{Receiver: s})
-	err := s.createEndpoints()
-	if err != nil {
+
+	if err := s.createEndpoints(); err != nil {
 		return nil, err
 	}
+
+	if err := s.cleanupOrphanedEndpoints(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -120,11 +127,9 @@ func (s *Queue) Update(args component.Arguments) error {
 		}
 		s.endpoints[epCfg.Name] = end
 	}
+
 	// Now we need to figure out the endpoints that were not touched and able to be deleted.
-	for name := range deletableEndpoints {
-		s.endpoints[name].Stop()
-		delete(s.endpoints, name)
-	}
+	s.cleanupEndpoints(deletableEndpoints)
 	return nil
 }
 
@@ -138,6 +143,43 @@ func (s *Queue) createEndpoints() error {
 		s.endpoints[ep.Name] = end
 	}
 	return nil
+}
+
+// cleanupOrphanedEndpoints identifies any wal directory that is no longer connected to an endpoint
+// and clean it up.
+func (s *Queue) cleanupOrphanedEndpoints() error {
+	entries, err := os.ReadDir(s.opts.DataPath)
+	if err != nil {
+		return err
+	}
+
+	orphaned := make(map[string]struct{})
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+
+		// We assume that all directories within the data path for this component contains
+		// wal dir and we should clean them up.
+		if _, ok := s.endpoints[e.Name()]; !ok {
+			orphaned[e.Name()] = struct{}{}
+		}
+	}
+
+	s.cleanupEndpoints(orphaned)
+	return nil
+}
+
+func (s *Queue) cleanupEndpoints(endpoints map[string]struct{}) {
+	for name := range endpoints {
+		if ep, ok := s.endpoints[name]; ok {
+			ep.Stop()
+			delete(s.endpoints, name)
+		}
+		if err := os.RemoveAll(filepath.Join(s.opts.DataPath, name)); err != nil {
+			level.Error(s.log).Log("msg", "failed to cleanup orphaned wal directory", "endpoint", name, "err", err)
+		}
+	}
 }
 
 // Appender returns a new appender for the storage. The implementation

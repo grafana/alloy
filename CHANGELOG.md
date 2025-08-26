@@ -95,6 +95,8 @@ Main (unreleased)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
+- Fix issue in `prometheus.write.queue` where wal directories left orphaned if endpoint was removed. (@kalleep)
+
 v1.10.2
 -----------------
 
