@@ -90,7 +90,12 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 ```alloy
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
-  forward_to = [loki.write.logs_service.receiver]
+  forward_to       = [loki.write.logs_service.receiver]
+  cloud_provider   = {
+    aws = {
+      arn = "your-db-arn"
+    }
+  }
 }
 
 prometheus.scrape "orders_db" {
