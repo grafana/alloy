@@ -10,6 +10,31 @@ beyla.ebpf "default" {
       "application", 
       ]
   }
+  traces {
+    features = [
+      "application",
+    ]
+  }
+  output {
+    traces = [otelcol.processor.batch.beyla.input]
+  }
+}
+
+otelcol.processor.batch "beyla" {
+  output {
+    traces = [otelcol.exporter.otlphttp.beyla.input]
+  }
+}
+
+otelcol.exporter.otlphttp "beyla" {
+  traces_endpoint = "http://tempo:4318/v1/traces"
+  client {
+    endpoint = "ignore"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
 }
 
 prometheus.scrape "beyla" {
