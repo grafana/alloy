@@ -148,7 +148,7 @@ Each discovered container maps to one target per unique combination of networks 
 {{< param "PRODUCT_NAME" >}} sanitizes Docker label names in `__meta_docker_container_label_<labelname>` and `__meta_docker_network_label_<labelname>` to comply with Prometheus label naming requirements.
 The component converts dots and other non-alphanumeric characters to underscores. Underscores remain unchanged.
 For example, a Docker label `com.example.app.name` becomes `__meta_docker_container_label_com_example_app_name`.
-{{< /admonition >}
+{{< /admonition >}}
 
 ## Component health
 
