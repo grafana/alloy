@@ -65,7 +65,7 @@ func validateAlloyConfig(testDir string) error {
 
 	// Use the alloy binary to validate syntax
 	cmd := exec.Command(alloyBinaryPath, "fmt", "--dry-run", configPath)
-	var stderr bytes.Buffer
+	var stderr strings.Builder
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
