@@ -57,17 +57,17 @@ func CreateResource(job, instance string, serviceDiscoveryLabels labels.Labels) 
 	attrs.PutStr(string(conventions.ServiceNameKey), job)
 	if isDiscernibleHost(host) {
 		if !removeOldSemconvFeatureGate.IsEnabled() {
-			attrs.PutStr(string(oldconventions.HostNameKey), host)
+			attrs.PutStr(string(oldconventions.NetHostNameKey), host)
 		}
 		attrs.PutStr(string(conventions.ServerAddressKey), host)
 	}
 	attrs.PutStr(string(conventions.ServiceInstanceIDKey), instance)
 	if !removeOldSemconvFeatureGate.IsEnabled() {
-		attrs.PutStr(string(conventions.ServerPortKey), port)
+		attrs.PutStr(string(conventions.NetHostPortKey), port)
 		attrs.PutStr(string(conventions.HTTPSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
 	}
 	attrs.PutStr(string(conventions.ServerPortKey), port)
-	attrs.PutStr(string(conventions.HTTPSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
+	attrs.PutStr(string(conventions.URLSchemeKey), serviceDiscoveryLabels.Get(model.SchemeLabel))
 
 	addKubernetesResource(attrs, serviceDiscoveryLabels)
 

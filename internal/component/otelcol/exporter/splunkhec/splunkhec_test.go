@@ -59,6 +59,12 @@ func TestConfigConversion(t *testing.T) {
 			QueueSize:    1000,
 			StorageID:    nil,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
+			Batch: configoptional.Some(exporterhelper.BatchConfig{
+				FlushTimeout: 200000000,
+				Sizer:        exporterhelper.RequestSizerTypeItems,
+				MinSize:      500,
+				MaxSize:      1000,
+			}),
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -67,13 +73,6 @@ func TestConfigConversion(t *testing.T) {
 			Multiplier:          1.5,
 			MaxInterval:         30000000000,
 			MaxElapsedTime:      300000000000,
-		},
-		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
-			Enabled:      false,
-			FlushTimeout: 200000000,
-			Sizer:        exporterhelper.RequestSizerTypeItems,
-			MinSize:      8192,
-			MaxSize:      0,
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -153,9 +152,8 @@ func TestConfigConversion(t *testing.T) {
 		},
 		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
 			Enabled:      false,
-			FlushTimeout: 200000000,
-			Sizer:        exporterhelper.RequestSizerTypeItems,
-			MinSize:      8192,
+			FlushTimeout: 0,
+			MinSize:      0,
 		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
@@ -197,6 +195,17 @@ func TestConfigConversion(t *testing.T) {
 				   timeout = "10s"
 				   insecure_skip_verify = true
 		        }
+				sending_queue {
+					enabled = true
+					num_consumers = 10
+					queue_size = 1000
+					batch {
+						flush_timeout = "200ms"
+						min_size = 500
+						max_size = 1000
+						sizer = "items"
+					}
+				}
 			`,
 			expected: &expectedCustomise,
 		},

@@ -13,6 +13,7 @@ The following arguments are supported:
 | `num_consumers`     | `number`                   | Number of readers to send batches written to the queue in parallel.                        | `10`         | no       |
 | `queue_size`        | `number`                   | Maximum number of unwritten batches allowed in the queue at the same time.                 | `1000`       | no       |
 | `sizer`             | `string`                   | How the queue and batching is measured.                                                    | `"requests"` | no       |
+| `wait_for_result`   | `boolean`                  | Determines if incoming requests are blocked until the request is processed or not.         | `false`      | no       |
 | `storage`           | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use to enable a persistent queue mechanism. |              | no       |
 
 The `blocking` argument is deprecated in favor of the `block_on_overflow` argument.
