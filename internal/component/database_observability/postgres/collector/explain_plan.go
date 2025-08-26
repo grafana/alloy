@@ -147,5 +147,8 @@ func (p *PlanNode) totalCost() *float64 {
 		result -= plan.TotalCost
 	}
 	result = math.Round(result*100) / 100
+	if result < 0 {
+		result = 0
+	}
 	return &result
 }
