@@ -31,7 +31,7 @@ import (
 
 const name = "database_observability.mysql"
 
-const selectEngineVersion = `SELECT VERSION()`
+const selectServerInfo = `SELECT @@server_uuid, VERSION()`
 
 func init() {
 	component.Register(component.Registration{
@@ -282,20 +282,20 @@ func (c *Component) startCollectors() error {
 	}
 	c.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
 	err = rs.Err()
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
 		return err
 	}
 
-	var engineVersion string
-	if err := rs.Scan(&engineVersion); err != nil {
+	var serverUUID, engineVersion string
+	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
 		return err
 	}
 
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -510,10 +510,11 @@ func formatDSN(dsn string, params ...string) string {
 	return dsn + strings.Join(params, "&")
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverUUID string) loki.EntryHandler {
 	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
-		"job":      database_observability.JobName,
-		"instance": model.LabelValue(instanceKey),
+		"job":       database_observability.JobName,
+		"instance":  model.LabelValue(instanceKey),
+		"server_id": model.LabelValue(serverUUID),
 	}).Wrap(entryHandler)
 
 	return entryHandler
