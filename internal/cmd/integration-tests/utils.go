@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -55,6 +56,25 @@ func buildAlloy() {
 	executeCommand("make", []string{"-C", "../../..", "ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
 }
 
+// validateAlloyConfig validates the Alloy configuration syntax using the alloy binary
+func validateAlloyConfig(testDir string) error {
+	configPath := filepath.Join(testDir, "config.alloy")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return fmt.Errorf("config.alloy not found in %s", testDir)
+	}
+
+	// Use the alloy binary to validate syntax  
+	cmd := exec.Command(alloyBinaryPath, "fmt", "--dry-run", configPath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("syntax validation failed: %s", stderr.String())
+	}
+
+	return nil
+}
+
 // Setup container files for mounting into the test container
 func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, []*os.File, error) {
 	files, err := collectFiles(absTestDir)
@@ -96,7 +116,10 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImageName,
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", port)},
-		WaitingFor:   wait.ForListeningPort(natPort),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort(natPort),
+			wait.ForHTTP("/-/healthy").WithPort(natPort).WithStartupTimeout(30*time.Second),
+		),
 		Cmd:          []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"},
 		Files:        containerFiles,
 		Networks: []string{
@@ -170,6 +193,16 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
 	}
 
+	// Validate Alloy configuration syntax before starting container
+	if err := validateAlloyConfig(absTestDir); err != nil {
+		logChan <- TestLog{
+			TestDir:    dirName,
+			AlloyLog:   fmt.Sprintf("Configuration validation failed: %v", err),
+			TestOutput: fmt.Sprintf("FAIL: %s - Configuration syntax error", dirName),
+		}
+		return
+	}
+
 	// Prepare container files
 	containerFiles, openFiles, err := prepareContainerFiles(absTestDir)
 	if err != nil {
@@ -198,6 +231,19 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		return
 	}
 	defer alloyContainer.Terminate(ctx)
+
+	// Additional validation: Check container logs for configuration errors
+	if err := validateContainerHealth(ctx, alloyContainer, dirName); err != nil {
+		alloyLogs, _ := alloyContainer.Logs(ctx)
+		alloyLog, _ := io.ReadAll(alloyLogs)
+		
+		logChan <- TestLog{
+			TestDir:    dirName,
+			AlloyLog:   string(alloyLog),
+			TestOutput: fmt.Sprintf("FAIL: %s - Container health check failed: %v", dirName, err),
+		}
+		return
+	}
 
 	// Setup and run test command
 	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer)
