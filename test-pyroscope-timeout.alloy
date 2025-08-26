@@ -20,6 +20,7 @@ pyroscope.write "endpoint" {
 
     remote_timeout = "10s"
 
+    max_backoff_retries=-1
   }
 }
 
@@ -27,4 +28,40 @@ pyroscope.write "endpoint" {
 logging {
   level = "debug"
   format = "logfmt"
+  write_to = [
+    loki.write.korniltsev.receiver,
+    // loki.write.private.receiver,
+  ]
+}
+
+loki.write "korniltsev" {
+    external_labels = {
+        "debug_deadline" = "true",
+    }
+    endpoint {
+            url = "https://logs-prod-021.grafana.net/loki/api/v1/push"
+            basic_auth {
+                username = "1309555"
+                password = "glc_"
+            }
+            batch_size = "1MiB"
+            batch_wait = "10s" // todo remove
+            // batch_wait = "60s"
+        }
+}
+
+loki.write "private" {
+    external_labels = {
+        "debug_deadline" = "true",
+    }
+    endpoint {
+            // obtain these from grafana.com stack from "send logs" page.
+            url = "TODO"
+            basic_auth {
+                username = "TODO"
+                password = "glc_TODO"
+            }
+            batch_size = "1MiB"
+            batch_wait = "60s"
+        }
 }

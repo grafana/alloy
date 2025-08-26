@@ -1,24 +1,23 @@
 package write
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/go-kit/log"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
-	"os"
 	"path"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/log"
 
 	"connectrpc.com/connect"
 	"github.com/grafana/pyroscope/api/model/labelset"
@@ -193,20 +192,15 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		ingestClients[endpoint] = httpClient
 	}
 	debugLogger := opts.Logger
-	loggerFile := os.Getenv("PYROSCOPE_WRITE_TRACE_LOGGER")
-	if loggerFile != "" {
-		ff, err := os.Create(loggerFile)
-		if err != nil {
-			level.Error(debugLogger).Log("file", loggerFile, "err", err.Error(),
-				"msg", "falling back to the default component logger")
-		} else {
-			debugLogger = log.NewLogfmtLogger(log.NewSyncWriter(bufio.NewWriter(ff)))
-			debugLogger = log.With(debugLogger, "ts", log.DefaultTimestampUTC)
-		}
+	if rotatingLogger, err := NewLumberjack(); err != nil {
+		level.Error(opts.Logger).Log("err", err.Error(),
+			"msg", "falling back to the default component logger")
+		debugLogger = log.With(debugLogger,
+			"op", "pyroscope.write http trace")
+	} else if rotatingLogger != nil {
+		debugLogger = rotatingLogger
 	}
-	debugLogger = log.With(debugLogger,
-		alloyseed.HeaderName, uid,
-		"op", "pyroscope.write http trace")
+
 	return &fanOutClient{
 		pushClients:   pushClients,
 		ingestClients: ingestClients,
