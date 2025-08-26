@@ -95,6 +95,8 @@ Main (unreleased)
 
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
+- Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
+
 v1.10.2
 -----------------
 
