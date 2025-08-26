@@ -44,6 +44,7 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - add `query_tables` collector for postgres (@matthewnolf)
+  - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_table` collector for postgres (@fridgepoet)
 
