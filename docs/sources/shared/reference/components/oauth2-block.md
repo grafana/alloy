@@ -20,8 +20,8 @@ headless: true
 `client_secret` and `client_secret_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
 {{< admonition type="warning" >}}
-Using client_secret_file leads to file being read on every outgoing request. Prefer to use `local.file` component
-with client_secret attribute instead to avoid unnecessary reads.
+Using `client_secret_file` causes the file to be read on every outgoing request.
+Use the `local.file` component with the `client_secret` attribute instead to avoid unnecessary reads.
 {{< /admonition >}}
 
 The `oauth2` block may also contain a separate `tls_config` sub-block.
