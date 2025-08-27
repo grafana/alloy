@@ -22,7 +22,7 @@ import (
 
 var latestCompatibleVersion = semver.MustParse("8.0.32")
 
-func TestQuerySample(t *testing.T) {
+func TestQuerySamples(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
@@ -395,7 +395,7 @@ func TestQuerySample(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQuerySample(QuerySampleArguments{
+			collector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:              db,
 				EngineVersion:   latestCompatibleVersion,
 				CollectInterval: time.Second,
@@ -484,7 +484,7 @@ func TestQuerySample(t *testing.T) {
 	}
 }
 
-func TestQuerySample_WaitEvents(t *testing.T) {
+func TestQuerySamples_WaitEvents(t *testing.T) {
 	t.Run("both query sample and associated wait event is collected", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -492,7 +492,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -589,7 +589,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -761,7 +761,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -883,7 +883,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
@@ -991,7 +991,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 	})
 }
 
-func TestQuerySampleDisableQueryRedaction(t *testing.T) {
+func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	t.Run("collects sql text when enabled", func(t *testing.T) {
 		t.Parallel()
@@ -1002,7 +1002,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
@@ -1112,7 +1112,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                    db,
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
@@ -1212,7 +1212,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 	})
 }
 
-func TestQuerySampleMySQLVersions(t *testing.T) {
+func TestQuerySamplesMySQLVersions(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testCases := []struct {
@@ -1381,7 +1381,7 @@ func TestQuerySampleMySQLVersions(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQuerySample(QuerySampleArguments{
+			collector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:              db,
 				EngineVersion:   semver.MustParse(tc.mysqlVersion),
 				CollectInterval: time.Second,
@@ -1438,7 +1438,7 @@ func TestQuerySampleMySQLVersions(t *testing.T) {
 	}
 }
 
-func TestQuerySampleSQLDriverErrors(t *testing.T) {
+func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
@@ -1450,7 +1450,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -1580,7 +1580,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -1709,7 +1709,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:              db,
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
@@ -1825,7 +1825,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 	})
 }
 
-func TestQuerySample_initializeTimer(t *testing.T) {
+func TestQuerySamples_initializeTimer(t *testing.T) {
 	t.Run("selects uptime, sets timerBookmark", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -1837,7 +1837,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1856,7 +1856,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -1865,7 +1865,7 @@ func TestQuerySample_initializeTimer(t *testing.T) {
 	})
 }
 
-func TestQuerySample_handles_timer_overflows(t *testing.T) {
+func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 	t.Run("selects query sample summary: first run uses initialized timerBookmark and uptime limit", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -1932,7 +1932,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		)
 
 		lokiClient := loki_fake.NewClient(func() {})
-		c := &QuerySample{
+		c := &QuerySamples{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
@@ -2004,7 +2004,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"max_total_memory",
 		}))
 
-		c := &QuerySample{
+		c := &QuerySamples{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
@@ -2055,7 +2055,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"max_controlled_memory",
 			"max_total_memory",
 		}))
-		c := &QuerySample{
+		c := &QuerySamples{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
@@ -2107,7 +2107,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"max_controlled_memory",
 			"max_total_memory",
 		}))
-		c := &QuerySample{
+		c := &QuerySamples{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
@@ -2192,7 +2192,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"max_controlled_memory",
 			"max_total_memory",
 		}))
-		c := &QuerySample{
+		c := &QuerySamples{
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
@@ -2237,7 +2237,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			"max_controlled_memory",
 			"max_total_memory",
 		}))
-		c := &QuerySample{
+		c := &QuerySamples{
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
@@ -2257,7 +2257,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySample(QuerySampleArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -2274,7 +2274,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", digestTextNotNullClause, endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
-		c := &QuerySample{
+		c := &QuerySamples{
 			dbConnection:  db,
 			timerBookmark: 3e12,
 		}
@@ -2334,7 +2334,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 			),
 		)
 		mockParser := &parser.MockParser{}
-		c := &QuerySample{
+		c := &QuerySamples{
 			dbConnection:  db,
 			sqlParser:     mockParser,
 			engineVersion: latestCompatibleVersion,
@@ -2351,7 +2351,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 	})
 }
 
-func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
+func TestQuerySamples_calculateTimerClauseAndLimit(t *testing.T) {
 	tests := map[string]struct {
 		lastUptime          float64
 		uptime              float64
@@ -2386,7 +2386,7 @@ func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			c := &QuerySample{
+			c := &QuerySamples{
 				lastUptime: tc.lastUptime,
 			}
 
@@ -2398,7 +2398,7 @@ func TestQuerySample_calculateTimerClauseAndLimit(t *testing.T) {
 	}
 }
 
-func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
+func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("executes updateSetupConsumers query when autoEnableSetupConsumers is true", func(t *testing.T) {
@@ -2410,7 +2410,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                          db,
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
@@ -2521,7 +2521,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQuerySample(QuerySampleArguments{
+		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                          db,
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,

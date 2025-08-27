@@ -65,10 +65,10 @@ type Arguments struct {
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
 	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
-	SchemaTableArguments    SchemaTableArguments    `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments    ExplainPlanArguments    `alloy:"explain_plans,block,optional"`
+	SchemaTablesArguments   SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
+	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
 }
 
 type CloudProvider struct {
@@ -83,7 +83,7 @@ type QueryTablesArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-type SchemaTableArguments struct {
+type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
 	CacheSize       int           `alloy:"cache_size,attr,optional"`
@@ -94,7 +94,7 @@ type SetupConsumersArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-type ExplainPlanArguments struct {
+type ExplainPlansArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
@@ -106,7 +106,7 @@ type LocksArguments struct {
 	Threshold       time.Duration `alloy:"threshold,attr,optional"`
 }
 
-type QuerySampleArguments struct {
+type QuerySamplesArguments struct {
 	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
 	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
@@ -120,7 +120,7 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 	},
 
-	SchemaTableArguments: SchemaTableArguments{
+	SchemaTablesArguments: SchemaDetailsArguments{
 		CollectInterval: 1 * time.Minute,
 		CacheEnabled:    true,
 		CacheSize:       256,
@@ -131,7 +131,7 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Hour,
 	},
 
-	ExplainPlanArguments: ExplainPlanArguments{
+	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 		InitialLookback: 24 * time.Hour,
@@ -142,7 +142,7 @@ var DefaultArguments = Arguments{
 		Threshold:       1 * time.Second,
 	},
 
-	QuerySampleArguments: QuerySampleArguments{
+	QuerySamplesArguments: QuerySamplesArguments{
 		CollectInterval:             1 * time.Minute,
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
@@ -360,12 +360,12 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryTablesName:    true,
-		collector.SchemaTableName:    true,
-		collector.SetupConsumersName: true,
-		collector.QuerySampleName:    true,
-		collector.ExplainPlanName:    false,
-		collector.LocksName:          false,
+		collector.QueryDetailsCollector:   true,
+		collector.SchemaDetailsCollector:  true,
+		collector.SetupConsumersCollector: true,
+		collector.QuerySamplesCollector:   true,
+		collector.ExplainPlansCollector:   false,
+		collector.LocksCollector:          false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -409,84 +409,83 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryTablesName] {
-		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
+	if collectors[collector.QueryDetailsCollector] {
+		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.QueryTablesName, "create", err)
+			logStartError(collector.QueryDetailsCollector, "create", err)
 		} else {
 			if err := qtCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryTablesName, "start", err)
+				logStartError(collector.QueryDetailsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, qtCollector)
 		}
 	}
 
-	if collectors[collector.SchemaTableName] {
-		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+	if collectors[collector.SchemaDetailsCollector] {
+		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
-			CollectInterval: c.args.SchemaTableArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaTableArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaTableArguments.CacheSize,
-			CacheTTL:        c.args.SchemaTableArguments.CacheTTL,
-
-			EntryHandler: entryHandler,
-			Logger:       c.opts.Logger,
+			CollectInterval: c.args.SchemaTablesArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaTablesArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaTablesArguments.CacheSize,
+			CacheTTL:        c.args.SchemaTablesArguments.CacheTTL,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.SchemaTableName, "create", err)
+			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
 			if err := stCollector.Start(context.Background()); err != nil {
-				logStartError(collector.SchemaTableName, "start", err)
+				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, stCollector)
 		}
 	}
 
-	if collectors[collector.QuerySampleName] {
-		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QuerySamplesCollector] {
+		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySampleArguments.CollectInterval,
+			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySampleArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySampleArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySampleArguments.SetupConsumersCheckInterval,
+			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
 		})
 		if err != nil {
-			logStartError(collector.QuerySampleName, "create", err)
+			logStartError(collector.QuerySamplesCollector, "create", err)
 		} else {
 			if err := qsCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QuerySampleName, "start", err)
+				logStartError(collector.QuerySamplesCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, qsCollector)
 		}
 	}
 
-	if collectors[collector.SetupConsumersName] {
-		scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
+	if collectors[collector.SetupConsumersCollector] {
+		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
 			DB:              c.dbConnection,
 			Registry:        c.registry,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
 		if err != nil {
-			logStartError(collector.SetupConsumersName, "create", err)
+			logStartError(collector.SetupConsumersCollector, "create", err)
 		} else {
 			if err := scCollector.Start(context.Background()); err != nil {
-				logStartError(collector.SetupConsumersName, "start", err)
+				logStartError(collector.SetupConsumersCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, scCollector)
 		}
 	}
 
-	if collectors[collector.LocksName] {
-		locksCollector, err := collector.NewLock(collector.LockArguments{
+	if collectors[collector.LocksCollector] {
+		locksCollector, err := collector.NewLocks(collector.LocksArguments{
 			DB:                c.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
@@ -494,30 +493,30 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 			EntryHandler:      entryHandler,
 		})
 		if err != nil {
-			logStartError(collector.LocksName, "create", err)
+			logStartError(collector.LocksCollector, "create", err)
 		} else {
 			if err := locksCollector.Start(context.Background()); err != nil {
-				logStartError(collector.LocksName, "start", err)
+				logStartError(collector.LocksCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, locksCollector)
 		}
 	}
 
-	if collectors[collector.ExplainPlanName] {
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+	if collectors[collector.ExplainPlansCollector] {
+		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
 			DB:              c.dbConnection,
-			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
+			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
+			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 		})
 		if err != nil {
-			logStartError(collector.ExplainPlanName, "create", err)
+			logStartError(collector.ExplainPlansCollector, "create", err)
 		} else {
 			if err := epCollector.Start(context.Background()); err != nil {
-				logStartError(collector.ExplainPlanName, "start", err)
+				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, epCollector)
 		}

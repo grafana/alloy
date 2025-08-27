@@ -33,12 +33,12 @@ import (
 const name = "database_observability.postgres"
 
 const selectServerInfo = `
-SELECT 
-	(pg_control_system()).system_identifier, 
-	inet_server_addr(), 
+SELECT
+	(pg_control_system()).system_identifier,
+	inet_server_addr(),
 	inet_server_port(),
-	setting as version 
-FROM pg_settings 
+	setting as version
+FROM pg_settings
 WHERE name = 'server_version';`
 
 func init() {
@@ -285,9 +285,9 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryTablesName: false,
-		collector.QuerySampleName: false,
-		collector.SchemaTableName: false,
+		collector.QueryDetailsCollector:  false,
+		collector.QuerySamplesCollector:  false,
+		collector.SchemaDetailsCollector: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -318,24 +318,24 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryTablesName] {
-		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
+	if collectors[collector.QueryDetailsCollector] {
+		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.QueryTablesName, "create", err)
+			logStartError(collector.QueryDetailsCollector, "create", err)
 		}
 		if err := qCollector.Start(context.Background()); err != nil {
-			logStartError(collector.QueryTablesName, "start", err)
+			logStartError(collector.QueryDetailsCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	if collectors[collector.QuerySampleName] {
-		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QuerySamplesCollector] {
+		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:          entryHandler,
@@ -343,10 +343,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
 		})
 		if err != nil {
-			logStartError(collector.QuerySampleName, "create", err)
+			logStartError(collector.QuerySamplesCollector, "create", err)
 		}
 		if err := aCollector.Start(context.Background()); err != nil {
-			logStartError(collector.QuerySampleName, "start", err)
+			logStartError(collector.QuerySamplesCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, aCollector)
 	}
@@ -366,17 +366,17 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	c.collectors = append(c.collectors, ciCollector)
 
-	if collectors[collector.SchemaTableName] {
-		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+	if collectors[collector.SchemaDetailsCollector] {
+		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:           c.dbConnection,
 			EntryHandler: entryHandler,
 			Logger:       c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.SchemaTableName, "create", err)
+			logStartError(collector.SchemaDetailsCollector, "create", err)
 		}
 		if err := stCollector.Start(context.Background()); err != nil {
-			logStartError(collector.SchemaTableName, "start", err)
+			logStartError(collector.SchemaDetailsCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, stCollector)
 	}
