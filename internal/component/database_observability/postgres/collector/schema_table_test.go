@@ -33,7 +33,6 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
@@ -112,7 +111,6 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
@@ -236,7 +234,6 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
@@ -287,7 +284,6 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
@@ -370,7 +366,6 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
@@ -448,7 +443,6 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
-			InstanceKey:  "postgres-db",
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
 		})
