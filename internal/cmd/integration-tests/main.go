@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 var (
 	specificTest string
 	skipBuild    bool
 	stateful     bool
+	testTimeout  time.Duration
 )
 
 func main() {
@@ -31,6 +34,7 @@ func main() {
 		"This is useful for a fast iteration loop locally but should not be used in CI." +
 		"You must run 'docker compose down' manually if you want to switch from stateful to stateless mode."
 	rootCmd.PersistentFlags().BoolVar(&stateful, "stateful", false, statefulUsageString)
+	rootCmd.PersistentFlags().DurationVar(&testTimeout, "test-timeout", common.DefaultTimeout, "Timeout for each individual test")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -64,7 +68,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 			specificTest = "./tests/" + specificTest
 		}
 		logChan = make(chan TestLog, 1)
-		runSingleTest(ctx, specificTest, 12345, stateful)
+		runSingleTest(ctx, specificTest, 12345, stateful, testTimeout)
 	} else {
 		testDirs, err := filepath.Glob("./tests/*")
 		if err != nil {
