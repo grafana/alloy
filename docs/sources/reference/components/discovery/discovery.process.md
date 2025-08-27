@@ -93,12 +93,12 @@ The resulting targets are:
 ]
 ```
 
-Explanation of the four resulting targets in this example:
+The four targets are updated as follows:
 
-1. The first _external target_ merged with the first discovered _process target_, joint by `__container_id__=1`.
-2. The second discovered _process target_, joint with no matching _external target_.
-3. The first original _external target_, joint with no matching discovered _process target_.
-4. The second original _external target_, joint with no matching discovered _process target_.
+1. The first external target is merged with the first discovered process target, joined by `__container_id__=1`.
+1. The second discovered process target has no matching external target.
+1. The first original external target has no matching discovered process target.
+1. The second original external target has no matching discovered process target.
 
 [example_discovery_kubernetes]: #example-discovering-processes-on-the-local-host-and-joining-with-discoverykubernetes
 
