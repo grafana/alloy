@@ -38,9 +38,8 @@ You can use the following arguments with `discovery.process`:
 ### Targets joining
 
 If you specify `join`, `discovery.process` joins the discovered processes based on the `__container_id__` label.
-This component alternatively joins targets by `__meta_kubernetes_pod_container_id` or `__meta_docker_container_id`,
-which allows a simple integration with the output from other discovery components like `discovery.kubernetes`,
-as shown in [this example][example_discovery_kubernetes].
+This component alternatively joins targets by `__meta_kubernetes_pod_container_id` or `__meta_docker_container_id`, which allows a simple integration with the output from other discovery components like `discovery.kubernetes`.
+The example [discovering processes on the local host and joining with `discovery.kubernetes`][example_discovery_kubernetes] demonstrates this.
 
 For example, if `join` is specified as the following _external targets_:
 
