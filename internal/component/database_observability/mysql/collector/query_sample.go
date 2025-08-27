@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	QuerySampleName = "query_sample"
+	QuerySampleName = "query_samples"
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
 
@@ -78,7 +78,6 @@ const updateSetupConsumers = `
 
 type QuerySampleArguments struct {
 	DB                          *sql.DB
-	InstanceKey                 string
 	CollectInterval             time.Duration
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool

@@ -100,14 +100,16 @@ and additionally enable these options:
 
 ```
 database_observability.mysql "mysql_<your_DB_name>" {
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 
   // Global option to allow writing to performance_schema tables
   allow_update_performance_schema_settings = true
 
-  // Option to allow the `query_sample` collector to
+  // Option to allow the `query_samples` collector to
   // enable the 'events_statements_cpu' consumer
-  query_sample_auto_enable_setup_consumers = true
+  query_samples {
+    auto_enable_setup_consumers = true
+  }
 }
 ```
 
@@ -156,15 +158,16 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
 database_observability.mysql "mysql_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
-  collect_interval  = "1m"
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 
-  // OPTIONAL: if `query_sample` collector is enabled, you can use
+  // OPTIONAL: if `query_samples` collector is enabled, you can use
   // the following setting to disable sql text redaction (by default
   // query samples are redacted).
-  disable_query_redaction = true
+  query_samples {
+    disable_query_redaction = true
+  }
 }
 
 loki.relabel "database_observability_mysql_<your_DB_name>" {
@@ -300,8 +303,7 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
 database_observability.mysql "mysql_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
-  collect_interval  = "1m"
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 }
 
 loki.relabel "database_observability_mysql_example_db_1" {
@@ -339,8 +341,7 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
 database_observability.mysql "mysql_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
-  collect_interval  = "1m"
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 }
 
 loki.relabel "database_observability_mysql_example_db_2" {
@@ -429,7 +430,6 @@ prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
 database_observability.postgres "postgres_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
-  collect_interval  = "1m"
 }
 
 loki.relabel "database_observability_postgres_<your_DB_name>" {

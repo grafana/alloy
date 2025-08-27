@@ -1493,7 +1493,6 @@ func TestExplainPlan(t *testing.T) {
 		c, err := NewExplainPlan(ExplainPlanArguments{
 			DB:              db,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
-			InstanceKey:     "mysql-db",
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1562,7 +1561,6 @@ func TestExplainPlan(t *testing.T) {
 		c, err := NewExplainPlan(ExplainPlanArguments{
 			DB:              db,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
-			InstanceKey:     "mysql-db",
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1687,7 +1685,6 @@ func TestQueryFailureDenylist(t *testing.T) {
 	c, err := NewExplainPlan(ExplainPlanArguments{
 		DB:              db,
 		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
-		InstanceKey:     "mysql-db",
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
@@ -1777,7 +1774,6 @@ func TestSchemaDenylist(t *testing.T) {
 	c, err := NewExplainPlan(ExplainPlanArguments{
 		DB:              db,
 		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
-		InstanceKey:     "mysql-db",
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		ExcludeSchemas:  []string{"some_schema"},
