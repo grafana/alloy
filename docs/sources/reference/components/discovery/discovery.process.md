@@ -56,7 +56,7 @@ For example, if `join` is specified as the following external targets:
 ]
 ```
 
-And the discovered _process targets_ are:
+And the discovered process targets are:
 
 ```json
 [
