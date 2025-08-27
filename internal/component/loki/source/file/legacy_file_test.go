@@ -38,6 +38,7 @@ func TestLegacyConversion(t *testing.T) {
 	// create log file
 	logFilename := filepath.Join(tmpFileDir, "my-log.log")
 	logFile, err := os.Create(logFilename)
+	require.NoError(t, err)
 
 	logFile.Write([]byte(util.Untab(`log 1
 	log 2
