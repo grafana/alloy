@@ -89,6 +89,7 @@ where the list of resolved endpoints changes frequently due to deployments and s
 > To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ## Blocks
 

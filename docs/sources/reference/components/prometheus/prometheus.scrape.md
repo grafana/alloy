@@ -89,6 +89,7 @@ You can use the following arguments with `prometheus.scrape`:
 > To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 At most, one of the following can be provided:
 
