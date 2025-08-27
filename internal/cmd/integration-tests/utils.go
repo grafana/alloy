@@ -65,11 +65,12 @@ func validateAlloyConfig(testDir string) error {
 
 	// Use the alloy binary to validate syntax
 	cmd := exec.Command(alloyBinaryPath, "fmt", "--dry-run", configPath)
-	var stderr strings.Builder
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("syntax validation failed: %s", stderr.String())
+		return fmt.Errorf("syntax validation failed:\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
 	}
 
 	return nil
@@ -291,6 +292,7 @@ func reportResults() {
 
 	if testsFailed > 0 {
 		fmt.Printf("%d tests failed!\n", testsFailed)
+		os.Exit(1)
 	} else {
 		fmt.Println("All integration tests passed!")
 	}
