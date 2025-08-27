@@ -38,9 +38,9 @@ SELECT unix_timestamp() AS now,
 FROM performance_schema.global_status
 WHERE variable_name = 'UPTIME'`
 
-// selectQuerySamplesLegacy is used for MySQL versions older than 8.4.x
+// selectQuerySamplesMySQL80 is used for MySQL versions older than 8.4.x
 // i.e. Aurora MySQL v3.x is compatible with MySQL v8.0.x
-const selectQuerySamplesLegacy = `
+const selectQuerySamplesMySQL80 = `
 SELECT
 	statements.CURRENT_SCHEMA,
 	statements.THREAD_ID,
@@ -75,8 +75,8 @@ WHERE
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
-// selectQuerySamplesModern is used for MySQL versions 8.4.x and newer
-const selectQuerySamplesModern = `
+// selectQuerySamples is used for MySQL versions 8.4.x and newer
+const selectQuerySamples = `
 SELECT
 	statements.CURRENT_SCHEMA,
 	statements.THREAD_ID,
@@ -133,7 +133,6 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection                *sql.DB
-	instanceKey                 string
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
 	sqlParser                   parser.Parser
@@ -154,7 +153,6 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
 		dbConnection:                args.DB,
-		instanceKey:                 args.InstanceKey,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
 		sqlParser:                   parser.NewTiDBSqlParser(),
@@ -319,9 +317,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 
 	var baseQuery string
 	if c.isMySQL84OrGreater.Load() {
-		baseQuery = selectQuerySamplesModern
+		baseQuery = selectQuerySamples
 	} else {
-		baseQuery = selectQuerySamplesLegacy
+		baseQuery = selectQuerySamplesMySQL80
 	}
 	query := fmt.Sprintf(baseQuery, textField, textNotNullClause, timerClause)
 
