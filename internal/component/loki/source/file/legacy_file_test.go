@@ -3,6 +3,7 @@
 package file
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,12 +24,13 @@ func TestLegacyConversion(t *testing.T) {
 
 	// create legacy position file
 	legacyPositionFilename := filepath.Join(tmpFileDir, "legacy.yaml")
+	fmt.Println(legacyPositionFilename)
 	legacy, err := os.Create(legacyPositionFilename)
 	require.NoError(t, err)
 
 	legacyPositions := positions.LegacyFile{
 		Positions: map[string]string{
-			filepath.Join(tmpFileDir, "my-log.log"): "14",
+			filepath.Join(tmpFileDir, "my-log.log"): "12",
 		},
 	}
 	err = yaml.NewEncoder(legacy).Encode(&legacyPositions)
@@ -41,10 +43,10 @@ func TestLegacyConversion(t *testing.T) {
 	require.NoError(t, err)
 
 	logFile.Write([]byte(util.Untab(`log 1
-	log 2
-	log 3
-	log 4
-	log 5
+log 2
+log 3
+log 4
+log 5
 	`)))
 	require.NoError(t, logFile.Close())
 
@@ -69,5 +71,9 @@ func TestLegacyConversion(t *testing.T) {
 	require.NoError(t, ctrl.WaitRunning(10*time.Second))
 
 	entry := <-rec.Chan()
-	require.Equal(t, "log3", entry.Line)
+	require.Equal(t, "log 3", entry.Line)
+	entry = <-rec.Chan()
+	require.Equal(t, "log 4", entry.Line)
+	entry = <-rec.Chan()
+	require.Equal(t, "log 5", entry.Line)
 }
