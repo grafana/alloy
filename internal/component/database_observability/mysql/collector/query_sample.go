@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -38,9 +38,44 @@ SELECT unix_timestamp() AS now,
 FROM performance_schema.global_status
 WHERE variable_name = 'UPTIME'`
 
-// selectQuerySamplesMySQL80 is used for MySQL versions older than 8.4.x
-// i.e. Aurora MySQL v3.x is compatible with MySQL v8.0.x
-const selectQuerySamplesMySQL80 = `
+// selectQuerySamplesMysqlOlderThan8028 is used for MySQL versions older than 8.0.28
+const selectQuerySamplesMysqlOlderThan8028 = `
+SELECT
+	statements.CURRENT_SCHEMA,
+	statements.THREAD_ID,
+	statements.EVENT_ID,
+	statements.END_EVENT_ID,
+	statements.DIGEST,
+	statements.DIGEST_TEXT,
+	statements.TIMER_END,
+	statements.TIMER_WAIT,
+	0,
+	statements.ROWS_EXAMINED,
+	statements.ROWS_SENT,
+	statements.ROWS_AFFECTED,
+	statements.ERRORS,
+	0,
+	0,
+	waits.event_id as WAIT_EVENT_ID,
+	waits.end_event_id as WAIT_END_EVENT_ID,
+	waits.event_name as WAIT_EVENT_NAME,
+	waits.object_name as WAIT_OBJECT_NAME,
+	waits.object_type as WAIT_OBJECT_TYPE,
+	waits.timer_wait as WAIT_TIMER_WAIT
+	%s
+FROM
+	performance_schema.events_statements_history AS statements
+LEFT JOIN
+	performance_schema.events_waits_history waits
+	ON statements.thread_id = waits.thread_id
+	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+WHERE
+	statements.DIGEST IS NOT NULL
+	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
+	%s %s`
+
+// selectQuerySamplesMysqlOlderThan8031 is used for MySQL versions older than 8.0.31
+const selectQuerySamplesMysqlOlderThan8031 = `
 SELECT
 	statements.CURRENT_SCHEMA,
 	statements.THREAD_ID,
@@ -75,7 +110,7 @@ WHERE
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
-// selectQuerySamples is used for MySQL versions 8.4.x and newer
+// selectQuerySamples is used for MySQL versions 8.0.31 and newer
 const selectQuerySamples = `
 SELECT
 	statements.CURRENT_SCHEMA,
@@ -116,9 +151,6 @@ const updateSetupConsumers = `
 		SET enabled = 'yes'
 		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
-// versionRegex is used to parse the MySQL version string.
-var versionRegex = regexp.MustCompile(`^(\d+)\.(\d+)\..*`)
-
 type QuerySampleArguments struct {
 	DB                          *sql.DB
 	InstanceKey                 string
@@ -127,6 +159,7 @@ type QuerySampleArguments struct {
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
 	SetupConsumersCheckInterval time.Duration
+	DBVersion                   string
 
 	Logger log.Logger
 }
@@ -139,7 +172,7 @@ type QuerySample struct {
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
-	isMySQL84OrGreater          *atomic.Bool
+	DBVersion                   string
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -159,7 +192,7 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
-		isMySQL84OrGreater:          &atomic.Bool{},
+		DBVersion:                   args.DBVersion,
 		logger:                      log.With(args.Logger, "collector", QuerySampleName),
 		running:                     &atomic.Bool{},
 	}
@@ -182,12 +215,6 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
 	c.cancel = cancel
-
-	if err := c.checkMySQLVersion(ctx); err != nil {
-		level.Error(c.logger).Log("msg", "failed to check mysql version, defaulting to legacy query format", "err", err)
-		// Default to false in case of an error
-		c.isMySQL84OrGreater.Store(false)
-	}
 
 	if err := c.initializeBookmark(c.ctx); err != nil {
 		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
@@ -220,36 +247,6 @@ func (c *QuerySample) Start(ctx context.Context) error {
 			}
 		}
 	}()
-
-	return nil
-}
-
-// checkMySQLVersion queries the database for its version and sets a boolean flag
-// if the version is 8.4.0 or greater.
-func (c *QuerySample) checkMySQLVersion(ctx context.Context) error {
-	var version string
-	err := c.dbConnection.QueryRowContext(ctx, "SELECT VERSION()").Scan(&version)
-	if err != nil {
-		return fmt.Errorf("failed to query mysql version: %w", err)
-	}
-
-	matches := versionRegex.FindStringSubmatch(version)
-	if len(matches) < 3 {
-		level.Warn(c.logger).Log("msg", "could not parse mysql version string", "version", version)
-		c.isMySQL84OrGreater.Store(false)
-		return nil
-	}
-
-	major, _ := strconv.Atoi(matches[1])
-	minor, _ := strconv.Atoi(matches[2])
-
-	if major > 8 || (major == 8 && minor >= 4) {
-		level.Debug(c.logger).Log("msg", "detected MySQL version 8.4.0 or greater", "version", version)
-		c.isMySQL84OrGreater.Store(true)
-	} else {
-		level.Debug(c.logger).Log("msg", "detected MySQL version older than 8.4.0", "version", version)
-		c.isMySQL84OrGreater.Store(false)
-	}
 
 	return nil
 }
@@ -293,6 +290,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 
 	c.lastUptime = uptime
 	c.timerBookmark = uptimeSinceOverflow(uptime)
+
 	return nil
 }
 
@@ -315,12 +313,40 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		textNotNullClause = digestTextNotNullClause
 	}
 
+	// let's find out which major/minor/revision we're working with
+	parts := strings.Split(c.DBVersion, ".")
+
+	// we ignore errors here as this comes from component.go
+	mysqlMajor, err := strconv.Atoi(parts[0])
+	mysqlMinor, err := strconv.Atoi(parts[1])
+	mysqlRevision, err := strconv.Atoi(parts[2])
+
 	var baseQuery string
-	if c.isMySQL84OrGreater.Load() {
-		baseQuery = selectQuerySamples
-	} else {
-		baseQuery = selectQuerySamplesMySQL80
+
+	// we start by assuming we're in version 8.4 or more recent
+	baseQuery = selectQuerySamples
+
+	// however... if we're on major version 8
+	if mysqlMajor == 8 {
+		level.Debug(c.logger).Log("msg", "We're in major version 8")
+		// and minor version 0
+		if mysqlMinor == 0 {
+			level.Debug(c.logger).Log("msg", "We're in minor version 0")
+			// older than v8.0.31
+			if mysqlRevision < 31 && mysqlRevision >= 28 {
+				level.Debug(c.logger).Log("msg", "We're past revisions 28 and 30")
+				// we don't have MAX_CONTROLLED_MEMORY and MAX_TOTAL_MEMORY yet
+				baseQuery = selectQuerySamplesMysqlOlderThan8031
+			}
+			// older than v8.0.28
+			if mysqlRevision < 28 {
+				level.Debug(c.logger).Log("msg", "We're in revision older than 28")
+				// we don't even have CPU_TIME yet
+				baseQuery = selectQuerySamplesMysqlOlderThan8028
+			}
+		}
 	}
+
 	query := fmt.Sprintf(baseQuery, textField, textNotNullClause, timerClause)
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
