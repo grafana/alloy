@@ -53,6 +53,7 @@ func toTailSamplingProcessor(state *State, id componentstatus.InstanceID, cfg *t
 		PolicyCfgs:              toPolicyCfgs(cfg.PolicyCfgs),
 		DecisionWait:            cfg.DecisionWait,
 		NumTraces:               cfg.NumTraces,
+		BlockOnOverflow:         cfg.BlockOnOverflow,
 		ExpectedNewTracesPerSec: cfg.ExpectedNewTracesPerSec,
 		Output: &otelcol.ConsumerArguments{
 			Traces: ToTokenizedConsumers(nextTraces),

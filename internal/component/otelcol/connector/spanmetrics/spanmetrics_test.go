@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 func getStringPtr(str string) *string {
@@ -49,8 +50,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
-					Exponential: nil,
-					Explicit: &spanmetricsconnector.ExplicitHistogramConfig{
+					Exponential: configoptional.None[spanmetricsconnector.ExponentialHistogramConfig](),
+					Explicit: configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{
 						Buckets: []time.Duration{
 							2 * time.Millisecond,
 							4 * time.Millisecond,
@@ -69,7 +70,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 							10 * time.Second,
 							15 * time.Second,
 						},
-					},
+					}),
 				},
 				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "traces.span.metrics",
@@ -103,8 +104,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Dimensions:  []spanmetricsconnector.Dimension{},
 					Disable:     false,
 					Unit:        0,
-					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160},
-					Explicit:    nil,
+					Exponential: configoptional.Some(spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160}),
+					Explicit:    configoptional.None[spanmetricsconnector.ExplicitHistogramConfig](),
 				},
 				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "traces.span.metrics",
@@ -179,14 +180,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 					Disable:     true,
 					Unit:        1,
-					Exponential: nil,
-					Explicit: &spanmetricsconnector.ExplicitHistogramConfig{
+					Exponential: configoptional.None[spanmetricsconnector.ExponentialHistogramConfig](),
+					Explicit: configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{
 						Buckets: []time.Duration{
 							333 * time.Millisecond,
 							777 * time.Second,
 							999 * time.Hour,
 						},
-					},
+					}),
 				},
 				MetricsFlushInterval: 33 * time.Second,
 				MetricsExpiration:    44 * time.Second,
@@ -224,8 +225,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Dimensions:  []spanmetricsconnector.Dimension{},
 					Unit:        0,
-					Exponential: &spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123},
-					Explicit:    nil,
+					Exponential: configoptional.Some(spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 123}),
+					Explicit:    configoptional.None[spanmetricsconnector.ExplicitHistogramConfig](),
 				},
 				MetricsFlushInterval: 60 * time.Second,
 				Namespace:            "traces.span.metrics",

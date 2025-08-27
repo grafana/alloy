@@ -39,9 +39,9 @@ type GRPCServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error) {
+func (args *GRPCServerArguments) Convert() (configoptional.Optional[otelconfiggrpc.ServerConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otelconfiggrpc.ServerConfig](), nil
 	}
 
 	// If auth is set add that to the config.
@@ -50,14 +50,14 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 		// If a auth plugin does not implement server auth, an error will be returned here.
 		serverExtension, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
-			return nil, err
+			return configoptional.None[otelconfiggrpc.ServerConfig](), err
 		}
 		authentication = configoptional.Some(otelconfigauth.Config{
 			AuthenticatorID: serverExtension.ID,
 		})
 	}
 
-	return &otelconfiggrpc.ServerConfig{
+	return configoptional.Some(otelconfiggrpc.ServerConfig{
 		NetAddr: confignet.AddrConfig{
 			Endpoint:  args.Endpoint,
 			Transport: confignet.TransportType(args.Transport),
@@ -72,7 +72,13 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 		Keepalive:            args.Keepalive.Convert(),
 		IncludeMetadata:      args.IncludeMetadata,
 		Auth:                 authentication,
-	}, nil
+	}), nil
+}
+
+// Temporary function until all upstream components are converted to use configoptional.Optional.
+func (args *GRPCServerArguments) ConvertToPtr() (*otelconfiggrpc.ServerConfig, error) {
+	converted, err := args.Convert()
+	return converted.Get(), err
 }
 
 // Extensions exposes extensions used by args.

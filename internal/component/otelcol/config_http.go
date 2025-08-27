@@ -42,9 +42,9 @@ func copyStringSlice(s []string) []string {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error) {
+func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otelconfighttp.ServerConfig](), nil
 	}
 
 	// If auth is set by the user retrieve the associated extension from the handler.
@@ -53,7 +53,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
-			return nil, err
+			return configoptional.None[otelconfighttp.ServerConfig](), err
 		}
 
 		authentication = configoptional.Some(otelconfighttp.AuthConfig{
@@ -63,7 +63,7 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 		})
 	}
 
-	return &otelconfighttp.ServerConfig{
+	return configoptional.Some(otelconfighttp.ServerConfig{
 		Endpoint:              args.Endpoint,
 		TLS:                   args.TLS.Convert(),
 		CORS:                  args.CORS.Convert(),
@@ -71,7 +71,13 @@ func (args *HTTPServerArguments) Convert() (*otelconfighttp.ServerConfig, error)
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
-	}, nil
+	}), nil
+}
+
+// Temporary function until all upstream components are converted to use configoptional.Optional.
+func (args *HTTPServerArguments) ConvertToPtr() (*otelconfighttp.ServerConfig, error) {
+	converted, err := args.Convert()
+	return converted.Get(), err
 }
 
 // Extensions exposes extensions used by args.

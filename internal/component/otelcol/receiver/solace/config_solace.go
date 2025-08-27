@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 // Authentication defines authentication strategies.
@@ -19,15 +20,9 @@ type Authentication struct {
 func (args Authentication) Convert() solacereceiver.Authentication {
 	auth := solacereceiver.Authentication{}
 
-	if args.PlainText != nil {
-		auth.PlainText = args.PlainText.Convert()
-	}
-	if args.XAuth2 != nil {
-		auth.XAuth2 = args.XAuth2.Convert()
-	}
-	if args.External != nil {
-		auth.External = args.External.Convert()
-	}
+	auth.PlainText = args.PlainText.Convert()
+	auth.XAuth2 = args.XAuth2.Convert()
+	auth.External = args.External.Convert()
 
 	return auth
 }
@@ -38,11 +33,15 @@ type SaslPlainTextConfig struct {
 	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
-func (args SaslPlainTextConfig) Convert() *solacereceiver.SaslPlainTextConfig {
-	return &solacereceiver.SaslPlainTextConfig{
+func (args *SaslPlainTextConfig) Convert() configoptional.Optional[solacereceiver.SaslPlainTextConfig] {
+	if args == nil {
+		return configoptional.None[solacereceiver.SaslPlainTextConfig]()
+	}
+
+	return configoptional.Some(solacereceiver.SaslPlainTextConfig{
 		Username: args.Username,
 		Password: configopaque.String(args.Password),
-	}
+	})
 }
 
 // SaslXAuth2Config defines the configuration for the SASL XAUTH2 authentication.
@@ -51,18 +50,26 @@ type SaslXAuth2Config struct {
 	Bearer   string `alloy:"bearer,attr"`
 }
 
-func (args SaslXAuth2Config) Convert() *solacereceiver.SaslXAuth2Config {
-	return &solacereceiver.SaslXAuth2Config{
+func (args *SaslXAuth2Config) Convert() configoptional.Optional[solacereceiver.SaslXAuth2Config] {
+	if args == nil {
+		return configoptional.None[solacereceiver.SaslXAuth2Config]()
+	}
+
+	return configoptional.Some(solacereceiver.SaslXAuth2Config{
 		Username: args.Username,
 		Bearer:   args.Bearer,
-	}
+	})
 }
 
 // SaslExternalConfig defines the configuration for the SASL External used in conjunction with TLS client authentication.
 type SaslExternalConfig struct{}
 
-func (args SaslExternalConfig) Convert() *solacereceiver.SaslExternalConfig {
-	return &solacereceiver.SaslExternalConfig{}
+func (args *SaslExternalConfig) Convert() configoptional.Optional[solacereceiver.SaslExternalConfig] {
+	if args == nil {
+		return configoptional.None[solacereceiver.SaslExternalConfig]()
+	}
+
+	return configoptional.Some(solacereceiver.SaslExternalConfig{})
 }
 
 // FlowControl defines the configuration for what to do in backpressure scenarios, e.g. memorylimiter errors
@@ -72,9 +79,7 @@ type FlowControl struct {
 
 func (args FlowControl) Convert() solacereceiver.FlowControl {
 	flowControl := solacereceiver.FlowControl{}
-	if args.DelayedRetry != nil {
-		flowControl.DelayedRetry = args.DelayedRetry.Convert()
-	}
+	flowControl.DelayedRetry = args.DelayedRetry.Convert()
 	return flowControl
 }
 
@@ -91,8 +96,12 @@ type FlowControlDelayedRetry struct {
 	Delay time.Duration `alloy:"delay,attr,optional"`
 }
 
-func (args FlowControlDelayedRetry) Convert() *solacereceiver.FlowControlDelayedRetry {
-	return &solacereceiver.FlowControlDelayedRetry{
-		Delay: args.Delay,
+func (args *FlowControlDelayedRetry) Convert() configoptional.Optional[solacereceiver.FlowControlDelayedRetry] {
+	if args == nil {
+		return configoptional.None[solacereceiver.FlowControlDelayedRetry]()
 	}
+
+	return configoptional.Some(solacereceiver.FlowControlDelayedRetry{
+		Delay: args.Delay,
+	})
 }
