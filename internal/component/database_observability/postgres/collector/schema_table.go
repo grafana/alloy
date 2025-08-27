@@ -22,7 +22,7 @@ const (
 	OP_SCHEMA_DETECTION = "schema_detection"
 	OP_TABLE_DETECTION  = "table_detection"
 	OP_CREATE_STATEMENT = "create_statement"
-	SchemaTableName     = "schema_table"
+	SchemaTableName     = "schema_details"
 )
 
 const (
@@ -30,11 +30,11 @@ const (
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
-	SELECT 
+	SELECT
 	    nspname as schema_name
-	FROM 
+	FROM
 	    pg_catalog.pg_namespace
-	WHERE 
+	WHERE
 	    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
 	    AND nspname NOT LIKE 'pg_temp_%'
 	    AND nspname NOT LIKE 'pg_toast_%'`
@@ -44,11 +44,11 @@ const (
 		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')  -- filter for application-facing objects
 	*/
 	selectTableNames = `
-	SELECT 
+	SELECT
 		pg_class.relname as table_name
 	FROM pg_catalog.pg_class pg_class
 	JOIN pg_catalog.pg_namespace pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-	WHERE pg_namespace.nspname = $1 
+	WHERE pg_namespace.nspname = $1
 		AND pg_class.relkind IN ('r', 'v', 'm', 'f', 'p')
 		AND pg_class.relname NOT LIKE 'pg_%'`
 
@@ -70,9 +70,9 @@ const (
 		attr.attnotnull as not_nullable,
 		pg_catalog.pg_get_expr(def.adbin, def.adrelid) as column_default,
 		attr.attidentity as identity_generation,
-		CASE 
-		    WHEN constraint_pk.contype = 'p' THEN true 
-		    ELSE false 
+		CASE
+		    WHEN constraint_pk.contype = 'p' THEN true
+		    ELSE false
 		END as is_primary_key
 	FROM
 		pg_attribute attr
@@ -107,7 +107,6 @@ type columnSpec struct {
 
 type SchemaTableArguments struct {
 	DB           *sql.DB
-	InstanceKey  string
 	EntryHandler loki.EntryHandler
 
 	Logger log.Logger
@@ -115,7 +114,6 @@ type SchemaTableArguments struct {
 
 type SchemaTable struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -128,7 +126,6 @@ type SchemaTable struct {
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaTableName),

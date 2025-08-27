@@ -371,7 +371,6 @@ func TestQueryTables(t *testing.T) {
 
 			collector, err := NewQueryTables(QueryTablesArguments{
 				DB:              db,
-				InstanceKey:     "mysql-db",
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -432,7 +431,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -498,7 +496,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -561,7 +558,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),

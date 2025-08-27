@@ -19,7 +19,7 @@ import (
 const (
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
-	QuerySampleName = "query_sample"
+	QuerySampleName = "query_samples"
 )
 
 const selectPgStatActivity = `

@@ -28,7 +28,7 @@ import (
 
 const (
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	ExplainPlanName        = "explain_plan"
+	ExplainPlanName        = "explain_plans"
 )
 
 const selectDigestsForExplainPlan = `
@@ -476,7 +476,6 @@ var unrecoverableSQLCodes = []knownSQLCodes{
 
 type ExplainPlanArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
 	ExcludeSchemas  []string
