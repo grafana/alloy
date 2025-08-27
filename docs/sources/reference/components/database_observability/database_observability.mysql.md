@@ -29,6 +29,7 @@ You can use the following arguments with `database_observability.mysql`:
 |--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
 | `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
 | `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
+| `targets`                                  | `list(map(string))`  | List of targets to scrape.                                                  |         | yes      |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. | `false` | no       |

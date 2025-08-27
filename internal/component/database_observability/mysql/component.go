@@ -20,7 +20,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -56,7 +56,7 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
@@ -296,16 +296,13 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
+	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if alloy_relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
 			targets = append(targets, builder.Target())
 		}
-	}
-	builder := discovery.NewTargetBuilderFrom(c.baseTarget)
-	if alloy_relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
-		targets = append(targets, builder.Target())
 	}
 
 	c.opts.OnStateChange(Exports{
