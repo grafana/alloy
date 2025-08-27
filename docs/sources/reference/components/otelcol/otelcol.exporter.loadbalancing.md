@@ -86,9 +86,10 @@ where the list of resolved endpoints changes frequently due to deployments and s
 
 > **EXPERIMENTAL**: Metrics support in `otelcol.exporter.loadbalancing` is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> The `stability.level` flag must be set to `experimental` to use the feature.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ## Blocks
 
