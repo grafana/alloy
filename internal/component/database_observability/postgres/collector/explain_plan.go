@@ -5,7 +5,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
@@ -38,7 +37,7 @@ type PlanNode struct {
 	IndexName          string     `json:"Index Name"`
 }
 
-func newExplainPlanOutput(logger log.Logger, dbVersion string, queryId string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
+func newExplainPlanOutput(dbVersion string, queryId string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
 	var planNodes []PgSQLExplainplan
 	if err := json.Unmarshal(explainJson, &planNodes); err != nil {
 		return nil, err

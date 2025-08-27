@@ -2,11 +2,9 @@ package collector
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
@@ -18,10 +16,6 @@ func stringPtr(s string) *string {
 
 func floatPtr(f float64) *float64 {
 	return &f
-}
-
-func explainPlanAccessTypePtr(s database_observability.ExplainPlanAccessType) *database_observability.ExplainPlanAccessType {
-	return &s
 }
 
 func explainPlanJoinAlgorithmPtr(s database_observability.ExplainPlanJoinAlgorithm) *database_observability.ExplainPlanJoinAlgorithm {
@@ -2195,8 +2189,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", tt.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-			output, err := newExplainPlanOutput(logger, tt.engineVersion, tt.queryid, jsonData, currentTime)
+			output, err := newExplainPlanOutput(tt.engineVersion, tt.queryid, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", tt.fname)
 			// Override the generated at time to ensure the test is deterministic
 			output.Metadata.GeneratedAt = currentTime
