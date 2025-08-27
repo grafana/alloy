@@ -41,7 +41,7 @@ If you specify `join`, `discovery.process` joins the discovered processes based 
 This component alternatively joins targets by `__meta_kubernetes_pod_container_id` or `__meta_docker_container_id`, which allows a simple integration with the output from other discovery components like `discovery.kubernetes`.
 The example [discovering processes on the local host and joining with `discovery.kubernetes`][example_discovery_kubernetes] demonstrates this.
 
-For example, if `join` is specified as the following _external targets_:
+For example, if `join` is specified as the following external targets:
 
 ```json
 [
