@@ -11,8 +11,8 @@ beyla.ebpf "default" {
       ]
   }
   traces {
-    features = [
-      "application",
+    instrumentations = [
+      "http",
     ]
   }
   output {
