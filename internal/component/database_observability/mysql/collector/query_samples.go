@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	QuerySampleName = "query_samples"
-	OP_QUERY_SAMPLE = "query_sample"
-	OP_WAIT_EVENT   = "wait_event"
+	QuerySamplesCollector = "query_samples"
+	OP_QUERY_SAMPLE       = "query_sample"
+	OP_WAIT_EVENT         = "wait_event"
 
 	sqlTextField              = `, statements.SQL_TEXT`
 	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
@@ -76,7 +76,7 @@ const updateSetupConsumers = `
 		SET enabled = 'yes'
 		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
-type QuerySampleArguments struct {
+type QuerySamplesArguments struct {
 	DB                          *sql.DB
 	CollectInterval             time.Duration
 	EntryHandler                loki.EntryHandler
@@ -87,7 +87,7 @@ type QuerySampleArguments struct {
 	Logger log.Logger
 }
 
-type QuerySample struct {
+type QuerySamples struct {
 	dbConnection                *sql.DB
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
@@ -105,8 +105,8 @@ type QuerySample struct {
 	lastUptime    float64
 }
 
-func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	c := &QuerySample{
+func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	c := &QuerySamples{
 		dbConnection:                args.DB,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
@@ -114,18 +114,18 @@ func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
-		logger:                      log.With(args.Logger, "collector", QuerySampleName),
+		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
 
 	return c, nil
 }
 
-func (c *QuerySample) Name() string {
-	return QuerySampleName
+func (c *QuerySamples) Name() string {
+	return QuerySamplesCollector
 }
 
-func (c *QuerySample) Start(ctx context.Context) error {
+func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
 		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
 	} else {
@@ -172,16 +172,16 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) Stopped() bool {
+func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QuerySample) Stop() {
+func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySample) runSetupConsumersCheck() {
+func (c *QuerySamples) runSetupConsumersCheck() {
 	ticker := time.NewTicker(c.setupConsumersCheckInterval)
 
 	for {
@@ -200,7 +200,7 @@ func (c *QuerySample) runSetupConsumersCheck() {
 
 // initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
 // samples that may have been collected previously.
-func (c *QuerySample) initializeBookmark(ctx context.Context) error {
+func (c *QuerySamples) initializeBookmark(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectUptime)
 
 	var uptime float64
@@ -214,7 +214,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 	timeRow := c.dbConnection.QueryRowContext(ctx, selectNowAndUptime)
 
 	var now, uptime float64
@@ -409,7 +409,7 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
+func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
 	if err != nil {
 		return fmt.Errorf("failed to update performance_schema.setup_consumers: %w", err)
@@ -424,7 +424,7 @@ func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
+func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline
 	currentOverflows := calculateNumberOfOverflows(uptime)
 	previousOverflows := calculateNumberOfOverflows(c.lastUptime)

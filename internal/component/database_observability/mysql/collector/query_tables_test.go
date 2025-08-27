@@ -369,7 +369,7 @@ func TestQueryTables(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQueryTables(QueryTablesArguments{
+			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
@@ -429,7 +429,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -494,7 +494,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -556,7 +556,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,

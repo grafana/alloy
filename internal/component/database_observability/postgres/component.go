@@ -226,9 +226,9 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryTablesName: false,
-		collector.QuerySampleName: false,
-		collector.SchemaTableName: false,
+		collector.QueryDetailsCollector:  false,
+		collector.QuerySamplesCollector:  false,
+		collector.SchemaDetailsCollector: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -262,8 +262,8 @@ func (c *Component) startCollectors() error {
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryTablesName] {
-		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
+	if collectors[collector.QueryDetailsCollector] {
+		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
@@ -280,8 +280,8 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, qCollector)
 	}
 
-	if collectors[collector.QuerySampleName] {
-		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QuerySamplesCollector] {
+		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                    dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:          entryHandler,
@@ -329,8 +329,8 @@ func (c *Component) startCollectors() error {
 
 	c.collectors = append(c.collectors, ciCollector)
 
-	if collectors[collector.SchemaTableName] {
-		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+	if collectors[collector.SchemaDetailsCollector] {
+		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:           dbConnection,
 			EntryHandler: entryHandler,
 			Logger:       c.opts.Logger,
