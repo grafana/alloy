@@ -29,23 +29,23 @@ This enables automatic updates and better package management integration.
 Choose the installation method for your Linux distribution:
 
 {{< tabs >}}
-{{< tab "Ubuntu and Debian" >}}
+{{< tab-content name="Ubuntu and Debian" >}}
 
 ```shell
 curl -fsSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.deb -o alloy.deb
 sudo dpkg -i alloy.deb
 ```
 
-{{< /tab >}}
-{{< tab "RHEL, CentOS, and Fedora" >}}
+{{< /tab-content >}}
+{{< tab-content name= "RHEL, CentOS, and Fedora" >}}
 
 ```shell
 curl -fsSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.rpm -o alloy.rpm
 sudo rpm -i alloy.rpm
 ```
 
-{{< /tab >}}
-{{< tab "Generic Linux (binary)" >}}
+{{< /tab-content >}}
+{{< tab-content name= "Generic Linux (binary)" >}}
 
 ```shell
 curl -fsSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.zip -o alloy.zip
@@ -54,7 +54,7 @@ sudo mv alloy-linux-amd64 /usr/local/bin/alloy
 sudo chmod +x /usr/local/bin/alloy
 ```
 
-{{< /tab >}}
+{{< /tab-content >}}
 {{< /tabs >}}
 
 {{< admonition type="note" >}}
