@@ -10,7 +10,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -33,8 +32,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
@@ -49,8 +48,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table\" datname=\"some_database\" engine=\"postgres\"",
@@ -65,8 +64,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"INSERT INTO some_table (id, name) VALUES (...)\" datname=\"some_database\" engine=\"postgres\"",
@@ -81,9 +80,9 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table\" datname=\"some_database\" engine=\"postgres\"",
@@ -99,8 +98,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2\" datname=\"some_database\" engine=\"postgres\"",
@@ -115,8 +114,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"DELETE FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
@@ -131,9 +130,9 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)\" datname=\"some_database\" engine=\"postgres\"",
@@ -149,9 +148,9 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC\" datname=\"some_database\" engine=\"postgres\"",
@@ -171,10 +170,10 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"xyz456\" querytext=\"INSERT INTO some_table...\" datname=\"some_database\" engine=\"postgres\"",
@@ -191,8 +190,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1 AND name =\" datname=\"some_database\" engine=\"postgres\"",
@@ -207,7 +206,7 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" querytext="START TRANSACTION" datname="some_database" engine="postgres"`,
@@ -225,9 +224,9 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"xyz456\" querytext=\"not valid sql\" datname=\"some_database\" engine=\"postgres\"",
@@ -247,10 +246,10 @@ func TestQueryTables(t *testing.T) {
 				"other_schema",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = $1\" datname=\"some_database\" engine=\"postgres\"",
@@ -267,10 +266,10 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea\" datname=\"some_database\" engine=\"postgres\"",
@@ -287,8 +286,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SHOW CREATE TABLE some_table\" datname=\"some_database\" engine=\"postgres\"",
@@ -303,7 +302,7 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SHOW VARIABLES LIKE $1\" datname=\"some_database\" engine=\"postgres\"",
@@ -317,8 +316,8 @@ func TestQueryTables(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE\" datname=\"some_database\" engine=\"postgres\"",
@@ -339,7 +338,6 @@ func TestQueryTables(t *testing.T) {
 
 			collector, err := NewQueryTables(QueryTablesArguments{
 				DB:              db,
-				InstanceKey:     "postgres-db",
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -399,7 +397,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -446,9 +443,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres"`, lokiEntries[1].Line)
 	})
 
@@ -463,7 +460,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -506,9 +502,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres"`, lokiEntries[1].Line)
 	})
 
@@ -523,7 +519,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "postgres-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -564,9 +559,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "postgres-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" queryid=\"abc123\" querytext=\"SELECT * FROM some_table WHERE id = ?\" datname=\"some_database\" engine=\"postgres\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "postgres-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres"`, lokiEntries[1].Line)
 	})
 }

@@ -542,8 +542,9 @@ func (t *transaction) Rollback() error {
 	return nil
 }
 
-func (t *transaction) UpdateMetadata(_ storage.SeriesRef, _ labels.Labels, _ metadata.Metadata) (storage.SeriesRef, error) {
-	// TODO: implement this func
+func (t *transaction) UpdateMetadata(_ storage.SeriesRef, lbls labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	// There's no need to implement this.
+	// The metadata will be retrieved from the context.
 	return 0, nil
 }
 

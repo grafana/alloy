@@ -4,9 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/syntax"
 )
@@ -18,14 +23,16 @@ func Test_collectSQLText(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_query_redaction = true
+		query_samples {
+			disable_query_redaction = true
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.True(t, args.DisableQueryRedaction)
+		assert.True(t, args.QuerySampleArguments.DisableQueryRedaction)
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
@@ -40,7 +47,7 @@ func Test_collectSQLText(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.False(t, args.DisableQueryRedaction)
+		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction)
 	})
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
@@ -49,14 +56,52 @@ func Test_collectSQLText(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		setup_consumers_collect_interval = "1h"
+		setup_consumers {
+			collect_interval = "1h"
+		}
 	`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Equal(t, time.Hour, args.SetupConsumersCollectInterval)
+		assert.Equal(t, time.Hour, args.SetupConsumersArguments.CollectInterval)
+	})
+}
+
+func Test_parseCloudProvider(t *testing.T) {
+	t.Run("parse cloud provider block", func(t *testing.T) {
+		t.Parallel()
+
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
+	})
+	t.Run("empty cloud provider block", func(t *testing.T) {
+		t.Parallel()
+
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Nil(t, args.CloudProvider)
 	})
 }
 
@@ -87,7 +132,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -110,7 +155,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans"]
 	`
 
 		var args Arguments
@@ -133,8 +178,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
-		enable_collectors = ["query_tables", "schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
+		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
 
 		var args Arguments
@@ -157,8 +202,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
-		disable_collectors = ["schema_table", "query_sample", "setup_consumers", "explain_plan", "locks"]
-		enable_collectors = ["query_tables"]
+		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
+		enable_collectors = ["query_details"]
 	`
 
 		var args Arguments
@@ -199,5 +244,35 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.ExplainPlanName:    false,
 			collector.LocksName:          false,
 		}, actualCollectors)
+	})
+}
+
+func Test_addLokiLabels(t *testing.T) {
+	t.Run("add required labels to loki entries", func(t *testing.T) {
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-server-uuid")
+
+		go func() {
+			ts := time.Now().UnixNano()
+			entryHandler.Chan() <- loki.Entry{
+				Entry: logproto.Entry{
+					Timestamp: time.Unix(0, ts),
+					Line:      "some-message",
+				},
+			}
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Len(t, lokiClient.Received(), 1)
+		assert.Equal(t, model.LabelSet{
+			"job":       database_observability.JobName,
+			"instance":  model.LabelValue("some-instance-key"),
+			"server_id": model.LabelValue("some-server-uuid"),
+		}, lokiClient.Received()[0].Labels)
+		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
 }

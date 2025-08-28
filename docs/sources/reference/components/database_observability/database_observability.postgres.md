@@ -25,22 +25,51 @@ database_observability.postgres "<LABEL>" {
 
 You can use the following arguments with `database_observability.postgres`:
 
-| Name                               | Type                 | Description                                                                                    | Default | Required |
-|------------------------------------|----------------------|------------------------------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                 | `secret`             | [Data Source Name][] for the Postgres server to connect to.                                    |         | yes      |
-| `forward_to`                       | `list(LogsReceiver)` | Where to forward log entries after processing.                                                 |         | yes      |
-| `disable_collectors`               | `list(string)`       | A list of collectors to disable from the default set.                                          |         | no       |
-| `enable_collectors`                | `list(string)`       | A list of collectors to enable on top of the default set.                                      |         | no       |
+| Name                 | Type                 | Description                                                 | Default | Required |
+|----------------------|----------------------|-------------------------------------------------------------|---------|----------|
+| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
+| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
+| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 
 The following collectors are configurable:
 
-| Name              | Description                                              | Enabled by default |
-|-------------------|----------------------------------------------------------|--------------------|
-| `query_tables`    | Collect query table information.                         | no                 |
+| Name             | Description                                                           | Enabled by default |
+|------------------|-----------------------------------------------------------------------|--------------------|
+| `query_details`  | Collect queries information.                                          | no                 |
+| `query_samples`  | Collect query samples and wait events information.                    | no                 |
+| `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | no                 |
 
 ## Blocks
 
-The `database_observability.postgres` component doesn't support any blocks. You can configure this component with arguments.
+You can use the following blocks with `database_observability.postgres`:
+
+| Block                              | Description                                       | Required |
+|------------------------------------|---------------------------------------------------|----------|
+| [`query_details`][query_details]   | Configure the queries collector.                  | no       |
+| [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
+| [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
+
+[query_details]: #query_details
+[query_samples]: #query_samples
+[schema_details]: #schema_details
+
+### `query_details`
+
+| Name               | Type       | Description                                          | Default | Required |
+|--------------------|------------|------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+
+### `query_samples`
+
+| Name                      | Type       | Description                                             | Default | Required |
+|---------------------------|------------|---------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect information from database.    | `"15s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text including parameters. | `false` | no       |
+
+### `schema_details`
+
+This collector has no config options.
 
 ## Example
 
@@ -48,6 +77,7 @@ The `database_observability.postgres` component doesn't support any blocks. You 
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/mydb"
   forward_to = [loki.write.logs_service.receiver]
+  enable_collectors = ["query_details", "query_samples", "schema_details"]
 }
 
 prometheus.scrape "orders_db" {

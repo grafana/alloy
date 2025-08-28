@@ -29,11 +29,6 @@ import (
 	"github.com/grafana/pyroscope/api/model/labelset"
 )
 
-const (
-	// defaultMaxConnLimit defines the maximum number of simultaneous HTTP connections
-	defaultMaxConnLimit = 100
-)
-
 func init() {
 	component.Register(component.Registration{
 		Name:      "pyroscope.receive_http",
@@ -52,13 +47,10 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
-	serverConfig := fnet.DefaultServerConfig()
-	if serverConfig.HTTP.ConnLimit == 0 {
-		serverConfig.HTTP.ConnLimit = defaultMaxConnLimit
-	}
 	*a = Arguments{
-		Server: serverConfig,
+		Server: fnet.DefaultServerConfig(),
 	}
+	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
@@ -114,23 +106,6 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 
 	c.appendables = newArgs.ForwardTo
 
-	// if no server config provided, we'll use defaults
-	if newArgs.Server == nil {
-		newArgs.Server = fnet.DefaultServerConfig()
-	}
-
-	// Only apply default max connections limit if using default config
-	if newArgs.Server.HTTP.ConnLimit == 0 {
-		newArgs.Server.HTTP.ConnLimit = defaultMaxConnLimit
-	}
-
-	if newArgs.Server.HTTP == nil {
-		newArgs.Server.HTTP = &fnet.HTTPConfig{
-			ListenPort:    0,
-			ListenAddress: "127.0.0.1",
-		}
-	}
-
 	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {
 		return shutdown, nil
@@ -176,6 +151,7 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 	)
 	for i := range alloy {
 		alloy[i] = &pyroscope.RawSample{
+			ID:         api[i].ID,
 			RawProfile: api[i].RawProfile,
 		}
 	}

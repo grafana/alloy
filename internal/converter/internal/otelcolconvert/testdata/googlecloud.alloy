@@ -1,11 +1,12 @@
-otelcol.receiver.otlp "default" {
-	grpc {
-		endpoint = "localhost:4317"
-	}
-
-	http {
-		endpoint = "localhost:4318"
-	}
+otelcol.receiver.googlecloudpubsub "default" {
+	project               = "otel-project"
+	user_agent            = "alloy"
+	insecure              = true
+	subscription          = "projects/otel-project/subscriptions/otlp-logs"
+	encoding              = "otlp_proto_trace"
+	compression           = "gzip"
+	ignore_encoding_error = true
+	timeout               = "10s"
 
 	output {
 		metrics = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]

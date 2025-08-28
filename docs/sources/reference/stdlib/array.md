@@ -81,7 +81,6 @@ Examples using discovery and exporter components:
 You can find more examples in the [tests][].
 
 [tests]: https://github.com/grafana/alloy/blob/main/syntax/vm/vm_stdlib_test.go
-[experimental]: https://grafana.com/docs/release-life-cycle/
 
 ## array.group_by
 

@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"go.uber.org/atomic"
 )
 
@@ -55,6 +56,7 @@ func Test_Write_FanOut(t *testing.T) {
 					{Name: "job", Value: "foo"},
 				}, req.Msg.Series[0].Labels)
 				require.Equal(t, []byte("pprofraw"), req.Msg.Series[0].Samples[0].RawProfile)
+				require.Equal(t, "test-request-id", req.Msg.Series[0].Samples[0].ID)
 				return &connect.Response[pushv1.PushResponse]{}, err
 			},
 		))
@@ -115,7 +117,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.EqualErrorf(t, err, "unknown: test", "expected error to be test")
 		require.Equal(t, serverCount, pushTotal.Load())
@@ -131,7 +133,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.NoError(t, err)
 		require.Equal(t, serverCount-1, pushTotal.Load())
@@ -148,7 +150,7 @@ func Test_Write_FanOut(t *testing.T) {
 			"job":      "foo",
 			"foo":      "bar",
 		}), []*pyroscope.RawSample{
-			{RawProfile: []byte("pprofraw")},
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
 		require.Error(t, err)
 		require.Equal(t, int32(3), pushTotal.Load())
@@ -258,229 +260,240 @@ func TestBadAlloyConfig(t *testing.T) {
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
 }
 
-func Test_Write_AppendIngest(t *testing.T) {
-	var (
-		export      Exports
-		argument    = DefaultArguments()
-		appendCount = atomic.NewInt32(0)
-		serverCount = int32(3)
-		servers     = make([]*httptest.Server, serverCount)
-		endpoints   = make([]*EndpointOptions, 0, serverCount)
-	)
+type AppendIngestTestSuite struct {
+	suite.Suite
+	servers      []*httptest.Server
+	component    *Component
+	export       Exports
+	requestCount *atomic.Int32
+	ctx          context.Context
+	cancel       context.CancelFunc
+	testData     []byte
+	arguments    Arguments
+}
 
-	var errorCallback = func(*http.Request) error { return nil }
+func (s *AppendIngestTestSuite) SetupTest() {
+	s.requestCount = new(atomic.Int32)
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.testData = []byte("test-profile-data")
+	s.servers = nil
+}
 
-	testData := []byte("test-profile-data")
-	argument.ExternalLabels = map[string]string{
-		"env":     "prod",      // Should override env=staging
-		"cluster": "cluster-1", // Should be added
+func (s *AppendIngestTestSuite) TearDownTest() {
+	s.cancel()
+	for _, server := range s.servers {
+		server.Close()
 	}
+}
 
-	handlerFn := func(expectedPath string) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, expectedPath, r.URL.Path, "Unexpected path")
-
-			// Header assertions
-			require.Equal(t, "i-am-so-good", r.Header.Get("X-Good-Header"))
-			require.Equal(t, []string{"profile-value1", "profile-value2"}, r.Header["Content-Type"])
-
-			// Label assertions - parse the name parameter once
-			ls, err := labelset.Parse(r.URL.Query().Get("name"))
-			require.NoError(t, err)
-			labels := ls.Labels()
-
-			// Check each label individually
-			require.Equal(t, "my.awesome.app.cpu", labels["__name__"], "Base name should be preserved")
-			require.Equal(t, "prod", labels["env"], "External label should override profile label")
-			require.Equal(t, "cluster-1", labels["cluster"], "External label should be added")
-			require.Equal(t, "us-west-1", labels["region"], "Profile-only label should be preserved")
-
-			// Check non-label query params
-			require.Equal(t, "value", r.URL.Query().Get("key"), "Original query parameter should be preserved")
-
-			// Body assertion
-			body, err := io.ReadAll(r.Body)
-			require.NoError(t, err, "Failed to read request body")
-			require.Equal(t, testData, body, "Unexpected body content")
-
-			// eventually return error
-			if err := errorCallback(r); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(err.Error()))
-				return
-			}
-
-			appendCount.Inc()
-			w.WriteHeader(http.StatusOK)
+func (s *AppendIngestTestSuite) newServer(handlerLogic func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
+	ss := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.requestCount.Inc()
+		s.Require().Equal("/ingest", r.URL.Path, "Unexpected path")
+		if handlerLogic != nil {
+			handlerLogic(w, r)
 		}
-	}
+	}))
+	s.servers = append(s.servers, ss)
+	return ss
+}
 
-	for i := int32(0); i < serverCount; i++ {
-		servers[i] = httptest.NewServer(handlerFn("/ingest"))
-		endpoints = append(endpoints, &EndpointOptions{
-			URL:           servers[i].URL,
-			RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
-			Headers: map[string]string{
-				"ContentType":   "evil-content-type",
-				"X-Good-Header": "i-am-so-good",
-				"X-Server-ID":   strconv.Itoa(int(i)),
-			},
-		})
-	}
-	defer func() {
-		for _, s := range servers {
-			s.Close()
-		}
-	}()
-
-	argument.Endpoints = endpoints
-
-	// Create the receiver
+func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "test-write",
-		Logger:     util.TestAlloyLogger(t),
+	var err error
+	s.arguments = argument
+	s.component, err = New(component.Options{
+		ID:         "test-write-appendingest",
+		Logger:     util.TestAlloyLogger(s.T()),
 		Registerer: prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {
 			defer wg.Done()
-			export = e.(Exports)
+			s.export = e.(Exports)
 		},
 	}, argument)
-	require.NoError(t, err, "Failed to create component")
+	s.Require().NoError(err)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go c.Run(ctx)
-	wg.Wait() // wait for the state change to happen
-	require.NotNil(t, export.Receiver, "Receiver is nil")
+	go s.component.Run(s.ctx)
+	wg.Wait()
+	s.Require().NotNil(s.export.Receiver)
+}
 
-	incomingProfile := &pyroscope.IncomingProfile{
-		RawBody: testData,
-		ContentType: []string{
-			"profile-value1", "profile-value2", // This should be preserved
-		},
+func (s *AppendIngestTestSuite) newProfile(labelMap map[string]string) *pyroscope.IncomingProfile {
+	profile := &pyroscope.IncomingProfile{
+		RawBody: s.testData,
 		URL: &url.URL{
 			Path:     "/ingest",
 			RawQuery: "key=value",
 		},
-		Labels: labels.FromMap(map[string]string{
-			"__name__": "my.awesome.app.cpu",
-			"env":      "staging",
-			"region":   "us-west-1",
-		}),
 	}
-
-	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
-	require.NoError(t, err)
-	require.Equal(t, serverCount, appendCount.Load())
-
-	// now test with one error
-	errorCallback = func(req *http.Request) error {
-		if req.Header.Get("X-Server-ID") == "1" {
-			return errors.New("I don't like your profile")
-		}
-		return nil
-	}
-
-	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
-	require.ErrorContains(t, err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
-	require.Equal(t, 2*serverCount-1, appendCount.Load())
+	profile.Labels = labels.FromMap(labelMap)
+	profile.ContentType = []string{"ct1", "ct2"}
+	return profile
 }
 
-func TestAppendIngestLabelTransformation(t *testing.T) {
-	var (
-		export      Exports
-		appendCount = atomic.NewInt32(0)
-	)
+func (s *AppendIngestTestSuite) newEndpoint(server *httptest.Server, headers map[string]string) *EndpointOptions {
+	return &EndpointOptions{
+		URL:               server.URL,
+		RemoteTimeout:     10 * time.Second,
+		MaxBackoffRetries: 3,
+		MinBackoff:        1 * time.Millisecond,
+		MaxBackoff:        1 * time.Millisecond,
+		Headers:           headers,
+	}
+}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		appendCount.Inc()
-
-		// Parse labels from query
+func (s *AppendIngestTestSuite) TestBasicFunctionality() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
 		ls, err := labelset.Parse(r.URL.Query().Get("name"))
-		require.NoError(t, err)
-		labels := ls.Labels()
+		s.Require().NoError(err)
 
-		// Verify __name__ matches service_name after transformation
-		require.Equal(t, "my-service-grafana", labels["__name__"])
-		require.Equal(t, "my-service-grafana", labels["service_name"])
+		s.Equal("i-am-so-good", r.Header.Get("X-Good-Header"))
+		s.Equal([]string{"ct1", "ct2"}, r.Header["Content-Type"])
+		s.Equal("my.awesome.app.cpu", ls.Labels()["__name__"])
+		s.Equal("prod", ls.Labels()["env"])
+		s.Equal("cluster-1", ls.Labels()["cluster"])
+		s.Equal("us-west-1", ls.Labels()["region"])
+		s.Equal("value", r.URL.Query().Get("key"))
+
+		body, err := io.ReadAll(r.Body)
+		s.Require().NoError(err)
+		s.Equal(s.testData, body)
 
 		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	})
 
-	// Create component with a relabel rule that modifies service_name
-	argument := DefaultArguments()
-	argument.Endpoints = []*EndpointOptions{{
-		URL:           server.URL,
-		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
-	}}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "test-write",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
-			defer wg.Done()
-			export = e.(Exports)
+	s.newComponent(Arguments{
+		ExternalLabels: map[string]string{
+			"env":     "prod",
+			"cluster": "cluster-1",
 		},
-	}, argument)
-	require.NoError(t, err)
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, map[string]string{
+			"ContentType":   "evil-content-type",
+			"X-Good-Header": "i-am-so-good",
+		})},
+	})
 
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go c.Run(ctx)
-	wg.Wait()
-	require.NotNil(t, export.Receiver)
+	profile := s.newProfile(map[string]string{
+		"__name__": "my.awesome.app.cpu",
+		"env":      "staging",
+		"region":   "us-west-1",
+	})
 
-	// Send profile
-	incomingProfile := &pyroscope.IncomingProfile{
-		Labels: labels.FromMap(map[string]string{
-			"__name__":     "original-name",
-			"service_name": "my-service-grafana",
-		}),
-		URL: &url.URL{Path: "/ingest"},
-	}
-
-	err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
-	require.NoError(t, err)
-	require.Equal(t, int32(1), appendCount.Load())
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.NoError(err)
+	s.Equal(int32(1), s.requestCount.Load())
 }
 
-func Test_Write_AppendIngest_InvalidLabels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+func (s *AppendIngestTestSuite) TestErrorHandling() {
+	const serverCount = 3
+	for i := int32(0); i < serverCount; i++ {
+		s.newServer(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("X-Server-ID") == "1" {
+				err := errors.New("I don't like your profile")
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+			} else {
+				w.WriteHeader(http.StatusOK)
+			}
+		})
+	}
 
 	argument := DefaultArguments()
-	argument.Endpoints = []*EndpointOptions{{
-		URL:           server.URL,
-		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
-	}}
+	for i, server := range s.servers {
+		argument.Endpoints = append(argument.Endpoints, s.newEndpoint(server, map[string]string{
+			"X-Server-ID": strconv.Itoa(i),
+		}))
+	}
 
-	var wg sync.WaitGroup
-	var export Exports
-	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "test-write-invalid",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
-			defer wg.Done()
-			export = e.(Exports)
-		},
-	}, argument)
-	require.NoError(t, err)
+	s.newComponent(argument)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go c.Run(ctx)
-	wg.Wait()
-	require.NotNil(t, export.Receiver)
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.ErrorContains(err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
+}
+
+func (s *AppendIngestTestSuite) TestRetryLogic() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		if s.requestCount.Load() == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("service temporarily unavailable"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, nil)},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.NoError(err)
+	s.Equal(int32(2), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestRetryExhaustion() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte("service always unavailable"))
+	})
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, nil)},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.Error(err)
+	s.Contains(err.Error(), "pyroscope write error: status=503 msg=service always unavailable")
+	s.Positive(s.arguments.Endpoints[0].MaxBackoffRetries)
+	s.Equal(int32(s.arguments.Endpoints[0].MaxBackoffRetries), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestLabelTransformation() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		ls, err := labelset.Parse(r.URL.Query().Get("name"))
+		s.Require().NoError(err)
+		s.Equal("my-service-grafana", ls.Labels()["__name__"])
+		s.Equal("my-service-grafana", ls.Labels()["service_name"])
+		w.WriteHeader(http.StatusOK)
+	})
+
+	argument := Arguments{
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, nil)},
+	}
+
+	s.newComponent(argument)
+
+	profile := s.newProfile(map[string]string{
+		"__name__":     "original-name",
+		"service_name": "my-service-grafana",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.NoError(err)
+	s.Equal(int32(1), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestInvalidLabels() {
+	server := s.newServer(nil)
+	argument := Arguments{
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, nil)},
+	}
+
+	s.newComponent(argument)
 
 	testCases := []struct {
 		name    string
@@ -528,23 +541,27 @@ func Test_Write_AppendIngest_InvalidLabels(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			incomingProfile := &pyroscope.IncomingProfile{
+		s.Run(tc.name, func() {
+			profile := &pyroscope.IncomingProfile{
 				RawBody: []byte("test-data"),
 				Labels:  tc.labels,
 				URL:     &url.URL{Path: "/ingest"},
 			}
 
-			err = export.Receiver.Appender().AppendIngest(t.Context(), incomingProfile)
+			err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
 
 			if tc.wantErr {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.errMsg)
+				s.Error(err)
+				s.Contains(err.Error(), tc.errMsg)
 			} else {
-				require.NoError(t, err)
+				s.NoError(err)
 			}
 		})
 	}
+}
+
+func Test_Write_AppendIngest(t *testing.T) {
+	suite.Run(t, new(AppendIngestTestSuite))
 }
 
 func Test_Write_FanOut_ValidateLabels(t *testing.T) {

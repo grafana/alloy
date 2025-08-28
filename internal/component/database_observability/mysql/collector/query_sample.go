@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	QuerySampleName = "query_sample"
+	QuerySampleName = "query_samples"
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
 
@@ -74,11 +74,10 @@ WHERE
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
 		SET enabled = 'yes'
-		WHERE name = 'events_statements_cpu'`
+		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
 type QuerySampleArguments struct {
 	DB                          *sql.DB
-	InstanceKey                 string
 	CollectInterval             time.Duration
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool
@@ -90,7 +89,6 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection                *sql.DB
-	instanceKey                 string
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
 	sqlParser                   parser.Parser
@@ -110,7 +108,6 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
 		dbConnection:                args.DB,
-		instanceKey:                 args.InstanceKey,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
 		sqlParser:                   parser.NewTiDBSqlParser(),
@@ -370,7 +367,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
-				c.instanceKey,
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
@@ -400,7 +396,6 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
-				c.instanceKey,
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)

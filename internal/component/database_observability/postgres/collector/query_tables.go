@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -21,7 +19,7 @@ import (
 const (
 	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QueryTablesName            = "query_tables"
+	QueryTablesName            = "query_details"
 )
 
 var selectQueriesFromActivity = `
@@ -45,7 +43,6 @@ var selectQueriesFromActivity = `
 
 type QueryTablesArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -54,10 +51,8 @@ type QueryTablesArguments struct {
 
 type QueryTables struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
-	normalizer      *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -68,10 +63,8 @@ type QueryTables struct {
 func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 	return &QueryTables{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		logger:          log.With(args.Logger, "collector", QueryTablesName),
 		running:         &atomic.Bool{},
 	}, nil
@@ -124,10 +117,9 @@ func (c *QueryTables) Stop() {
 }
 
 func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
-	slog.Info("Fetching and associating queries")
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		slog.Error("failed to fetch statements from pg_stat_statements view", "err", err)
+		level.Error(c.logger).Log("msg", "failed to fetch statements from pg_stat_statements view", "err", err)
 		return err
 	}
 	defer rs.Close()
@@ -140,20 +132,19 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			&databaseName,
 		)
 		if err != nil {
-			slog.Error("failed to scan result set for pg_stat_statements", "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
 			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			c.instanceKey,
 			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
 		tables, err := c.tryTokenizeTableNames(queryText)
 		if err != nil {
-			slog.Error("failed to tokenize table names", "err", err)
+			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
 			continue
 		}
 
@@ -161,14 +152,13 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				c.instanceKey,
 				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
 			)
 		}
 	}
 
 	if err := rs.Err(); err != nil {
-		slog.Error("failed to iterate rs", "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
 		return err
 	}
 
@@ -177,10 +167,10 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 
 func (c QueryTables) tryTokenizeTableNames(sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
-	_, metadata, err := c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	tables, err := extractTableNames(sqlText)
 	if err != nil {
-		return nil, fmt.Errorf("failed to tokenize sql text: %w", err)
+		return nil, fmt.Errorf("failed to extract table names: %w", err)
 	}
 
-	return metadata.Tables, nil
+	return tables, nil
 }
