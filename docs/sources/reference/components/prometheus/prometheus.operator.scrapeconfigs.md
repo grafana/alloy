@@ -26,6 +26,12 @@ You can run {{< param "PRODUCT_NAME" >}} from outside the cluster by supplying c
 `scrapeconfigs` may reference secrets for authenticating to targets to scrape them.
 In these cases, the secrets are loaded and refreshed only when the ScrapeConfig is updated or when this component refreshes its internal state, which happens on a 5-minute refresh cycle.
 
+{{< admonition type="warning" >}}
+Only ScrapeConfig using the discoveries listed below are currently supported :
+- `staticConfigs`
+- `ec2SDConfigs`
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
