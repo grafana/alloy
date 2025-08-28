@@ -181,7 +181,7 @@ Here is an example using those stages:
 // It watches cluster state and ensures targets are continually synced with what is currently running in your cluster.
 discovery.kubernetes "pod" {
   role = "pod"
-  // Restrict to pods on the node, see "Limit to only Pods on the same node" in [discovery.kubernetes][discovery.kubernetes_samenode]
+  // Restrict to pods on the node to reduce cpu & memory usage
   selectors {
     role = "pod"
     field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
@@ -274,6 +274,10 @@ Replace the following values:
 
 * _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 * _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+
+{{< admonition type="note" >}}
+Refer to [Limit to only Pods on the same node][discovery.kubernetes_samenode] for more information about restricting to Pods on the same node.
+{{< /admonition >}}
 
 ### Kubernetes Cluster Events
 
