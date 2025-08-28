@@ -14,7 +14,7 @@ title: prometheus.enrich
 
 The `prometheus.enrich` component enriches metrics with additional labels from service discovery targets.
 It matches a label from incoming metrics against a label from discovered targets, and copies specified labels from the
-matched target to the metric sample.
+matched target to the metric sample. If match doesn't happen, the metrics will be passed through.
 
 ## Usage
 
@@ -23,10 +23,6 @@ prometheus.enrich "<LABEL>" {
   targets = <DISCOVERY_COMPONENT>.targets
   
   target_match_label = "<LABEL>"
-  
-  metrics_match_label = "<LABEL>"
-  
-  labels_to_copy = ["<LABEL>", ...]
   
   forward_to = [<RECEIVER_LIST>]
 }
@@ -66,9 +62,11 @@ The following values are exported:
 
 * `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 * `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
-* `prometheus_target_cache_size` (gauge): Total size of targets cache.
+* `prometheus_target_cache_size` (gauge): The number of targets in the `targets` list.
 
 ## Example
+
+### Enrich metrics from `prometheus.scrape`
 
 The following example shows how the `prometheus.enrich` enriches incoming metrics from
 `prometheus.scrape.default`, using HTTP discovery, and forwards the results to
@@ -99,6 +97,41 @@ prometheus.remote_write "default" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
   }
+}
+```
+
+### Enrich metrics from `prometheus.receive_http`
+
+The following example shows how the `prometheus.enrich` enriches incoming metrics from
+`prometheus.receive_http.default`, using HTTP discovery, and forwards the results to
+`prometheus.remote_write.default` component:
+
+```alloy
+discovery.file "network_devices" {  
+   files = ["/etc/alloy/devices.json"]  
+}  
+  
+prometheus.receive_http "default" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port = 9999
+  }
+  
+  forward_to = [prometheus.enrich.default.receiver]
+}
+
+prometheus.enrich "default" {  
+    targets = discovery.file.network_devices.targets  
+  
+    target_match_label = "hostname"  
+    
+    forward_to = [prometheus.remote_write.default.receiver]  
+}
+
+prometheus.remote_write "default" {  
+  endpoint {  
+    url = "http://mimir:9009/api/v1/push"    
+  }    
 }
 ```
 
