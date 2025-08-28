@@ -11,7 +11,7 @@ weight: 10
 {{< param "PRODUCT_NAME" >}} is a flexible, high performance, vendor-neutral distribution of the [OpenTelemetry][] Collector that combines the strengths of leading observability collectors into one unified solution.
 Whether observing applications, infrastructure, or both, {{< param "PRODUCT_NAME" >}} can collect, process, and export telemetry signals to scale and future-proof your observability approach.
 
-{{< param "PRODUCT_NAME" >}} is fully compatible with the most popular open source observability standards such as OpenTelemetry and Prometheus, while providing advanced features like programmable pipelines, automatic clustering, and enterprise-grade reliability that go beyond traditional collectors.
+{{< param "PRODUCT_NAME" >}} is compatible with the most popular open source observability standards such as OpenTelemetry and Prometheus, while providing advanced features like programmable pipelines, automatic clustering, and enterprise-grade reliability that go beyond traditional collectors.
 
 ## Why choose {{% param "PRODUCT_NAME" %}}?
 
@@ -32,9 +32,9 @@ Create reusable components, share pipelines with your team, and adapt quickly to
 
 ### Unified telemetry collection
 
-* **All signals, one platform:** Native support for metrics, logs, traces, and profiles without requiring multiple specialized tools
+* **All signals, one platform:** Native support for metrics, logs, traces, and profiles without needing to learn about, configure, and manage multiple collectors
 * **120+ components:** Collect from applications, databases, cloud services, and infrastructure using battle-tested integrations
-* **Multi-ecosystem support:** Works seamlessly with OpenTelemetry, Prometheus, Grafana Loki, and Grafana Pyroscope ecosystems
+* **Multi-ecosystem support:** Works with the OpenTelemetry, Prometheus, Grafana Loki, and Grafana Pyroscope ecosystems
 
 ### Enterprise scalability and reliability
 
