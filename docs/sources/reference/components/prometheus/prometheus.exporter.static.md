@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.exporter.static/
-aliases:
-  - ../prometheus.exporter.static/ # /docs/alloy/latest/reference/components/prometheus.exporter.static/
 description: Learn about prometheus.exporter.static
 labels:
   stage: experimental
