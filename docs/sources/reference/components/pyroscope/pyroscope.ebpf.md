@@ -74,6 +74,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `sample_rate`             | `int`                    | How many times per second to collect profile samples.                                                                | `19`     | no       |
 | `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of eBPF symbols map .                                             | `16384`  | no       |
 | `v8_enabled`              | `bool`                   | A flag to enable/disable V8 profiling.                                                                               | `true`   | no       |
+| `off_cpu_threshold`       | `int`                    | A flag to adjust the off-cpu profiling threshold.                                                                    | `0`      | no       | 
 
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
