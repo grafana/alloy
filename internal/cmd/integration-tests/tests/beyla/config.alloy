@@ -10,11 +10,6 @@ beyla.ebpf "default" {
       "application", 
       ]
   }
-  traces {
-    instrumentations = [
-      "http",
-    ]
-  }
   output {
     traces = [otelcol.processor.batch.beyla.input]
   }
