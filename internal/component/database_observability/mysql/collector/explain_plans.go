@@ -27,8 +27,8 @@ import (
 )
 
 const (
+	ExplainPlansCollector  = "explain_plans"
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	ExplainPlanName        = "explain_plans"
 )
 
 const selectDigestsForExplainPlan = `
@@ -113,7 +113,7 @@ type nodeDetails struct {
 	Warning       *string                   `json:"warning,omitempty"`
 }
 
-func newExplainPlanOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*explainPlanOutput, error) {
+func newExplainPlansOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*explainPlanOutput, error) {
 	output := &explainPlanOutput{
 		Metadata: metadataInfo{
 			DatabaseEngine:  "MySQL",
@@ -474,7 +474,7 @@ var unrecoverableSQLCodes = []knownSQLCodes{
 	accessDeniedSQLCode,
 }
 
-type ExplainPlanArguments struct {
+type ExplainPlansArguments struct {
 	DB              *sql.DB
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
@@ -486,7 +486,7 @@ type ExplainPlanArguments struct {
 	Logger log.Logger
 }
 
-type ExplainPlan struct {
+type ExplainPlans struct {
 	dbConnection     *sql.DB
 	dbVersion        string
 	scrapeInterval   time.Duration
@@ -503,8 +503,8 @@ type ExplainPlan struct {
 	cancel           context.CancelFunc
 }
 
-func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
-	return &ExplainPlan{
+func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
+	return &ExplainPlans{
 		dbConnection:   args.DB,
 		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
@@ -514,16 +514,16 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
 		lastSeen:       args.InitialLookback,
-		logger:         log.With(args.Logger, "collector", ExplainPlanName),
+		logger:         log.With(args.Logger, "collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}, nil
 }
 
-func (c *ExplainPlan) Name() string {
-	return ExplainPlanName
+func (c *ExplainPlans) Name() string {
+	return ExplainPlansCollector
 }
 
-func (c *ExplainPlan) Start(ctx context.Context) error {
+func (c *ExplainPlans) Start(ctx context.Context) error {
 	level.Info(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
@@ -556,15 +556,15 @@ func (c *ExplainPlan) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) Stopped() bool {
+func (c *ExplainPlans) Stopped() bool {
 	return !c.running.Load()
 }
 
-func (c *ExplainPlan) Stop() {
+func (c *ExplainPlans) Stop() {
 	c.cancel()
 }
 
-func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
+func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectDigestsForExplainPlan, c.lastSeen)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
@@ -606,7 +606,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
+func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 	if len(c.queryCache) == 0 {
 		if err := c.populateQueryCache(ctx); err != nil {
 			return err
@@ -678,7 +678,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 
 		generatedAt := time.Now().Format(time.RFC3339)
 
-		explainPlanOutput, genErr := newExplainPlanOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlansOutput(logger, c.dbVersion, qi.digest, byteExplainPlanJSON, generatedAt)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
@@ -715,7 +715,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
-func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	conn, err := c.dbConnection.Conn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)

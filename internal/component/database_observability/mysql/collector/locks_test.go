@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
-func Test_QueryLocks(t *testing.T) {
+func TestLocks(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	t.Run("no logs with no lock events", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -25,7 +25,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,
@@ -69,7 +69,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -124,7 +124,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -191,7 +191,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -246,7 +246,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 1 * time.Second,
 			EntryHandler:    lokiClient,
@@ -304,7 +304,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -368,7 +368,7 @@ func Test_QueryLocks(t *testing.T) {
 
 		lokiClient := fake.NewClient(func() {})
 
-		collector, err := NewLock(LockArguments{
+		collector, err := NewLocks(LocksArguments{
 			DB:              db,
 			CollectInterval: 10 * time.Second,
 			EntryHandler:    lokiClient,
