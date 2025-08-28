@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -45,7 +46,6 @@ const (
 
 type LockArguments struct {
 	DB                *sql.DB
-	InstanceKey       string
 	CollectInterval   time.Duration
 	LockWaitThreshold time.Duration
 	EntryHandler      loki.EntryHandler
@@ -55,7 +55,6 @@ type LockArguments struct {
 
 type LockCollector struct {
 	mySQLClient     *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	logger          log.Logger
 	entryHandler    loki.EntryHandler
@@ -83,7 +82,6 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 
 	return &LockCollector{
 		mySQLClient:       args.DB,
-		instanceKey:       args.InstanceKey,
 		collectInterval:   args.CollectInterval,
 		lockTimeThreshold: args.LockWaitThreshold,
 		entryHandler:      args.EntryHandler,
@@ -144,7 +142,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 
 	for rsdl.Next() {
 		var waitingTimerWait, waitingLockTime, blockingTimerWait, blockingLockTime float64
-		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText string
+		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText sql.NullString
 
 		err := rsdl.Scan(&waitingTimerWait, &waitingLockTime, &waitingDigest, &waitingDigestText,
 			&blockingTimerWait, &blockingLockTime, &blockingDigest, &blockingDigestText)
@@ -157,17 +155,17 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
 				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
-				waitingDigest,
-				waitingDigestText,
-				blockingDigest,
-				blockingDigestText,
+				waitingDigest.String,
+				waitingDigestText.String,
+				blockingDigest.String,
+				blockingDigestText.String,
 				picosecondsToMilliseconds(waitingTimerWait),
 				picosecondsToMilliseconds(waitingLockTime),
 				picosecondsToMilliseconds(blockingTimerWait),
 				picosecondsToMilliseconds(blockingLockTime),
 			)
 
-			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, lockMsg)
 		}
 	}
 

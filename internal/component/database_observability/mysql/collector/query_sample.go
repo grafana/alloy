@@ -10,13 +10,14 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	QuerySampleName = "query_sample"
+	QuerySampleName = "query_samples"
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
 
@@ -70,23 +71,30 @@ WHERE
 	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
 	%s %s`
 
+const updateSetupConsumers = `
+	UPDATE performance_schema.setup_consumers
+		SET enabled = 'yes'
+		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
+
 type QuerySampleArguments struct {
-	DB                    *sql.DB
-	InstanceKey           string
-	CollectInterval       time.Duration
-	EntryHandler          loki.EntryHandler
-	DisableQueryRedaction bool
+	DB                          *sql.DB
+	CollectInterval             time.Duration
+	EntryHandler                loki.EntryHandler
+	DisableQueryRedaction       bool
+	AutoEnableSetupConsumers    bool
+	SetupConsumersCheckInterval time.Duration
 
 	Logger log.Logger
 }
 
 type QuerySample struct {
-	dbConnection          *sql.DB
-	instanceKey           string
-	collectInterval       time.Duration
-	entryHandler          loki.EntryHandler
-	sqlParser             parser.Parser
-	disableQueryRedaction bool
+	dbConnection                *sql.DB
+	collectInterval             time.Duration
+	entryHandler                loki.EntryHandler
+	sqlParser                   parser.Parser
+	disableQueryRedaction       bool
+	autoEnableSetupConsumers    bool
+	setupConsumersCheckInterval time.Duration
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -99,14 +107,15 @@ type QuerySample struct {
 
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
-		dbConnection:          args.DB,
-		instanceKey:           args.InstanceKey,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		sqlParser:             parser.NewTiDBSqlParser(),
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySampleName),
-		running:               &atomic.Bool{},
+		dbConnection:                args.DB,
+		collectInterval:             args.CollectInterval,
+		entryHandler:                args.EntryHandler,
+		sqlParser:                   parser.NewTiDBSqlParser(),
+		disableQueryRedaction:       args.DisableQueryRedaction,
+		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
+		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		logger:                      log.With(args.Logger, "collector", QuerySampleName),
+		running:                     &atomic.Bool{},
 	}
 
 	return c, nil
@@ -131,6 +140,11 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	if err := c.initializeBookmark(c.ctx); err != nil {
 		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
 		return err
+	}
+
+	// Start setup_consumers check goroutine if enabled
+	if c.autoEnableSetupConsumers {
+		go c.runSetupConsumersCheck()
 	}
 
 	go func() {
@@ -165,6 +179,23 @@ func (c *QuerySample) Stopped() bool {
 // Stop should be kept idempotent
 func (c *QuerySample) Stop() {
 	c.cancel()
+}
+
+func (c *QuerySample) runSetupConsumersCheck() {
+	ticker := time.NewTicker(c.setupConsumersCheckInterval)
+
+	for {
+		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
+			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+		}
+
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// continue loop
+		}
+	}
 }
 
 // initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
@@ -333,10 +364,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_QUERY_SAMPLE,
-				c.instanceKey,
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
@@ -363,10 +393,9 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 			}
 
-			c.entryHandler.Chan() <- buildLokiEntryWithTimestamp(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
-				c.instanceKey,
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
@@ -374,9 +403,23 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over samples result set: %w", err)
 	}
+
+	return nil
+}
+
+func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
+	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
+	if err != nil {
+		return fmt.Errorf("failed to update performance_schema.setup_consumers: %w", err)
+	}
+
+	rowsAffected, err := rs.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
+	}
+	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
 	return nil
 }

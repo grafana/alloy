@@ -31,16 +31,31 @@ You can use the following arguments with `local.file_match`:
 | Name                | Type                | Description                                                                                | Default | Required |
 |---------------------|---------------------|--------------------------------------------------------------------------------------------|---------|----------|
 | `path_targets`      | `list(map(string))` | Targets to expand; looks for glob patterns on the  `__path__` and `__path_exclude__` keys. |         | yes      |
-| `ignore_older_than` | `duration`          | Ignores files which are modified before this duration.                                     | `"0s"`  | no       |
+| `ignore_older_than` | `duration`          | Ignores files with modification times before this duration.                                | `"0s"`  | no       |
 | `sync_period`       | `duration`          | How often to sync filesystem and targets.                                                  | `"10s"` | no       |
 
-`path_targets` uses [doublestar][] style paths.
+### `path_targets` structure
+
+Each target in `path_targets` is a map that can contain the following keys:
+
+| Key                | Description                                                                                         | Required |
+| ------------------ | --------------------------------------------------------------------------------------------------- | -------- |
+| `__path__`         | [doublestar][] glob pattern specifying which files to discover.                                     | Yes      |
+| `__path_exclude__` | [doublestar][] glob pattern specifying which files to exclude from the `__path__` matches.          | No       |
+| *additional keys*  | Any other labels to attach to discovered files. The component preserves these labels in the exported targets. | No       |
+
+The `__path__` field uses [doublestar][] style glob patterns:
 
 * `/tmp/**/*.log` matches all subdirectories of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` matches only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` matches all subdirectories of `tmp`, `tmp` itself, and all files.
 
-`local.file_match` doesn't ignore files when `ignore_older_than` is set to the default, `0s`.
+`local.file_match` doesn't ignore files when you set `ignore_older_than` to the default, `0s`.
+
+When you provide `__path_exclude__`, the component excludes any files matching the `__path__` pattern that also match the `__path_exclude__` pattern from the exported list.
+
+The component preserves any additional labels you provide in the `path_targets` map and includes them in the exported targets alongside the discovered paths.
+This enables you to add metadata such as service names, instance identifiers, or other contextual information to the discovered files.
 
 ## Blocks
 
@@ -54,9 +69,10 @@ The following fields are exported and can be referenced by other components:
 |-----------|---------------------|----------------------------------------------------|
 | `targets` | `list(map(string))` | The set of targets discovered from the filesystem. |
 
-Each target includes the following label:
+Each target includes the following labels:
 
-* `__path__`: Absolute path to the file.
+* `__path__`: Absolute path to the discovered file.
+* All additional labels from the corresponding entry in `path_targets` with original values preserved.
 
 ## Component health
 
@@ -77,16 +93,66 @@ The following examples show you how to use `local.file_match` to find and send l
 
 ### Send `/tmp/logs/*.log` files to Loki
 
-This example discovers all files and folders under `/tmp/logs`.
-The absolute paths are used by `loki.source.file.files` targets.
+This example discovers all files and folders under `/tmp/logs` except for files in the `/tmp/logs/excluded` directory.
+`loki.source.file.files` targets use absolute paths in the `__path__` label.
 
 ```alloy
 local.file_match "tmp" {
-  path_targets = [{"__path__" = "/tmp/logs/**/*.log"}]
+  path_targets = [{"__path__" = "/tmp/logs/**/*.log", "__path_exclude__" = "/tmp/logs/excluded/*.log"}]
 }
 
 loki.source.file "files" {
   targets    = local.file_match.tmp.targets
+  forward_to = [loki.write.endpoint.receiver]
+}
+
+loki.write "endpoint" {
+  endpoint {
+      url = <LOKI_URL>
+      basic_auth {
+          username = <USERNAME>
+          password = <PASSWORD>
+      }
+  }
+}
+```
+
+Replace the following:
+
+* _`<LOKI_URL>`_: The URL of the Loki server to send logs to.
+* _`<USERNAME>`_: The username to use for authentication to the Loki API.
+* _`<PASSWORD>`_: The password to use for authentication to the Loki API.
+
+### Send files with additional labels
+
+This example shows how to include additional labels with discovered files.
+The component preserves the additional labels in the exported targets and you can use them for filtering or enrichment.
+It attaches the additional labels `instance`, `job`, and `service` to each discovered file.
+Downstream components like `loki.source.file` can access these labels for processing and enrichment.
+
+```alloy
+local.file_match "labeled_logs" {
+  path_targets = [
+    {
+      "__path__"    = "/var/log/apache2/*.log",
+      "__address__" = "localhost",
+      "instance"    = "web-server-01", 
+      "job"         = "apache",
+      "service"     = "web"
+    },
+    {
+      "__path__"       = "/var/log/nginx/*.log",
+      "__path_exclude__" = "/var/log/nginx/*.gz",
+      "__address__"    = "localhost",
+      "instance"       = "web-server-01",
+      "job"            = "nginx", 
+      "service"        = "web"
+    }
+  ]
+}
+
+loki.source.file "web_logs" {
+  targets    = local.file_match.labeled_logs.targets
   forward_to = [loki.write.endpoint.receiver]
 }
 

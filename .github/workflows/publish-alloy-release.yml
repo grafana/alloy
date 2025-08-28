@@ -34,7 +34,7 @@ jobs:
 
   publish_github_release:
     name: Publish GitHub release
-    container: grafana/alloy-build-image:v0.1.20@sha256:e9698b5a96851f353cb3264b6f17a170d5303d44cfb641a2fb2562e909e0924b
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -47,7 +47,7 @@ jobs:
       id-token: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         persist-credentials: false
 

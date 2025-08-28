@@ -226,7 +226,7 @@ discovery.relabel "pod_logs" {
     replacement = "$1"
   }
 
-  // Label creation - "container" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
+  // Label creation - "__path__" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
   // Concatenate values __meta_kubernetes_pod_uid/__meta_kubernetes_pod_container_name.log
   rule {
     source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]

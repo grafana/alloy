@@ -2,9 +2,11 @@ package prometheus_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
+	alloyprometheus "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -19,16 +21,33 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"
-	alloyprometheus "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
-// Test performs a basic integration test which runs the
+// testMetadataStore implements scrape.MetricMetadataStore for testing
+type testMetadataStore map[string]scrape.MetricMetadata
+
+func (tmc testMetadataStore) GetMetadata(familyName string) (scrape.MetricMetadata, bool) {
+	lookup, ok := tmc[familyName]
+	return lookup, ok
+}
+
+func (tmc testMetadataStore) ListMetadata() []scrape.MetricMetadata { return nil }
+
+func (tmc testMetadataStore) SizeMetadata() int { return 0 }
+
+func (tmc testMetadataStore) LengthMetadata() int {
+	return len(tmc)
+}
+
+// TestComprehensive performs a comprehensive integration test which runs the
 // otelcol.receiver.prometheus component and ensures that it can receive and
-// forward metric data.
-func Test(t *testing.T) {
+// forward different types of metrics: native histograms, classic histograms,
+// gauges, and sum/counter metrics, verifying each gets converted to the
+// appropriate OTLP metric type.
+func TestComprehensive(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
 
@@ -57,11 +76,44 @@ func Test(t *testing.T) {
 
 	exports := ctrl.Exports().(prometheus.Exports)
 
-	// Use the exported Appendable to send metrics to the receiver in the
-	// background.
+	// Use the exported Appendable to send different types of metrics to the receiver.
 	go func() {
-		l := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testMetric"},
+		ts := time.Now().Unix()
+
+		ctx := t.Context()
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, testMetadataStore{
+			"testGauge": scrape.MetricMetadata{
+				MetricFamily: "testGauge",
+				Type:         model.MetricTypeGauge,
+				Help:         "A test gauge metric",
+			},
+			"testCounter": scrape.MetricMetadata{
+				MetricFamily: "testCounter",
+				Type:         model.MetricTypeCounter,
+				Help:         "A test counter metric",
+			},
+			"testClassicHistogram": scrape.MetricMetadata{
+				MetricFamily: "testClassicHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test classic histogram metric",
+			},
+			"testNativeHistogram": scrape.MetricMetadata{
+				MetricFamily: "testNativeHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test native histogram metric",
+			},
+		})
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+		app := exports.Receiver.Appender(ctx)
+
+		// 1. Send a gauge metric
+		gaugeLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: "testGauge"},
 			{Name: model.JobLabel, Value: "testJob"},
 			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			{Name: "foo", Value: "bar"},
@@ -69,11 +121,11 @@ func Test(t *testing.T) {
 			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			{Name: "otel_scope_version", Value: "v0.24.0"},
 		}
-		ts := time.Now().Unix()
-		v := 100.
+		_, err := app.Append(0, gaugeLabels, ts, 100.0)
+		require.NoError(t, err)
 
 		exemplarLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testMetric"},
+			{Name: model.MetricNameLabel, Value: "testGauge"},
 			{Name: "trace_id", Value: "123456789abcdef0123456789abcdef0"},
 			{Name: "span_id", Value: "123456789abcdef0"},
 		}
@@ -83,38 +135,161 @@ func Test(t *testing.T) {
 			HasTs:  true,
 			Labels: exemplarLabels,
 		}
+		_, err = app.AppendExemplar(0, gaugeLabels, exemplar)
+		require.NoError(t, err)
 
-		ctx := t.Context()
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
-		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-			labels.EmptyLabels(),
-			&config.DefaultScrapeConfig,
-			model.LabelSet{},
-			model.LabelSet{},
-		))
-		app := exports.Receiver.Appender(ctx)
-		_, err := app.Append(0, l, ts, v)
+		// 2. Send a counter/sum metric (using _total suffix to indicate it's a counter)
+		counterLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: "testCounter_total"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "service", Value: "api"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, counterLabels, ts, 42.0)
 		require.NoError(t, err)
-		_, err = app.AppendExemplar(0, l, exemplar)
+
+		// 3. Send a classic/traditional histogram (bucket, count, sum)
+		histogramName := "testClassicHistogram"
+
+		// Histogram buckets
+		buckets := []float64{0.1, 0.5, 1.0, 5.0, 10.0}
+		counts := []float64{1, 3, 5, 8, 10} // cumulative counts
+
+		for i, bucket := range buckets {
+			bucketLabels := labels.Labels{
+				{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+				{Name: model.JobLabel, Value: "testJob"},
+				{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+				{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
+				{Name: "method", Value: "GET"},
+				{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+				{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+				{Name: "otel_scope_version", Value: "v0.24.0"},
+			}
+			_, err = app.Append(0, bucketLabels, ts, counts[i])
+			require.NoError(t, err)
+		}
+
+		// Histogram +Inf bucket
+		infBucketLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "le", Value: "+Inf"},
+			{Name: "method", Value: "GET"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, infBucketLabels, ts, 10.0)
 		require.NoError(t, err)
+
+		// Histogram count
+		countLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_count"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "method", Value: "GET"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, countLabels, ts, 10.0)
+		require.NoError(t, err)
+
+		// Histogram sum
+		sumLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_sum"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "method", Value: "GET"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, sumLabels, ts, 23.5)
+		require.NoError(t, err)
+
+		// 4. Send a native exponential histogram
+		nativeHistLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: "testNativeHistogram"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "endpoint", Value: "/api/v1"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		h := tsdbutil.GenerateTestHistogram(42)
+		_, err = app.AppendHistogram(0, nativeHistLabels, ts, h, nil)
+		require.NoError(t, err)
+
 		require.NoError(t, app.Commit())
 	}()
 
-	// Wait for our client to get the metric.
+	// Wait for our client to get the metrics.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for metrics")
 	case m := <-metricCh:
-		require.Equal(t, 1, m.MetricCount())
-		require.Equal(t, "testMetric", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Name())
+		// Should have 4 metrics: gauge, counter, classic histogram, native histogram
+		require.Equal(t, 4, m.MetricCount())
+
 		require.Equal(t, "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Name())
 		require.Equal(t, "v0.24.0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Version())
-		require.Equal(t, "Gauge", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Type().String())
-		require.Equal(t, 1, m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().Len())
-		require.Equal(t, 1, m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().Len())
-		require.Equal(t, "123456789abcdef0123456789abcdef0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).TraceID().String())
-		require.Equal(t, "123456789abcdef0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).SpanID().String())
-		require.Equal(t, 2.0, m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Exemplars().At(0).DoubleValue())
+
+		metrics := make(map[string]pmetric.Metric)
+		for i := 0; i < m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Len(); i++ {
+			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(i)
+			metrics[metric.Name()] = metric
+		}
+
+		// 1. Verify gauge metric
+		gaugeMetric, exists := metrics["testGauge"]
+		require.True(t, exists, "testGauge metric should exist")
+		require.Equal(t, pmetric.MetricTypeGauge, gaugeMetric.Type())
+		require.Equal(t, "Gauge", gaugeMetric.Type().String())
+		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().Len())
+		require.Equal(t, 100.0, gaugeMetric.Gauge().DataPoints().At(0).DoubleValue())
+		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().Len())
+		require.Equal(t, "A test gauge metric", gaugeMetric.Description())
+		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().Len())
+		require.Equal(t, "123456789abcdef0123456789abcdef0", gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).TraceID().String())
+		require.Equal(t, "123456789abcdef0", gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).SpanID().String())
+		require.Equal(t, 2.0, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).DoubleValue())
+
+		// 2. Verify counter/sum metric
+		counterMetric, exists := metrics["testCounter_total"]
+		require.True(t, exists, "testCounter_total metric should exist")
+		require.Equal(t, pmetric.MetricTypeSum, counterMetric.Type()) // NoopMetadataStore makes it gauge
+		require.Equal(t, "Sum", counterMetric.Type().String())
+		require.Equal(t, 1, counterMetric.Sum().DataPoints().Len())
+		require.Equal(t, 42.0, counterMetric.Sum().DataPoints().At(0).DoubleValue())
+		require.Equal(t, "A test counter metric", counterMetric.Description())
+
+		// 3. Verify classic histogram
+		classicHistMetric, exists := metrics["testClassicHistogram"]
+		require.True(t, exists, "testClassicHistogram metric should exist")
+		require.Equal(t, pmetric.MetricTypeHistogram, classicHistMetric.Type()) // NoopMetadataStore makes it gauge
+		require.Equal(t, "Histogram", classicHistMetric.Type().String())
+		require.Equal(t, 1, classicHistMetric.Histogram().DataPoints().Len())
+		require.Equal(t, "A test classic histogram metric", classicHistMetric.Description())
+
+		// 4. Verify native exponential histogram
+		nativeHistMetric, exists := metrics["testNativeHistogram"]
+		require.True(t, exists, "testNativeHistogram metric should exist")
+		require.Equal(t, pmetric.MetricTypeExponentialHistogram, nativeHistMetric.Type())
+		require.Equal(t, "ExponentialHistogram", nativeHistMetric.Type().String())
+		require.Equal(t, 1, nativeHistMetric.ExponentialHistogram().DataPoints().Len())
+		require.Equal(t, "A test native histogram metric", nativeHistMetric.Description())
+
+		expHistDP := nativeHistMetric.ExponentialHistogram().DataPoints().At(0)
+		require.Greater(t, expHistDP.Count(), uint64(0))
+		require.True(t, expHistDP.HasSum())
+		require.NotEqual(t, int32(0), expHistDP.Scale()) // Should have a valid scale
 	}
 }
 

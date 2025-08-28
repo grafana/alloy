@@ -11,7 +11,6 @@ import (
 	"go.uber.org/goleak"
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/database_observability"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
@@ -36,8 +35,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -53,8 +52,8 @@ func TestQueryTables(t *testing.T) {
 				"insert into some_table (`id`, `name`) values (1, 'foo')",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"INSERT INTO `some_table` (`id`, `name`) VALUES (...)\"",
@@ -70,8 +69,8 @@ func TestQueryTables(t *testing.T) {
 				"update some_table set active=false, reason=null where id = 1 and name = 'foo'",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"UPDATE `some_table` SET `active` = false, `reason` = ? WHERE `id` = ? AND `name` = ?\"",
@@ -87,8 +86,8 @@ func TestQueryTables(t *testing.T) {
 				"delete from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"DELETE FROM `some_table` WHERE `id` = ?\"",
@@ -104,9 +103,9 @@ func TestQueryTables(t *testing.T) {
 				"select t.id, t.val1, o.val2 FROM some_table t inner join other_table as o on t.id = o.id where o.val2 = 1 order by t.val1 desc",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT `t`.`id`, `t`.`val1`, `o`.`val2` FROM `some_table` `t` INNER JOIN `other_table` AS `o` ON `t`.`id` = `o`.`id` WHERE `o`.`val2` = ? ORDER BY `t`.`val1` DESC\"",
@@ -128,10 +127,10 @@ func TestQueryTables(t *testing.T) {
 				"select * from another_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"xyz456\" digest_text=\"INSERT INTO `some_table`...\"",
@@ -149,8 +148,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1 /*traceparent='00-abc...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -166,8 +165,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ? AND `name` =\"",
@@ -183,7 +182,7 @@ func TestQueryTables(t *testing.T) {
 				"START TRANSACTION",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				`level="info" schema="some_schema" parseable="true" digest="abc123" digest_text="START TRANSACTION"`,
@@ -203,8 +202,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -225,10 +224,10 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -246,10 +245,10 @@ func TestQueryTables(t *testing.T) {
 				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM (SELECT `id`, `name` FROM `employees_us_east` UNION SELECT `id`, `name` FROM `employees_us_west`) AS `employees_us` UNION SELECT `id`, `name` FROM `employees_emea`\"",
@@ -267,8 +266,8 @@ func TestQueryTables(t *testing.T) {
 				"SHOW CREATE TABLE some_table",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SHOW CREATE TABLE `some_table`\"",
@@ -284,7 +283,7 @@ func TestQueryTables(t *testing.T) {
 				"SHOW VARIABLES LIKE 'version'",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				`level="info" schema="some_schema" parseable="true" digest="abc123" digest_text="SHOW VARIABLES LIKE ?"`,
@@ -299,8 +298,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table whe...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -316,8 +315,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
@@ -333,8 +332,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE\"",
@@ -350,8 +349,8 @@ func TestQueryTables(t *testing.T) {
 				"select * from `s...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"},
-				{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"},
+				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE\"",
@@ -372,7 +371,6 @@ func TestQueryTables(t *testing.T) {
 
 			collector, err := NewQueryTables(QueryTablesArguments{
 				DB:              db,
-				InstanceKey:     "mysql-db",
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -433,7 +431,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -482,9 +479,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 
@@ -499,7 +496,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -545,9 +541,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 
@@ -562,7 +558,6 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQueryTables(QueryTablesArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -605,9 +600,9 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_ASSOCIATION, "instance": "mysql-db"}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"job": database_observability.JobName, "op": OP_QUERY_PARSED_TABLE_NAME, "instance": "mysql-db"}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
 	})
 }

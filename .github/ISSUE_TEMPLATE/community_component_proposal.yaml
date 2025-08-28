@@ -1,6 +1,6 @@
 name: Community component proposal
 description: Propose a new community component.
-labels: ["community-component", "proposal"]
+labels: ["community-component", "proposal", "needs-triage"]
 body:
   - type: markdown
     attributes:
@@ -26,3 +26,10 @@ body:
       description: What should this component do?
     validations:
       required: true
+  - type: dropdown
+    attributes:
+      label: Tip
+      description: This is a standard issue postscript to encourage community members to engage with the issue to help gauge its importance.
+      options:
+        - <sub>React with 👍 if this issue is important to you.</sub>
+      default: 0

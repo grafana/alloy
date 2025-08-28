@@ -14,6 +14,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -22,7 +23,7 @@ const (
 	OP_SCHEMA_DETECTION = "schema_detection"
 	OP_TABLE_DETECTION  = "table_detection"
 	OP_CREATE_STATEMENT = "create_statement"
-	SchemaTableName     = "schema_table"
+	SchemaTableName     = "schema_details"
 )
 
 const (
@@ -96,7 +97,6 @@ const (
 
 type SchemaTableArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -109,7 +109,6 @@ type SchemaTableArguments struct {
 
 type SchemaTable struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 
@@ -168,7 +167,6 @@ type foreignKey struct {
 func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	c := &SchemaTable{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaTableName),
@@ -245,10 +243,9 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 		schemas = append(schemas, schema)
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
-			c.instanceKey,
 			fmt.Sprintf(`schema="%s"`, schema),
 		)
 	}
@@ -290,10 +287,9 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 				b64TableSpec:  "",
 			})
 
-			c.entryHandler.Chan() <- buildLokiEntry(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
-				c.instanceKey,
 				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
 			)
 		}
@@ -333,10 +329,9 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 			}
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
-			c.instanceKey,
 			fmt.Sprintf(
 				`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
 				table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,

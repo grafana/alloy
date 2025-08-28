@@ -17,7 +17,7 @@ The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-e
 This component lets you scrape CloudWatch metrics in a set of configurations called _jobs_.
 There are two kinds of jobs: [discovery][] and [static][].
 
-[`yet-another-cloudwatch-exporter`]: https://github.com/nerdswords/yet-another-cloudwatch-exporter
+[`yet-another-cloudwatch-exporter`]: https://github.com/prometheus-community/yet-another-cloudwatch-exporter
 [Amazon CloudWatch metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html
 
 ## Authentication
@@ -116,7 +116,7 @@ prometheus.exporter.cloudwatch "queues" {
 You can use the following arguments with `prometheus.exporter.cloudwatch`:
 
 | Name                      | Type                | Description                                                                    | Default | Required |
-| ------------------------- | ------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
+|---------------------------|---------------------|--------------------------------------------------------------------------------|---------|----------|
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
 | `aws_sdk_version_v2`      | `bool`              | Use AWS SDK version 2.                                                         | `false` | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
@@ -133,7 +133,7 @@ This affects all discovery jobs.
 You can use the following blocks with `prometheus.exporter.cloudwatch`:
 
 | Name                                       | Description                                                                                                                                                | Required |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | [`discovery`][discovery]                   | Configures a discovery job. You can configure multiple jobs.                                                                                               | no\*     |
 | `discovery` > [`role`][role]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
 | `discovery` > [`metric`][metric]           | Configures the list of metrics the job should scrape. You can define multiple metrics inside one job.                                                      | yes      |
@@ -191,7 +191,7 @@ prometheus.exporter.cloudwatch "discover_instances" {
 You can configure the `discovery` block one or multiple times to scrape metrics from different services or with different `search_tags`.
 
 | Name                          | Type           | Description                                                                                                                                                                                                                                            | Default | Required |
-| ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+|-------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                   |         | yes      |
 | `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                                |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`    | no       |
@@ -247,7 +247,7 @@ static "<LABEL>" {
 You can configure the `static` block one or multiple times to scrape metrics with different sets of `dimensions`.
 
 | Name          | Type           | Description                                                                                                                                                  | Default | Required |
-| ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+|---------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `dimensions`  | `map(string)`  | CloudWatch metric dimensions as a list of name / value pairs. Must uniquely define all metrics in this job.                                                  |         | yes      |
 | `namespace`   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
 | `regions`     | `list(string)` | List of AWS regions.                                                                                                                                         |         | yes      |
@@ -289,7 +289,7 @@ prometheus.exporter.cloudwatch "discover_instances" {
 You can configure the `custom_namespace` block multiple times to scrape metrics from different namespaces.
 
 | Name                          | Type           | Description                                                                                                                                                                                                                                            | Default | Required |
-| ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+|-------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                                                                                                           |         | yes      |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                   |         | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`    | no       |
@@ -299,7 +299,7 @@ You can configure the `custom_namespace` block multiple times to scrape metrics 
 
 ### `metric`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 Represents an AWS Metric to scrape.
 
@@ -307,7 +307,7 @@ The `metric` block may be specified multiple times to define multiple target met
 Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 | Name                       | Type           | Description                                                                | Default                                                                                                            | Required |
-| -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
+|----------------------------|----------------|----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|----------|
 | `name`                     | `string`       | Metric name.                                                               |                                                                                                                    | yes      |
 | `period`                   | `duration`     | Refer to the [period][] section below.                                     |                                                                                                                    | yes      |
 | `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
@@ -351,7 +351,7 @@ Therefore, the credentials configured in the system need permission to assume th
 Refer to [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html) in the AWS IAM documentation for more information about how to configure this.
 
 | Name          | Type     | Description                                                                                                    | Default | Required |
-| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------|----------|----------------------------------------------------------------------------------------------------------------|---------|----------|
 | `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
 | `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
 
@@ -366,7 +366,7 @@ The decoupled scraping feature reduces the number of API requests sent to AWS.
 This feature also prevents component scrape timeouts when you gather high volumes of CloudWatch metrics.
 
 | Name              | Type     | Description                                                             | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------------|----------|-------------------------------------------------------------------------|---------|----------|
 | `enabled`         | `bool`   | Controls whether the decoupled scraping featured is enabled             | false   | no       |
 | `scrape_interval` | `string` | Controls how frequently to asynchronously gather new CloudWatch metrics | 5m      | no       |
 
@@ -424,6 +424,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Cognito`
 * Namespace: `AWS/DataSync`
 * Namespace: `AWS/DDoSProtection`
+* Namespace: `AWS/DirectoryService`
 * Namespace: `AWS/DMS`
 * Namespace: `AWS/DocDB`
 * Namespace: `AWS/DX`
@@ -432,6 +433,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/EC2`
 * Namespace: `AWS/EC2CapacityReservations`
 * Namespace: `AWS/EC2Spot`
+* Namespace: `AWS/ECR`
 * Namespace: `AWS/ECS`
 * Namespace: `AWS/EFS`
 * Namespace: `AWS/ElastiCache`
@@ -466,30 +468,37 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Neptune`
 * Namespace: `AWS/NetworkELB`
 * Namespace: `AWS/NetworkFirewall`
+* Namespace: `AWS/Network Manager`
 * Namespace: `AWS/PrivateLinkEndpoints`
 * Namespace: `AWS/PrivateLinkServices`
 * Namespace: `AWS/Prometheus`
 * Namespace: `AWS/QLDB`
+* Namespace: `AWS/QuickSight`
 * Namespace: `AWS/RDS`
 * Namespace: `AWS/Redshift`
+* Namespace: `AWS/Redshift-Serverless`
 * Namespace: `AWS/Route53`
 * Namespace: `AWS/Route53Resolver`
 * Namespace: `AWS/RUM`
 * Namespace: `AWS/S3`
 * Namespace: `AWS/SageMaker`
 * Namespace: `AWS/Sagemaker/ModelBuildingPipeline`
+* Namespace: `AWS/Scheduler`
 * Namespace: `AWS/SecretsManager`
 * Namespace: `AWS/SES`
 * Namespace: `AWS/SNS`
 * Namespace: `AWS/SQS`
 * Namespace: `AWS/States`
 * Namespace: `AWS/StorageGateway`
+* Namespace: `AWS/Timestream`
 * Namespace: `AWS/TransitGateway`
 * Namespace: `AWS/TrustedAdvisor`
 * Namespace: `AWS/Usage`
+* Namespace: `AWS/VpcLattice`
 * Namespace: `AWS/VPN`
 * Namespace: `AWS/WAFV2`
 * Namespace: `AWS/WorkSpaces`
+* Namespace: `ContainerInsights`
 * Namespace: `CWAgent`
 * Namespace: `ECS/ContainerInsights`
 * Namespace: `Glue`

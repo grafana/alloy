@@ -138,6 +138,8 @@ type Arguments struct {
 	// If the growth factor of one bucket to the next is smaller than this,
 	// buckets will be merged to stay within the limit. Disabled when set zero.
 	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
+	// Whether the metric metadata should be passed to the downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -154,10 +156,10 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
-		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use same fallback protocol as Prometheus v2
-		ScrapeNativeHistograms:   true,
+		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
+		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme:     config.UTF8ValidationConfig,
+		MetricNameValidationScheme:     config.LegacyValidationConfig,
 		ConvertClassicHistogramsToNHCB: false,
 		EnableCompression:              true,
 		NativeHistogramBucketLimit:     0,
@@ -180,6 +182,21 @@ func (arg *Arguments) Validate() error {
 		// For backwards-compatibility, if EnableProtobufNegotiation is set to true, the ScrapeProtocols are set to
 		// [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
 		arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		// In previous Prometheus versions, EnableProtobufNegotiation would also enable native histogram scraping.
+		// This is no longer the case, so we need to explicitly enable it here.
+		arg.ScrapeNativeHistograms = true
+	}
+
+	if arg.ScrapeNativeHistograms {
+		// When scrape_native_histograms is set to true, the default scrape protocols are overridden to
+		// Proto-first scrape protocols, like in upstream Prometheus.
+		if reflect.DeepEqual(arg.ScrapeProtocols, defaultScrapeProtocols) {
+			arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		}
+
+		if !slices.Contains(arg.ScrapeProtocols, string(config.PrometheusProto)) {
+			return fmt.Errorf("scrape_native_histograms is set to true, but PrometheusProto is not in scrape_protocols")
+		}
 	}
 
 	// Validate scrape protocols
@@ -247,10 +264,11 @@ type Component struct {
 	movedTargetsCounter client_prometheus.Counter
 	unregisterer        util.Unregisterer
 
-	mut        sync.RWMutex
-	args       Arguments
-	scraper    *scrape.Manager
-	appendable *prometheus.Fanout
+	mut             sync.RWMutex
+	args            Arguments
+	scraper         *scrape.Manager
+	appendable      *prometheus.Fanout
+	firstUpdateDone bool
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
@@ -288,13 +306,27 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	if args.HonorMetadata && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
+	var metadataStore prometheus.UpdateableMetadataStore
+	if args.HonorMetadata {
+		metadataStore = prometheus.NewMetadataStore()
+	} else {
+		metadataStore = prometheus.NoopMetadataStore{}
+	}
+
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
 	scrapeOptions := &scrape.Options{
+		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
+		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
+		AppendMetadata:                  args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -435,6 +467,20 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
+
+	// Some fields are not updateable at runtime - only allow them when Update()
+	// is called for the first time from New().
+	if !c.firstUpdateDone {
+		c.firstUpdateDone = true
+	} else {
+		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
+			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
+		}
+		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
+			return fmt.Errorf("extra_metrics cannot be updated at runtime")
+		}
+	}
+
 	c.args = newArgs
 
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
@@ -519,7 +565,8 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
 	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
 	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
-	dec.ConvertClassicHistogramsToNHCB = &c.ConvertClassicHistogramsToNHCB
+	convertToNHCB := c.ConvertClassicHistogramsToNHCB
+	dec.ConvertClassicHistogramsToNHCB = &convertToNHCB
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor

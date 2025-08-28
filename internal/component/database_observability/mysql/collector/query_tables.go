@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -19,7 +20,7 @@ import (
 const (
 	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QueryTablesName            = "query_tables"
+	QueryTablesName            = "query_details"
 )
 
 const selectQueryTablesSamples = `
@@ -34,7 +35,6 @@ const selectQueryTablesSamples = `
 
 type QueryTablesArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -43,7 +43,6 @@ type QueryTablesArguments struct {
 
 type QueryTables struct {
 	dbConnection    *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
@@ -58,7 +57,6 @@ type QueryTables struct {
 func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
 	c := &QueryTables{
 		dbConnection:    args.DB,
-		instanceKey:     args.InstanceKey,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
@@ -140,18 +138,16 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
-		c.entryHandler.Chan() <- buildLokiEntry(
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			c.instanceKey,
 			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
 		)
 
 		for _, table := range tables {
-			c.entryHandler.Chan() <- buildLokiEntry(
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				c.instanceKey,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
 			)
 		}

@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -26,11 +27,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
-)
-
-const (
-	// defaultMaxConnLimit defines the maximum number of simultaneous HTTP connections
-	defaultMaxConnLimit = 100
 )
 
 func init() {
@@ -51,18 +47,16 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
-	serverConfig := fnet.DefaultServerConfig()
-	if serverConfig.HTTP.ConnLimit == 0 {
-		serverConfig.HTTP.ConnLimit = defaultMaxConnLimit
-	}
 	*a = Arguments{
-		Server: serverConfig,
+		Server: fnet.DefaultServerConfig(),
 	}
+	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
 	opts               component.Options
 	server             *fnet.TargetServer
+	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
 	mut                sync.Mutex
@@ -98,6 +92,13 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) Update(args component.Arguments) error {
+	_, err := c.update(args)
+	return err
+}
+
+// returns true if the server was shutdown
+func (c *Component) update(args component.Arguments) (bool, error) {
+	shutdown := false
 	newArgs := args.(Arguments)
 
 	c.mut.Lock()
@@ -105,29 +106,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.appendables = newArgs.ForwardTo
 
-	// if no server config provided, we'll use defaults
-	if newArgs.Server == nil {
-		newArgs.Server = fnet.DefaultServerConfig()
-	}
-
-	// Only apply default max connections limit if using default config
-	if newArgs.Server.HTTP.ConnLimit == 0 {
-		newArgs.Server.HTTP.ConnLimit = defaultMaxConnLimit
-	}
-
-	if newArgs.Server.HTTP == nil {
-		newArgs.Server.HTTP = &fnet.HTTPConfig{
-			ListenPort:    0,
-			ListenAddress: "127.0.0.1",
-		}
-	}
-
-	serverNeedsRestarting := c.server == nil || !reflect.DeepEqual(c.server, *newArgs.Server.HTTP)
+	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {
-		return nil
+		return shutdown, nil
 	}
-
+	shutdown = true
 	c.shutdownServer()
+	c.server = nil
+	c.serverConfig = nil
 
 	// [server.Server] registers new metrics every time it is created. To
 	// avoid issues with re-registering metrics with the same name, we create a
@@ -138,11 +124,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	srv, err := fnet.NewTargetServer(c.opts.Logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
-		return fmt.Errorf("failed to create server: %w", err)
+		return shutdown, fmt.Errorf("failed to create server: %w", err)
 	}
 	c.server = srv
+	c.serverConfig = newArgs.Server.HTTP
 
-	return c.server.MountAndRun(func(router *mux.Router) {
+	return shutdown, c.server.MountAndRun(func(router *mux.Router) {
 		// this mounts the og pyroscope ingest API, mostly used by SDKs
 		router.HandleFunc("/ingest", c.handleIngest).Methods(http.MethodPost)
 
@@ -164,6 +151,7 @@ func apiToAlloySamples(api []*pushv1.RawSample) []*pyroscope.RawSample {
 	)
 	for i := range alloy {
 		alloy[i] = &pyroscope.RawSample{
+			ID:         api[i].ID,
 			RawProfile: api[i].RawProfile,
 		}
 	}
