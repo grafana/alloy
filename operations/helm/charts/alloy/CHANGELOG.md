@@ -12,7 +12,10 @@ Unreleased
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
 - Add option to not expose http server port. (@kun98-liu)
-- Only set checksum/config annotations on pods if config reloader is disabled. (@ebuildy)
+
+### Bug fixes
+
+- Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
 
 ### Enhancements
 
