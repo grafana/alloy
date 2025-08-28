@@ -190,6 +190,7 @@ Replace the following:
 
 `database_observability.mysql` can accept arguments from the following components:
 
+- Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
 `database_observability.mysql` has exports that can be consumed by the following components:
