@@ -26,6 +26,13 @@ You can run {{< param "PRODUCT_NAME" >}} from outside the cluster by supplying c
 `scrapeconfigs` may reference secrets for authenticating to targets to scrape them.
 In these cases, the secrets are loaded and refreshed only when the ScrapeConfig is updated or when this component refreshes its internal state, which happens on a 5-minute refresh cycle.
 
+{{< admonition type="note" >}}
+`prometheus.operator.scrapeconfigs` supports only the following service discovery types:
+
+* `staticConfigs`: Static target configurations
+* `ec2SDConfigs`: Amazon EC2 service discovery configurations
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

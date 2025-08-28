@@ -63,6 +63,8 @@ Main (unreleased)
 - Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
+
+- Add support for ScrapeConfig with `ec2SdConfigs` in `prometheus.operator.scrapeconfigs`. (@thomas-gouveia)
   
 ### Enhancements
 
