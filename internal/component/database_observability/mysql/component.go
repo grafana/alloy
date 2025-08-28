@@ -284,8 +284,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.dbConnection = dbConnection
 
 	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
+	if err = rs.Err(); err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
 		return err
 	}
@@ -313,8 +312,6 @@ func (c *Component) Update(args component.Arguments) error {
 		collector.Stop()
 	}
 	c.collectors = nil
-
-	c.args = args.(Arguments)
 
 	if err := c.startCollectors(serverUUID, engineVersion); err != nil {
 		c.healthErr.Store(err.Error())
