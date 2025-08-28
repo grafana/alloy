@@ -268,6 +268,10 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+	}
+
 	c.args = args.(Arguments)
 
 	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
