@@ -406,6 +406,7 @@ func (c *Component) startCollectors() error {
 			CollectInterval:             c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
+			DBVersion:                   engineVersion,
 			DisableQueryRedaction:       c.args.QuerySampleArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySampleArguments.AutoEnableSetupConsumers,
 			SetupConsumersCheckInterval: c.args.QuerySampleArguments.SetupConsumersCheckInterval,
