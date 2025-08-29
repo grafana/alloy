@@ -74,6 +74,26 @@ collect_kernel_profile = false`,
 			},
 		},
 		{
+			name: "with-off-cpu-threshold",
+			in: `
+	targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	forward_to = []
+	off_cpu_threshold = 1000
+	`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					}),
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.OffCPUThreshold = 1000
+				return x
+			},
+		},
+		{
 			name: "syntax-problem",
 			in: `
 targets = [{"service_name" = "foo", "container_id"= "cid"}]
