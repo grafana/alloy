@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -567,6 +568,42 @@ func BenchmarkAppendExemplar(b *testing.B) {
 
 	// Actually use appended exemplars in case they get eliminated
 	_ = app.Commit()
+}
+
+func BenchmarkCreateSeries(b *testing.B) {
+	walDir := b.TempDir()
+
+	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	defer s.Close()
+
+	app := s.Appender(b.Context()).(*appender)
+	lbls := make([]labels.Labels, b.N)
+
+	for i, l := range labelsForTest("benchmark", b.N) {
+		lbls[i] = labels.New(l...)
+	}
+
+	b.ResetTimer()
+
+	for _, l := range lbls {
+		app.getOrCreate(l)
+	}
+}
+
+// Create series for tests.
+func labelsForTest(lName string, seriesCount int) [][]labels.Label {
+	var s [][]labels.Label
+
+	for i := 0; i < seriesCount; i++ {
+		lset := []labels.Label{
+			{Name: "a", Value: lName},
+			{Name: "instance", Value: "localhost" + strconv.Itoa(i)},
+			{Name: "job", Value: "prometheus"},
+		}
+		s = append(s, lset)
+	}
+
+	return s
 }
 
 type sample struct {

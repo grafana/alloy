@@ -103,6 +103,8 @@ Main (unreleased)
 - (_Experimental_) Add an extra parameter to the `array.combine_maps` standard library function
   to enable preserving the first input list even if there is no match. (@ptodev)
 
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -115,7 +117,7 @@ Main (unreleased)
 
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
-- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+- Fix issue in `prometheus.remote_write`'s WAL which could allow it to hold an active series forever. (@kgeckhart)
 
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
