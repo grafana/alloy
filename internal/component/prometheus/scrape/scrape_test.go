@@ -747,6 +747,26 @@ func setupTestNativeHistogram() prometheus_client.Histogram {
 	return nativeHistogram
 }
 
+// setupTestMixedHistogram creates and initializes a test histogram with both classic and native buckets
+func setupTestMixedHistogram() prometheus_client.Histogram {
+	mixedHistogram := prometheus_client.NewHistogram(prometheus_client.HistogramOpts{
+		Name:    "test_mixed_histogram",
+		Help:    "A test histogram metric with both classic and native buckets",
+		Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0}, // Classic buckets
+		// Native histogram configuration
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
+	})
+	// Add observations to create both classic and native data
+	mixedHistogram.Observe(0.3) // Falls in 0.5 bucket
+	mixedHistogram.Observe(0.7) // Falls in 1.0 bucket
+	mixedHistogram.Observe(1.2) // Falls in 2.5 bucket
+	mixedHistogram.Observe(4.5) // Falls in 5.0 bucket
+	mixedHistogram.Observe(8.1) // Falls in 10.0 bucket
+	return mixedHistogram
+}
+
 // setupTestSummary creates and initializes a test summary metric
 func setupTestSummary() prometheus_client.Summary {
 	summary := prometheus_client.NewSummary(prometheus_client.SummaryOpts{
@@ -774,9 +794,10 @@ func setupTestMetrics() *prometheus_client.Registry {
 	gauge := setupTestGauge()
 	histogram := setupTestHistogram()
 	nativeHistogram := setupTestNativeHistogram()
+	mixedHistogram := setupTestMixedHistogram()
 	summary := setupTestSummary()
 
-	reg.MustRegister(counter, gauge, histogram, nativeHistogram, summary)
+	reg.MustRegister(counter, gauge, histogram, nativeHistogram, mixedHistogram, summary)
 	return reg
 }
 
@@ -793,6 +814,9 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 		// Histogram samples
 		{name: "test_histogram_count", value: 4.0},
 		{name: "test_histogram_sum", value: 6.7}, // 0.3 + 0.7 + 1.2 + 4.5
+		// Mixed histogram samples (classic samples expected for mixed histograms with both classic and native buckets)
+		{name: "test_mixed_histogram_count", value: 5.0},
+		{name: "test_mixed_histogram_sum", value: 14.8}, // 0.3 + 0.7 + 1.2 + 4.5 + 8.1
 		// Summary samples
 		{name: "test_summary_count", value: 4.0},
 		{name: "test_summary_sum", value: 2.9}, // 0.5 + 0.9 + 1.5 + 0.0
@@ -824,6 +848,11 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 			expectedHelp: "A test native histogram metric",
 		},
 		{
+			name:         "test_mixed_histogram",
+			expectedType: model.MetricTypeHistogram,
+			expectedHelp: "A test histogram metric with both classic and native buckets",
+		},
+		{
 			name:         "test_summary",
 			expectedType: model.MetricTypeSummary,
 			expectedHelp: "A test summary metric",
@@ -839,6 +868,11 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 			name:          "test_native_histogram",
 			expectedCount: 3,
 			expectedSum:   7.8,
+		},
+		{
+			name:          "test_mixed_histogram",
+			expectedCount: 5,
+			expectedSum:   14.8,
 		},
 	}
 
@@ -1015,4 +1049,230 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 	}
 
 	t.Logf("Successfully scraped %d samples with %d metadata entries and %d histograms", len(actualSamples), len(actualMetadata), len(actualHistograms))
+}
+
+// TestMixedHistogramScraping tests that the scraper can handle histograms
+// that have both classic histogram buckets and native exponential histogram data.
+// This is similar to the "test_mixed_histogram" case in the OpenTelemetry Collector
+// Prometheus receiver tests.
+func TestMixedHistogramScraping(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	// Create a registry with just the mixed histogram for focused testing
+	reg := prometheus_client.NewRegistry()
+	mixedHistogram := setupTestMixedHistogram()
+	reg.MustRegister(mixedHistogram)
+
+	// Create HTTP server that serves metrics
+	server := &http.Server{
+		Addr: "127.0.0.1:0", // Let the OS choose a free port
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/metrics" {
+				// Create a promhttp handler that can serve both text and protobuf formats
+				handler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
+					EnableOpenMetrics: true,
+				})
+				handler.ServeHTTP(w, r)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}),
+	}
+
+	listener, err := net.Listen("tcp", server.Addr)
+	require.NoError(t, err)
+	serverAddr := listener.Addr().String()
+
+	go func() {
+		server.Serve(listener)
+	}()
+	defer server.Shutdown(ctx)
+
+	// Wait a moment for server to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Test both with and without native histogram scraping enabled
+	testCases := []struct {
+		name                   string
+		enableNativeHistograms bool
+		expectNativeHistogram  bool
+		expectClassicSamples   bool
+	}{
+		{
+			name:                   "native_histograms_disabled",
+			enableNativeHistograms: false,
+			expectNativeHistogram:  false,
+			expectClassicSamples:   true,
+		},
+		{
+			name:                   "native_histograms_enabled",
+			enableNativeHistograms: true,
+			expectNativeHistogram:  true,
+			expectClassicSamples:   false, // When native histograms are enabled, classic samples may not be present
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create fresh appender for each test case
+			appender := testappender.NewCollectingAppender()
+			mockAppendable := testappender.ConstantAppendable{Inner: appender}
+
+			// Create fresh component options with new registry for each test case
+			testOpts := component.Options{
+				Logger:     util.TestAlloyLogger(t),
+				Registerer: prometheus_client.NewRegistry(), // Fresh registry for each test
+				GetServiceData: func(name string) (interface{}, error) {
+					switch name {
+					case http_service.ServiceName:
+						return http_service.Data{
+							HTTPListenAddr:   "localhost:12345",
+							MemoryListenAddr: "alloy.internal:1245",
+							BaseHTTPPath:     "/",
+							DialFunc:         (&net.Dialer{}).DialContext,
+						}, nil
+					case cluster.ServiceName:
+						return cluster.Mock(), nil
+					case labelstore.ServiceName:
+						return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+					case livedebugging.ServiceName:
+						return livedebugging.NewLiveDebugging(), nil
+					default:
+						return nil, fmt.Errorf("service %q does not exist", name)
+					}
+				},
+			}
+
+			// Configure scrape arguments
+			var args Arguments
+			args.SetToDefault()
+			args.HonorMetadata = true
+			args.Targets = []discovery.Target{
+				discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
+			}
+			args.ForwardTo = []storage.Appendable{mockAppendable}
+			args.ScrapeInterval = 50 * time.Millisecond
+			args.ScrapeTimeout = 25 * time.Millisecond
+			args.JobName = "test_mixed_histogram_job"
+			args.MetricsPath = "/metrics"
+			args.ScrapeNativeHistograms = tc.enableNativeHistograms
+
+			if tc.enableNativeHistograms {
+				args.ScrapeProtocols = []string{
+					"PrometheusProto",
+					"OpenMetricsText1.0.0",
+					"OpenMetricsText0.0.1",
+					"PrometheusText0.0.4",
+				}
+			} else {
+				args.ScrapeProtocols = []string{
+					"OpenMetricsText1.0.0",
+					"OpenMetricsText0.0.1",
+					"PrometheusText0.0.4",
+				}
+			}
+
+			// Validate arguments
+			require.NoError(t, args.Validate())
+
+			// Create and start the scrape component
+			scrapeComponent, err := New(testOpts, args)
+			require.NoError(t, err)
+
+			go scrapeComponent.Run(ctx)
+
+			// Wait for scraping to occur and commit data
+			require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+				actualSamples := appender.CollectedSamples()
+				actualMetadata := appender.CollectedMetadata()
+				actualHistograms := appender.CollectedHistograms()
+
+				// Verify we have captured data
+				require.Greater(collectT, len(actualSamples)+len(actualHistograms), 0, "Should have captured some data")
+
+				// Debug logging
+				t.Logf("Captured %d samples, %d histograms, %d metadata entries", len(actualSamples), len(actualHistograms), len(actualMetadata))
+				for _, sample := range actualSamples {
+					t.Logf("Sample: %s = %f", sample.Labels.Get("__name__"), sample.Value)
+				}
+				for name, histogram := range actualHistograms {
+					t.Logf("Histogram: %s (count=%v, sum=%v)", name,
+						getHistogramCount(histogram), getHistogramSum(histogram))
+				}
+
+				if tc.expectClassicSamples {
+					// Should have classic histogram samples (_count, _sum, _bucket metrics)
+					foundCount := false
+					foundSum := false
+					for _, sample := range actualSamples {
+						metricName := sample.Labels.Get("__name__")
+						if metricName == "test_mixed_histogram_count" {
+							foundCount = true
+							require.Equal(collectT, 5.0, sample.Value, "Mixed histogram count should be 5")
+						}
+						if metricName == "test_mixed_histogram_sum" {
+							foundSum = true
+							require.Equal(collectT, 14.8, sample.Value, "Mixed histogram sum should be 14.8")
+						}
+					}
+					require.True(collectT, foundCount, "Should have found mixed histogram count sample")
+					require.True(collectT, foundSum, "Should have found mixed histogram sum sample")
+				}
+
+				if tc.expectNativeHistogram {
+					// Should have native histogram data
+					foundNativeHist := false
+					for name, histogram := range actualHistograms {
+						if strings.Contains(name, "test_mixed_histogram") {
+							foundNativeHist = true
+							if histogram.Histogram != nil {
+								require.Equal(collectT, uint64(5), histogram.Histogram.Count, "Native histogram count should be 5")
+								require.Equal(collectT, 14.8, histogram.Histogram.Sum, "Native histogram sum should be 14.8")
+							} else if histogram.FloatHistogram != nil {
+								require.Equal(collectT, float64(5), histogram.FloatHistogram.Count, "Native float histogram count should be 5")
+								require.Equal(collectT, 14.8, histogram.FloatHistogram.Sum, "Native float histogram sum should be 14.8")
+							}
+							break
+						}
+					}
+					require.True(collectT, foundNativeHist, "Should have found native histogram data")
+				}
+
+				// Verify metadata
+				foundMetadata := false
+				for labelString, meta := range actualMetadata {
+					if strings.Contains(labelString, `__name__="test_mixed_histogram"`) ||
+						strings.Contains(labelString, `__name__="test_mixed_histogram_bucket"`) {
+						require.Equal(collectT, model.MetricTypeHistogram, meta.Type, "Mixed histogram metadata type should be histogram")
+						require.Equal(collectT, "A test histogram metric with both classic and native buckets", meta.Help)
+						foundMetadata = true
+						break
+					}
+				}
+				require.True(collectT, foundMetadata, "Should have found mixed histogram metadata")
+			}, 10*time.Second, 100*time.Millisecond, "Should have captured mixed histogram data")
+
+			t.Logf("Successfully tested mixed histogram with native_histograms=%v", tc.enableNativeHistograms)
+		})
+	}
+}
+
+// Helper functions for histogram debugging
+func getHistogramCount(h *testappender.HistogramSample) interface{} {
+	if h.Histogram != nil {
+		return h.Histogram.Count
+	} else if h.FloatHistogram != nil {
+		return h.FloatHistogram.Count
+	}
+	return "unknown"
+}
+
+func getHistogramSum(h *testappender.HistogramSample) interface{} {
+	if h.Histogram != nil {
+		return h.Histogram.Sum
+	} else if h.FloatHistogram != nil {
+		return h.FloatHistogram.Sum
+	}
+	return "unknown"
 }

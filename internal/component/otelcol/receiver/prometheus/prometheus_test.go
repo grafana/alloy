@@ -380,6 +380,197 @@ func TestHistogram(t *testing.T) {
 	}
 }
 
+// TestMixedHistogram tests that the component can receive and process a histogram
+// that contains both classic histogram buckets and native exponential histogram data.
+// This is similar to the "test_mixed_histogram" case in the OpenTelemetry Collector
+// Prometheus receiver tests. This test explicitly expects BOTH classic and native
+// histogram representations to be received. It may fail if the receiver only outputs
+// one representation, which would indicate the current behavior of the receiver.
+func TestMixedHistogram(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	// Override our settings so metrics get forwarded to metricCh.
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	// Use the exported Appendable to send a mixed histogram to the receiver.
+	go func() {
+		ts := time.Now().Unix()
+
+		ctx := t.Context()
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, testMetadataStore{
+			"testMixedHistogram": scrape.MetricMetadata{
+				MetricFamily: "testMixedHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test mixed histogram metric with both classic and native buckets",
+			},
+		})
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+		app := exports.Receiver.Appender(ctx)
+
+		histogramName := "testMixedHistogram"
+
+		// 1. Send classic histogram buckets (traditional buckets with upper bounds)
+		buckets := []float64{0.5, 10.0}
+		counts := []float64{789, 1011} // cumulative counts
+
+		for i, bucket := range buckets {
+			bucketLabels := labels.Labels{
+				{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+				{Name: model.JobLabel, Value: "testJob"},
+				{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+				{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
+				{Name: "method", Value: "GET"},
+			}
+			_, err = app.Append(0, bucketLabels, ts, counts[i])
+			require.NoError(t, err)
+		}
+
+		// +Inf bucket
+		infBucketLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "le", Value: "+Inf"},
+			{Name: "method", Value: "GET"},
+		}
+		_, err = app.Append(0, infBucketLabels, ts, 1213.0)
+		require.NoError(t, err)
+
+		// Histogram count
+		countLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_count"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "method", Value: "GET"},
+		}
+		_, err = app.Append(0, countLabels, ts, 1213.0)
+		require.NoError(t, err)
+
+		// Histogram sum
+		sumLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName + "_sum"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "method", Value: "GET"},
+		}
+		_, err = app.Append(0, sumLabels, ts, 456.0)
+		require.NoError(t, err)
+
+		// 2. Send native exponential histogram data
+		// Create a native histogram with exponential buckets
+		nativeHistLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: histogramName},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "method", Value: "GET"},
+		}
+
+		// Create a native histogram with the same count and sum as the classic histogram
+		// but with exponential bucket structure
+		h := tsdbutil.GenerateTestHistogram(42)
+		// Override some values to match the classic histogram data
+		h.Count = 1213
+		h.Sum = 456.0
+		h.ZeroCount = 2
+		h.Schema = 3
+
+		_, err = app.AppendHistogram(0, nativeHistLabels, ts, h, nil)
+		require.NoError(t, err)
+
+		require.NoError(t, app.Commit())
+	}()
+
+	// Wait for our client to get the metrics.
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "failed waiting for mixed histogram metrics")
+	case m := <-metricCh:
+		// For mixed histograms, we expect to receive BOTH classic and native histogram representations
+		// This test explicitly checks for both types to be present
+		t.Logf("Received %d metrics", m.MetricCount())
+
+		// Log all received metrics for debugging
+		for i := 0; i < m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Len(); i++ {
+			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(i)
+			t.Logf("Received metric: name=%s, type=%s", metric.Name(), metric.Type().String())
+		}
+
+		require.Equal(t, 2, m.MetricCount(), "should have exactly 2 metrics: one classic histogram and one exponential histogram")
+
+		metrics := make(map[string]pmetric.Metric)
+		metricsByType := make(map[pmetric.MetricType]pmetric.Metric)
+
+		for i := 0; i < m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Len(); i++ {
+			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(i)
+			metrics[metric.Name()] = metric
+			metricsByType[metric.Type()] = metric
+			t.Logf("Metric %d: name=%s, type=%s", i, metric.Name(), metric.Type().String())
+		}
+
+		// Verify we have the mixed histogram metric
+		_, exists := metrics["testMixedHistogram"]
+		require.True(t, exists, "testMixedHistogram metric should exist")
+
+		// Explicitly check that we have BOTH classic and native histogram representations
+		classicHistogram, hasClassic := metricsByType[pmetric.MetricTypeHistogram]
+		nativeHistogram, hasNative := metricsByType[pmetric.MetricTypeExponentialHistogram]
+
+		require.True(t, hasClassic, "should have received a classic histogram representation")
+		require.True(t, hasNative, "should have received a native exponential histogram representation")
+
+		// Verify classic histogram properties
+		require.Equal(t, "testMixedHistogram", classicHistogram.Name())
+		require.Equal(t, 1, classicHistogram.Histogram().DataPoints().Len())
+		classicDP := classicHistogram.Histogram().DataPoints().At(0)
+		require.Equal(t, uint64(1213), classicDP.Count())
+		require.Equal(t, 456.0, classicDP.Sum())
+		require.Greater(t, classicDP.BucketCounts().Len(), 0, "should have bucket counts")
+		require.Equal(t, "A test mixed histogram metric with both classic and native buckets", classicHistogram.Description())
+		t.Log("✓ Successfully received classic histogram representation")
+
+		// Verify exponential histogram properties
+		require.Equal(t, "testMixedHistogram", nativeHistogram.Name())
+		require.Equal(t, 1, nativeHistogram.ExponentialHistogram().DataPoints().Len())
+		nativeDP := nativeHistogram.ExponentialHistogram().DataPoints().At(0)
+		require.Equal(t, uint64(1213), nativeDP.Count())
+		require.Equal(t, 456.0, nativeDP.Sum())
+		require.NotEqual(t, int32(0), nativeDP.Scale(), "should have a valid scale")
+		require.Equal(t, "A test mixed histogram metric with both classic and native buckets", nativeHistogram.Description())
+		t.Log("✓ Successfully received native exponential histogram representation")
+
+		// This test explicitly requires BOTH representations to be present for mixed histograms
+		t.Log("✓ Mixed histogram test passed: received both classic and native representations")
+	}
+}
+
 // makeMetricsOutput returns a ConsumerArguments which will forward metrics to
 // the provided channel.
 func makeMetricsOutput(ch chan pmetric.Metrics) *otelcol.ConsumerArguments {
