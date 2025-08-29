@@ -53,9 +53,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	positionFile := filepath.Join(o.DataPath, "positions.yml")
+	if args.LegacyPosition != nil {
+		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
+	}
+
 	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
+		PositionsFile:     positionFile,
 		IgnoreInvalidYaml: false,
 		ReadOnly:          false,
 	})
