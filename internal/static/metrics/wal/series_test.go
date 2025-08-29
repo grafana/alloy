@@ -81,7 +81,7 @@ func labelsWithHashCollision() (labels.Labels, labels.Labels) {
 }
 
 // stripeSeriesWithCollidingSeries returns a stripeSeries with two memSeries having the same, colliding, hash.
-func stripeSeriesWithCollidingSeries(*testing.T) (*stripeSeries, *memSeries, *memSeries) {
+func stripeSeriesWithCollidingSeries() (*stripeSeries, *memSeries, *memSeries) {
 	lbls1, lbls2 := labelsWithHashCollision()
 	ms1 := memSeries{
 		lset: lbls1,
@@ -99,7 +99,7 @@ func stripeSeriesWithCollidingSeries(*testing.T) (*stripeSeries, *memSeries, *me
 }
 
 func TestStripeSeries_Get(t *testing.T) {
-	s, ms1, ms2 := stripeSeriesWithCollidingSeries(t)
+	s, ms1, ms2 := stripeSeriesWithCollidingSeries()
 	hash := ms1.lset.Hash()
 
 	// Verify that we can get both of the series despite the hash collision
@@ -110,7 +110,7 @@ func TestStripeSeries_Get(t *testing.T) {
 }
 
 func TestStripeSeries_gc(t *testing.T) {
-	s, ms1, ms2 := stripeSeriesWithCollidingSeries(t)
+	s, ms1, ms2 := stripeSeriesWithCollidingSeries()
 	hash := ms1.lset.Hash()
 
 	s.gc(1)
@@ -120,4 +120,56 @@ func TestStripeSeries_gc(t *testing.T) {
 	require.Nil(t, got)
 	got = s.GetByHash(hash, ms2.lset)
 	require.Nil(t, got)
+}
+
+func TestSeriesHashmap_Flow(t *testing.T) {
+	l1, l2 := labelsWithHashCollision()
+	hm := seriesHashmap{
+		unique:    map[uint64]*memSeries{},
+		conflicts: nil,
+	}
+
+	hash := l1.Hash()
+
+	// Make sure we can set and get m1
+	expectedM1Ref := chunks.HeadSeriesRef(1)
+	hm.Set(hash, &memSeries{lset: l1, ref: expectedM1Ref})
+	m1 := hm.Get(hash, l1)
+	require.NotNil(t, m1)
+	require.Equal(t, expectedM1Ref, m1.ref)
+
+	// Add a collision as m2 and make sure we can get it
+	expectedM2Ref := chunks.HeadSeriesRef(2)
+	hm.Set(hash, &memSeries{lset: l2, ref: expectedM2Ref})
+	m2 := hm.Get(hash, l2)
+	require.NotNil(t, m2)
+	require.Equal(t, expectedM2Ref, m2.ref)
+
+	// Make sure m1 is unchanged
+	m1Again := hm.Get(hash, l1)
+	require.Same(t, m1, m1Again)
+
+	// Delete the collision m2
+	hm.Delete(hash, expectedM2Ref)
+
+	// Make sure m2 is gone and m1 is uneffected
+	m2 = hm.Get(hash, l2)
+	require.Nil(t, m2)
+	m1Again = hm.Get(hash, l1)
+	require.Same(t, m1, m1Again)
+
+	// Add m2 back again
+	hm.Set(hash, &memSeries{lset: l2, ref: expectedM2Ref})
+
+	// Delete the unique m1 make sure m2 is unaffected and m1 is gone
+	hm.Delete(hash, expectedM1Ref)
+	m1 = hm.Get(hash, l1)
+	require.Nil(t, m1)
+	m2Again := hm.Get(hash, l1)
+	require.Same(t, m2, m2Again)
+
+	// Delete m2 and make sure it's gone
+	hm.Delete(hash, expectedM2Ref)
+	m2 = hm.Get(hash, l1)
+	require.Nil(t, m2)
 }
