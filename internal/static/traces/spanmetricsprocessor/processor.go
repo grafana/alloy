@@ -339,7 +339,7 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rspans := traces.ResourceSpans().At(i)
 		resourceAttr := rspans.Resource().Attributes()
-		serviceAttr, ok := resourceAttr.Get(string(conventions.ServiceNameKey))
+		serviceAttr, ok := resourceAttr.Get(serviceNameKey)
 		if !ok {
 			continue
 		}
