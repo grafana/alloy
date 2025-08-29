@@ -83,7 +83,9 @@ You can use the following blocks with `loki.source.journal`:
 | Name   | Type     | Description                                          |  Required |
 | ------ | -------- | ---------------------------------------------------- |  -------- |
 | `file` | `string` | File to convert.                                     | yes       |
-| `name` | `string` | Job name used for journal (agent static or promtail) | yes       k:w
+| `name` | `string` | Job name used for journal (agent static or promtail) | yes       |
+
+The translation of legacy position file will happens if there is no position file already and is a valid yaml file to convert.
 
 ## Component health
 
