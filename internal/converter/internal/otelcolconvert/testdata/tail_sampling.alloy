@@ -138,8 +138,8 @@ otelcol.processor.tail_sampling "default" {
 
 		ottl_condition {
 			error_mode = "ignore"
-			span       = ["attributes[\"test_attr_key_1\"] == \"test_attr_val_1\"", "attributes[\"test_attr_key_2\"] != \"test_attr_val_1\""]
-			spanevent  = ["name != \"test_span_event_name\"", "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\""]
+			span       = [`attributes["test_attr_key_1"] == "test_attr_val_1"`, `attributes["test_attr_key_2"] != "test_attr_val_1"`]
+			spanevent  = [`name != "test_span_event_name"`, `attributes["test_event_attr_key_2"] != "test_event_attr_val_1"`]
 		}
 	}
 
