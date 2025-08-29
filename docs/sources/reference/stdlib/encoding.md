@@ -61,6 +61,29 @@ The `encoding.to_base64` function encodes the original string into RFC4648-compl
 c3RyaW5nMTIzIT8kKiYoKSctPUB-
 ```
 
+## encoding.url_encode
+
+The `encoding.url_encode` function encodes the original string into a RFC3986 "percent encoding" compliant string.
+
+### Example
+
+```
+> encoding.url_encode("string123!?$*&()'-=@~")
+string123%21%3F%24%2A%26%28%29%27-%3D%40~
+```
+
+## encoding.url_decode
+
+The `encoding.url_decode` function decodes a RFC3986 "percent encoding" compliant string.
+`encoding.url_decode` failes if input string is not RFC3986 "percent encoding" compliant.
+
+### Example
+
+```
+> encoding.url_decode("string123%21%3F%24%2A%26%28%29%27-%3D%40~")
+string123!?$*&()'-=@~
+```
+
 ## encoding.to_json
 
 The `encoding.to_json` function encodes the map into a JSON string.

@@ -58,6 +58,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
+
+- Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
   
 ### Enhancements
 
