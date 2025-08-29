@@ -58,6 +58,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
+
+- Add support for ScrapeConfig with `ec2SdConfigs` in `prometheus.operator.scrapeconfigs`. (@thomas-gouveia)
   
 ### Enhancements
 
