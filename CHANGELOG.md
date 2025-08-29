@@ -107,6 +107,8 @@ Main (unreleased)
 
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
+- Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
+
 v1.10.2
 -----------------
 
