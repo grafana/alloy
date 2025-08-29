@@ -14,8 +14,10 @@ type Unmarshaler interface {
 	Unmarshal([]byte) error
 }
 
-const DefaultRetryInterval = 100 * time.Millisecond
-const DefaultTimeout = 90 * time.Second
+const (
+	DefaultRetryInterval = 100 * time.Millisecond
+	DefaultTimeout       = 90 * time.Second
+)
 
 func FetchDataFromURL(url string, target Unmarshaler) error {
 	resp, err := http.Get(url)
@@ -90,4 +92,17 @@ func startTimeFromEnv() (int64, error) {
 	}
 
 	return parsed, nil
+}
+
+func TestTimeoutEnv(t *testing.T) time.Duration {
+	if toStr := os.Getenv(TestTimeout); toStr != "" {
+		if to, err := time.ParseDuration(toStr); err == nil {
+			return to
+		} else {
+			t.Logf("failed to parse %s value %s as a duration: %s, defaulting to %s", TestTimeout, toStr, err, DefaultTimeout)
+		}
+	} else {
+		t.Logf("%s not set, defaulting to %s", TestTimeout, DefaultTimeout)
+	}
+	return DefaultTimeout
 }

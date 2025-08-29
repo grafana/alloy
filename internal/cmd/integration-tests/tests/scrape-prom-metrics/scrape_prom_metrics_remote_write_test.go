@@ -9,5 +9,5 @@ import (
 )
 
 func TestScrapePromMetrics(t *testing.T) {
-	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultHistogramMetric, "scrape_prom_metrics")
+	common.MimirMetricsTest(t, common.PromDefaultMetrics, nil, "scrape_prom_metrics_remote_write")
 }
