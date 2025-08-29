@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,8 @@ var encoding = map[string]interface{}{
 	"to_json":        jsonEncode,
 	"to_base64":      base64Encode,
 	"to_URLbase64":   base64URLEncode,
+	"url_encode":     urlEncode,
+	"url_decode":     urlDecode,
 }
 
 var str = map[string]interface{}{
@@ -446,6 +449,14 @@ func base64URLEncode(in string) (string, error) {
 func base64Encode(in string) (string, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(in))
 	return encoded, nil
+}
+
+func urlEncode(in string) (string, error) {
+	return url.QueryEscape(in), nil
+}
+
+func urlDecode(in string) (string, error) {
+	return url.QueryUnescape(in)
 }
 
 func jsonEncode(in interface{}) (string, error) {

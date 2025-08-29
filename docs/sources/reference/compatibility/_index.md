@@ -147,6 +147,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.scrape](../components/prometheus/prometheus.scrape)
 {{< /collapse >}}
 
@@ -179,6 +180,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
 - [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
@@ -198,6 +200,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
 - [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)

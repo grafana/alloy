@@ -38,6 +38,7 @@ Main (unreleased)
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
+- Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 
@@ -61,6 +62,8 @@ Main (unreleased)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
+
+- Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
 ### Enhancements
 
@@ -94,6 +97,8 @@ Main (unreleased)
 
 - `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
 
+- `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -109,6 +114,8 @@ Main (unreleased)
 - Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
 
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
+
+- Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
 
 v1.10.2
 -----------------
