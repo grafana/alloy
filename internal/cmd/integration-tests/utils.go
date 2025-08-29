@@ -269,6 +269,7 @@ func reportResults() {
 
 	if testsFailed > 0 {
 		fmt.Printf("%d tests failed!\n", testsFailed)
+		os.Exit(1)
 	} else {
 		fmt.Println("All integration tests passed!")
 	}

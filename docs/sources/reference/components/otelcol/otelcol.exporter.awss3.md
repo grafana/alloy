@@ -56,11 +56,13 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 | [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
 | [`resource_attrs_to_s3`][resource_attrs_to_s3] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no       |
 | [`sending_queue`][sending_queue]               | Configures batching of data before sending.                                                              | no       |
+| `sending_queue` > [`batch`][batch]             | Configures batching requests based on a timeout and a minimum number of items.                           | no       |
 
 [s3_uploader]: #s3_uploader
 [marshaler]: #marshaler
 [debug_metrics]: #debug_metrics
 [sending_queue]: #sending_queue
+[batch]: #batch
 [resource_attrs_to_s3]: #resource_attrs_to_s3-block
 
 ### `s3_uploader`
@@ -120,9 +122,16 @@ The following arguments are supported:
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to S3.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### resource_attrs_to_s3 block
 
