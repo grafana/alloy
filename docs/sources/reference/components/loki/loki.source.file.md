@@ -51,7 +51,8 @@ If not set, it defaults to UTF-8.
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
 
-The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is converted to the new format.
+The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
+The format of the position files is different in Grafana Alloy, so this will convert convert it to the new format.
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 
 ## Blocks
