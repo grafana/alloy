@@ -122,6 +122,7 @@ func TestTailer(t *testing.T) {
 			MaxPollFrequency: 25 * time.Millisecond,
 		},
 		false,
+		false,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -217,6 +218,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 			MaxPollFrequency: 25 * time.Millisecond,
 		},
 		false,
+		false,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -280,6 +282,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 			MinPollFrequency: 25 * time.Millisecond,
 			MaxPollFrequency: 25 * time.Millisecond,
 		},
+		false,
 		false,
 		func() bool { return true },
 	)

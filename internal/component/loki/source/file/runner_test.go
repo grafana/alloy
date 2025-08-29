@@ -49,6 +49,7 @@ func TestRunnerTailer(t *testing.T) {
 			MaxPollFrequency: 25 * time.Millisecond,
 		},
 		false,
+		false,
 		func() bool { return true },
 	)
 	require.NoError(t, err)

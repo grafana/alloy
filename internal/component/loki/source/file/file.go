@@ -329,6 +329,7 @@ func (c *Component) createReader(path string, labels model.LabelSet) (reader, er
 			c.args.Encoding,
 			pollOptions,
 			c.args.TailFromEnd,
+			c.args.LegacyPositionsFile != "",
 			c.IsStopping,
 		)
 		if err != nil {
