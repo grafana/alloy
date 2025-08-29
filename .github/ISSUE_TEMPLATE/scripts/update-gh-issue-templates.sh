@@ -27,7 +27,7 @@ if [ ${#LIST[@]} -eq 0 ]; then
     exit 1
 fi
 
-IFS=$'\n' LIST=($(sort <<<"${LIST[*]}"))
+IFS=$'\n' LIST=($(LC_ALL=C sort <<<"${LIST[*]}"))
 # Reset IFS to default
 unset IFS
 
