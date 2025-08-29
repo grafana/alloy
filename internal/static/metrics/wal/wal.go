@@ -35,6 +35,9 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+// Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
+// 	based on the prometheus tsdb head wal https://github.com/prometheus/prometheus/blob/main/tsdb/head_wal.go
+
 // ErrWALClosed is an error returned when a WAL operation can't run because the
 // storage has already been closed.
 var ErrWALClosed = fmt.Errorf("WAL storage closed")
