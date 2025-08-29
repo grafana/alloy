@@ -70,7 +70,20 @@ The final internal label name would be `__journal__systemd_unit`, with _two_ und
 
 ## Blocks
 
-The `loki.source.journal` component doesn't support any blocks. You can configure this component with arguments.
+You can use the following blocks with `loki.source.journal`:
+
+| Name                                 | Description                                      | Required |
+| ------------------------------------ | ------------------------------------------------ | -------- |
+| [`legacy_position`][legacy_position] | Configure conversion from legacy positions file. | no       |
+
+[legacy_position]: #legacy_position
+
+### `legacy_position`
+
+| Name   | Type     | Description                                          |  Required |
+| ------ | -------- | ---------------------------------------------------- |  -------- |
+| `file` | `string` | File to convert.                                     | yes       |
+| `name` | `string` | Job name used for journal (agent static or promtail) | yes       k:w
 
 ## Component health
 
