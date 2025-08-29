@@ -56,7 +56,7 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | [`client`][client]                                         | Configures the HTTP client used to send data to Splunk HEC.                    | yes      |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`otel_attrs_to_hec_metadata`][otel_attrs_to_hec_metadata] | Configures mapping of resource attributes to HEC metadata fields.              | no       |
-| [`sending_queue`][sending_queue]                                           | Configures batching of data before sending.                                    | no       |
+| [`sending_queue`][sending_queue]                           | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                         | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`retry_on_failure`][retry_on_failure]                     | Configures retry mechanism for failed requests.                                | no       |
 

@@ -13,9 +13,9 @@ The following arguments are supported:
 | `max_size`      | `number`    | The maximum size of a batch, enables batch splitting.                                                      |              | yes      |
 | `sizer`         | `string`    | How the queue and batching is measured. Overrides the sizer set at the `sending_queue` level for batching. |              | yes      |
 
-`max_size` should be greater than or equal to `min_size`.
+`max_size` must be greater than or equal to `min_size`.
 
-The `sizer` argument could be set to:
+The `sizer` argument can be set to:
 
-* `items`: number of the smallest parts of each signal (spans, metric data points, log records).
+* `items`: The number of the smallest parts of each span, metric data point, or log record.
 * `bytes`: the size of serialized data in bytes (the least performant option).

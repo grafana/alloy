@@ -109,8 +109,8 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS key_file.                                     | no       |
 | `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
-| [`sending_queue`][queue]                                          | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
-| `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| `sending_queue` > [`batch`][batch]                        | Configures batching requests based on a timeout and a minimum number of items.    | no       |
 | [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
 | [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
 
