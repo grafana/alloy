@@ -8,6 +8,6 @@ import (
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
-func TestScrapePromMetrics(t *testing.T) {
-	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultHistogramMetric, "scrape_prom_metrics")
+func TestPromMetadataWriteQueue(t *testing.T) {
+	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultNativeHistogramMetrics, "scrape_prom_metrics_writequeue")
 }
