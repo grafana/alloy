@@ -568,6 +568,24 @@ func BenchmarkAppendExemplar(b *testing.B) {
 	_ = app.Commit()
 }
 
+// go test -bench='BenchmarkStripeSeriesSize' ./internal/static/metrics/wal/... -run ^$ -benchmem -count 6 | tee size-mid.txt
+// goos: darwin
+// goarch: arm64
+// pkg: github.com/grafana/alloy/internal/static/metrics/wal
+// cpu: Apple M3 Pro
+// BenchmarkStripeSeriesSize-11                4521            264358 ns/op          950286 B/op      12292 allocs/op
+// BenchmarkStripeSeriesSize-11                4574            272891 ns/op          950287 B/op      12292 allocs/op
+// BenchmarkStripeSeriesSize-11                4414            272839 ns/op          950287 B/op      12292 allocs/op
+// BenchmarkStripeSeriesSize-11                4282            264746 ns/op          950286 B/op      12292 allocs/op
+// BenchmarkStripeSeriesSize-11                4428            265390 ns/op          950287 B/op      12292 allocs/op
+// BenchmarkStripeSeriesSize-11                4327            265847 ns/op          950286 B/op      12292 allocs/op
+func BenchmarkStripeSeriesSize(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		newStripeSeries(stripeSeriesSize)
+	}
+}
+
 type sample struct {
 	ts  int64
 	val float64
