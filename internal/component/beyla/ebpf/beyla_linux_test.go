@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/kubeflags"
 	"go.opentelemetry.io/obi/pkg/services"
 	"go.opentelemetry.io/obi/pkg/transform"
+	"gopkg.in/yaml.v3"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -737,6 +738,12 @@ func TestConvert_Attributes(t *testing.T) {
 }
 
 func TestConvert_Discovery(t *testing.T) {
+	// Create ExportModes that allows only metrics using YAML unmarshaling
+	var metricsOnlyExportModes services.ExportModes
+	yamlData := []byte(`["metrics"]`)
+	err := yaml.Unmarshal(yamlData, &metricsOnlyExportModes)
+	require.NoError(t, err)
+
 	args := Discovery{
 		Instrument: []Service{
 			{
@@ -744,7 +751,7 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
-				ExportModes:    services.ExportModes{services.ExportMetrics},
+				ExportModes:    metricsOnlyExportModes,
 				Sampler: SamplerConfig{
 					Arg:  "0.5",
 					Name: "traceidratio",
