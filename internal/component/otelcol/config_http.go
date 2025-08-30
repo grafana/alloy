@@ -105,19 +105,15 @@ type CORSArguments struct {
 
 // Convert converts args into the upstream type.
 func (args *CORSArguments) Convert() configoptional.Optional[otelconfighttp.CORSConfig] {
-	var res configoptional.Optional[otelconfighttp.CORSConfig]
 	if args == nil {
-		return res
+		return configoptional.None[otelconfighttp.CORSConfig]()
 	}
 
-	res = configoptional.Some(otelconfighttp.CORSConfig{
+	return configoptional.Some(otelconfighttp.CORSConfig{
 		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
 		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
-
-		MaxAge: args.MaxAge,
+		MaxAge:         args.MaxAge,
 	})
-
-	return res
 }
 
 // HTTPClientArguments holds shared HTTP settings for components which launch

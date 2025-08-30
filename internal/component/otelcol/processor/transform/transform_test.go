@@ -1,9 +1,9 @@
 package transform_test
 
 import (
-	"encoding/json"
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -903,21 +903,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			// You'd have to register those functions by creating a factory first.
 
 			// Compare the two configs by marshaling to JSON.
-			compareConfigsAsJSON(t, actual, &expectedCfg)
+			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
-}
-
-// compareConfigsAsJSON compares two configs by marshaling them to JSON.
-// We cannot simply compare the structs, because they contain more than just config fields.
-// They also contain internal slices with OTTL functions that aren't part of the config,
-// they are just a way to store internal state.
-func compareConfigsAsJSON(t *testing.T, actual, expected interface{}) {
-	actualJSON, err := json.Marshal(actual)
-	require.NoError(t, err)
-
-	expectedJSON, err := json.Marshal(expected)
-	require.NoError(t, err)
-
-	require.JSONEq(t, string(expectedJSON), string(actualJSON))
 }

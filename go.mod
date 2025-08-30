@@ -1067,6 +1067,11 @@ replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrum
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc
 
+// TODO: Remove this once grafana/opentelemetry-ebpf-profiler no longer needs SetStartTime. Otherwise we get this error:
+// Error: 219.4 /go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.0-20250624035245-5fc775dac6dc/reporter/internal/pdata/generate.go:273:10: profile.SetStartTime undefined (type pprofile.Profile has no field or method SetStartTime)
+// Refer to: https://github.com/open-telemetry/opentelemetry-collector/pull/13315
+replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.129.0
+
 // TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
 replace k8s.io/client-go => k8s.io/client-go v0.32.6
 

@@ -103,17 +103,14 @@ type KeepaliveServerArguments struct {
 
 // Convert converts args into the upstream type.
 func (args *KeepaliveServerArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerConfig] {
-	var res configoptional.Optional[otelconfiggrpc.KeepaliveServerConfig]
 	if args == nil {
-		return res
+		return configoptional.None[otelconfiggrpc.KeepaliveServerConfig]()
 	}
 
-	res = configoptional.Some(otelconfiggrpc.KeepaliveServerConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerConfig{
 		ServerParameters:  args.ServerParameters.Convert(),
 		EnforcementPolicy: args.EnforcementPolicy.Convert(),
 	})
-
-	return res
 }
 
 // KeepaliveServerParamaters holds shared keepalive settings for components
@@ -128,20 +125,17 @@ type KeepaliveServerParamaters struct {
 
 // Convert converts args into the upstream type.
 func (args *KeepaliveServerParamaters) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters] {
-	var res configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters]
 	if args == nil {
-		return res
+		return configoptional.None[otelconfiggrpc.KeepaliveServerParameters]()
 	}
 
-	res = configoptional.Some(otelconfiggrpc.KeepaliveServerParameters{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerParameters{
 		MaxConnectionIdle:     args.MaxConnectionIdle,
 		MaxConnectionAge:      args.MaxConnectionAge,
 		MaxConnectionAgeGrace: args.MaxConnectionAgeGrace,
 		Time:                  args.Time,
 		Timeout:               args.Timeout,
 	})
-
-	return res
 }
 
 // KeepaliveEnforcementPolicy holds shared keepalive settings for components
@@ -153,17 +147,14 @@ type KeepaliveEnforcementPolicy struct {
 
 // Convert converts args into the upstream type.
 func (args *KeepaliveEnforcementPolicy) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy] {
-	var res configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy]
 	if args == nil {
-		return res
+		return configoptional.None[otelconfiggrpc.KeepaliveEnforcementPolicy]()
 	}
 
-	res = configoptional.Some(otelconfiggrpc.KeepaliveEnforcementPolicy{
+	return configoptional.Some(otelconfiggrpc.KeepaliveEnforcementPolicy{
 		MinTime:             args.MinTime,
 		PermitWithoutStream: args.PermitWithoutStream,
 	})
-
-	return res
 }
 
 // GRPCClientArguments holds shared gRPC settings for components which launch
@@ -263,16 +254,13 @@ type KeepaliveClientArguments struct {
 
 // Convert converts args into the upstream type.
 func (args *KeepaliveClientArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveClientConfig] {
-	var res configoptional.Optional[otelconfiggrpc.KeepaliveClientConfig]
 	if args == nil {
-		return res
+		return configoptional.None[otelconfiggrpc.KeepaliveClientConfig]()
 	}
 
-	res = configoptional.Some(otelconfiggrpc.KeepaliveClientConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveClientConfig{
 		Time:                args.PingWait,
 		Timeout:             args.PingResponseTimeout,
 		PermitWithoutStream: args.PingWithoutStream,
 	})
-
-	return res
 }

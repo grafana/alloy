@@ -20,17 +20,14 @@ type TLSServerArguments struct {
 
 // Convert converts args into the upstream type.
 func (args *TLSServerArguments) Convert() configoptional.Optional[configtls.ServerConfig] {
-	var res configoptional.Optional[configtls.ServerConfig]
 	if args == nil {
-		return res
+		return configoptional.None[configtls.ServerConfig]()
 	}
 
-	res = configoptional.Some(configtls.ServerConfig{
+	return configoptional.Some(configtls.ServerConfig{
 		Config:       *args.TLSSetting.Convert(),
 		ClientCAFile: args.ClientCAFile,
 	})
-
-	return res
 }
 
 // TLSClientArguments holds shared TLS settings for components which launch
