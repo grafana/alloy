@@ -95,6 +95,8 @@ Main (unreleased)
 
 - `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
 
+- Normalize attr key name in logfmt logger. (@zry98)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
