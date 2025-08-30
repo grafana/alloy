@@ -95,6 +95,8 @@ Main (unreleased)
 
 - `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
 
+- `import.git` now supports `tls_config` block and proxy attributes. (@kinolaev)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
