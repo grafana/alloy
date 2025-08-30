@@ -12,10 +12,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/textutils"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/hashicorp/go-multierror"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/decode"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/fileconsumer"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/fileconsumer/attrs"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/fileconsumer/matcher"
@@ -280,7 +281,7 @@ func (args *Arguments) Validate() error {
 		errs = multierror.Append(errs, errors.New("'delete_after_read' cannot be used with 'start_at = end'"))
 	}
 
-	_, err := decode.LookupEncoding(args.Encoding) //nolint:staticcheck // TODO: deprecated, internal only, will have to vendor the list
+	_, err := textutils.LookupEncoding(args.Encoding)
 	if err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("invalid 'encoding': %w", err))
 	}

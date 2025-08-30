@@ -66,13 +66,13 @@ type LatencyConfig struct {
 	// ThresholdMs in milliseconds.
 	ThresholdMs int64 `alloy:"threshold_ms,attr"`
 	// Upper bound in milliseconds.
-	UpperThresholdmsMs int64 `alloy:"upper_threshold_ms,attr,optional"`
+	UpperThresholdMs int64 `alloy:"upper_threshold_ms,attr,optional"`
 }
 
 func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
 	return tsp.LatencyCfg{
-		ThresholdMs:        latencyConfig.ThresholdMs,
-		UpperThresholdmsMs: latencyConfig.UpperThresholdmsMs,
+		ThresholdMs:      latencyConfig.ThresholdMs,
+		UpperThresholdMs: latencyConfig.UpperThresholdMs,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -74,30 +75,30 @@ func toSolaceAuthentication(cfg solacereceiver.Authentication) solace.Authentica
 	}
 }
 
-func toSaslPlaintext(cfg *solacereceiver.SaslPlainTextConfig) *solace.SaslPlainTextConfig {
-	if cfg == nil {
+func toSaslPlaintext(cfg configoptional.Optional[solacereceiver.SaslPlainTextConfig]) *solace.SaslPlainTextConfig {
+	if !cfg.HasValue() {
 		return nil
 	}
 
 	return &solace.SaslPlainTextConfig{
-		Username: cfg.Username,
-		Password: alloytypes.Secret(cfg.Password),
+		Username: cfg.Get().Username,
+		Password: alloytypes.Secret(cfg.Get().Password),
 	}
 }
 
-func toSaslXAuth2(cfg *solacereceiver.SaslXAuth2Config) *solace.SaslXAuth2Config {
-	if cfg == nil {
+func toSaslXAuth2(cfg configoptional.Optional[solacereceiver.SaslXAuth2Config]) *solace.SaslXAuth2Config {
+	if !cfg.HasValue() {
 		return nil
 	}
 
 	return &solace.SaslXAuth2Config{
-		Username: cfg.Username,
-		Bearer:   cfg.Bearer,
+		Username: cfg.Get().Username,
+		Bearer:   cfg.Get().Bearer,
 	}
 }
 
-func toSaslExternal(cfg *solacereceiver.SaslExternalConfig) *solace.SaslExternalConfig {
-	if cfg == nil {
+func toSaslExternal(cfg configoptional.Optional[solacereceiver.SaslExternalConfig]) *solace.SaslExternalConfig {
+	if !cfg.HasValue() {
 		return nil
 	}
 
@@ -110,11 +111,11 @@ func toSolaceFlow(cfg solacereceiver.FlowControl) solace.FlowControl {
 	}
 }
 
-func toFlowControlDelayedRetry(cfg *solacereceiver.FlowControlDelayedRetry) *solace.FlowControlDelayedRetry {
-	if cfg == nil {
+func toFlowControlDelayedRetry(cfg configoptional.Optional[solacereceiver.FlowControlDelayedRetry]) *solace.FlowControlDelayedRetry {
+	if !cfg.HasValue() {
 		return nil
 	}
 	return &solace.FlowControlDelayedRetry{
-		Delay: cfg.Delay,
+		Delay: cfg.Get().Delay,
 	}
 }

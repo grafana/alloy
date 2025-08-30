@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/static/traces"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	otel_component "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
 	"go.opentelemetry.io/collector/otelcol"
 	p "go.opentelemetry.io/collector/pipeline"
@@ -137,7 +138,7 @@ func toSpanmetricsConnector(cfg *traces.SpanMetricsConfig) *spanmetricsconnector
 		smc.AggregationTemporality = cfg.AggregationTemporality
 	}
 	if len(cfg.LatencyHistogramBuckets) != 0 {
-		smc.Histogram.Explicit = &spanmetricsconnector.ExplicitHistogramConfig{Buckets: cfg.LatencyHistogramBuckets}
+		smc.Histogram.Explicit = configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{Buckets: cfg.LatencyHistogramBuckets})
 	}
 	if cfg.MetricsFlushInterval != 0 {
 		smc.MetricsFlushInterval = cfg.MetricsFlushInterval

@@ -15,6 +15,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -140,9 +141,9 @@ func (args *GRPC) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *GRPC) Convert() (*otelconfiggrpc.ServerConfig, error) {
+func (args *GRPC) Convert() (configoptional.Optional[otelconfiggrpc.ServerConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otelconfiggrpc.ServerConfig](), nil
 	}
 
 	return args.GRPCServerArguments.Convert()
@@ -163,9 +164,9 @@ func (args *ThriftHTTP) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftHTTP) Convert() (*otelconfighttp.ServerConfig, error) {
+func (args *ThriftHTTP) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otelconfighttp.ServerConfig](), nil
 	}
 
 	return args.HTTPServerArguments.Convert()
@@ -181,12 +182,12 @@ type ProtocolUDP struct {
 }
 
 // Convert converts proto into the upstream type.
-func (proto *ProtocolUDP) Convert() *jaegerreceiver.ProtocolUDP {
+func (proto *ProtocolUDP) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if proto == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
-	return &jaegerreceiver.ProtocolUDP{
+	return configoptional.Some(jaegerreceiver.ProtocolUDP{
 		Endpoint: proto.Endpoint,
 		ServerConfigUDP: jaegerreceiver.ServerConfigUDP{
 			QueueSize:        proto.QueueSize,
@@ -194,7 +195,7 @@ func (proto *ProtocolUDP) Convert() *jaegerreceiver.ProtocolUDP {
 			Workers:          proto.Workers,
 			SocketBufferSize: int(proto.SocketBufferSize),
 		},
-	}
+	})
 }
 
 // ThriftCompact wraps ProtocolUDP and provides additional behavior.
@@ -215,9 +216,9 @@ func (args *ThriftCompact) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftCompact) Convert() *jaegerreceiver.ProtocolUDP {
+func (args *ThriftCompact) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if args == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
 	return args.ProtocolUDP.Convert()
@@ -241,9 +242,9 @@ func (args *ThriftBinary) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftBinary) Convert() *jaegerreceiver.ProtocolUDP {
+func (args *ThriftBinary) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if args == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
 	return args.ProtocolUDP.Convert()
