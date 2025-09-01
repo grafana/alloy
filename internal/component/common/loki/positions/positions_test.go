@@ -139,6 +139,7 @@ func TestConvertLegacyPositionsFileJournal(t *testing.T) {
 
 	var posFile File
 	require.NoError(t, yaml.NewDecoder(f).Decode(&posFile))
+	require.NoError(t, f.Close())
 
 	pos := posFile.Positions[Entry{Path: CursorKey("loki.source.journal.test"), Labels: "{}"}]
 	require.Equal(t, journalCursor, pos)
