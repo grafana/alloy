@@ -301,6 +301,8 @@ func (t *Target) Last() int64 { return t.last.Load() }
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
 	t.mu.Lock()
+	running := t.running
+
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()
@@ -311,7 +313,7 @@ func (t *Target) Details() map[string]string {
 		"id":       t.containerName,
 		"error":    errMsg,
 		"position": t.positions.GetString(positions.CursorKey(t.containerName), t.labelsStr),
-		"running":  strconv.FormatBool(t.Ready()),
+		"running":  strconv.FormatBool(running),
 	}
 }
 
