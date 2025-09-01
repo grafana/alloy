@@ -20,6 +20,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -55,6 +56,7 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
@@ -266,8 +268,48 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+	}
+
+	c.args = args.(Arguments)
+
+	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	if err != nil {
+		return err
+	}
+
+	if dbConnection == nil {
+		return errors.New("nil DB connection")
+	}
+	if err = dbConnection.Ping(); err != nil {
+		return err
+	}
+	c.dbConnection = dbConnection
+
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
+	if err = rs.Err(); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var serverUUID, engineVersion string
+	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
+	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
+	for _, t := range c.args.Targets {
+		builder := discovery.NewTargetBuilderFrom(t)
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+			targets = append(targets, builder.Target())
+		}
+	}
+
 	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
+		Targets: targets,
 	})
 
 	for _, collector := range c.collectors {
@@ -275,13 +317,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
-	}
-
-	c.args = args.(Arguments)
-
-	if err := c.startCollectors(); err != nil {
+	if err := c.startCollectors(serverUUID, engineVersion); err != nil {
 		c.healthErr.Store(err.Error())
 		return err
 	}
@@ -315,33 +351,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-func (c *Component) startCollectors() error {
-	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
-	if err != nil {
-		return err
-	}
-
-	if dbConnection == nil {
-		return errors.New("nil DB connection")
-	}
-	if err = dbConnection.Ping(); err != nil {
-		return err
-	}
-	c.dbConnection = dbConnection
-
-	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
-	}
-
-	var serverUUID, engineVersion string
-	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
-	}
-
+func (c *Component) startCollectors(serverUUID string, engineVersion string) error {
 	var cloudProviderInfo *database_observability.CloudProvider
 	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
 		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
@@ -362,7 +372,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QueryTablesName] {
 		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -380,7 +390,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaTableArguments.CollectInterval,
 			CacheEnabled:    c.args.SchemaTableArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaTableArguments.CacheSize,
@@ -402,7 +412,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:                          dbConnection,
+			DB:                          c.dbConnection,
 			CollectInterval:             c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
@@ -423,7 +433,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.SetupConsumersName] {
 		scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			Registry:        c.registry,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
@@ -441,7 +451,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.LocksName] {
 		locksCollector, err := collector.NewLock(collector.LockArguments{
-			DB:                dbConnection,
+			DB:                c.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
 			Logger:            c.opts.Logger,
@@ -460,7 +470,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.ExplainPlanName] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
 			Logger:          c.opts.Logger,
