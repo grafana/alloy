@@ -87,6 +87,18 @@ func TestVM_Stdlib(t *testing.T) {
 			[]map[string]interface{}{},
 		},
 		{
+			// Not enough matches for a join, but all elements from the first array are passed through.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 4.2, "c" = 5}, {"d" = "asdf"}], [{"a" = 2, "b" = "5.3"}], ["a"], true)`,
+			[]map[string]interface{}{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}},
+		},
+		{
+			// Only one element from the first array matches, but all elements from the first array are passed through.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = 1, "b" = 4.2, "c" = 5}, {"d" = "asdf"}, {"a" = 2, "b" = "1", "z" = "z1"}], [{"a" = 2, "b" = "5.3"}], ["a"], true)`,
+			[]map[string]interface{}{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}, {"a": 2, "z": "z1", "b": "5.3"}},
+		},
+		{
 			// Not enough matches for a join.
 			// The "a" value has differing types.
 			"array.combine_maps",
