@@ -1,48 +1,189 @@
 name: Publish alloy release containers
 on:
-  push:
-    tags:
-      - v*
+  # TODO Remove once tested
+  pull_request:
+    branches: [main]
+  #push:
+  #  tags:
+  #    - v*
 
 permissions:
   contents: read
 
 jobs:
-  publish_linux_container:
-    uses: ./.github/workflows/publish-alloy-linux.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      img-name: alloy
+  # TODO Restore once tested
+  #publish_linux_container:
+  #  uses: ./.github/workflows/publish-alloy-linux.yml
+  #  permissions:
+  #    contents: read
+  #    id-token: write
+  #  with:
+  #    img-name: alloy
   
-  publish_linux_boringcrypto_container:
-    uses: ./.github/workflows/publish-alloy-linux.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      img-name: alloy-boringcrypto
+  #publish_linux_boringcrypto_container:
+  #  uses: ./.github/workflows/publish-alloy-linux.yml
+  #  permissions:
+  #    contents: read
+  #    id-token: write
+  #  with:
+  #    img-name: alloy-boringcrypto
 
-  publish_windows_container:
-    uses: ./.github/workflows/publish-alloy-windows.yml
+  #publish_windows_container:
+  #  uses: ./.github/workflows/publish-alloy-windows.yml
+  #  permissions:
+  #    contents: read
+  #    id-token: write
+  #  with:
+  #    img-name: alloy
+
+  build_alloy:
+    name: Build Alloy
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    # TODO Restore once tested
+    #needs:
+    #- publish_linux_container
+    #- publish_linux_boringcrypto_container
+    #- publish_windows_container
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # This is to fix Git not liking owner of the checkout directory
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Build
+      run: |
+        RELEASE_BUILD=1 make -j4 dist
+      env:
+        # TODO Use GITHUB_REF_NAME once tested
+        #VERSION: ${{ env.GITHUB_REF_NAME }}
+        VERSION: 'v1.999.999'
+
+    - name: Publish dist
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: dist
+        path: ./dist
+        if-no-files-found: error
+
+    - name: Upload signing file list
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: signing-config
+        path: tools/signing
+        if-no-files-found: error
+
+  sign_alloy_windows:
+    name: Sign Alloy for Windows
+    # TODO Enable condition once tested as working
+    #if: github.ref_type == 'tag'
+    runs-on: windows-2025
+    environment:
+      name: azure-trusted-signing
+    needs:
+    - build_alloy
     permissions:
+      # This job needs OIDC to be able to sign the Windows binaries
       contents: read
       id-token: write
-    with:
-      img-name: alloy
+    steps:
+    - name: Download dist
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: dist
+        path: dist
+
+    - name: Download signing configuration
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: signing-config
+        path: signing-config
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      with:
+        # renovate: datasource=dotnet-version depName=dotnet-sdk
+        dotnet-version: '8.0.413'
+
+    - name: Install Sign CLI tool
+      env:
+        # renovate: datasource=nuget depName=sign
+        DOTNET_SIGN_VERSION: '0.9.1-beta.25379.1'
+      run: dotnet tool install --tool-path . sign --version ${env:DOTNET_SIGN_VERSION}
+
+    - uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      id: get-signing-secrets
+      with:
+        export_env: false
+        repo_secrets: |
+          client-id=azure-trusted-signing:client-id
+          subscription-id=azure-trusted-signing:subscription-id
+          tenant-id=azure-trusted-signing:tenant-id
+
+    - name: Azure log in
+      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+      with:
+        client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
+        subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
+        tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
+
+    - name: Sign Windows executables
+      shell: pwsh
+      env:
+        APPLICATION_DESCRIPTION: 'Grafana Alloy is an OpenTelemetry Collector distribution with programmable pipelines.'
+        PUBLISHER_NAME: 'Grafana Labs'
+        TRUSTED_SIGNING_ACCOUNT: 'grafana-premium-eastus'
+        TRUSTED_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/'
+        TRUSTED_SIGNING_PROFILE: 'grafana-production'
+        VERBOSITY: ${{ runner.debug == '1' && 'Debug' || 'Warning' }}
+      run: |
+        ./sign code trusted-signing `
+          **/*.exe `
+          --base-directory "${env:GITHUB_WORKSPACE}/dist" `
+          --file-list "${env:GITHUB_WORKSPACE}/signing-config/authenticode.txt" `
+          --application-name ${env:APPLICATION_DESCRIPTION} `
+          --publisher-name ${env:PUBLISHER_NAME} `
+          --description ${env:APPLICATION_DESCRIPTION} `
+          --description-url "${env:GITHUB_SERVER_URL}/${env:GITHUB_REPOSITORY}" `
+          --trusted-signing-account ${env:TRUSTED_SIGNING_ACCOUNT} `
+          --trusted-signing-certificate-profile ${env:TRUSTED_SIGNING_PROFILE} `
+          --trusted-signing-endpoint ${env:TRUSTED_SIGNING_ENDPOINT} `
+          --verbosity "${env:VERBOSITY}"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Output "::error::Failed to Authenticode sign Windows executables"
+          exit 1
+        }
+
+    - name: Upload signed dist
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: signed-dist
+        path: dist
+        if-no-files-found: error
 
   publish_github_release:
     name: Publish GitHub release
+    if: github.ref_type == 'tag'
     container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
-    - publish_linux_container
-    - publish_linux_boringcrypto_container
-    - publish_windows_container
+    - sign_alloy_windows
     permissions:
-      # THis workflow needs write access so it can create a draft GitHub release.
+      # This job needs write access so it can create a draft GitHub release.
       contents: write
       id-token: write
     steps:
@@ -54,7 +195,7 @@ jobs:
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
       run: |
-          # this is to fix GIT not liking owner of the checkout dir
+          # This is to fix Git not liking owner of the checkout directory
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
@@ -63,12 +204,14 @@ jobs:
         go-version-file: go.mod
         cache: false
 
+    - name: Download signed dist
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: signed-dist
+        path: dist
+
     - name: Publish
-      # This step needs GITHUB_REF_NAME, 
-      # the value of which only makes sense if the current ref is a tag.
-      if: ${{ github.ref_type == 'tag' }}
       run: |
-        RELEASE_BUILD=1 VERSION="${GITHUB_REF_NAME}" make -j4 dist
         VERSION="${GITHUB_REF_NAME}" RELEASE_DOC_TAG=$(echo "${GITHUB_REF_NAME}" | awk -F '.' '{print $1"."$2}') ./tools/release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
