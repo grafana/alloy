@@ -52,7 +52,7 @@ You can use the `tail_from_end` argument when you want to tail a large file with
 When set to true, only new logs are read, ignoring the existing ones.
 
 The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
-The format of the position files is different in Grafana Alloy, so this will convert convert it to the new format.
+The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 When `legacy_positions_file` is set Alloy will first try to find the position identified by path and labels, if not found
 it will try to find the positon using path and empty labels to use as a start offset.
