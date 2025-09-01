@@ -239,6 +239,7 @@ func NewDefaultArguments() Arguments {
 		V8Enabled:            true,
 		DotNetEnabled:        true,
 		GoEnabled:            false,
+		OffCPUThreshold:      0,
 	}
 }
 
@@ -262,6 +263,7 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
+	cfg.OffCPUThreshold = args.OffCPUThreshold
 	return cfg, nil
 }
 
