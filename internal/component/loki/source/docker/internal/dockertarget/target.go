@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -22,7 +23,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
@@ -34,6 +34,12 @@ const (
 	dockerLabel                = model.MetaLabelPrefix + "docker_"
 	dockerLabelContainerPrefix = dockerLabel + "container_"
 	dockerLabelLogStream       = dockerLabelContainerPrefix + "log_stream"
+)
+
+const (
+	stateIdle     uint32 = 0
+	stateRunning         = 1
+	stateStopping        = 2
 )
 
 // Target enables reading Docker container logs.
@@ -49,11 +55,12 @@ type Target struct {
 	relabelConfig []*relabel.Config
 	metrics       *Metrics
 
-	cancel  context.CancelFunc
-	client  client.APIClient
-	wg      sync.WaitGroup
-	running *atomic.Bool
-	err     error
+	client client.APIClient
+
+	wg     sync.WaitGroup
+	cancel context.CancelFunc
+	state  *atomic.Uint32
+	err    error
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
@@ -80,9 +87,8 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		labelsStr:     labelsStr,
 		relabelConfig: relabelConfig,
 		metrics:       metrics,
-
-		client:  client,
-		running: atomic.NewBool(false),
+		state:         &atomic.Uint32{},
+		client:        client,
 	}
 
 	// NOTE (@tpaschalis) The original Promtail implementation would call
@@ -92,31 +98,26 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 }
 
 func (t *Target) processLoop(ctx context.Context) {
-	t.running.Store(true)
-	defer t.running.Store(false)
-
-	t.wg.Add(1)
-	defer t.wg.Done()
-
-	opts := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-		Timestamps: true,
-		Since:      strconv.FormatInt(t.since, 10),
-	}
 	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
 		t.err = err
 		return
 	}
-	logs, err := t.client.ContainerLogs(ctx, t.containerName, opts)
+
+	logs, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+		Timestamps: true,
+		Since:      strconv.FormatInt(t.since, 10),
+	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
 		t.err = err
 		return
 	}
+	defer logs.Close()
 
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
@@ -150,7 +151,6 @@ func (t *Target) processLoop(ctx context.Context) {
 
 	// Wait until done
 	<-ctx.Done()
-	logs.Close()
 	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerName)
 }
 
@@ -230,7 +230,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 // StartIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
 func (t *Target) StartIfNotRunning() {
-	if t.running.CompareAndSwap(false, true) {
+	if t.state.CompareAndSwap(stateIdle, stateRunning) {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
 		ctx, cancel := context.WithCancel(context.Background())
 		t.cancel = cancel
@@ -240,16 +240,17 @@ func (t *Target) StartIfNotRunning() {
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	if t.Ready() {
+	if t.state.CompareAndSwap(stateRunning, stateStopping) {
 		t.cancel()
 		t.wg.Wait()
+		t.state.Store(stateIdle)
 		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
 	}
 }
 
 // Ready reports whether the target is running.
 func (t *Target) Ready() bool {
-	return t.running.Load()
+	return t.state.Load() == stateRunning
 }
 
 // LabelsStr returns the target's original labels string representation.
@@ -285,7 +286,7 @@ func (t *Target) Details() map[string]string {
 		"id":       t.containerName,
 		"error":    errMsg,
 		"position": t.positions.GetString(positions.CursorKey(t.containerName), t.labelsStr),
-		"running":  strconv.FormatBool(t.running.Load()),
+		"running":  strconv.FormatBool(t.Ready()),
 	}
 }
 

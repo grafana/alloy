@@ -99,6 +99,7 @@ func TestDockerTarget(t *testing.T) {
 
 	entryHandler.Clear()
 	// restart target to simulate container restart
+	tgt.Stop()
 	tgt.StartIfNotRunning()
 	expectedLinesAfterRestart := []string{
 		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
