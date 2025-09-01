@@ -190,7 +190,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	if pos == 0 && t.legacyPositionUsed {
 		pos, err = t.positions.Get(t.path, "{}")
 		if err != nil {
-			return nil, fmt.Errorf("failed to get file position: %w", err)
+			return nil, fmt.Errorf("failed to get file position with empty labels: %w", err)
 		}
 	}
 
