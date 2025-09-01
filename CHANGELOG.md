@@ -118,6 +118,8 @@ Main (unreleased)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
 
+- Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
+
 v1.10.2
 -----------------
 
