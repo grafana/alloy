@@ -63,7 +63,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.11
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.6.0-pre1
+	github.com/grafana/beyla/v2 v2.6.0-pre2
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20250514165824-dd4adf36ad34
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -265,8 +265,7 @@ require (
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.133.0
 	go.opentelemetry.io/collector/service v0.133.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.45.0
-	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
-	go.opentelemetry.io/obi v0.0.0-20250829084205-84165422efae
+	go.opentelemetry.io/obi v1.2.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.37.0
@@ -988,6 +987,8 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
 
+require go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
+
 // NOTE: replace directives below must always be *temporary*.
 //
 // Adding a replace directive to change a module to a fork of a module will
@@ -1063,14 +1064,9 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.0
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.1
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.0-20250624035245-5fc775dac6dc
-
-// TODO: Remove this once grafana/opentelemetry-ebpf-profiler no longer needs SetStartTime. Otherwise we get this error:
-// Error: 219.4 /go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.0-20250624035245-5fc775dac6dc/reporter/internal/pdata/generate.go:273:10: profile.SetStartTime undefined (type pprofile.Profile has no field or method SetStartTime)
-// Refer to: https://github.com/open-telemetry/opentelemetry-collector/pull/13315
-replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.129.0
 
 // TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
 replace k8s.io/client-go => k8s.io/client-go v0.32.6
