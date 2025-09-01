@@ -36,12 +36,6 @@ const (
 	dockerLabelLogStream       = dockerLabelContainerPrefix + "log_stream"
 )
 
-const (
-	stateIdle     uint32 = 0
-	stateRunning         = 1
-	stateStopping        = 2
-)
-
 // Target enables reading Docker container logs.
 type Target struct {
 	logger        log.Logger
@@ -55,14 +49,15 @@ type Target struct {
 
 	client client.APIClient
 
-	wg     sync.WaitGroup
-	cancel context.CancelFunc
+	mu      sync.Mutex // protects cancel, running and err fields
+	err     error
+	running bool
+	cancel  context.CancelFunc
 
-	state *atomic.Uint32
+	wg sync.WaitGroup
+
 	last  *atomic.Int64
 	since *atomic.Int64
-
-	err error
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
@@ -88,7 +83,6 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		labelsStr:     labelsStr,
 		relabelConfig: relabelConfig,
 		metrics:       metrics,
-		state:         atomic.NewUint32(stateIdle),
 		client:        client,
 	}
 
@@ -102,7 +96,7 @@ func (t *Target) processLoop(ctx context.Context) {
 	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-		t.err = err
+		t.stopWithError(err)
 		return
 	}
 
@@ -115,7 +109,7 @@ func (t *Target) processLoop(ctx context.Context) {
 	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
-		t.err = err
+		t.stopWithError(err)
 		return
 	}
 	defer logs.Close()
@@ -231,27 +225,54 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 // StartIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
 func (t *Target) StartIfNotRunning() {
-	if t.state.CompareAndSwap(stateIdle, stateRunning) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
+
 		ctx, cancel := context.WithCancel(context.Background())
 		t.cancel = cancel
+		t.running = true
+
 		go t.processLoop(ctx)
+	}
+}
+
+func (t *Target) stopWithError(err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.err = err
+	if t.running {
+		t.running = false
+		if t.cancel != nil {
+			t.cancel()
+		}
+		t.wg.Wait()
+		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
 	}
 }
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	if t.state.CompareAndSwap(stateRunning, stateStopping) {
-		t.cancel()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.running {
+		t.running = false
+		if t.cancel != nil {
+			t.cancel()
+		}
 		t.wg.Wait()
-		t.state.Store(stateIdle)
 		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
 	}
 }
 
 // Ready reports whether the target is running.
 func (t *Target) Ready() bool {
-	return t.state.Load() == stateRunning
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.running
 }
 
 // LabelsStr returns the target's original labels string representation.
@@ -279,10 +300,13 @@ func (t *Target) Last() int64 { return t.last.Load() }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
+	t.mu.Lock()
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()
 	}
+	t.mu.Unlock()
+
 	return map[string]string{
 		"id":       t.containerName,
 		"error":    errMsg,
