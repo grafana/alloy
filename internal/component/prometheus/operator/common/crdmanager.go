@@ -434,9 +434,14 @@ func (c *crdManager) apply() error {
 	for _, sc := range c.scrapeConfigs {
 		scs = append(scs, sc)
 	}
-	err = c.scrapeManager.ApplyConfig(&config.Config{
-		ScrapeConfigs: scs,
-	})
+
+	cfg, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.logger)))
+	if err != nil {
+		return fmt.Errorf("loading empty config: %w", err)
+	}
+	cfg.ScrapeConfigs = scs
+
+	err = c.scrapeManager.ApplyConfig(cfg)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "error applying scrape configs", "err", err)
 		return err
