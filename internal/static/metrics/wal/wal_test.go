@@ -397,8 +397,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Close the WAL before we have a chance to remove the first RefIDs
-	err = s.Close()
-	require.NoError(t, err)
+	require.NoError(t, s.Close())
 
 	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
 	require.NoError(t, err)
@@ -414,6 +413,8 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	for _, ref := range duplicateSeriesRefs {
 		assert.Contains(t, s.deleted, ref)
 	}
+
+	require.NoError(t, s.Close())
 }
 
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
