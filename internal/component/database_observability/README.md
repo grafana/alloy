@@ -1,5 +1,7 @@
 # Setting Up Database Observability with Grafana Cloud
 
+> NOTE: while the components `database_observability.mysql` and `database_observability.postgres` are marked as experimental, it is recommended to refer to the ["next"](https://grafana.com/docs/alloy/next/reference/components/database_observability/) version of docs for a complete reference documentation.
+
 ## MySQL
 
 ### Setting up the MySQL database
@@ -72,13 +74,7 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. Optionally enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting:
-
-```promql
-database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name="events_statements_cpu"}
-```
-
-or with a sql query:
+6. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
@@ -90,7 +86,7 @@ Use this statement to enable the consumer if it's disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
 ```
 
-Note that the 'events_statements_cpu' consumer might be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumer on your behalf then extend the grants of the `db-o11y` user:
+Note that the `events_statements_cpu` consumer will be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumer on your behalf then extend the grants of the `db-o11y` user:
 
 ```sql
 GRANT UPDATE ON performance_schema.setup_consumers TO 'db-o11y'@'%';
@@ -113,13 +109,7 @@ database_observability.mysql "mysql_<your_DB_name>" {
 }
 ```
 
-7. Optionally enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings:
-
-```promql
-database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name=~"events_waits_(current|history)"}
-```
-
-or with a sql query:
+7. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
@@ -130,6 +120,8 @@ Use this statement to enable the consumers if they are disabled:
 ```sql
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME IN ('events_waits_current', 'events_waits_history');
 ```
+
+As noted in the step above, these consumers will be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumers on your behalf then follow the instructions from the step above.
 
 ### Running and configuring Alloy
 
@@ -167,6 +159,14 @@ database_observability.mysql "mysql_<your_DB_name>" {
   // query samples are redacted).
   query_samples {
     disable_query_redaction = true
+  }
+
+  // OPTIONAL: provide additional information specific to the Cloud Provider
+  // that hosts the database to enable certain infrastructure observability features.
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
   }
 }
 
@@ -430,6 +430,24 @@ prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
 database_observability.postgres "postgres_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
+
+  // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
+  enable_collectors = ["query_samples"]
+
+  // OPTIONAL: if `query_samples` collector is enabled, you can use
+  // the following setting to disable sql text redaction (by default
+  // query samples are redacted).
+  query_samples {
+    disable_query_redaction = true
+  }
+
+  // OPTIONAL: provide additional information specific to the Cloud Provider
+  // that hosts the database to enable certain infrastructure observability features.
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
 }
 
 loki.relabel "database_observability_postgres_<your_DB_name>" {
