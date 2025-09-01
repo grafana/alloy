@@ -378,7 +378,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	}
 
 	// Validate args[3]
-	passthrough_lhs := false
+	passthroughLHS := false
 	if len(args) == 4 {
 		if args[3].Type() != value.TypeBool {
 			return value.Null, value.ArgError{
@@ -391,7 +391,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 				},
 			}
 		}
-		passthrough_lhs = args[3].Bool()
+		passthroughLHS = args[3].Bool()
 	}
 
 	convertIfNeeded := func(v value.Value) value.Value {
@@ -406,8 +406,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
 	res := []value.Value{}
-	// However, if passthrough_lhs is set to true, then we know the size of the result array.
-	if passthrough_lhs {
+	// However, if passthroughLHS is set to true, then we know the size of the result array.
+	if passthroughLHS {
 		res = make([]value.Value, 0, args[0].Len())
 	}
 
@@ -422,7 +422,7 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 					return value.Null, err
 				}
 				res = append(res, val)
-			} else if passthrough_lhs {
+			} else if passthroughLHS {
 				res = append(res, args[0].Index(i))
 			}
 		}
