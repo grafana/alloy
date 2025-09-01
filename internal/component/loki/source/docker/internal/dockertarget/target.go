@@ -46,8 +46,6 @@ const (
 type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
-	since         int64
-	last          int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -59,8 +57,12 @@ type Target struct {
 
 	wg     sync.WaitGroup
 	cancel context.CancelFunc
-	state  *atomic.Uint32
-	err    error
+
+	state *atomic.Uint32
+	last  *atomic.Int64
+	since *atomic.Int64
+
+	err error
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
@@ -71,7 +73,6 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		return nil, err
 	}
 	var since int64
-	var last int64
 	if pos != 0 {
 		since = pos
 	}
@@ -79,8 +80,8 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 	t := &Target{
 		logger:        logger,
 		handler:       handler,
-		since:         since,
-		last:          last,
+		since:         atomic.NewInt64(since),
+		last:          atomic.NewInt64(0),
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
@@ -110,7 +111,7 @@ func (t *Target) processLoop(ctx context.Context) {
 		ShowStderr: true,
 		Follow:     true,
 		Timestamps: true,
-		Since:      strconv.FormatInt(t.since, 10),
+		Since:      strconv.FormatInt(t.since.Load(), 10),
 	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
@@ -223,8 +224,8 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
-		t.since = ts.Unix()
-		t.last = time.Now().Unix()
+		t.since.Store(ts.Unix())
+		t.last.Store(time.Now().Unix())
 	}
 }
 
@@ -274,7 +275,7 @@ func (t *Target) Path() string {
 }
 
 // Last returns the unix timestamp of the target's last processing loop.
-func (t *Target) Last() int64 { return t.last }
+func (t *Target) Last() int64 { return t.last.Load() }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
