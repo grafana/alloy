@@ -27,39 +27,13 @@ import (
 )
 
 func TestDockerTarget(t *testing.T) {
-	h := func(w http.ResponseWriter, r *http.Request) {
-		switch path := r.URL.Path; {
-		case strings.HasSuffix(path, "/logs"):
-			var filePath string
-			if strings.Contains(r.URL.RawQuery, "since=0") {
-				filePath = "testdata/flog.log"
-			} else {
-				filePath = "testdata/flog_after_restart.log"
-			}
-			dat, err := os.ReadFile(filePath)
-			require.NoError(t, err)
-			_, err = w.Write(dat)
-			require.NoError(t, err)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			info := container.InspectResponse{
-				ContainerJSONBase: &container.ContainerJSONBase{},
-				Mounts:            []container.MountPoint{},
-				Config:            &container.Config{Tty: false},
-				NetworkSettings:   &container.NetworkSettings{},
-			}
-			err := json.NewEncoder(w).Encode(info)
-			require.NoError(t, err)
-		}
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(h))
-	defer ts.Close()
+	server := newDockerServer(t)
+	defer server.Close()
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	entryHandler := fake.NewClient(func() {})
-	client, err := client.NewClientWithOpts(client.WithHost(ts.URL))
+	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
@@ -111,6 +85,71 @@ func TestDockerTarget(t *testing.T) {
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		assertExpectedLog(c, entryHandler, expectedLinesAfterRestart)
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines after restart were not found within the time limit.")
+}
+
+func TestStartStopStressTest(t *testing.T) {
+	server := newDockerServer(t)
+	defer server.Close()
+
+	logger := log.NewNopLogger()
+	entryHandler := fake.NewClient(func() {})
+
+	ps, err := positions.New(logger, positions.Config{
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: t.TempDir() + "/positions.yml",
+	})
+	require.NoError(t, err)
+
+	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+
+	tgt, err := NewTarget(
+		NewMetrics(prometheus.NewRegistry()),
+		logger,
+		entryHandler,
+		ps,
+		"flog",
+		model.LabelSet{"job": "docker"},
+		[]*relabel.Config{},
+		client,
+	)
+	require.NoError(t, err)
+
+	tgt.StartIfNotRunning()
+
+	for _ = range 1000 {
+		go tgt.StartIfNotRunning()
+		go tgt.Stop()
+	}
+}
+
+func newDockerServer(t *testing.T) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		switch path := r.URL.Path; {
+		case strings.HasSuffix(path, "/logs"):
+			var filePath string
+			if strings.Contains(r.URL.RawQuery, "since=0") {
+				filePath = "testdata/flog.log"
+			} else {
+				filePath = "testdata/flog_after_restart.log"
+			}
+			dat, err := os.ReadFile(filePath)
+			require.NoError(t, err)
+			_, err = w.Write(dat)
+			require.NoError(t, err)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			info := container.InspectResponse{
+				ContainerJSONBase: &container.ContainerJSONBase{},
+				Mounts:            []container.MountPoint{},
+				Config:            &container.Config{Tty: false},
+				NetworkSettings:   &container.NetworkSettings{},
+			}
+			err := json.NewEncoder(w).Encode(info)
+			require.NoError(t, err)
+		}
+	}
+
+	return httptest.NewServer(http.HandlerFunc(h))
 }
 
 // assertExpectedLog will verify that all expectedLines were received, in any order, without duplicates.
