@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -23,6 +22,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
@@ -87,7 +87,7 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		labelsStr:     labelsStr,
 		relabelConfig: relabelConfig,
 		metrics:       metrics,
-		state:         &atomic.Uint32{},
+		state:         atomic.NewUint32(stateIdle),
 		client:        client,
 	}
 
