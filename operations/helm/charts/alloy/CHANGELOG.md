@@ -10,8 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
-- Add support to provide extraLabels to alloy.controler (@evkuzin)
-- Add option to not expose http server port. (@kun98-liu)
+1.2.2 (2025-09-01)
+----------
 
 ### Bug fixes
 
@@ -19,7 +19,11 @@ Unreleased
 
 ### Enhancements
 
+- Add option to not expose http server port. (@kun98-liu)
+
 - Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
+
+- Add support to provide extraLabels to alloy.controler (@evkuzin)
 
 1.2.1 (2025-08-07)
 ----------
