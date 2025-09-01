@@ -289,3 +289,11 @@ Section "uninstall"
   Pop $0
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 SectionEnd
+
+!if '{{ SIGNING_COMMAND }}' != ''
+    # Signing for installer and uninstaller; nsis 3.08 required for uninstfinalize!
+    # "= 0" comparison required to prevent both tasks running in parallel, which would cause signing to fail
+    # %1 is replaced by the installer and uninstaller paths, respectively
+    !finalize '{{ SIGNING_COMMAND }} "%1"' = 0
+    !uninstfinalize '{{ SIGNING_COMMAND }} "%1"' = 0
+!endif

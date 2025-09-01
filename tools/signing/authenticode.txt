@@ -1,4 +1,0 @@
-**/alloy-installer-windows-*.exe
-**/alloy-service-windows-*.exe
-**/alloy-windows-*.exe
-**/uninstall.exe
