@@ -101,6 +101,7 @@ func TestStartStopStressTest(t *testing.T) {
 	require.NoError(t, err)
 
 	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	require.NoError(t, err)
 
 	tgt, err := NewTarget(
 		NewMetrics(prometheus.NewRegistry()),
@@ -116,7 +117,7 @@ func TestStartStopStressTest(t *testing.T) {
 
 	tgt.StartIfNotRunning()
 
-	for _ = range 1000 {
+	for range 1000 {
 		go tgt.StartIfNotRunning()
 		go tgt.Stop()
 	}
