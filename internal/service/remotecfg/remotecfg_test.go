@@ -35,7 +35,7 @@ import (
 func TestOnDiskCache(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
-	client := &collectorClient{}
+	client := &mockCollectorClient{}
 
 	var registerCalled atomic.Bool
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
@@ -83,7 +83,7 @@ func TestGoodBadGood(t *testing.T) {
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
 
-	client := &collectorClient{}
+	client := &mockCollectorClient{}
 
 	// Mock client to return a valid response.
 	var registerCalled atomic.Bool
@@ -160,7 +160,7 @@ func TestAPIResponse(t *testing.T) {
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
 
-	client := &collectorClient{}
+	client := &mockCollectorClient{}
 
 	// Mock client to return a valid response.
 	var registerCalled atomic.Bool
@@ -211,7 +211,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 
-	client := &collectorClient{}
+	client := &mockCollectorClient{}
 
 	// Mock client to return a valid response.
 	var registerCalled atomic.Bool
@@ -248,12 +248,12 @@ func TestAPIResponseNotModified(t *testing.T) {
 	client.getConfigFunc = buildGetConfigHandler("", "12345", true)
 	client.mut.Unlock()
 
-	calls := client.getConfigCalls.Load()
+	calls := client.getConfigCallCount.Load()
 
 	// Verify that the service has loaded the updated response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		// Ensure that getConfig has been called again since changing the response.
-		assert.Greater(c, client.getConfigCalls.Load(), calls)
+		assert.Greater(c, client.getConfigCallCount.Load(), calls)
 		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
@@ -387,7 +387,7 @@ type testEnvironment struct {
 	svc *Service
 }
 
-func newTestEnvironment(t *testing.T, client *collectorClient) *testEnvironment {
+func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironment {
 	svc, err := New(Options{
 		Logger:      util.TestLogger(t),
 		StoragePath: t.TempDir(),
@@ -460,40 +460,6 @@ func (f fakeHost) NewController(id string) service.Controller {
 	})
 
 	return serviceController{ctrl}
-}
-
-type collectorClient struct {
-	getConfigCalls        atomic.Int32
-	mut                   sync.RWMutex
-	getConfigFunc         func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
-	registerCollectorFunc func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
-}
-
-func (c *collectorClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
-
-	if c.getConfigFunc != nil {
-		c.getConfigCalls.Inc()
-		return c.getConfigFunc(ctx, req)
-	}
-
-	panic("getConfigFunc not set")
-}
-
-func (c *collectorClient) RegisterCollector(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
-
-	if c.registerCollectorFunc != nil {
-		return c.registerCollectorFunc(ctx, req)
-	}
-
-	panic("registerCollectorFunc not set")
-}
-
-func (c *collectorClient) UnregisterCollector(ctx context.Context, req *connect.Request[collectorv1.UnregisterCollectorRequest]) (*connect.Response[collectorv1.UnregisterCollectorResponse], error) {
-	panic("unregisterCollector isn't wired yet")
 }
 
 type serviceController struct {
