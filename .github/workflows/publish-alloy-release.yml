@@ -184,7 +184,7 @@ jobs:
     - name: Sign Alloy service executable
       shell: pwsh
       run: |
-        ./tools/signing/authenticode.ps1 -FileToSign ./dist.temp/alloy-service-windows-amd64.exe
+        ./scripts/authenticode.ps1 -FileToSign ./dist.temp/alloy-service-windows-amd64.exe
         if ($LASTEXITCODE -ne 0) {
           Write-Output "::error::Failed to Authenticode sign Alloy service executable"
           exit 1
