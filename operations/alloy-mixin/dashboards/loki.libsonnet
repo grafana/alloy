@@ -25,6 +25,24 @@ local filename = 'alloy-loki.json';
         ),
       ])
     ),
+
+    // Lines read per second
+    (
+      panel.new(title='Lines read in $cluster', type='timeseries') +
+      panel.withStacked() +
+      panel.withUnit('cps') +
+      panel.withDescription(|||
+        Successful file reads.
+      |||) +
+      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr=|||
+            sum by (instance) (rate(loki_source_file_read_lines_total{%(instanceSelector)s}[$__rate_interval]))
+          ||| % $._config,
+        ),
+      ])
+    ),
   ],
 
   local journalFilePanels(y_offset) = [
@@ -148,7 +166,7 @@ local filename = 'alloy-loki.json';
         panel.newQuery(
           expr=|||
             sum by(instance) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s}[$__rate_interval]))
-          |||,
+          ||| % $._config,
         ),
       ])
     ),
