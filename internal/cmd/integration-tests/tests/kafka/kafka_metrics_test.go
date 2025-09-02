@@ -28,5 +28,14 @@ func TestKafkaMetrics(t *testing.T) {
 		"kafka_topic_partitions",
 		"kafka_topic_partition_oldest_offset",
 	}
-	common.MimirMetricsTest(t, kafkaMetrics, []string{}, "kafka_metrics")
+
+	config := common.Config{
+		T:                t,
+		TestName:         "kafka_metrics",
+		Metrics:          kafkaMetrics,
+		HistogramMetrics: []string{},
+		ExpectedMetadata: common.ExpectedMetadata,
+	}
+
+	common.MimirMetricsTest(config)
 }

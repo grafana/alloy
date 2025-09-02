@@ -66,6 +66,9 @@ prometheus.scrape "otlp_integration" {
   forward_to = [prometheus.remote_write.otlp_integration.receiver]
   scrape_interval = "1s"
   scrape_timeout = "500ms"
+  scrape_classic_histograms = true
+  scrape_native_histograms = true
+  honor_metadata = true
 }
 
 prometheus.remote_write "otlp_integration" {

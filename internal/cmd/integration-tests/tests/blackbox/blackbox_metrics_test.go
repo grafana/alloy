@@ -27,5 +27,10 @@ func TestBlackBoxMetrics(t *testing.T) {
 		"scrape_series_added",
 		"up",
 	}
-	common.MimirMetricsTest(t, blackboxMetrics, []string{}, "blackbox_metrics")
+	config := common.Config{
+		T:        t,
+		TestName: "blackbox_metrics",
+		Metrics:  blackboxMetrics,
+	}
+	common.MimirMetricsTest(config)
 }

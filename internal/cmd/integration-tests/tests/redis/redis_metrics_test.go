@@ -25,5 +25,10 @@ func TestRedisMetrics(t *testing.T) {
 		"redis_memory_used_rss_bytes",
 		"redis_up",
 	}
-	common.MimirMetricsTest(t, redisMetrics, []string{}, "redis_metrics")
+	config := common.Config{
+		T:        t,
+		TestName: "redis_metrics",
+		Metrics:  redisMetrics,
+	}
+	common.MimirMetricsTest(config)
 }
