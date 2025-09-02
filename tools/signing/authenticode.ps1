@@ -15,7 +15,7 @@ $InformationPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
 
 if ([string]::IsNullOrEmpty($Description)) {
-    $Description = "Grafana Alloy is an OpenTelemetry Collector distribution with programmable pipelines."
+    $Description = "Grafana Alloy"
 }
 
 if ([string]::IsNullOrEmpty($DescriptionUrl) -And (${env:GITHUB_ACTIONS} -eq "true")) {
