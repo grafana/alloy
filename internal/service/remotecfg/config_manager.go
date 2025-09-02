@@ -140,6 +140,7 @@ func (cm *configManager) setLastReceivedCfgHash(h string) {
 	cm.mut.Lock()
 	defer cm.mut.Unlock()
 	cm.lastReceivedConfigHash = h
+	cm.metrics.lastReceivedConfigHash.WithLabelValues(h).Set(1)
 }
 
 func (cm *configManager) parseAndLoad(b []byte) error {

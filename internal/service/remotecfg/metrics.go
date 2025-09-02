@@ -7,13 +7,14 @@ import (
 )
 
 type metrics struct {
-	lastLoadSuccess      prometheus.Gauge
-	lastFetchNotModified prometheus.Gauge
-	totalFailures        prometheus.Counter
-	configHash           *prometheus.GaugeVec
-	lastFetchSuccessTime prometheus.Gauge
-	totalAttempts        prometheus.Counter
-	getConfigTime        prometheus.Histogram
+	lastLoadSuccess        prometheus.Gauge
+	lastFetchNotModified   prometheus.Gauge
+	totalFailures          prometheus.Counter
+	configHash             *prometheus.GaugeVec
+	lastReceivedConfigHash *prometheus.GaugeVec
+	lastFetchSuccessTime   prometheus.Gauge
+	totalAttempts          prometheus.Counter
+	getConfigTime          prometheus.Histogram
 }
 
 func registerMetrics(reg prometheus.Registerer) *metrics {
@@ -26,6 +27,13 @@ func registerMetrics(reg prometheus.Registerer) *metrics {
 			prometheus.GaugeOpts{
 				Name: "remotecfg_hash",
 				Help: "Hash of the currently active remote configuration.",
+			},
+			[]string{"hash"},
+		),
+		lastReceivedConfigHash: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "remotecfg_last_received_hash",
+				Help: "Hash of the last received remote configuration.",
 			},
 			[]string{"hash"},
 		),
