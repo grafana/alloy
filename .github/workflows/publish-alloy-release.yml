@@ -105,7 +105,7 @@ jobs:
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: windows-service-unsigned
-        path: ./dist.tmp/alloy-service-windows-amd64.exe
+        path: ./dist.temp/alloy-service-windows-amd64.exe
         if-no-files-found: error
 
   sign_alloy_windows:
@@ -136,7 +136,7 @@ jobs:
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: windows-service-unsigned
-        path: dist.tmp
+        path: dist.temp
 
     - name: Download signing script for Windows
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
@@ -184,7 +184,7 @@ jobs:
     - name: Sign Alloy service executable
       shell: pwsh
       run: |
-        ./tools/signing/authenticode.ps1 -FileToSign ./dist.tmp/alloy-service-windows-amd64.exe
+        ./tools/signing/authenticode.ps1 -FileToSign ./dist.temp/alloy-service-windows-amd64.exe
         if ($LASTEXITCODE -ne 0) {
           Write-Output "::error::Failed to Authenticode sign Alloy service executable"
           exit 1
@@ -201,7 +201,7 @@ jobs:
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: windows-service-signed
-        path: ./dist.tmp/alloy-service-windows-amd64.exe
+        path: ./dist.temp/alloy-service-windows-amd64.exe
         if-no-files-found: error
 
   build_alloy_windows_installer:
@@ -239,7 +239,7 @@ jobs:
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
         name: windows-service-signed
-        path: dist.tmp
+        path: dist.temp
 
     - name: Build unsigned Windows installer containing signed files
       run: |
