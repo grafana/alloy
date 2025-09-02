@@ -103,6 +103,8 @@ Main (unreleased)
 - (_Experimental_) Add an extra parameter to the `array.combine_maps` standard library function
   to enable preserving the first input list even if there is no match. (@ptodev)
 
+- `prometheus.write.queue` now remove wal dir if endpoint is removed. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
