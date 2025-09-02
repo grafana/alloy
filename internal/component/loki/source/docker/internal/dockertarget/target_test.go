@@ -116,8 +116,6 @@ func TestStartStopStressTest(t *testing.T) {
 	require.NoError(t, err)
 
 	tgt.StartIfNotRunning()
-	time.Sleep(10 * time.Second)
-
 	for range 1000 {
 		go tgt.StartIfNotRunning()
 		go tgt.Stop()
