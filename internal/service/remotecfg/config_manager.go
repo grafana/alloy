@@ -270,16 +270,15 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 }
 
 func (cm *configManager) fetchLoadLocalConfig() {
-	cachePath := cm.getCachedConfigPath()
 	b, err := cm.getCachedConfig()
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to read from cache", "cache_path", cachePath, "err", err)
+		level.Error(cm.logger).Log("msg", "failed to read from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
 		return
 	}
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to load from cache", "cache_path", cachePath, "err", err)
+		level.Error(cm.logger).Log("msg", "failed to load from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
 		return
 	}
 
@@ -288,7 +287,7 @@ func (cm *configManager) fetchLoadLocalConfig() {
 	cm.setLastLoadedCfgHash(cacheHash)
 
 	level.Info(cm.logger).Log("msg", "successfully loaded configuration from cache",
-		"config_hash", cacheHash, "config_size", len(b), "cache_path", cachePath)
+		"config_hash", cacheHash, "config_size", len(b), "cache_path", cm.getCachedConfigPath())
 }
 
 // cleanup properly stops and cleans up the configManager's resources.
