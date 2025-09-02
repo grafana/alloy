@@ -318,9 +318,10 @@ func concatMaps(left, right value.Value) (value.Value, error) {
 // args[0]: []map[string]string: lhs array
 // args[1]: []map[string]string: rhs array
 // args[2]: []string:            merge conditions
+// args[3]: bool:                (optional) retain unmatched elements from the lhs array
 var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
-	if len(args) != 3 {
-		return value.Value{}, fmt.Errorf("combine_maps: expected 3 arguments, got %d", len(args))
+	if len(args) != 3 && len(args) != 4 {
+		return value.Value{}, fmt.Errorf("combine_maps: expected 3 or 4 arguments, got %d", len(args))
 	}
 
 	// Validate args[0] and args[1]
@@ -376,6 +377,23 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 		}
 	}
 
+	// Validate args[3]
+	passthroughLHS := false
+	if len(args) == 4 {
+		if args[3].Type() != value.TypeBool {
+			return value.Null, value.ArgError{
+				Function: funcValue,
+				Argument: args[3],
+				Index:    3,
+				Inner: value.TypeError{
+					Value:    args[3],
+					Expected: value.TypeBool,
+				},
+			}
+		}
+		passthroughLHS = args[3].Bool()
+	}
+
 	convertIfNeeded := func(v value.Value) value.Value {
 		if v.Type() != value.TypeObject {
 			obj, _ := v.TryConvertToObject() // no need to check result as arguments were validated earlier.
@@ -388,6 +406,10 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	// how well the merge is going to go. If none of the merge conditions are met,
 	// the result array will be empty.
 	res := []value.Value{}
+	// However, if passthroughLHS is set to true, then we know the size of the result array.
+	if passthroughLHS {
+		res = make([]value.Value, 0, args[0].Len())
+	}
 
 	for i := 0; i < args[0].Len(); i++ {
 		for j := 0; j < args[1].Len(); j++ {
@@ -400,6 +422,8 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 					return value.Null, err
 				}
 				res = append(res, val)
+			} else if passthroughLHS {
+				res = append(res, args[0].Index(i))
 			}
 		}
 	}
