@@ -10,6 +10,9 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.2.2 (2025-09-02)
+----------
+
 ### Bug fixes
 
 - Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
