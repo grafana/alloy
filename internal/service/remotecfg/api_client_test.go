@@ -92,23 +92,6 @@ func TestNewAPIClient(t *testing.T) {
 	assert.IsType(t, &apiClient{}, client)
 }
 
-func TestAPIClient_InterfaceCompliance(t *testing.T) {
-	var _ collectorv1connect.CollectorServiceClient = (*apiClient)(nil)
-
-	metrics := registerMetrics(prometheus.NewRegistry())
-	args := Arguments{
-		URL:              "https://example.com/api",
-		PollFrequency:    30 * time.Second,
-		HTTPClientConfig: config.CloneDefaultHTTPClientConfig(),
-	}
-
-	client, err := newAPIClient(args, metrics)
-	require.NoError(t, err)
-
-	// Type assertion to verify interface compliance
-	_ = client
-}
-
 // newMockAPIClient creates a fresh mock API client for testing
 func newMockAPIClient(t *testing.T) (*apiClient, *mockCollectorClient, *metrics) {
 	t.Helper()

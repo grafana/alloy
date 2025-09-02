@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax/ast"
@@ -119,7 +120,7 @@ func (cm *configManager) setCachedConfig(b []byte) {
 	p := cm.getCachedConfigPath()
 	err := os.WriteFile(p, b, 0750)
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to flush remote configuration contents the on-disk cache", "err", err)
+		level.Error(cm.logger).Log("msg", "failed to flush remote configuration contents the on-disk cache", "err", err)
 	}
 }
 
@@ -157,7 +158,7 @@ func (cm *configManager) parseAndLoad(b []byte) error {
 
 	file, err := ctrl.LoadSource(b, nil, configPath)
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to parse and load configuration", "config_size", len(b), "err", err)
+		level.Error(cm.logger).Log("msg", "failed to parse and load configuration", "config_size", len(b), "err", err)
 		return err
 	}
 
@@ -186,41 +187,40 @@ type fetchContext struct {
 }
 
 // fetchLoadConfig attempts to read configuration from the API and the local cache
-// and then parse/load their contents in order of preference.
-// If allowCacheFallback is false, it will not attempt to load from cache on remote failure.
-func (cm *configManager) fetchLoadConfig(ctx fetchContext, allowCacheFallback bool) {
+// and then parse/load their contents in order of preference. useCacheAsFallback
+// determines whether to fall back to the cache on remote failure.
+func (cm *configManager) fetchLoadConfig(ctx fetchContext, useCacheAsFallback bool) {
 	if err := cm.fetchLoadRemoteConfig(ctx); err != nil && err != errNotModified {
-		if allowCacheFallback {
-			cm.logger.Log("level", "error", "msg", "failed to fetch remote config, falling back to cache", "err", err)
+		if useCacheAsFallback {
+			level.Error(cm.logger).Log("msg", "failed to fetch remote config, falling back to cache", "err", err)
 			cm.fetchLoadLocalConfig()
 		} else {
-			cm.logger.Log("level", "debug", "msg", "failed to fetch remote config, continuing with current config", "err", err)
+			level.Error(cm.logger).Log("msg", "failed to fetch remote config, continuing with current config", "err", err)
 		}
 	}
 }
 
 func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
-	cm.logger.Log("level", "debug", "msg", "fetching remote configuration")
+	level.Debug(cm.logger).Log("msg", "fetching remote configuration")
 
 	gcr, err := ctx.getAPIConfig()
 	cm.metrics.totalAttempts.Add(1)
 
 	// Handle "not modified" response specifically
 	if err == errNotModified {
-		cm.logger.Log("level", "debug", "msg", "skipping over API response since it has not been modified since last fetch")
+		level.Debug(cm.logger).Log("msg", "skipping over API response since it has not been modified since last fetch")
 		cm.metrics.lastFetchNotModified.Set(1)
 		return nil
 	}
 
 	// Handle other errors
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to fetch remote config", "err", err)
+		level.Error(cm.logger).Log("msg", "failed to fetch remote config", "err", err)
 		cm.metrics.totalFailures.Add(1)
 		cm.metrics.lastLoadSuccess.Set(0)
 		return err
 	}
 
-	// Success case - we have valid config data from the API
 	cm.metrics.lastFetchSuccessTime.SetToCurrentTime()
 	cm.metrics.lastFetchNotModified.Set(0)
 
@@ -239,7 +239,7 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 	alreadyLoaded := cm.getLastLoadedCfgHash() == newConfigHash
 
 	if alreadyReceived {
-		cm.logger.Log("level", "debug", "msg", "skipping over API response since it matched the last received one",
+		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last received one",
 			"config_hash", newConfigHash, "already_loaded", alreadyLoaded)
 		return nil
 	}
@@ -250,7 +250,7 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 	err = cm.parseAndLoad(b)
 	if err != nil {
 		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
-		cm.logger.Log("level", "error", "msg", "failed to parse remote config",
+		level.Error(cm.logger).Log("msg", "failed to parse remote config",
 			"received_hash", newConfigHash, "loaded_hash", cm.getLastLoadedCfgHash(), "err", err)
 		cm.metrics.lastLoadSuccess.Set(0)
 		return err
@@ -260,7 +260,7 @@ func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
 	cm.setLastLoadedCfgHash(newConfigHash)
 	cm.metrics.lastLoadSuccess.Set(1)
 
-	cm.logger.Log("level", "info", "msg", "successfully loaded remote configuration",
+	level.Info(cm.logger).Log("msg", "successfully loaded remote configuration",
 		"config_hash", newConfigHash, "config_size", len(b))
 
 	// If successful, flush to disk and keep a copy.
@@ -272,13 +272,13 @@ func (cm *configManager) fetchLoadLocalConfig() {
 	cachePath := cm.getCachedConfigPath()
 	b, err := cm.getCachedConfig()
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to read from cache", "cache_path", cachePath, "err", err)
+		level.Error(cm.logger).Log("msg", "failed to read from cache", "cache_path", cachePath, "err", err)
 		return
 	}
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
-		cm.logger.Log("level", "error", "msg", "failed to load from cache", "cache_path", cachePath, "err", err)
+		level.Error(cm.logger).Log("msg", "failed to load from cache", "cache_path", cachePath, "err", err)
 		return
 	}
 
@@ -286,7 +286,7 @@ func (cm *configManager) fetchLoadLocalConfig() {
 	cacheHash := getHash(b)
 	cm.setLastLoadedCfgHash(cacheHash)
 
-	cm.logger.Log("level", "info", "msg", "successfully loaded configuration from cache",
+	level.Info(cm.logger).Log("msg", "successfully loaded configuration from cache",
 		"config_hash", cacheHash, "config_size", len(b), "cache_path", cachePath)
 }
 
