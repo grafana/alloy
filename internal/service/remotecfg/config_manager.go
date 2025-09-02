@@ -182,16 +182,11 @@ func (cm *configManager) getAstFile() *ast.File {
 	return cm.astFile
 }
 
-// fetchContext contains the dependencies needed for fetching configuration
-type fetchContext struct {
-	getAPIConfig func() (*collectorv1.GetConfigResponse, error)
-}
-
 // fetchLoadConfig attempts to read configuration from the API and the local cache
 // and then parse/load their contents in order of preference. useCacheAsFallback
 // determines whether to fall back to the cache on remote failure.
-func (cm *configManager) fetchLoadConfig(ctx fetchContext, useCacheAsFallback bool) {
-	if err := cm.fetchLoadRemoteConfig(ctx); err != nil && err != errNotModified {
+func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error), useCacheAsFallback bool) {
+	if err := cm.fetchLoadRemoteConfig(getAPIConfig); err != nil && err != errNotModified {
 		if useCacheAsFallback {
 			level.Error(cm.logger).Log("msg", "failed to fetch remote config, falling back to cache", "err", err)
 			cm.fetchLoadLocalConfig()
@@ -201,10 +196,10 @@ func (cm *configManager) fetchLoadConfig(ctx fetchContext, useCacheAsFallback bo
 	}
 }
 
-func (cm *configManager) fetchLoadRemoteConfig(ctx fetchContext) error {
+func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) error {
 	level.Debug(cm.logger).Log("msg", "fetching remote configuration")
 
-	gcr, err := ctx.getAPIConfig()
+	gcr, err := getAPIConfig()
 	cm.metrics.totalAttempts.Add(1)
 
 	// Handle "not modified" response specifically

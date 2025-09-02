@@ -267,10 +267,7 @@ func (s *Service) fetchLoadConfig(allowCacheFallback bool) {
 		return
 	}
 
-	fetchContext := fetchContext{
-		getAPIConfig: func() (*collectorv1.GetConfigResponse, error) { return s.getConfig() },
-	}
-	s.cm.fetchLoadConfig(fetchContext, allowCacheFallback)
+	s.cm.fetchLoadConfig(s.getConfig, allowCacheFallback)
 }
 
 func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
