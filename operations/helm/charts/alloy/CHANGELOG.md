@@ -14,6 +14,8 @@ Unreleased
 
 - Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
 
+- Remove readiness probe using curl when http server port is disabled. (@kalleep)
+
 1.2.1 (2025-08-07)
 ----------
 
