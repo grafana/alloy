@@ -74,7 +74,7 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting with a sql query:
+6. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
