@@ -85,6 +85,14 @@
     },
   },
 
+  withMax(max):: {
+    fieldConfig+: {
+      defaults+: {
+        max: max,
+      },
+    },
+  },
+
   withOverrides(overrides):: {
     fieldConfig+: {
       overrides: overrides,
@@ -127,6 +135,7 @@
   withDescription(desc):: { description: desc },
   withOptions(options):: { options: options },
   withTransformations(transformations):: { transformations: transformations },
+
 
   withQueries(queries):: { targets: queries },
 
