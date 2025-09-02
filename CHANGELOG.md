@@ -35,7 +35,8 @@ Main (unreleased)
 
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
-- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.133.0. (@ptodev)
+- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.134.0. (@ptodev)
+  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release.
   - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
     Use `block_on_overflow` instead.
   - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
