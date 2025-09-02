@@ -44,14 +44,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - curl -f HTTP://localhost:12345/-/ready || exit 1
-            initialDelaySeconds: 10
-            timeoutSeconds: 1
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
