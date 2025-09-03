@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -51,6 +50,11 @@ func init() {
 var (
 	_ syntax.Defaulter = (*Arguments)(nil)
 	_ syntax.Validator = (*Arguments)(nil)
+)
+
+// test-time injection points (overridden in tests for mocking)
+var (
+	mysqlOpenSQL = sql.Open
 )
 
 type Arguments struct {
@@ -274,42 +278,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
-	if err != nil {
-		return err
-	}
-
-	if dbConnection == nil {
-		return errors.New("nil DB connection")
-	}
-	if err = dbConnection.Ping(); err != nil {
-		return err
-	}
-	c.dbConnection = dbConnection
-
-	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	if err = rs.Err(); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
-	}
-
-	var serverUUID, engineVersion string
-	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
-	}
-
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
-		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
-			targets = append(targets, builder.Target())
-		}
-	}
-
+	// Always export at least the base target so the component can expose metrics
+	// even if the database connection is currently unavailable.
 	c.opts.OnStateChange(Exports{
-		Targets: targets,
+		Targets: []discovery.Target{c.baseTarget},
 	})
 
 	for _, collector := range c.collectors {
@@ -317,9 +289,9 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(serverUUID, engineVersion); err != nil {
+	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
-		return err
+		return nil
 	}
 
 	c.healthErr.Store("")
@@ -351,12 +323,58 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-func (c *Component) startCollectors(serverUUID string, engineVersion string) error {
+func (c *Component) startCollectors() error {
+	// Establish DB connection and fetch server info here so Update remains thin.
+	dbConnection, err := mysqlOpenSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	if err != nil {
+		err = fmt.Errorf("failed to start collectors: failed to open MySQL connection: %w", err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		return err
+	}
+	if dbConnection == nil {
+		err = fmt.Errorf("failed to start collectors: nil DB connection")
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		return err
+	}
+	if err = dbConnection.Ping(); err != nil {
+		err = fmt.Errorf("failed to start collectors: failed to ping MySQL: %w", err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		return err
+	}
+	c.dbConnection = dbConnection
+
+	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
+	if err = rs.Err(); err != nil {
+		err = fmt.Errorf("failed to query engine version: %w", err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		return err
+	}
+
+	var serverUUID, engineVersion string
+	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
+		err = fmt.Errorf("failed to scan engine version: %w", err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		return err
+	}
+
+	// Update exported targets based on server UUID relabeling
+	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
+	for _, t := range c.args.Targets {
+		builder := discovery.NewTargetBuilderFrom(t)
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+			targets = append(targets, builder.Target())
+		}
+	}
+	c.opts.OnStateChange(Exports{
+		Targets: targets,
+	})
 	var cloudProviderInfo *database_observability.CloudProvider
 	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
 		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
+			err = fmt.Errorf("failed to parse AWS cloud provider ARN: %w", err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
 			return err
 		}
 		cloudProviderInfo = &database_observability.CloudProvider{
@@ -370,6 +388,9 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 
 	collectors := enableOrDisableCollectors(c.args)
 
+	// Best-effort start: try building/starting every enabled collector and aggregate errors.
+	var startErrors []string
+
 	if collectors[collector.QueryTablesName] {
 		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              c.dbConnection,
@@ -378,14 +399,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTable collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.QueryTablesName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := qtCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.QueryTablesName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, qtCollector)
+			}
 		}
-		if err := qtCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, qtCollector)
 	}
 
 	if collectors[collector.SchemaTableName] {
@@ -400,14 +425,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			Logger:       c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.SchemaTableName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := stCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.SchemaTableName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, stCollector)
+			}
 		}
-		if err := stCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, stCollector)
 	}
 
 	if collectors[collector.QuerySampleName] {
@@ -421,14 +450,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			SetupConsumersCheckInterval: c.args.QuerySampleArguments.SetupConsumersCheckInterval,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.QuerySampleName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := qsCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.QuerySampleName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, qsCollector)
+			}
 		}
-		if err := qsCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, qsCollector)
 	}
 
 	if collectors[collector.SetupConsumersName] {
@@ -439,14 +472,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.SetupConsumersName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := scCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.SetupConsumersName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, scCollector)
+			}
 		}
-		if err := scCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start SetupConsumer collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, scCollector)
 	}
 
 	if collectors[collector.LocksName] {
@@ -458,14 +495,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			EntryHandler:      entryHandler,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create locks collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.LocksName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := locksCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.LocksName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, locksCollector)
+			}
 		}
-		if err := locksCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start locks collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, locksCollector)
 	}
 
 	if collectors[collector.ExplainPlanName] {
@@ -479,14 +520,18 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
-			return err
+			err = fmt.Errorf("failed to create %s collector: %w", collector.ExplainPlanName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			if err := epCollector.Start(context.Background()); err != nil {
+				err = fmt.Errorf("failed to start %s collector: %w", collector.ExplainPlanName, err)
+				level.Error(c.opts.Logger).Log("msg", err.Error())
+				startErrors = append(startErrors, err.Error())
+			} else {
+				c.collectors = append(c.collectors, epCollector)
+			}
 		}
-		if err := epCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start ExplainPlan collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, epCollector)
 	}
 
 	// Connection Info collector is always enabled
@@ -497,15 +542,22 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 		CloudProvider: cloudProviderInfo,
 	})
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
-		return err
+		err = fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startErrors = append(startErrors, err.Error())
+	} else {
+		if err := ciCollector.Start(context.Background()); err != nil {
+			err = fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err)
+			level.Error(c.opts.Logger).Log("msg", err.Error())
+			startErrors = append(startErrors, err.Error())
+		} else {
+			c.collectors = append(c.collectors, ciCollector)
+		}
 	}
-	if err := ciCollector.Start(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
-		return err
-	}
-	c.collectors = append(c.collectors, ciCollector)
 
+	if len(startErrors) > 0 {
+		return fmt.Errorf("failed to start collectors: %s", strings.Join(startErrors, "; "))
+	}
 	return nil
 }
 

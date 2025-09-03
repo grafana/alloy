@@ -1,18 +1,24 @@
 package postgres
 
 import (
+	"database/sql"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	kitlog "github.com/go-kit/log"
+	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -302,4 +308,83 @@ func Test_addLokiLabels(t *testing.T) {
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
+}
+
+func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
+	t.Parallel()
+
+	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:     "test.postgres",
+		Logger: kitlog.NewNopLogger(),
+		GetServiceData: func(name string) (interface{}, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+		OnStateChange: func(e cmp.Exports) { gotExports = e },
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	time.Sleep(10 * time.Millisecond)
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+	assert.NotEmpty(t, h.Message)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/metrics", nil)
+	c.Handler().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Contains(t, body, "database_observability_connection_info")
+}
+
+func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
+	t.Parallel()
+
+	args := Arguments{
+		DataSourceName: "postgres://127.0.0.1:5432/db?sslmode=disable",
+		// Disable all optional collectors so we can focus on startup-time failures
+		// that occur synchronously during startCollectors (connection_info path).
+		DisableCollectors: []string{"query_samples", "query_details", "schema_details"},
+	}
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:     "test.postgres",
+		Logger: kitlog.NewNopLogger(),
+		GetServiceData: func(name string) (interface{}, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+		OnStateChange: func(e cmp.Exports) { gotExports = e },
+	}
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	// Force engine version retrieval to fail so connection_info reports a startup error.
+	mock.ExpectQuery(`SHOW\s+server_version`).WillReturnError(assert.AnError)
+
+	t.Cleanup(func() { pgOpenSQL = sql.Open })
+	pgOpenSQL = func(_ string, _ string) (*sql.DB, error) { return db, nil }
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+	assert.Contains(t, h.Message, collector.ConnectionInfoName)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.NotEmpty(t, exported.Targets)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/metrics", nil)
+	c.Handler().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Contains(t, body, "database_observability_connection_info")
+	assert.Contains(t, body, "engine=\"postgres\"")
+	// When engine version query fails, connection_info reports engine_version="unknown".
+	assert.Contains(t, body, "engine_version=\"unknown\"")
 }
