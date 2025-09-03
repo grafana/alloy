@@ -46,11 +46,12 @@ func (rc *Arguments) SetToDefault() {
 
 func defaultEndpointConfig() EndpointConfig {
 	return EndpointConfig{
-		Timeout:          30 * time.Second,
-		RetryBackoff:     1 * time.Second,
-		MaxRetryAttempts: 0,
-		BatchCount:       1_000,
-		FlushInterval:    1 * time.Second,
+		Timeout:           30 * time.Second,
+		RetryBackoff:      1 * time.Second,
+		MaxRetryAttempts:  0,
+		BatchCount:        1_000,
+		FlushInterval:     1 * time.Second,
+		MetadataCacheSize: 1000,
 		Parallelism: ParallelismConfig{
 			DriftScaleUp:                60 * time.Second,
 			DriftScaleDown:              30 * time.Second,
