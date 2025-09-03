@@ -52,6 +52,7 @@ func defaultEndpointConfig() EndpointConfig {
 		BatchCount:        1_000,
 		FlushInterval:     1 * time.Second,
 		MetadataCacheSize: 1000,
+		ProtobufMessage:   RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1),
 		Parallelism: ParallelismConfig{
 			DriftScaleUp:                60 * time.Second,
 			DriftScaleDown:              30 * time.Second,
