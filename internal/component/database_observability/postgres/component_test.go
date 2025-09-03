@@ -383,8 +383,6 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Contains(t, body, "database_observability_connection_info")
-	assert.Contains(t, body, "engine=\"postgres\"")
-	// When engine version query fails, connection_info reports engine_version="unknown".
-	assert.Contains(t, body, "engine_version=\"unknown\"")
+	// When engine version query fails, connection_info reports engine_version="unknown" and value 0.
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+0(\.0+)?$`, body)
 }

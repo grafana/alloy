@@ -377,7 +377,5 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Contains(t, body, "database_observability_connection_info")
-	assert.Contains(t, body, "engine=\"mysql\"")
-	assert.Contains(t, body, "engine_version=\"8.0.0\"")
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
 }

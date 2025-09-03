@@ -92,7 +92,7 @@ func (c *QueryTables) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", QueryTablesName+" collector error", "err", err)
 			}
 
 			select {
@@ -119,8 +119,7 @@ func (c *QueryTables) Stop() {
 func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch statements from pg_stat_statements view", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
 	}
 	defer rs.Close()
 

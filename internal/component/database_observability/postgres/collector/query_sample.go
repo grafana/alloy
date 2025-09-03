@@ -143,7 +143,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", QuerySampleName+" collector error", "err", err)
 			}
 
 			select {
@@ -179,8 +179,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 	scrapeTime := time.Now()
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_stat_activity", "err", err)
-		return err
+		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 	defer rows.Close()
 

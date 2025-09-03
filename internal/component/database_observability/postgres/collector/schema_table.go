@@ -157,7 +157,7 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 
 		for {
 			if err := c.extractNames(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", SchemaTableName+" collector error", "err", err)
 			}
 
 			select {
@@ -185,13 +185,12 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
 	var dbName string
 	if err := rs.Scan(&dbName); err != nil {
-		level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
-		return err
+		return fmt.Errorf("failed to scan database name: %w", err)
 	}
 
 	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_namespace", "database", dbName, "err", err)
+		err = fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
 		return err
 	}
 	defer schemaRs.Close()
@@ -213,7 +212,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	}
 
 	if err := schemaRs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over pg_namespace result set", "database", dbName, "err", err)
+		err = fmt.Errorf("error during iterating over pg_namespace result set for database %s: %w", dbName, err)
 		return err
 	}
 
@@ -253,8 +252,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		}
 
 		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "error during iterating over tables result set", "err", err)
-			return err
+			return fmt.Errorf("error during iterating over tables result set for database %s: %w", dbName, err)
 		}
 	}
 
