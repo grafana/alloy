@@ -324,21 +324,44 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
-	// Establish DB connection and fetch server info here so Update remains thin.
+	// Connection Info collector is always enabled
+	// value 1 on success and 0 on failure to establish the connection and get the engine version
+	startConnInfo := func(val float64, engineVersion string, cloudProvider *database_observability.CloudProvider) {
+		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+			DSN:           string(c.args.DataSourceName),
+			Registry:      c.registry,
+			EngineVersion: engineVersion,
+			CloudProvider: cloudProvider,
+			Value:         val,
+		})
+		if ciErr != nil {
+			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
+			return
+		}
+		if err := ciCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err).Error())
+			return
+		}
+		c.collectors = append(c.collectors, ciCollector)
+	}
+
 	dbConnection, err := mysqlOpenSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open MySQL connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "", nil)
 		return err
 	}
 	if dbConnection == nil {
 		err = fmt.Errorf("failed to start collectors: nil DB connection")
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "", nil)
 		return err
 	}
 	if err = dbConnection.Ping(); err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to ping MySQL: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "", nil)
 		return err
 	}
 	c.dbConnection = dbConnection
@@ -347,6 +370,7 @@ func (c *Component) startCollectors() error {
 	if err = rs.Err(); err != nil {
 		err = fmt.Errorf("failed to query engine version: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "", nil)
 		return err
 	}
 
@@ -354,6 +378,7 @@ func (c *Component) startCollectors() error {
 	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
 		err = fmt.Errorf("failed to scan engine version: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "", nil)
 		return err
 	}
 
@@ -534,26 +559,8 @@ func (c *Component) startCollectors() error {
 		}
 	}
 
-	// Connection Info collector is always enabled
-	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           string(c.args.DataSourceName),
-		Registry:      c.registry,
-		EngineVersion: engineVersion,
-		CloudProvider: cloudProviderInfo,
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startErrors = append(startErrors, err.Error())
-	} else {
-		if err := ciCollector.Start(context.Background()); err != nil {
-			err = fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
-		} else {
-			c.collectors = append(c.collectors, ciCollector)
-		}
-	}
+	// Connection Info collector is always enabled (value 1 on success)
+	startConnInfo(1, engineVersion, cloudProviderInfo)
 
 	if len(startErrors) > 0 {
 		return fmt.Errorf("failed to start collectors: %s", strings.Join(startErrors, "; "))

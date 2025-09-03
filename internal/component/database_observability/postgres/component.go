@@ -250,21 +250,44 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
+	// Connection Info collector is always enabled
+	// value 1 on success and 0 on failure to establish the connection and get the engine version
+	startConnInfo := func(val float64, engineVersion string) {
+		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+			DSN:           string(c.args.DataSourceName),
+			Registry:      c.registry,
+			EngineVersion: engineVersion,
+			Value:         val,
+		})
+		if ciErr != nil {
+			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
+			return
+		}
+		if err := ciCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err).Error())
+			return
+		}
+		c.collectors = append(c.collectors, ciCollector)
+	}
+
 	dbConnection, err := pgOpenSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open Postgres connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "")
 		return err
 	}
 
 	if dbConnection == nil {
 		err = fmt.Errorf("failed to start collectors: nil DB connection")
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "")
 		return err
 	}
 	if err = dbConnection.Ping(); err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to ping Postgres: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo(0, "")
 		return err
 	}
 	c.dbConnection = dbConnection
@@ -324,35 +347,20 @@ func (c *Component) startCollectors() error {
 	if err != nil {
 		err = fmt.Errorf("failed to query engine version for collector %s: %w", collector.ConnectionInfoName, err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startErrors = append(startErrors, err.Error())
+		startConnInfo(0, "")
+		return err
 	}
 
 	var engineVersion string
 	if err := rs.Scan(&engineVersion); err != nil {
 		err = fmt.Errorf("failed to scan engine version for collector %s: %w", collector.ConnectionInfoName, err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startErrors = append(startErrors, err.Error())
+		startConnInfo(0, "")
+		return err
 	}
 
-	// Connection Info collector is always enabled
-	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           string(c.args.DataSourceName),
-		Registry:      c.registry,
-		EngineVersion: engineVersion,
-	})
-	if err != nil {
-		err = fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startErrors = append(startErrors, err.Error())
-	} else {
-		if err := ciCollector.Start(context.Background()); err != nil {
-			err = fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
-		} else {
-			c.collectors = append(c.collectors, ciCollector)
-		}
-	}
+	// Connection Info collector is always enabled (value 1 on success)
+	startConnInfo(1, engineVersion)
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{

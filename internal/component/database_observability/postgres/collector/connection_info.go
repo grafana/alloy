@@ -22,6 +22,8 @@ type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
+	// Value controls the gauge value to set (1 connected, 0 otherwise).
+	Value float64
 }
 
 type ConnectionInfo struct {
@@ -29,6 +31,7 @@ type ConnectionInfo struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
+	Value         float64
 
 	running *atomic.Bool
 }
@@ -47,6 +50,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Registry:      args.Registry,
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
+		Value:         args.Value,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -93,7 +97,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		engineVersion = matches[1]
 	}
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(c.Value)
 	return nil
 }
 

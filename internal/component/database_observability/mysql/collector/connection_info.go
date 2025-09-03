@@ -25,6 +25,8 @@ type ConnectionInfoArguments struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
+	// Value controls the gauge value to set (1 connected, 0 otherwise).
+	Value float64
 }
 
 type ConnectionInfo struct {
@@ -33,6 +35,7 @@ type ConnectionInfo struct {
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
+	Value         float64
 
 	running *atomic.Bool
 }
@@ -52,6 +55,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
 		CloudProvider: args.CloudProvider,
+		Value:         args.Value,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -106,7 +110,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	}
 	c.running.Store(true)
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(c.Value)
 	return nil
 }
 

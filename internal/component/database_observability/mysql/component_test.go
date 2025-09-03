@@ -308,6 +308,12 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/metrics", nil)
+	c.Handler().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+0(\.0+)?$`, body)
 }
 
 // TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors tests that the component tries to start collectors on a best effort basis,

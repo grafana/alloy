@@ -337,7 +337,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Contains(t, body, "database_observability_connection_info")
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+0(\.0+)?$`, body)
 }
 
 func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
