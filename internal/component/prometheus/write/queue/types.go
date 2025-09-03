@@ -93,6 +93,11 @@ func (r *Arguments) Validate() error {
 		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
 			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
+		if conn.ProtobufMessage == RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2) {
+			if conn.MetadataCacheSize <= 0 {
+				return fmt.Errorf("metadata_cache_size must be greater than 0 when using Remote Write V2")
+			}
+		}
 	}
 
 	return nil
@@ -129,6 +134,8 @@ type EndpointConfig struct {
 	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
 	// ProtobufMessage specifies if Remote Write V1 or V2 should be used
 	ProtobufMessage RemoteWriteProtoMsg `alloy:"protobuf_message,attr,optional"`
+	// MetadataCacheSize specifies the size of the metadata cache if using Remote Write V2
+	MetadataCacheSize int `alloy:"metadata_cache_size,attr,optional"`
 }
 
 // Wrapper is required to unmarshal the config.RemoteWriteProtoMsg type
@@ -203,6 +210,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		ProxyFromEnvironment: cc.ProxyFromEnvironment,
 		ProxyConnectHeaders:  proxyConnectHeaders,
 		ProtobufMessage:      config.RemoteWriteProtoMsg(cc.ProtobufMessage),
+		MetadataCacheSize:    cc.MetadataCacheSize,
 		Parallelism: types.ParallelismConfig{
 			AllowedDrift:                cc.Parallelism.DriftScaleUp,
 			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
