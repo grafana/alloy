@@ -52,107 +52,6 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
-// test-time injection points (overridden in tests for mocking)
-var (
-	mysqlOpenSQL = sql.Open
-)
-
-type Arguments struct {
-	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
-	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
-	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
-
-	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
-	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
-	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
-	SchemaTableArguments    SchemaTableArguments    `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments    ExplainPlanArguments    `alloy:"explain_plans,block,optional"`
-	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
-}
-
-type CloudProvider struct {
-	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
-}
-
-type AWSCloudProviderInfo struct {
-	ARN string `alloy:"arn,attr"`
-}
-
-type QueryTablesArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-}
-
-type SchemaTableArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
-	CacheSize       int           `alloy:"cache_size,attr,optional"`
-	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
-}
-
-type SetupConsumersArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-}
-
-type ExplainPlanArguments struct {
-	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
-	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
-}
-
-type LocksArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	Threshold       time.Duration `alloy:"threshold,attr,optional"`
-}
-
-type QuerySampleArguments struct {
-	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
-	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
-	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
-}
-
-var DefaultArguments = Arguments{
-	AllowUpdatePerfSchemaSettings: false,
-
-	QueryTablesArguments: QueryTablesArguments{
-		CollectInterval: 1 * time.Minute,
-	},
-
-	SchemaTableArguments: SchemaTableArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
-
-	SetupConsumersArguments: SetupConsumersArguments{
-		CollectInterval: 1 * time.Hour,
-	},
-
-	ExplainPlanArguments: ExplainPlanArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-		InitialLookback: 24 * time.Hour,
-	},
-
-	LocksArguments: LocksArguments{
-		CollectInterval: 30 * time.Second,
-		Threshold:       1 * time.Second,
-	},
-
-	QuerySampleArguments: QuerySampleArguments{
-		CollectInterval:             1 * time.Minute,
-		DisableQueryRedaction:       false,
-		AutoEnableSetupConsumers:    false,
-		SetupConsumersCheckInterval: 1 * time.Hour,
-	},
-}
-
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
@@ -345,7 +244,14 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, ciCollector)
 	}
 
-	dbConnection, err := mysqlOpenSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	var mysqlOpen func(driverName, dataSourceName string) (*sql.DB, error)
+	if c.opts.OpenSQL != nil {
+		mysqlOpen = c.opts.OpenSQL
+	} else {
+		mysqlOpen = sql.Open
+	}
+
+	dbConnection, err := mysqlOpen("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open MySQL connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())

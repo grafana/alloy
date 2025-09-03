@@ -79,11 +79,6 @@ var DefaultArguments = Arguments{
 	},
 }
 
-// test-time injection points
-var (
-	pgOpenSQL = sql.Open
-)
-
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
@@ -270,7 +265,13 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, ciCollector)
 	}
 
-	dbConnection, err := pgOpenSQL("postgres", string(c.args.DataSourceName))
+	var pgOpen func(driverName, dataSourceName string) (*sql.DB, error)
+	if c.opts.OpenSQL != nil {
+		pgOpen = c.opts.OpenSQL
+	} else {
+		pgOpen = sql.Open
+	}
+	dbConnection, err := pgOpen("postgres", string(c.args.DataSourceName))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open Postgres connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())

@@ -2,6 +2,7 @@ package component
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strings"
@@ -115,6 +116,10 @@ type Options struct {
 	//
 	// The value of MinStability is static for the process lifetime.
 	MinStability featuregate.Stability
+
+	// OpenSQL allows components to inject a custom SQL opener (e.g., for tests).
+	// If nil, components should default to sql.Open.
+	OpenSQL func(driverName string, dataSourceName string) (*sql.DB, error)
 }
 
 // Registration describes a single component.

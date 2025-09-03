@@ -456,7 +456,7 @@ func (c *ExplainPlan) Name() string {
 }
 
 func (c *ExplainPlan) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", "collector started")
+	level.Info(c.logger).Log("msg", ExplainPlanName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)

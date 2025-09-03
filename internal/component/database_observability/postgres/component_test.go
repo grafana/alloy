@@ -328,7 +328,6 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	exported, ok := gotExports.(Exports)
 	require.True(t, ok)
 	require.Len(t, exported.Targets, 1)
-	time.Sleep(10 * time.Millisecond)
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)

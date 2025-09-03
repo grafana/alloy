@@ -90,7 +90,7 @@ func (c *QueryTables) Start(ctx context.Context) error {
 
 		for {
 			if err := c.tablesFromEventsStatements(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", QueryTablesName+" collector error", "err", err)
 			}
 
 			select {
@@ -153,8 +153,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over samples result set: %w", err)
 	}
 
 	return nil
