@@ -241,9 +241,10 @@ jobs:
         name: windows-service-signed
         path: dist.temp
 
+    # This step bypasses make so that Go does not rebuild the executables and lose the signed files from the previous job
     - name: Build unsigned Windows installer containing signed files
       run: |
-        RELEASE_BUILD=1 make -j4 dist-alloy-installer-windows
+        RELEASE_BUILD=1 makensis -V4 -DVERSION=$(VERSION) -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
         # TODO Use GITHUB_REF_NAME once tested
         #VERSION: ${{ env.GITHUB_REF_NAME }}
