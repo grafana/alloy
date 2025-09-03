@@ -120,9 +120,10 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
+	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
-func New(opts component.Options, args Arguments) (*Component, error) {
+func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -130,6 +131,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
+		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -149,6 +151,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	}
 
 	return c, nil
+}
+
+func New(opts component.Options, args Arguments) (*Component, error) {
+	return newWithOpen(opts, args, sql.Open)
 }
 
 func (c *Component) Run(ctx context.Context) error {
@@ -246,7 +252,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 
 func (c *Component) startCollectors() error {
 	// Connection Info collector is always enabled
-	// value 1 on success and 0 on failure to establish the connection and get the engine version
+	// value 1 on success and 0 on failure to establish the connection and check the engine version
 	startConnInfo := func(val float64, engineVersion string) {
 		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 			DSN:           string(c.args.DataSourceName),
@@ -265,13 +271,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, ciCollector)
 	}
 
-	var pgOpen func(driverName, dataSourceName string) (*sql.DB, error)
-	if c.opts.OpenSQL != nil {
-		pgOpen = c.opts.OpenSQL
-	} else {
-		pgOpen = sql.Open
-	}
-	dbConnection, err := pgOpen("postgres", string(c.args.DataSourceName))
+	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open Postgres connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())

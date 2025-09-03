@@ -185,7 +185,7 @@ func (c *SchemaTable) Name() string {
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -202,7 +202,7 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", SchemaTableName+" collector error", "err", err)
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {

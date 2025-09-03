@@ -52,6 +52,102 @@ var (
 	_ syntax.Validator = (*Arguments)(nil)
 )
 
+type Arguments struct {
+	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
+	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
+	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
+
+	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
+	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
+	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
+	SchemaTableArguments    SchemaTableArguments    `alloy:"schema_details,block,optional"`
+	ExplainPlanArguments    ExplainPlanArguments    `alloy:"explain_plans,block,optional"`
+	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
+	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
+}
+
+type CloudProvider struct {
+	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
+}
+
+type QueryTablesArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type SchemaTableArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize       int           `alloy:"cache_size,attr,optional"`
+	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+}
+
+type SetupConsumersArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type ExplainPlanArguments struct {
+	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
+	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
+}
+
+type LocksArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	Threshold       time.Duration `alloy:"threshold,attr,optional"`
+}
+
+type QuerySampleArguments struct {
+	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
+	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+}
+
+var DefaultArguments = Arguments{
+	AllowUpdatePerfSchemaSettings: false,
+
+	QueryTablesArguments: QueryTablesArguments{
+		CollectInterval: 1 * time.Minute,
+	},
+
+	SchemaTableArguments: SchemaTableArguments{
+		CollectInterval: 1 * time.Minute,
+		CacheEnabled:    true,
+		CacheSize:       256,
+		CacheTTL:        10 * time.Minute,
+	},
+
+	SetupConsumersArguments: SetupConsumersArguments{
+		CollectInterval: 1 * time.Hour,
+	},
+
+	ExplainPlanArguments: ExplainPlanArguments{
+		CollectInterval: 1 * time.Minute,
+		PerCollectRatio: 1.0,
+		InitialLookback: 24 * time.Hour,
+	},
+
+	LocksArguments: LocksArguments{
+		CollectInterval: 30 * time.Second,
+		Threshold:       1 * time.Second,
+	},
+
+	QuerySampleArguments: QuerySampleArguments{
+		CollectInterval:             1 * time.Minute,
+		DisableQueryRedaction:       false,
+		AutoEnableSetupConsumers:    false,
+		SetupConsumersCheckInterval: 1 * time.Hour,
+	},
+}
+
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
@@ -93,9 +189,10 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
+	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
-func New(opts component.Options, args Arguments) (*Component, error) {
+func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -103,6 +200,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
+		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -122,6 +220,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	}
 
 	return c, nil
+}
+
+func New(opts component.Options, args Arguments) (*Component, error) {
+	return newWithOpen(opts, args, sql.Open)
 }
 
 func (c *Component) Run(ctx context.Context) error {
@@ -223,8 +325,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
-	// Connection Info collector is always enabled
-	// value 1 on success and 0 on failure to establish the connection and get the engine version
 	startConnInfo := func(val float64, engineVersion string, cloudProvider *database_observability.CloudProvider) {
 		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 			DSN:           string(c.args.DataSourceName),
@@ -244,14 +344,7 @@ func (c *Component) startCollectors() error {
 		c.collectors = append(c.collectors, ciCollector)
 	}
 
-	var mysqlOpen func(driverName, dataSourceName string) (*sql.DB, error)
-	if c.opts.OpenSQL != nil {
-		mysqlOpen = c.opts.OpenSQL
-	} else {
-		mysqlOpen = sql.Open
-	}
-
-	dbConnection, err := mysqlOpen("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open MySQL connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
@@ -289,9 +382,9 @@ func (c *Component) startCollectors() error {
 	}
 
 	// Update exported targets based on server UUID relabeling
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
+	sourceTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(sourceTargets)+1)
+	for _, t := range sourceTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
 			targets = append(targets, builder.Target())

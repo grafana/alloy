@@ -75,7 +75,7 @@ func (c *QueryTables) Name() string {
 }
 
 func (c *QueryTables) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -92,7 +92,7 @@ func (c *QueryTables) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", QueryTablesName+" collector error", "err", err)
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {

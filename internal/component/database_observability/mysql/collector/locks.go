@@ -91,7 +91,7 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 }
 
 func (c *LockCollector) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", LocksName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -108,7 +108,7 @@ func (c *LockCollector) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchLocks(ctx); err != nil {
-				level.Error(c.logger).Log("msg", LocksName+" collector error", "err", err)
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {

@@ -456,7 +456,7 @@ func (c *ExplainPlan) Name() string {
 }
 
 func (c *ExplainPlan) Start(ctx context.Context) error {
-	level.Info(c.logger).Log("msg", ExplainPlanName+" collector started")
+	level.Info(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -473,7 +473,7 @@ func (c *ExplainPlan) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchExplainPlans(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", ExplainPlanName+" collector error", "err", err)
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {

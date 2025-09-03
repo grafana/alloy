@@ -364,10 +364,7 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	// Force engine version retrieval to fail so connection_info reports a startup error.
 	mock.ExpectQuery(`SHOW\s+server_version`).WillReturnError(assert.AnError)
 
-	t.Cleanup(func() { pgOpenSQL = sql.Open })
-	pgOpenSQL = func(_ string, _ string) (*sql.DB, error) { return db, nil }
-
-	c, err := New(opts, args)
+	c, err := newWithOpen(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
 	require.NoError(t, err)
 
 	h := c.CurrentHealth()
