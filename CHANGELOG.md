@@ -105,6 +105,12 @@ Main (unreleased)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
 
+- Add `cache_minimum_ttl` argument to `faro.receiver.sourcemaps` block to optionally specify the duration after which the cache map clears itself if sourcemap was not used for the specified duration (@markoposavec)
+
+- Add `cache_error_cleanup_interval` argument to `faro.receiver.sourcemaps` block to specify the duration after which the cached sourcemap errors are removed from the cache (@markoposavec)
+
+- Add `cache_cleanup_check_interval` argument to `faro.receiver.sourcemaps` block to specify how often to check if any sourcemaps need to be cleared from the cache (@markoposavec)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
