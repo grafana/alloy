@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -126,6 +127,31 @@ type EndpointConfig struct {
 	ProxyFromEnvironment bool `alloy:"proxy_from_environment,attr,optional"`
 	// ProxyConnectHeaders specify the headers to send to proxies during CONNECT requests.
 	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
+	// ProtobufMessage specifies if Remote Write V1 or V2 should be used
+	ProtobufMessage RemoteWriteProtoMsg `alloy:"protobuf_message,attr,optional"`
+}
+
+// Wrapper is required to unmarshal the config.RemoteWriteProtoMsg type
+type RemoteWriteProtoMsg config.RemoteWriteProtoMsg
+
+// MarshalText implements encoding.TextMarshaler
+func (s RemoteWriteProtoMsg) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *RemoteWriteProtoMsg) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case string(config.RemoteWriteProtoMsgV1):
+		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1)
+	case string(config.RemoteWriteProtoMsgV2):
+		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2)
+	default:
+		return fmt.Errorf("unknown remote write proto message: %s", str)
+	}
+
+	return nil
 }
 
 type TLSConfig struct {
@@ -176,6 +202,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		ProxyURL:             cc.ProxyURL,
 		ProxyFromEnvironment: cc.ProxyFromEnvironment,
 		ProxyConnectHeaders:  proxyConnectHeaders,
+		ProtobufMessage:      config.RemoteWriteProtoMsg(cc.ProtobufMessage),
 		Parallelism: types.ParallelismConfig{
 			AllowedDrift:                cc.Parallelism.DriftScaleUp,
 			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
