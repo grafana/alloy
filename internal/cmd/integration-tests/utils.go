@@ -218,7 +218,7 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 	if stateful {
 		testCmd.Env = append(testCmd.Environ(),
 			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
-			fmt.Sprintf("%s=true", common.StatefulTestEnv))
+			fmt.Sprintf("%s=true", common.TestStatefulEnv))
 	}
 	testOutput, errTest := testCmd.CombinedOutput()
 

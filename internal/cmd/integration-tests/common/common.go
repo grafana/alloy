@@ -41,14 +41,14 @@ func FetchDataFromURL(url string, target Unmarshaler) error {
 // AssertStatefulTestEnv verifies the environment is properly configured if the test is supposed to be stateful
 func AssertStatefulTestEnv(t *testing.T) {
 	// Check if stateful is set
-	statefulEnv := os.Getenv(StatefulTestEnv)
+	statefulEnv := os.Getenv(TestStatefulEnv)
 	if statefulEnv == "" {
 		return
 	}
 
 	isStateful, err := strconv.ParseBool(statefulEnv)
 	if err != nil {
-		t.Fatalf("Invalid value for %s: %s", StatefulTestEnv, err)
+		t.Fatalf("Invalid value for %s: %s", TestStatefulEnv, err)
 	}
 
 	if !isStateful {
