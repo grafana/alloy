@@ -235,13 +235,20 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	alreadyLoaded := cm.getLastLoadedCfgHash() == newConfigHash
 
 	if alreadyReceived {
-		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last received one",
-			"config_hash", newConfigHash, "already_loaded", alreadyLoaded)
+		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last received one", "config_hash", newConfigHash)
 		return nil
 	}
 
 	// Record that we received this config from remote (regardless of parse success)
 	cm.setLastReceivedCfgHash(newConfigHash)
+
+	// It's possible someone will set a broken config back to the original config such
+	// that the newConfigHash is the same as the lastLoadedConfigHash. We do not need
+	// to reload the config in this case since it is already loaded.
+	if alreadyLoaded {
+		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
+		return nil
+	}
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
