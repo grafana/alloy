@@ -127,9 +127,9 @@ func (c *QuerySample) Name() string {
 
 func (c *QuerySample) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+		level.Warn(c.logger).Log("msg", QuerySampleName+" collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
 	}
 
 	c.running.Store(true)
@@ -138,8 +138,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	c.cancel = cancel
 
 	if err := c.initializeBookmark(c.ctx); err != nil {
-		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
-		return err
+		return fmt.Errorf("failed to initialize bookmark: %w", err)
 	}
 
 	// Start setup_consumers check goroutine if enabled
@@ -157,7 +156,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", QuerySampleName+" collector error", "err", err)
 			}
 
 			select {

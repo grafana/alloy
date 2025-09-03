@@ -117,8 +117,7 @@ func (c *QueryTables) Stop() {
 func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch summary table samples: %w", err)
 	}
 	defer rs.Close()
 

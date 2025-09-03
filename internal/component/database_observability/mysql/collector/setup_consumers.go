@@ -78,7 +78,7 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 
 		for {
 			if err := c.getSetupConsumers(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "setupConsumers collector error", "err", err)
+				level.Error(c.logger).Log("msg", SetupConsumersName+" collector error", "err", err)
 			}
 
 			select {

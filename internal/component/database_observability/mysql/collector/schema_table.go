@@ -202,7 +202,7 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", SchemaTableName+" collector error", "err", err)
 			}
 
 			select {
@@ -229,8 +229,7 @@ func (c *SchemaTable) Stop() {
 func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectSchemaName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query schemata", "err", err)
-		return err
+		return fmt.Errorf("failed to query schemata: %w", err)
 	}
 	defer rs.Close()
 
@@ -251,8 +250,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over schemas result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over schemas result set: %w", err)
 	}
 
 	if len(schemas) == 0 {
@@ -295,8 +293,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 		}
 
 		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "error during iterating over tables result set", "err", err)
-			return err
+			return fmt.Errorf("error during iterating over tables result set: %w", err)
 		}
 	}
 

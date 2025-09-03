@@ -91,7 +91,7 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 }
 
 func (c *LockCollector) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	level.Debug(c.logger).Log("msg", LocksName+" collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -108,7 +108,7 @@ func (c *LockCollector) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchLocks(ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				level.Error(c.logger).Log("msg", LocksName+" collector error", "err", err)
 			}
 
 			select {
@@ -135,8 +135,7 @@ func (c *LockCollector) Stop() {
 func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	rsdl, err := c.mySQLClient.QueryContext(ctx, selectDataLocks)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query data locks", "err", err)
-		return err
+		return fmt.Errorf("failed to query data locks: %w", err)
 	}
 	defer rsdl.Close()
 
@@ -170,8 +169,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	}
 
 	if err := rsdl.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over locks result set", "err", err)
-		return err
+		return fmt.Errorf("error during iterating over locks result set: %w", err)
 	}
 
 	return nil
