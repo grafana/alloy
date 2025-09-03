@@ -238,25 +238,18 @@ func (t *Target) StartIfNotRunning() {
 	}
 }
 
+// Stop shuts down the target.
+func (t *Target) Stop() {
+	t.stopWithError(nil)
+}
+
 func (t *Target) stopWithError(err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.err = err
-	if t.running {
-		t.running = false
-		if t.cancel != nil {
-			t.cancel()
-		}
-		t.wg.Wait()
-		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
+	if err != nil {
+		t.err = err
 	}
-}
-
-// Stop shuts down the target.
-func (t *Target) Stop() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	if t.running {
 		t.running = false
