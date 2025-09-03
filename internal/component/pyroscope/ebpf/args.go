@@ -23,6 +23,11 @@ type Arguments struct {
 	Demangle             string                 `alloy:"demangle,attr,optional"`
 	ContainerIDCacheSize uint32                 `alloy:"container_id_cache_size,attr,optional"`
 	DeprecatedArguments  DeprecatedArguments    `alloy:",squash"`
+
+	// undocumented
+	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
+	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
+	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 }
 
 type DeprecatedArguments struct {
