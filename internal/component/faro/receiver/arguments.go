@@ -3,6 +3,7 @@ package receiver
 import (
 	"encoding"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -71,17 +72,23 @@ func (r *RateLimitingArguments) SetToDefault() {
 // SourceMapsArguments configures how app_agent_receiver will retrieve source
 // maps for transforming stack traces.
 type SourceMapsArguments struct {
-	Download            bool                `alloy:"download,attr,optional"`
-	DownloadFromOrigins []string            `alloy:"download_from_origins,attr,optional"`
-	DownloadTimeout     time.Duration       `alloy:"download_timeout,attr,optional"`
-	Locations           []LocationArguments `alloy:"location,block,optional"`
+	Download                  bool                `alloy:"download,attr,optional"`
+	DownloadFromOrigins       []string            `alloy:"download_from_origins,attr,optional"`
+	DownloadTimeout           time.Duration       `alloy:"download_timeout,attr,optional"`
+	CacheMinimumTtl           time.Duration       `alloy:"cache_minimum_ttl,attr,optional"`
+	CacheErrorCleanupInterval time.Duration       `alloy:"cache_error_cleanup_interval,attr,optional"`
+	CacheCleanupCheckInterval time.Duration       `alloy:"cache_cleanup_check_interval,attr,optional"`
+	Locations                 []LocationArguments `alloy:"location,block,optional"`
 }
 
 func (s *SourceMapsArguments) SetToDefault() {
 	*s = SourceMapsArguments{
-		Download:            true,
-		DownloadFromOrigins: []string{"*"},
-		DownloadTimeout:     time.Second,
+		Download:                  true,
+		DownloadFromOrigins:       []string{"*"},
+		DownloadTimeout:           time.Second,
+		CacheErrorCleanupInterval: time.Hour,
+		CacheMinimumTtl:           time.Duration(math.MaxInt64),
+		CacheCleanupCheckInterval: time.Second * 30,
 	}
 }
 
