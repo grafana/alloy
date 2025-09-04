@@ -67,6 +67,7 @@ type Arguments struct {
 	ExplainPlanArguments    ExplainPlanArguments    `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
 	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
+	ConnectionInfoArguments ConnectionInfoArguments `alloy:"connection_info,block,optional"`
 }
 
 type CloudProvider struct {
@@ -111,6 +112,10 @@ type QuerySampleArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 }
 
+type ConnectionInfoArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	AllowUpdatePerfSchemaSettings: false,
 
@@ -145,6 +150,9 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+	},
+	ConnectionInfoArguments: ConnectionInfoArguments{
+		CollectInterval: 15 * time.Second,
 	},
 }
 
@@ -279,12 +287,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	// Always export at least the base target so the component can expose metrics
-	// even if the database connection is currently unavailable.
-	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
-	})
-
 	for _, collector := range c.collectors {
 		collector.Stop()
 	}
@@ -292,6 +294,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
+		// Export at least the base target so the component can expose metrics
+		// even if the database connection is currently unavailable.
+		c.opts.OnStateChange(Exports{
+			Targets: []discovery.Target{c.baseTarget},
+		})
 		return nil
 	}
 
@@ -325,13 +332,14 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
-	startConnInfo := func(val float64, engineVersion string, cloudProvider *database_observability.CloudProvider) {
+	startConnInfo := func(engineVersion string, cloudProvider *database_observability.CloudProvider) {
 		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 			DSN:           string(c.args.DataSourceName),
 			Registry:      c.registry,
 			EngineVersion: engineVersion,
 			CloudProvider: cloudProvider,
-			Value:         val,
+			CheckInterval: c.args.ConnectionInfoArguments.CollectInterval,
+			DB:            c.dbConnection,
 		})
 		if ciErr != nil {
 			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
@@ -348,19 +356,19 @@ func (c *Component) startCollectors() error {
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open MySQL connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "", nil)
+		startConnInfo("", nil)
 		return err
 	}
 	if dbConnection == nil {
 		err = fmt.Errorf("failed to start collectors: nil DB connection")
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "", nil)
+		startConnInfo("", nil)
 		return err
 	}
 	if err = dbConnection.Ping(); err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to ping MySQL: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "", nil)
+		startConnInfo("", nil)
 		return err
 	}
 	c.dbConnection = dbConnection
@@ -369,7 +377,7 @@ func (c *Component) startCollectors() error {
 	if err = rs.Err(); err != nil {
 		err = fmt.Errorf("failed to query engine version: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "", nil)
+		startConnInfo("", nil)
 		return err
 	}
 
@@ -377,7 +385,7 @@ func (c *Component) startCollectors() error {
 	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
 		err = fmt.Errorf("failed to scan engine version: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "", nil)
+		startConnInfo("", nil)
 		return err
 	}
 
@@ -407,6 +415,9 @@ func (c *Component) startCollectors() error {
 			},
 		}
 	}
+
+	// Start the connection_info collector first, so we can report the connection status.
+	startConnInfo(engineVersion, cloudProviderInfo)
 
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
 
@@ -557,9 +568,6 @@ func (c *Component) startCollectors() error {
 			}
 		}
 	}
-
-	// Connection Info collector is always enabled (value 1 on success)
-	startConnInfo(1, engineVersion, cloudProviderInfo)
 
 	if len(startErrors) > 0 {
 		return fmt.Errorf("failed to start collectors: %s", strings.Join(startErrors, "; "))

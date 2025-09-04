@@ -289,7 +289,7 @@ func Test_addLokiLabels(t *testing.T) {
 func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	t.Parallel()
 
-	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
+	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db", ConnectionInfoArguments: ConnectionInfoArguments{CollectInterval: 15 * time.Second}}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
 		ID:     "test.mysql",
@@ -312,7 +312,10 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+0(\.0+)?$`, body)
+	// connection_up should be 0 when DB is unavailable
+	assert.Regexp(t, `(?m)^database_observability_connection_up\{.*\}\s+0(\.0+)?$`, body)
+	// connection_info should still be 1 (metadata)
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+1(\.0+)?$`, body)
 }
 
 // TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors tests that the component tries to start collectors on a best effort basis,
@@ -331,6 +334,9 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 		LocksArguments: LocksArguments{
 			CollectInterval: time.Second,
 			Threshold:       time.Second,
+		},
+		ConnectionInfoArguments: ConnectionInfoArguments{
+			CollectInterval: 15 * time.Second,
 		},
 	}
 	var gotExports cmp.Exports
@@ -351,6 +357,8 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	mock.ExpectPing().WillDelayFor(10 * time.Millisecond)
 	// Engine info succeeds (if reached)
 	mock.ExpectQuery(`SELECT @@server_uuid, VERSION\(\)`).WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "version"}).AddRow("uuid-1", "8.0.0"))
+	// Second ping to the database succeeds, coming from the connection_info collector
+	mock.ExpectPing().WillDelayFor(10 * time.Millisecond)
 	// QuerySample constructor queries uptime and fails
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'")).
 		WillReturnError(assert.AnError)
@@ -373,5 +381,8 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
+	// connection_up should be 1 on successful connection
+	assert.Regexp(t, `(?m)^database_observability_connection_up\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
+	// connection_info remains 1 with labels
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
 }

@@ -313,7 +313,7 @@ func Test_addLokiLabels(t *testing.T) {
 func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	t.Parallel()
 
-	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
+	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable", ConnectionInfoArguments: ConnectionInfoArguments{CollectInterval: 15 * time.Second}}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
 		ID:     "test.postgres",
@@ -336,7 +336,8 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+0(\.0+)?$`, body)
+	assert.Regexp(t, `(?m)^database_observability_connection_up\{.*\}\s+0(\.0+)?$`, body)
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+1(\.0+)?$`, body)
 }
 
 func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
@@ -347,6 +348,9 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 		// Disable all optional collectors so we can focus on startup-time failures
 		// that occur synchronously during startCollectors (connection_info path).
 		DisableCollectors: []string{"query_samples", "query_details", "schema_details"},
+		ConnectionInfoArguments: ConnectionInfoArguments{
+			CollectInterval: 15 * time.Second,
+		},
 	}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
@@ -358,11 +362,14 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 		OnStateChange: func(e cmp.Exports) { gotExports = e },
 	}
 
-	db, mock, err := sqlmock.New()
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 	require.NoError(t, err)
 	defer db.Close()
+	// First ping to the database succeeds, so we can start collectors
+	mock.ExpectPing().WillDelayFor(10 * time.Millisecond)
 	// Force engine version retrieval to fail so connection_info reports a startup error.
 	mock.ExpectQuery(`SHOW\s+server_version`).WillReturnError(assert.AnError)
+	mock.ExpectPing().WillReturnError(assert.AnError)
 
 	c, err := newWithOpen(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
 	require.NoError(t, err)
@@ -379,6 +386,8 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	// When engine version query fails, connection_info reports engine_version="unknown" and value 0.
-	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+0(\.0+)?$`, body)
+	// When engine version query fails, connection_info reports engine_version="unknown" and value 1.
+	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+1(\.0+)?$`, body)
+	// When engine version query fails, connection_up==0 with engine_version="unknown".
+	assert.Regexp(t, `(?m)^database_observability_connection_up\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+0(\.0+)?$`, body)
 }

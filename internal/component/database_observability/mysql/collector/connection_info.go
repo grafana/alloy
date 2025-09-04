@@ -2,9 +2,11 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,8 +27,8 @@ type ConnectionInfoArguments struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
-	// Value controls the gauge value to set (1 connected, 0 otherwise).
-	Value float64
+	CheckInterval time.Duration
+	DB            *sql.DB
 }
 
 type ConnectionInfo struct {
@@ -34,10 +36,13 @@ type ConnectionInfo struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
+	UpMetric      *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
-	Value         float64
+	CheckInterval time.Duration
+	DB            *sql.DB
 
 	running *atomic.Bool
+	cancel  context.CancelFunc
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -47,15 +52,24 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Help:      "Information about the connection",
 	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
 
+	upMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "database_observability",
+		Name:      "connection_up",
+		Help:      "Database connection successful (1) or failed (0)",
+	}, []string{"provider_name", "provider_region", "provider_account", "db_instance_identifier", "engine", "engine_version"})
+
 	args.Registry.MustRegister(infoMetric)
+	args.Registry.MustRegister(upMetric)
 
 	return &ConnectionInfo{
 		DSN:           args.DSN,
 		Registry:      args.Registry,
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
+		UpMetric:      upMetric,
 		CloudProvider: args.CloudProvider,
-		Value:         args.Value,
+		CheckInterval: args.CheckInterval,
+		DB:            args.DB,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -110,7 +124,38 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	}
 	c.running.Store(true)
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(c.Value)
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
+
+	update := func(ctx context.Context) {
+		val := 0.0
+		if c.DB != nil {
+			checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
+			if err := c.DB.PingContext(checkCtx); err == nil {
+				val = 1.0
+			}
+		}
+		c.UpMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(val)
+	}
+
+	ctx2, cancel := context.WithCancel(ctx)
+	c.cancel = cancel
+	update(ctx2)
+
+	interval := c.CheckInterval
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx2.Done():
+				return
+			case <-ticker.C:
+				update(ctx2)
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -119,6 +164,10 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
+	if c.cancel != nil {
+		c.cancel()
+	}
 	c.Registry.Unregister(c.InfoMetric)
+	c.Registry.Unregister(c.UpMetric)
 	c.running.Store(false)
 }

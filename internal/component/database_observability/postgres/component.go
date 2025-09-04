@@ -56,8 +56,9 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
-	QuerySampleArguments QuerySampleArguments `alloy:"query_samples,block,optional"`
-	QueryTablesArguments QueryTablesArguments `alloy:"query_details,block,optional"`
+	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
+	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
+	ConnectionInfoArguments ConnectionInfoArguments `alloy:"connection_info,block,optional"`
 }
 
 type QuerySampleArguments struct {
@@ -69,6 +70,10 @@ type QueryTablesArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type ConnectionInfoArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
@@ -76,6 +81,9 @@ var DefaultArguments = Arguments{
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
+	},
+	ConnectionInfoArguments: ConnectionInfoArguments{
+		CollectInterval: 15 * time.Second,
 	},
 }
 
@@ -204,10 +212,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
-	})
-
 	for _, collector := range c.collectors {
 		collector.Stop()
 	}
@@ -221,6 +225,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
+		// Export base target so we still expose metrics while DB is unavailable.
+		c.opts.OnStateChange(Exports{
+			Targets: []discovery.Target{c.baseTarget},
+		})
 		return nil
 	}
 
@@ -253,12 +261,13 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 func (c *Component) startCollectors() error {
 	// Connection Info collector is always enabled
 	// value 1 on success and 0 on failure to establish the connection and check the engine version
-	startConnInfo := func(val float64, engineVersion string) {
+	startConnInfo := func(engineVersion string) {
 		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 			DSN:           string(c.args.DataSourceName),
 			Registry:      c.registry,
 			EngineVersion: engineVersion,
-			Value:         val,
+			CheckInterval: c.args.ConnectionInfoArguments.CollectInterval,
+			DB:            c.dbConnection,
 		})
 		if ciErr != nil {
 			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
@@ -275,23 +284,44 @@ func (c *Component) startCollectors() error {
 	if err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to open Postgres connection: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "")
+		startConnInfo("")
 		return err
 	}
 
 	if dbConnection == nil {
 		err = fmt.Errorf("failed to start collectors: nil DB connection")
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "")
+		startConnInfo("")
 		return err
 	}
 	if err = dbConnection.Ping(); err != nil {
 		err = fmt.Errorf("failed to start collectors: failed to ping Postgres: %w", err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "")
+		startConnInfo("")
 		return err
 	}
 	c.dbConnection = dbConnection
+
+	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		err = fmt.Errorf("failed to query engine version for collector %s: %w", collector.ConnectionInfoName, err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo("")
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		err = fmt.Errorf("failed to scan engine version for collector %s: %w", collector.ConnectionInfoName, err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		startConnInfo("")
+		return err
+	}
+
+	// Start the connection_info collector first, so we can report the connection status.
+	startConnInfo(engineVersion)
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -342,26 +372,6 @@ func (c *Component) startCollectors() error {
 			}
 		}
 	}
-
-	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
-	err = rs.Err()
-	if err != nil {
-		err = fmt.Errorf("failed to query engine version for collector %s: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "")
-		return err
-	}
-
-	var engineVersion string
-	if err := rs.Scan(&engineVersion); err != nil {
-		err = fmt.Errorf("failed to scan engine version for collector %s: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo(0, "")
-		return err
-	}
-
-	// Connection Info collector is always enabled (value 1 on success)
-	startConnInfo(1, engineVersion)
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
