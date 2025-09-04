@@ -377,7 +377,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 			break
 		}
 
-		level.Warn(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
+		level.Debug(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
 		c.metrics.batchRetries.WithLabelValues(c.cfg.URL.Host, tenantID).Inc()
 		backoff.Wait()
 
@@ -387,17 +387,15 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 	}
 
-	if err != nil {
-		level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
-		// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
-		// were for a different reason
-		dropReason := ReasonGeneric
-		if batchIsRateLimited(status) {
-			dropReason = ReasonRateLimited
-		}
-		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-		c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
+	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
+	// were for a different reason
+	dropReason := ReasonGeneric
+	if batchIsRateLimited(status) {
+		dropReason = ReasonRateLimited
 	}
+	c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
+	c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
 func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
