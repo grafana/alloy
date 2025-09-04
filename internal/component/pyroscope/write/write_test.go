@@ -413,7 +413,7 @@ func (s *AppendIngestTestSuite) TestErrorHandling() {
 	})
 
 	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
-	s.ErrorContains(err, "remote error for endpoint[1]: pyroscope write error: status=400 msg=I don't like your profile")
+	s.ErrorContains(err, "remote error: pyroscope write error: status=400 msg=I don't like your profile")
 }
 
 func (s *AppendIngestTestSuite) TestRetryLogic() {
