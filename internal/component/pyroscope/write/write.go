@@ -230,7 +230,6 @@ func (f *fanOutClient) Push(
 			for k, v := range f.config.Endpoints[i].Headers {
 				req.Header().Set(k, v)
 			}
-
 			for {
 				err = func() error {
 					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
@@ -434,7 +433,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
 					u, err := url.Parse(endpoint.URL)
 					if err != nil {
-						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("parse URL: %w", err)
 					}
 
 					u.Path = path.Join(u.Path, profile.URL.Path)
@@ -447,7 +446,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 					if err != nil {
-						return fmt.Errorf("create request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("create request: %w", err)
 					}
 
 					// set headers from endpoint
@@ -466,20 +465,20 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					resp, err := f.ingestClients[endpoint].Do(req)
 					if err != nil {
-						return fmt.Errorf("do request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("do request: %w", err)
 					}
 					defer resp.Body.Close()
 
 					if resp.StatusCode != http.StatusOK {
 						wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
 						wErr.readBody(resp)
-						return fmt.Errorf("remote error for endpoint[%d]: %w", i, wErr)
+						return fmt.Errorf("remote error: %w", wErr)
 					}
 
 					// Ensure full body is read to keep http connection Keep-Alive
 					_, err = io.Copy(io.Discard, resp.Body)
 					if err != nil {
-						return fmt.Errorf("reading response body for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("reading response body: %w", err)
 					}
 
 					return nil
@@ -490,7 +489,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					break
 				}
 				level.Debug(el).
-					Log("msg", "failed to push to endpoint", "err", err)
+					Log("msg", "failed to ingest to endpoint", "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -504,7 +503,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 				level.Warn(el).
-					Log("msg", "final error sending to profiles to endpoint", "err", err)
+					Log("msg", "final error ingesting profiles to endpoint", "err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
