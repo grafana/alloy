@@ -72,7 +72,9 @@ jobs:
       run: |
         RELEASE_BUILD=1 make -j4 dist
       env:
-        VERSION: ${{ github.ref_name }}
+        # TODO Restore after testing
+        VERSION: 'v1.999.999'
+        #VERSION: ${{ github.ref_name }}
 
     - name: Publish dist
       # TODO Restore after testing
@@ -164,7 +166,9 @@ jobs:
       run: |
         RELEASE_BUILD=1 makensis -V4 -DVERSION=$(VERSION) -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
-        VERSION: ${{ github.ref_name }}
+        # TODO Restore after testing
+        VERSION: 'v1.999.999'
+        #VERSION: ${{ github.ref_name }}
 
     - name: Publish unsigned Windows installer
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
