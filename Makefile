@@ -173,6 +173,10 @@ endif
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
 
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+
 #
 # Targets for building binaries
 #
