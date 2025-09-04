@@ -426,6 +426,12 @@ func (c *Component) startCollectors() error {
 	// Best-effort start: try building/starting every enabled collector and aggregate errors.
 	var startErrors []string
 
+	logStartError := func(collectorName, action string, err error) {
+		wrapped := fmt.Errorf("failed to %s %s collector: %w", action, collectorName, err)
+		level.Error(c.opts.Logger).Log("msg", wrapped.Error())
+		startErrors = append(startErrors, wrapped.Error())
+	}
+
 	if collectors[collector.QueryTablesName] {
 		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
 			DB:              c.dbConnection,
@@ -434,14 +440,10 @@ func (c *Component) startCollectors() error {
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.QueryTablesName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.QueryTablesName, "create", err)
 		} else {
 			if err := qtCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.QueryTablesName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.QueryTablesName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, qtCollector)
 			}
@@ -460,14 +462,10 @@ func (c *Component) startCollectors() error {
 			Logger:       c.opts.Logger,
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.SchemaTableName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.SchemaTableName, "create", err)
 		} else {
 			if err := stCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.SchemaTableName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.SchemaTableName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, stCollector)
 			}
@@ -485,14 +483,10 @@ func (c *Component) startCollectors() error {
 			SetupConsumersCheckInterval: c.args.QuerySampleArguments.SetupConsumersCheckInterval,
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.QuerySampleName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.QuerySampleName, "create", err)
 		} else {
 			if err := qsCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.QuerySampleName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.QuerySampleName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, qsCollector)
 			}
@@ -507,14 +501,10 @@ func (c *Component) startCollectors() error {
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.SetupConsumersName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.SetupConsumersName, "create", err)
 		} else {
 			if err := scCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.SetupConsumersName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.SetupConsumersName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, scCollector)
 			}
@@ -530,14 +520,10 @@ func (c *Component) startCollectors() error {
 			EntryHandler:      entryHandler,
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.LocksName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.LocksName, "create", err)
 		} else {
 			if err := locksCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.LocksName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.LocksName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, locksCollector)
 			}
@@ -555,14 +541,10 @@ func (c *Component) startCollectors() error {
 			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
 		})
 		if err != nil {
-			err = fmt.Errorf("failed to create %s collector: %w", collector.ExplainPlanName, err)
-			level.Error(c.opts.Logger).Log("msg", err.Error())
-			startErrors = append(startErrors, err.Error())
+			logStartError(collector.ExplainPlanName, "create", err)
 		} else {
 			if err := epCollector.Start(context.Background()); err != nil {
-				err = fmt.Errorf("failed to start %s collector: %w", collector.ExplainPlanName, err)
-				level.Error(c.opts.Logger).Log("msg", err.Error())
-				startErrors = append(startErrors, err.Error())
+				logStartError(collector.ExplainPlanName, "start", err)
 			} else {
 				c.collectors = append(c.collectors, epCollector)
 			}

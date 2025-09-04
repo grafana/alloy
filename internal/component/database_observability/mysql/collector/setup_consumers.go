@@ -51,7 +51,7 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 		registry:             args.Registry,
 		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
-		logger:               args.Logger,
+		logger:               log.With(args.Logger, "collector", SetupConsumersName),
 		collectInterval:      args.CollectInterval,
 	}, nil
 }
