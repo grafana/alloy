@@ -1,5 +1,7 @@
 name: Publish alloy release containers
 on:
+  # TODO Remove after testing
+  pull_request:
   push:
     tags:
       - v*
@@ -37,10 +39,11 @@ jobs:
     container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     runs-on:
       labels: github-hosted-ubuntu-x64-large
-    needs:
-    - publish_linux_container
-    - publish_linux_boringcrypto_container
-    - publish_windows_container
+    # TODO Restore after testing
+    #needs:
+    #- publish_linux_container
+    #- publish_linux_boringcrypto_container
+    #- publish_windows_container
     steps:
     - name: Checkout code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -65,46 +68,31 @@ jobs:
       env:
         VERSION: ${{ github.ref_name }}
 
-    - name: Publish signing script for Windows
-      if: github.ref_type == 'tag'
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: windows-signing-script
-        path: ./tools/signing/authenticode.ps1
-        if-no-files-found: error
-
     - name: Publish dist
-      if: github.ref_type == 'tag'
+      # TODO Restore after testing
+      #if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: dist
         path: ./dist
         if-no-files-found: error
 
-    - name: Publish unsigned Windows executable
-      if: github.ref_type == 'tag'
+    - name: Publish unsigned Windows executables
+      # TODO Restore after testing
+      #if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
-        name: windows-executable-unsigned
-        path: ./dist/alloy-windows-amd64.exe
-        if-no-files-found: error
-
-    - name: Publish unsigned Windows service executable
-      if: github.ref_type == 'tag'
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: windows-service-unsigned
-        path: ./dist.temp/alloy-service-windows-amd64.exe
+        name: windows-executables
+        path: |
+          ./dist/alloy-windows-amd64.exe
+          ./dist.temp/alloy-service-windows-amd64.exe
         if-no-files-found: error
 
   sign_alloy_windows:
     name: Sign Alloy executables for Windows
-    if: github.ref_type == 'tag'
+    # TODO Restore after testing
+    #if: github.ref_type == 'tag'
     runs-on: windows-2025
-    env:
-      TRUSTED_SIGNING_ACCOUNT: 'grafana-premium-eastus'
-      TRUSTED_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/'
-      TRUSTED_SIGNING_PROFILE: 'grafana-production'
     environment:
       name: azure-trusted-signing
     needs:
@@ -114,36 +102,6 @@ jobs:
       contents: read
       id-token: write
     steps:
-    - name: Download unsigned Windows executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-executable-unsigned
-        path: dist
-
-    - name: Download unsigned Windows service executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-service-unsigned
-        path: dist.temp
-
-    - name: Download signing script for Windows
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-signing-script
-        path: scripts
-
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
-      with:
-        # renovate: datasource=dotnet-version depName=dotnet-sdk
-        dotnet-version: '8.0.413'
-
-    - name: Install Sign CLI tool
-      env:
-        # renovate: datasource=nuget depName=sign
-        DOTNET_SIGN_VERSION: '0.9.1-beta.25379.1'
-      run: dotnet tool install --tool-path . sign --version ${env:DOTNET_SIGN_VERSION}
-
     - uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
       id: get-signing-secrets
       with:
@@ -153,44 +111,16 @@ jobs:
           subscription-id=azure-trusted-signing:subscription-id
           tenant-id=azure-trusted-signing:tenant-id
 
-    - name: Azure log in
-      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+    - name: Sign Windows binaries
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      id: sign-artifacts
       with:
-        client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
-        subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
-        tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
-
-    - name: Sign Alloy executable
-      shell: pwsh
-      run: |
-        ./scripts/authenticode.ps1 -FileToSign ./dist/alloy-windows-amd64.exe
-        if ($LASTEXITCODE -ne 0) {
-          Write-Output "::error::Failed to Authenticode sign Alloy executable"
-          exit 1
-        }
-
-    - name: Sign Alloy service executable
-      shell: pwsh
-      run: |
-        ./scripts/authenticode.ps1 -FileToSign ./dist.temp/alloy-service-windows-amd64.exe
-        if ($LASTEXITCODE -ne 0) {
-          Write-Output "::error::Failed to Authenticode sign Alloy service executable"
-          exit 1
-        }
-
-    - name: Publish signed Windows executable
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: windows-executable-signed
-        path: ./dist/alloy-windows-amd64.exe
-        if-no-files-found: error
-
-    - name: Publish signed Windows service executable
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: windows-service-signed
-        path: ./dist.temp/alloy-service-windows-amd64.exe
-        if-no-files-found: error
+        application-description: 'Grafana Alloy'
+        artifact-to-sign: 'windows-executables'
+        azure-client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
+        azure-subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
+        azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
+        signed-artifact-name: 'windows-executables-signed'
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
@@ -217,17 +147,11 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - name: Download signed Windows executable
+    - name: Download signed Windows executables
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
-        name: windows-executable-signed
-        path: dist
-
-    - name: Download signed Windows service executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-service-signed
-        path: dist.temp
+        name: windows-executables-signed
+        path: .
 
     # This step bypasses make so that Go does not rebuild the executables and lose the signed files from the previous job
     - name: Build unsigned Windows installer containing signed files
@@ -246,10 +170,6 @@ jobs:
   sign_alloy_windows_installer:
     name: Sign Alloy installer for Windows
     runs-on: windows-2025
-    env:
-      TRUSTED_SIGNING_ACCOUNT: 'grafana-premium-eastus'
-      TRUSTED_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/'
-      TRUSTED_SIGNING_PROFILE: 'grafana-production'
     environment:
       name: azure-trusted-signing
     needs:
@@ -259,30 +179,6 @@ jobs:
       contents: read
       id-token: write
     steps:
-    - name: Download unsigned Windows installer
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-installer-unsigned
-        path: dist
-
-    - name: Download signing script for Windows
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-signing-script
-        path: scripts
-
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
-      with:
-        # renovate: datasource=dotnet-version depName=dotnet-sdk
-        dotnet-version: '8.0.413'
-
-    - name: Install Sign CLI tool
-      env:
-        # renovate: datasource=nuget depName=sign
-        DOTNET_SIGN_VERSION: '0.9.1-beta.25379.1'
-      run: dotnet tool install --tool-path . sign --version ${env:DOTNET_SIGN_VERSION}
-
     - uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
       id: get-signing-secrets
       with:
@@ -292,32 +188,22 @@ jobs:
           subscription-id=azure-trusted-signing:subscription-id
           tenant-id=azure-trusted-signing:tenant-id
 
-    - name: Azure log in
-      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+    - name: Sign Windows binaries
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      id: sign-artifacts
       with:
-        client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
-        subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
-        tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
-
-    - name: Sign Alloy installer for Windows
-      shell: pwsh
-      run: |
-        ./scripts/authenticode.ps1 -FileToSign ./dist/alloy-installer-windows-amd64.exe
-        if ($LASTEXITCODE -ne 0) {
-          Write-Output "::error::Failed to Authenticode sign Alloy Windows installer"
-          exit 1
-        }
-
-    - name: Publish signed Windows installer
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-      with:
-        name: windows-installer-signed
-        path: ./dist/alloy-installer-windows-amd64.exe
-        if-no-files-found: error
+        application-description: 'Grafana Alloy'
+        artifact-to-sign: 'windows-installer-unsigned'
+        azure-client-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).client-id }}
+        azure-subscription-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).subscription-id }}
+        azure-tenant-id: ${{ fromJSON(steps.get-signing-secrets.outputs.secrets).tenant-id }}
+        signed-artifact-name: 'windows-installer-signed'
 
   publish_github_release:
     name: Publish GitHub release
-    if: github.ref_type == 'tag'
+    # TODO Restore after testing
+    if: false
+    #if: github.ref_type == 'tag'
     container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     runs-on:
       labels: github-hosted-ubuntu-x64-large
@@ -355,8 +241,8 @@ jobs:
     - name: Download signed Windows executable
       uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
       with:
-        name: windows-executable-signed
-        path: dist
+        name: windows-executables-signed
+        path: .
 
     # Overwrite the original Windows Alloy installer with the signed version
     - name: Download signed Windows installer
