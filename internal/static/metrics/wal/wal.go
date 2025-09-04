@@ -151,6 +151,13 @@ type Storage struct {
 	notifier wlog.WriteNotified
 }
 
+// stripeSeriesSize is the number of stripes to use for series locking. A larger number allows for more concurrent writes without
+// concerns for lock contention, but allocates a static amount of memory for each remote write component in use. This value is
+// 4x smaller than the current default for prometheus TSDB. There are discussions about dropping it even further in,
+// https://github.com/prometheus/prometheus/issues/17100. This value is likely still too high for our use case, but we
+// cannot easily test for lock contention we will play it safe and keep it higher for now.
+var stripeSeriesSize = 4096
+
 // NewStorage makes a new Storage.
 func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
 	// Convert go-kit logger to slog logger
@@ -166,7 +173,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 		wal:     w,
 		logger:  logger,
 		deleted: map[chunks.HeadSeriesRef]int{},
-		series:  newStripeSeries(tsdb.DefaultStripeSize),
+		series:  newStripeSeries(stripeSeriesSize),
 		metrics: newStorageMetrics(registerer),
 		nextRef: atomic.NewUint64(0),
 	}
