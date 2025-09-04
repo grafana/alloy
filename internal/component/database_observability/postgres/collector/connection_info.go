@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ type ConnectionInfoArguments struct {
 	EngineVersion string
 	CheckInterval time.Duration
 	DB            *sql.DB
+	HealthErr     *atomic.String
 }
 
 type ConnectionInfo struct {
@@ -36,9 +38,9 @@ type ConnectionInfo struct {
 	UpMetric      *prometheus.GaugeVec
 	CheckInterval time.Duration
 	DB            *sql.DB
-
-	running *atomic.Bool
-	cancel  context.CancelFunc
+	HealthErr     *atomic.String
+	running       *atomic.Bool
+	cancel        context.CancelFunc
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -66,6 +68,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		CheckInterval: args.CheckInterval,
 		DB:            args.DB,
 		running:       &atomic.Bool{},
+		HealthErr:     args.HealthErr,
 	}, nil
 }
 
@@ -120,6 +123,8 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			defer cancel()
 			if err := c.DB.PingContext(checkCtx); err == nil {
 				val = 1.0
+			} else {
+				c.HealthErr.Store(fmt.Errorf("database connection is down: %w", err).Error())
 			}
 		}
 		c.UpMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(val)

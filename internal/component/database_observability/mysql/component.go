@@ -340,6 +340,7 @@ func (c *Component) startCollectors() error {
 			CloudProvider: cloudProvider,
 			CheckInterval: c.args.ConnectionInfoArguments.CollectInterval,
 			DB:            c.dbConnection,
+			HealthErr:     c.healthErr,
 		})
 		if ciErr != nil {
 			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())

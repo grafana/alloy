@@ -212,6 +212,10 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.opts.OnStateChange(Exports{
+		Targets: []discovery.Target{c.baseTarget},
+	})
+
 	for _, collector := range c.collectors {
 		collector.Stop()
 	}
@@ -225,10 +229,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
-		// Export base target so we still expose metrics while DB is unavailable.
-		c.opts.OnStateChange(Exports{
-			Targets: []discovery.Target{c.baseTarget},
-		})
 		return nil
 	}
 
@@ -268,6 +268,7 @@ func (c *Component) startCollectors() error {
 			EngineVersion: engineVersion,
 			CheckInterval: c.args.ConnectionInfoArguments.CollectInterval,
 			DB:            c.dbConnection,
+			HealthErr:     c.healthErr,
 		})
 		if ciErr != nil {
 			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
