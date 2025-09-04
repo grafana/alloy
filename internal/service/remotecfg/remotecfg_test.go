@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -358,6 +359,181 @@ func TestUserAgentHeader(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+}
+
+// setupFallbackTest is a helper to reduce code duplication in fallback tests
+func setupFallbackTest(t *testing.T, initialConfig string) (*testEnvironment, *mockCollectorClient) {
+	ctx, cancel := context.WithCancel(t.Context())
+	url := "https://example.com/"
+
+	client := &mockCollectorClient{}
+	var registerCalled atomic.Bool
+
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(initialConfig, "", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+		url            = "%s"
+		poll_frequency = "10s"
+	`, url)))
+
+	// Run the service
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	// Wait for initial registration
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
+
+	// Cleanup function
+	t.Cleanup(func() {
+		cancel()
+		wg.Wait()
+	})
+
+	return env, client
+}
+
+func TestConfigFallbackToCache(t *testing.T) {
+	cfgGood := `loki.process "good" { forward_to = [] }`
+	cfgBad := `unparseable bad config`
+
+	env, client := setupFallbackTest(t, cfgGood)
+
+	// Verify initial state: good config loaded and cached
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+		b, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(b))
+	}, time.Second, 10*time.Millisecond)
+
+	// Switch API to return bad config that will fail to parse
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.mut.Unlock()
+
+	// Verify fallback behavior: bad config received, cache restoration succeeds
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Cache should still contain the good config (restoration source)
+		cachedContent, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(cachedContent), "cache should contain the good config used for restoration")
+
+		// Received hash = bad config (proves remote processing occurred)
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash(), "should record bad config as received")
+
+		// Loaded hash = good config (proves cache restoration succeeded)
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash(), "should maintain good config after cache restoration")
+
+		// Metrics show success (system has working config)
+		assert.Equal(c, float64(1), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "should indicate success after cache restoration")
+	}, 1*time.Second, 10*time.Millisecond)
+}
+
+func TestConfigFallbackToCacheFailure(t *testing.T) {
+	cfgGood := `loki.process "good" { forward_to = [] }`
+	cfgBad := `unparseable bad config`
+	corruptedCache := `corrupted cache content`
+
+	env, client := setupFallbackTest(t, cfgGood)
+
+	// Verify initial state: good config loaded
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+	}, time.Second, 10*time.Millisecond)
+
+	// Corrupt the cache to simulate cache failure
+	err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(corruptedCache), 0644)
+	require.NoError(t, err)
+
+	// Switch API to return bad config that will fail to parse
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.mut.Unlock()
+
+	// Verify double failure: both remote config and cache restoration fail
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Validate test setup: cache is actually corrupted
+		cachedContent, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, corruptedCache, string(cachedContent), "cache should contain corrupted content")
+
+		// Received hash = bad config (proves remote processing occurred)
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash(), "should record bad config as received")
+
+		// Loaded hash unchanged = good config (proves both remote and cache failed)
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash(), "should keep original good config when both remote and cache fail")
+
+		// Metrics show failure (neither remote nor cache succeeded)
+		assert.Equal(c, float64(0), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "should indicate failure when both remote and cache fail")
+	}, 1*time.Second, 10*time.Millisecond)
+}
+
+func TestConfigNeverSuccessfullyLoaded(t *testing.T) {
+	cfgBad := `unparseable bad config`
+
+	env, _ := setupFallbackTest(t, cfgBad)
+
+	// Write bad config to cache to simulate a scenario where both remote and cache are broken
+	err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(cfgBad), 0644)
+	require.NoError(t, err)
+
+	// Verify failure scenario: nothing ever successfully loaded
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Received hash = bad config (proves remote processing occurred)
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash(), "should record bad config as received")
+
+		// Loaded hash empty (proves nothing was ever successfully loaded)
+		assert.Equal(c, "", env.svc.cm.getLastLoadedCfgHash(), "should have empty loaded hash when nothing ever loaded successfully")
+
+		// Metrics show failure
+		assert.Equal(c, float64(0), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "should indicate failure when nothing loads successfully")
+	}, 1*time.Second, 10*time.Millisecond)
+}
+
+func TestConfigSkipCacheRestorationWhenSameHash(t *testing.T) {
+	cfgGood := `loki.process "good" { forward_to = [] }`
+	cfgBad := `unparseable bad config`
+
+	env, client := setupFallbackTest(t, cfgGood)
+
+	// Verify initial state: good config loaded and cached
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+	}, time.Second, 10*time.Millisecond)
+
+	// Replace cache with the bad config (simulating a scenario where someone manually corrupted the cache with the same content that will be sent remotely)
+	err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(cfgBad), 0644)
+	require.NoError(t, err)
+
+	// Switch API to return the same bad config
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.mut.Unlock()
+
+	// Verify that cache restoration is skipped when cached config has same hash as failed remote config
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Received hash = bad config (proves remote processing occurred)
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash(), "should record bad config as received")
+
+		// Loaded hash should still be the original good config (cache restoration was skipped because cache has same bad content)
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash(), "should keep original good config when cache contains same bad config")
+
+		// Cache should contain the bad config we wrote
+		cachedContent, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgBad, string(cachedContent), "cache should contain the bad config")
+
+		// Metrics show failure (remote failed and cache restoration was skipped)
+		assert.Equal(c, float64(0), testutil.ToFloat64(env.svc.metrics.lastLoadSuccess), "should indicate failure when remote fails and cache restoration is skipped")
+	}, 1*time.Second, 10*time.Millisecond)
 }
 
 func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {

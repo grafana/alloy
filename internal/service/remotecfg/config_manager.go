@@ -250,12 +250,35 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		return nil
 	}
 
+	level.Info(cm.logger).Log("msg", "attempting to parse and load new remote configuration", "config_hash", newConfigHash)
 	err = cm.parseAndLoad(b)
 	if err != nil {
 		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
-		level.Error(cm.logger).Log("msg", "failed to parse remote config",
+		level.Error(cm.logger).Log("msg", "failed to parse and load new remote configuration",
 			"received_hash", newConfigHash, "loaded_hash", cm.getLastLoadedCfgHash(), "err", err)
 		cm.metrics.lastLoadSuccess.Set(0)
+
+		// If we have a cached config, attempt to reload it to restore component health.
+		// Otherwise a partial working config will be left in the controller.
+		if cm.getLastLoadedCfgHash() != "" {
+			level.Info(cm.logger).Log("msg", "attempting to reload cached configuration to restore component health")
+			cachedConfig, err := cm.getCachedConfig()
+			if err != nil {
+				level.Error(cm.logger).Log("msg", "failed to read cached configuration for fallback", "err", err)
+				return err
+			}
+
+			err = cm.parseAndLoad(cachedConfig)
+			if err != nil {
+				level.Error(cm.logger).Log("msg", "failed to reload cached configuration", "err", err)
+				return err
+			}
+
+			level.Info(cm.logger).Log("msg", "successfully restored cached configuration")
+			cm.metrics.lastLoadSuccess.Set(1)
+			return nil
+		}
+
 		return err
 	}
 
