@@ -96,7 +96,9 @@ func (t *Target) processLoop(ctx context.Context) {
 	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-		t.stopWithError(err)
+		t.mu.Lock()
+		t.err = err
+		t.mu.Unlock()
 		return
 	}
 
@@ -109,7 +111,9 @@ func (t *Target) processLoop(ctx context.Context) {
 	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
-		t.stopWithError(err)
+		t.mu.Lock()
+		t.err = err
+		t.mu.Unlock()
 		return
 	}
 	defer logs.Close()
@@ -240,17 +244,8 @@ func (t *Target) StartIfNotRunning() {
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	t.stopWithError(nil)
-}
-
-func (t *Target) stopWithError(err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-
-	if err != nil {
-		t.err = err
-	}
-
 	if t.running {
 		t.running = false
 		if t.cancel != nil {
