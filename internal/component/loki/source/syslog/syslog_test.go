@@ -1,21 +1,24 @@
 package syslog
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/grafana/regexp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/regexp"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 )
 
 func Test(t *testing.T) {
@@ -53,7 +56,8 @@ func Test(t *testing.T) {
 	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] An application event log entry...`
 	con, err := net.Dial("tcp", tcpListenerAddr)
 	require.NoError(t, err)
-	writeMessageToStream(con, msg, fmtNewline)
+	err = writeMessageToStream(con, msg, fmtNewline)
+	require.NoError(t, err)
 	err = con.Close()
 	require.NoError(t, err)
 
@@ -77,7 +81,8 @@ func Test(t *testing.T) {
 	// Send a Syslog message over UDP to the second listener.
 	con, err = net.Dial("udp", udpListenerAddr)
 	require.NoError(t, err)
-	writeMessageToStream(con, msg, fmtOctetCounting)
+	err = writeMessageToStream(con, msg, fmtOctetCounting)
+	require.NoError(t, err)
 	err = con.Close()
 	require.NoError(t, err)
 
@@ -142,7 +147,8 @@ func TestWithRelabelRules(t *testing.T) {
 	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] An application event log entry...`
 	con, err := net.Dial("tcp", tcpListenerAddr)
 	require.NoError(t, err)
-	writeMessageToStream(con, msg, fmtNewline)
+	err = writeMessageToStream(con, msg, fmtNewline)
+	require.NoError(t, err)
 	err = con.Close()
 	require.NoError(t, err)
 
@@ -188,4 +194,86 @@ func mustNewRegexp(s string) alloy_relabel.Regexp {
 		panic(err)
 	}
 	return alloy_relabel.Regexp{Regexp: re}
+}
+
+func TestShutdownAndRebindOnSamePort(t *testing.T) {
+	opts := component.Options{
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}
+
+	addr := componenttest.GetFreeAddr(t)
+
+	// Create and start the first component listening on addr over TCP.
+	ch1 := loki.NewLogsReceiver()
+	args1 := Arguments{}
+	l1 := DefaultListenerConfig
+	l1.ListenAddress = addr
+	l1.ListenProtocol = "tcp"
+	l1.Labels = map[string]string{"phase": "first"}
+	args1.SyslogListeners = []ListenerConfig{l1}
+	args1.ForwardTo = []loki.LogsReceiver{ch1}
+
+	c1, err := New(opts, args1)
+	require.NoError(t, err)
+
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	done1 := make(chan error, 1)
+	go func() { done1 <- c1.Run(ctx1) }()
+	time.Sleep(200 * time.Millisecond)
+
+	// Create the second component on the same addr, don't start yet.
+	ch2 := loki.NewLogsReceiver()
+	args2 := Arguments{}
+	l2 := DefaultListenerConfig
+	l2.ListenAddress = addr
+	l2.ListenProtocol = "tcp"
+	l2.Labels = map[string]string{"phase": "second"}
+	args2.SyslogListeners = []ListenerConfig{l2}
+	args2.ForwardTo = []loki.LogsReceiver{ch2}
+
+	c2, err := New(opts, args2)
+	require.NoError(t, err)
+
+	// Stop first component and wait for shutdown to release the port.
+	cancel1()
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "timeout waiting for first component to stop")
+	case err := <-done1:
+		require.NoError(t, err)
+	}
+
+	// Run the second component
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	done2 := make(chan error, 1)
+	go func() { done2 <- c2.Run(ctx2) }()
+
+	// Send a syslog message to verify the second component successfully bound.
+	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] Rebind successful`
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		conn, err := net.Dial("tcp", addr)
+		require.NoError(collect, err)
+		require.NoError(collect, writeMessageToStream(conn, msg, fmtNewline))
+		require.NoError(collect, conn.Close())
+	}, 5*time.Second, 10*time.Millisecond, "failed to dial and write message to stream")
+
+	select {
+	case logEntry := <-ch2.Chan():
+		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+		require.Equal(t, "Rebind successful", logEntry.Line)
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "did not receive log from second component; port may not have been released")
+	}
+
+	// Cleanup second component.
+	cancel2()
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "timeout waiting for second component to stop")
+	case err := <-done2:
+		require.NoError(t, err)
+	}
 }

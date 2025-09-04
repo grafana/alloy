@@ -127,6 +127,8 @@ Main (unreleased)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
 
+- Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
+
 v1.10.2
 -----------------
 
