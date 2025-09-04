@@ -1,9 +1,11 @@
 package collector
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -79,14 +81,14 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 
@@ -189,14 +191,14 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
 			return len(lokiClient.Received()) == 8
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 
@@ -232,10 +234,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
+		var logBuffer bytes.Buffer
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			Logger:       log.NewLogfmtLogger(&logBuffer),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -260,17 +263,16 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 0
-		}, 2*time.Second, 100*time.Millisecond)
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
+			return strings.Contains(logBuffer.String(), `msg="no schema detected from pg_namespace"`)
+		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 0)
+		assert.Len(t, lokiClient.Received(), 0)
 	})
 
 	t.Run("collector logs column with null and empty string default values", func(t *testing.T) {
@@ -331,14 +333,14 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 3)
@@ -412,14 +414,14 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 3)
@@ -490,14 +492,14 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 3)

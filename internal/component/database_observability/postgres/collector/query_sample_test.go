@@ -1,9 +1,9 @@
 package collector
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -33,7 +33,7 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 		name                  string
 		setupMock             func(mock sqlmock.Sqlmock)
 		disableQueryRedaction bool
-		expectedError         bool
+		expectedErrorLine     string
 		expectedLabels        []model.LabelSet
 		expectedLines         []string
 	}{
@@ -57,7 +57,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM users",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -86,7 +85,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM large_table",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -120,7 +118,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"UPDATE users SET status = 'active'",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -151,9 +148,9 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"<insufficient privilege>",
 					))
 			},
-			expectedError:  false,
-			expectedLabels: []model.LabelSet{}, // No Loki entries expected
-			expectedLines:  []string{},         // No Loki entries expected
+			expectedErrorLine: `err="insufficient privilege to access query`,
+			expectedLabels:    []model.LabelSet{}, // No Loki entries expected
+			expectedLines:     []string{},         // No Loki entries expected
 		},
 		{
 			name: "null database name - no loki entries expected",
@@ -175,9 +172,9 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM users",
 					))
 			},
-			expectedError:  false,
-			expectedLabels: []model.LabelSet{}, // No Loki entries expected
-			expectedLines:  []string{},         // No Loki entries expected
+			expectedErrorLine: `err="database name is not valid`,
+			expectedLabels:    []model.LabelSet{}, // No Loki entries expected
+			expectedLines:     []string{},         // No Loki entries expected
 		},
 		{
 			name: "query with redaction disabled",
@@ -200,7 +197,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 					))
 			},
 			disableQueryRedaction: true,
-			expectedError:         false,
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
 			},
@@ -218,14 +214,14 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			logger := log.NewLogfmtLogger(os.Stderr)
+			var logBuffer bytes.Buffer
 			lokiClient := loki_fake.NewClient(func() {})
 
 			sampleCollector, err := NewQuerySample(QuerySampleArguments{
 				DB:                    db,
 				CollectInterval:       time.Second * 5,
 				EntryHandler:          lokiClient,
-				Logger:                logger,
+				Logger:                log.NewLogfmtLogger(&logBuffer),
 				DisableQueryRedaction: tc.disableQueryRedaction,
 			})
 			require.NoError(t, err)
@@ -237,27 +233,41 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
-			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
-			require.Eventually(t, func() bool {
-				entries := lokiClient.Received()
-				if len(entries) != len(tc.expectedLines) {
-					return false
-				}
-				for i, entry := range entries {
-					if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
+			if len(tc.expectedErrorLine) > 0 {
+				require.Eventually(t, func() bool {
+					if mock.ExpectationsWereMet() != nil {
 						return false
 					}
-					if !strings.Contains(entry.Line, tc.expectedLines[i]) {
+					entries := lokiClient.Received()
+					return strings.Contains(logBuffer.String(), tc.expectedErrorLine) && len(entries) == len(tc.expectedLines)
+				}, 2*time.Second, 50*time.Millisecond)
+			}
+
+			if len(tc.expectedLines) > 0 {
+				require.Eventually(t, func() bool {
+					if mock.ExpectationsWereMet() != nil {
 						return false
 					}
-					// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
-					expectedTimestamp := time.Unix(0, now.UnixNano())
-					if !entry.Timestamp.Equal(expectedTimestamp) {
+					entries := lokiClient.Received()
+					if len(entries) != len(tc.expectedLines) {
 						return false
 					}
-				}
-				return true
-			}, 5*time.Second, 100*time.Millisecond)
+					for i, entry := range entries {
+						if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
+							return false
+						}
+						if !strings.Contains(entry.Line, tc.expectedLines[i]) {
+							return false
+						}
+						// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
+						expectedTimestamp := time.Unix(0, now.UnixNano())
+						if !entry.Timestamp.Equal(expectedTimestamp) {
+							return false
+						}
+					}
+					return true
+				}, 2*time.Second, 50*time.Millisecond)
+			}
 
 			sampleCollector.Stop()
 
@@ -270,10 +280,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 
 			// Give time for goroutines to clean up
 			time.Sleep(100 * time.Millisecond)
-
-			// Verify mock expectations and Loki entries
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
 
 			lokiEntries := lokiClient.Received()
 			require.Equal(t, len(tc.expectedLines), len(lokiEntries))
