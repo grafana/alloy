@@ -134,11 +134,15 @@ Configuring the `rate` argument determines how fast the bucket refills, and conf
 The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
-| Name                    | Type           | Description                                | Default | Required |
-|-------------------------|----------------|--------------------------------------------|---------|----------|
-| `download`              | `bool`         | Whether to download sourcemaps.            | `true`  | no       |
-| `download_from_origins` | `list(string)` | Which origins to download sourcemaps from. | `["*"]` | no       |
-| `download_timeout`      | `duration`     | Timeout when downloading sourcemaps.       | `"1s"`  | no       |
+| Name                               | Type           | Description                                                                       | Default | Required |
+|------------------------------------|----------------|-----------------------------------------------------------------------------------|---------|----------|
+| `download`                         | `bool`         | Whether to download sourcemaps.                                                   | `true`  | no       |
+| `download_from_origins`            | `list(string)` | Which origins to download sourcemaps from.                                        | `["*"]` | no       |
+| `download_timeout`                 | `duration`     | Timeout when downloading sourcemaps.                                              | `"1s"`  | no       |
+| `cache_minimum_ttl`                | `duration`     | Duration after which source map is deleted from cache if not used                 | `inf`   | no       |
+| `cache_error_cleanup_interval`     | `duration`     | Duration after which the download of source map that previously failed is retried | `"1h"`  | no       |
+| `cache_cleanup_check_interval`     | `duration`     | How often should cached sourcemaps be checked for cleanup                         | `"1h"`  | no       |
+
 
 When exceptions are sent to the `faro.receiver` component, it can download sourcemaps from the web application.
 You can disable this behavior by setting the `download` argument to `false`.
@@ -150,6 +154,12 @@ The `*` character indicates a wildcard.
 
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
+
+By default, sourcemaps are held in memory indefinitely. By setting the `cache_minimum_ttl` sourcemaps will be cleared if not used during the specified duration.
+
+By default, if there is an error while downloading or parsing a sourcemap, error gets cached. After duration specified by `cache_error_cleanup_interval`, all errors get cleared from cache.
+
+By default, every 30s cached sourcemaps are checked for cleanup. The frequency of checking can be modified by setting the `cache_cleanup_check_interval` argument.
 
 To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
@@ -209,7 +219,7 @@ The template value is replaced with the release value provided by the [Faro Web 
 * `faro_receiver_request_message_bytes` (histogram): Size (in bytes) of HTTP requests received from clients.
 * `faro_receiver_response_message_bytes` (histogram): Size (in bytes) of HTTP responses sent to clients.
 * `faro_receiver_inflight_requests` (gauge): Current number of inflight requests.
-* `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
+* `faro_receiver_sourcemap_cache_size` (gauge): Number of items in sourcemap cache per origin.
 * `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
 * `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
 
