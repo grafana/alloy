@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -34,13 +35,13 @@ func Test(t *testing.T) {
 
 	l1 := DefaultListenerConfig
 	l1.ListenAddress = tcpListenerAddr
-	l1.ListenProtocol = "tcp"
-	l1.Labels = map[string]string{"protocol": "tcp"}
+	l1.ListenProtocol = syslogtarget.ProtocolTCP
+	l1.Labels = map[string]string{"protocol": syslogtarget.ProtocolTCP}
 
 	l2 := DefaultListenerConfig
 	l2.ListenAddress = udpListenerAddr
-	l2.ListenProtocol = "udp"
-	l2.Labels = map[string]string{"protocol": "udp"}
+	l2.ListenProtocol = syslogtarget.ProtocolUDP
+	l2.Labels = map[string]string{"protocol": syslogtarget.ProtocolUDP}
 
 	args.SyslogListeners = []ListenerConfig{l1, l2}
 	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
@@ -54,14 +55,14 @@ func Test(t *testing.T) {
 
 	// Create and send a Syslog message over TCP to the first listener.
 	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] An application event log entry...`
-	con, err := net.Dial("tcp", tcpListenerAddr)
+	con, err := net.Dial(syslogtarget.ProtocolTCP, tcpListenerAddr)
 	require.NoError(t, err)
 	err = writeMessageToStream(con, msg, fmtNewline)
 	require.NoError(t, err)
 	err = con.Close()
 	require.NoError(t, err)
 
-	wantLabelSet := model.LabelSet{"protocol": "tcp"}
+	wantLabelSet := model.LabelSet{"protocol": model.LabelValue(syslogtarget.ProtocolTCP)}
 
 	for i := 0; i < 2; i++ {
 		select {
@@ -79,7 +80,7 @@ func Test(t *testing.T) {
 	}
 
 	// Send a Syslog message over UDP to the second listener.
-	con, err = net.Dial("udp", udpListenerAddr)
+	con, err = net.Dial(syslogtarget.ProtocolUDP, udpListenerAddr)
 	require.NoError(t, err)
 	err = writeMessageToStream(con, msg, fmtOctetCounting)
 	require.NoError(t, err)
@@ -117,7 +118,7 @@ func TestWithRelabelRules(t *testing.T) {
 
 	l := DefaultListenerConfig
 	l.ListenAddress = tcpListenerAddr
-	l.Labels = map[string]string{"protocol": "tcp"}
+	l.Labels = map[string]string{"protocol": syslogtarget.ProtocolTCP}
 
 	args.SyslogListeners = []ListenerConfig{l}
 	args.ForwardTo = []loki.LogsReceiver{ch1}
@@ -145,7 +146,7 @@ func TestWithRelabelRules(t *testing.T) {
 
 	// Create and send a Syslog message over TCP to the first listener.
 	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] An application event log entry...`
-	con, err := net.Dial("tcp", tcpListenerAddr)
+	con, err := net.Dial(syslogtarget.ProtocolTCP, tcpListenerAddr)
 	require.NoError(t, err)
 	err = writeMessageToStream(con, msg, fmtNewline)
 	require.NoError(t, err)
@@ -154,7 +155,7 @@ func TestWithRelabelRules(t *testing.T) {
 
 	// The entry should've had the relabeling rules applied to it.
 	wantLabelSet := model.LabelSet{
-		"protocol":                     "tcp",
+		"protocol":                     model.LabelValue(syslogtarget.ProtocolTCP),
 		"syslog_connection_ip_address": "127.0.0.1",
 		"syslog_message_app_name":      "app",
 		"syslog_message_facility":      "local4",
@@ -210,7 +211,7 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	args1 := Arguments{}
 	l1 := DefaultListenerConfig
 	l1.ListenAddress = addr
-	l1.ListenProtocol = "tcp"
+	l1.ListenProtocol = syslogtarget.ProtocolTCP
 	l1.Labels = map[string]string{"phase": "first"}
 	args1.SyslogListeners = []ListenerConfig{l1}
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
@@ -228,7 +229,7 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	args2 := Arguments{}
 	l2 := DefaultListenerConfig
 	l2.ListenAddress = addr
-	l2.ListenProtocol = "tcp"
+	l2.ListenProtocol = syslogtarget.ProtocolTCP
 	l2.Labels = map[string]string{"phase": "second"}
 	args2.SyslogListeners = []ListenerConfig{l2}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
@@ -254,7 +255,7 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	msg := `<165>1 2023-01-05T09:13:17.001Z host1 app - id1 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"] Rebind successful`
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		conn, err := net.Dial("tcp", addr)
+		conn, err := net.Dial(syslogtarget.ProtocolTCP, addr)
 		require.NoError(collect, err)
 		require.NoError(collect, writeMessageToStream(conn, msg, fmtNewline))
 		require.NoError(collect, conn.Close())

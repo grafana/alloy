@@ -29,7 +29,7 @@ import (
 var (
 	DefaultIdleTimeout      = 120 * time.Second
 	DefaultMaxMessageLength = 8192
-	DefaultProtocol         = protocolTCP
+	DefaultProtocol         = ProtocolTCP
 )
 
 // SyslogTarget listens to syslog messages.
@@ -72,14 +72,14 @@ func NewSyslogTarget(
 	}
 
 	switch t.transportProtocol() {
-	case protocolTCP:
+	case ProtocolTCP:
 		t.transport = NewSyslogTCPTransport(
 			config,
 			t.handleMessage,
 			t.handleMessageError,
 			logger,
 		)
-	case protocolUDP:
+	case ProtocolUDP:
 		t.transport = NewSyslogUDPTransport(
 			config,
 			t.handleMessage,
