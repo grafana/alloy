@@ -675,8 +675,8 @@ github.com/containerd/ttrpc v1.2.7 h1:qIrroQvuOL9HQ1X6KHe2ohc7p+HP/0VE6XPU7elJRq
 github.com/containerd/ttrpc v1.2.7/go.mod h1:YCXHsb32f+Sq5/72xHubdiJRQY9inL4a4ZQrAbN1q9o=
 github.com/containerd/typeurl v1.0.2 h1:Chlt8zIieDbzQFzXzAeBEF92KhExuE4p9p92/QmY7aY=
 github.com/containerd/typeurl v1.0.2/go.mod h1:9trJWW2sRlGub4wZJRTW83VtbOLS6hwcDZXTn6oPz9s=
-github.com/containers/common v0.64.1 h1:E8vSiL+B84/UCsyVSb70GoxY9cu+0bseLujm4EKF6GE=
-github.com/containers/common v0.64.1/go.mod h1:CtfQNHoCAZqWeXMwdShcsxmMJSeGRgKKMqAwRKmWrHE=
+github.com/containers/common v0.64.2 h1:1xepE7QwQggUXxmyQ1Dbh6Cn0yd7ktk14sN3McSWf5I=
+github.com/containers/common v0.64.2/go.mod h1:o29GfYy4tefUuShm8mOn2AiL5Mpzdio+viHI7n24KJ4=
 github.com/coreos/bbolt v1.3.2/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/bbolt v1.3.3/go.mod h1:iRUV2dpdMOn7Bo10OQBFzIJO9kkE559Wcmn+qkEiiKk=
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
@@ -1166,8 +1166,6 @@ github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec/go.mod h1:1qoZ74W1muNrTyeP2fUzUbg2UKD8AeX435xSCJNub7Y=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.2 h1:RlkPl1M4jTHFvG/ZRLzdAjwg7iMyv0uDYD4km+0RnVk=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.2/go.mod h1:0q4lOMfUnpTxXtCmJSpuoQHb/2+hyj9TZiw8s7/SRi8=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250903104920-08eeb4019222 h1:jKzTvQo5e63wqn7dKlqYsdCw9ckLjfOoaR4c/qI69W4=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250903104920-08eeb4019222/go.mod h1:ajmdC82d8daScIWPT0Mmq95lvGmoBNMdAUBlWv/Hwbg=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
@@ -2664,6 +2662,8 @@ go.opentelemetry.io/contrib/samplers/jaegerremote v0.30.0 h1:bQ1Gvah4Sp8z7epSkgJ
 go.opentelemetry.io/contrib/samplers/jaegerremote v0.30.0/go.mod h1:9b8Q9rH52NgYH3ShiTFB5wf18Vt3RTH/VMB7LDcC1ug=
 go.opentelemetry.io/contrib/zpages v0.62.0 h1:9fUYTLmrK0x/lweM2uM+BOx069jLx8PxVqWhegGJ9Bo=
 go.opentelemetry.io/contrib/zpages v0.62.0/go.mod h1:C8kXoiC1Ytvereztus2R+kqdSa6W/MZ8FfS8Zwj+LiM=
+go.opentelemetry.io/obi v0.0.0-20250904101007-3520a9e1c48a h1:f5lu+SsV46YnEs6BPYOxLgCo0Sb2LZ0N/+9nKYQBWMc=
+go.opentelemetry.io/obi v0.0.0-20250904101007-3520a9e1c48a/go.mod h1:IlDfXX189ulcuPeKiWWHLP/jNlkMbXqhC6t+ck0VNIE=
 go.opentelemetry.io/otel v1.21.0/go.mod h1:QZzNPQPm1zLX4gZK4cMi+71eaorMSGT3A4znnUvNNEo=
 go.opentelemetry.io/otel v1.38.0 h1:RkfdswUDRimDg0m2Az18RKOsnI8UDzppJAtj01/Ymk8=
 go.opentelemetry.io/otel v1.38.0/go.mod h1:zcmtmQ1+YmQM9wrNsTGV/q/uyusom3P8RxwExxkZhjM=

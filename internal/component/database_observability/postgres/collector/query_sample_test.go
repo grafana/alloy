@@ -237,6 +237,12 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
+			require.Eventually(t, func() bool {
+				return mock.ExpectationsWereMet() == nil
+			}, 5*time.Second, 100*time.Millisecond)
+
+			sampleCollector.Stop()
+
 			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
 			require.Eventually(t, func() bool {
 				entries := lokiClient.Received()
@@ -259,8 +265,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 				return true
 			}, 5*time.Second, 100*time.Millisecond)
 
-			sampleCollector.Stop()
-
 			// Wait for the collector to stop
 			require.Eventually(t, func() bool {
 				return sampleCollector.Stopped()
@@ -270,10 +274,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 
 			// Give time for goroutines to clean up
 			time.Sleep(100 * time.Millisecond)
-
-			// Verify mock expectations and Loki entries
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
 
 			lokiEntries := lokiClient.Received()
 			require.Equal(t, len(tc.expectedLines), len(lokiEntries))

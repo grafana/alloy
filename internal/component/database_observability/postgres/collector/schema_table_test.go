@@ -260,17 +260,13 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 0
-		}, 2*time.Second, 100*time.Millisecond)
+			return mock.ExpectationsWereMet() == nil
+		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 0)
+		assert.Len(t, lokiClient.Received(), 0)
 	})
 
 	t.Run("collector logs column with null and empty string default values", func(t *testing.T) {
