@@ -109,6 +109,8 @@ Main (unreleased)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
 
+- `import.git` now supports `tls_config` block and proxy attributes. (@kinolaev)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
