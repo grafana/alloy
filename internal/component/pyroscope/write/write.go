@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -206,6 +207,7 @@ func (f *fanOutClient) Push(
 		errs                  error
 		errorMut              sync.Mutex
 		reqSize, profileCount = requestSize(req)
+		l                     = f.opts.Logger
 	)
 
 	for i, client := range f.pushClients {
@@ -218,6 +220,7 @@ func (f *fanOutClient) Push(
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
+			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
@@ -227,6 +230,7 @@ func (f *fanOutClient) Push(
 			for k, v := range f.config.Endpoints[i].Headers {
 				req.Header().Set(k, v)
 			}
+
 			for {
 				err = func() error {
 					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
@@ -241,8 +245,8 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Debug(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Debug(el).
+					Log("msg", "failed to push to endpoint", "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -255,8 +259,8 @@ func (f *fanOutClient) Push(
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(el).
+					Log("msg", "final error sending to profiles to endpoint", "err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -384,6 +388,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		errs                  error
 		errorMut              sync.Mutex
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
+		l                     = f.opts.Logger
 	)
 
 	// Handle labels
@@ -417,6 +422,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
+			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
@@ -483,8 +489,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Debug(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Debug(el).
+					Log("msg", "failed to push to endpoint", "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -497,8 +503,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(el).
+					Log("msg", "final error sending to profiles to endpoint", "err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
