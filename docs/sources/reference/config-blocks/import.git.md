@@ -142,3 +142,4 @@ math.add "default" {
 [import.file]: ../import.file/
 [basic_auth]: #basic_auth
 [ssh_key]: #ssh_key
+[tls_config]: #tls_config
