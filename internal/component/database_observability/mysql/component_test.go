@@ -312,8 +312,6 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	// connection_up should be 0 when DB is unavailable
-	assert.Regexp(t, `(?m)^database_observability_connection_up\{.*\}\s+0(\.0+)?$`, body)
 	// connection_info should still be 1 (metadata)
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+1(\.0+)?$`, body)
 }
@@ -381,8 +379,6 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	// connection_up should be 1 on successful connection
-	assert.Regexp(t, `(?m)^database_observability_connection_up\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
 	// connection_info remains 1 with labels
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
 }

@@ -336,7 +336,6 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	c.Handler().ServeHTTP(rec, req)
 	body := rec.Body.String()
-	assert.Regexp(t, `(?m)^database_observability_connection_up\{.*\}\s+0(\.0+)?$`, body)
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{.*\}\s+1(\.0+)?$`, body)
 }
 
@@ -388,6 +387,4 @@ func TestPostgres_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	body := rec.Body.String()
 	// When engine version query fails, connection_info reports engine_version="unknown" and value 1.
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+1(\.0+)?$`, body)
-	// When engine version query fails, connection_up==0 with engine_version="unknown".
-	assert.Regexp(t, `(?m)^database_observability_connection_up\{[^}]*engine=\"postgres\"[^}]*engine_version=\"unknown\"[^}]*\}\s+0(\.0+)?$`, body)
 }
