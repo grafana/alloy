@@ -23,7 +23,7 @@ You can specify multiple `prometheus.write.queue` components by giving them diff
 
 ```alloy
 prometheus.write.queue "<LABEL>" {
-  endpoint "default "{
+  endpoint "default" {
     url = "<REMOTE_WRITE_URL>"
 
     ...

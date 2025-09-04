@@ -126,6 +126,10 @@ The following components, grouped by namespace, _consume_ Targets.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+{{< /collapse >}}
+
 {{< collapse title="discovery" >}}
 - [discovery.process](../components/discovery/discovery.process)
 - [discovery.relabel](../components/discovery/discovery.relabel)

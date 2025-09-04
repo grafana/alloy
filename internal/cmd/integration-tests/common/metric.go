@@ -21,7 +21,7 @@ type MetricData struct {
 }
 
 type HistogramRawData struct {
-	Timestamp int64
+	Timestamp float64
 	Data      HistogramData
 }
 

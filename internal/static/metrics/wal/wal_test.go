@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -397,8 +398,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
 
 	// Close the WAL before we have a chance to remove the first RefIDs
-	err = s.Close()
-	require.NoError(t, err)
+	require.NoError(t, s.Close())
 
 	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
 	require.NoError(t, err)
@@ -414,6 +414,8 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	for _, ref := range duplicateSeriesRefs {
 		assert.Contains(t, s.deleted, ref)
 	}
+
+	require.NoError(t, s.Close())
 }
 
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
@@ -566,6 +568,42 @@ func BenchmarkAppendExemplar(b *testing.B) {
 
 	// Actually use appended exemplars in case they get eliminated
 	_ = app.Commit()
+}
+
+func BenchmarkCreateSeries(b *testing.B) {
+	walDir := b.TempDir()
+
+	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	defer s.Close()
+
+	app := s.Appender(b.Context()).(*appender)
+	lbls := make([]labels.Labels, b.N)
+
+	for i, l := range labelsForTest("benchmark", b.N) {
+		lbls[i] = labels.New(l...)
+	}
+
+	b.ResetTimer()
+
+	for _, l := range lbls {
+		app.getOrCreate(l)
+	}
+}
+
+// Create series for tests.
+func labelsForTest(lName string, seriesCount int) [][]labels.Label {
+	var s [][]labels.Label
+
+	for i := 0; i < seriesCount; i++ {
+		lset := []labels.Label{
+			{Name: "a", Value: lName},
+			{Name: "instance", Value: "localhost" + strconv.Itoa(i)},
+			{Name: "job", Value: "prometheus"},
+		}
+		s = append(s, lset)
+	}
+
+	return s
 }
 
 type sample struct {

@@ -45,6 +45,7 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
+  - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
@@ -59,11 +60,17 @@ Main (unreleased)
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
 
+- Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
+
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
   
 ### Enhancements
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
+
+- Improve logging in `pyroscope.write` component. (@korniltsev)
+
+- Add comprehensive latency metrics to `pyroscope.write` component with endpoint-specific tracking for both push and ingest operations. (@korniltsev, @claude)
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
@@ -95,6 +102,13 @@ Main (unreleased)
 
 - `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
 
+- Normalize attr key name in logfmt logger. (@zry98)
+
+- (_Experimental_) Add an extra parameter to the `array.combine_maps` standard library function
+  to enable preserving the first input list even if there is no match. (@ptodev)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
+
 - `import.git` now supports `tls_config` block and proxy attributes. (@kinolaev)
 
 ### Bugfixes
@@ -109,7 +123,7 @@ Main (unreleased)
 
 - Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
 
-- Fix issue in prometheus remote_write WAL which could allow it to hold an active series forever. (@kgeckhart)
+- Fix issue in `prometheus.remote_write`'s WAL which could allow it to hold an active series forever. (@kgeckhart)
 
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
@@ -220,6 +234,8 @@ v1.10.0
 - Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
 
 - Add `tail_from_end` argument to `loki.source.podlogs` to optionally start reading from the end of a log stream for newly discovered pods. (@harshrai654)
+
+- Remove limitation in `loki.source.file` when `legacy_position_file` is unset. Alloy can now recover legacy positions even if labels are added. (@kalleep)
 
 ### Bugfixes
 

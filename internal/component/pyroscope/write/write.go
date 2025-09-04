@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -200,11 +201,13 @@ func (f *fanOutClient) Push(
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
 
+	defer f.observeLatency("-", "push_total")()
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
 		reqSize, profileCount = requestSize(req)
+		l                     = f.opts.Logger
 	)
 
 	for i, client := range f.pushClients {
@@ -217,9 +220,11 @@ func (f *fanOutClient) Push(
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
+			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(f.config.Endpoints[i].URL, "push_endpoint")()
 			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
@@ -227,6 +232,7 @@ func (f *fanOutClient) Push(
 			}
 			for {
 				err = func() error {
+					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
 					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
 					defer cancel()
 
@@ -238,8 +244,8 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Debug(el).
+					Log("msg", "failed to push to endpoint", "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -252,8 +258,8 @@ func (f *fanOutClient) Push(
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(el).
+					Log("msg", "final error sending to profiles to endpoint", "err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -375,11 +381,13 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	defer f.observeLatency("-", "ingest_total")()
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
+		l                     = f.opts.Logger
 	)
 
 	// Handle labels
@@ -413,16 +421,19 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
+			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
 			defer wg.Done()
 
 			for {
 				err = func() error {
+					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
 					u, err := url.Parse(endpoint.URL)
 					if err != nil {
-						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("parse URL: %w", err)
 					}
 
 					u.Path = path.Join(u.Path, profile.URL.Path)
@@ -435,7 +446,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 					if err != nil {
-						return fmt.Errorf("create request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("create request: %w", err)
 					}
 
 					// set headers from endpoint
@@ -454,20 +465,20 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					resp, err := f.ingestClients[endpoint].Do(req)
 					if err != nil {
-						return fmt.Errorf("do request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("do request: %w", err)
 					}
 					defer resp.Body.Close()
 
 					if resp.StatusCode != http.StatusOK {
 						wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
 						wErr.readBody(resp)
-						return fmt.Errorf("remote error for endpoint[%d]: %w", i, wErr)
+						return fmt.Errorf("remote error: %w", wErr)
 					}
 
 					// Ensure full body is read to keep http connection Keep-Alive
 					_, err = io.Copy(io.Discard, resp.Body)
 					if err != nil {
-						return fmt.Errorf("reading response body for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("reading response body: %w", err)
 					}
 
 					return nil
@@ -477,8 +488,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Debug(el).
+					Log("msg", "failed to ingest to endpoint", "err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -491,8 +502,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				level.Warn(el).
+					Log("msg", "final error ingesting profiles to endpoint", "err", err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -501,6 +512,13 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {
+	t := time.Now()
+	return func() {
+		f.metrics.latency.WithLabelValues(endpoint, latencyType).Observe(time.Since(t).Seconds())
+	}
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.
