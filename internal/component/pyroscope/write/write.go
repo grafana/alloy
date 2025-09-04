@@ -241,7 +241,7 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
+				level.Debug(f.opts.Logger).
 					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				if !shouldRetry(err) {
 					break
@@ -483,7 +483,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
+				level.Debug(f.opts.Logger).
 					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
 				if !shouldRetry(err) {
 					break
