@@ -13,7 +13,7 @@ set -euxo pipefail
 #
 # If the environment variables are unset, the variables below default to an
 # empty string.
-export TARGET_CONTAINER=${1:-}
+
 PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
 export GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
 
@@ -123,6 +123,31 @@ case "$TARGET_CONTAINER" in
       --build-arg GOEXPERIMENT=boringcrypto             \
       -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
+      -f Dockerfile                                     \
+      .
+    ;;
+
+  alloy-devel-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS      \
+      --platform $BUILD_PLATFORMS          \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg VERSION="$VERSION"       \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG" \
+      -f Dockerfile                        \
+      .
+    ;;
+
+  alloy-devel-boringcrypto-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS                   \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
+      --build-arg RELEASE_BUILD=1                       \
+      --build-arg VERSION="$VERSION"                    \
+      --build-arg GOEXPERIMENT=boringcrypto             \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG-boringcrypto" \
       -f Dockerfile                                     \
       .
     ;;
