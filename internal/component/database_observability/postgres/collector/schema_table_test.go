@@ -1,9 +1,11 @@
 package collector
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -232,10 +234,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
+		var logBuffer bytes.Buffer
 		collector, err := NewSchemaTable(SchemaTableArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			Logger:       log.NewLogfmtLogger(&logBuffer),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -260,7 +263,10 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
+			if mock.ExpectationsWereMet() != nil {
+				return false
+			}
+			return strings.Contains(logBuffer.String(), `msg="no schema detected from pg_namespace"`)
 		}, 2*time.Second, 50*time.Millisecond)
 
 		collector.Stop()

@@ -1,9 +1,9 @@
 package collector
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -218,14 +218,14 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			logger := log.NewLogfmtLogger(os.Stderr)
+			var logBuffer bytes.Buffer
 			lokiClient := loki_fake.NewClient(func() {})
 
 			sampleCollector, err := NewQuerySample(QuerySampleArguments{
 				DB:                    db,
 				CollectInterval:       time.Second * 5,
 				EntryHandler:          lokiClient,
-				Logger:                logger,
+				Logger:                log.NewLogfmtLogger(&logBuffer),
 				DisableQueryRedaction: tc.disableQueryRedaction,
 			})
 			require.NoError(t, err)
@@ -238,32 +238,39 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Eventually(t, func() bool {
-				return mock.ExpectationsWereMet() == nil
-			}, 5*time.Second, 100*time.Millisecond)
+				if mock.ExpectationsWereMet() != nil {
+					return false
+				}
+				if len(tc.expectedLines) == 0 {
+					return strings.Contains(logBuffer.String(), `msg="invalid pg_stat_activity set"`)
+				}
+				return len(lokiClient.Received()) == len(tc.expectedLines)
+			}, 5*time.Second, 20*time.Millisecond)
 
 			sampleCollector.Stop()
 
-			// Wait for Loki entries to be generated and verify their content, labels, and timestamps.
-			require.Eventually(t, func() bool {
-				entries := lokiClient.Received()
-				if len(entries) != len(tc.expectedLines) {
-					return false
-				}
-				for i, entry := range entries {
-					if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
+			if len(tc.expectedLines) > 0 {
+				require.Eventually(t, func() bool {
+					entries := lokiClient.Received()
+					if len(entries) != len(tc.expectedLines) {
 						return false
 					}
-					if !strings.Contains(entry.Line, tc.expectedLines[i]) {
-						return false
+					for i, entry := range entries {
+						if !reflect.DeepEqual(entry.Labels, tc.expectedLabels[i]) {
+							return false
+						}
+						if !strings.Contains(entry.Line, tc.expectedLines[i]) {
+							return false
+						}
+						// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
+						expectedTimestamp := time.Unix(0, now.UnixNano())
+						if !entry.Timestamp.Equal(expectedTimestamp) {
+							return false
+						}
 					}
-					// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
-					expectedTimestamp := time.Unix(0, now.UnixNano())
-					if !entry.Timestamp.Equal(expectedTimestamp) {
-						return false
-					}
-				}
-				return true
-			}, 5*time.Second, 100*time.Millisecond)
+					return true
+				}, 2*time.Second, 50*time.Millisecond)
+			}
 
 			// Wait for the collector to stop
 			require.Eventually(t, func() bool {
