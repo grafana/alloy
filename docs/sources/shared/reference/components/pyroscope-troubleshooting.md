@@ -91,33 +91,6 @@ pyroscope.write "w2" {
 }
 ```
 
-**Option C: Configure both timeouts appropriately**
-
-For optimal configuration, consider both the expected latency and retry requirements:
-
-```alloy
-// First pyroscope.write in the chain
-pyroscope.write "w1" {
-  endpoint {
-    url = "http://pyroscope-receiver:8080"
-    remote_timeout = "25s"  // Allow time for downstream processing and retries
-    // ... other settings
-  }
-  // ... rest of configuration
-}
-
-// Downstream pyroscope.write (forwarded from receive_http)
-pyroscope.write "w2" {
-  endpoint {
-    url = "http://pyroscope-backend:4040"
-    remote_timeout = "5s"   // Shorter timeout for faster retries
-    max_backoff_retries = 3 // Allow multiple retry attempts
-    // ... other settings
-  }
-  // ... rest of configuration
-}
-```
-
 #### Important considerations
 
 - **Normal latency**: Pyroscope servers with the new architecture typically have 500-1000ms average latency for requests
