@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 )
 
-var recentMySQLVersion = semver.MustParse("8.0.32")
+var latestCompatibleVersion = semver.MustParse("8.0.32")
 
 func TestQuerySample(t *testing.T) {
 	defer goleak.VerifyNone(t)
@@ -397,7 +397,7 @@ func TestQuerySample(t *testing.T) {
 
 			collector, err := NewQuerySample(QuerySampleArguments{
 				DB:              db,
-				EngineVersion:   recentMySQLVersion,
+				EngineVersion:   latestCompatibleVersion,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -494,7 +494,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -591,7 +591,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -763,7 +763,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -885,7 +885,7 @@ func TestQuerySample_WaitEvents(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			EngineVersion:         recentMySQLVersion,
+			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1004,7 +1004,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			EngineVersion:         recentMySQLVersion,
+			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1114,7 +1114,7 @@ func TestQuerySampleDisableQueryRedaction(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                    db,
-			EngineVersion:         recentMySQLVersion,
+			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
 			Logger:                log.NewLogfmtLogger(os.Stderr),
@@ -1452,7 +1452,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1582,7 +1582,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1711,7 +1711,7 @@ func TestQuerySampleSQLDriverErrors(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:              db,
-			EngineVersion:   recentMySQLVersion,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -1935,7 +1935,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		c := &QuerySample{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 1e12,
 			lastUptime:    4,
 			entryHandler:  lokiClient,
@@ -2007,7 +2007,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		c := &QuerySample{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 1e12,
 			lastUptime:    4,
 			logger:        log.NewLogfmtLogger(os.Stderr),
@@ -2058,7 +2058,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		c := &QuerySample{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
 		}
 
@@ -2110,7 +2110,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		c := &QuerySample{
 			sqlParser:     &parser.TiDBSqlParser{},
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
 		}
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -2194,7 +2194,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		}))
 		c := &QuerySample{
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
 			lastUptime:    11,
 		}
@@ -2239,7 +2239,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		}))
 		c := &QuerySample{
 			dbConnection:  db,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 3e12,
 			lastUptime:    100,
 		}
@@ -2337,7 +2337,7 @@ func TestQuerySample_handles_timer_overflows(t *testing.T) {
 		c := &QuerySample{
 			dbConnection:  db,
 			sqlParser:     mockParser,
-			engineVersion: recentMySQLVersion,
+			engineVersion: latestCompatibleVersion,
 			timerBookmark: 2e12,
 			logger:        log.NewLogfmtLogger(os.Stderr),
 		}
@@ -2412,7 +2412,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                          db,
-			EngineVersion:               recentMySQLVersion,
+			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
@@ -2523,7 +2523,7 @@ func TestQuerySample_AutoEnableSetupConsumers(t *testing.T) {
 
 		collector, err := NewQuerySample(QuerySampleArguments{
 			DB:                          db,
-			EngineVersion:               recentMySQLVersion,
+			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
 			Logger:                      log.NewLogfmtLogger(os.Stderr),
