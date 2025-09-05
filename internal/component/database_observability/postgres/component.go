@@ -33,7 +33,14 @@ import (
 
 const name = "database_observability.postgres"
 
-const selectServerInfo = `SELECT (pg_control_system()).system_identifier, inet_server_addr(), inet_server_port(),setting as version FROM pg_settings WHERE name = 'server_version';`
+const selectServerInfo = `
+SELECT 
+	(pg_control_system()).system_identifier, 
+	inet_server_addr(), 
+	inet_server_port(),
+	setting as version 
+FROM pg_settings 
+WHERE name = 'server_version';`
 
 func init() {
 	component.Register(component.Registration{
