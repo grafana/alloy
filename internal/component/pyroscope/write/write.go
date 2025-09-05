@@ -662,7 +662,7 @@ func configureTracing(config Arguments, httpClient *http.Client) error {
 			propagators = append(propagators, jaeger.Jaeger{}) // pyroscope uses jaeger
 		}
 		if config.Tracing.TraceContextPropagator {
-			propagators = append(propagators, propagation.TraceContext{})
+			propagators = append(propagators, propagation.TraceContext{}) // for good luck
 		}
 		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport,
 			otelhttp.WithPropagators(
