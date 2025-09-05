@@ -35,6 +35,11 @@ Main (unreleased)
 
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
+- [`otelcol.processor.batch`] Two arguments have different default values:
+  * `send_batch_size` is now set to 2000 by default. It used to be 8192.
+  * `send_batch_max_size` is now set to 3000 by default. It used to be 0.
+  This helps prevent issues with ingestion of batches that are too large.
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)

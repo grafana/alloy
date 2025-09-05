@@ -51,7 +51,8 @@ var (
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
 	Timeout:                  200 * time.Millisecond,
-	SendBatchSize:            8192,
+	SendBatchSize:            2000,
+	SendBatchMaxSize:         3000,
 	MetadataCardinalityLimit: 1000,
 }
 
