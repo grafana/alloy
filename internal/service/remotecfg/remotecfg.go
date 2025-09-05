@@ -276,9 +276,10 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 
 	response, err := s.apiClient.GetConfig(s.getContext(), &connect.Request[collectorv1.GetConfigRequest]{
 		Msg: &collectorv1.GetConfigRequest{
-			Id:              s.args.ID,
-			LocalAttributes: s.attrs,
-			Hash:            s.cm.getRemoteHash(),
+			Id:                 s.args.ID,
+			LocalAttributes:    s.attrs,
+			Hash:               s.cm.getRemoteHash(),
+			RemoteConfigStatus: s.cm.getRemoteConfigStatus(),
 		},
 	})
 
