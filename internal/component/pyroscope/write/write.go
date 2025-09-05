@@ -17,11 +17,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
@@ -116,6 +114,7 @@ type Component struct {
 	onStateChange func(Exports)
 	cfg           Arguments
 	metrics       *metrics
+	uid           string
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -129,11 +128,12 @@ func New(
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
+	uid string,
 	c Arguments,
 ) (*Component, error) {
 
 	metrics := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, metrics)
+	receiver, err := newFanOut(logger, tracer, c, metrics, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +141,7 @@ func New(
 	onStateChange(Exports{Receiver: receiver})
 
 	return &Component{
+		uid:           uid,
 		cfg:           c,
 		logger:        logger,
 		tracer:        tracer,
@@ -149,8 +150,6 @@ func New(
 	}, nil
 }
 
-var _ component.Component = (*Component)(nil)
-
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
 	<-ctx.Done()
@@ -158,9 +157,9 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 // Update implements Component.
-func (c *Component) Update(newConfig component.Arguments) error {
-	c.cfg = newConfig.(Arguments)
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics)
+func (c *Component) Update(newConfig Arguments) error {
+	c.cfg = newConfig
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.uid)
 	if err != nil {
 		return err
 	}
@@ -179,10 +178,9 @@ type fanOutClient struct {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
-	uid := alloyseed.Get().UID
 
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {

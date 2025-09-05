@@ -98,6 +98,7 @@ func Test_Write_FanOut(t *testing.T) {
 				defer wg.Done()
 				export = e
 			},
+			"",
 			arg,
 		)
 		require.NoError(t, err)
@@ -175,6 +176,7 @@ func Test_Write_Update(t *testing.T) {
 			defer wg.Done()
 			export = e
 		},
+		"",
 		argument,
 	)
 	require.NoError(t, err)
@@ -314,6 +316,7 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 			defer wg.Done()
 			s.export = e
 		},
+		"",
 		argument,
 	)
 	s.Require().NoError(err)
@@ -595,6 +598,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 			defer wg.Done()
 			export = e
 		},
+		"",
 		argument,
 	)
 	require.NoError(t, err)
