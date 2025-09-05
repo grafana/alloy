@@ -155,7 +155,7 @@ func New(
 	onStateChange func(Exports),
 	c Arguments,
 ) (*Component, error) {
-	
+
 	metrics := newMetrics(reg)
 	receiver, err := newFanOut(logger, tracer, c, metrics)
 	if err != nil {
@@ -263,13 +263,17 @@ func (f *fanOutClient) Push(
 		dl = "none"
 	}
 	defer func() {
-		_ = level.Debug(l).Log(
+		if errs != nil {
+			l = level.Warn(log.With(l, "err", errs))
+		} else {
+			l = level.Debug(l)
+		}
+		_ = l.Log(
 			"msg", "Push",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
 			"st", st,
-			"err", errs,
 		)
 	}()
 
@@ -283,7 +287,6 @@ func (f *fanOutClient) Push(
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
-			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
@@ -307,8 +310,12 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Debug(el).
-					Log("msg", "failed to push to endpoint", "err", err)
+				_ = level.Debug(l).Log("msg",
+					"failed to push to endpoint",
+					"endpoint", f.config.Endpoints[i].URL,
+					"retries", backoff.NumRetries(),
+					"err", err,
+				)
 				if !shouldRetry(err) {
 					break
 				}
@@ -321,8 +328,7 @@ func (f *fanOutClient) Push(
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(el).
-					Log("msg", "final error sending to profiles to endpoint", "err", err)
+				err = fmt.Errorf("failed to push to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -463,13 +469,17 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		dl = "none"
 	}
 	defer func() {
-		_ = level.Debug(l).Log(
+		if errs != nil {
+			l = level.Warn(log.With(l, "err", errs))
+		} else {
+			l = level.Debug(l)
+		}
+		_ = l.Log(
 			"msg", "AppendIngest",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
 			"st", st,
-			"err", errs,
 		)
 	}()
 
@@ -504,13 +514,11 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
 			})
 			err error
-			el  = log.With(l, "endpoint", f.config.Endpoints[i].URL)
 		)
 		wg.Add(1)
 		go func() {
 			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
 			defer wg.Done()
-
 			for {
 				err = func() error {
 					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
@@ -571,8 +579,11 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Debug(el).
-					Log("msg", "failed to ingest to endpoint", "err", err)
+				_ = level.Debug(l).Log(
+					"msg", "failed to ingest to endpoint",
+					"endpoint", f.config.Endpoints[i].URL,
+					"retries", backoff.NumRetries(),
+					"err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -585,8 +596,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(el).
-					Log("msg", "final error ingesting profiles to endpoint", "err", err)
+				err = fmt.Errorf("failed to ingest to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
