@@ -206,7 +206,6 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
-	level.Debug(l).Log("msg", "Profiles successfully forwarded")
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
@@ -295,7 +294,6 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	level.Debug(l).Log("msg", "Profiles successfully ingested")
 	w.WriteHeader(http.StatusOK)
 }
 
