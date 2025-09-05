@@ -2,11 +2,8 @@ package collector
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
@@ -25,9 +22,6 @@ type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
-	CheckInterval time.Duration
-	DB            *sql.DB
-	HealthErr     *atomic.String
 }
 
 type ConnectionInfo struct {
@@ -35,11 +29,8 @@ type ConnectionInfo struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
-	CheckInterval time.Duration
-	DB            *sql.DB
-	HealthErr     *atomic.String
-	running       *atomic.Bool
-	cancel        context.CancelFunc
+
+	running *atomic.Bool
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -56,10 +47,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Registry:      args.Registry,
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
-		CheckInterval: args.CheckInterval,
-		DB:            args.DB,
 		running:       &atomic.Bool{},
-		HealthErr:     args.HealthErr,
 	}, nil
 }
 
@@ -106,40 +94,6 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	}
 
 	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(1)
-
-	update := func(ctx context.Context) {
-		if c.DB != nil {
-			checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			defer cancel()
-			if err := c.DB.PingContext(checkCtx); err != nil {
-				c.HealthErr.Store(fmt.Errorf("database connection is down: %w", err).Error())
-			} else {
-				c.HealthErr.Store("")
-			}
-		}
-	}
-
-	ctx2, cancel := context.WithCancel(ctx)
-	c.cancel = cancel
-	update(ctx2)
-
-	interval := c.CheckInterval
-	if interval <= 0 {
-		interval = 15 * time.Second
-	}
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx2.Done():
-				return
-			case <-ticker.C:
-				update(ctx2)
-			}
-		}
-	}()
-
 	return nil
 }
 
@@ -148,9 +102,6 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
-	if c.cancel != nil {
-		c.cancel()
-	}
 	c.Registry.Unregister(c.InfoMetric)
 	c.running.Store(false)
 }

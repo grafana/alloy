@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -131,9 +130,14 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
+	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	return newWithOpen(opts, args, sql.Open)
+}
+
+func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -141,6 +145,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
+		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -206,6 +211,12 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 }
 
 func (c *Component) Update(args component.Arguments) error {
+	reportError := func(errorWrapper string, err error) {
+		err = fmt.Errorf("%s: %w", errorWrapper, err)
+		level.Error(c.opts.Logger).Log("msg", err.Error())
+		c.healthErr.Store(err.Error())
+	}
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
@@ -215,30 +226,33 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
+	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		return err
+		reportError("failed to open database connection", err)
+		return nil
 	}
 
 	if dbConnection == nil {
-		return errors.New("nil DB connection")
+		reportError("nil DB connection", nil)
+		return nil
 	}
 	if err = dbConnection.Ping(); err != nil {
-		return err
+		reportError("failed to ping database", err)
+		return nil
 	}
 	c.dbConnection = dbConnection
 
 	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
 	err = rs.Err()
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
+		reportError("failed to query engine version", err)
+		return nil
 	}
 
 	var systemID, systemIP, systemPort, engineVersion string
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
+		reportError("failed to scan engine version", err)
+		return nil
 	}
 
 	systemID = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID, systemIP, systemPort))))
@@ -262,7 +276,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if err := c.startCollectors(systemID, engineVersion); err != nil {
 		c.healthErr.Store(err.Error())
-		return err
+		return nil
 	}
 
 	c.healthErr.Store("")

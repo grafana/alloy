@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -54,16 +53,14 @@ func TestConnectionInfo(t *testing.T) {
 			DSN:           tc.dsn,
 			Registry:      reg,
 			EngineVersion: tc.engineVersion,
-			CheckInterval: time.Second,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		require.NoError(t, collector.Start(t.Context()))
-		defer collector.Stop()
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
 
-		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics)))
+		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))
+		require.NoError(t, err)
 	}
 }
-
-// connection_up-related tests removed
