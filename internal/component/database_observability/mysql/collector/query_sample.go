@@ -142,8 +142,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	c.cancel = cancel
 
 	if err := c.initializeBookmark(c.ctx); err != nil {
-		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
-		return err
+		return fmt.Errorf("failed to initialize bookmark: %w", err)
 	}
 
 	// Start setup_consumers check goroutine if enabled

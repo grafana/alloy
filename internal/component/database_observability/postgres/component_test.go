@@ -9,10 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	kitlog "github.com/go-kit/log"
+	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -303,4 +306,23 @@ func Test_addLokiLabels(t *testing.T) {
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})
+}
+
+func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
+	t.Parallel()
+
+	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
+	opts := cmp.Options{
+		ID:     "test.postgres",
+		Logger: kitlog.NewNopLogger(),
+		GetServiceData: func(name string) (interface{}, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+	assert.NotEmpty(t, h.Message)
 }
