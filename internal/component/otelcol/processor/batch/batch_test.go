@@ -191,7 +191,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expectedArguments: batch.Arguments{
 				Timeout:                  batch.DefaultArguments.Timeout,
 				SendBatchSize:            batch.DefaultArguments.SendBatchSize,
-				SendBatchMaxSize:         0,
+				SendBatchMaxSize:         batch.DefaultArguments.SendBatchMaxSize,
 				MetadataKeys:             nil,
 				MetadataCardinalityLimit: batch.DefaultArguments.MetadataCardinalityLimit,
 			},
