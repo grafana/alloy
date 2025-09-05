@@ -16,6 +16,7 @@ set -euxo pipefail
 
 PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
 export GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
+GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
 
 if [ "$GITHUB_REF_TYPE" = "tag" ]; then
   export GITHUB_TAG="$GITHUB_REF_NAME"
