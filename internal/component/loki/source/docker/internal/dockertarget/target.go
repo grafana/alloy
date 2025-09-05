@@ -40,8 +40,6 @@ const (
 type Target struct {
 	logger        log.Logger
 	handler       loki.EntryHandler
-	since         int64
-	last          int64
 	positions     positions.Positions
 	containerName string
 	labels        model.LabelSet
@@ -49,11 +47,17 @@ type Target struct {
 	relabelConfig []*relabel.Config
 	metrics       *Metrics
 
-	cancel  context.CancelFunc
-	client  client.APIClient
-	wg      sync.WaitGroup
-	running *atomic.Bool
+	client client.APIClient
+
+	mu      sync.Mutex // protects cancel, running and err fields
 	err     error
+	running bool
+	cancel  context.CancelFunc
+
+	wg sync.WaitGroup
+
+	last  *atomic.Int64
+	since *atomic.Int64
 }
 
 // NewTarget starts a new target to read logs from a given container ID.
@@ -64,7 +68,6 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 		return nil, err
 	}
 	var since int64
-	var last int64
 	if pos != 0 {
 		since = pos
 	}
@@ -72,17 +75,15 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 	t := &Target{
 		logger:        logger,
 		handler:       handler,
-		since:         since,
-		last:          last,
+		since:         atomic.NewInt64(since),
+		last:          atomic.NewInt64(0),
 		positions:     position,
 		containerName: containerID,
 		labels:        labels,
 		labelsStr:     labelsStr,
 		relabelConfig: relabelConfig,
 		metrics:       metrics,
-
-		client:  client,
-		running: atomic.NewBool(false),
+		client:        client,
 	}
 
 	// NOTE (@tpaschalis) The original Promtail implementation would call
@@ -92,31 +93,30 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 }
 
 func (t *Target) processLoop(ctx context.Context) {
-	t.running.Store(true)
-	defer t.running.Store(false)
+	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
+	if err != nil {
+		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
+		t.mu.Lock()
+		t.err = err
+		t.mu.Unlock()
+		return
+	}
 
-	t.wg.Add(1)
-	defer t.wg.Done()
-
-	opts := container.LogsOptions{
+	logs, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
 		Timestamps: true,
-		Since:      strconv.FormatInt(t.since, 10),
-	}
-	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
-	if err != nil {
-		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-		t.err = err
-		return
-	}
-	logs, err := t.client.ContainerLogs(ctx, t.containerName, opts)
+		Since:      strconv.FormatInt(t.since.Load(), 10),
+	})
 	if err != nil {
 		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
+		t.mu.Lock()
 		t.err = err
+		t.mu.Unlock()
 		return
 	}
+	defer logs.Close()
 
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
@@ -150,7 +150,6 @@ func (t *Target) processLoop(ctx context.Context) {
 
 	// Wait until done
 	<-ctx.Done()
-	logs.Close()
 	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerName)
 }
 
@@ -223,25 +222,35 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
 		t.positions.Put(positions.CursorKey(t.containerName), t.labelsStr, ts.Unix())
-		t.since = ts.Unix()
-		t.last = time.Now().Unix()
+		t.since.Store(ts.Unix())
+		t.last.Store(time.Now().Unix())
 	}
 }
 
 // StartIfNotRunning starts processing container logs. The operation is idempotent , i.e. the processing cannot be started twice.
 func (t *Target) StartIfNotRunning() {
-	if t.running.CompareAndSwap(false, true) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
+
 		ctx, cancel := context.WithCancel(context.Background())
 		t.cancel = cancel
+		t.running = true
+
 		go t.processLoop(ctx)
 	}
 }
 
 // Stop shuts down the target.
 func (t *Target) Stop() {
-	if t.Ready() {
-		t.cancel()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.running {
+		t.running = false
+		if t.cancel != nil {
+			t.cancel()
+		}
 		t.wg.Wait()
 		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerName)
 	}
@@ -249,7 +258,9 @@ func (t *Target) Stop() {
 
 // Ready reports whether the target is running.
 func (t *Target) Ready() bool {
-	return t.running.Load()
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.running
 }
 
 // LabelsStr returns the target's original labels string representation.
@@ -273,19 +284,24 @@ func (t *Target) Path() string {
 }
 
 // Last returns the unix timestamp of the target's last processing loop.
-func (t *Target) Last() int64 { return t.last }
+func (t *Target) Last() int64 { return t.last.Load() }
 
 // Details returns target-specific details.
 func (t *Target) Details() map[string]string {
+	t.mu.Lock()
+	running := t.running
+
 	var errMsg string
 	if t.err != nil {
 		errMsg = t.err.Error()
 	}
+	t.mu.Unlock()
+
 	return map[string]string{
 		"id":       t.containerName,
 		"error":    errMsg,
 		"position": t.positions.GetString(positions.CursorKey(t.containerName), t.labelsStr),
-		"running":  strconv.FormatBool(t.running.Load()),
+		"running":  strconv.FormatBool(running),
 	}
 }
 
