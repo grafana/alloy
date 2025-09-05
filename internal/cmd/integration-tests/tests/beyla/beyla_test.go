@@ -11,5 +11,12 @@ func TestBeylaMetrics(t *testing.T) {
 		"beyla_internal_build_info",                // check that internal Beyla metrics are reported
 		"http_server_request_duration_seconds_sum", // check that the target metrics are reported
 	}
-	common.MimirMetricsTest(t, beylaMetrics, []string{}, "beyla")
+	config := common.Config{
+		T:                t,
+		TestName:         "beyla",
+		Metrics:          beylaMetrics,
+		HistogramMetrics: []string{},
+		ExpectedMetadata: common.ExpectedMetadata,
+	}
+	common.MimirMetricsTest(config)
 }

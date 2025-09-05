@@ -164,5 +164,9 @@ func TestUnixMetrics(t *testing.T) {
 			"node_memory_Hugepagesize_bytes")
 	}
 
-	common.MimirMetricsTest(t, expectedMetrics, []string{}, "unix_metrics")
+	common.MimirMetricsTest(common.Config{
+		T:        t,
+		TestName: "unix_metrics",
+		Metrics:  expectedMetrics,
+	})
 }
