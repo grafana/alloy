@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
@@ -21,7 +21,7 @@ func TestManager(t *testing.T) {
 
 	m, _ := NewManager(Options{}, NewDefaultArguments(), pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 		return nil
-	}), util.TestLogger(t))
+	}), slim.TestLogger(t))
 
 	defer m.Stop()
 	targetSetsChan := make(chan []*targetgroup.Group)

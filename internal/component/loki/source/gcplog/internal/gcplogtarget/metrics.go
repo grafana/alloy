@@ -6,7 +6,7 @@ package gcplogtarget
 // from GCP.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -55,10 +55,10 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Number of parsing errors while receiving gcplog messages",
 	}, []string{"reason"})
 
-	m.gcplogEntries = util.MustRegisterOrGet(reg, m.gcplogEntries).(*prometheus.CounterVec)
-	m.gcplogErrors = util.MustRegisterOrGet(reg, m.gcplogErrors).(*prometheus.CounterVec)
-	m.gcplogTargetLastSuccessScrape = util.MustRegisterOrGet(reg, m.gcplogTargetLastSuccessScrape).(*prometheus.GaugeVec)
-	m.gcpPushEntries = util.MustRegisterOrGet(reg, m.gcpPushEntries).(*prometheus.CounterVec)
-	m.gcpPushErrors = util.MustRegisterOrGet(reg, m.gcpPushErrors).(*prometheus.CounterVec)
+	m.gcplogEntries = slim.MustRegisterOrGet(reg, m.gcplogEntries).(*prometheus.CounterVec)
+	m.gcplogErrors = slim.MustRegisterOrGet(reg, m.gcplogErrors).(*prometheus.CounterVec)
+	m.gcplogTargetLastSuccessScrape = slim.MustRegisterOrGet(reg, m.gcplogTargetLastSuccessScrape).(*prometheus.GaugeVec)
+	m.gcpPushEntries = slim.MustRegisterOrGet(reg, m.gcpPushEntries).(*prometheus.CounterVec)
+	m.gcpPushErrors = slim.MustRegisterOrGet(reg, m.gcpPushErrors).(*prometheus.CounterVec)
 	return &m
 }

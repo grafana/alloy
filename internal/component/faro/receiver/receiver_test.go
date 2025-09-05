@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/common/model"
@@ -60,7 +61,7 @@ func Test(t *testing.T) {
 			ctx := componenttest.TestContext(t)
 
 			ctrl, err := componenttest.NewControllerFromID(
-				util.TestLogger(t),
+				slim.TestLogger(t),
 				"faro.receiver",
 			)
 			require.NoError(t, err)

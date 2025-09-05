@@ -11,7 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ import (
 
 func TestRunnerTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -68,7 +68,7 @@ func TestRunnerTailer(t *testing.T) {
 
 func TestRunnerDecompressor(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{

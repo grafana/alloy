@@ -5,7 +5,7 @@ package herokutarget
 // to other loki components.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -27,7 +27,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Number of parsing errors while receiving Heroku messages",
 	})
 
-	m.herokuEntries = util.MustRegisterOrGet(reg, m.herokuEntries).(prometheus.Counter)
-	m.herokuErrors = util.MustRegisterOrGet(reg, m.herokuErrors).(prometheus.Counter)
+	m.herokuEntries = slim.MustRegisterOrGet(reg, m.herokuEntries).(prometheus.Counter)
+	m.herokuErrors = slim.MustRegisterOrGet(reg, m.herokuErrors).(prometheus.Counter)
 	return &m
 }

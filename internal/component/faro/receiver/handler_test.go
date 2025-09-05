@@ -11,7 +11,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +33,7 @@ func TestMultipleExportersAllSucceed(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -56,7 +56,7 @@ func TestMultipleExportersOneFails(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -79,7 +79,7 @@ func TestMultipleExportersAllFail(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", true, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -102,7 +102,7 @@ func TestPayloadWithinLimit(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -128,7 +128,7 @@ func TestPayloadTooLarge(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -154,7 +154,7 @@ func TestMissingAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -180,7 +180,7 @@ func TestInvalidAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -207,7 +207,7 @@ func TestValidAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -234,7 +234,7 @@ func TestCORSPreflightWithDisallowedHeader(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -271,7 +271,7 @@ func TestCORSPreflightWithAllowedHeader(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -314,7 +314,7 @@ func TestRateLimiter(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			slim.TestLogger(t),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)

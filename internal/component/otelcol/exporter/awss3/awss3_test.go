@@ -7,7 +7,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	"github.com/stretchr/testify/require"
@@ -114,7 +114,7 @@ func TestDebugMetricsConfig(t *testing.T) {
 // Checks that the component can start with the sumo_ic marshaler.
 func TestSumoICMarshaler(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.exporter.awss3")
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestSumoICMarshaler(t *testing.T) {
 // Checks that the component can be updated with the sumo_ic marshaler.
 func TestSumoICMarshalerUpdate(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.exporter.awss3")
 	require.NoError(t, err)

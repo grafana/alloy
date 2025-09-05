@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	loki_util "github.com/grafana/loki/v3/pkg/util"
@@ -21,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -166,7 +166,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	alterConfig(&args)
 
 	// Set up and start the component.
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)
@@ -253,9 +253,9 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	alterArgs(&args2)
 
 	// Set up and start the component.
-	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc1, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.write")
 	require.NoError(t, err)
-	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc2, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.write")
 	require.NoError(t, err)
 	go func() {
 		require.NoError(t, tc1.Run(componenttest.TestContext(t), args1))
@@ -272,7 +272,7 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	defer f.Close()
 
 	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	go func() {
@@ -381,7 +381,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 	alterConfig(&args)
 
 	// Set up and start the component.
-	testComp, err := componenttest.NewControllerFromID(util.TestLogger(b), "loki.write")
+	testComp, err := componenttest.NewControllerFromID(slim.TestLogger(b), "loki.write")
 	require.NoError(b, err)
 	go func() {
 		err = testComp.Run(componenttest.TestContext(b), args)

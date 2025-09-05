@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
@@ -1179,7 +1179,7 @@ func TestConverter(t *testing.T) {
 			var app testappender.Appender
 			app.HideTimestamps = !tc.showTimestamps
 
-			l := util.TestLogger(t)
+			l := slim.TestLogger(t)
 			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
 				IncludeTargetInfo:             tc.includeTargetInfo,
 				IncludeScopeInfo:              tc.includeScopeInfo,
@@ -1375,7 +1375,7 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			require.NoError(t, err)
 
 			var app testappender.Appender
-			l := util.TestLogger(t)
+			l := slim.TestLogger(t)
 			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 

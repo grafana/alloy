@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +22,7 @@ func NewQueueClientMetrics(reg prometheus.Registerer) *QueueClientMetrics {
 	}
 
 	if reg != nil {
-		m.lastReadTimestamp = util.MustRegisterOrGet(reg, m.lastReadTimestamp).(*prometheus.GaugeVec)
+		m.lastReadTimestamp = slim.MustRegisterOrGet(reg, m.lastReadTimestamp).(*prometheus.GaugeVec)
 	}
 
 	return m

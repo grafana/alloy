@@ -5,7 +5,7 @@ package syslogtarget
 // to other loki components.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -38,9 +38,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		m.syslogEntries = util.MustRegisterOrGet(reg, m.syslogEntries).(prometheus.Counter)
-		m.syslogParsingErrors = util.MustRegisterOrGet(reg, m.syslogParsingErrors).(prometheus.Counter)
-		m.syslogEmptyMessages = util.MustRegisterOrGet(reg, m.syslogEmptyMessages).(prometheus.Counter)
+		m.syslogEntries = slim.MustRegisterOrGet(reg, m.syslogEntries).(prometheus.Counter)
+		m.syslogParsingErrors = slim.MustRegisterOrGet(reg, m.syslogParsingErrors).(prometheus.Counter)
+		m.syslogEmptyMessages = slim.MustRegisterOrGet(reg, m.syslogEmptyMessages).(prometheus.Counter)
 	}
 
 	return &m

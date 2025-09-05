@@ -5,7 +5,7 @@ package dockertarget
 // read logs from Docker containers and forward them to other loki components.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -33,8 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		m.dockerEntries = util.MustRegisterOrGet(reg, m.dockerEntries).(prometheus.Counter)
-		m.dockerErrors = util.MustRegisterOrGet(reg, m.dockerErrors).(prometheus.Counter)
+		m.dockerEntries = slim.MustRegisterOrGet(reg, m.dockerEntries).(prometheus.Counter)
+		m.dockerErrors = slim.MustRegisterOrGet(reg, m.dockerErrors).(prometheus.Counter)
 	}
 
 	return &m

@@ -5,7 +5,7 @@ package target
 // to other loki components.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -33,8 +33,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		m.journalErrors = util.MustRegisterOrGet(reg, m.journalErrors).(*prometheus.CounterVec)
-		m.journalLines = util.MustRegisterOrGet(reg, m.journalLines).(prometheus.Counter)
+		m.journalErrors = slim.MustRegisterOrGet(reg, m.journalErrors).(*prometheus.CounterVec)
+		m.journalLines = slim.MustRegisterOrGet(reg, m.journalLines).(prometheus.Counter)
 	}
 
 	return &m

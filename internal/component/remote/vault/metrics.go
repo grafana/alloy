@@ -1,7 +1,7 @@
 package vault
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -35,11 +35,11 @@ func newMetrics(r prometheus.Registerer) *metrics {
 	})
 
 	if r != nil {
-		m.authTotal = util.MustRegisterOrGet(r, m.authTotal).(prometheus.Counter)
-		m.secretReadTotal = util.MustRegisterOrGet(r, m.secretReadTotal).(prometheus.Counter)
+		m.authTotal = slim.MustRegisterOrGet(r, m.authTotal).(prometheus.Counter)
+		m.secretReadTotal = slim.MustRegisterOrGet(r, m.secretReadTotal).(prometheus.Counter)
 
-		m.authLeaseRenewalTotal = util.MustRegisterOrGet(r, m.authLeaseRenewalTotal).(prometheus.Counter)
-		m.secretLeaseRenewalTotal = util.MustRegisterOrGet(r, m.secretLeaseRenewalTotal).(prometheus.Counter)
+		m.authLeaseRenewalTotal = slim.MustRegisterOrGet(r, m.authLeaseRenewalTotal).(prometheus.Counter)
+		m.secretLeaseRenewalTotal = slim.MustRegisterOrGet(r, m.secretLeaseRenewalTotal).(prometheus.Counter)
 	}
 	return &m
 }

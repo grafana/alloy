@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
@@ -138,7 +139,7 @@ func newTestEnvironment(
 
 	return &testEnvironment{
 		t:          t,
-		Controller: componenttest.NewControllerFromReg(util.TestLogger(t), reg),
+		Controller: componenttest.NewControllerFromReg(slim.TestLogger(t), reg),
 	}
 }
 

@@ -11,14 +11,14 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	alloyutil "github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -68,7 +68,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -102,7 +102,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -170,7 +170,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{}
 
@@ -271,7 +271,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -352,7 +352,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -433,7 +433,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 
 func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = slim.TestLogger(t)
 
 		httpClient  = &mockHTTPClient{}
 		fileService = newTestFileService()
@@ -566,7 +566,7 @@ func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 	var (
-		logger      = alloyutil.TestLogger(t)
+		logger      = slim.TestLogger(t)
 		fileService = &testFileService{}
 		store       = newSourceMapsStore(
 			logger,

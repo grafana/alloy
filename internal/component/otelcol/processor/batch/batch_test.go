@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -15,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/batch"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -23,7 +23,7 @@ import (
 // otelcol.processor.batch component and ensures that it can accept, process, and forward data.
 func Test(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.batch")
 	require.NoError(t, err)
@@ -79,7 +79,7 @@ func Test(t *testing.T) {
 func Test_Update(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "otelcol.processor.batch")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "otelcol.processor.batch")
 	require.NoError(t, err)
 
 	args := batch.Arguments{
@@ -115,7 +115,7 @@ func Test_Update(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				level.Error(util.TestLogger(t)).Log("msg", "failed to send traces", "err", err)
+				level.Error(slim.TestLogger(t)).Log("msg", "failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

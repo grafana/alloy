@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -380,9 +381,9 @@ stage.static_labels {
 	defer ctxCancel()
 
 	// Start the loki.process components.
-	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
+	tc1, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.process")
 	require.NoError(t, err)
-	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
+	tc2, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 	go func() { require.NoError(t, tc1.Run(ctx, args1)) }()
 	go func() { require.NoError(t, tc2.Run(ctx, args2)) }()
@@ -395,7 +396,7 @@ stage.static_labels {
 	defer f.Close()
 
 	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	go func() {

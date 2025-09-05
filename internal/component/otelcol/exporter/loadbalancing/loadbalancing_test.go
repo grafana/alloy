@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
@@ -39,7 +39,7 @@ func Test(t *testing.T) {
 	tracesServer := makeTracesServer(t, traceCh)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.exporter.loadbalancing")
 	require.NoError(t, err)

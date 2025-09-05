@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +22,7 @@ func NewMarkerMetrics(reg prometheus.Registerer) *MarkerMetrics {
 		),
 	}
 	if reg != nil {
-		m.lastMarkedSegment = util.MustRegisterOrGet(reg, m.lastMarkedSegment).(*prometheus.GaugeVec)
+		m.lastMarkedSegment = slim.MustRegisterOrGet(reg, m.lastMarkedSegment).(*prometheus.GaugeVec)
 	}
 	return m
 }

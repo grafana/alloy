@@ -7,6 +7,7 @@ import (
 	"time"
 
 	alloyprometheus "github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -22,7 +23,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -49,7 +49,7 @@ func (tmc testMetadataStore) LengthMetadata() int {
 // appropriate OTLP metric type.
 func TestComprehensive(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
 	require.NoError(t, err)
@@ -295,7 +295,7 @@ func TestComprehensive(t *testing.T) {
 
 func TestHistogram(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
 	require.NoError(t, err)

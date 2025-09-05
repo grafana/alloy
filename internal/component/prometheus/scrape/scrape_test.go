@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/ckit/memconn"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -324,7 +325,7 @@ func TestCustomDialer(t *testing.T) {
 			}),
 		}
 
-		memLis = memconn.NewListener(util.TestLogger(t))
+		memLis = memconn.NewListener(slim.TestLogger(t))
 	)
 
 	go srv.Serve(memLis)

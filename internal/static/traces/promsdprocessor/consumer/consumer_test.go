@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -13,7 +14,6 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/util"
 )
 
 func TestOperationType(t *testing.T) {
@@ -75,7 +75,7 @@ func TestOperationType(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockProcessor := new(consumertest.TracesSink)
-			logger := util.TestLogger(t)
+			logger := slim.TestLogger(t)
 			podAssociations := []string{
 				PodAssociationIPLabel,
 				PodAssociationOTelIPLabel,
@@ -253,7 +253,7 @@ func TestPodAssociation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockProcessor := new(consumertest.TracesSink)
-			logger := util.TestLogger(t)
+			logger := slim.TestLogger(t)
 
 			if len(tc.podAssociations) == 0 {
 				tc.podAssociations = []string{

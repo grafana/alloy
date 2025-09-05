@@ -5,7 +5,7 @@
 package ebpf
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -55,13 +55,13 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		m.targetsActive = util.MustRegisterOrGet(reg, m.targetsActive).(prometheus.Gauge)
-		m.profilingSessionsTotal = util.MustRegisterOrGet(reg, m.profilingSessionsTotal).(prometheus.Counter)
-		m.profilingSessionsFailingTotal = util.MustRegisterOrGet(reg, m.profilingSessionsFailingTotal).(prometheus.Counter)
-		m.pprofsTotal = util.MustRegisterOrGet(reg, m.pprofsTotal).(*prometheus.CounterVec)
-		m.pprofBytesTotal = util.MustRegisterOrGet(reg, m.pprofBytesTotal).(*prometheus.CounterVec)
-		m.pprofSamplesTotal = util.MustRegisterOrGet(reg, m.pprofSamplesTotal).(*prometheus.CounterVec)
-		m.pprofsDroppedTotal = util.MustRegisterOrGet(reg, m.pprofsDroppedTotal).(prometheus.Counter)
+		m.targetsActive = slim.MustRegisterOrGet(reg, m.targetsActive).(prometheus.Gauge)
+		m.profilingSessionsTotal = slim.MustRegisterOrGet(reg, m.profilingSessionsTotal).(prometheus.Counter)
+		m.profilingSessionsFailingTotal = slim.MustRegisterOrGet(reg, m.profilingSessionsFailingTotal).(prometheus.Counter)
+		m.pprofsTotal = slim.MustRegisterOrGet(reg, m.pprofsTotal).(*prometheus.CounterVec)
+		m.pprofBytesTotal = slim.MustRegisterOrGet(reg, m.pprofBytesTotal).(*prometheus.CounterVec)
+		m.pprofSamplesTotal = slim.MustRegisterOrGet(reg, m.pprofSamplesTotal).(*prometheus.CounterVec)
+		m.pprofsDroppedTotal = slim.MustRegisterOrGet(reg, m.pprofsDroppedTotal).(prometheus.Counter)
 	}
 
 	return m

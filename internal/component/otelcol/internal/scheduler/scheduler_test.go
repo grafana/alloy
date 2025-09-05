@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"go.uber.org/atomic"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ import (
 func TestScheduler(t *testing.T) {
 	t.Run("Scheduled components get started", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = slim.TestLogger(t)
 			cs = scheduler.New(l)
 			h  = scheduler.NewHost(l)
 		)
@@ -39,7 +40,7 @@ func TestScheduler(t *testing.T) {
 
 	t.Run("Unscheduled components get stopped", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = slim.TestLogger(t)
 			cs = scheduler.New(l)
 			h  = scheduler.NewHost(l)
 		)
@@ -66,7 +67,7 @@ func TestScheduler(t *testing.T) {
 		var (
 			pauseCalls  = &atomic.Int32{}
 			resumeCalls = &atomic.Int32{}
-			l           = util.TestLogger(t)
+			l           = slim.TestLogger(t)
 			cs          = scheduler.NewWithPauseCallbacks(
 				l,
 				func() { pauseCalls.Inc() },
@@ -123,7 +124,7 @@ func TestScheduler(t *testing.T) {
 
 	t.Run("Running components get stopped on shutdown", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = slim.TestLogger(t)
 			cs = scheduler.New(l)
 			h  = scheduler.NewHost(l)
 		)

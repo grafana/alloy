@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -90,7 +91,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	ch1 := loki.NewLogsReceiver()
@@ -167,7 +168,7 @@ func TestFileWatch(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	ch1 := loki.NewLogsReceiver()
@@ -228,7 +229,7 @@ func TestUpdate_NoLeak(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	args := Arguments{
@@ -410,7 +411,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 	f, err := os.Create(filename)
 	require.NoError(t, err)
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	ch1 := loki.NewLogsReceiver()

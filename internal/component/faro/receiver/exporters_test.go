@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
@@ -318,7 +318,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 			t.Parallel()
 			var (
 				lr  = newFakeLogsReceiver(t)
-				exp = newLogsExporter(util.TestLogger(t), &varSourceMapsStore{}, tc.format)
+				exp = newLogsExporter(slim.TestLogger(t), &varSourceMapsStore{}, tc.format)
 			)
 			exp.SetReceivers([]loki.LogsReceiver{lr})
 			exp.SetLabels(map[string]string{

@@ -12,7 +12,7 @@ import (
 	http_component "github.com/grafana/alloy/internal/component/remote/http"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/backoff"
@@ -33,7 +33,7 @@ func Test(t *testing.T) {
 		fmt.Fprintln(w, "Hello, world!")
 	})
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "remote.http")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "remote.http")
 	require.NoError(t, err)
 
 	cfg := fmt.Sprintf(`
@@ -133,7 +133,7 @@ func TestUnmarshalValidation(t *testing.T) {
 func eventually(t *testing.T, min, max time.Duration, retries int, f func() error) {
 	t.Helper()
 
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	bo := backoff.New(t.Context(), backoff.Config{
 		MinBackoff: min,

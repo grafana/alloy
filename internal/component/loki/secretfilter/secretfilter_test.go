@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/jaswdr/faker/v2"
@@ -635,7 +635,7 @@ func runTest(t *testing.T, config string, gitLeaksConfigContent string, inputLog
 	}
 
 	// Create component
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.secretfilter")
+	tc, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.secretfilter")
 	require.NoError(t, err)
 
 	// Run it
@@ -797,7 +797,7 @@ func FuzzProcessEntry(f *testing.F) {
 
 	comps := make([]*Component, 0, len(testConfigs))
 	opts := component.Options{
-		Logger:         util.TestLogger(f),
+		Logger:         slim.TestLogger(f),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
@@ -831,7 +831,7 @@ func FuzzConfig(f *testing.F) {
 		f.Add("REDACTED", true, uint(4), "aws,gcp", "abc.*&.*foobar.*", testLog.log) // sane values
 	}
 	opts := component.Options{
-		Logger:         util.TestLogger(f),
+		Logger:         slim.TestLogger(f),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
@@ -867,7 +867,7 @@ func FuzzGitleaksConfig(f *testing.F) {
 		f.Add("Secret detection", "pattern1&pattern2", "pattern_1", "Look for a specific pattern", "(i?)pa(tt)+ern*", 0, "pa?er", 2.0, "keyword1,keyword2", "path/to/file", "tag1,tag2", testLog.log) // sane values
 	}
 	opts := component.Options{
-		Logger:         util.TestLogger(f),
+		Logger:         slim.TestLogger(f),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 	}
@@ -1030,7 +1030,7 @@ func TestMetrics(t *testing.T) {
 
 			// Create options with the test registry
 			opts := component.Options{
-				Logger:         util.TestLogger(t),
+				Logger:         slim.TestLogger(t),
 				OnStateChange:  func(e component.Exports) {},
 				GetServiceData: getServiceData,
 				Registerer:     registry,
@@ -1167,7 +1167,7 @@ func TestMetricsRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
 	opts := component.Options{
-		Logger:         util.TestLogger(t),
+		Logger:         slim.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 		Registerer:     registry,
@@ -1229,7 +1229,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	}
 
 	opts := component.Options{
-		Logger:         util.TestLogger(t),
+		Logger:         slim.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 		Registerer:     registry,
@@ -1319,7 +1319,7 @@ func TestArgumentsUpdate(t *testing.T) {
 
 	// Create options with the test registry
 	opts := component.Options{
-		Logger:         util.TestLogger(t),
+		Logger:         slim.TestLogger(t),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
 		Registerer:     registry,

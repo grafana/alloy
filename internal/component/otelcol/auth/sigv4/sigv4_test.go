@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/sigv4"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -151,7 +151,7 @@ func Test(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
-		l := util.TestLogger(t)
+		l := slim.TestLogger(t)
 
 		// Create and run our component
 		ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.sigv4")

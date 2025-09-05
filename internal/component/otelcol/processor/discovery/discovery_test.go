@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
@@ -21,7 +21,7 @@ func testRunProcessor(t *testing.T, processorConfig string, testSignal processor
 }
 
 func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorConfig string, testSignal processortest.Signal) {
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.discovery")
 	require.NoError(t, err)

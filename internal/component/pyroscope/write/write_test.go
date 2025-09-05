@@ -14,7 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
+	util "github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -90,7 +90,7 @@ func Test_Write_FanOut(t *testing.T) {
 		t.Helper()
 		var wg sync.WaitGroup
 		wg.Add(1)
-		c, err := New(util.TestAlloyLogger(t), (noop.TracerProvider{}).Tracer(""), prometheus.NewRegistry(), func(e Exports) {
+		c, err := New(util.TestLogger(t), (noop.TracerProvider{}).Tracer(""), prometheus.NewRegistry(), func(e Exports) {
 			defer wg.Done()
 			export = e
 		}, "", "Alloy/239", arg)
@@ -161,7 +161,7 @@ func Test_Write_Update(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
+	c, err := New(util.TestLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		export = e
 	}, "", "Alloy/239", argument)
@@ -294,7 +294,7 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	wg.Add(1)
 	var err error
 	s.arguments = argument
-	s.component, err = New(util.TestAlloyLogger(s.T()), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
+	s.component, err = New(util.TestLogger(s.T()), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		s.export = e
 	}, "", "Alloy/239", argument)
@@ -569,7 +569,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	var wg sync.WaitGroup
 	var export Exports
 	wg.Add(1)
-	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
+	c, err := New(util.TestLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		export = e
 	}, "", "Alloy/239", argument)

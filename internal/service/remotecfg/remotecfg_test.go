@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/prometheus/client_golang/prometheus"
@@ -310,7 +310,7 @@ func TestUserAgentHeader(t *testing.T) {
 
 	// Create a new service with default factory (uses real interceptor)
 	svc, err := New(Options{
-		Logger:      util.TestLogger(t),
+		Logger:      slim.TestLogger(t),
 		StoragePath: t.TempDir(),
 	})
 	require.NoError(t, err)
@@ -383,7 +383,7 @@ type testEnvironment struct {
 
 func newTestEnvironment(t *testing.T, client *collectorClient) *testEnvironment {
 	svc, err := New(Options{
-		Logger:      util.TestLogger(t),
+		Logger:      slim.TestLogger(t),
 		StoragePath: t.TempDir(),
 	})
 	svc.clientFactory = func(_ Arguments) (collectorv1connect.CollectorServiceClient, error) {

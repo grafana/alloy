@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 )
 
 type exporter interface {
@@ -59,10 +59,10 @@ func newMetricsExporter(reg prometheus.Registerer) *metricsExporter {
 		}),
 	}
 
-	exp.totalLogs = util.MustRegisterOrGet(reg, exp.totalLogs).(prometheus.Counter)
-	exp.totalMeasurements = util.MustRegisterOrGet(reg, exp.totalMeasurements).(prometheus.Counter)
-	exp.totalExceptions = util.MustRegisterOrGet(reg, exp.totalExceptions).(prometheus.Counter)
-	exp.totalEvents = util.MustRegisterOrGet(reg, exp.totalEvents).(prometheus.Counter)
+	exp.totalLogs = slim.MustRegisterOrGet(reg, exp.totalLogs).(prometheus.Counter)
+	exp.totalMeasurements = slim.MustRegisterOrGet(reg, exp.totalMeasurements).(prometheus.Counter)
+	exp.totalExceptions = slim.MustRegisterOrGet(reg, exp.totalExceptions).(prometheus.Counter)
+	exp.totalEvents = slim.MustRegisterOrGet(reg, exp.totalEvents).(prometheus.Counter)
 
 	return exp
 }

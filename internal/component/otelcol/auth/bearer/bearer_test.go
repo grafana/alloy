@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/bearer"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -209,7 +209,7 @@ func TestServer(t *testing.T) {
 
 func newTestComponent(t *testing.T, ctx context.Context, alloyConfig string) (*componenttest.Controller, string) {
 	t.Helper()
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	// Create and run our component
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.bearer")

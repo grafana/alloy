@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/storage/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	extstorage "go.opentelemetry.io/collector/extension/xextension/storage"
@@ -64,7 +64,7 @@ func TestExtension(t *testing.T) {
 // newTestComponent brings up and runs the test component.
 func newTestComponent(t *testing.T, ctx context.Context) *componenttest.Controller {
 	t.Helper()
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.storage.file")
 	require.NoError(t, err)

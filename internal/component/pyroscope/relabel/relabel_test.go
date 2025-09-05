@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
 
@@ -173,7 +173,7 @@ func TestRelabeling(t *testing.T) {
 			app := NewTestAppender()
 
 			c, err := New(component.Options{
-				Logger:        util.TestLogger(t),
+				Logger:        slim.TestLogger(t),
 				Registerer:    prometheus.NewRegistry(),
 				OnStateChange: func(e component.Exports) {},
 			}, Arguments{
@@ -210,7 +210,7 @@ func TestRelabeling(t *testing.T) {
 func TestCache(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		Logger:        slim.TestLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -241,7 +241,7 @@ func TestCache(t *testing.T) {
 func TestCacheCollisions(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		Logger:        slim.TestLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -279,7 +279,7 @@ func TestCacheCollisions(t *testing.T) {
 func TestCacheLRU(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		Logger:        slim.TestLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -312,7 +312,7 @@ func TestCacheLRU(t *testing.T) {
 func TestCachePurge(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		Logger:        slim.TestLogger(t),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -360,7 +360,7 @@ func TestMetricsWithRelabeling(t *testing.T) {
 
 	// Create component with relabel rules that will trigger different metrics
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		Logger:        slim.TestLogger(t),
 		Registerer:    reg,
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{

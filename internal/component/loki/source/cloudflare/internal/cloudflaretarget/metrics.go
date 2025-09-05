@@ -6,7 +6,7 @@ package cloudflaretarget
 // components.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,8 +34,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	})
 
 	if reg != nil {
-		m.Entries = util.MustRegisterOrGet(reg, m.Entries).(prometheus.Counter)
-		m.LastEnd = util.MustRegisterOrGet(reg, m.LastEnd).(prometheus.Gauge)
+		m.Entries = slim.MustRegisterOrGet(reg, m.Entries).(prometheus.Counter)
+		m.LastEnd = slim.MustRegisterOrGet(reg, m.LastEnd).(prometheus.Gauge)
 	}
 
 	return &m

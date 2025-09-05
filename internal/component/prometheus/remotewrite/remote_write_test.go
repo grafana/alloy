@@ -9,7 +9,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
@@ -44,7 +44,7 @@ func Test(t *testing.T) {
 			}
 		}
 	`, srv.URL))
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "prometheus.remote_write")
+	tc, err := componenttest.NewControllerFromID(slim.TestLogger(t), "prometheus.remote_write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)
@@ -110,7 +110,7 @@ func TestUpdate(t *testing.T) {
 			}
 		}
 	`, srv.URL))
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "prometheus.remote_write")
+	tc, err := componenttest.NewControllerFromID(slim.TestLogger(t), "prometheus.remote_write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)

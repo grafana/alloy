@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
@@ -202,14 +202,14 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 	})
 
 	if reg != nil {
-		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
-		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
-		m.secretsSkippedByEntropy = util.MustRegisterOrGet(reg, m.secretsSkippedByEntropy).(*prometheus.CounterVec)
+		m.secretsRedactedTotal = slim.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
+		m.secretsRedactedByRule = slim.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
+		m.secretsSkippedByEntropy = slim.MustRegisterOrGet(reg, m.secretsSkippedByEntropy).(*prometheus.CounterVec)
 		if originLabel != "" {
-			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
+			m.secretsRedactedByOrigin = slim.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
 		}
-		m.secretsAllowlistedTotal = util.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
-		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
+		m.secretsAllowlistedTotal = slim.MustRegisterOrGet(reg, m.secretsAllowlistedTotal).(*prometheus.CounterVec)
+		m.processingDuration = slim.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 	}
 
 	return &m

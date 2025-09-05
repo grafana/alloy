@@ -10,7 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +93,7 @@ func TestGetLastLinePosition(t *testing.T) {
 
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -189,7 +189,7 @@ func TestTailer(t *testing.T) {
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -254,7 +254,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 
 func TestTailerDeleteFileInstant(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")

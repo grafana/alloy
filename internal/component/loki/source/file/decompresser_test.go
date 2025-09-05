@@ -12,7 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -219,7 +219,7 @@ func TestOnelineFiles(t *testing.T) {
 
 func TestDecompressor(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -275,7 +275,7 @@ func TestDecompressor(t *testing.T) {
 
 func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -322,7 +322,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 
 func TestDecompressor_RunCalledTwice(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{

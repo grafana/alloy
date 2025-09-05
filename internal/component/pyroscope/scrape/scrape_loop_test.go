@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -40,7 +40,7 @@ func TestScrapePool(t *testing.T) {
 		func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			return nil
 		}),
-		util.TestLogger(t))
+		slim.TestLogger(t))
 	require.NoError(t, err)
 
 	defer p.stop()
@@ -158,7 +158,7 @@ func TestScrapeLoop(t *testing.T) {
 			require.Equal(t, []byte{0x0A, 0x02, 0x6F, 0x6B}, samples[0].RawProfile)
 			return nil
 		}),
-		200*time.Millisecond, 30*time.Second, util.TestLogger(t))
+		200*time.Millisecond, 30*time.Second, slim.TestLogger(t))
 	defer loop.stop(true)
 
 	require.Equal(t, HealthUnknown, loop.Health())
@@ -192,7 +192,7 @@ func TestGodeltaprofLoopAppender(t *testing.T) {
 		target,
 		&http.Client{},
 		a,
-		200*time.Millisecond, 30*time.Second, util.TestLogger(t))
+		200*time.Millisecond, 30*time.Second, slim.TestLogger(t))
 	_, da := loop.appender.(*deltaAppender)
 	assert.False(t, da)
 }

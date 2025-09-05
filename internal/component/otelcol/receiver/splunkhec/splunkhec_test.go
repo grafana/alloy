@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/oklog/run"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver"
 	"github.com/stretchr/testify/require"
@@ -48,7 +49,7 @@ func Test(t *testing.T) {
 	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.splunkhec")
 	require.NoError(t, err)

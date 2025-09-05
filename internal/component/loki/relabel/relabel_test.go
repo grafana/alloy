@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -340,9 +341,9 @@ rule {
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
 	// Start the loki.process components.
-	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.relabel")
+	tc1, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.relabel")
 	require.NoError(t, err)
-	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.relabel")
+	tc2, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.relabel")
 
 	require.NoError(t, err)
 	go func() {
@@ -362,7 +363,7 @@ rule {
 	defer f.Close()
 
 	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	go func() {
@@ -415,7 +416,7 @@ func TestRuleGetter(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(originalCfg), &args))
 
 	// Set up and start the component.
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.relabel")
+	tc, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.relabel")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -32,7 +33,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
 )
 
 // Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
@@ -92,13 +92,13 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 	})
 
 	if r != nil {
-		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
-		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
-		m.totalOutOfOrderSamples = util.MustRegisterOrGet(r, m.totalOutOfOrderSamples).(prometheus.Counter)
-		m.totalCreatedSeries = util.MustRegisterOrGet(r, m.totalCreatedSeries).(prometheus.Counter)
-		m.totalRemovedSeries = util.MustRegisterOrGet(r, m.totalRemovedSeries).(prometheus.Counter)
-		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
-		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
+		m.numActiveSeries = slim.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
+		m.numDeletedSeries = slim.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
+		m.totalOutOfOrderSamples = slim.MustRegisterOrGet(r, m.totalOutOfOrderSamples).(prometheus.Counter)
+		m.totalCreatedSeries = slim.MustRegisterOrGet(r, m.totalCreatedSeries).(prometheus.Counter)
+		m.totalRemovedSeries = slim.MustRegisterOrGet(r, m.totalRemovedSeries).(prometheus.Counter)
+		m.totalAppendedSamples = slim.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
+		m.totalAppendedExemplars = slim.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 	}
 
 	return &m

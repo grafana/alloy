@@ -1,7 +1,7 @@
 package relabel
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 )
@@ -44,12 +44,12 @@ func newMetrics(reg prometheus_client.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		m.profilesProcessed = util.MustRegisterOrGet(reg, m.profilesProcessed).(prometheus_client.Counter)
-		m.profilesOutgoing = util.MustRegisterOrGet(reg, m.profilesOutgoing).(prometheus_client.Counter)
-		m.profilesDropped = util.MustRegisterOrGet(reg, m.profilesDropped).(prometheus_client.Counter)
-		m.cacheHits = util.MustRegisterOrGet(reg, m.cacheHits).(prometheus_client.Counter)
-		m.cacheMisses = util.MustRegisterOrGet(reg, m.cacheMisses).(prometheus_client.Counter)
-		m.cacheSize = util.MustRegisterOrGet(reg, m.cacheSize).(prometheus_client.Gauge)
+		m.profilesProcessed = slim.MustRegisterOrGet(reg, m.profilesProcessed).(prometheus_client.Counter)
+		m.profilesOutgoing = slim.MustRegisterOrGet(reg, m.profilesOutgoing).(prometheus_client.Counter)
+		m.profilesDropped = slim.MustRegisterOrGet(reg, m.profilesDropped).(prometheus_client.Counter)
+		m.cacheHits = slim.MustRegisterOrGet(reg, m.cacheHits).(prometheus_client.Counter)
+		m.cacheMisses = slim.MustRegisterOrGet(reg, m.cacheMisses).(prometheus_client.Counter)
+		m.cacheSize = slim.MustRegisterOrGet(reg, m.cacheSize).(prometheus_client.Gauge)
 	}
 
 	return &m

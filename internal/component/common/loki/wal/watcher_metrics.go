@@ -1,7 +1,7 @@
 package wal
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -83,12 +83,12 @@ func NewWatcherMetrics(reg prometheus.Registerer) *WatcherMetrics {
 	}
 
 	if reg != nil {
-		m.recordsRead = util.MustRegisterOrGet(reg, m.recordsRead).(*prometheus.CounterVec)
-		m.recordDecodeFails = util.MustRegisterOrGet(reg, m.recordDecodeFails).(*prometheus.CounterVec)
-		m.droppedWriteNotifications = util.MustRegisterOrGet(reg, m.droppedWriteNotifications).(*prometheus.CounterVec)
-		m.segmentRead = util.MustRegisterOrGet(reg, m.segmentRead).(*prometheus.CounterVec)
-		m.currentSegment = util.MustRegisterOrGet(reg, m.currentSegment).(*prometheus.GaugeVec)
-		m.watchersRunning = util.MustRegisterOrGet(reg, m.watchersRunning).(*prometheus.GaugeVec)
+		m.recordsRead = slim.MustRegisterOrGet(reg, m.recordsRead).(*prometheus.CounterVec)
+		m.recordDecodeFails = slim.MustRegisterOrGet(reg, m.recordDecodeFails).(*prometheus.CounterVec)
+		m.droppedWriteNotifications = slim.MustRegisterOrGet(reg, m.droppedWriteNotifications).(*prometheus.CounterVec)
+		m.segmentRead = slim.MustRegisterOrGet(reg, m.segmentRead).(*prometheus.CounterVec)
+		m.currentSegment = slim.MustRegisterOrGet(reg, m.currentSegment).(*prometheus.GaugeVec)
+		m.watchersRunning = slim.MustRegisterOrGet(reg, m.watchersRunning).(*prometheus.GaugeVec)
 	}
 
 	return m

@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -83,11 +83,11 @@ type metrics struct {
 }
 
 func (m *metrics) Register(r prometheus.Registerer) error {
-	m.configUpdatesTotal = util.MustRegisterOrGet(r, m.configUpdatesTotal).(prometheus.Counter)
-	m.eventsTotal = util.MustRegisterOrGet(r, m.eventsTotal).(*prometheus.CounterVec)
-	m.eventsFailed = util.MustRegisterOrGet(r, m.eventsFailed).(*prometheus.CounterVec)
-	m.eventsRetried = util.MustRegisterOrGet(r, m.eventsRetried).(*prometheus.CounterVec)
-	m.lokiClientTiming = util.MustRegisterOrGet(r, m.lokiClientTiming).(*prometheus.HistogramVec)
+	m.configUpdatesTotal = slim.MustRegisterOrGet(r, m.configUpdatesTotal).(prometheus.Counter)
+	m.eventsTotal = slim.MustRegisterOrGet(r, m.eventsTotal).(*prometheus.CounterVec)
+	m.eventsFailed = slim.MustRegisterOrGet(r, m.eventsFailed).(*prometheus.CounterVec)
+	m.eventsRetried = slim.MustRegisterOrGet(r, m.eventsRetried).(*prometheus.CounterVec)
+	m.lokiClientTiming = slim.MustRegisterOrGet(r, m.lokiClientTiming).(*prometheus.HistogramVec)
 	return nil
 }
 

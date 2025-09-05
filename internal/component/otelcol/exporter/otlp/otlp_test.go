@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func Test(t *testing.T) {
 	tracesServer := makeTracesServer(t, traceCh)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.exporter.otlp")
 	require.NoError(t, err)

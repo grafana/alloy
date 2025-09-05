@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/oauth2"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
@@ -91,7 +91,7 @@ func Test(t *testing.T) {
 			ctx, cancel := context.WithTimeout(ctx, time.Minute)
 			defer cancel()
 
-			l := util.TestLogger(t)
+			l := slim.TestLogger(t)
 
 			// Create and run our component
 			ctrl, err := componenttest.NewControllerFromID(l, "otelcol.auth.oauth2")

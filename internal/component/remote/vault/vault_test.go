@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	vaultapi "github.com/hashicorp/vault/api"
 
 	"github.com/docker/go-connections/nat"
@@ -17,7 +18,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -25,7 +25,7 @@ import (
 func Test_GetSecrets(t *testing.T) {
 	var (
 		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
+		l   = slim.TestLogger(t)
 	)
 
 	cli := getTestVaultServer(t)
@@ -109,7 +109,7 @@ func Test_PollSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = componenttest.TestContext(t)
-				l   = util.TestLogger(t)
+				l   = slim.TestLogger(t)
 			)
 
 			cli := getTestVaultServer(t)
@@ -173,7 +173,7 @@ func Test_PollSecrets(t *testing.T) {
 
 func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{

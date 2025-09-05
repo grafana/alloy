@@ -1,7 +1,7 @@
 package write
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,12 +43,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	if reg != nil {
-		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
-		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
-		m.sentProfiles = util.MustRegisterOrGet(reg, m.sentProfiles).(*prometheus.CounterVec)
-		m.droppedProfiles = util.MustRegisterOrGet(reg, m.droppedProfiles).(*prometheus.CounterVec)
-		m.retries = util.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
-		m.latency = util.MustRegisterOrGet(reg, m.latency).(*prometheus.HistogramVec)
+		m.sentBytes = slim.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
+		m.droppedBytes = slim.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
+		m.sentProfiles = slim.MustRegisterOrGet(reg, m.sentProfiles).(*prometheus.CounterVec)
+		m.droppedProfiles = slim.MustRegisterOrGet(reg, m.droppedProfiles).(*prometheus.CounterVec)
+		m.retries = slim.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
+		m.latency = slim.MustRegisterOrGet(reg, m.latency).(*prometheus.HistogramVec)
 	}
 
 	return m

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
@@ -249,7 +250,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 }
 
 func TestStorage_ExistingWAL_RefID(t *testing.T) {
-	l := util.TestLogger(t)
+	l := slim.TestLogger(t)
 
 	walDir := t.TempDir()
 

@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -46,11 +46,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Number of errors while processing AWS Firehose static labels",
 	}, []string{"reason", "tenant_id"})
 
-	m.errorsAPIRequest = util.MustRegisterOrGet(reg, m.errorsAPIRequest).(*prometheus.CounterVec)
-	m.errorsRecord = util.MustRegisterOrGet(reg, m.errorsRecord).(*prometheus.CounterVec)
-	m.recordsReceived = util.MustRegisterOrGet(reg, m.recordsReceived).(*prometheus.CounterVec)
-	m.batchSize = util.MustRegisterOrGet(reg, m.batchSize).(*prometheus.HistogramVec)
-	m.invalidStaticLabelsCount = util.MustRegisterOrGet(reg, m.invalidStaticLabelsCount).(*prometheus.CounterVec)
+	m.errorsAPIRequest = slim.MustRegisterOrGet(reg, m.errorsAPIRequest).(*prometheus.CounterVec)
+	m.errorsRecord = slim.MustRegisterOrGet(reg, m.errorsRecord).(*prometheus.CounterVec)
+	m.recordsReceived = slim.MustRegisterOrGet(reg, m.recordsReceived).(*prometheus.CounterVec)
+	m.batchSize = slim.MustRegisterOrGet(reg, m.batchSize).(*prometheus.HistogramVec)
+	m.invalidStaticLabelsCount = slim.MustRegisterOrGet(reg, m.invalidStaticLabelsCount).(*prometheus.CounterVec)
 
 	return &m
 }

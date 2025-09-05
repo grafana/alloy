@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
@@ -23,7 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/alloy/internal/util"
 )
 
 const (
@@ -113,15 +113,15 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	}
 
 	if reg != nil {
-		m.encodedBytes = util.MustRegisterOrGet(reg, m.encodedBytes).(*prometheus.CounterVec)
-		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
-		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
-		m.sentEntries = util.MustRegisterOrGet(reg, m.sentEntries).(*prometheus.CounterVec)
-		m.droppedEntries = util.MustRegisterOrGet(reg, m.droppedEntries).(*prometheus.CounterVec)
-		m.mutatedEntries = util.MustRegisterOrGet(reg, m.mutatedEntries).(*prometheus.CounterVec)
-		m.mutatedBytes = util.MustRegisterOrGet(reg, m.mutatedBytes).(*prometheus.CounterVec)
-		m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
-		m.batchRetries = util.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
+		m.encodedBytes = slim.MustRegisterOrGet(reg, m.encodedBytes).(*prometheus.CounterVec)
+		m.sentBytes = slim.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
+		m.droppedBytes = slim.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
+		m.sentEntries = slim.MustRegisterOrGet(reg, m.sentEntries).(*prometheus.CounterVec)
+		m.droppedEntries = slim.MustRegisterOrGet(reg, m.droppedEntries).(*prometheus.CounterVec)
+		m.mutatedEntries = slim.MustRegisterOrGet(reg, m.mutatedEntries).(*prometheus.CounterVec)
+		m.mutatedBytes = slim.MustRegisterOrGet(reg, m.mutatedBytes).(*prometheus.CounterVec)
+		m.requestDuration = slim.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
+		m.batchRetries = slim.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
 	}
 
 	return &m

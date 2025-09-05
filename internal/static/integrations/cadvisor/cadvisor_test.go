@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -20,7 +20,7 @@ func TestConfig_DockerOnly(t *testing.T) {
 		err := yaml.Unmarshal([]byte(defaultCfg), &cfg)
 		require.NoError(t, err)
 
-		ig, err := cfg.NewIntegration(util.TestLogger(t))
+		ig, err := cfg.NewIntegration(slim.TestLogger(t))
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(t.Context())

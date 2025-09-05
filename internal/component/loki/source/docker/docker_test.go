@@ -19,6 +19,7 @@ import (
 	dt "github.com/grafana/alloy/internal/component/loki/source/docker/internal/dockertarget"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -41,7 +42,7 @@ func Test(t *testing.T) {
 	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.docker")
 	require.NoError(t, err)
 
 	go func() {
@@ -67,7 +68,7 @@ func TestDuplicateTargets(t *testing.T) {
 	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.docker")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.docker")
 	require.NoError(t, err)
 
 	go func() {

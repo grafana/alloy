@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -51,7 +52,7 @@ log 5
 	require.NoError(t, logFile.Close())
 
 	ctx := componenttest.TestContext(t)
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(slim.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
 	rec := loki.NewLogsReceiver()

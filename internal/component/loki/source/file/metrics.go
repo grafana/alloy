@@ -5,7 +5,7 @@ package file
 // implementations of the reader interface.
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,11 +50,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	})
 
 	if reg != nil {
-		m.readBytes = util.MustRegisterOrGet(reg, m.readBytes).(*prometheus.GaugeVec)
-		m.totalBytes = util.MustRegisterOrGet(reg, m.totalBytes).(*prometheus.GaugeVec)
-		m.readLines = util.MustRegisterOrGet(reg, m.readLines).(*prometheus.CounterVec)
-		m.encodingFailures = util.MustRegisterOrGet(reg, m.encodingFailures).(*prometheus.CounterVec)
-		m.filesActive = util.MustRegisterOrGet(reg, m.filesActive).(prometheus.Gauge)
+		m.readBytes = slim.MustRegisterOrGet(reg, m.readBytes).(*prometheus.GaugeVec)
+		m.totalBytes = slim.MustRegisterOrGet(reg, m.totalBytes).(*prometheus.GaugeVec)
+		m.readLines = slim.MustRegisterOrGet(reg, m.readLines).(*prometheus.CounterVec)
+		m.encodingFailures = slim.MustRegisterOrGet(reg, m.encodingFailures).(*prometheus.CounterVec)
+		m.filesActive = slim.MustRegisterOrGet(reg, m.filesActive).(prometheus.Gauge)
 	}
 
 	return &m

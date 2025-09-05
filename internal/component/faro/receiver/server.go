@@ -9,7 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/slim"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,10 +48,10 @@ func newServerMetrics(reg prometheus.Registerer) *serverMetrics {
 		}, []string{"method", "route"}),
 	}
 
-	m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
-	m.rxMessageSize = util.MustRegisterOrGet(reg, m.rxMessageSize).(*prometheus.HistogramVec)
-	m.txMessageSize = util.MustRegisterOrGet(reg, m.txMessageSize).(*prometheus.HistogramVec)
-	m.inflightRequests = util.MustRegisterOrGet(reg, m.inflightRequests).(*prometheus.GaugeVec)
+	m.requestDuration = slim.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
+	m.rxMessageSize = slim.MustRegisterOrGet(reg, m.rxMessageSize).(*prometheus.HistogramVec)
+	m.txMessageSize = slim.MustRegisterOrGet(reg, m.txMessageSize).(*prometheus.HistogramVec)
+	m.inflightRequests = slim.MustRegisterOrGet(reg, m.inflightRequests).(*prometheus.GaugeVec)
 
 	return m
 }
