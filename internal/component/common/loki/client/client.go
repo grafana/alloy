@@ -387,7 +387,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 	}
 
-	level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
+	level.Error(c.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
 	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
 	// were for a different reason
 	dropReason := ReasonGeneric
