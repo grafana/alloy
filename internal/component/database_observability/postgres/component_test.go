@@ -279,7 +279,7 @@ func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
-		entryHandler := addLokiLabels(lokiClient, "some-instance-key")
+		entryHandler := addLokiLabels(lokiClient, "some-instance-key", "some-system-id")
 
 		go func() {
 			ts := time.Now().UnixNano()
@@ -297,8 +297,9 @@ func Test_addLokiLabels(t *testing.T) {
 
 		require.Len(t, lokiClient.Received(), 1)
 		assert.Equal(t, model.LabelSet{
-			"job":      database_observability.JobName,
-			"instance": model.LabelValue("some-instance-key"),
+			"job":       database_observability.JobName,
+			"instance":  model.LabelValue("some-instance-key"),
+			"server_id": model.LabelValue("some-system-id"),
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})

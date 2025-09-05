@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -264,6 +266,11 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 	}), nil
 }
 
+// The result of SELECT version() is something like:
+// for MariaDB: "10.5.17-MariaDB-1:10.5.17+maria~ubu2004-log"
+// for MySQL: "8.0.36-28.1"
+var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
+
 func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -299,6 +306,16 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
+	var parsedEngineVersion semver.Version
+	matches := versionRegex.FindStringSubmatch(engineVersion)
+	if len(matches) > 1 {
+		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to parse engine version", "err", err)
+			return err
+		}
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
@@ -317,7 +334,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(serverUUID, engineVersion); err != nil {
+	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion); err != nil {
 		c.healthErr.Store(err.Error())
 		return err
 	}
@@ -351,7 +368,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-func (c *Component) startCollectors(serverUUID string, engineVersion string) error {
+func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
 	var cloudProviderInfo *database_observability.CloudProvider
 	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
 		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
@@ -413,6 +430,7 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string) err
 	if collectors[collector.QuerySampleName] {
 		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
 			DB:                          c.dbConnection,
+			EngineVersion:               parsedEngineVersion,
 			CollectInterval:             c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,

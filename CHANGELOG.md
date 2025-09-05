@@ -44,6 +44,7 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
 
@@ -52,6 +53,7 @@ Main (unreleased)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_table` collector for postgres (@fridgepoet)
+  - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
@@ -63,7 +65,7 @@ Main (unreleased)
 - Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
-  
+
 ### Enhancements
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
@@ -108,6 +110,8 @@ Main (unreleased)
   to enable preserving the first input list even if there is no match. (@ptodev)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
+
+- Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
 - The Windows installer and executables are now code signed. (@martincostello)
 
