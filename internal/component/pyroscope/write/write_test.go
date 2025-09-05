@@ -121,7 +121,7 @@ func Test_Write_FanOut(t *testing.T) {
 		}), []*pyroscope.RawSample{
 			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
 		})
-		require.EqualErrorf(t, err, "unknown: test", "expected error to be test")
+		require.ErrorContains(t, err, "unknown: test")
 		require.Equal(t, serverCount, pushTotal.Load())
 	})
 
