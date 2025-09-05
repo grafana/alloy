@@ -35,35 +35,25 @@ You can use the following arguments with `database_observability.postgres`:
 
 The following collectors are configurable:
 
-| Name              | Description                                                           | Enabled by default |
-|-------------------|-----------------------------------------------------------------------|--------------------|
-| `connection_info` | Collect connection information.                                       | yes                |
-| `query_details`   | Collect queries information.                                          | no                 |
-| `query_samples`   | Collect query samples and wait events information.                    | no                 |
-| `schema_details`  | Collect schemas, tables, and columns from PostgreSQL system catalogs. | no                 |
-
+| Name             | Description                                                           | Enabled by default |
+|------------------|-----------------------------------------------------------------------|--------------------|
+| `query_details`  | Collect queries information.                                          | no                 |
+| `query_samples`  | Collect query samples and wait events information.                    | no                 |
+| `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | no                 |
 
 ## Blocks
 
 You can use the following blocks with `database_observability.postgres`:
 
-| Block                                | Description                                       | Required |
-|--------------------------------------|---------------------------------------------------|----------|
-| [`query_details`][query_details]     | Configure the queries collector.                  | no       |
-| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`connection_info`][connection_info] | Configure the connection information collector.   | no       |
+| Block                              | Description                                       | Required |
+|------------------------------------|---------------------------------------------------|----------|
+| [`query_details`][query_details]   | Configure the queries collector.                  | no       |
+| [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
+| [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 
-[connection_info]: #connection_info
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
-
-### `connection_info`
-
-| Name               | Type       | Description                                                          | Default | Required |
-|--------------------|------------|----------------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to check the database connection.                     | `"15s"` | no       |
 
 ### `query_details`
 
