@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
@@ -281,10 +282,10 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: &loadbalancingexporter.StaticResolver{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1"},
-					},
-					DNS: nil,
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -310,10 +311,10 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: &loadbalancingexporter.StaticResolver{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1"},
-					},
-					DNS: nil,
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -360,10 +361,10 @@ func TestConfigConversion(t *testing.T) {
 					Sizer: exporterhelper.RequestSizerTypeRequests,
 				},
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: &loadbalancingexporter.StaticResolver{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1", "endpoint-2:55678"},
-					},
-					DNS: nil,
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
 				RoutingKey: "traceID",
 			},
@@ -384,13 +385,13 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					DNS: &loadbalancingexporter.DNSResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					DNS: configoptional.Some(loadbalancingexporter.DNSResolver{
 						Hostname: "service-1",
 						Port:     "4317",
 						Interval: 5 * time.Second,
 						Timeout:  1 * time.Second,
-					},
+					}),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -418,13 +419,13 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					DNS: &loadbalancingexporter.DNSResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					DNS: configoptional.Some(loadbalancingexporter.DNSResolver{
 						Hostname: "service-1",
 						Port:     "55690",
 						Interval: 123 * time.Second,
 						Timeout:  321 * time.Second,
-					},
+					}),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -449,13 +450,13 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					K8sSvc: configoptional.Some(loadbalancingexporter.K8sSvcResolver{
 						Service:         "lb-svc.lb-ns",
 						Ports:           []int32{4317},
 						Timeout:         1 * time.Second,
 						ReturnHostnames: false,
-					},
+					}),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -483,13 +484,13 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					K8sSvc: &loadbalancingexporter.K8sSvcResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					K8sSvc: configoptional.Some(loadbalancingexporter.K8sSvcResolver{
 						Service:         "lb-svc.lb-ns",
 						Ports:           []int32{55690, 55691},
 						Timeout:         13 * time.Second,
 						ReturnHostnames: true,
-					},
+					}),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -515,16 +516,16 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					K8sSvc: nil,
-					AWSCloudMap: &loadbalancingexporter.AWSCloudMapResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					K8sSvc: configoptional.None[loadbalancingexporter.K8sSvcResolver](),
+					AWSCloudMap: configoptional.Some(loadbalancingexporter.AWSCloudMapResolver{
 						NamespaceName: "cloudmap",
 						ServiceName:   "otelcollectors",
 						HealthStatus:  "HEALTHY",
 						Interval:      30 * time.Second,
 						Timeout:       5 * time.Second,
 						Port:          nil,
-					},
+					}),
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
@@ -554,16 +555,16 @@ func TestConfigConversion(t *testing.T) {
 				`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: nil,
-					K8sSvc: nil,
-					AWSCloudMap: &loadbalancingexporter.AWSCloudMapResolver{
+					Static: configoptional.None[loadbalancingexporter.StaticResolver](),
+					K8sSvc: configoptional.None[loadbalancingexporter.K8sSvcResolver](),
+					AWSCloudMap: configoptional.Some(loadbalancingexporter.AWSCloudMapResolver{
 						NamespaceName: "cloudmap3",
 						ServiceName:   "otelcollectors3",
 						HealthStatus:  "UNHEALTHY",
 						Interval:      123 * time.Second,
 						Timeout:       113 * time.Second,
 						Port:          getPtrToUint(4321),
-					},
+					}),
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -588,10 +589,10 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: &loadbalancingexporter.StaticResolver{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1"},
-					},
-					DNS: nil,
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -647,10 +648,10 @@ func TestConfigConversion(t *testing.T) {
 			`,
 			expected: loadbalancingexporter.Config{
 				Resolver: loadbalancingexporter.ResolverSettings{
-					Static: &loadbalancingexporter.StaticResolver{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
 						Hostnames: []string{"endpoint-1"},
-					},
-					DNS: nil,
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,

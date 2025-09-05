@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 // Dimension defines the dimension name and optional default value if the Dimension is missing from a span attribute.
@@ -111,13 +112,9 @@ func (hc HistogramConfig) Convert() (*spanmetricsconnector.HistogramConfig, erro
 		return nil, err
 	}
 
-	if hc.Exponential != nil {
-		result.Exponential = hc.Exponential.Convert()
-	}
+	result.Exponential = hc.Exponential.Convert()
 
-	if hc.Explicit != nil {
-		result.Explicit = hc.Explicit.Convert()
-	}
+	result.Explicit = hc.Explicit.Convert()
 
 	dimensions := make([]spanmetricsconnector.Dimension, 0, len(hc.Dimensions))
 	for _, d := range hc.Dimensions {
@@ -131,7 +128,7 @@ func (hc HistogramConfig) Convert() (*spanmetricsconnector.HistogramConfig, erro
 
 type ExemplarsConfig struct {
 	Enabled         bool `alloy:"enabled,attr,optional"`
-	MaxPerDataPoint *int `alloy:"max_per_data_point,attr,optional"`
+	MaxPerDataPoint int  `alloy:"max_per_data_point,attr,optional"`
 }
 
 func (ec ExemplarsConfig) Convert() *spanmetricsconnector.ExemplarsConfig {
@@ -164,10 +161,14 @@ func (ehc *ExponentialHistogramConfig) Validate() error {
 	return nil
 }
 
-func (ehc ExponentialHistogramConfig) Convert() *spanmetricsconnector.ExponentialHistogramConfig {
-	return &spanmetricsconnector.ExponentialHistogramConfig{
-		MaxSize: ehc.MaxSize,
+func (ehc *ExponentialHistogramConfig) Convert() configoptional.Optional[spanmetricsconnector.ExponentialHistogramConfig] {
+	if ehc == nil {
+		return configoptional.None[spanmetricsconnector.ExponentialHistogramConfig]()
 	}
+
+	return configoptional.Some(spanmetricsconnector.ExponentialHistogramConfig{
+		MaxSize: ehc.MaxSize,
+	})
 }
 
 type ExplicitHistogramConfig struct {
@@ -200,11 +201,15 @@ func (hc *ExplicitHistogramConfig) SetToDefault() {
 	}
 }
 
-func (hc ExplicitHistogramConfig) Convert() *spanmetricsconnector.ExplicitHistogramConfig {
-	// Copy the values in the buckets slice so that we don't mutate the original.
-	return &spanmetricsconnector.ExplicitHistogramConfig{
-		Buckets: append([]time.Duration{}, hc.Buckets...),
+func (hc *ExplicitHistogramConfig) Convert() configoptional.Optional[spanmetricsconnector.ExplicitHistogramConfig] {
+	if hc == nil {
+		return configoptional.None[spanmetricsconnector.ExplicitHistogramConfig]()
 	}
+
+	// Copy the values in the buckets slice so that we don't mutate the original.
+	return configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{
+		Buckets: append([]time.Duration{}, hc.Buckets...),
+	})
 }
 
 type EventsConfig struct {

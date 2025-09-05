@@ -40,7 +40,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
@@ -84,7 +84,6 @@ func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArgument
 		Enabled:         cfg.Enabled,
 		NumConsumers:    cfg.NumConsumers,
 		QueueSize:       cfg.QueueSize,
-		Blocking:        cfg.Blocking, //nolint:staticcheck
 		BlockOnOverflow: cfg.BlockOnOverflow,
 		Sizer:           string(sizer),
 	}
@@ -110,7 +109,7 @@ func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {
 
 func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArguments {
 	var a *auth.Handler
-	if cfg.Auth != nil {
+	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 
@@ -126,7 +125,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 		Compression: otelcol.CompressionType(cfg.Compression),
 
 		TLS:       toTLSClientArguments(cfg.TLS),
-		Keepalive: toKeepaliveClientArguments(cfg.Keepalive),
+		Keepalive: toKeepaliveClientArguments(cfg.Keepalive.Get()),
 
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),

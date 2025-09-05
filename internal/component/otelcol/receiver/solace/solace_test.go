@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configtls"
 )
 
@@ -34,15 +35,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Queue:      "queue://#telemetry_testprofile",
 				MaxUnacked: 1000,
 				Flow: solacereceiver.FlowControl{
-					DelayedRetry: &solacereceiver.FlowControlDelayedRetry{
+					DelayedRetry: configoptional.Some(solacereceiver.FlowControlDelayedRetry{
 						Delay: 10 * time.Millisecond,
-					},
+					}),
 				},
 				Auth: solacereceiver.Authentication{
-					PlainText: &solacereceiver.SaslPlainTextConfig{
+					PlainText: configoptional.Some(solacereceiver.SaslPlainTextConfig{
 						Username: "alloy",
 						Password: "password",
-					},
+					}),
 				},
 			},
 		},
@@ -71,12 +72,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Queue:      "queue://#telemetry_testprofile",
 				MaxUnacked: 500,
 				Flow: solacereceiver.FlowControl{
-					DelayedRetry: &solacereceiver.FlowControlDelayedRetry{
+					DelayedRetry: configoptional.Some(solacereceiver.FlowControlDelayedRetry{
 						Delay: 50 * time.Millisecond,
-					},
+					}),
 				},
 				Auth: solacereceiver.Authentication{
-					External: &solacereceiver.SaslExternalConfig{},
+					External: configoptional.Some(solacereceiver.SaslExternalConfig{}),
 				},
 				TLS: configtls.ClientConfig{
 					Config: configtls.Config{
@@ -114,15 +115,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Queue:      "queue://#telemetry_testprofile",
 				MaxUnacked: 500,
 				Flow: solacereceiver.FlowControl{
-					DelayedRetry: &solacereceiver.FlowControlDelayedRetry{
+					DelayedRetry: configoptional.Some(solacereceiver.FlowControlDelayedRetry{
 						Delay: 50 * time.Millisecond,
-					},
+					}),
 				},
 				Auth: solacereceiver.Authentication{
-					XAuth2: &solacereceiver.SaslXAuth2Config{
+					XAuth2: configoptional.Some(solacereceiver.SaslXAuth2Config{
 						Username: "alloy",
 						Bearer:   "bearer",
-					},
+					}),
 				},
 				TLS: configtls.ClientConfig{
 					Config: configtls.Config{

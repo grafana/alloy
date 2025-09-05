@@ -170,9 +170,40 @@ func TestQuerySample(t *testing.T) {
 				nil,
 				nil,
 				nil,
-			}},
-			logsLabels: []model.LabelSet{},
-			logsLines:  []string{},
+			},
+				// Add in a working line so that the collector test has to wait for a bit before stopping.
+				// TODO: Fix the test function so that it works well even if no log lines are expected.
+				// Refer to the TODO in the test code for more information.
+				// The test needs a way to check how many lines failed to generate, not just the final number of log lines.
+				{
+					"some_schema",
+					"890",
+					"124",
+					"234",
+					"some_digest",
+					"select * from some_table where id = 1",
+					"70000000",
+					"20000000",
+					"10000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"456",
+					"457",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"124\" end_event_id=\"234\" digest=\"some_digest\" digest_text=\"select * from `some_table` where `id` = ?\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
 		},
 		{
 			name: "start transaction",
@@ -457,6 +488,14 @@ func TestQuerySample(t *testing.T) {
 			require.Eventually(t, func() bool {
 				return len(lokiClient.Received()) == len(tc.logsLines)
 			}, 5*time.Second, 100*time.Millisecond)
+
+			// TODO: Check whether more conditions are satisfied before stopping the collector.
+			// This would help in two situations:
+			// 1. If no log lines are expected, the collector will currently stop immediately before it has a chance to do anything.
+			// 2. If some queries do not produce log lines, the collector may stop prematurely before it has a chance to fail generating logs.
+			//
+			// Fixing this is not as simple as moving `mock.ExpectationsWereMet()` before `collector.Stop()`.
+			// We'd also need a way to check that the collector failed to generate a certain amount of logs.
 
 			collector.Stop()
 			lokiClient.Stop()

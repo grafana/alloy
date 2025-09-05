@@ -22,8 +22,13 @@ type Arguments struct {
 	GoEnabled            bool                   `alloy:"go_enabled,attr,optional"`
 	Demangle             string                 `alloy:"demangle,attr,optional"`
 	ContainerIDCacheSize uint32                 `alloy:"container_id_cache_size,attr,optional"`
-	OffCPUThreshold      uint                   `alloy:"off_cpu_threshold,attr,optional"`
+	OffCPUThreshold      float64                `alloy:"off_cpu_threshold,attr,optional"` //TODO: Document this as a float?
 	DeprecatedArguments  DeprecatedArguments    `alloy:",squash"`
+
+	// undocumented
+	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
+	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
+	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
 }
 
 type DeprecatedArguments struct {
