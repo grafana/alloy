@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
 )
 
 const baseJitter = 100 * time.Millisecond
@@ -72,6 +73,9 @@ type configManager struct {
 	// This is the AST file parsed from the configuration. This is used
 	// for the support bundle
 	astFile *ast.File
+
+	// remoteConfigStatus tracks the current status of the remote configuration
+	remoteConfigStatus *collectorv1.RemoteConfigStatus
 }
 
 func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, ctrl service.Controller, configPath string) *configManager {
@@ -84,6 +88,10 @@ func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string,
 		updateTickerChan: make(chan struct{}, 1),
 		pollFrequency:    disablePollingFrequency,
 		ticker:           jitter.NewTicker(disablePollingFrequency, baseJitter),
+		remoteConfigStatus: &collectorv1.RemoteConfigStatus{
+			Status:       collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET,
+			ErrorMessage: "",
+		},
 	}
 }
 
@@ -196,6 +204,22 @@ func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetCo
 	}
 }
 
+// notifyStatusUpdate makes an immediate GetConfig call to notify the server of status changes.
+// This is used when we want to immediately report FAILED status without waiting for the next poll cycle.
+func (cm *configManager) notifyStatusUpdate(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) {
+	level.Debug(cm.logger).Log("msg", "making immediate GetConfig call to report status update")
+
+	// Make the API call but ignore the response and any errors
+	// We only care about sending our current status to the server
+	// and GetConfig will get called again on the polling frequency
+	_, err := getAPIConfig()
+	if err != nil {
+		level.Error(cm.logger).Log("msg", "status notification call failed, will retry on next poll", "err", err)
+	} else {
+		level.Debug(cm.logger).Log("msg", "successfully notified server of status update")
+	}
+}
+
 func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) error {
 	level.Debug(cm.logger).Log("msg", "fetching remote configuration")
 
@@ -214,6 +238,11 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		level.Error(cm.logger).Log("msg", "failed to fetch remote config", "err", err)
 		cm.metrics.totalFailures.Add(1)
 		cm.metrics.lastLoadSuccess.Set(0)
+
+		// Make immediate GetConfig call to notify server of failure
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
+		cm.notifyStatusUpdate(getAPIConfig)
+
 		return err
 	}
 
@@ -247,16 +276,26 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// to reload the config in this case since it is already loaded.
 	if alreadyLoaded {
 		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
+		cm.notifyStatusUpdate(getAPIConfig)
 		return nil
 	}
 
 	level.Info(cm.logger).Log("msg", "attempting to parse and load new remote configuration", "config_hash", newConfigHash)
+
+	// Set status to APPLYING when we start processing remote config
+	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING, "")
+
 	err = cm.parseAndLoad(b)
 	if err != nil {
 		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
 		level.Error(cm.logger).Log("msg", "failed to parse and load new remote configuration",
 			"received_hash", newConfigHash, "loaded_hash", cm.getLastLoadedCfgHash(), "err", err)
 		cm.metrics.lastLoadSuccess.Set(0)
+
+		// Make immediate GetConfig call to notify server of parse/load failure
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
+		cm.notifyStatusUpdate(getAPIConfig)
 
 		// If we have a cached config, attempt to reload it to restore component health.
 		// Otherwise a partial working config will be left in the controller.
@@ -285,6 +324,9 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// Successfully loaded the configuration - now update the loaded hash
 	cm.setLastLoadedCfgHash(newConfigHash)
 	cm.metrics.lastLoadSuccess.Set(1)
+
+	// Set status to APPLIED for successful remote config load
+	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 
 	level.Info(cm.logger).Log("msg", "successfully loaded remote configuration",
 		"config_hash", newConfigHash, "config_size", len(b))
@@ -389,6 +431,39 @@ func (cm *configManager) getRemoteHash() string {
 	cm.mut.RLock()
 	defer cm.mut.RUnlock()
 	return cm.remoteHash
+}
+
+// setRemoteConfigStatus updates the remote config status.
+func (cm *configManager) setRemoteConfigStatus(status collectorv1.RemoteConfigStatuses, errorMessage string) {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+
+	cm.remoteConfigStatus = &collectorv1.RemoteConfigStatus{
+		Status:       status,
+		ErrorMessage: errorMessage,
+	}
+}
+
+// getRemoteConfigStatus returns a copy of the current remote config status.
+func (cm *configManager) getRemoteConfigStatus() *collectorv1.RemoteConfigStatus {
+	cm.mut.RLock()
+	defer cm.mut.RUnlock()
+
+	// Return a copy to avoid race conditions
+	return &collectorv1.RemoteConfigStatus{
+		Status:       cm.remoteConfigStatus.Status,
+		ErrorMessage: cm.remoteConfigStatus.ErrorMessage,
+	}
+}
+
+// getErrorMessage extracts the best error message from an error,
+// using AllMessages() for diagnostic errors and Error() for others.
+func getErrorMessage(err error) string {
+	var diags diag.Diagnostics
+	if errors.As(err, &diags) {
+		return diags.AllMessages()
+	}
+	return err.Error()
 }
 
 func getHash(in []byte) string {
