@@ -11,10 +11,11 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
-
 	"github.com/gorilla/mux"
+	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -60,6 +61,7 @@ type Component struct {
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
 	mut                sync.Mutex
+	tracer             trace.Tracer
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -67,6 +69,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	opts.Registerer.MustRegister(uncheckedCollector)
 
 	c := &Component{
+		tracer:             opts.Tracer.Tracer("pyroscope.receive_http"),
 		opts:               opts,
 		uncheckedCollector: uncheckedCollector,
 		appendables:        args.ForwardTo,
@@ -163,6 +166,10 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 
 	appendables := c.getAppendables()
 
+	ctx, sp := c.tracer.Start(ctx, "/push.v1.PusherService/Push")
+	defer sp.End()
+	l := pyroutil.TraceLog(c.opts.Logger, sp)
+
 	var wg sync.WaitGroup
 	var errs error
 	var errorMut sync.Mutex
@@ -182,7 +189,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 				lbls := ensureServiceName(lb.Labels())
 				err := appendable.Append(ctx, lbls, apiToAlloySamples(req.Msg.Series[idx].Samples))
 				if err != nil {
-					util.ErrorsJoinConcurrent(
+					pyroutil.ErrorsJoinConcurrent(
 						&errs,
 						fmt.Errorf("unable to append series %s to appendable %d: %w", lb.Labels().String(), i, err),
 						&errorMut,
@@ -193,11 +200,11 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 	}
 	wg.Wait()
 	if errs != nil {
-		level.Error(c.opts.Logger).Log("msg", "Failed to forward profiles requests", "err", errs)
+		level.Error(l).Log("msg", "Failed to forward profiles requests", "err", errs)
 		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
-	level.Debug(c.opts.Logger).Log("msg", "Profiles successfully forwarded")
+	level.Debug(l).Log("msg", "Profiles successfully forwarded")
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
@@ -211,12 +218,19 @@ func (c *Component) getAppendables() []pyroscope.Appendable {
 func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	appendables := c.getAppendables()
 
+	ctx := r.Context()
+
+	ctx, sp := c.tracer.Start(ctx, "/ingest")
+	defer sp.End()
+
+	l := pyroutil.TraceLog(c.opts.Logger, sp)
+
 	// Parse labels early
 	var lbls labels.Labels
 	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
 		ls, err := labelset.Parse(nameParam)
 		if err != nil {
-			level.Warn(c.opts.Logger).Log(
+			level.Warn(l).Log(
 				"msg", "Failed to parse labels from name parameter",
 				"name", nameParam,
 				"err", err,
@@ -229,6 +243,8 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			}
 			lbls = labels.New(labelPairs...)
 		}
+	} else {
+		//todo this is a required parameter, treat as error
 	}
 
 	// Ensure service_name label is set
@@ -239,7 +255,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	// but means the entire profile will be held in memory
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r.Body); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "Failed to read request body", "err", err)
+		level.Warn(l).Log("msg", "Failed to read request body", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -260,12 +276,12 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 				Labels:      lbls,
 			}
 
-			if err := appendable.Appender().AppendIngest(r.Context(), profile); err != nil {
-				level.Error(c.opts.Logger).Log("msg", "Failed to append profile", "appendable", i, "err", err)
-				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
+			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
+				level.Warn(l).Log("msg", "Failed to ingest profile", "appendable", i, "err", err)
+				pyroutil.ErrorsJoinConcurrent(&errs, err, &errorMut)
+			} else {
+				level.Debug(l).Log("msg", "Profile ingested successfully", "appendable", i)
 			}
-
-			level.Debug(c.opts.Logger).Log("msg", "Profile appended successfully", "appendable", i)
 		}()
 	}
 
@@ -276,7 +292,6 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
 		} else {
-			level.Error(c.opts.Logger).Log("msg", "Failed to process request", "err", errs)
 			http.Error(w, "Failed to process request", http.StatusInternalServerError)
 		}
 		return

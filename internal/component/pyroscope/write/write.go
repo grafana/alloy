@@ -16,29 +16,38 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/grafana/pyroscope/api/model/labelset"
-	commonconfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
-
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
+	"github.com/opentracing/opentracing-go"
+	commonconfig "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
 	userAgent        = useragent.Get()
 	DefaultArguments = func() Arguments {
-		return Arguments{}
+		return Arguments{
+			Tracing: TracingOptions{
+				JaegerPropagator:       true,
+				TraceContextPropagator: true,
+			},
+		}
 	}
 	_ component.Component = (*Component)(nil)
 )
@@ -60,6 +69,12 @@ func init() {
 type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
+	Tracing        TracingOptions     `alloy:"tracing,block,optional"`
+}
+
+type TracingOptions struct {
+	JaegerPropagator       bool `alloy:"jaeger_propagator,attr,optional"`
+	TraceContextPropagator bool `alloy:"trace_context_propagator,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -122,7 +137,7 @@ type Exports struct {
 // New creates a new pyroscope.write component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	metrics := newMetrics(o.Registerer)
-	receiver, err := NewFanOut(o, c, metrics)
+	receiver, err := newFanOut(o, c, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +162,7 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	receiver, err := NewFanOut(c.opts, newConfig.(Arguments), c.metrics)
+	receiver, err := newFanOut(c.opts, newConfig.(Arguments), c.metrics)
 	if err != nil {
 		return err
 	}
@@ -162,10 +177,11 @@ type fanOutClient struct {
 	config        Arguments
 	opts          component.Options
 	metrics       *metrics
+	tracer        trace.Tracer
 }
 
-// NewFanOut creates a new fan out client that will fan out to all endpoints.
-func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
+// newFanOut creates a new fan out client that will fan out to all endpoints.
+func newFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 	uid := alloyseed.Get().UID
@@ -180,6 +196,10 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		if err != nil {
 			return nil, err
 		}
+		if err = configureTracing(config, httpClient); err != nil {
+			return nil, err
+		}
+
 		pushClients = append(
 			pushClients,
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
@@ -187,6 +207,7 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
+		tracer:        opts.Tracer.Tracer("pyroscope.write.fanout"),
 		pushClients:   pushClients,
 		ingestClients: ingestClients,
 		config:        config,
@@ -202,13 +223,33 @@ func (f *fanOutClient) Push(
 ) (*connect.Response[pushv1.PushResponse], error) {
 
 	defer f.observeLatency("-", "push_total")()
+
+	ctx, sp := f.tracer.Start(ctx, "Push")
+	defer sp.End()
+
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
+		dl                    any
+		ok                    bool
 		reqSize, profileCount = requestSize(req)
-		l                     = f.opts.Logger
+		l                     = util.TraceLog(f.opts.Logger, sp)
+		st                    = time.Now()
 	)
+	if dl, ok = ctx.Deadline(); !ok {
+		dl = "none"
+	}
+	defer func() {
+		_ = level.Debug(l).Log(
+			"msg", "Push",
+			"sz", reqSize,
+			"n", profileCount,
+			"dl", dl,
+			"st", st,
+			"err", errs,
+		)
+	}()
 
 	for i, client := range f.pushClients {
 		var (
@@ -382,13 +423,33 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
 	defer f.observeLatency("-", "ingest_total")()
+
+	ctx, sp := f.tracer.Start(ctx, "AppendIngest")
+	defer sp.End()
+
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
+		dl                    any
+		ok                    bool
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
-		l                     = f.opts.Logger
+		l                     = util.TraceLog(f.opts.Logger, sp)
+		st                    = time.Now()
 	)
+	if dl, ok = ctx.Deadline(); !ok {
+		dl = "none"
+	}
+	defer func() {
+		_ = level.Debug(l).Log(
+			"msg", "AppendIngest",
+			"sz", reqSize,
+			"n", profileCount,
+			"dl", dl,
+			"st", st,
+			"err", errs,
+		)
+	}()
 
 	// Handle labels
 	query := profile.URL.Query()
@@ -588,5 +649,26 @@ func validateLabels(lbls labels.Labels) error {
 		lastLabelName = l.Name
 	}
 
+	return nil
+}
+
+func configureTracing(config Arguments, httpClient *http.Client) error {
+	if opentracing.IsGlobalTracerRegistered() {
+		return fmt.Errorf("opentracing was configured, but is not expected to be")
+	}
+	if config.Tracing.JaegerPropagator || config.Tracing.TraceContextPropagator {
+		var propagators []propagation.TextMapPropagator
+		if config.Tracing.JaegerPropagator {
+			propagators = append(propagators, jaeger.Jaeger{}) // pyroscope uses jaeger
+		}
+		if config.Tracing.TraceContextPropagator {
+			propagators = append(propagators, propagation.TraceContext{})
+		}
+		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport,
+			otelhttp.WithPropagators(
+				propagation.NewCompositeTextMapPropagator(propagators...),
+			),
+		)
+	}
 	return nil
 }
