@@ -155,11 +155,14 @@ The `*` character indicates a wildcard.
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
 
-By default, sourcemaps are held in memory indefinitely. By setting the `cache_minimum_ttl` sourcemaps will be cleared if not used during the specified duration.
+By default, sourcemaps are held in memory indefinitely.
+You can set `cache_minimum_ttl` to clear sourcemaps that aren't used during the specified duration.
 
-By default, if there is an error while downloading or parsing a sourcemap, error gets cached. After duration specified by `cache_error_cleanup_interval`, all errors get cleared from cache.
+By default, if there's an error while downloading or parsing a sourcemap, the error is cached.
+After the duration specified by `cache_error_cleanup_interval`, all errors are cleared from the cache.
 
-By default, every 30s cached sourcemaps are checked for cleanup. The frequency of checking can be modified by setting the `cache_cleanup_check_interval` argument.
+By default, cached sourcemaps are checked for cleanup every 30 seconds.
+You can modify the frequency by setting the `cache_cleanup_check_interval` argument.
 
 To retrieve sourcemaps from disk instead of the network, specify one or more [`location` blocks][location].
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
