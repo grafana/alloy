@@ -33,7 +33,7 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 		name                  string
 		setupMock             func(mock sqlmock.Sqlmock)
 		disableQueryRedaction bool
-		expectedError         bool
+		expectedErrorLine     string
 		expectedLabels        []model.LabelSet
 		expectedLines         []string
 	}{
@@ -57,7 +57,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM users",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -86,7 +85,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM large_table",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -120,7 +118,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"UPDATE users SET status = 'active'",
 					))
 			},
-			expectedError: false,
 
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
@@ -151,9 +148,9 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"<insufficient privilege>",
 					))
 			},
-			expectedError:  false,
-			expectedLabels: []model.LabelSet{}, // No Loki entries expected
-			expectedLines:  []string{},         // No Loki entries expected
+			expectedErrorLine: `err="insufficient privilege to access query`,
+			expectedLabels:    []model.LabelSet{}, // No Loki entries expected
+			expectedLines:     []string{},         // No Loki entries expected
 		},
 		{
 			name: "null database name - no loki entries expected",
@@ -175,9 +172,9 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 						"SELECT * FROM users",
 					))
 			},
-			expectedError:  false,
-			expectedLabels: []model.LabelSet{}, // No Loki entries expected
-			expectedLines:  []string{},         // No Loki entries expected
+			expectedErrorLine: `err="database name is not valid`,
+			expectedLabels:    []model.LabelSet{}, // No Loki entries expected
+			expectedLines:     []string{},         // No Loki entries expected
 		},
 		{
 			name: "query with redaction disabled",
@@ -200,7 +197,6 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 					))
 			},
 			disableQueryRedaction: true,
-			expectedError:         false,
 			expectedLabels: []model.LabelSet{
 				{"op": OP_QUERY_SAMPLE},
 			},
@@ -237,17 +233,11 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			err = sampleCollector.Start(t.Context())
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				if mock.ExpectationsWereMet() != nil {
-					return false
-				}
-				if len(tc.expectedLines) == 0 {
-					return strings.Contains(logBuffer.String(), `msg="invalid pg_stat_activity set"`)
-				}
-				return len(lokiClient.Received()) == len(tc.expectedLines)
-			}, 5*time.Second, 20*time.Millisecond)
-
-			sampleCollector.Stop()
+			if len(tc.expectedErrorLine) > 0 {
+				require.Eventually(t, func() bool {
+					return strings.Contains(logBuffer.String(), tc.expectedErrorLine)
+				}, 2*time.Second, 50*time.Millisecond)
+			}
 
 			if len(tc.expectedLines) > 0 {
 				require.Eventually(t, func() bool {
@@ -271,6 +261,8 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 					return true
 				}, 2*time.Second, 50*time.Millisecond)
 			}
+
+			sampleCollector.Stop()
 
 			// Wait for the collector to stop
 			require.Eventually(t, func() bool {
