@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,7 +37,8 @@ func init() {
 		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
+			tracer := opts.Tracer.Tracer("pyroscope.receive_http")
+			return New(opts.Logger, tracer, opts.Registerer, args.(Arguments))
 		},
 	})
 }
@@ -55,22 +57,22 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Component struct {
-	opts               component.Options
 	server             *fnet.TargetServer
 	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
 	mut                sync.Mutex
+	logger             log.Logger
 	tracer             trace.Tracer
 }
 
-func New(opts component.Options, args Arguments) (*Component, error) {
+func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
-	opts.Registerer.MustRegister(uncheckedCollector)
+	reg.MustRegister(uncheckedCollector)
 
 	c := &Component{
-		tracer:             opts.Tracer.Tracer("pyroscope.receive_http"),
-		opts:               opts,
+		logger:             logger,
+		tracer:             tracer,
 		uncheckedCollector: uncheckedCollector,
 		appendables:        args.ForwardTo,
 	}
@@ -90,7 +92,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
-	level.Info(c.opts.Logger).Log("msg", "terminating due to context done")
+	level.Info(c.logger).Log("msg", "terminating due to context done")
 	return nil
 }
 
@@ -125,7 +127,7 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 	serverRegistry := prometheus.NewRegistry()
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
-	srv, err := fnet.NewTargetServer(c.opts.Logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
+	srv, err := fnet.NewTargetServer(c.logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
 		return shutdown, fmt.Errorf("failed to create server: %w", err)
 	}
@@ -168,7 +170,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 
 	ctx, sp := c.tracer.Start(ctx, "/push.v1.PusherService/Push")
 	defer sp.End()
-	l := pyroutil.TraceLog(c.opts.Logger, sp)
+	l := pyroutil.TraceLog(c.logger, sp)
 
 	var wg sync.WaitGroup
 	var errs error
@@ -223,7 +225,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	ctx, sp := c.tracer.Start(ctx, "/ingest")
 	defer sp.End()
 
-	l := pyroutil.TraceLog(c.opts.Logger, sp)
+	l := pyroutil.TraceLog(c.logger, sp)
 
 	// Parse labels early
 	var lbls labels.Labels
