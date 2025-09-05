@@ -202,7 +202,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 	}
 	wg.Wait()
 	if errs != nil {
-		level.Error(l).Log("msg", "Failed to forward profiles requests", "err", errs)
+		level.Warn(l).Log("msg", "Failed to forward profiles requests", "err", errs)
 		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
@@ -277,7 +277,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
-				level.Warn(l).Log("msg", "Failed to ingest profile", "appendable", i, "err", err)
+				err = fmt.Errorf("failed to ingest profile to appendable %d: %w", i, err)
 				pyroutil.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -286,6 +286,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	if errs != nil {
+		level.Warn(l).Log("msg", "Failed to ingest profiles", "err", errs)
 		var writeErr *write.PyroscopeWriteError
 		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
@@ -294,6 +295,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	level.Debug(l).Log("msg", "Profiles successfully ingested")
 	w.WriteHeader(http.StatusOK)
 }
 
