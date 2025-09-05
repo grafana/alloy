@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component/glue"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 func init() {
@@ -18,6 +19,7 @@ func init() {
 			tracer := o.Tracer.Tracer("pyroscope.write")
 			args := c.(write.Arguments)
 			uid := alloyseed.Get().UID
+			userAgent := useragent.Get()
 			gc, err := write.New(
 				o.Logger,
 				tracer,
@@ -26,6 +28,7 @@ func init() {
 					o.OnStateChange(exports)
 				},
 				uid,
+				userAgent,
 				args,
 			)
 			if err != nil {

@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -38,7 +37,6 @@ import (
 )
 
 var (
-	userAgent        = useragent.Get()
 	DefaultArguments = func() Arguments {
 		return Arguments{
 			Tracing: TracingOptions{
@@ -115,6 +113,7 @@ type Component struct {
 	cfg           Arguments
 	metrics       *metrics
 	uid           string
+	userAgent     string
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -128,12 +127,12 @@ func New(
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
-	uid string,
+	uid, userAgent string,
 	c Arguments,
 ) (*Component, error) {
 
 	metrics := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, metrics, uid)
+	receiver, err := newFanOut(logger, tracer, c, metrics, uid, userAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +141,7 @@ func New(
 
 	return &Component{
 		uid:           uid,
+		userAgent:     userAgent,
 		cfg:           c,
 		logger:        logger,
 		tracer:        tracer,
@@ -159,7 +159,7 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig Arguments) error {
 	c.cfg = newConfig
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.uid)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.uid, "")
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ type fanOutClient struct {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, uid string) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, uid, userAgent string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 
