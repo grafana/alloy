@@ -82,6 +82,7 @@ ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
+OTELCOL_BINARY       ?= build/otelcol
 GOOS                 ?= $(shell go env GOOS)
 GOARCH               ?= $(shell go env GOARCH)
 GOARM                ?= $(shell go env GOARM)
@@ -177,8 +178,8 @@ integration-test:
 # Targets for building binaries
 #
 
-.PHONY: binaries alloy
-binaries: alloy
+.PHONY: binaries alloy otelcol
+binaries: alloy otelcol
 
 alloy:
 ifeq ($(USE_CONTAINER),1)
@@ -186,6 +187,14 @@ ifeq ($(USE_CONTAINER),1)
 else
 	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
 endif
+
+otelcol:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	pushd otelcol && $(GO_ENV) go build $(GO_FLAGS) -o $(OTELCOL_BINARY) . && popd
+endif
+
 
 # alloy-service is not included in binaries since it's Windows-only.
 alloy-service:
