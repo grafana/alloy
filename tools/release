@@ -3,10 +3,10 @@
 # This script should be run from the root of the repository.
 set -ex
 
-# Zip up all the binaries to reduce the download size. DEBs and RPMs
-# aren't included to be easier to work with.
+# Zip up all the binaries to reduce the download size. DEBs, RPMs and
+# the Windows installer aren't included to be easier to work with.
 find dist/ -type f \
-  -name 'alloy*' -not -name '*.deb' -not -name '*.rpm' \
+  -name 'alloy*' -not -name '*.deb' -not -name '*.rpm' -not -name 'alloy-installer-windows-*.exe' \
   -exec zip -j -m "{}.zip" "{}" \;
 
 # Get the SHA256SUMS before continuing.

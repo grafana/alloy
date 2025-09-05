@@ -115,6 +115,8 @@ Main (unreleased)
 
 - Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
+- The Windows installer and executables are now code signed. (@martincostello)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
