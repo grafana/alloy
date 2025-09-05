@@ -279,8 +279,6 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			if err := appendable.Appender().AppendIngest(ctx, profile); err != nil {
 				level.Warn(l).Log("msg", "Failed to ingest profile", "appendable", i, "err", err)
 				pyroutil.ErrorsJoinConcurrent(&errs, err, &errorMut)
-			} else {
-				level.Debug(l).Log("msg", "Profile ingested successfully", "appendable", i)
 			}
 		}()
 	}
