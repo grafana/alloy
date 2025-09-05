@@ -13,7 +13,7 @@ set -euxo pipefail
 #
 # If the environment variables are unset, the variables below default to an
 # empty string.
-
+export TARGET_CONTAINER=${1:-}
 PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
 export GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
 GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
