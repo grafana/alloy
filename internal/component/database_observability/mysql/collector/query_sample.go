@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -21,6 +22,9 @@ const (
 	OP_QUERY_SAMPLE = "query_sample"
 	OP_WAIT_EVENT   = "wait_event"
 
+	cpuTimeField              = `, statements.CPU_TIME`
+	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
+	maxTotalMemoryField       = `, statements.MAX_TOTAL_MEMORY`
 	sqlTextField              = `, statements.SQL_TEXT`
 	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
 	digestTextNotNullClause   = ` AND statements.DIGEST_TEXT IS NOT NULL`
@@ -46,13 +50,10 @@ SELECT
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
-	statements.CPU_TIME,
 	statements.ROWS_EXAMINED,
 	statements.ROWS_SENT,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
-	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
@@ -78,6 +79,7 @@ const updateSetupConsumers = `
 
 type QuerySampleArguments struct {
 	DB                          *sql.DB
+	EngineVersion               semver.Version
 	CollectInterval             time.Duration
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool
@@ -89,6 +91,7 @@ type QuerySampleArguments struct {
 
 type QuerySample struct {
 	dbConnection                *sql.DB
+	engineVersion               semver.Version
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
 	sqlParser                   parser.Parser
@@ -108,6 +111,7 @@ type QuerySample struct {
 func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
 	c := &QuerySample{
 		dbConnection:                args.DB,
+		engineVersion:               args.EngineVersion,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
 		sqlParser:                   parser.NewTiDBSqlParser(),
@@ -232,7 +236,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		textNotNullClause = digestTextNotNullClause
 	}
 
-	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+	query := ""
+	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
+		query = fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
+		additionalFields := cpuTimeField + textField
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+	} else {
+		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
@@ -292,13 +305,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
-			&row.CPUTime,
 			&row.RowsExamined,
 			&row.RowsSent,
 			&row.RowsAffected,
 			&row.Errors,
-			&row.MaxControlledMemory,
-			&row.MaxTotalMemory,
 			&row.WaitEventID,
 			&row.WaitEndEventID,
 			&row.WaitEventName,
@@ -306,6 +316,15 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectType,
 			&row.WaitTime,
 		}
+
+		if semver.MustParseRange(">=8.0.28")(c.engineVersion) {
+			scanArgs = append(scanArgs, &row.CPUTime)
+		}
+		if semver.MustParseRange(">=8.0.31")(c.engineVersion) {
+			scanArgs = append(scanArgs, &row.MaxControlledMemory)
+			scanArgs = append(scanArgs, &row.MaxTotalMemory)
+		}
+
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
 		}

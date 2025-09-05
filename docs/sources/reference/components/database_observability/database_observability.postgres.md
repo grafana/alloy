@@ -29,6 +29,7 @@ You can use the following arguments with `database_observability.postgres`:
 |----------------------|----------------------|-------------------------------------------------------------|---------|----------|
 | `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
 | `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
+| `targets`            | `list(map(string))`  | List of targets to scrape.                                  |         | yes      |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 
@@ -133,6 +134,7 @@ Replace the following:
 
 `database_observability.postgres` can accept arguments from the following components:
 
+- Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
 `database_observability.postgres` has exports that can be consumed by the following components:
