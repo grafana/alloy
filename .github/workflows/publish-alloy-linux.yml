@@ -14,6 +14,10 @@ on:
         required: false
         type: boolean
         default: false
+      pr-number:
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -66,3 +70,4 @@ jobs:
       env:
         PUSH_ALLOY_IMAGE: ${{ inputs.push }}
         IMG_NAME: ${{ inputs.img-name }}
+        GITHUB_PR_NUMBER: ${{ inputs.pr-number }}
