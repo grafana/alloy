@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ import (
 
 const name = "database_observability.postgres"
 
-const selectServerInfo = `SELECT (pg_control_system()).system_identifier, setting as version FROM pg_settings WHERE name = 'server_version';`
+const selectServerInfo = `SELECT (pg_control_system()).system_identifier, inet_server_addr(), inet_server_port(),setting as version FROM pg_settings WHERE name = 'server_version';`
 
 func init() {
 	component.Register(component.Registration{
@@ -227,11 +228,13 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	var systemID, engineVersion string
-	if err := rs.Scan(&systemID, &engineVersion); err != nil {
+	var systemID, systemIP, systemPort, engineVersion string
+	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
 		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
 		return err
 	}
+
+	systemID = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID, systemIP, systemPort))))
 
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
