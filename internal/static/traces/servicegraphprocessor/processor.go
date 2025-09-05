@@ -13,10 +13,10 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	otelprocessor "go.opentelemetry.io/collector/processor"
-	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
 	"google.golang.org/grpc/codes"
 )
 
@@ -290,7 +290,7 @@ func (p *processor) consume(trace ptrace.Traces) error {
 	for i := 0; i < rSpansSlice.Len(); i++ {
 		rSpan := rSpansSlice.At(i)
 
-		svc, ok := rSpan.Resource().Attributes().Get(semconv.AttributeServiceName)
+		svc, ok := rSpan.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 		if !ok || svc.Str() == "" {
 			continue
 		}
@@ -375,7 +375,7 @@ func (p *processor) consume(trace ptrace.Traces) error {
 
 func (p *processor) spanFailed(span ptrace.Span) bool {
 	// Request considered failed if status is not 2XX or added as a successful status code
-	if statusCode, ok := span.Attributes().Get(semconv.AttributeHTTPStatusCode); ok {
+	if statusCode, ok := span.Attributes().Get(string(semconv.HTTPStatusCodeKey)); ok {
 		sc := int(statusCode.Int())
 		if _, ok := p.httpSuccessCodeMap[sc]; !ok && sc/100 != 2 {
 			return true
@@ -383,7 +383,7 @@ func (p *processor) spanFailed(span ptrace.Span) bool {
 	}
 
 	// Request considered failed if status is not OK or added as a successful status code
-	if statusCode, ok := span.Attributes().Get(semconv.AttributeRPCGRPCStatusCode); ok {
+	if statusCode, ok := span.Attributes().Get(string(semconv.RPCGRPCStatusCodeKey)); ok {
 		sc := int(statusCode.Int())
 		if _, ok := p.grpcSuccessCodeMap[sc]; !ok && sc != int(codes.OK) {
 			return true

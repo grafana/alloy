@@ -35,6 +35,17 @@ Main (unreleased)
 
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
+- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.133.0. (@ptodev)
+  - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
+    Use `block_on_overflow` instead.
+  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
+    Also removed the `SASL/AWS_MSK_IAM` authentication mechanism.
+  - [`otelcol.exporter.splunkhec`] The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
+  - [`otelcol.exporter.loadbalancing`] Use a linear probe to decrease variance caused by hash collisions, which was causing a non-uniform distribution of loadbalancing.
+  - [`otelcol.connector.servicegraph`] The `database_name_attribute` argument has been removed.
+  - [`otelcol.connector.spanmetrics`] Adds a default maximum number of exemplars within the metric export interval.
+  - [`otelcol.processor.tail_sampling`] Add a new `block_on_overflow` config attribute.
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)

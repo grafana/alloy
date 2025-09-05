@@ -5,7 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
+	"go.opentelemetry.io/obi/pkg/services"
 )
 
 // Arguments configures the Beyla component.

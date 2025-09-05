@@ -113,6 +113,9 @@ var DefaultArguments = Arguments{
 	ResourceMetricsCacheSize: 1000,
 	TimestampCacheSize:       1000,
 	Namespace:                "traces.span.metrics",
+	Exemplars: ExemplarsConfig{
+		MaxPerDataPoint: 5,
+	},
 }
 
 // SetToDefault implements syntax.Defaulter.
