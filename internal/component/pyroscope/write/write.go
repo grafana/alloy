@@ -16,7 +16,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
@@ -186,8 +185,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
-		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
-		endpoint.Headers[alloyseed.HeaderName] = uid
+		endpoint.Headers["X-Alloy-Id"] = uid
 		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
