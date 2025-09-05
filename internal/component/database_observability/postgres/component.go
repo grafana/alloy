@@ -19,6 +19,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -31,7 +32,7 @@ import (
 
 const name = "database_observability.postgres"
 
-const selectEngineVersion = `SHOW server_version`
+const selectServerInfo = `SELECT (pg_control_system()).system_identifier, setting as version FROM pg_settings WHERE name = 'server_version';`
 
 func init() {
 	component.Register(component.Registration{
@@ -54,6 +55,7 @@ var (
 type Arguments struct {
 	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
@@ -199,8 +201,48 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+	}
+
+	c.args = args.(Arguments)
+
+	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
+	if err != nil {
+		return err
+	}
+
+	if dbConnection == nil {
+		return errors.New("nil DB connection")
+	}
+	if err = dbConnection.Ping(); err != nil {
+		return err
+	}
+	c.dbConnection = dbConnection
+
+	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var systemID, engineVersion string
+	if err := rs.Scan(&systemID, &engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
+	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
+	for _, t := range c.args.Targets {
+		builder := discovery.NewTargetBuilderFrom(t)
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(systemID)...) {
+			targets = append(targets, builder.Target())
+		}
+	}
 	c.opts.OnStateChange(Exports{
-		Targets: []discovery.Target{c.baseTarget},
+		Targets: targets,
 	})
 
 	for _, collector := range c.collectors {
@@ -208,13 +250,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
-	}
-
-	c.args = args.(Arguments)
-
-	if err := c.startCollectors(); err != nil {
+	if err := c.startCollectors(systemID, engineVersion); err != nil {
 		c.healthErr.Store(err.Error())
 		return err
 	}
@@ -245,26 +281,14 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-func (c *Component) startCollectors() error {
-	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
-	if err != nil {
-		return err
-	}
-
-	if dbConnection == nil {
-		return errors.New("nil DB connection")
-	}
-	if err = dbConnection.Ping(); err != nil {
-		return err
-	}
-	c.dbConnection = dbConnection
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
+func (c *Component) startCollectors(systemID string, engineVersion string) error {
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
-			DB:              dbConnection,
+			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
@@ -282,7 +306,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.QuerySampleName] {
 		aCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
-			DB:                    dbConnection,
+			DB:                    c.dbConnection,
 			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
@@ -297,19 +321,6 @@ func (c *Component) startCollectors() error {
 			return err
 		}
 		c.collectors = append(c.collectors, aCollector)
-	}
-
-	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
-	err = rs.Err()
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
-	}
-
-	var engineVersion string
-	if err := rs.Scan(&engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
 	}
 
 	// Connection Info collector is always enabled
@@ -331,7 +342,7 @@ func (c *Component) startCollectors() error {
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
-			DB:           dbConnection,
+			DB:           c.dbConnection,
 			EntryHandler: entryHandler,
 			Logger:       c.opts.Logger,
 		})
@@ -410,10 +421,11 @@ func instanceKey(dsn string) (string, error) {
 	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string) loki.EntryHandler {
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, systemID string) loki.EntryHandler {
 	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
-		"job":      database_observability.JobName,
-		"instance": model.LabelValue(instanceKey),
+		"job":       database_observability.JobName,
+		"instance":  model.LabelValue(instanceKey),
+		"server_id": model.LabelValue(systemID),
 	}).Wrap(entryHandler)
 
 	return entryHandler
