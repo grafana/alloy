@@ -154,7 +154,7 @@ case "$TARGET_CONTAINER" in
     ;;
 
   *)
-    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto"
+    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto|alloy-devel-pr|alloy-devel-boringcrypto-pr"
     exit 1
     ;;
 esac
