@@ -155,6 +155,7 @@ func New(
 	onStateChange func(Exports),
 	c Arguments,
 ) (*Component, error) {
+	
 	metrics := newMetrics(reg)
 	receiver, err := newFanOut(logger, tracer, c, metrics)
 	if err != nil {

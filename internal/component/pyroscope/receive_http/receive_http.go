@@ -245,9 +245,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 			}
 			lbls = labels.New(labelPairs...)
 		}
-	} else {
-		//todo this is a required parameter, treat as error
-	}
+	} // todo this is a required parameter, treat absence as error
 
 	// Ensure service_name label is set
 	lbls = ensureServiceName(lbls)
