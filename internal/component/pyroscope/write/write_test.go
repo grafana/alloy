@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -25,6 +24,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/atomic"
 )
 
@@ -85,19 +85,21 @@ func Test_Write_FanOut(t *testing.T) {
 			s.Close()
 		}
 	}()
+
 	createReceiver := func(t *testing.T, arg Arguments) pyroscope.Appendable {
 		t.Helper()
 		var wg sync.WaitGroup
 		wg.Add(1)
-		c, err := New(component.Options{
-			ID:         "1",
-			Logger:     util.TestAlloyLogger(t),
-			Registerer: prometheus.NewRegistry(),
-			OnStateChange: func(e component.Exports) {
+		c, err := New(
+			util.TestAlloyLogger(t),
+			(noop.TracerProvider{}).Tracer(""),
+			prometheus.NewRegistry(),
+			func(e Exports) {
 				defer wg.Done()
-				export = e.(Exports)
+				export = e
 			},
-		}, arg)
+			arg,
+		)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
@@ -165,15 +167,16 @@ func Test_Write_Update(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "1",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	c, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			export = e.(Exports)
+			export = e
 		},
-	}, argument)
+		argument,
+	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -303,15 +306,16 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	wg.Add(1)
 	var err error
 	s.arguments = argument
-	s.component, err = New(component.Options{
-		ID:         "test-write-appendingest",
-		Logger:     util.TestAlloyLogger(s.T()),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	s.component, err = New(
+		util.TestAlloyLogger(s.T()),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			s.export = e.(Exports)
+			s.export = e
 		},
-	}, argument)
+		argument,
+	)
 	s.Require().NoError(err)
 
 	go s.component.Run(s.ctx)
@@ -583,15 +587,16 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	var wg sync.WaitGroup
 	var export Exports
 	wg.Add(1)
-	c, err := New(component.Options{
-		ID:         "test-write-fanout-validate-labels",
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {
+	c, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
 			defer wg.Done()
-			export = e.(Exports)
+			export = e
 		},
-	}, argument)
+		argument,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

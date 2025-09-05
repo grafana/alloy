@@ -30,6 +30,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -59,7 +60,17 @@ func init() {
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			return New(o, c.(Arguments))
+			tracer := o.Tracer.Tracer("pyroscope.write")
+			args := c.(Arguments)
+			return New(
+				o.Logger,
+				tracer,
+				o.Registerer,
+				func(exports Exports) {
+					o.OnStateChange(exports)
+				},
+				args,
+			)
 		},
 	})
 }
@@ -124,9 +135,11 @@ func (r *EndpointOptions) Validate() error {
 
 // Component is the pyroscope.write component.
 type Component struct {
-	opts    component.Options
-	cfg     Arguments
-	metrics *metrics
+	logger        log.Logger
+	tracer        trace.Tracer
+	onStateChange func(Exports)
+	cfg           Arguments
+	metrics       *metrics
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -135,19 +148,27 @@ type Exports struct {
 }
 
 // New creates a new pyroscope.write component.
-func New(o component.Options, c Arguments) (*Component, error) {
-	metrics := newMetrics(o.Registerer)
-	receiver, err := newFanOut(o, c, metrics)
+func New(
+	logger log.Logger,
+	tracer trace.Tracer,
+	reg prometheus.Registerer,
+	onStateChange func(Exports),
+	c Arguments,
+) (*Component, error) {
+	metrics := newMetrics(reg)
+	receiver, err := newFanOut(logger, tracer, c, metrics)
 	if err != nil {
 		return nil, err
 	}
 	// Immediately export the receiver
-	o.OnStateChange(Exports{Receiver: receiver})
+	onStateChange(Exports{Receiver: receiver})
 
 	return &Component{
-		cfg:     c,
-		opts:    o,
-		metrics: metrics,
+		cfg:           c,
+		logger:        logger,
+		tracer:        tracer,
+		onStateChange: onStateChange,
+		metrics:       metrics,
 	}, nil
 }
 
@@ -162,11 +183,11 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	receiver, err := newFanOut(c.opts, newConfig.(Arguments), c.metrics)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics)
 	if err != nil {
 		return err
 	}
-	c.opts.OnStateChange(Exports{Receiver: receiver})
+	c.onStateChange(Exports{Receiver: receiver})
 	return nil
 }
 
@@ -175,13 +196,13 @@ type fanOutClient struct {
 	pushClients   []pushv1connect.PusherServiceClient
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
-	opts          component.Options
 	metrics       *metrics
 	tracer        trace.Tracer
+	logger        log.Logger
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 	uid := alloyseed.Get().UID
@@ -207,11 +228,11 @@ func newFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
-		tracer:        opts.Tracer.Tracer("pyroscope.write.fanout"),
+		logger:        logger,
+		tracer:        tracer,
 		pushClients:   pushClients,
 		ingestClients: ingestClients,
 		config:        config,
-		opts:          opts,
 		metrics:       metrics,
 	}, nil
 }
@@ -234,7 +255,7 @@ func (f *fanOutClient) Push(
 		dl                    any
 		ok                    bool
 		reqSize, profileCount = requestSize(req)
-		l                     = util.TraceLog(f.opts.Logger, sp)
+		l                     = util.TraceLog(f.logger, sp)
 		st                    = time.Now()
 	)
 	if dl, ok = ctx.Deadline(); !ok {
@@ -434,7 +455,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		dl                    any
 		ok                    bool
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
-		l                     = util.TraceLog(f.opts.Logger, sp)
+		l                     = util.TraceLog(f.logger, sp)
 		st                    = time.Now()
 	)
 	if dl, ok = ctx.Deadline(); !ok {
