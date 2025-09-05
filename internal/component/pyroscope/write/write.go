@@ -49,30 +49,7 @@ var (
 			},
 		}
 	}
-	_ component.Component = (*Component)(nil)
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "pyroscope.write",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   Exports{},
-		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			tracer := o.Tracer.Tracer("pyroscope.write")
-			args := c.(Arguments)
-			return New(
-				o.Logger,
-				tracer,
-				o.Registerer,
-				func(exports Exports) {
-					o.OnStateChange(exports)
-				},
-				args,
-			)
-		},
-	})
-}
 
 // Arguments represents the input state of the pyroscope.write
 // component.

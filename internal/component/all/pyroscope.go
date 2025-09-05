@@ -1,0 +1,37 @@
+package all
+
+import (
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/glue"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
+	"github.com/grafana/alloy/internal/featuregate"
+)
+
+func init() {
+	component.Register(component.Registration{
+		Name:      "pyroscope.write",
+		Stability: featuregate.StabilityGenerallyAvailable,
+		Args:      write.Arguments{},
+		Exports:   write.Exports{},
+		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
+			tracer := o.Tracer.Tracer("pyroscope.write")
+			args := c.(write.Arguments)
+			uid := alloyseed.Get().UID
+			gc, err := write.New(
+				o.Logger,
+				tracer,
+				o.Registerer,
+				func(exports write.Exports) {
+					o.OnStateChange(exports)
+				},
+				uid,
+				args,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return &glue.GenericComponentGlue[write.Arguments]{GenericComponent: gc}, nil
+		},
+	})
+}
