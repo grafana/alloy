@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,14 +73,12 @@ func TestConnectionInfo(t *testing.T) {
 			Registry:      reg,
 			EngineVersion: tc.engineVersion,
 			CloudProvider: tc.cloudProvider,
-			CheckInterval: time.Second,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
-		defer collector.Stop()
 
 		err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))
 		require.NoError(t, err)

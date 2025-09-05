@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -56,9 +57,8 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
-	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
-	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
-	ConnectionInfoArguments ConnectionInfoArguments `alloy:"connection_info,block,optional"`
+	QuerySampleArguments QuerySampleArguments `alloy:"query_samples,block,optional"`
+	QueryTablesArguments QueryTablesArguments `alloy:"query_details,block,optional"`
 }
 
 type QuerySampleArguments struct {
@@ -70,10 +70,6 @@ type QueryTablesArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-type ConnectionInfoArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-}
-
 var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
@@ -81,9 +77,6 @@ var DefaultArguments = Arguments{
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
-	},
-	ConnectionInfoArguments: ConnectionInfoArguments{
-		CollectInterval: 15 * time.Second,
 	},
 }
 
@@ -128,10 +121,9 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
-func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
+func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -139,7 +131,6 @@ func newWithOpen(opts component.Options, args Arguments, openFn func(driverName,
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -159,10 +150,6 @@ func newWithOpen(opts component.Options, args Arguments, openFn func(driverName,
 	}
 
 	return c, nil
-}
-
-func New(opts component.Options, args Arguments) (*Component, error) {
-	return newWithOpen(opts, args, sql.Open)
 }
 
 func (c *Component) Run(ctx context.Context) error {
@@ -229,7 +216,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if err := c.startCollectors(); err != nil {
 		c.healthErr.Store(err.Error())
-		return nil
+		return err
 	}
 
 	c.healthErr.Store("")
@@ -259,82 +246,21 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors() error {
-	// Connection Info collector is always enabled
-	// value 1 on success and 0 on failure to establish the connection and check the engine version
-	startConnInfo := func(engineVersion string) {
-		ciCollector, ciErr := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-			DSN:           string(c.args.DataSourceName),
-			Registry:      c.registry,
-			EngineVersion: engineVersion,
-			CheckInterval: c.args.ConnectionInfoArguments.CollectInterval,
-			DB:            c.dbConnection,
-			HealthErr:     c.healthErr,
-		})
-		if ciErr != nil {
-			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to create %s collector: %w", collector.ConnectionInfoName, ciErr).Error())
-			return
-		}
-		if err := ciCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", fmt.Errorf("failed to start %s collector: %w", collector.ConnectionInfoName, err).Error())
-			return
-		}
-		c.collectors = append(c.collectors, ciCollector)
-	}
-
-	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
+	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		err = fmt.Errorf("failed to start collectors: failed to open Postgres connection: %w", err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo("")
 		return err
 	}
 
 	if dbConnection == nil {
-		err = fmt.Errorf("failed to start collectors: nil DB connection")
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo("")
-		return err
+		return errors.New("nil DB connection")
 	}
 	if err = dbConnection.Ping(); err != nil {
-		err = fmt.Errorf("failed to start collectors: failed to ping Postgres: %w", err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo("")
 		return err
 	}
 	c.dbConnection = dbConnection
-
-	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
-	err = rs.Err()
-	if err != nil {
-		err = fmt.Errorf("failed to query engine version for collector %s: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo("")
-		return err
-	}
-
-	var engineVersion string
-	if err := rs.Scan(&engineVersion); err != nil {
-		err = fmt.Errorf("failed to scan engine version for collector %s: %w", collector.ConnectionInfoName, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		startConnInfo("")
-		return err
-	}
-
-	// Start the connection_info collector first, so we can report the connection status.
-	startConnInfo(engineVersion)
-
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey)
 
 	collectors := enableOrDisableCollectors(c.args)
-	// Best-effort start: attempt to build/start all enabled collectors and aggregate errors.
-	var startErrors []string
-
-	// logStartError wraps, logs, and records collector start errors consistently.
-	logStartError := func(collectorName, action string, err error) {
-		wrapped := fmt.Errorf("failed to %s %s collector: %w", action, collectorName, err)
-		level.Error(c.opts.Logger).Log("msg", wrapped.Error())
-		startErrors = append(startErrors, wrapped.Error())
-	}
 
 	if collectors[collector.QueryTablesName] {
 		qCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
@@ -344,14 +270,14 @@ func (c *Component) startCollectors() error {
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.QueryTablesName, "create", err)
-		} else {
-			if err := qCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryTablesName, "start", err)
-			} else {
-				c.collectors = append(c.collectors, qCollector)
-			}
+			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTables collector", "err", err)
+			return err
 		}
+		if err := qCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, qCollector)
 	}
 
 	if collectors[collector.QuerySampleName] {
@@ -363,15 +289,45 @@ func (c *Component) startCollectors() error {
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
 		})
 		if err != nil {
-			logStartError(collector.QuerySampleName, "create", err)
-		} else {
-			if err := aCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QuerySampleName, "start", err)
-			} else {
-				c.collectors = append(c.collectors, aCollector)
-			}
+			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
+			return err
 		}
+		if err := aCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, aCollector)
 	}
+
+	rs := dbConnection.QueryRowContext(context.Background(), selectEngineVersion)
+	err = rs.Err()
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
+		return err
+	}
+
+	var engineVersion string
+	if err := rs.Scan(&engineVersion); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
+		return err
+	}
+
+	// Connection Info collector is always enabled
+	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
+	})
+	if err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
+		return err
+	}
+	if err := ciCollector.Start(context.Background()); err != nil {
+		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
+		return err
+	}
+
+	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.SchemaTableName] {
 		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
@@ -380,17 +336,14 @@ func (c *Component) startCollectors() error {
 			Logger:       c.opts.Logger,
 		})
 		if err != nil {
-			logStartError(collector.SchemaTableName, "create", err)
-		} else {
-			if err := stCollector.Start(context.Background()); err != nil {
-				logStartError(collector.SchemaTableName, "start", err)
-			} else {
-				c.collectors = append(c.collectors, stCollector)
-			}
+			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
+			return err
 		}
-	}
-	if len(startErrors) > 0 {
-		return fmt.Errorf("failed to start collectors: %s", strings.Join(startErrors, "; "))
+		if err := stCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, stCollector)
 	}
 	return nil
 }
