@@ -9,9 +9,9 @@ otelcol.receiver.googlecloudpubsub "default" {
 	timeout               = "10s"
 
 	output {
-		metrics = [otelcol.exporter.googlecloud.default.input]
-		logs    = [otelcol.exporter.googlecloud.default.input]
-		traces  = [otelcol.exporter.googlecloud.default.input]
+		metrics = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
+		logs    = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
+		traces  = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
 	}
 }
 
@@ -76,4 +76,37 @@ otelcol.exporter.googlecloud "default" {
 			regex  = "regex-2",
 		}]
 	}
+}
+
+otelcol.exporter.googlecloudpubsub "default" {
+	sending_queue {
+		num_consumers = 57
+		queue_size    = 567
+	}
+
+	retry_on_failure {
+		initial_interval     = "10s"
+		randomization_factor = 0
+		multiplier           = 2
+		max_interval         = "1m0s"
+		max_elapsed_time     = "10m0s"
+	}
+	project     = "my-project-id"
+	user_agent  = "my-user-agent"
+	topic       = "projects/foo-bar/topics/custom-topic"
+	compression = "gzip"
+
+	watermark {
+		behavior      = "earliest"
+		allowed_drift = "10s"
+	}
+	endpoint = "https://www.googleapis.com/"
+	insecure = true
+
+	ordering {
+		enabled                   = true
+		from_resource_attribute   = "attr"
+		remove_resource_attribute = true
+	}
+	timeout = "15s"
 }
