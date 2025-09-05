@@ -218,9 +218,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		if err != nil {
 			return nil, err
 		}
-		if err = configureTracing(config, httpClient); err != nil {
-			return nil, err
-		}
+		configureTracing(config, httpClient)
 
 		pushClients = append(
 			pushClients,
@@ -684,10 +682,7 @@ func validateLabels(lbls labels.Labels) error {
 	return nil
 }
 
-func configureTracing(config Arguments, httpClient *http.Client) error {
-	if opentracing.IsGlobalTracerRegistered() {
-		return fmt.Errorf("opentracing was configured, but is not expected to be")
-	}
+func configureTracing(config Arguments, httpClient *http.Client) {
 	if config.Tracing.JaegerPropagator || config.Tracing.TraceContextPropagator {
 		var propagators []propagation.TextMapPropagator
 		if config.Tracing.JaegerPropagator {
@@ -702,5 +697,4 @@ func configureTracing(config Arguments, httpClient *http.Client) error {
 			),
 		)
 	}
-	return nil
 }
