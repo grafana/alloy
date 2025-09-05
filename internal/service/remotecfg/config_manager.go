@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
 )
 
 const baseJitter = 100 * time.Millisecond
@@ -239,7 +240,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		cm.metrics.lastLoadSuccess.Set(0)
 
 		// Make immediate GetConfig call to notify server of failure
-		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error())
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
 		cm.notifyStatusUpdate(getAPIConfig)
 
 		return err
@@ -275,6 +276,8 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// to reload the config in this case since it is already loaded.
 	if alreadyLoaded {
 		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
+		cm.notifyStatusUpdate(getAPIConfig)
 		return nil
 	}
 
@@ -291,7 +294,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		cm.metrics.lastLoadSuccess.Set(0)
 
 		// Make immediate GetConfig call to notify server of parse/load failure
-		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error())
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
 		cm.notifyStatusUpdate(getAPIConfig)
 
 		// If we have a cached config, attempt to reload it to restore component health.
@@ -451,6 +454,16 @@ func (cm *configManager) getRemoteConfigStatus() *collectorv1.RemoteConfigStatus
 		Status:       cm.remoteConfigStatus.Status,
 		ErrorMessage: cm.remoteConfigStatus.ErrorMessage,
 	}
+}
+
+// getErrorMessage extracts the best error message from an error,
+// using AllMessages() for diagnostic errors and Error() for others.
+func getErrorMessage(err error) string {
+	var diags diag.Diagnostics
+	if errors.As(err, &diags) {
+		return diags.AllMessages()
+	}
+	return err.Error()
 }
 
 func getHash(in []byte) string {
