@@ -199,7 +199,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
-
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -278,7 +277,6 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
 func (c *Component) Update(args component.Arguments) error {
-
 	reportError := func(errorWrapper string, err error) {
 		err = fmt.Errorf("%s: %w", errorWrapper, err)
 		level.Error(c.opts.Logger).Log("msg", err.Error())
@@ -386,7 +384,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
-
 	// Best-effort start: try building/starting every enabled collector and aggregate errors.
 	var startErrors []string
 

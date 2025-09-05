@@ -306,7 +306,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 func (c *Component) startCollectors(systemID string, engineVersion string) error {
-
 	// Best-effort start: try building/starting every enabled collector and aggregate errors.
 	var startErrors []string
 
