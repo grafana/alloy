@@ -5,7 +5,7 @@ Slim packages are lightweight counterparts of `github.com/grafana/alloy/internal
 ## Idea
 - Maintain small, focused packages with minimal transitive compilation dependencies
 - Allow users to control compilation dependencies explicitly
-- Separate concerns to avoid pulling in unnecessary heavyweight dependencies
+- Separation of concerns
 
 ## Performance Impact
 Switching from `util.TestLogger` to `slim/testlog.TestLogger` for a trivial empty test `util.TestLogger(t).Log("hello", "world")`:
