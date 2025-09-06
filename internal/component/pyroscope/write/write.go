@@ -40,7 +40,6 @@ import (
 )
 
 var (
-	userAgent        = useragent.Get()
 	DefaultArguments = func() Arguments {
 		return Arguments{
 			Tracing: TracingOptions{
@@ -61,6 +60,8 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			tracer := o.Tracer.Tracer("pyroscope.write")
 			args := c.(Arguments)
+			userAgent := useragent.Get()
+
 			return New(
 				o.Logger,
 				tracer,
@@ -68,6 +69,7 @@ func init() {
 				func(exports Exports) {
 					o.OnStateChange(exports)
 				},
+				userAgent,
 				args,
 			)
 		},
@@ -139,6 +141,7 @@ type Component struct {
 	onStateChange func(Exports)
 	cfg           Arguments
 	metrics       *metrics
+	userAgent     string
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -152,11 +155,12 @@ func New(
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
+	userAgent string,
 	c Arguments,
 ) (*Component, error) {
 
-	metrics := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, metrics)
+	m := newMetrics(reg)
+	receiver, err := newFanOut(logger, tracer, c, m, userAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +172,8 @@ func New(
 		logger:        logger,
 		tracer:        tracer,
 		onStateChange: onStateChange,
-		metrics:       metrics,
+		metrics:       m,
+		userAgent:     userAgent,
 	}, nil
 }
 
@@ -183,7 +188,7 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics, c.userAgent)
 	if err != nil {
 		return err
 	}
@@ -202,7 +207,7 @@ type fanOutClient struct {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
 	uid := alloyseed.Get().UID
