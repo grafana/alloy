@@ -93,7 +93,7 @@ func Test_Write_FanOut(t *testing.T) {
 		c, err := New(util.TestAlloyLogger(t), (noop.TracerProvider{}).Tracer(""), prometheus.NewRegistry(), func(e Exports) {
 			defer wg.Done()
 			export = e
-		}, "Alloy/239", arg)
+		}, "Alloy/239", "", arg)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
@@ -164,7 +164,7 @@ func Test_Write_Update(t *testing.T) {
 	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		export = e
-	}, "Alloy/239", argument)
+	}, "Alloy/239", "", argument)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -297,7 +297,7 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	s.component, err = New(util.TestAlloyLogger(s.T()), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		s.export = e
-	}, "Alloy/239", argument)
+	}, "Alloy/239", "", argument)
 	s.Require().NoError(err)
 
 	go s.component.Run(s.ctx)
@@ -572,7 +572,7 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
 		defer wg.Done()
 		export = e
-	}, "Alloy/239", argument)
+	}, "Alloy/239", "", argument)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
