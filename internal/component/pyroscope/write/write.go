@@ -153,7 +153,14 @@ type Exports struct {
 }
 
 // New creates a new pyroscope.write component.
-func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, onStateChange func(Exports), userAgent string, uid string, c Arguments) (*Component, error) {
+func New(
+	logger log.Logger,
+	tracer trace.Tracer,
+	reg prometheus.Registerer,
+	onStateChange func(Exports),
+	userAgent, uid string,
+	c Arguments,
+) (*Component, error) {
 
 	m := newMetrics(reg)
 	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid)
