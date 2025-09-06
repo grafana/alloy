@@ -8,12 +8,13 @@ Slim packages are lightweight counterparts of `github.com/grafana/alloy/internal
 - Separate concerns to avoid pulling in unnecessary heavyweight dependencies
 
 ## Performance Impact
-Switching from `util.TestLogger` to `slim/testlog.TestLogger`:
+Switching from `util.TestLogger` to `slim/testlog.TestLogger` for a trivial empty test `util.TestLogger(t).Log("hello", "world")`:
 - **Compilation time**: 21s → 500ms (42x faster)
 - **Binary size**: 78MB → 4MB (19x smaller) 
 - **Dependencies**: 216 → 2 packages downloaded
 
 ## Usage
+For example testlog:
 ```go
 // Instead of:
 import "github.com/grafana/alloy/internal/util"
