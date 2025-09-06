@@ -2,7 +2,7 @@
 
 Slim packages are lightweight counterparts of `github.com/grafana/alloy/internal/util` that follow the separation of concerns principle by isolating functionality with minimal dependencies.
 
-## Philosophy
+## Idea
 - Maintain small, focused packages with minimal transitive compilation dependencies
 - Allow users to control compilation dependencies explicitly
 - Separate concerns to avoid pulling in unnecessary heavyweight dependencies
