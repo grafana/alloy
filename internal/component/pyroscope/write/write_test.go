@@ -600,7 +600,8 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 		func(e Exports) {
 			defer wg.Done()
 			export = e
-		}, "Alloy/239",
+		},
+		"Alloy/239",
 		"",
 		argument,
 	)
