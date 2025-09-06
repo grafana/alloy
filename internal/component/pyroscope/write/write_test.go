@@ -92,12 +92,14 @@ func Test_Write_FanOut(t *testing.T) {
 		wg.Add(1)
 		c, err := New(
 			util.TestAlloyLogger(t),
-			(noop.TracerProvider{}).Tracer(""),
+			noop.Tracer{},
 			prometheus.NewRegistry(),
 			func(e Exports) {
 				defer wg.Done()
 				export = e
 			},
+			"Alloy/239",
+			"",
 			arg,
 		)
 		require.NoError(t, err)
@@ -175,6 +177,8 @@ func Test_Write_Update(t *testing.T) {
 			defer wg.Done()
 			export = e
 		},
+		"Alloy/239",
+		"",
 		argument,
 	)
 	require.NoError(t, err)
@@ -314,6 +318,8 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 			defer wg.Done()
 			s.export = e
 		},
+		"Alloy/239",
+		"",
 		argument,
 	)
 	s.Require().NoError(err)
@@ -595,6 +601,8 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 			defer wg.Done()
 			export = e
 		},
+		"Alloy/239",
+		"",
 		argument,
 	)
 	require.NoError(t, err)
