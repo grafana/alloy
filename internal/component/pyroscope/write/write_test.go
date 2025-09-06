@@ -90,10 +90,18 @@ func Test_Write_FanOut(t *testing.T) {
 		t.Helper()
 		var wg sync.WaitGroup
 		wg.Add(1)
-		c, err := New(util.TestAlloyLogger(t), (noop.TracerProvider{}).Tracer(""), prometheus.NewRegistry(), func(e Exports) {
-			defer wg.Done()
-			export = e
-		}, "Alloy/239", "", arg)
+		c, err := New(
+			util.TestAlloyLogger(t),
+			noop.Tracer{},
+			prometheus.NewRegistry(),
+			func(e Exports) {
+				defer wg.Done()
+				export = e
+			},
+			"Alloy/239",
+			"",
+			arg,
+		)
 		require.NoError(t, err)
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
@@ -161,10 +169,18 @@ func Test_Write_Update(t *testing.T) {
 	)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
-		defer wg.Done()
-		export = e
-	}, "Alloy/239", "", argument)
+	c, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
+			defer wg.Done()
+			export = e
+		},
+		"Alloy/239",
+		"",
+		argument,
+	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -294,10 +310,18 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 	wg.Add(1)
 	var err error
 	s.arguments = argument
-	s.component, err = New(util.TestAlloyLogger(s.T()), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
-		defer wg.Done()
-		s.export = e
-	}, "Alloy/239", "", argument)
+	s.component, err = New(
+		util.TestAlloyLogger(s.T()),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
+			defer wg.Done()
+			s.export = e
+		},
+		"Alloy/239",
+		"",
+		argument,
+	)
 	s.Require().NoError(err)
 
 	go s.component.Run(s.ctx)
@@ -569,10 +593,17 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	var wg sync.WaitGroup
 	var export Exports
 	wg.Add(1)
-	c, err := New(util.TestAlloyLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
-		defer wg.Done()
-		export = e
-	}, "Alloy/239", "", argument)
+	c, err := New(
+		util.TestAlloyLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
+			defer wg.Done()
+			export = e
+		}, "Alloy/239",
+		"",
+		argument,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
