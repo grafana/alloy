@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/slim/testlog"
 )
 
 func TestName(t *testing.T) {
-	_ = util.TestLogger(t).Log("hello", "korniltsev")
+	_ = testlog.TestLogger(t).Log("hello", "korniltsev")
 }
