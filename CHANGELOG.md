@@ -59,8 +59,6 @@ Main (unreleased)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 
-- Add `stat_statements` configuration block to `prometheus.exporter.postgres` component to enable query export. The new block has a property to enable the query export, the other configures the query's maximum length. (@SimonSerrano) 
-
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
   - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
@@ -85,6 +83,8 @@ Main (unreleased)
 - Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
+
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 
 ### Enhancements
 
