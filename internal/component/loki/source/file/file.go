@@ -209,6 +209,9 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	c.tasksMut.Lock()
+	defer c.tasksMut.Unlock()
+
 	c.receiversMut.RLock()
 	if receiversChanged(c.receivers, newArgs.ForwardTo) {
 		// Upgrade lock to write.
@@ -220,8 +223,6 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	c.tasksMut.Lock()
-	defer c.tasksMut.Unlock()
 	c.tasks = make(map[positions.Entry]runnerTask)
 	if len(newArgs.Targets) == 0 {
 		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
