@@ -283,7 +283,6 @@ func (c *Component) reportError(errorMsg string, err error) {
 }
 
 func (c *Component) Update(args component.Arguments) error {
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
