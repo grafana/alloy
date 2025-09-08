@@ -11,6 +11,7 @@ prometheus.scrape "scrape_prom_metrics" {
   forward_to = [
     prometheus.write.queue.scrape_prom_metrics.receiver,
     prometheus.remote_write.scrape_prom_metrics.receiver,
+    prometheus.remote_write.scrape_prom_metrics_prw_v2.receiver,
     otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver,
   ]
   scrape_classic_histograms = true
@@ -65,4 +66,14 @@ otelcol.exporter.otlphttp "scrape_prom_metrics_to_otlp" {
       insecure_skip_verify = true
     }
   }
+}
+
+prometheus.remote_write "scrape_prom_metrics_prw_v2" {
+    external_labels = {
+      test_name = "scrape_prom_metrics_prw_v2",
+    }
+	endpoint {
+	    protobuf_message = "io.prometheus.write.v2.Request"
+		url = "http://mimir:9009/api/v1/push"
+	}
 }

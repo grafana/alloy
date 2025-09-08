@@ -44,6 +44,7 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
 
@@ -52,6 +53,7 @@ Main (unreleased)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_table` collector for postgres (@fridgepoet)
+  - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
@@ -63,10 +65,16 @@ Main (unreleased)
 - Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
-  
+
 ### Enhancements
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
+
+- `pyroscope.write`, `pyroscope.receive_http` components include `trace_id` in logs and propagate it downstream. (@korniltsev)
+
+- Improve logging in `pyroscope.write` component. (@korniltsev)
+
+- Add comprehensive latency metrics to `pyroscope.write` component with endpoint-specific tracking for both push and ingest operations. (@korniltsev, @claude)
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
@@ -105,12 +113,6 @@ Main (unreleased)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
 
-- Add `cache_minimum_ttl` argument to `faro.receiver.sourcemaps` block to optionally specify the duration after which the cache map clears itself if sourcemap was not used for the specified duration (@mateagluhak)
-
-- Add `cache_error_cleanup_interval` argument to `faro.receiver.sourcemaps` block to specify the duration after which the cached sourcemap errors are removed from the cache (@mateagluhak)
-
-- Add `cache_cleanup_check_interval` argument to `faro.receiver.sourcemaps` block to specify how often to check if any sourcemaps need to be cleared from the cache (@mateagluhak)
-
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -128,6 +130,8 @@ Main (unreleased)
 - Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
+
+- Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
 
 v1.10.2
 -----------------

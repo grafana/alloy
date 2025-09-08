@@ -15,29 +15,38 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/pyroscope/api/model/labelset"
-	commonconfig "github.com/prometheus/common/config"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
-
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/model/labelset"
+	"github.com/prometheus/client_golang/prometheus"
+	commonconfig "github.com/prometheus/common/config"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/propagators/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
-	userAgent        = useragent.Get()
 	DefaultArguments = func() Arguments {
-		return Arguments{}
+		return Arguments{
+			Tracing: TracingOptions{
+				JaegerPropagator:       true,
+				TraceContextPropagator: true,
+			},
+		}
 	}
 	_ component.Component = (*Component)(nil)
 )
@@ -49,7 +58,22 @@ func init() {
 		Args:      Arguments{},
 		Exports:   Exports{},
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			return New(o, c.(Arguments))
+			tracer := o.Tracer.Tracer("pyroscope.write")
+			args := c.(Arguments)
+			userAgent := useragent.Get()
+			uid := alloyseed.Get().UID
+
+			return New(
+				o.Logger,
+				tracer,
+				o.Registerer,
+				func(exports Exports) {
+					o.OnStateChange(exports)
+				},
+				userAgent,
+				uid,
+				args,
+			)
 		},
 	})
 }
@@ -59,6 +83,12 @@ func init() {
 type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
+	Tracing        TracingOptions     `alloy:"tracing,block,optional"`
+}
+
+type TracingOptions struct {
+	JaegerPropagator       bool `alloy:"jaeger_propagator,attr,optional"`
+	TraceContextPropagator bool `alloy:"trace_context_propagator,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -108,9 +138,13 @@ func (r *EndpointOptions) Validate() error {
 
 // Component is the pyroscope.write component.
 type Component struct {
-	opts    component.Options
-	cfg     Arguments
-	metrics *metrics
+	logger        log.Logger
+	tracer        trace.Tracer
+	onStateChange func(Exports)
+	cfg           Arguments
+	metrics       *metrics
+	userAgent     string
+	uid           string
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -119,19 +153,31 @@ type Exports struct {
 }
 
 // New creates a new pyroscope.write component.
-func New(o component.Options, c Arguments) (*Component, error) {
-	metrics := newMetrics(o.Registerer)
-	receiver, err := NewFanOut(o, c, metrics)
+func New(
+	logger log.Logger,
+	tracer trace.Tracer,
+	reg prometheus.Registerer,
+	onStateChange func(Exports),
+	userAgent, uid string,
+	c Arguments,
+) (*Component, error) {
+
+	m := newMetrics(reg)
+	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid)
 	if err != nil {
 		return nil, err
 	}
 	// Immediately export the receiver
-	o.OnStateChange(Exports{Receiver: receiver})
+	onStateChange(Exports{Receiver: receiver})
 
 	return &Component{
-		cfg:     c,
-		opts:    o,
-		metrics: metrics,
+		cfg:           c,
+		logger:        logger,
+		tracer:        tracer,
+		onStateChange: onStateChange,
+		metrics:       m,
+		userAgent:     userAgent,
+		uid:           uid,
 	}, nil
 }
 
@@ -146,11 +192,11 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.cfg = newConfig.(Arguments)
-	receiver, err := NewFanOut(c.opts, newConfig.(Arguments), c.metrics)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics, c.userAgent, c.uid)
 	if err != nil {
 		return err
 	}
-	c.opts.OnStateChange(Exports{Receiver: receiver})
+	c.onStateChange(Exports{Receiver: receiver})
 	return nil
 }
 
@@ -159,26 +205,27 @@ type fanOutClient struct {
 	pushClients   []pushv1connect.PusherServiceClient
 	ingestClients map[*EndpointOptions]*http.Client
 	config        Arguments
-	opts          component.Options
 	metrics       *metrics
+	tracer        trace.Tracer
+	logger        log.Logger
 }
 
-// NewFanOut creates a new fan out client that will fan out to all endpoints.
-func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fanOutClient, error) {
+// newFanOut creates a new fan out client that will fan out to all endpoints.
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
 	ingestClients := make(map[*EndpointOptions]*http.Client)
-	uid := alloyseed.Get().UID
 
 	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
-		endpoint.Headers[alloyseed.LegacyHeaderName] = uid
-		endpoint.Headers[alloyseed.HeaderName] = uid
+		endpoint.Headers["X-Alloy-Id"] = uid
 		httpClient, err := commonconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
 		}
+		configureTracing(config, httpClient)
+
 		pushClients = append(
 			pushClients,
 			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
@@ -186,10 +233,11 @@ func NewFanOut(opts component.Options, config Arguments, metrics *metrics) (*fan
 		ingestClients[endpoint] = httpClient
 	}
 	return &fanOutClient{
+		logger:        logger,
+		tracer:        tracer,
 		pushClients:   pushClients,
 		ingestClients: ingestClients,
 		config:        config,
-		opts:          opts,
 		metrics:       metrics,
 	}, nil
 }
@@ -200,12 +248,38 @@ func (f *fanOutClient) Push(
 	req *connect.Request[pushv1.PushRequest],
 ) (*connect.Response[pushv1.PushResponse], error) {
 
+	defer f.observeLatency("-", "push_total")()
+
+	ctx, sp := f.tracer.Start(ctx, "Push")
+	defer sp.End()
+
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
+		dl                    any
+		ok                    bool
 		reqSize, profileCount = requestSize(req)
+		l                     = util.TraceLog(f.logger, sp)
+		st                    = time.Now()
 	)
+	if dl, ok = ctx.Deadline(); !ok {
+		dl = "none"
+	}
+	defer func() {
+		if errs != nil {
+			l = level.Warn(log.With(l, "err", errs))
+		} else {
+			l = level.Debug(l)
+		}
+		_ = l.Log(
+			"msg", "Push",
+			"sz", reqSize,
+			"n", profileCount,
+			"dl", dl,
+			"st", st,
+		)
+	}()
 
 	for i, client := range f.pushClients {
 		var (
@@ -220,6 +294,7 @@ func (f *fanOutClient) Push(
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(f.config.Endpoints[i].URL, "push_endpoint")()
 			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
 			for k, v := range f.config.Endpoints[i].Headers {
@@ -227,6 +302,7 @@ func (f *fanOutClient) Push(
 			}
 			for {
 				err = func() error {
+					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
 					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
 					defer cancel()
 
@@ -238,8 +314,12 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				_ = level.Debug(l).Log("msg",
+					"failed to push to endpoint",
+					"endpoint", f.config.Endpoints[i].URL,
+					"retries", backoff.NumRetries(),
+					"err", err,
+				)
 				if !shouldRetry(err) {
 					break
 				}
@@ -252,8 +332,7 @@ func (f *fanOutClient) Push(
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				err = fmt.Errorf("failed to push to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -375,12 +454,38 @@ func (e *PyroscopeWriteError) readBody(resp *http.Response) {
 
 // AppendIngest implements the pyroscope.Appender interface.
 func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.IncomingProfile) error {
+	defer f.observeLatency("-", "ingest_total")()
+
+	ctx, sp := f.tracer.Start(ctx, "AppendIngest")
+	defer sp.End()
+
 	var (
 		wg                    sync.WaitGroup
 		errs                  error
 		errorMut              sync.Mutex
+		dl                    any
+		ok                    bool
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
+		l                     = util.TraceLog(f.logger, sp)
+		st                    = time.Now()
 	)
+	if dl, ok = ctx.Deadline(); !ok {
+		dl = "none"
+	}
+	defer func() {
+		if errs != nil {
+			l = level.Warn(log.With(l, "err", errs))
+		} else {
+			l = level.Debug(l)
+		}
+		_ = l.Log(
+			"msg", "AppendIngest",
+			"sz", reqSize,
+			"n", profileCount,
+			"dl", dl,
+			"st", st,
+		)
+	}()
 
 	// Handle labels
 	query := profile.URL.Query()
@@ -416,13 +521,14 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		)
 		wg.Add(1)
 		go func() {
+			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
 			defer wg.Done()
-
 			for {
 				err = func() error {
+					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
 					u, err := url.Parse(endpoint.URL)
 					if err != nil {
-						return fmt.Errorf("parse URL for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("parse URL: %w", err)
 					}
 
 					u.Path = path.Join(u.Path, profile.URL.Path)
@@ -435,7 +541,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
 					if err != nil {
-						return fmt.Errorf("create request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("create request: %w", err)
 					}
 
 					// set headers from endpoint
@@ -454,20 +560,20 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 
 					resp, err := f.ingestClients[endpoint].Do(req)
 					if err != nil {
-						return fmt.Errorf("do request for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("do request: %w", err)
 					}
 					defer resp.Body.Close()
 
 					if resp.StatusCode != http.StatusOK {
 						wErr := &PyroscopeWriteError{StatusCode: resp.StatusCode}
 						wErr.readBody(resp)
-						return fmt.Errorf("remote error for endpoint[%d]: %w", i, wErr)
+						return fmt.Errorf("remote error: %w", wErr)
 					}
 
 					// Ensure full body is read to keep http connection Keep-Alive
 					_, err = io.Copy(io.Discard, resp.Body)
 					if err != nil {
-						return fmt.Errorf("reading response body for endpoint[%d]: %w", i, err)
+						return fmt.Errorf("reading response body: %w", err)
 					}
 
 					return nil
@@ -477,8 +583,11 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
 					break
 				}
-				level.Warn(f.opts.Logger).
-					Log("msg", "failed to push to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				_ = level.Debug(l).Log(
+					"msg", "failed to ingest to endpoint",
+					"endpoint", f.config.Endpoints[i].URL,
+					"retries", backoff.NumRetries(),
+					"err", err)
 				if !shouldRetry(err) {
 					break
 				}
@@ -491,8 +600,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 			if err != nil {
 				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
 				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				level.Warn(f.opts.Logger).
-					Log("msg", "final error sending to profiles to endpoint", "endpoint", f.config.Endpoints[i].URL, "err", err)
+				err = fmt.Errorf("failed to ingest to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -501,6 +609,13 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {
+	t := time.Now()
+	return func() {
+		f.metrics.latency.WithLabelValues(endpoint, latencyType).Observe(time.Since(t).Seconds())
+	}
 }
 
 // WithUserAgent returns a `connect.ClientOption` that sets the User-Agent header on.
@@ -571,4 +686,21 @@ func validateLabels(lbls labels.Labels) error {
 	}
 
 	return nil
+}
+
+func configureTracing(config Arguments, httpClient *http.Client) {
+	if config.Tracing.JaegerPropagator || config.Tracing.TraceContextPropagator {
+		var propagators []propagation.TextMapPropagator
+		if config.Tracing.JaegerPropagator {
+			propagators = append(propagators, jaeger.Jaeger{}) // pyroscope uses jaeger
+		}
+		if config.Tracing.TraceContextPropagator {
+			propagators = append(propagators, propagation.TraceContext{}) // for good luck
+		}
+		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport,
+			otelhttp.WithPropagators(
+				propagation.NewCompositeTextMapPropagator(propagators...),
+			),
+		)
+	}
 }
