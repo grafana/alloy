@@ -136,37 +136,15 @@ To debug using the UI:
 ## Examine logs
 
 {{< param "PRODUCT_NAME" >}} provides different log levels that help you determine the root cause of issues.
-You can configure the log level by using the [`--log.level` flag](../reference/cli/run.md#logging).
+You can configure the log level using the [`logging`][logging] configuration block in your {{< param "PRODUCT_NAME" >}} configuration file.
 
-{{< admonition type="note" >}}
-Refer to [logging][] for details on log configuration options in the configuration file.
+Logs from {{< param "PRODUCT_NAME" >}} are written in `logfmt` format by default.
+You can configure the [log format][] to be either `logfmt` or `json`.
+You can [retrieve][] the logs in different ways depending on your platform and installation method.
 
 [logging]: ../../reference/config-blocks/logging/
-{{< /admonition >}}
-
-Logs from {{< param "PRODUCT_NAME" >}} are in `logfmt` format.
-You can retrieve the logs in different ways depending on your platform and installation method:
-
-**Linux:**
-
-* If you're running {{< param "PRODUCT_NAME" >}} with systemd, use `journalctl -u alloy`.
-* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
-
-**macOS:**
-
-* If you're running {{< param "PRODUCT_NAME" >}} with Homebrew as a service, use `brew services info alloy` to check status and `tail -f $(brew --prefix)/var/log/alloy.log` for logs.
-* If you're running {{< param "PRODUCT_NAME" >}} with launchd, use `log show --predicate 'process == "alloy"' --info` or check `/usr/local/var/log/alloy.log`.
-* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
-
-**Windows:**
-
-* If you're running {{< param "PRODUCT_NAME" >}} as a Windows service, check the Windows Event Viewer under **Windows Logs** > **Application** for Alloy-related events.
-* If you're running {{< param "PRODUCT_NAME" >}} with Chocolatey or manually installed, check the log files in `%PROGRAMDATA%\Grafana\Alloy\logs\` or the directory specified in your configuration.
-* If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
-
-**All platforms:**
-
-* {{< param "PRODUCT_NAME" >}} writes logs to `stdout` if started directly without a service manager.
+[log format]: ../../reference/config-blocks/logging/#log-format
+[retrieve]: ../../reference/config-blocks/logging/#retrieve-logs
 
 ### Common log messages
 
@@ -184,6 +162,12 @@ level=info msg="starting server"
 level=info msg="starting server" addr=localhost:8080
 level=info msg="started scheduled components"
 ```
+
+{{< admonition type="note" >}}
+The `starting server` messages refer to the built-in [HTTP server][http] that hosts the debugging UI, `/metrics` endpoint, and other debugging endpoints.
+
+[http]: ../../reference/config-blocks/http/
+{{< /admonition >}}
 
 **Component updates and configuration changes:**
 
