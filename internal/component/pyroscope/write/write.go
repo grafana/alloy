@@ -17,13 +17,13 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -41,7 +41,6 @@ import (
 )
 
 var (
-	userAgent        = useragent.Get()
 	DefaultArguments = func() Arguments {
 		return Arguments{
 			Tracing: TracingOptions{
@@ -64,6 +63,9 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			tracer := o.Tracer.Tracer("pyroscope.write")
 			args := c.(Arguments)
+			userAgent := useragent.Get()
+			uid := alloyseed.Get().UID
+
 			return New(
 				o.Logger,
 				tracer,
@@ -71,6 +73,8 @@ func init() {
 				func(exports Exports) {
 					o.OnStateChange(exports)
 				},
+				userAgent,
+				uid,
 				args,
 			)
 		},
@@ -144,6 +148,8 @@ type Component struct {
 	onStateChange func(Exports)
 	arguments     Arguments
 	metrics       *metrics
+	userAgent     string
+	uid           string
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -157,11 +163,12 @@ func New(
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
+	userAgent, uid string,
 	c Arguments,
 ) (*Component, error) {
 
-	metrics := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, metrics)
+	m := newMetrics(reg)
+	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +180,9 @@ func New(
 		logger:        logger,
 		tracer:        tracer,
 		onStateChange: onStateChange,
-		metrics:       metrics,
+		metrics:       m,
+		userAgent:     userAgent,
+		uid:           uid,
 	}, nil
 }
 
@@ -188,7 +197,7 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.arguments = newConfig.(Arguments)
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics, c.userAgent, c.uid)
 	if err != nil {
 		return err
 	}
@@ -212,9 +221,8 @@ type endpoint struct {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics) (*fanOutClient, error) {
+func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	clients := make([]endpoint, 0, len(config.Endpoints))
-	uid := alloyseed.Get().UID
 
 	for _, e := range config.Endpoints {
 		u, err := url.Parse(e.URL)
@@ -224,8 +232,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		if e.Headers == nil {
 			e.Headers = map[string]string{}
 		}
-		e.Headers[alloyseed.LegacyHeaderName] = uid
-		e.Headers[alloyseed.HeaderName] = uid
+		e.Headers["X-Alloy-Id"] = uid
 		e.Headers["User-Agent"] = userAgent
 		httpClient, err := commonconfig.NewClientFromConfig(*e.HTTPClientConfig.Convert(), e.Name)
 		if err != nil {
