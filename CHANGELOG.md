@@ -115,6 +115,8 @@ Main (unreleased)
 
 - Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
+- Reduced allocation in when using external labels for `loki.write`. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
