@@ -633,7 +633,6 @@ func Test_Write_HttpClientTrace(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			logBuf := bytes.NewBuffer(nil)
 			l := log.NewSyncLogger(log.NewLogfmtLogger(logBuf))
 
@@ -733,7 +732,6 @@ func Test_Write_HttpClientTrace(t *testing.T) {
 					}
 				})
 			}
-
 		})
 	}
 }
