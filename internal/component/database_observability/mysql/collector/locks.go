@@ -135,8 +135,7 @@ func (c *LockCollector) Stop() {
 func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	rsdl, err := c.mySQLClient.QueryContext(ctx, selectDataLocks)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query data locks", "err", err)
-		return err
+		return fmt.Errorf("failed to query data locks: %w", err)
 	}
 	defer rsdl.Close()
 
@@ -170,8 +169,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	}
 
 	if err := rsdl.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over locks result set", "err", err)
-		return err
+		return fmt.Errorf("failed to iterate over locks result set: %w", err)
 	}
 
 	return nil

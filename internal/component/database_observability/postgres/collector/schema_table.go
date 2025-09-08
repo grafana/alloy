@@ -140,7 +140,7 @@ func (c *SchemaTable) Name() string {
 }
 
 func (c *SchemaTable) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", SchemaTableName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -185,14 +185,12 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
 	var dbName string
 	if err := rs.Scan(&dbName); err != nil {
-		level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
-		return err
+		return fmt.Errorf("failed to scan database name: %w", err)
 	}
 
 	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_namespace", "database", dbName, "err", err)
-		return err
+		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
 	}
 	defer schemaRs.Close()
 
@@ -213,8 +211,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	}
 
 	if err := schemaRs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over pg_namespace result set", "database", dbName, "err", err)
-		return err
+		return fmt.Errorf("error during iterating over pg_namespace result set for database %s: %w", dbName, err)
 	}
 
 	if len(schemas) == 0 {
@@ -253,8 +250,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		}
 
 		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "error during iterating over tables result set", "err", err)
-			return err
+			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
 		}
 	}
 
@@ -341,7 +337,7 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 

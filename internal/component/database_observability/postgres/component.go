@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -131,9 +130,14 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
+	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	return new(opts, args, sql.Open)
+}
+
+func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -141,6 +145,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
+		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -205,6 +210,11 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 	}), nil
 }
 
+func (c *Component) reportError(errorMsg string, err error) {
+	level.Error(c.opts.Logger).Log("msg", fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
+}
+
 func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -215,30 +225,33 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	dbConnection, err := sql.Open("postgres", string(c.args.DataSourceName))
+	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		return err
+		c.reportError("failed to open database connection", err)
+		return nil
 	}
 
 	if dbConnection == nil {
-		return errors.New("nil DB connection")
+		c.reportError("nil DB connection", nil)
+		return nil
 	}
 	if err = dbConnection.Ping(); err != nil {
-		return err
+		c.reportError("failed to ping database", err)
+		return nil
 	}
 	c.dbConnection = dbConnection
 
 	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
 	err = rs.Err()
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
+		c.reportError("failed to query engine version", err)
+		return nil
 	}
 
 	var systemID, systemIP, systemPort, engineVersion string
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
+		c.reportError("failed to scan engine version", err)
+		return nil
 	}
 
 	systemID = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID, systemIP, systemPort))))
@@ -261,8 +274,8 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(systemID, engineVersion); err != nil {
-		c.healthErr.Store(err.Error())
-		return err
+		c.reportError("failed to start collectors", err)
+		return nil
 	}
 
 	c.healthErr.Store("")
@@ -291,7 +304,16 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
 func (c *Component) startCollectors(systemID string, engineVersion string) error {
+	var startErrors []string
+
+	logStartError := func(collectorName, action string, err error) {
+		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
+		level.Error(c.opts.Logger).Log("msg", errorString)
+		startErrors = append(startErrors, errorString)
+	}
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -304,12 +326,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTables collector", "err", err)
-			return err
+			logStartError(collector.QueryTablesName, "create", err)
 		}
 		if err := qCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
-			return err
+			logStartError(collector.QueryTablesName, "start", err)
 		}
 		c.collectors = append(c.collectors, qCollector)
 	}
@@ -323,12 +343,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
-			return err
+			logStartError(collector.QuerySampleName, "create", err)
 		}
 		if err := aCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
-			return err
+			logStartError(collector.QuerySampleName, "start", err)
 		}
 		c.collectors = append(c.collectors, aCollector)
 	}
@@ -340,12 +358,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		EngineVersion: engineVersion,
 	})
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
-		return err
+		logStartError(collector.ConnectionInfoName, "create", err)
 	}
 	if err := ciCollector.Start(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
-		return err
+		logStartError(collector.ConnectionInfoName, "start", err)
 	}
 
 	c.collectors = append(c.collectors, ciCollector)
@@ -357,15 +373,18 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			Logger:       c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
-			return err
+			logStartError(collector.SchemaTableName, "create", err)
 		}
 		if err := stCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
-			return err
+			logStartError(collector.SchemaTableName, "start", err)
 		}
 		c.collectors = append(c.collectors, stCollector)
 	}
+
+	if len(startErrors) > 0 {
+		return fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
+	}
+
 	return nil
 }
 

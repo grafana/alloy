@@ -73,7 +73,7 @@ func (c *QueryTables) Name() string {
 }
 
 func (c *QueryTables) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -117,8 +117,7 @@ func (c *QueryTables) Stop() {
 func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch summary table samples: %w", err)
 	}
 	defer rs.Close()
 
@@ -154,8 +153,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
 	return nil

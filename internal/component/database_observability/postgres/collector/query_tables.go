@@ -75,7 +75,7 @@ func (c *QueryTables) Name() string {
 }
 
 func (c *QueryTables) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -119,8 +119,7 @@ func (c *QueryTables) Stop() {
 func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch statements from pg_stat_statements view", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
 	}
 	defer rs.Close()
 
@@ -158,7 +157,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over result set", "err", err)
 		return err
 	}
 
