@@ -31,7 +31,7 @@ func newClientTrace() *clientTrace {
 				"Reused", info.Reused,
 				"WasIdle", info.WasIdle,
 				"IdleTime", info.IdleTime,
-				"Conn", info.Conn,
+				"Conn", fmt.Sprintf("%+v", info.Conn),
 			)
 		},
 		PutIdleConn: func(err error) {
