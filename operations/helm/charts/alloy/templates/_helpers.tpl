@@ -75,6 +75,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Create the name of the service account to use
 */}}
+{{- define "alloy.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create -}}
   {{- $raw := default (include "alloy.fullname" .) .Values.serviceAccount.name -}}
   {{- tpl $raw . -}}
