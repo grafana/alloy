@@ -216,7 +216,6 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.Lock()
 		c.receivers = newArgs.ForwardTo
 		c.receiversMut.Unlock()
-
 	} else {
 		c.receiversMut.RUnlock()
 	}
