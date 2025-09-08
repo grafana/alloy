@@ -276,9 +276,9 @@ func (c *Component) Update(args component.Arguments) error {
 // DebugInfo returns information about the status of tailed targets.
 // TODO(@tpaschalis) Decorate with more debug information once it's made
 // available, such as the last time a log line was read.
-func (c *Component) DebugInfo() interface{} {
-	c.tasksMut.Lock()
-	defer c.tasksMut.Unlock()
+func (c *Component) DebugInfo() any {
+	c.tasksMut.RLock()
+	defer c.tasksMut.RUnlock()
 	var res readerDebugInfo
 	for e, task := range c.tasks {
 		offset, _ := c.posFile.Get(e.Path, e.Labels)
