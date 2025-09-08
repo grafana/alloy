@@ -118,6 +118,8 @@ Main (unreleased)
 
 - Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
 
+- Reduced allocation in when using external labels for `loki.write`. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
