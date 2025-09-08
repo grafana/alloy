@@ -276,12 +276,13 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 // for MySQL: "8.0.36-28.1"
 var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
+func (c *Component) reportError(errorMsg string, err error) {
+	err = fmt.Errorf("%s: %w", errorMsg, err)
+	level.Error(c.opts.Logger).Log("msg", err.Error())
+	c.healthErr.Store(err.Error())
+}
+
 func (c *Component) Update(args component.Arguments) error {
-	reportError := func(errorWrapper string, err error) {
-		err = fmt.Errorf("%s: %w", errorWrapper, err)
-		level.Error(c.opts.Logger).Log("msg", err.Error())
-		c.healthErr.Store(err.Error())
-	}
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -294,30 +295,30 @@ func (c *Component) Update(args component.Arguments) error {
 
 	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
-		reportError("failed to open database connection", err)
+		c.reportError("failed to open database connection", err)
 		return nil
 	}
 
 	if dbConnection == nil {
-		reportError("nil DB connection", nil)
+		c.reportError("nil DB connection", nil)
 		return nil
 	}
 
 	if err = dbConnection.Ping(); err != nil {
-		reportError("failed to ping database", err)
+		c.reportError("failed to ping database", err)
 		return nil
 	}
 	c.dbConnection = dbConnection
 
 	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
 	if err = rs.Err(); err != nil {
-		reportError("failed to query engine version", err)
+		c.reportError("failed to query engine version", err)
 		return nil
 	}
 
 	var serverUUID, engineVersion string
 	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
-		reportError("failed to scan engine version", err)
+		c.reportError("failed to scan engine version", err)
 		return nil
 	}
 
@@ -326,7 +327,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if len(matches) > 1 {
 		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
 		if err != nil {
-			reportError("failed to parse engine version", err)
+			c.reportError("failed to parse engine version", err)
 			return nil
 		}
 	}
@@ -388,9 +389,9 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
-		wrapped := fmt.Errorf("failed to %s %s collector: %w", action, collectorName, err)
-		level.Error(c.opts.Logger).Log("msg", wrapped.Error())
-		startErrors = append(startErrors, wrapped.Error())
+		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
+		level.Error(c.opts.Logger).Log("msg", errorString)
+		startErrors = append(startErrors, errorString)
 	}
 
 	var cloudProviderInfo *database_observability.CloudProvider
