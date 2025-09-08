@@ -134,10 +134,10 @@ type Component struct {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	return newWithOpen(opts, args, sql.Open)
+	return new(opts, args, sql.Open)
 }
 
-func newWithOpen(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
+func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -211,9 +211,8 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 }
 
 func (c *Component) reportError(errorMsg string, err error) {
-	err = fmt.Errorf("%s: %w", errorMsg, err)
-	level.Error(c.opts.Logger).Log("msg", err.Error())
-	c.healthErr.Store(err.Error())
+	level.Error(c.opts.Logger).Log("msg", fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -275,7 +274,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(systemID, engineVersion); err != nil {
-		c.healthErr.Store(err.Error())
+		c.reportError("failed to start collectors", err)
 		return nil
 	}
 
@@ -305,8 +304,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
 func (c *Component) startCollectors(systemID string, engineVersion string) error {
-	// Best-effort start: try building/starting every enabled collector and aggregate errors.
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {

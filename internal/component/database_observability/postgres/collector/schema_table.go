@@ -250,7 +250,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 		}
 
 		if err := rs.Err(); err != nil {
-			return fmt.Errorf("error during iterating over tables result set for database %s: %w", dbName, err)
+			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
 		}
 	}
 
@@ -337,7 +337,7 @@ func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName,
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 

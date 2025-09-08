@@ -157,7 +157,7 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over result set", "err", err)
 		return err
 	}
 

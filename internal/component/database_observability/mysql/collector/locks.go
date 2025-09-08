@@ -169,7 +169,7 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 	}
 
 	if err := rsdl.Err(); err != nil {
-		return fmt.Errorf("error during iterating over locks result set: %w", err)
+		return fmt.Errorf("failed to iterate over locks result set: %w", err)
 	}
 
 	return nil

@@ -349,7 +349,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	// Locks constructor Ping succeeds
 	mock.ExpectPing()
 
-	c, err := newWithOpen(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
 	require.NoError(t, err)
 
 	h := c.CurrentHealth()

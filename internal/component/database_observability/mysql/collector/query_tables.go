@@ -153,7 +153,7 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		return fmt.Errorf("error during iterating over samples result set: %w", err)
+		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
 	return nil

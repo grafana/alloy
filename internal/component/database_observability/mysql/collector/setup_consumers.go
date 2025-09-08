@@ -123,7 +123,7 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	for rs.Next() {
 		var consumer consumer
 		if err := rs.Scan(&consumer.name, &consumer.enabled); err != nil {
-			return fmt.Errorf("error scanning getSetupConsumers row: %w", err)
+			return fmt.Errorf("failed to scan getSetupConsumers row: %w", err)
 		}
 
 		if consumer.enabled == "YES" {
