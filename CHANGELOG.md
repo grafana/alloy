@@ -115,7 +115,7 @@ Main (unreleased)
 
 - Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
-- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep):W
+- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
 
 ### Bugfixes
 
