@@ -99,6 +99,12 @@ Main (unreleased)
 - Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
 
 - Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
+  
+- Add `cache_minimum_ttl` argument to `faro.receiver.sourcemaps` block to optionally specify the duration after which the cache map clears itself if sourcemap was not used for the specified duration (@mateagluhak)
+  
+- Add `cache_error_cleanup_interval` argument to `faro.receiver.sourcemaps` block to specify the duration after which the cached sourcemap errors are removed from the cache (@mateagluhak)
+
+- Add `cache_cleanup_check_interval` argument to `faro.receiver.sourcemaps` block to specify how often to check if any sourcemaps need to be cleared from the cache (@mateagluhak)
 
 - Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
 
@@ -112,8 +118,6 @@ Main (unreleased)
   to enable preserving the first input list even if there is no match. (@ptodev)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
-
-- Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
 ### Bugfixes
 

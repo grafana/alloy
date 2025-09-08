@@ -131,13 +131,28 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.handler.Update(newArgs.Server)
 
-	c.lazySourceMaps.SetInner(newSourceMapsStore(
+	innerStore := newSourceMapsStore(
 		log.With(c.log, "subcomponent", "handler"),
 		newArgs.SourceMaps,
 		c.sourceMapsMetrics,
 		nil, // Use default HTTP client.
 		nil, // Use default FS implementation.
-	))
+	)
+	c.lazySourceMaps.SetInner(innerStore)
+
+	go func(s *sourceMapsStoreImpl) {
+		for {
+			time.Sleep(newArgs.SourceMaps.CacheCleanupCheckInterval)
+			s.CleanOldCacheEntries()
+		}
+	}(innerStore)
+
+	go func(s *sourceMapsStoreImpl) {
+		for {
+			time.Sleep(newArgs.SourceMaps.CacheErrorCleanupInterval)
+			s.CleanCachedErrors()
+		}
+	}(innerStore)
 
 	c.logs.SetReceivers(newArgs.Output.Logs)
 	c.traces.SetConsumers(newArgs.Output.Traces)
