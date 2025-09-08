@@ -209,8 +209,6 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// TODO: DIFF receivers
-
 	c.receiversMut.RLock()
 	if receiversChanged(c.receivers, newArgs.ForwardTo) {
 		// Upgrade lock to write.
