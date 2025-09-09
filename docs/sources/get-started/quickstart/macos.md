@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/macos/
 description: Get macOS server metrics into Grafana quickly with Grafana Alloy
 menuTitle: Quickstart macOS monitoring
 title: Quickstart macOS monitoring with Grafana Alloy
-weight: 150
+weight: 300
 ---
 
 # Quickstart macOS monitoring with {{% param "FULL_PRODUCT_NAME" %}}

@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/kubernet
 description: Get Kubernetes cluster metrics into Grafana quickly with Grafana Alloy
 menuTitle: Quickstart Kubernetes monitoring
 title: Quickstart Kubernetes monitoring with Grafana Alloy
-weight: 300
+weight: 100
 ---
 
 # Quickstart Kubernetes monitoring with {{% param "FULL_PRODUCT_NAME" %}}

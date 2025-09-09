@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/windows/
 description: Get Windows server metrics into Grafana quickly with Grafana Alloy
 menuTitle: Quickstart Windows monitoring
 title: Quickstart Windows monitoring with Grafana Alloy
-weight: 200
+weight: 400
 ---
 
 # Quickstart Windows monitoring with {{% param "FULL_PRODUCT_NAME" %}}

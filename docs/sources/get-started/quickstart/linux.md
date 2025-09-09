@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/linux/
 description: Get Linux server metrics into Grafana quickly with Grafana Alloy
 menuTitle: Quickstart Linux monitoring
 title: Quickstart Linux monitoring with Grafana Alloy
-weight: 100
+weight: 200
 ---
 
 # Quickstart Linux monitoring with {{% param "FULL_PRODUCT_NAME" %}}
