@@ -15,7 +15,7 @@ This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it t
 
 Before you begin, ensure you have the following:
 
-- A Linux server with administrator privileges
+- A Linux server with administrative privileges
 - A Grafana instance with Prometheus data source
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
