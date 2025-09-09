@@ -17,10 +17,10 @@ type clientTrace struct {
 }
 
 func newClientTrace() *clientTrace {
-	l := &clientTrace{}
-	l.trace = &httptrace.ClientTrace{
+	t := &clientTrace{}
+	t.trace = &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
-			l.log(
+			t.log(
 				"msg", "GetConn",
 				"hostPort", hostPort,
 			)
@@ -31,7 +31,7 @@ func newClientTrace() *clientTrace {
 				remoteAddr = info.Conn.RemoteAddr().String()
 				localAddr = info.Conn.LocalAddr().String()
 			}
-			l.log(
+			t.log(
 				"msg", "GotConn",
 				"Reused", info.Reused,
 				"WasIdle", info.WasIdle,
@@ -41,18 +41,18 @@ func newClientTrace() *clientTrace {
 			)
 		},
 		PutIdleConn: func(err error) {
-			l.log(
+			t.log(
 				"msg", "PutIdleConn",
 				"err", err,
 			)
 		},
 		GotFirstResponseByte: func() {
-			l.log("msg", "GotFirstResponseByte")
+			t.log("msg", "GotFirstResponseByte")
 		},
 		Got100Continue: nil,
 		Got1xxResponse: nil,
 		DNSStart: func(info httptrace.DNSStartInfo) {
-			l.log(
+			t.log(
 				"msg", "DNSStart",
 				"Host", info.Host,
 			)
@@ -62,7 +62,7 @@ func newClientTrace() *clientTrace {
 			for _, addr := range info.Addrs {
 				addrs = append(addrs, addr.String())
 			}
-			l.log(
+			t.log(
 				"msg", "DNSDone",
 				"Addrs", strings.Join(addrs, ","),
 				"Coalesced", info.Coalesced,
@@ -70,13 +70,13 @@ func newClientTrace() *clientTrace {
 			)
 		},
 		ConnectStart: func(network, addr string) {
-			l.log(
+			t.log(
 				"msg", "ConnectStart",
 				"addr", addr,
 				"network", network)
 		},
 		ConnectDone: func(network, addr string, err error) {
-			l.log(
+			t.log(
 				"msg", "ConnectDone",
 				"addr", addr,
 				"network", network,
@@ -84,10 +84,10 @@ func newClientTrace() *clientTrace {
 			)
 		},
 		TLSHandshakeStart: func() {
-			l.log("msg", "TLSHandshakeStart")
+			t.log("msg", "TLSHandshakeStart")
 		},
 		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			l.log(
+			t.log(
 				"msg", "TLSHandshakeDone",
 				"Version", state.Version,
 				"CipherSuite", state.CipherSuite,
@@ -98,17 +98,17 @@ func newClientTrace() *clientTrace {
 		},
 		WroteHeaderField: nil,
 		WroteHeaders: func() {
-			l.log("msg", "WroteHeaders")
+			t.log("msg", "WroteHeaders")
 		},
 		Wait100Continue: nil,
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
-			l.log(
+			t.log(
 				"msg", "WroteRequest",
 				"Err", info.Err,
 			)
 		},
 	}
-	return l
+	return t
 }
 
 func (t *clientTrace) log(kvs ...any) {
