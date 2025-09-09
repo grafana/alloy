@@ -64,6 +64,7 @@ prometheus.exporter.windows "default" {
     "memory",
     "net",
     "os",
+    "pagefile",
     "physical_disk",
     "process",
     "service",
@@ -73,8 +74,10 @@ prometheus.exporter.windows "default" {
 
   // Configure disk monitoring
   logical_disk {
-    // Exclude virtual disks and system partitions that aren't useful for monitoring
-    volume_exclude = "^(HardenedBSD|procfs|linprocfs|linsysfs|tmpfs|fdescfs|devfs|basejail)$"
+    // Exclude unmounted system volumes (HarddiskVolume* without drive letters)
+    // Note: System files like pagefile.sys and hiberfil.sys are included in disk usage metrics,
+    // which is normal and expected for monitoring purposes
+    volume_exclude = "^HarddiskVolume[0-9]+$"
   }
 
   // Configure network monitoring
