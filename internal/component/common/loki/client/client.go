@@ -157,9 +157,6 @@ type client struct {
 	maxLineSizeTruncate bool
 }
 
-// Tripperware can wrap a roundtripper.
-type Tripperware func(http.RoundTripper) http.RoundTripper
-
 // New makes a new Client.
 func New(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (Client, error) {
 	return newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
@@ -207,20 +204,6 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 
 	c.wg.Add(1)
 	go c.run()
-	return c, nil
-}
-
-// NewWithTripperware creates a new Loki client with a custom tripperware.
-func NewWithTripperware(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, tp Tripperware) (Client, error) {
-	c, err := newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	if tp != nil {
-		c.client.Transport = tp(c.client.Transport)
-	}
-
 	return c, nil
 }
 
