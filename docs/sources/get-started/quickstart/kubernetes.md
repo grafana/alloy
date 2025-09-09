@@ -45,67 +45,65 @@ For detailed deployment options and production configurations, refer to [Deploy 
    kubectl create namespace alloy
    ```
 
-1. Deploy {{< param "PRODUCT_NAME" >}} with basic monitoring configuration:
+1. Create a `values.yaml` file with your {{< param "PRODUCT_NAME" >}} configuration:
 
-   ```shell
-   helm install alloy grafana/alloy \
-     --namespace alloy \
-     --set-string alloy.configMap.content="$(cat <<'EOF'
-   // Basic Kubernetes cluster monitoring configuration
+   ```yaml
+   alloy:
+     configMap:
+       content: |
+         // Basic Kubernetes cluster monitoring configuration
 
-   // Discover and collect metrics from Kubernetes nodes
-   discovery.kubernetes "nodes" {
-     role = "node"
-   }
+         // Discover and collect metrics from Kubernetes nodes
+         discovery.kubernetes "nodes" {
+           role = "node"
+         }
 
-   // Discover and collect metrics from Kubernetes pods
-   discovery.kubernetes "pods" {
-     role = "pod"
-   }
+         // Discover and collect metrics from Kubernetes pods
+         discovery.kubernetes "pods" {
+           role = "pod"
+         }
 
-   // Discover and collect metrics from Kubernetes services
-   discovery.kubernetes "services" {
-     role = "service"
-   }
+         // Discover and collect metrics from Kubernetes services
+         discovery.kubernetes "services" {
+           role = "service"
+         }
 
-   // Collect node-level metrics (kubelet, cAdvisor)
-   prometheus.scrape "nodes" {
-     targets = discovery.kubernetes.nodes.targets
-     forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-     scrape_interval = "30s"
-   }
+         // Collect node-level metrics (kubelet, cAdvisor)
+         prometheus.scrape "nodes" {
+           targets = discovery.kubernetes.nodes.targets
+           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+           scrape_interval = "30s"
+         }
 
-   // Collect pod metrics from discovered pods
-   prometheus.scrape "pods" {
-     targets = discovery.kubernetes.pods.targets
-     forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-     scrape_interval = "30s"
-   }
+         // Collect pod metrics from discovered pods
+         prometheus.scrape "pods" {
+           targets = discovery.kubernetes.pods.targets
+           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+           scrape_interval = "30s"
+         }
 
-   // Collect service metrics from discovered services
-   prometheus.scrape "services" {
-     targets = discovery.kubernetes.services.targets
-     forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-     scrape_interval = "30s"
-   }
+         // Collect service metrics from discovered services
+         prometheus.scrape "services" {
+           targets = discovery.kubernetes.services.targets
+           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+           scrape_interval = "30s"
+         }
 
-   // This block sends your metrics to Grafana Cloud
-   // Replace the placeholders with your actual Grafana Cloud values
-   prometheus.remote_write "grafana_cloud" {
-     endpoint {
-       url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+         // This block sends your metrics to Grafana Cloud
+         // Replace the placeholders with your actual Grafana Cloud values
+         prometheus.remote_write "grafana_cloud" {
+           endpoint {
+             url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
-       basic_auth {
-         username = "<USERNAME>"
-         password = "<PASSWORD>"
-       }
-     }
-   }
-   EOF
-   )"
+             basic_auth {
+               username = "<USERNAME>"
+               password = "<PASSWORD>"
+             }
+           }
+         }
    ```
 
-1. Replace the following:
+   Replace the following:
 
    - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
    - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
@@ -124,6 +122,15 @@ To find your `remote_write` connection details if you are using a Grafana Cloud 
 If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
 The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
 {{< /admonition >}}
+
+1. Deploy {{< param "PRODUCT_NAME" >}} using the values file:
+
+   ```shell
+   helm install alloy grafana/alloy \
+     --namespace alloy \
+     --values values.yaml
+   ```
+
 
 1. Verify that {{< param "PRODUCT_NAME" >}} is running:
 
