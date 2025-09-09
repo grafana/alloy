@@ -58,104 +58,104 @@ This configuration collects essential system metrics including CPU usage, memory
 The comments explain what each section does to help you understand and customize the configuration.
 {{< /admonition >}}
 
-Edit the default configuration file at `/etc/alloy/config.alloy`.
+1. Edit the default configuration file at `/etc/alloy/config.alloy`.
 
-```shell
-sudo nano /etc/alloy/config.alloy
-```
+   ```shell
+   sudo nano /etc/alloy/config.alloy
+   ```
 
-Copy and paste the following configuration:
+1. Copy and paste the following configuration:
 
-```alloy
-// This block runs a built-in node exporter to collect CPU, memory, disk, and network metrics
-prometheus.exporter.unix "default" {
-  // Disable collectors we don't need to reduce overhead
-  disable_collectors = ["ipvs", "btrfs", "infiniband", "xfs", "zfs"]
+   ```alloy
+   // This block runs a built-in node exporter to collect CPU, memory, disk, and network metrics
+   prometheus.exporter.unix "default" {
+     // Disable collectors we don't need to reduce overhead
+     disable_collectors = ["ipvs", "btrfs", "infiniband", "xfs", "zfs"]
 
-  // Enable memory info collector for detailed memory metrics
-  enable_collectors = ["meminfo"]
+     // Enable memory info collector for detailed memory metrics
+     enable_collectors = ["meminfo"]
 
-  // Configure filesystem monitoring
-  filesystem {
-    // Exclude virtual filesystems that aren't useful for monitoring
-    fs_types_exclude = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+     // Configure filesystem monitoring
+     filesystem {
+       // Exclude virtual filesystems that aren't useful for monitoring
+       fs_types_exclude = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
 
-    // Exclude system mount points that aren't relevant
-    mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)"
+       // Exclude system mount points that aren't relevant
+       mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)"
 
-    // Timeout for filesystem operations
-    mount_timeout = "5s"
-  }
+       // Timeout for filesystem operations
+       mount_timeout = "5s"
+     }
 
-  // Network monitoring configuration
-  netclass {
-    // Ignore virtual network interfaces (Docker, Kubernetes, etc.)
-    ignored_devices = "^(veth.*|cali.*|[a-f0-9]{15})$"
-  }
+     // Network monitoring configuration
+     netclass {
+       // Ignore virtual network interfaces (Docker, Kubernetes, etc.)
+       ignored_devices = "^(veth.*|cali.*|[a-f0-9]{15})$"
+     }
 
-  netdev {
-    // Exclude virtual network interfaces from device metrics
-    device_exclude = "^(veth.*|cali.*|[a-f0-9]{15})$"
-  }
-}
+     netdev {
+       // Exclude virtual network interfaces from device metrics
+       device_exclude = "^(veth.*|cali.*|[a-f0-9]{15})$"
+     }
+   }
 
-// This block adds standard labels to our metrics for better organization in Grafana
-discovery.relabel "default" {
-  targets = prometheus.exporter.unix.default.targets
+   // This block adds standard labels to our metrics for better organization in Grafana
+   discovery.relabel "default" {
+     targets = prometheus.exporter.unix.default.targets
 
-  // Set the instance label to this server's hostname
-  rule {
-    target_label = "instance"
-    replacement  = constants.hostname
-  }
+     // Set the instance label to this server's hostname
+     rule {
+       target_label = "instance"
+       replacement  = constants.hostname
+     }
 
-  // Set a job label to identify this as Linux node metrics
-  rule {
-    target_label = "job"
-    replacement  = "integrations/node_exporter"
-  }
-}
+     // Set a job label to identify this as Linux node metrics
+     rule {
+       target_label = "job"
+       replacement  = "integrations/node_exporter"
+     }
+   }
 
-// This block collects the metrics from the node exporter every 15 seconds
-prometheus.scrape "default" {
-  targets    = discovery.relabel.default.output
-  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-  scrape_interval = "15s"
-}
+   // This block collects the metrics from the node exporter every 15 seconds
+   prometheus.scrape "default" {
+     targets    = discovery.relabel.default.output
+     forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+     scrape_interval = "15s"
+   }
 
-// This block sends your metrics to Grafana Cloud
-// Replace the placeholders with your actual Grafana Cloud values
-prometheus.remote_write "grafana_cloud" {
-  endpoint {
-    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+   // This block sends your metrics to Grafana Cloud
+   // Replace the placeholders with your actual Grafana Cloud values
+   prometheus.remote_write "grafana_cloud" {
+     endpoint {
+       url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
-    basic_auth {
-      username = "<USERNAME>"
-      password = "<PASSWORD>"
-    }
-  }
-}
-```
+       basic_auth {
+         username = "<USERNAME>"
+         password = "<PASSWORD>"
+       }
+     }
+   }
+   ```
 
-Replace the following:
+   Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-{{< admonition type="tip" >}}
-To find your `remote_write` connection details if you are using a Grafana Cloud connection:
+   {{< admonition type="tip" >}}
+   To find your `remote_write` connection details if you are using a Grafana Cloud connection:
 
-1. Log in to [Grafana Cloud](https://grafana.com/).
-1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
-1. Copy the following details:
-   - **URL** (Remote Write Endpoint)
-   - **Username**
-   - **Password/API Key**
+   1. Log in to [Grafana Cloud](https://grafana.com/).
+   1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
+   1. Copy the following details:
+      - **URL** (Remote Write Endpoint)
+      - **Username**
+      - **Password/API Key**
 
-If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
-The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
-{{< /admonition >}}
+   If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
+   The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
+   {{< /admonition >}}
 
 ## Step 3: Restart {{% param "PRODUCT_NAME" %}}
 
