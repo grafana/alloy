@@ -142,7 +142,7 @@ brew install grafana/grafana/alloy
    brew services start alloy
    ```
 
-1. Verify that {{< param "PRODUCT_NAME" >}} is running:
+1. (Optional) Verify that {{< param "PRODUCT_NAME" >}} is running:
 
    ```shell
    brew services list | grep alloy
@@ -150,14 +150,21 @@ brew install grafana/grafana/alloy
 
    You should see {{< param "PRODUCT_NAME" >}} listed as "started" in green.
 
-{{< admonition type="note" >}}
+### Troubleshoot the service
+
 If {{< param "PRODUCT_NAME" >}} fails to start, check the logs for error messages:
 
 ```shell
 brew services info alloy
 ```
 
-{{< /admonition >}}
+Common issues:
+
+- **Configuration syntax errors**: Check your configuration file for typos or missing values
+- **Network connectivity**: Verify your Grafana Cloud credentials and network access
+- **Permission errors**: Ensure {{< param "PRODUCT_NAME" >}} has read access to system metrics
+- **Homebrew service issues**: Try restarting with `brew services restart alloy`
+- **Port conflicts**: Ensure port 12345 is not in use by another service
 
 ## Step 4: Visualize your metrics in Grafana
 
