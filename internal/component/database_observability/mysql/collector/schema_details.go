@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	OP_SCHEMA_DETECTION = "schema_detection"
-	OP_TABLE_DETECTION  = "table_detection"
-	OP_CREATE_STATEMENT = "create_statement"
-	SchemaTableName     = "schema_details"
+	SchemaDetailsCollector = "schema_details"
+	OP_SCHEMA_DETECTION    = "schema_detection"
+	OP_TABLE_DETECTION     = "table_detection"
+	OP_CREATE_STATEMENT    = "create_statement"
 )
 
 const (
@@ -95,7 +95,7 @@ const (
 		ORDER BY table_name, constraint_name, ordinal_position`
 )
 
-type SchemaTableArguments struct {
+type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
@@ -107,7 +107,7 @@ type SchemaTableArguments struct {
 	Logger log.Logger
 }
 
-type SchemaTable struct {
+type SchemaDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
@@ -164,12 +164,12 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
-func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
-	c := &SchemaTable{
+func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
+	c := &SchemaDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", SchemaTableName),
+		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
 
@@ -180,11 +180,11 @@ func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
 	return c, nil
 }
 
-func (c *SchemaTable) Name() string {
-	return SchemaTableName
+func (c *SchemaDetails) Name() string {
+	return SchemaDetailsCollector
 }
 
-func (c *SchemaTable) Start(ctx context.Context) error {
+func (c *SchemaDetails) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
@@ -217,16 +217,16 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) Stopped() bool {
+func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *SchemaTable) Stop() {
+func (c *SchemaDetails) Stop() {
 	c.cancel()
 }
 
-func (c *SchemaTable) extractSchema(ctx context.Context) error {
+func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectSchemaName)
 	if err != nil {
 		return fmt.Errorf("failed to query schemata: %w", err)
@@ -339,7 +339,7 @@ func (c *SchemaTable) extractSchema(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
+func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 	if err := row.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
@@ -379,7 +379,7 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, fullyQualifiedT
 	return table, nil
 }
 
-func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
 	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)

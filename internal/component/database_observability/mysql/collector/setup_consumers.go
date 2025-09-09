@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	SetupConsumersName = "setup_consumers"
+	SetupConsumersCollector = "setup_consumers"
 )
 
-type SetupConsumerArguments struct {
+type SetupConsumersArguments struct {
 	DB       *sql.DB
 	Registry *prometheus.Registry
 
@@ -37,7 +37,7 @@ type SetupConsumers struct {
 	cancel  context.CancelFunc
 }
 
-func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
+func NewSetupConsumers(args SetupConsumersArguments) (*SetupConsumers, error) {
 	setupConsumerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "database_observability",
 		Name:      "setup_consumers_enabled",
@@ -51,13 +51,13 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 		registry:             args.Registry,
 		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
-		logger:               log.With(args.Logger, "collector", SetupConsumersName),
+		logger:               log.With(args.Logger, "collector", SetupConsumersCollector),
 		collectInterval:      args.CollectInterval,
 	}, nil
 }
 
 func (c *SetupConsumers) Name() string {
-	return SetupConsumersName
+	return SetupConsumersCollector
 }
 
 func (c *SetupConsumers) Start(ctx context.Context) error {

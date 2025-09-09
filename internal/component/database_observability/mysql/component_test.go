@@ -40,7 +40,7 @@ func Test_collectSQLText(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.True(t, args.QuerySampleArguments.DisableQueryRedaction)
+		assert.True(t, args.QuerySamplesArguments.DisableQueryRedaction)
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
@@ -55,7 +55,7 @@ func Test_collectSQLText(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction)
+		assert.False(t, args.QuerySamplesArguments.DisableQueryRedaction)
 	})
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
@@ -127,12 +127,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    true,
-			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    true,
-			collector.SetupConsumersName: true,
-			collector.ExplainPlanName:    false,
-			collector.LocksName:          false,
+			collector.QueryDetailsCollector:   true,
+			collector.SchemaDetailsCollector:  true,
+			collector.QuerySamplesCollector:   true,
+			collector.SetupConsumersCollector: true,
+			collector.ExplainPlansCollector:   false,
+			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
 
@@ -150,12 +150,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    true,
-			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    true,
-			collector.SetupConsumersName: true,
-			collector.ExplainPlanName:    true,
-			collector.LocksName:          true,
+			collector.QueryDetailsCollector:   true,
+			collector.SchemaDetailsCollector:  true,
+			collector.QuerySamplesCollector:   true,
+			collector.SetupConsumersCollector: true,
+			collector.ExplainPlansCollector:   true,
+			collector.LocksCollector:          true,
 		}, actualCollectors)
 	})
 
@@ -173,12 +173,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    false,
-			collector.SchemaTableName:    false,
-			collector.QuerySampleName:    false,
-			collector.SetupConsumersName: false,
-			collector.ExplainPlanName:    false,
-			collector.LocksName:          false,
+			collector.QueryDetailsCollector:   false,
+			collector.SchemaDetailsCollector:  false,
+			collector.QuerySamplesCollector:   false,
+			collector.SetupConsumersCollector: false,
+			collector.ExplainPlansCollector:   false,
+			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
 
@@ -197,12 +197,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    true,
-			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    true,
-			collector.SetupConsumersName: true,
-			collector.ExplainPlanName:    true,
-			collector.LocksName:          true,
+			collector.QueryDetailsCollector:   true,
+			collector.SchemaDetailsCollector:  true,
+			collector.QuerySamplesCollector:   true,
+			collector.SetupConsumersCollector: true,
+			collector.ExplainPlansCollector:   true,
+			collector.LocksCollector:          true,
 		}, actualCollectors)
 	})
 
@@ -221,12 +221,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    true,
-			collector.SchemaTableName:    false,
-			collector.QuerySampleName:    false,
-			collector.SetupConsumersName: false,
-			collector.ExplainPlanName:    false,
-			collector.LocksName:          false,
+			collector.QueryDetailsCollector:   true,
+			collector.SchemaDetailsCollector:  false,
+			collector.QuerySamplesCollector:   false,
+			collector.SetupConsumersCollector: false,
+			collector.ExplainPlansCollector:   false,
+			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
 
@@ -245,12 +245,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryTablesName:    true,
-			collector.SchemaTableName:    true,
-			collector.QuerySampleName:    true,
-			collector.SetupConsumersName: true,
-			collector.ExplainPlanName:    false,
-			collector.LocksName:          false,
+			collector.QueryDetailsCollector:   true,
+			collector.SchemaDetailsCollector:  true,
+			collector.QuerySamplesCollector:   true,
+			collector.SetupConsumersCollector: true,
+			collector.ExplainPlansCollector:   false,
+			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
 }
@@ -314,7 +314,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
 		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "explain_plans"},
 		EnableCollectors:  []string{"query_samples", "locks"},
-		QuerySampleArguments: QuerySampleArguments{
+		QuerySamplesArguments: QuerySamplesArguments{
 			CollectInterval:       time.Second,
 			DisableQueryRedaction: true,
 		},
@@ -354,7 +354,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
-	assert.Contains(t, h.Message, collector.LocksName)
+	assert.Contains(t, h.Message, collector.LocksCollector)
 
 	exported, ok := gotExports.(Exports)
 	require.True(t, ok)

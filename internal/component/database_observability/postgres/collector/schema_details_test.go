@@ -31,7 +31,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
@@ -109,7 +109,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
@@ -232,7 +232,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
@@ -282,7 +282,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
@@ -364,7 +364,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),
@@ -441,7 +441,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
 			Logger:       log.NewLogfmtLogger(os.Stderr),

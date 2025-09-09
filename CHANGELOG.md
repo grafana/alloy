@@ -47,6 +47,7 @@ Main (unreleased)
   - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
+  - updated the config blocks and documentation (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)

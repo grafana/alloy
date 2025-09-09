@@ -19,10 +19,10 @@ import (
 )
 
 const (
-	OP_SCHEMA_DETECTION = "schema_detection"
-	OP_TABLE_DETECTION  = "table_detection"
-	OP_CREATE_STATEMENT = "create_statement"
-	SchemaTableName     = "schema_details"
+	SchemaDetailsCollector = "schema_details"
+	OP_SCHEMA_DETECTION    = "schema_detection"
+	OP_TABLE_DETECTION     = "table_detection"
+	OP_CREATE_STATEMENT    = "create_statement"
 )
 
 const (
@@ -105,14 +105,14 @@ type columnSpec struct {
 	DefaultValue  string `json:"default_value,omitempty"`
 }
 
-type SchemaTableArguments struct {
+type SchemaDetailsArguments struct {
 	DB           *sql.DB
 	EntryHandler loki.EntryHandler
 
 	Logger log.Logger
 }
 
-type SchemaTable struct {
+type SchemaDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
@@ -123,23 +123,23 @@ type SchemaTable struct {
 	cancel  context.CancelFunc
 }
 
-func NewSchemaTable(args SchemaTableArguments) (*SchemaTable, error) {
-	c := &SchemaTable{
+func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
+	c := &SchemaDetails{
 		dbConnection:    args.DB,
 		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", SchemaTableName),
+		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
 
 	return c, nil
 }
 
-func (c *SchemaTable) Name() string {
-	return SchemaTableName
+func (c *SchemaDetails) Name() string {
+	return SchemaDetailsCollector
 }
 
-func (c *SchemaTable) Start(ctx context.Context) error {
+func (c *SchemaDetails) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
@@ -172,16 +172,16 @@ func (c *SchemaTable) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) Stopped() bool {
+func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *SchemaTable) Stop() {
+func (c *SchemaDetails) Stop() {
 	c.cancel()
 }
 
-func (c *SchemaTable) extractNames(ctx context.Context) error {
+func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
 	var dbName string
 	if err := rs.Scan(&dbName); err != nil {
@@ -279,7 +279,7 @@ func (c *SchemaTable) extractNames(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, table *tableInfo) (*tableInfo, error) {
+func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo) (*tableInfo, error) {
 	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to analyze table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
@@ -296,7 +296,7 @@ func (c *SchemaTable) fetchTableDefinitions(ctx context.Context, table *tableInf
 	return table, nil
 }
 
-func (c *SchemaTable) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string) (*tableSpec, error) {
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string) (*tableSpec, error) {
 	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
 	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
 	if err != nil {
