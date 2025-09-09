@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"go.opentelemetry.io/obi/pkg/services"
 )
 
 // Arguments configures the Beyla component.
@@ -81,7 +80,7 @@ type Service struct {
 	Path           string               `alloy:"exe_path,attr,optional"`
 	Kubernetes     KubernetesService    `alloy:"kubernetes,block,optional"`
 	ContainersOnly bool                 `alloy:"containers_only,attr,optional"`
-	ExportModes    services.ExportModes `alloy:"exports,attr,optional"`
+	ExportModes    []string             `alloy:"exports,attr,optional"`
 	Sampler        SamplerConfig        `alloy:"sampler,block,optional"`
 }
 

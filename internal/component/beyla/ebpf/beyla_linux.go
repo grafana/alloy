@@ -30,6 +30,8 @@ import (
 	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -235,33 +237,65 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	return d, nil
 }
 
+func convertExportModes(modes []string) (services.ExportModes, error) {
+	var ret services.ExportModes
+
+	for _, m := range modes {
+		if m != "metrics" && m != "traces" {
+			return ret, fmt.Errorf("invalid export mode: '%s'", m)
+		}
+	}
+
+	// FIXME: there's no public API to construct ExportModes other than from a
+	// YAML blob. Once that gets fixed upstream, get rid of this intermediate
+	// YAML serialisation
+	out, err := yaml.Marshal(modes)
+
+	if err != nil {
+		return ret, err
+	}
+
+	var node yaml.Node
+
+	if err := yaml.Unmarshal(out, &node); err != nil {
+		return ret, err
+	}
+
+	if err := ret.UnmarshalYAML(node.Content[0]); err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
 func serviceConvert[Attr any](
 	s Service,
 	convertFunc func(string) (Attr, error),
-	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, error) {
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
 
 	var paths Attr
 	var kubernetes map[string]*Attr
 	var podLabels map[string]*Attr
 	var podAnnotations map[string]*Attr
+	var exportModes services.ExportModes
 
 	ports, err := stringToPortEnum(s.OpenPorts)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	paths, err = convertFunc(s.Path)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	kubernetes, err = convertKubernetesFunc(s.Kubernetes)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	podLabels = map[string]*Attr{}
 	for k, v := range s.Kubernetes.PodLabels {
 		label, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, err
+			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podLabels[k] = &label
 	}
@@ -270,17 +304,24 @@ func serviceConvert[Attr any](
 	for k, v := range s.Kubernetes.PodAnnotations {
 		annotation, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, err
+			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podAnnotations[k] = &annotation
 	}
-	return ports, paths, kubernetes, podLabels, podAnnotations, nil
+
+	exportModes, err = convertExportModes(s.ExportModes)
+
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+	}
+
+	return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, nil
 }
 
 func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToRegexpAttr,
 			convertKubernetes,
@@ -304,7 +345,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
-			ExportModes:    s.ExportModes,
+			ExportModes:    exportModes,
 			SamplerConfig:  samplerConfig,
 		})
 	}
@@ -314,7 +355,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 	var attrs services.GlobDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToGlobAttr,
 			convertKubernetesGlob,
@@ -338,7 +379,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
-			ExportModes:    s.ExportModes,
+			ExportModes:    exportModes,
 			SamplerConfig:  samplerConfig,
 		})
 	}
