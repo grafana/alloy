@@ -88,8 +88,8 @@ prometheus.exporter.windows "default" {
 
   // Configure physical disk monitoring
   physical_disk {
-    // Exclude virtual disks
-    disk_exclude = "^(\\\\?\\Volume|Harddisk|_Total).*$"
+    // Exclude the _Total aggregate disk and any Volume GUID paths
+    disk_exclude = "^(_Total|HarddiskVolume.*)$"
   }
 
   // Configure process monitoring (limit to reduce overhead)
