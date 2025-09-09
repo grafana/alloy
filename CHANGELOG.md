@@ -118,7 +118,7 @@ Main (unreleased)
 
 - Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
 
-- Reduced allocation in when using external labels for `loki.write`. (@kalleep)
+- Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
 
 ### Bugfixes
 
