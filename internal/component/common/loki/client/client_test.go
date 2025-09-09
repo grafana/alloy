@@ -23,7 +23,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
 var logEntries = []loki.Entry{
@@ -522,7 +521,6 @@ func TestClient_Handle(t *testing.T) {
 				DropRateLimitedBatches: testData.clientDropRateLimited,
 				Client:                 config.HTTPClientConfig{},
 				BackoffConfig:          backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
-				ExternalLabels:         lokiflag.LabelSet{},
 				Timeout:                1 * time.Second,
 				TenantID:               testData.clientTenantID,
 			}
@@ -658,14 +656,13 @@ func TestClient_StopNow(t *testing.T) {
 
 			// Instance the client
 			cfg := Config{
-				URL:            serverURL,
-				BatchWait:      c.clientBatchWait,
-				BatchSize:      c.clientBatchSize,
-				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
-				ExternalLabels: lokiflag.LabelSet{},
-				Timeout:        1 * time.Second,
-				TenantID:       c.clientTenantID,
+				URL:           serverURL,
+				BatchWait:     c.clientBatchWait,
+				BatchSize:     c.clientBatchSize,
+				Client:        config.HTTPClientConfig{},
+				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
+				Timeout:       1 * time.Second,
+				TenantID:      c.clientTenantID,
 			}
 
 			m := NewMetrics(reg)

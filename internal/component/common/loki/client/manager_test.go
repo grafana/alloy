@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -20,9 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
 var testLimitsConfig = limit.Config{
@@ -75,10 +73,9 @@ func TestManager_ErrorCreatingWhenNoClientConfigsProvided(t *testing.T) {
 func TestManager_ErrorCreatingWhenRepeatedConfigs(t *testing.T) {
 	host1, _ := url.Parse("http://localhost:3100")
 	config1 := Config{
-		BatchSize:      20,
-		BatchWait:      1 * time.Second,
-		URL:            flagext.URLValue{URL: host1},
-		ExternalLabels: lokiflag.LabelSet{LabelSet: model.LabelSet{"order": "yaml"}},
+		BatchSize: 20,
+		BatchWait: 1 * time.Second,
+		URL:       flagext.URLValue{URL: host1},
 	}
 	config1Copy := config1
 	for _, walEnabled := range []bool{true, false} {
@@ -256,20 +253,10 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	logger := log.NewLogfmtLogger(os.Stdout)
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
-	// add client identifier to entry
-	testClientConfig.ExternalLabels = lokiflag.LabelSet{
-		LabelSet: model.LabelSet{
-			"client-name": "test-client",
-		},
-	}
+
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
 	testClientConfig2.Name = "test-client-2"
-	// add client identifier to entry
-	testClientConfig2.ExternalLabels = lokiflag.LabelSet{
-		LabelSet: model.LabelSet{
-			"client-name": "test-client-2",
-		},
-	}
+
 	clientMetrics := NewMetrics(reg)
 
 	// start writer and manager
@@ -303,7 +290,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 		"pizza-flavour": "fugazzeta",
 	}
 	var totalLines = 100
-	for i := 0; i < totalLines; i++ {
+	for i := range totalLines {
 		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: logproto.Entry{
@@ -319,13 +306,13 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 		return receivedRequests.Length() == expectedTotalLines
 	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
 
-	var seenEntries = map[string]struct{}{}
+	var seenEntries int
 	// assert over rw client received entries
 	defer receivedRequests.DoneIterate()
 	for _, req := range receivedRequests.StartIterate() {
 		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
 		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
-		seenEntries[fmt.Sprintf("%s-%s", req.Request.Streams[0].Labels, req.Request.Streams[0].Entries[0].Line)] = struct{}{}
+		seenEntries += 1
 	}
-	require.Len(t, seenEntries, expectedTotalLines)
+	require.Equal(t, seenEntries, expectedTotalLines)
 }

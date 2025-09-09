@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 	"github.com/prometheus/common/config"
 )
 
@@ -20,9 +19,7 @@ type Config struct {
 	Headers map[string]string       `yaml:"headers,omitempty"`
 
 	BackoffConfig backoff.Config `yaml:"backoff_config"`
-	// The labels to add to any time series or alerts when communicating with loki
-	ExternalLabels lokiflag.LabelSet `yaml:"external_labels,omitempty"`
-	Timeout        time.Duration     `yaml:"timeout"`
+	Timeout       time.Duration  `yaml:"timeout"`
 
 	// The tenant ID to use when pushing logs to Loki (empty string means
 	// single tenant mode)

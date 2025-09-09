@@ -147,8 +147,6 @@ type client struct {
 	once sync.Once
 	wg   sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// ctx is used in any upstream calls from the `client`.
 	ctx                 context.Context
 	cancel              context.CancelFunc
@@ -173,13 +171,11 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:  log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:     cfg,
-		entries: make(chan loki.Entry),
-		metrics: metrics,
-		name:    GetClientName(cfg),
-
-		externalLabels:      cfg.ExternalLabels.LabelSet,
+		logger:              log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:                 cfg,
+		entries:             make(chan loki.Entry),
+		metrics:             metrics,
+		name:                GetClientName(cfg),
 		ctx:                 ctx,
 		cancel:              cancel,
 		maxStreams:          maxStreams,
@@ -452,9 +448,6 @@ func (c *client) StopNow() {
 }
 
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
-	}
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
 }
