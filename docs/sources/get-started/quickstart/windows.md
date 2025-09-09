@@ -16,14 +16,13 @@ This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it t
 Before you begin, ensure you have the following:
 
 - A Windows server with administrator privileges
-- A Grafana instance (Grafana Cloud or self-managed Grafana with Prometheus)
-- Basic command line familiarity (PowerShell or Command Prompt)
+- A Grafana instance with Prometheus data source
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
 {{< admonition type="note" >}}
 This quickstart uses the installer executable for a fast setup.
-For detailed installation options and enterprise deployments, refer to [Install {{< param "PRODUCT_NAME" >}} on Windows](../../set-up/install/windows/).
+For detailed installation options, refer to [Install {{< param "PRODUCT_NAME" >}} on Windows](../../set-up/install/windows/).
 {{< /admonition >}}
 
 1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
@@ -36,25 +35,23 @@ For detailed installation options and enterprise deployments, refer to [Install 
 {{< param "PRODUCT_NAME" >}} is installed into the default directory `%PROGRAMFILES%\GrafanaLabs\Alloy` and configured as a Windows service that starts automatically.
 
 {{< admonition type="note" >}}
-If the installation fails, check that you have administrator privileges and that your system architecture is 64-bit (amd64).
+If the installation fails, check that you have administrator privileges and that your system architecture is 64-bit.
 {{< /admonition >}}
 
-## Step 2: Create the configuration file
-
-Create a configuration file that collects essential Windows metrics and sends them to Grafana.
+## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration file
 
 {{< admonition type="note" >}}
-The installer creates a default configuration file at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`.
-You can edit this file or create a new one in the same directory.
+This configuration collects essential Windows metrics including CPU usage, memory utilization, disk space, network statistics, and key system services.
+The comments explain what each section does to help you understand and customize the configuration.
 {{< /admonition >}}
 
-Edit the configuration file with your preferred text editor (run as Administrator):
+Edit the default configuration file at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`.
 
 ```powershell
 notepad "%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy"
 ```
 
-Copy and paste this configuration:
+Copy and paste the following configuration:
 
 ```alloy
 // This block runs a built-in Windows exporter to collect CPU, memory, disk, and network metrics
@@ -132,26 +129,24 @@ prometheus.scrape "default" {
 // Replace the placeholders with your actual Grafana Cloud values
 prometheus.remote_write "grafana_cloud" {
   endpoint {
-    url = "YOUR_PROMETHEUS_URL"
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = "YOUR_PROMETHEUS_USERNAME"
-      password = "YOUR_API_TOKEN"
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
 
-{{< admonition type="note" >}}
-This configuration collects essential Windows metrics including CPU usage, memory utilization, disk space, network statistics, and key system services.
-The comments explain what each section does to help you understand and customize the configuration.
-{{< /admonition >}}
+Replace the following:
 
-## Step 3: Configure your Grafana connection
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-Update the configuration with your Grafana connection details.
-
-### Configure Grafana Cloud connection
+{{< admonition type="tip" >}}
+To find your `remote_write` connection details if you are using a Grafana Cloud connection:
 
 1. Log in to [Grafana Cloud](https://grafana.com/).
 1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
@@ -160,52 +155,31 @@ Update the configuration with your Grafana connection details.
    - **Username**
    - **Password/API Key**
 
-### Configure self-managed Grafana connection
+If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
+The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
+{{< /admonition >}}
 
-Replace the `prometheus.remote_write` block with your Prometheus server details:
-
-```alloy
-prometheus.remote_write "prometheus" {
-  endpoint {
-    url = "http://your-prometheus-server:9090/api/v1/write"
-  }
-}
-```
-
-### Update the configuration file
-
-Edit the configuration file:
-
-```powershell
-notepad "%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy"
-```
-
-Replace these placeholders with your actual values:
-
-- `YOUR_PROMETHEUS_URL` - paste your Remote Write Endpoint
-- `YOUR_PROMETHEUS_USERNAME` - paste your Username
-- `YOUR_API_TOKEN` - paste your Password/API Key
-
-Save and exit the file.
-
-## Step 4: Start {{% param "PRODUCT_NAME" %}}
+## Step 3: Restart {{% param "PRODUCT_NAME" %}}
 
 {{< param "PRODUCT_NAME" >}} is automatically installed and configured as a Windows service that starts on system boot.
 
-Verify that {{< param "PRODUCT_NAME" >}} is running:
+1. Restart the {{< param "PRODUCT_NAME" >}} service:
 
-1. Open the Windows Services manager:
+   In the Services manager, right-click on the **{{< param "PRODUCT_NAME" >}}** service and click **All Tasks > Restart**.
+
+   Alternatively, use PowerShell:
+
+   ```powershell
+   Restart-Service -Name "Grafana Alloy"
+   ```
+
+1. (Optional) Verify that {{< param "PRODUCT_NAME" >}} is running:
+
+   Open the Windows Services manager:
 
    1. Right-click on the Start Menu and select **Run**.
-
    1. Type `services.msc` and press **Enter**.
-
-1. Scroll down to find the **{{< param "PRODUCT_NAME" >}}** service and verify that the **Status** is **Running**.
-
-To restart the service after configuration changes:
-
-1. In the Services manager, right-click on the **{{< param "PRODUCT_NAME" >}}** service.
-1. Click **All Tasks > Restart**.
+   1. Scroll down to find the **{{< param "PRODUCT_NAME" >}}** service and verify that the **Status** is **Running**.
 
 ### Troubleshoot the service
 
@@ -224,7 +198,7 @@ Common issues:
 - **Empty configuration**: An empty or invalid configuration file can cause startup failures
 - **Firewall blocking**: Check Windows Firewall settings for outbound HTTPS connections
 
-## Step 5: Visualize your metrics in Grafana
+## Step 4: Visualize your metrics in Grafana
 
 Within a few minutes of starting {{< param "PRODUCT_NAME" >}}, your Windows metrics should appear in Grafana.
 
@@ -262,8 +236,7 @@ The dashboard displays comprehensive Windows system metrics:
 - **Process Information**: Resource usage of key system processes
 
 {{< admonition type="note" >}}
-**Expected timeline**: Metrics should appear in Grafana within a few minutes of starting {{< param "PRODUCT_NAME" >}}.
-If you don't see data after several minutes, check the troubleshooting section below.
+Metrics should appear in Grafana within a few minutes of starting {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 ## Troubleshoot
@@ -277,6 +250,8 @@ Get-Service -Name "Grafana Alloy"
 ```
 
 You can also check the Event Log for recent entries from {{< param "PRODUCT_NAME" >}}.
+
+Look for error messages about configuration parsing, network connectivity, or authentication.
 
 ### Check configuration syntax
 
@@ -293,10 +268,12 @@ This command checks for syntax errors and formats the file.
 Verify that {{< param "PRODUCT_NAME" >}} can reach your Prometheus endpoint:
 
 ```powershell
-Test-NetConnection -ComputerName "YOUR_PROMETHEUS_HOSTNAME" -Port 443
+Test-NetConnection -ComputerName "<PROMETHEUS_HOSTNAME>" -Port 443
 ```
 
-Replace `YOUR_PROMETHEUS_HOSTNAME` with your actual endpoint hostname.
+Replace the following:
+
+- _`<PROMETHEUS_HOSTNAME>`_: Your actual endpoint hostname from the URL.
 
 ### Verify credentials
 
@@ -334,25 +311,11 @@ For more information about the UI, refer to [Debug {{< param "FULL_PRODUCT_NAME"
 
 ## Next steps
 
-Congratulations. You now have {{< param "PRODUCT_NAME" >}} collecting Windows metrics and displaying them in Grafana.
-
-Here's what you can do next:
-
 - [Set up alerting rules](https://grafana.com/docs/grafana/latest/alerting/) to get notified when metrics exceed thresholds
 - [Configure application metrics collection](https://grafana.com/docs/alloy/latest/reference/components/prometheus/) from services running on your servers
 - [Add log collection](https://grafana.com/docs/alloy/latest/reference/components/loki/) to complement your metrics
 - [Monitor multiple servers](https://grafana.com/docs/alloy/latest/configure/) with centralized {{< param "PRODUCT_NAME" >}} configuration
 - [Explore the alloy-scenarios repository](https://github.com/grafana/alloy-scenarios) for more advanced configurations
-
-### Production considerations
-
-For production deployments, consider:
-
-- [Installing {{< param "PRODUCT_NAME" >}} using the installer](https://grafana.com/docs/alloy/latest/set-up/install/) for automatic updates and proper Windows integration
-- [Configuring {{< param "PRODUCT_NAME" >}} as a Windows service](https://grafana.com/docs/alloy/latest/set-up/run/) with automatic startup and recovery settings
-- [Setting up log monitoring](https://grafana.com/docs/alloy/latest/configure/configure-logging/) and monitoring {{< param "PRODUCT_NAME" >}} itself
-- [Using Group Policy or configuration management tools](https://grafana.com/docs/alloy/latest/configure/) to deploy {{< param "PRODUCT_NAME" >}} across multiple Windows servers
-- [Implementing security best practices](https://grafana.com/docs/alloy/latest/configure/configure-security/) for credential management and service accounts
 
 ### Learn more
 

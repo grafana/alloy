@@ -53,7 +53,10 @@ For other architectures, go to the [{{< param "PRODUCT_NAME" >}} releases page](
 
 ## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration file
 
-Create a configuration file that collects essential Linux metrics and sends them to Grafana.
+{{< admonition type="note" >}}
+This configuration collects essential system metrics including CPU usage, memory utilization, disk space, and network statistics.
+The comments explain what each section does to help you understand and customize the configuration.
+{{< /admonition >}}
 
 Edit the default configuration file at `/etc/alloy/config.alloy`.
 
@@ -61,12 +64,7 @@ Edit the default configuration file at `/etc/alloy/config.alloy`.
 sudo nano /etc/alloy/config.alloy
 ```
 
-{{< admonition type="note" >}}
-This configuration collects essential system metrics including CPU usage, memory utilization, disk space, and network statistics.
-The comments explain what each section does to help you understand and customize the configuration.
-{{< /admonition >}}
-
-Copy and paste this configuration:
+Copy and paste the following configuration:
 
 ```alloy
 // This block runs a built-in node exporter to collect CPU, memory, disk, and network metrics
