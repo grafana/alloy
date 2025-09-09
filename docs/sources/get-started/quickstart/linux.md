@@ -20,11 +20,6 @@ Before you begin, ensure you have the following:
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
-{{< admonition type="note" >}}
-For production environments, consider using the [repository-based installation method](../../set-up/install/linux/) instead.
-This enables automatic updates and better package management integration.
-{{< /admonition >}}
-
 Choose the installation method for your Linux distribution:
 
 {{< tabs >}}
@@ -47,8 +42,7 @@ sudo rpm -i alloy.rpm
 {{< /tabs >}}
 
 {{< admonition type="note" >}}
-If the installation fails, check that you have the required permissions and that your system architecture matches the download.
-For other architectures, go to the [{{< param "PRODUCT_NAME" >}} releases page](https://github.com/grafana/alloy/releases/latest).
+If the installation fails, verify that you have the required permissions and that your system architecture matches the download.
 {{< /admonition >}}
 
 ## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration file

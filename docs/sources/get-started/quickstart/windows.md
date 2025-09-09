@@ -20,11 +20,6 @@ Before you begin, ensure you have the following:
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
-{{< admonition type="note" >}}
-This quickstart uses the installer executable for a fast setup.
-For detailed installation options, refer to [Install {{< param "PRODUCT_NAME" >}} on Windows](../../set-up/install/windows/).
-{{< /admonition >}}
-
 1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
 1. Scroll down to the **Assets** section.
 1. Download the file called `alloy-installer-windows-amd64.exe.zip`.

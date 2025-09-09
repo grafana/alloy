@@ -22,11 +22,6 @@ Before you begin, ensure you have the following:
 
 ## Step 1: Deploy {{% param "PRODUCT_NAME" %}}
 
-{{< admonition type="note" >}}
-This quickstart uses Helm for a fast deployment.
-For detailed deployment options and production configurations, refer to [Deploy {{< param "PRODUCT_NAME" >}} on Kubernetes](../../set-up/install/kubernetes/).
-{{< /admonition >}}
-
 1. Add the Grafana Helm chart repository:
 
    ```shell
