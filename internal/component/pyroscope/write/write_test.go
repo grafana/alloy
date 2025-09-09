@@ -17,6 +17,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -852,4 +853,94 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ClientTrace_ConcurrentAccess_TLS_DataRace(t *testing.T) {
+	logBuf := bytes.NewBuffer(nil)
+	l := log.NewSyncLogger(log.NewLogfmtLogger(logBuf))
+
+	handler := http.NewServeMux()
+	handler.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
+		responseSize := (r.ContentLength % 5) + 1
+		responseBody := strings.Repeat("x", int(responseSize*1000))
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(responseBody))
+	})
+
+	server := httptest.NewTLSServer(handler)
+	defer server.Close()
+
+	argument := DefaultArguments()
+	argument.Tracing.HttpClientTraceAll = true
+	argument.Endpoints = []*EndpointOptions{{
+		URL:           server.URL,
+		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+		HTTPClientConfig: func() *config.HTTPClientConfig {
+			cfg := config.CloneDefaultHTTPClientConfig()
+			cfg.TLSConfig.InsecureSkipVerify = true // Trust the self-signed certificate
+			return cfg
+		}(),
+	}}
+
+	var wg sync.WaitGroup
+	var export Exports
+	wg.Add(1)
+	c, err := New(
+		l,
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
+			defer wg.Done()
+			export = e
+		},
+		"Alloy/239",
+		"",
+		argument,
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait()
+	require.NotNil(t, export.Receiver)
+
+	const numGoroutines = 100
+	const requestsPerGoroutine = 10
+
+	var testWg sync.WaitGroup
+	testWg.Add(numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(goroutineID int) {
+			defer testWg.Done()
+			for j := 0; j < requestsPerGoroutine; j++ {
+				profileSize := (goroutineID*j)%10 + 1
+				profileData := bytes.Repeat([]byte("profile-data"), profileSize*100)
+				profile := &pyroscope.IncomingProfile{
+					RawBody: profileData,
+					Labels: labels.FromMap(map[string]string{
+						"__name__":     "test-concurrent",
+						"goroutine_id": fmt.Sprintf("%d", goroutineID),
+						"request_id":   fmt.Sprintf("%d", j),
+					}),
+					URL:         &url.URL{Path: "/ingest"},
+					ContentType: []string{"application/octet-stream"},
+				}
+
+				err := export.Receiver.Appender().AppendIngest(ctx, profile)
+				require.NoError(t, err)
+			}
+		}(i)
+	}
+
+	testWg.Wait()
+
+	logOutput := logBuf.String()
+	require.Contains(t, logOutput, "msg=GetConn")
+	require.Contains(t, logOutput, "msg=GotConn")
+	require.Contains(t, logOutput, "msg=TLSHandshakeStart")
+	require.Contains(t, logOutput, "msg=TLSHandshakeDone")
 }

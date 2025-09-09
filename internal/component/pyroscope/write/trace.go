@@ -2,8 +2,8 @@ package write
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http/httptrace"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,12 +26,18 @@ func newClientTrace() *clientTrace {
 			)
 		},
 		GotConn: func(info httptrace.GotConnInfo) {
+			var remoteAddr, localAddr string
+			if info.Conn != nil {
+				remoteAddr = info.Conn.RemoteAddr().String()
+				localAddr = info.Conn.LocalAddr().String()
+			}
 			l.log(
 				"msg", "GotConn",
 				"Reused", info.Reused,
 				"WasIdle", info.WasIdle,
 				"IdleTime", info.IdleTime,
-				"Conn", fmt.Sprintf("%+v", info.Conn),
+				"RemoteAddr", remoteAddr,
+				"LocalAddr", localAddr,
 			)
 		},
 		PutIdleConn: func(err error) {
@@ -52,9 +58,13 @@ func newClientTrace() *clientTrace {
 			)
 		},
 		DNSDone: func(info httptrace.DNSDoneInfo) {
+			var addrs []string
+			for _, addr := range info.Addrs {
+				addrs = append(addrs, addr.String())
+			}
 			l.log(
 				"msg", "DNSDone",
-				"info", fmt.Sprintf("%+v", info),
+				"Addrs", strings.Join(addrs, ","),
 				"Coalesced", info.Coalesced,
 				"Err", info.Err,
 			)
@@ -68,8 +78,9 @@ func newClientTrace() *clientTrace {
 		ConnectDone: func(network, addr string, err error) {
 			l.log(
 				"msg", "ConnectDone",
-				"addr", addr, "network",
-				network, "err", err,
+				"addr", addr,
+				"network", network,
+				"err", err,
 			)
 		},
 		TLSHandshakeStart: func() {
@@ -78,7 +89,10 @@ func newClientTrace() *clientTrace {
 		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
 			l.log(
 				"msg", "TLSHandshakeDone",
-				"state", fmt.Sprintf("%+v", state),
+				"Version", state.Version,
+				"CipherSuite", state.CipherSuite,
+				"ServerName", state.ServerName,
+				"NegotiatedProtocol", state.NegotiatedProtocol,
 				"err", err,
 			)
 		},
