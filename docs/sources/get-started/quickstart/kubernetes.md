@@ -18,8 +18,7 @@ Before you begin, ensure you have the following:
 - A Kubernetes cluster with administrative access
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/) configured to access your cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your local machine
-- A Grafana instance (Grafana Cloud or self-managed Grafana with Prometheus)
-- Basic familiarity with Kubernetes concepts
+- A Grafana instance with Prometheus data source
 
 ## Step 1: Deploy {{% param "PRODUCT_NAME" %}}
 
@@ -94,17 +93,37 @@ For detailed deployment options and production configurations, refer to [Deploy 
    // Replace the placeholders with your actual Grafana Cloud values
    prometheus.remote_write "grafana_cloud" {
      endpoint {
-       url = "YOUR_PROMETHEUS_URL"
+       url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
        basic_auth {
-         username = "YOUR_PROMETHEUS_USERNAME"
-         password = "YOUR_API_TOKEN"
+         username = "<USERNAME>"
+         password = "<PASSWORD>"
        }
      }
    }
    EOF
    )"
    ```
+
+1. Replace the following:
+
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+{{< admonition type="tip" >}}
+To find your `remote_write` connection details if you are using a Grafana Cloud connection:
+
+1. Log in to [Grafana Cloud](https://grafana.com/).
+1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
+1. Copy the following details:
+   - **URL** (Remote Write Endpoint)
+   - **Username**
+   - **Password/API Key**
+
+If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
+The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
+{{< /admonition >}}
 
 1. Verify that {{< param "PRODUCT_NAME" >}} is running:
 
@@ -118,24 +137,14 @@ For detailed deployment options and production configurations, refer to [Deploy 
 If the deployment fails, check that your cluster has sufficient resources and that you have the necessary permissions to create resources in the `alloy` namespace.
 {{< /admonition >}}
 
-## Step 2: Configure your Grafana connection
+## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration
 
 Update the configuration with your Grafana connection details.
 
-### Configure Grafana Cloud connection
-
-1. Log in to [Grafana Cloud](https://grafana.com/).
-1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
-1. Copy the following details:
-   - **URL** (Remote Write Endpoint)
-   - **Username**
-   - **Password/API Key**
-
-### Configure self-managed Grafana connection
-
-For self-managed Grafana, you'll need to modify the `prometheus.remote_write` block to point to your Prometheus server.
-
-### Update the configuration
+{{< admonition type="note" >}}
+This configuration collects essential Kubernetes metrics including node resources, Pod metrics, and service discovery.
+The comments explain what each section does to help you understand and customize the configuration.
+{{< /admonition >}}
 
 1. Create a `values.yaml` file with your Grafana connection details:
 
@@ -185,22 +194,26 @@ For self-managed Grafana, you'll need to modify the `prometheus.remote_write` bl
          // This block sends your metrics to Grafana Cloud
          prometheus.remote_write "grafana_cloud" {
            endpoint {
-             url = "YOUR_PROMETHEUS_URL"
+             url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
              basic_auth {
-               username = "YOUR_PROMETHEUS_USERNAME"
-               password = "YOUR_API_TOKEN"
+               username = "<USERNAME>"
+               password = "<PASSWORD>"
              }
            }
          }
    EOF
    ```
 
-1. Replace these placeholders in the `values.yaml` file with your actual values:
+1. Replace the following:
 
-   - `YOUR_PROMETHEUS_URL` - paste your Remote Write Endpoint
-   - `YOUR_PROMETHEUS_USERNAME` - paste your Username
-   - `YOUR_API_TOKEN` - paste your Password/API Key
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+## Step 3: Restart {{% param "PRODUCT_NAME" %}}
+
+Update the {{< param "PRODUCT_NAME" >}} deployment with your configuration:
 
 1. Update the {{< param "PRODUCT_NAME" >}} deployment:
 
@@ -210,44 +223,23 @@ For self-managed Grafana, you'll need to modify the `prometheus.remote_write` bl
      -f values.yaml
    ```
 
-## Step 3: Verify deployment
+1. (Optional) Verify that {{< param "PRODUCT_NAME" >}} is running:
 
-Verify that {{< param "PRODUCT_NAME" >}} is successfully collecting and sending metrics:
-
-1. Check the Pod status:
+   Check the Pod status:
 
    ```shell
    kubectl get pods -n alloy
    ```
 
-1. View the {{< param "PRODUCT_NAME" >}} logs:
-
-   ```shell
-   kubectl logs -n alloy deployment/alloy -f
-   ```
-
-   Look for successful startup messages and metric collection logs.
-
-1. Check the {{< param "PRODUCT_NAME" >}} UI (optional):
-
-   ```shell
-   kubectl port-forward -n alloy deployment/alloy 12345:12345
-   ```
-
-   Then open `http://localhost:12345` in your browser to view the {{< param "PRODUCT_NAME" >}} debug UI.
+   You should see the {{< param "PRODUCT_NAME" >}} Pod in `Running` status.
 
 ### Troubleshoot the deployment
 
 If the deployment fails or metrics aren't flowing, check these common issues:
 
 ```shell
-# Check pod status and events
 kubectl describe pod -n alloy -l app.kubernetes.io/name=alloy
-
-# Check configuration syntax
 kubectl logs -n alloy deployment/alloy | grep -i error
-
-# Verify RBAC permissions
 kubectl auth can-i get pods --as=system:serviceaccount:alloy:alloy
 ```
 
@@ -298,8 +290,7 @@ The dashboard displays comprehensive Kubernetes cluster metrics:
 - **Network Metrics**: Network I/O and traffic patterns across the cluster
 
 {{< admonition type="note" >}}
-**Expected timeline**: Metrics should appear in Grafana within a few minutes of deploying {{< param "PRODUCT_NAME" >}}.
-If you don't see data after several minutes, check the troubleshooting section below.
+Metrics should appear in Grafana within a few minutes of deploying {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 ## Troubleshoot
@@ -328,10 +319,12 @@ kubectl logs -n alloy deployment/alloy | grep -i "error\|failed\|invalid"
 Verify that {{< param "PRODUCT_NAME" >}} can reach your Prometheus endpoint:
 
 ```shell
-kubectl exec -n alloy deployment/alloy -- wget --spider -q "YOUR_PROMETHEUS_URL"
+kubectl exec -n alloy deployment/alloy -- wget --spider -q "<PROMETHEUS_REMOTE_WRITE_URL>"
 ```
 
-Replace `YOUR_PROMETHEUS_URL` with your actual endpoint.
+Replace the following:
+
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 
 ### Verify RBAC permissions
 
@@ -373,25 +366,11 @@ Then open `http://localhost:12345` and check:
 
 ## Next steps
 
-Congratulations. You now have {{< param "PRODUCT_NAME" >}} collecting Kubernetes metrics and displaying them in Grafana.
-
-Here's what you can do next:
-
 - [Set up alerting rules](https://grafana.com/docs/grafana/latest/alerting/) to get notified when cluster metrics exceed thresholds
 - [Configure log collection](https://grafana.com/docs/alloy/latest/reference/components/loki/) from Kubernetes pods and containers
 - [Add distributed tracing](https://grafana.com/docs/alloy/latest/reference/components/otelcol/) to monitor application performance
 - [Monitor specific applications](https://grafana.com/docs/alloy/latest/reference/components/prometheus/) running in your cluster
 - [Explore advanced Kubernetes configurations](https://grafana.com/docs/alloy/latest/configure/kubernetes/) for production deployments
-
-### Production considerations
-
-For production deployments, consider:
-
-- [Deploying as a DaemonSet](https://grafana.com/docs/alloy/latest/set-up/deploy/) for better scalability and node-level metrics
-- [Configuring resource limits and requests](https://grafana.com/docs/alloy/latest/configure/kubernetes/) appropriate for your cluster size
-- [Setting up high availability](https://grafana.com/docs/alloy/latest/get-started/clustering/) with multiple {{< param "PRODUCT_NAME" >}} instances
-- [Implementing security best practices](https://grafana.com/docs/alloy/latest/configure/configure-security/) for service accounts and network policies
-- [Using configuration management](https://grafana.com/docs/alloy/latest/configure/kubernetes/) with GitOps workflows for automated deployments
 
 ### Learn more
 
