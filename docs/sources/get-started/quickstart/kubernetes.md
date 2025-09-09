@@ -131,6 +131,9 @@ The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Gra
      --values values.yaml
    ```
 
+## Step 2: Verify the deployment
+
+Check that {{< param "PRODUCT_NAME" >}} is running successfully:
 
 1. Verify that {{< param "PRODUCT_NAME" >}} is running:
 
@@ -144,101 +147,19 @@ The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Gra
 If the deployment fails, check that your cluster has sufficient resources and that you have the necessary permissions to create resources in the `alloy` namespace.
 {{< /admonition >}}
 
-## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration
+## Step 3: Configure monitoring (optional)
 
-Update the configuration with your Grafana connection details.
+If you need to update the configuration after deployment:
 
-{{< admonition type="note" >}}
-This configuration collects essential Kubernetes metrics including node resources, Pod metrics, and service discovery.
-The comments explain what each section does to help you understand and customize the configuration.
-{{< /admonition >}}
-
-1. Create a `values.yaml` file with your Grafana connection details:
-
-   ```shell
-   cat > values.yaml <<'EOF'
-   alloy:
-     configMap:
-       content: |-
-         // Basic Kubernetes cluster monitoring configuration
-
-         // Discover and collect metrics from Kubernetes nodes
-         discovery.kubernetes "nodes" {
-           role = "node"
-         }
-
-         // Discover and collect metrics from Kubernetes pods
-         discovery.kubernetes "pods" {
-           role = "pod"
-         }
-
-         // Discover and collect metrics from Kubernetes services
-         discovery.kubernetes "services" {
-           role = "service"
-         }
-
-         // Collect node-level metrics (kubelet, cAdvisor)
-         prometheus.scrape "nodes" {
-           targets = discovery.kubernetes.nodes.targets
-           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-           scrape_interval = "30s"
-         }
-
-         // Collect pod metrics from discovered pods
-         prometheus.scrape "pods" {
-           targets = discovery.kubernetes.pods.targets
-           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-           scrape_interval = "30s"
-         }
-
-         // Collect service metrics from discovered services
-         prometheus.scrape "services" {
-           targets = discovery.kubernetes.services.targets
-           forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-           scrape_interval = "30s"
-         }
-
-         // This block sends your metrics to Grafana Cloud
-         prometheus.remote_write "grafana_cloud" {
-           endpoint {
-             url = "<PROMETHEUS_REMOTE_WRITE_URL>"
-
-             basic_auth {
-               username = "<USERNAME>"
-               password = "<PASSWORD>"
-             }
-           }
-         }
-   EOF
-   ```
-
-1. Replace the following:
-
-   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
-
-## Step 3: Restart {{% param "PRODUCT_NAME" %}}
-
-Update the {{< param "PRODUCT_NAME" >}} deployment with your configuration:
+1. Edit your `values.yaml` file to update the configuration.
 
 1. Update the {{< param "PRODUCT_NAME" >}} deployment:
 
    ```shell
    helm upgrade alloy grafana/alloy \
      --namespace alloy \
-     -f values.yaml
+     --values values.yaml
    ```
-
-1. (Optional) Verify that {{< param "PRODUCT_NAME" >}} is running:
-
-   Check the Pod status:
-
-   ```shell
-   kubectl get pods -n alloy
-   ```
-
-   You should see the {{< param "PRODUCT_NAME" >}} Pod in `Running` status.
 
 ### Troubleshoot the deployment
 

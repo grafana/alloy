@@ -7,6 +7,7 @@ weight: 10
 
 # {{% param "FULL_PRODUCT_NAME" %}} quickstart guides
 
-This section provides quickstart guides for {{< param "FULL_PRODUCT_NAME" >}}.
+Learn how to quickly get started monitoring your infrastructure with {{< param "FULL_PRODUCT_NAME" >}}.
+These guides show you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics, and visualize them in Grafana.
 
 {{< section >}}
