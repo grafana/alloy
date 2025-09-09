@@ -18,7 +18,14 @@ Before you begin, ensure you have the following:
 - A Kubernetes cluster with administrative access
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/) configured to access your cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your local machine
-- A Grafana instance with Prometheus data source
+- A Grafana instance with Prometheus data source configured
+
+If you don't have a Grafana instance yet, you can:
+
+- [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/account-management/create-account/) for a managed solution, or
+- [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
+
+To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure-prometheus-data-source/).
 
 ## Step 1: Deploy {{% param "PRODUCT_NAME" %}}
 
