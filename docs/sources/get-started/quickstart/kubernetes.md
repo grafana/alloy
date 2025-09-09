@@ -109,19 +109,19 @@ For detailed deployment options and production configurations, refer to [Deploy 
    - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
    - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-{{< admonition type="tip" >}}
-To find your `remote_write` connection details if you are using a Grafana Cloud connection:
+   {{< admonition type="tip" >}}
+   To find your `remote_write` connection details if you are using a Grafana Cloud connection:
 
-1. Log in to [Grafana Cloud](https://grafana.com/).
-1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
-1. Copy the following details:
-   - **URL** (Remote Write Endpoint)
-   - **Username**
-   - **Password/API Key**
+   1. Log in to [Grafana Cloud](https://grafana.com/).
+   1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
+   1. Copy the following details:
+      - **URL** (Remote Write Endpoint)
+      - **Username**
+      - **Password/API Key**
 
-If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
-The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
-{{< /admonition >}}
+   If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
+   The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
+   {{< /admonition >}}
 
 1. Deploy {{< param "PRODUCT_NAME" >}} using the values file:
 
