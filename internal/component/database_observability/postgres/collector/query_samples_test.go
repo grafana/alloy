@@ -19,7 +19,7 @@ import (
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
-func TestQuerySample_FetchQuerySample(t *testing.T) {
+func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	now := time.Now()
@@ -221,7 +221,7 @@ func TestQuerySample_FetchQuerySample(t *testing.T) {
 			logger := log.NewLogfmtLogger(os.Stderr)
 			lokiClient := loki_fake.NewClient(func() {})
 
-			sampleCollector, err := NewQuerySample(QuerySampleArguments{
+			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                    db,
 				CollectInterval:       time.Second * 5,
 				EntryHandler:          lokiClient,

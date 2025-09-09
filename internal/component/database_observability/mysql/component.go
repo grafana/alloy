@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -66,10 +65,10 @@ type Arguments struct {
 	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
 	QueryTablesArguments    QueryTablesArguments    `alloy:"query_details,block,optional"`
-	SchemaTableArguments    SchemaTableArguments    `alloy:"schema_details,block,optional"`
-	ExplainPlanArguments    ExplainPlanArguments    `alloy:"explain_plans,block,optional"`
+	SchemaTablesArguments   SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySampleArguments    QuerySampleArguments    `alloy:"query_samples,block,optional"`
+	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
 }
 
 type CloudProvider struct {
@@ -84,7 +83,7 @@ type QueryTablesArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-type SchemaTableArguments struct {
+type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
 	CacheSize       int           `alloy:"cache_size,attr,optional"`
@@ -95,7 +94,7 @@ type SetupConsumersArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-type ExplainPlanArguments struct {
+type ExplainPlansArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
 	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
@@ -107,7 +106,7 @@ type LocksArguments struct {
 	Threshold       time.Duration `alloy:"threshold,attr,optional"`
 }
 
-type QuerySampleArguments struct {
+type QuerySamplesArguments struct {
 	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
 	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
@@ -121,7 +120,7 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Minute,
 	},
 
-	SchemaTableArguments: SchemaTableArguments{
+	SchemaTablesArguments: SchemaDetailsArguments{
 		CollectInterval: 1 * time.Minute,
 		CacheEnabled:    true,
 		CacheSize:       256,
@@ -132,7 +131,7 @@ var DefaultArguments = Arguments{
 		CollectInterval: 1 * time.Hour,
 	},
 
-	ExplainPlanArguments: ExplainPlanArguments{
+	ExplainPlansArguments: ExplainPlansArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
 		InitialLookback: 24 * time.Hour,
@@ -143,7 +142,7 @@ var DefaultArguments = Arguments{
 		Threshold:       1 * time.Second,
 	},
 
-	QuerySampleArguments: QuerySampleArguments{
+	QuerySamplesArguments: QuerySamplesArguments{
 		CollectInterval:             1 * time.Minute,
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
@@ -192,9 +191,14 @@ type Component struct {
 	instanceKey  string
 	dbConnection *sql.DB
 	healthErr    *atomic.String
+	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
+	return new(opts, args, sql.Open)
+}
+
+func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
 		opts:      opts,
 		args:      args,
@@ -202,6 +206,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
+		openSQL:   openFn,
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -271,6 +276,11 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 // for MySQL: "8.0.36-28.1"
 var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
+func (c *Component) reportError(errorMsg string, err error) {
+	level.Error(c.opts.Logger).Log("msg", fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
+}
+
 func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -281,29 +291,33 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	dbConnection, err := sql.Open("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
+	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
 	if err != nil {
-		return err
+		c.reportError("failed to open database connection", err)
+		return nil
 	}
 
 	if dbConnection == nil {
-		return errors.New("nil DB connection")
+		c.reportError("nil DB connection", nil)
+		return nil
 	}
+
 	if err = dbConnection.Ping(); err != nil {
-		return err
+		c.reportError("failed to ping database", err)
+		return nil
 	}
 	c.dbConnection = dbConnection
 
 	rs := c.dbConnection.QueryRowContext(context.Background(), selectServerInfo)
 	if err = rs.Err(); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to query engine version", "err", err)
-		return err
+		c.reportError("failed to query engine version", err)
+		return nil
 	}
 
 	var serverUUID, engineVersion string
 	if err := rs.Scan(&serverUUID, &engineVersion); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to scan engine version", "err", err)
-		return err
+		c.reportError("failed to scan engine version", err)
+		return nil
 	}
 
 	var parsedEngineVersion semver.Version
@@ -311,8 +325,8 @@ func (c *Component) Update(args component.Arguments) error {
 	if len(matches) > 1 {
 		parsedEngineVersion, err = semver.ParseTolerant(matches[1])
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse engine version", "err", err)
-			return err
+			c.reportError("failed to parse engine version", err)
+			return nil
 		}
 	}
 
@@ -335,8 +349,8 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion); err != nil {
-		c.healthErr.Store(err.Error())
-		return err
+		c.reportError("failed to start collectors", err)
+		return nil
 	}
 
 	c.healthErr.Store("")
@@ -346,12 +360,12 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryTablesName:    true,
-		collector.SchemaTableName:    true,
-		collector.SetupConsumersName: true,
-		collector.QuerySampleName:    true,
-		collector.ExplainPlanName:    false,
-		collector.LocksName:          false,
+		collector.QueryDetailsCollector:   true,
+		collector.SchemaDetailsCollector:  true,
+		collector.SetupConsumersCollector: true,
+		collector.QuerySamplesCollector:   true,
+		collector.ExplainPlansCollector:   false,
+		collector.LocksCollector:          false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -368,13 +382,21 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
 func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
+	var startErrors []string
+
+	logStartError := func(collectorName, action string, err error) {
+		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
+		level.Error(c.opts.Logger).Log("msg", errorString)
+		startErrors = append(startErrors, errorString)
+	}
+
 	var cloudProviderInfo *database_observability.CloudProvider
 	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
 		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
-			return err
 		}
 		cloudProviderInfo = &database_observability.CloudProvider{
 			AWS: &database_observability.AWSCloudProviderInfo{
@@ -387,88 +409,83 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryTablesName] {
-		qtCollector, err := collector.NewQueryTables(collector.QueryTablesArguments{
+	if collectors[collector.QueryDetailsCollector] {
+		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QueryTable collector", "err", err)
-			return err
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qtCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qtCollector)
 		}
-		if err := qtCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QueryTable collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, qtCollector)
 	}
 
-	if collectors[collector.SchemaTableName] {
-		stCollector, err := collector.NewSchemaTable(collector.SchemaTableArguments{
+	if collectors[collector.SchemaDetailsCollector] {
+		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
-			CollectInterval: c.args.SchemaTableArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaTableArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaTableArguments.CacheSize,
-			CacheTTL:        c.args.SchemaTableArguments.CacheTTL,
-
-			EntryHandler: entryHandler,
-			Logger:       c.opts.Logger,
+			CollectInterval: c.args.SchemaTablesArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaTablesArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaTablesArguments.CacheSize,
+			CacheTTL:        c.args.SchemaTablesArguments.CacheTTL,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create SchemaTable collector", "err", err)
-			return err
+			logStartError(collector.SchemaDetailsCollector, "create", err)
+		} else {
+			if err := stCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SchemaDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, stCollector)
 		}
-		if err := stCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start SchemaTable collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, stCollector)
 	}
 
-	if collectors[collector.QuerySampleName] {
-		qsCollector, err := collector.NewQuerySample(collector.QuerySampleArguments{
+	if collectors[collector.QuerySamplesCollector] {
+		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySampleArguments.CollectInterval,
+			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
 			EntryHandler:                entryHandler,
 			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySampleArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySampleArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySampleArguments.SetupConsumersCheckInterval,
+			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create QuerySample collector", "err", err)
-			return err
+			logStartError(collector.QuerySamplesCollector, "create", err)
+		} else {
+			if err := qsCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QuerySamplesCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qsCollector)
 		}
-		if err := qsCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start QuerySample collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, qsCollector)
 	}
 
-	if collectors[collector.SetupConsumersName] {
-		scCollector, err := collector.NewSetupConsumer(collector.SetupConsumerArguments{
+	if collectors[collector.SetupConsumersCollector] {
+		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
 			DB:              c.dbConnection,
 			Registry:        c.registry,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create SetupConsumer collector", "err", err)
-			return err
+			logStartError(collector.SetupConsumersCollector, "create", err)
+		} else {
+			if err := scCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SetupConsumersCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, scCollector)
 		}
-		if err := scCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start SetupConsumer collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, scCollector)
 	}
 
-	if collectors[collector.LocksName] {
-		locksCollector, err := collector.NewLock(collector.LockArguments{
+	if collectors[collector.LocksCollector] {
+		locksCollector, err := collector.NewLocks(collector.LocksArguments{
 			DB:                c.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
@@ -476,35 +493,33 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 			EntryHandler:      entryHandler,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create locks collector", "err", err)
-			return err
+			logStartError(collector.LocksCollector, "create", err)
+		} else {
+			if err := locksCollector.Start(context.Background()); err != nil {
+				logStartError(collector.LocksCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, locksCollector)
 		}
-		if err := locksCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start locks collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, locksCollector)
 	}
 
-	if collectors[collector.ExplainPlanName] {
-		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+	if collectors[collector.ExplainPlansCollector] {
+		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
 			DB:              c.dbConnection,
-			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
+			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
 			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
+			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
-			return err
+			logStartError(collector.ExplainPlansCollector, "create", err)
+		} else {
+			if err := epCollector.Start(context.Background()); err != nil {
+				logStartError(collector.ExplainPlansCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, epCollector)
 		}
-		if err := epCollector.Start(context.Background()); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start ExplainPlan collector", "err", err)
-			return err
-		}
-		c.collectors = append(c.collectors, epCollector)
 	}
 
 	// Connection Info collector is always enabled
@@ -515,14 +530,17 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 		CloudProvider: cloudProviderInfo,
 	})
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create ConnectionInfo collector", "err", err)
-		return err
+		logStartError(collector.ConnectionInfoName, "create", err)
+	} else {
+		if err := ciCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ConnectionInfoName, "start", err)
+		}
+		c.collectors = append(c.collectors, ciCollector)
 	}
-	if err := ciCollector.Start(context.Background()); err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to start ConnectionInfo collector", "err", err)
-		return err
+
+	if len(startErrors) > 0 {
+		return fmt.Errorf("failed to start some collectors: %s", strings.Join(startErrors, ", "))
 	}
-	c.collectors = append(c.collectors, ciCollector)
 
 	return nil
 }

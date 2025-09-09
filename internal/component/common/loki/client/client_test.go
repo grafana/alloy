@@ -2,9 +2,6 @@ package client
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -26,7 +23,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
 var logEntries = []loki.Entry{
@@ -525,7 +521,6 @@ func TestClient_Handle(t *testing.T) {
 				DropRateLimitedBatches: testData.clientDropRateLimited,
 				Client:                 config.HTTPClientConfig{},
 				BackoffConfig:          backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
-				ExternalLabels:         lokiflag.LabelSet{},
 				Timeout:                1 * time.Second,
 				TenantID:               testData.clientTenantID,
 			}
@@ -661,14 +656,13 @@ func TestClient_StopNow(t *testing.T) {
 
 			// Instance the client
 			cfg := Config{
-				URL:            serverURL,
-				BatchWait:      c.clientBatchWait,
-				BatchSize:      c.clientBatchSize,
-				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
-				ExternalLabels: lokiflag.LabelSet{},
-				Timeout:        1 * time.Second,
-				TenantID:       c.clientTenantID,
+				URL:           serverURL,
+				BatchWait:     c.clientBatchWait,
+				BatchSize:     c.clientBatchSize,
+				Client:        config.HTTPClientConfig{},
+				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
+				Timeout:       1 * time.Second,
+				TenantID:      c.clientTenantID,
 			}
 
 			m := NewMetrics(reg)
@@ -716,36 +710,4 @@ func TestClient_StopNow(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
-}
-
-type RoundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (r RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return r(req)
-}
-
-func Test_Tripperware(t *testing.T) {
-	url, err := url.Parse("http://foo.com")
-	require.NoError(t, err)
-	var called bool
-	c, err := NewWithTripperware(metrics, Config{
-		URL: flagext.URLValue{URL: url},
-	}, 0, 0, false, log.NewNopLogger(), func(rt http.RoundTripper) http.RoundTripper {
-		return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
-			require.Equal(t, r.URL.String(), "http://foo.com")
-			called = true
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("ok")),
-			}, nil
-		})
-	})
-	require.NoError(t, err)
-
-	c.Chan() <- loki.Entry{
-		Labels: model.LabelSet{"foo": "bar"},
-		Entry:  logproto.Entry{Timestamp: time.Now(), Line: "foo"},
-	}
-	c.Stop()
-	require.True(t, called)
 }

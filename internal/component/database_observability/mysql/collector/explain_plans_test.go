@@ -33,7 +33,7 @@ func explainPlanJoinAlgorithmPtr(s database_observability.ExplainPlanJoinAlgorit
 	return &s
 }
 
-func TestExplainPlanRedactor(t *testing.T) {
+func TestExplainPlansRedactor(t *testing.T) {
 	tests := []struct {
 		txtarfile string
 		file      string
@@ -298,18 +298,18 @@ func TestExplainPlanRedactor(t *testing.T) {
 	}
 }
 
-func TestExplainPlanOutput(t *testing.T) {
+func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
 		notJsonData := []byte("not json data")
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		_, err := newExplainPlanOutput(logger, "", "", notJsonData, "")
+		_, err := newExplainPlansOutput(logger, "", "", notJsonData, "")
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
 		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-		explainPlanOutput, err := newExplainPlanOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
+		explainPlanOutput, err := newExplainPlansOutput(logger, "", "", []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"), "")
 		require.NoError(t, err)
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Plan.Operation)
 	})
@@ -1473,7 +1473,7 @@ func TestExplainPlanOutput(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
 			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-			output, err := newExplainPlanOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
+			output, err := newExplainPlansOutput(logger, test.dbVersion, test.digest, jsonData, currentTime)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
 			// Override the generated at time to ensure the test is deterministic
 			output.Metadata.GeneratedAt = currentTime
@@ -1482,7 +1482,7 @@ func TestExplainPlanOutput(t *testing.T) {
 	}
 }
 
-func TestExplainPlan(t *testing.T) {
+func TestExplainPlans(t *testing.T) {
 	t.Run("last seen", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -1492,7 +1492,7 @@ func TestExplainPlan(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
 
-		c, err := NewExplainPlan(ExplainPlanArguments{
+		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
 			ScrapeInterval:  time.Second,
@@ -1560,7 +1560,7 @@ func TestExplainPlan(t *testing.T) {
 
 		logBuffer := bytes.NewBuffer(nil)
 
-		c, err := NewExplainPlan(ExplainPlanArguments{
+		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
 			ScrapeInterval:  time.Second,
@@ -1684,7 +1684,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 
 	queryUnderTestHash := "some_schemasome_digest1"
 
-	c, err := NewExplainPlan(ExplainPlanArguments{
+	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
 		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
 		ScrapeInterval:  time.Second,
@@ -1773,7 +1773,7 @@ func TestSchemaDenylist(t *testing.T) {
 
 	logBuffer := bytes.NewBuffer(nil)
 
-	c, err := NewExplainPlan(ExplainPlanArguments{
+	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
 		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
 		ScrapeInterval:  time.Second,

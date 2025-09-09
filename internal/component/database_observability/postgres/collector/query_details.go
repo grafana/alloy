@@ -17,9 +17,9 @@ import (
 )
 
 const (
+	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QueryTablesName            = "query_details"
 )
 
 var selectQueriesFromActivity = `
@@ -41,7 +41,7 @@ var selectQueriesFromActivity = `
 	LIMIT 100
 `
 
-type QueryTablesArguments struct {
+type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
@@ -49,7 +49,7 @@ type QueryTablesArguments struct {
 	Logger log.Logger
 }
 
-type QueryTables struct {
+type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
@@ -60,22 +60,22 @@ type QueryTables struct {
 	cancel  context.CancelFunc
 }
 
-func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
-	return &QueryTables{
+func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	return &QueryDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", QueryTablesName),
+		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}, nil
 }
 
-func (c *QueryTables) Name() string {
-	return QueryTablesName
+func (c *QueryDetails) Name() string {
+	return QueryDetailsCollector
 }
 
-func (c *QueryTables) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
+func (c *QueryDetails) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -107,20 +107,19 @@ func (c *QueryTables) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QueryTables) Stopped() bool {
+func (c *QueryDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QueryTables) Stop() {
+func (c *QueryDetails) Stop() {
 	c.cancel()
 }
 
-func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
+func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesFromActivity)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch statements from pg_stat_statements view", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
 	}
 	defer rs.Close()
 
@@ -158,14 +157,14 @@ func (c QueryTables) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate rs", "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over result set", "err", err)
 		return err
 	}
 
 	return nil
 }
 
-func (c QueryTables) tryTokenizeTableNames(sqlText string) ([]string, error) {
+func (c QueryDetails) tryTokenizeTableNames(sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
 	tables, err := extractTableNames(sqlText)
 	if err != nil {
