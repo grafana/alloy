@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/linux/
 description: Get Linux server metrics into Grafana quickly with Grafana Alloy
-menuTitle: Quick start Linux monitoring
-title: Quick start Linux monitoring with Grafana Alloy
+menuTitle: Quickstart Linux monitoring
+title: Quickstart Linux monitoring with Grafana Alloy
 weight: 100
 ---
 
-# Quick start Linux monitoring with {{% param "FULL_PRODUCT_NAME" %}}
+# Quickstart Linux monitoring with {{% param "FULL_PRODUCT_NAME" %}}
 
 Get your Linux server metrics flowing to Grafana quickly.
 This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.

@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/get-started/quickstart/windows/
 description: Get Windows server metrics into Grafana quickly with Grafana Alloy
-menuTitle: Quick start Windows monitoring
-title: Quick start Windows monitoring with Grafana Alloy
+menuTitle: Quickstart Windows monitoring
+title: Quickstart Windows monitoring with Grafana Alloy
 weight: 200
 ---
 
-# Quick start Windows monitoring with {{% param "FULL_PRODUCT_NAME" %}}
+# Quickstart Windows monitoring with {{% param "FULL_PRODUCT_NAME" %}}
 
 Get your Windows server metrics flowing to Grafana quickly.
 This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.
