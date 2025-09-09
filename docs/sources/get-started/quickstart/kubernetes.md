@@ -123,7 +123,7 @@ For detailed deployment options and production configurations, refer to [Deploy 
    The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
    {{< /admonition >}}
 
-1. Deploy {{< param "PRODUCT_NAME" >}} using the values file:
+1. Deploy {{< param "PRODUCT_NAME" >}}:
 
    ```shell
    helm install alloy grafana/alloy \
@@ -133,15 +133,13 @@ For detailed deployment options and production configurations, refer to [Deploy 
 
 ## Step 2: Verify the deployment
 
-Check that {{< param "PRODUCT_NAME" >}} is running successfully:
+Verify that {{< param "PRODUCT_NAME" >}} is running successfully:
 
-1. Verify that {{< param "PRODUCT_NAME" >}} is running:
+```shell
+kubectl get pods -n alloy
+```
 
-   ```shell
-   kubectl get pods -n alloy
-   ```
-
-   You should see the {{< param "PRODUCT_NAME" >}} Pod in `Running` status.
+You should see the {{< param "PRODUCT_NAME" >}} Pod in `Running` status.
 
 {{< admonition type="note" >}}
 If the deployment fails, check that your cluster has sufficient resources and that you have the necessary permissions to create resources in the `alloy` namespace.
