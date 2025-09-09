@@ -23,15 +23,13 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
-var testLimitsConfig = limit.Config{
-	MaxLineSizeTruncate: false,
-	MaxStreams:          0,
-	MaxLineSize:         0,
-}
-
 var (
+	testLimitsConfig = limit.Config{
+		MaxLineSizeTruncate: false,
+		MaxStreams:          0,
+		MaxLineSize:         0,
+	}
 	nilMetrics = NewMetrics(nil)
-	metrics    = NewMetrics(prometheus.DefaultRegisterer)
 )
 
 // TestManager_NoDuplicateMetricsPanic ensures that creating two managers does
