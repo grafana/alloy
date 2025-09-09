@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 	"github.com/prometheus/common/config"
 )
 

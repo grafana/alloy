@@ -453,15 +453,7 @@ func (c *client) StopNow() {
 
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
 	if len(c.externalLabels) > 0 {
-		if e.Labels == nil {
-			e.Labels = make(model.LabelSet, len(c.externalLabels))
-		}
-
-		for n, v := range c.externalLabels {
-			if _, ok := e.Labels[n]; !ok {
-				e.Labels[n] = v
-			}
-		}
+		e.Labels = c.externalLabels.Merge(e.Labels)
 	}
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
