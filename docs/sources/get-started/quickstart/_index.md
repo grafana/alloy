@@ -5,7 +5,7 @@ title: Quickstart
 weight: 10
 ---
 
-# Grafana Alloy quickstart guides
+# {{% param "FULL_PRODUCT_NAME" %}} quickstart guides
 
 This section provides quickstart guides for {{< param "FULL_PRODUCT_NAME" >}}.
 
