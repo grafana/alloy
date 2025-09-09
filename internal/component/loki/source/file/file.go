@@ -164,6 +164,8 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 			c.receiversMut.RUnlock()
 		case <-c.updateReaders:
+			// It's important to have the same lock order in Update and Run to avoid
+			// deadlocks.
 			c.tasksMut.Lock()
 			c.receiversMut.RLock()
 
@@ -209,6 +211,8 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
+	// It's important to have the same lock order in Update and Run to avoid
+	// deadlocks.
 	c.tasksMut.Lock()
 	defer c.tasksMut.Unlock()
 
