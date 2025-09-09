@@ -157,7 +157,7 @@ All metrics include an `endpoint` label identifying the specific endpoint URL. T
 - `ingest_endpoint`: Per-endpoint latency for ingest operations
 - `ingest_downstream`: Downstream request latency for ingest operations
 
-## Troubleshooting
+## Troubleshoot
 
 {{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

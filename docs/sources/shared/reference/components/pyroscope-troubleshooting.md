@@ -8,25 +8,25 @@ headless: true
 
 When using `pyroscope.write` to push profiles to a `pyroscope.receive_http` component, you may encounter errors like:
 
-```
+```text
 "failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"
 ```
 
 This typically indicates that the receiving component has reached its TCP connection limit.
 
-#### Diagnosing connection limit issues
+To resolve connection limit errors, first diagnose the issue, then apply one of the solutions.
+
+#### Diagnose connection limit issues
 
 1. Check the connection metrics on the `pyroscope.receive_http` component:
    - `pyroscope_receive_http_tcp_connections`: Current number of accepted TCP connections
    - `pyroscope_receive_http_tcp_connections_limit`: Maximum number of TCP connections allowed
 
-2. If the current connections are approaching or at the limit, you need to take action.
+1. If the current connections are approaching or at the limit, you need to take action.
 
-#### Solutions
+#### Solution 1: Increase the connection limit
 
-**Option A: Increase the connection limit**
-
-Increase the `conn_limit` parameter in the `pyroscope.receive_http` configuration:
+To increase the connection limit, increase the `conn_limit` parameter in the `pyroscope.receive_http` configuration:
 
 ```alloy
 pyroscope.receive_http "example" {
@@ -38,32 +38,33 @@ pyroscope.receive_http "example" {
 }
 ```
 
-**Option B: Horizontal scaling**
+#### Solution 2: Horizontal scaling
 
-Deploy multiple instances of `pyroscope.receive_http` behind a load balancer to distribute the connection load across multiple receivers.
+To distribute the connection load across multiple receivers, deploy multiple instances of `pyroscope.receive_http` behind a load balancer.
 
 ### Timeout chain issues
 
-When chaining multiple pyroscope components (e.g., `pyroscope.write` → `pyroscope.receive_http` → another `pyroscope.write`), you may encounter timeout issues that prevent retries:
+When chaining multiple Pyroscope components such as `pyroscope.write` to `pyroscope.receive_http` to another `pyroscope.write`, you may encounter timeout issues that prevent retries:
 
-```
+```text
 "failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"
 ```
 
-#### Understanding the problem
+#### Understand the problem
 
 This issue occurs when:
-1. `pyroscope.write` (w1) sends profiles to `pyroscope.receive_http` (r)
-2. `pyroscope.receive_http` forwards profiles to another `pyroscope.write` (w2)
-3. Both `pyroscope.write` components have the same default `remote_timeout` of 10 seconds
-4. The request context is passed from w1 through r to w2, maintaining the original 10-second deadline
-5. If w2's downstream request takes the full 10 seconds (e.g., due to a broken TCP idle connection), there's no time left for retries
 
-#### Solutions
+1. The first `pyroscope.write` component sends profiles to `pyroscope.receive_http`.
+1. The `pyroscope.receive_http` component forwards profiles to another `pyroscope.write` component.
+1. Both `pyroscope.write` components have the same default `remote_timeout` of 10 seconds.
+1. The request context passes from the first `pyroscope.write` through `pyroscope.receive_http` to the second `pyroscope.write`, maintaining the original 10-second deadline.
+1. If the second `pyroscope.write` component's downstream request takes the full 10 seconds due to a broken TCP idle connection, there's no time left for retries.
 
-**Option A: Increase timeout on the first pyroscope.write**
+To resolve timeout chain issues, apply one of the following solutions.
 
-Increase the `remote_timeout` on the initial `pyroscope.write` component to provide buffer time for retries:
+#### Solution 1: Increase timeout on the first pyroscope.write
+
+To provide buffer time for retries, increase the `remote_timeout` on the initial `pyroscope.write` component:
 
 ```alloy
 pyroscope.write "w1" {
@@ -76,9 +77,9 @@ pyroscope.write "w1" {
 }
 ```
 
-**Option B: Decrease timeout on the downstream pyroscope.write**
+#### Solution 2: Decrease timeout on the downstream pyroscope.write
 
-Reduce the `remote_timeout` on the downstream `pyroscope.write` component to ensure faster failures and allow time for retries:
+To ensure faster failures and allow time for retries, reduce the `remote_timeout` on the downstream `pyroscope.write` component:
 
 ```alloy
 pyroscope.write "w2" {
