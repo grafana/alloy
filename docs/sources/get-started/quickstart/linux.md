@@ -18,12 +18,12 @@ Before you begin, ensure you have the following:
 - A Linux server with administrative privileges
 - A Grafana instance with Prometheus data source configured
 
-If you don't have a Grafana instance yet, you can:
+  If you don't have a Grafana instance yet, you can:
 
-- [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/account-management/create-account/) for a managed solution, or
-- [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
+  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/account-management/create-account/) for a managed solution, or
+  - [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
 
-To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure-prometheus-data-source/).
+  To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure-prometheus-data-source/).
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
