@@ -45,122 +45,122 @@ This configuration collects essential Windows metrics including CPU usage, memor
 The comments explain what each section does to help you understand and customize the configuration.
 {{< /admonition >}}
 
-Edit the default configuration file at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`.
+1. Edit the default configuration file at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy`.
 
-```powershell
-notepad "%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy"
-```
+   ```powershell
+   notepad "%PROGRAMFILES%\GrafanaLabs\Alloy\config.alloy"
+   ```
 
-Copy and paste the following configuration:
+1. Copy and paste the following configuration:
 
-```alloy
-// This block runs a built-in Windows exporter to collect CPU, memory, disk, and network metrics
-prometheus.exporter.windows "default" {
-  // Enable essential Windows performance counters
-  enabled_collectors = [
-    "cpu",
-    "cs",
-    "logical_disk",
-    "memory",
-    "net",
-    "os",
-    "pagefile",
-    "physical_disk",
-    "process",
-    "service",
-    "system",
-    "textfile"
-  ]
+   ```alloy
+   // This block runs a built-in Windows exporter to collect CPU, memory, disk, and network metrics
+   prometheus.exporter.windows "default" {
+     // Enable essential Windows performance counters
+     enabled_collectors = [
+       "cpu",
+       "cs",
+       "logical_disk",
+       "memory",
+       "net",
+       "os",
+       "pagefile",
+       "physical_disk",
+       "process",
+       "service",
+       "system",
+       "textfile"
+     ]
 
-  // Configure disk monitoring
-  logical_disk {
-    // Exclude unmounted system volumes (HarddiskVolume* without drive letters)
-    // Note: System files like pagefile.sys and hiberfil.sys are included in disk usage metrics,
-    // which is normal and expected for monitoring purposes
-    volume_exclude = "^HarddiskVolume[0-9]+$"
-  }
+     // Configure disk monitoring
+     logical_disk {
+       // Exclude unmounted system volumes (HarddiskVolume* without drive letters)
+       // Note: System files like pagefile.sys and hiberfil.sys are included in disk usage metrics,
+       // which is normal and expected for monitoring purposes
+       volume_exclude = "^HarddiskVolume[0-9]+$"
+     }
 
-  // Configure network monitoring
-  net {
-    // Exclude virtual network interfaces (Hyper-V, VMware, etc.)
-    nic_exclude = "^(Teredo|isatap|Local Area Connection.*[0-9]+|Bluetooth).*$"
-  }
+     // Configure network monitoring
+     net {
+       // Exclude virtual network interfaces (Hyper-V, VMware, etc.)
+       nic_exclude = "^(Teredo|isatap|Local Area Connection.*[0-9]+|Bluetooth).*$"
+     }
 
-  // Configure physical disk monitoring
-  physical_disk {
-    // Exclude the _Total aggregate disk and any Volume GUID paths
-    disk_exclude = "^(_Total|HarddiskVolume.*)$"
-  }
+     // Configure physical disk monitoring
+     physical_disk {
+       // Exclude the _Total aggregate disk and any Volume GUID paths
+       disk_exclude = "^(_Total|HarddiskVolume.*)$"
+     }
 
-  // Configure process monitoring (limit to reduce overhead)
-  process {
-    // Include only essential processes to reduce metric volume
-    process_include = "^(dwm|explorer|svchost|System|Registry|smss|csrss|wininit|winlogon|services|lsass|spoolsv)$"
-  }
+     // Configure process monitoring (limit to reduce overhead)
+     process {
+       // Include only essential processes to reduce metric volume
+       process_include = "^(dwm|explorer|svchost|System|Registry|smss|csrss|wininit|winlogon|services|lsass|spoolsv)$"
+     }
 
-  // Configure service monitoring for critical Windows services
-  service {
-    service_include = "^(BITS|Browser|Dhcp|Dnscache|EventLog|Netlogon|PlugPlay|Spooler|TrkWks|W32Time|Winmgmt|Workstation)$"
-  }
-}
+     // Configure service monitoring for critical Windows services
+     service {
+       service_include = "^(BITS|Browser|Dhcp|Dnscache|EventLog|Netlogon|PlugPlay|Spooler|TrkWks|W32Time|Winmgmt|Workstation)$"
+     }
+   }
 
-// This block adds standard labels to our metrics for better organization in Grafana
-discovery.relabel "default" {
-  targets = prometheus.exporter.windows.default.targets
+   // This block adds standard labels to our metrics for better organization in Grafana
+   discovery.relabel "default" {
+     targets = prometheus.exporter.windows.default.targets
 
-  // Set the instance label to this server's hostname
-  rule {
-    target_label = "instance"
-    replacement  = constants.hostname
-  }
+     // Set the instance label to this server's hostname
+     rule {
+       target_label = "instance"
+       replacement  = constants.hostname
+     }
 
-  // Set a job label to identify this as Windows node metrics
-  rule {
-    target_label = "job"
-    replacement  = "integrations/windows_exporter"
-  }
-}
+     // Set a job label to identify this as Windows node metrics
+     rule {
+       target_label = "job"
+       replacement  = "integrations/windows_exporter"
+     }
+   }
 
-// This block collects the metrics from the Windows exporter every 15 seconds
-prometheus.scrape "default" {
-  targets    = discovery.relabel.default.output
-  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-  scrape_interval = "15s"
-}
+   // This block collects the metrics from the Windows exporter every 15 seconds
+   prometheus.scrape "default" {
+     targets    = discovery.relabel.default.output
+     forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+     scrape_interval = "15s"
+   }
 
-// This block sends your metrics to Grafana Cloud
-// Replace the placeholders with your actual Grafana Cloud values
-prometheus.remote_write "grafana_cloud" {
-  endpoint {
-    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+   // This block sends your metrics to Grafana Cloud
+   // Replace the placeholders with your actual Grafana Cloud values
+   prometheus.remote_write "grafana_cloud" {
+     endpoint {
+       url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
-    basic_auth {
-      username = "<USERNAME>"
-      password = "<PASSWORD>"
-    }
-  }
-}
-```
+       basic_auth {
+         username = "<USERNAME>"
+         password = "<PASSWORD>"
+       }
+     }
+   }
+   ```
 
-Replace the following:
+   Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-{{< admonition type="tip" >}}
-To find your `remote_write` connection details if you are using a Grafana Cloud connection:
+   {{< admonition type="tip" >}}
+   To find your `remote_write` connection details if you are using a Grafana Cloud connection:
 
-1. Log in to [Grafana Cloud](https://grafana.com/).
-1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
-1. Copy the following details:
-   - **URL** (Remote Write Endpoint)
-   - **Username**
-   - **Password/API Key**
+   1. Log in to [Grafana Cloud](https://grafana.com/).
+   1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
+   1. Copy the following details:
+      - **URL** (Remote Write Endpoint)
+      - **Username**
+      - **Password/API Key**
 
-If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
-The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
-{{< /admonition >}}
+   If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
+   The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
+   {{< /admonition >}}
 
 ## Step 3: Restart {{% param "PRODUCT_NAME" %}}
 
