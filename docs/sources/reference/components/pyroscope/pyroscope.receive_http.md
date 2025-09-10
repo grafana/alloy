@@ -80,30 +80,9 @@ You can use the following arguments to configure the `http` block. Any omitted f
 `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
 `pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
 
-## Connection limit errors
+## Troubleshoot
 
-If you reach the TCP connection limit in `pyroscope.receive_http`, you may see errors such as `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"`.
-
-To diagnose this issue:
-
-1. Check the `pyroscope_receive_http_tcp_connections` metric to see if it's approaching or at the `pyroscope_receive_http_tcp_connections_limit`.
-1. If you reach the connection limit, you have several options:
-
-   **Option A: Increase the connection limit**
-
-   ```alloy
-   pyroscope.receive_http "default" {
-     http {
-       conn_limit = 32768  // Increase from default 16384
-       // ... other settings
-     }
-     // ... rest of configuration
-   }
-   ```
-
-   **Option B: Horizontal scaling**
-
-   Deploy multiple instances of `pyroscope.receive_http` behind a load balancer to distribute the connection load across multiple receivers. This approach provides better scalability and fault tolerance.
+{{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
