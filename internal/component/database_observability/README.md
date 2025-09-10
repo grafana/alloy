@@ -384,7 +384,17 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
 ```
 
-5. Create a dedicated DB user and grant permissions.
+5. Increase `track_activity_query_size` to `4096`. Verify that the change has been applied:
+
+```sql
+show track_activity_query_size;
+
+ track_activity_query_size
+---------------------------
+ 4kB
+```
+
+6. Create a dedicated DB user and grant permissions.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -392,7 +402,7 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-6. Verify that the user has been properly created.
+7. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
