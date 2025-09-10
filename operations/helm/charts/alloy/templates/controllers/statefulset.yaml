@@ -17,7 +17,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled)) }}
+  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled) (not .Values.controller.autoscaling.external)) }}
   replicas: {{ .Values.controller.replicas }}
   {{- end }}
   {{- if .Values.controller.parallelRollout }}
