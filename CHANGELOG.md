@@ -47,6 +47,7 @@ Main (unreleased)
   - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
+  - updated the config blocks and documentation (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
@@ -115,6 +116,10 @@ Main (unreleased)
 
 - Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
 
+- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
+
+- Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -133,7 +138,11 @@ Main (unreleased)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
 
+- Fix `database_observability.mysql` and `database_observability.postgres` crashing alloy process due to uncaught errors.
+
 - Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
+
+- Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
 
 - **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
   - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
