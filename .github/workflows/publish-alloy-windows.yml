@@ -14,6 +14,10 @@ on:
         required: false
         type: boolean
         default: false
+      pr-number:
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -68,3 +72,4 @@ jobs:
         SHOULD_PUSH_ALLOY_IMAGE: ${{ inputs.push }}
         IMG_NAME: ${{ inputs.img-name }}
         GO_VERSION: ${{ steps.get_go_version.outputs.alloy_go_version }}
+        GITHUB_PR_NUMBER: ${{ inputs.pr-number }}
