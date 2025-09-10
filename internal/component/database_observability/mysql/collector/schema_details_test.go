@@ -16,7 +16,7 @@ import (
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
-func TestSchemaTable(t *testing.T) {
+func TestSchemaDetails(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
@@ -30,7 +30,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -174,7 +174,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -321,7 +321,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -488,7 +488,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -635,7 +635,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -804,7 +804,7 @@ func TestSchemaTable(t *testing.T) {
 
 		// Enable caching. This will exercise the code path
 		// that writes to cache (but we don't explicitly assert it in this test)
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -951,7 +951,7 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		// first loop, table info will be written to cache
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -1118,7 +1118,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -1254,7 +1254,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -1303,7 +1303,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
@@ -1371,7 +1371,7 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewSchemaTable(SchemaTableArguments{
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,

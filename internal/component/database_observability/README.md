@@ -384,7 +384,17 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
 ```
 
-5. Create a dedicated DB user and grant permissions.
+5. Increase `track_activity_query_size` to `4096`. Verify that the change has been applied:
+
+```sql
+show track_activity_query_size;
+
+ track_activity_query_size
+---------------------------
+ 4kB
+```
+
+6. Create a dedicated DB user and grant permissions.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -392,7 +402,7 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-6. Verify that the user has been properly created.
+7. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
@@ -403,7 +413,7 @@ SELECT * FROM pg_stat_statements LIMIT 1;
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
-2. Add the following configuration block to Alloy.
+2. Add the following configuration block to Alloy for each Postgres DB you'd like to monitor.
 - Replace `<your_DB_name>`
 - Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
 

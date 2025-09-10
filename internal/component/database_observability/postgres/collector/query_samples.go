@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	OP_QUERY_SAMPLE = "query_sample"
-	OP_WAIT_EVENT   = "wait_event"
-	QuerySampleName = "query_samples"
+	QuerySamplesCollector = "query_samples"
+	OP_QUERY_SAMPLE       = "query_sample"
+	OP_WAIT_EVENT         = "wait_event"
 )
 
 const selectPgStatActivity = `
@@ -63,7 +63,7 @@ const selectPgStatActivity = `
 		AND query_id > 0
 `
 
-type QuerySampleInfo struct {
+type QuerySamplesInfo struct {
 	DatabaseName    sql.NullString
 	DatabaseID      int
 	PID             int
@@ -89,7 +89,7 @@ type QuerySampleInfo struct {
 	BlockedByPIDs   pq.Int64Array
 }
 
-type QuerySampleArguments struct {
+type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
 	EntryHandler          loki.EntryHandler
@@ -97,7 +97,7 @@ type QuerySampleArguments struct {
 	DisableQueryRedaction bool
 }
 
-type QuerySample struct {
+type QuerySamples struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
@@ -110,23 +110,23 @@ type QuerySample struct {
 	lastScrape time.Time
 }
 
-func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	return &QuerySample{
+func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySampleName),
+		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 	}, nil
 }
 
-func (c *QuerySample) Name() string {
-	return QuerySampleName
+func (c *QuerySamples) Name() string {
+	return QuerySamplesCollector
 }
 
-func (c *QuerySample) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QuerySampleName+" collector started")
+func (c *QuerySamples) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -158,12 +158,12 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) Stopped() bool {
+func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QuerySample) Stop() {
+func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
@@ -175,17 +175,16 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 	return ""
 }
 
-func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	scrapeTime := time.Now()
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query pg_stat_activity", "err", err)
-		return err
+		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		sample := QuerySampleInfo{}
+		sample := QuerySamplesInfo{}
 		err := rows.Scan(
 			&sample.Now,
 			&sample.DatabaseName,
@@ -319,7 +318,7 @@ func (c *QuerySample) fetchQuerySample(ctx context.Context) error {
 	return nil
 }
 
-func (c QuerySample) validateQuerySample(sample QuerySampleInfo) error {
+func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
 		return fmt.Errorf("insufficient privilege to access query. sample set: %+v", sample)
 	}

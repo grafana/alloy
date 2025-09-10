@@ -15,7 +15,7 @@ import (
 	"go.uber.org/goleak"
 )
 
-func TestQueryTables(t *testing.T) {
+func TestQueryDetails(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	testcases := []struct {
@@ -336,7 +336,7 @@ func TestQueryTables(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQueryTables(QueryTablesArguments{
+			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
@@ -383,7 +383,7 @@ func TestQueryTables(t *testing.T) {
 	}
 }
 
-func TestQueryTablesSQLDriverErrors(t *testing.T) {
+func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
@@ -395,7 +395,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -458,7 +458,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
@@ -517,7 +517,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
