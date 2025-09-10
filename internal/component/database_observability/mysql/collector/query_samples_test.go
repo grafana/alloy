@@ -18,6 +18,7 @@ import (
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 var latestCompatibleVersion = semver.MustParse("8.0.32")
@@ -30,6 +31,7 @@ func TestQuerySamples(t *testing.T) {
 		rows       [][]driver.Value
 		logsLabels []model.LabelSet
 		logsLines  []string
+		errorLine  string
 	}{
 		{
 			name: "select query without wait event",
@@ -176,6 +178,7 @@ func TestQuerySamples(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{},
 			logsLines:  []string{},
+			errorLine:  "sql text is truncated",
 		},
 		{
 			name: "start transaction",
@@ -393,6 +396,7 @@ func TestQuerySamples(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
+			logBuffer := syncbuffer.Buffer{}
 			lokiClient := loki_fake.NewClient(func() {})
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
@@ -400,7 +404,7 @@ func TestQuerySamples(t *testing.T) {
 				EngineVersion:   latestCompatibleVersion,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -458,17 +462,12 @@ func TestQuerySamples(t *testing.T) {
 			err = collector.Start(t.Context())
 			require.NoError(t, err)
 
-			require.Eventually(t, func() bool {
-				return len(lokiClient.Received()) == len(tc.logsLines)
-			}, 5*time.Second, 100*time.Millisecond)
+			require.EventuallyWithT(t, func(t *assert.CollectT) {
+				entries := lokiClient.Received()
+				require.Equal(t, len(entries), len(tc.logsLines))
 
-			// TODO: Check whether more conditions are satisfied before stopping the collector.
-			// This would help in two situations:
-			// 1. If no log lines are expected, the collector will currently stop immediately before it has a chance to do anything.
-			// 2. If some queries do not produce log lines, the collector may stop prematurely before it has a chance to fail generating logs.
-			//
-			// Fixing this is not as simple as moving `mock.ExpectationsWereMet()` before `collector.Stop()`.
-			// We'd also need a way to check that the collector failed to generate a certain amount of logs.
+				require.Contains(t, logBuffer.String(), tc.errorLine)
+			}, 5*time.Second, 100*time.Millisecond)
 
 			collector.Stop()
 			lokiClient.Stop()
@@ -477,6 +476,7 @@ func TestQuerySamples(t *testing.T) {
 				return collector.Stopped()
 			}, 5*time.Second, 100*time.Millisecond)
 
+			// Run this after Stop() to avoid race conditions
 			err = mock.ExpectationsWereMet()
 			require.NoError(t, err)
 

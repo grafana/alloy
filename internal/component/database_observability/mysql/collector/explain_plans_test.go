@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"golang.org/x/tools/txtar"
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
@@ -1558,11 +1558,11 @@ func TestExplainPlans(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 		defer lokiClient.Stop()
 
-		logBuffer := bytes.NewBuffer(nil)
+		logBuffer := syncbuffer.Buffer{}
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1680,13 +1680,13 @@ func TestQueryFailureDenylist(t *testing.T) {
 	lokiClient := loki_fake.NewClient(func() {})
 	defer lokiClient.Stop()
 
-	logBuffer := bytes.NewBuffer(nil)
+	logBuffer := syncbuffer.Buffer{}
 
 	queryUnderTestHash := "some_schemasome_digest1"
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
@@ -1771,11 +1771,11 @@ func TestSchemaDenylist(t *testing.T) {
 	lokiClient := loki_fake.NewClient(func() {})
 	defer lokiClient.Stop()
 
-	logBuffer := bytes.NewBuffer(nil)
+	logBuffer := syncbuffer.Buffer{}
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(logBuffer)),
+		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		ExcludeSchemas:  []string{"some_schema"},
