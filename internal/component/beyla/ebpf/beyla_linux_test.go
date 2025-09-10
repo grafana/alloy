@@ -21,7 +21,6 @@ import (
 	"go.opentelemetry.io/obi/pkg/kubeflags"
 	"go.opentelemetry.io/obi/pkg/services"
 	"go.opentelemetry.io/obi/pkg/transform"
-	"gopkg.in/yaml.v3"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -391,7 +390,9 @@ func TestArguments_InvalidExportModes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var args Arguments
-			require.Error(t, syntax.Unmarshal([]byte(tt.config), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
+			_, err := convertExportModes(args.Discovery.Services[0].ExportModes)
+			require.Error(t, err)
 		})
 	}
 }
@@ -728,6 +729,7 @@ func TestConvert_Attributes(t *testing.T) {
 				Exclude: []string{"db_statement"},
 			},
 		},
+		DropMetricsUnresolvedIPs: true,
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
@@ -738,12 +740,6 @@ func TestConvert_Attributes(t *testing.T) {
 }
 
 func TestConvert_Discovery(t *testing.T) {
-	// Create ExportModes that allows only metrics using YAML unmarshaling
-	var metricsOnlyExportModes services.ExportModes
-	yamlData := []byte(`["metrics"]`)
-	err := yaml.Unmarshal(yamlData, &metricsOnlyExportModes)
-	require.NoError(t, err)
-
 	args := Discovery{
 		Instrument: []Service{
 			{
@@ -751,7 +747,7 @@ func TestConvert_Discovery(t *testing.T) {
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
-				ExportModes:    metricsOnlyExportModes,
+				ExportModes:    []string{"metrics"},
 				Sampler: SamplerConfig{
 					Arg:  "0.5",
 					Name: "traceidratio",
