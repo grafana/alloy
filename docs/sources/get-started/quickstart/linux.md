@@ -30,34 +30,52 @@ Before you begin, ensure you have the following:
 Choose the installation method for your Linux distribution:
 
 {{< tabs >}}
-{{< tab-content name="Ubuntu and Debian" >}}
+{{< tab-content name="Debian and Ubuntu" >}}
 
-1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
-1. Scroll down to the **Assets** section.
-1. Download the Debian package file that matches your system architecture.
-1. Install the package:
+1. Import the GPG key and add the Grafana package repository:
 
-   ```shell
-   sudo dpkg -i alloy-*.deb
-   ```
+  ```shell
+  sudo mkdir -p /etc/apt/keyrings/
+  wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+  sudo apt-get update
+  ```
+
+1. Install Alloy:
+
+  ```shell
+  sudo apt-get install alloy
+  ```
 
 {{< /tab-content >}}
-{{< tab-content name="RHEL, CentOS, and Fedora" >}}
+{{< tab-content name="RHEL and Fedora" >}}
 
-1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
-1. Scroll down to the **Assets** section.
-1. Download the RPM package file that matches your system architecture.
-1. Install the package:
+1. Import the GPG key and add the Grafana YUM repository:
 
-   ```shell
-   sudo rpm -i alloy-*.rpm
-   ```
+  ```shell
+  wget -q -O gpg.key https://rpm.grafana.com/gpg.key
+  sudo rpm --import gpg.key
+  echo -e '[grafana]\nname=grafana\nbaseurl=https://rpm.grafana.com\nrepo_gpgcheck=1\nenabled=1\ngpgcheck=1\ngpgkey=https://rpm.grafana.com/gpg.key\nsslverify=1\nsslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.repo
+  ```
+
+1. Update the repository:
+
+  ```shell
+  yum update
+  ```
+
+1. Install Alloy:
+
+  ```shell
+  sudo dnf install alloy
+  ```
 
 {{< /tab-content >}}
 {{< /tabs >}}
 
 {{< admonition type="note" >}}
-If the installation fails, verify that you have the required permissions and that your system architecture matches the download.
+Repository-based installation is recommended for automatic updates and easier management.
+For manual installation refer to the [Alloy releases page](https://github.com/grafana/alloy/releases/latest).
 {{< /admonition >}}
 
 ## Step 2: Edit the {{% param "PRODUCT_NAME" %}} configuration file
