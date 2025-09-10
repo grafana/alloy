@@ -20,10 +20,10 @@ Before you begin, ensure you have the following:
 
   If you don't have a Grafana instance yet, you can:
 
-  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/account-management/create-account/) for a managed solution, or
+  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution, or
   - [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
 
-  To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure-prometheus-data-source/).
+  To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/).
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
@@ -32,18 +32,26 @@ Choose the installation method for your Linux distribution:
 {{< tabs >}}
 {{< tab-content name="Ubuntu and Debian" >}}
 
-```shell
-curl -fsSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.deb -o alloy.deb
-sudo dpkg -i alloy.deb
-```
+1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
+1. Scroll down to the **Assets** section.
+1. Download the Debian package file that matches your system architecture.
+1. Install the package:
+
+   ```shell
+   sudo dpkg -i alloy-*.deb
+   ```
 
 {{< /tab-content >}}
 {{< tab-content name="RHEL, CentOS, and Fedora" >}}
 
-```shell
-curl -fsSL https://github.com/grafana/alloy/releases/latest/download/alloy-linux-amd64.rpm -o alloy.rpm
-sudo rpm -i alloy.rpm
-```
+1. Navigate to the [latest release](https://github.com/grafana/alloy/releases/latest) on GitHub.
+1. Scroll down to the **Assets** section.
+1. Download the RPM package file that matches your system architecture.
+1. Install the package:
+
+   ```shell
+   sudo rpm -i alloy-*.rpm
+   ```
 
 {{< /tab-content >}}
 {{< /tabs >}}
