@@ -112,14 +112,16 @@ Before you begin, ensure you have the following:
    - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
    {{< admonition type="tip" >}}
-   To find your `remote_write` connection details if you are using a Grafana Cloud connection:
+   To find your `remote_write` connection details if you are using Grafana Cloud:
 
    1. Log in to [Grafana Cloud](https://grafana.com/).
-   1. Navigate to **Connections** > **Add new connection** > **Hosted Prometheus metrics**.
-   1. Copy the following details:
-      - **URL** (Remote Write Endpoint)
-      - **Username**
-      - **Password/API Key**
+   1. Navigate to **Connections** and select **Data sources**.
+   1. Find your **Prometheus** connection in the list.
+   1. Click on the Prometheus connection to view its configuration.
+   1. Copy the following details from the configuration:
+      - **URL** (Remote Write Endpoint) - found in the HTTP section
+      - **Username** - found in the Authentication section  
+      - **Password/API Key** - this is the API token you generated previously
 
    If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
    The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
