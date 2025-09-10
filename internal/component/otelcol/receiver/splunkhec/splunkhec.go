@@ -130,7 +130,7 @@ func (a *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (a Arguments) Convert() (otelcomponent.Config, error) {
-	httpServerConfig, err := a.HTTPServer.Convert()
+	httpServerConfig, err := a.HTTPServer.ConvertToPtr()
 	if err != nil {
 		return nil, err
 	}

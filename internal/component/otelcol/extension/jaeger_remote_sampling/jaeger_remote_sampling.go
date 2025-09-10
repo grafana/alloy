@@ -81,13 +81,13 @@ func (args *Arguments) SetToDefault() {
 // Convert implements extension.Arguments.
 func (args Arguments) Convert(_ component.Options) (otelcomponent.Config, error) {
 	httpServerConfig := (*otelcol.HTTPServerArguments)(args.HTTP)
-	httpConvertedServerConfig, err := httpServerConfig.Convert()
+	httpConvertedServerConfig, err := httpServerConfig.ConvertToPtr()
 	if err != nil {
 		return nil, err
 	}
 
 	grpcServerConfig := (*otelcol.GRPCServerArguments)(args.GRPC)
-	convertedGrpcServerConfig, err := grpcServerConfig.Convert()
+	convertedGrpcServerConfig, err := grpcServerConfig.ConvertToPtr()
 	if err != nil {
 		return nil, err
 	}

@@ -217,7 +217,7 @@ The following attributes are supported:
 | Name                 | Type     | Description                                                                 | Default | Required |
 |----------------------|----------|-----------------------------------------------------------------------------|---------|----------|
 | `enabled`            | `bool`   | Configures whether to add exemplars to histograms.                          | `false` | no       |
-| `max_per_data_point` | `number` | Limits the number of exemplars that can be added to a unique dimension set. | `null`  | no       |
+| `max_per_data_point` | `number` | The maximum number of exemplars to attach to a single metric data point.    | `5`     | no       |
 
 `max_per_data_point` can help with reducing memory consumption.
 
