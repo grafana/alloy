@@ -127,7 +127,7 @@ func (t *tailer) Run(ctx context.Context) {
 				}
 			} else {
 				// For regular pods, use standard termination logic
-				terminated, err := t.containerTerminated(ctx)
+				terminated, err := t.shouldStopTailingContainer(ctx)
 				if terminated {
 					level.Info(t.log).Log("msg", "container terminated, stopping tailer")
 					return
@@ -326,14 +326,14 @@ func isJobPod(pod *corev1.Pod) bool {
 	return false
 }
 
-// containerTerminated determines whether the container this tailer was
-// watching has terminated and won't restart. If containerTerminated returns
+// shouldStopTailingContainer determines whether the container this tailer was
+// watching has terminated and won't restart. If shouldStopTailingContainer returns
 // true, it means that no more logs will appear for the watched target.
 //
 // This function implements standard Kubernetes restart policy logic and should
 // be used for regular pods. Job pods should use shouldStopTailingJobContainer()
 // instead, which has special handling for job lifecycle.
-func (t *tailer) containerTerminated(ctx context.Context) (terminated bool, err error) {
+func (t *tailer) shouldStopTailingContainer(ctx context.Context) (terminated bool, err error) {
 	var (
 		key           = t.target.NamespacedName()
 		containerName = t.target.ContainerName()

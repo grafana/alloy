@@ -138,7 +138,7 @@ Main (unreleased)
 - **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
   - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
   - Proper handling of pod deletion and race conditions between job completion and controller cleanup
-  - Separation of concerns: `containerTerminated()` handles standard Kubernetes restart policies for regular pods, while `shouldStopTailingJobContainer()` handles job-specific lifecycle with grace periods
+  - Separation of concerns: `shouldStopTailingContainer()` handles standard Kubernetes restart policies for regular pods, while `shouldStopTailingJobContainer()` handles job-specific lifecycle with grace periods
   - Enhanced deduplication mechanisms to prevent duplicate log collection while ensuring comprehensive coverage
   - Comprehensive test coverage including unit tests and deduplication validation
   This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)

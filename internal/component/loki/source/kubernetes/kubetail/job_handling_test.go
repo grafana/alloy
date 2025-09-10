@@ -189,7 +189,7 @@ func TestIsTargetJobPod(t *testing.T) {
 
 func TestShouldStopTailingJobContainer(t *testing.T) {
 	// Note: This function should only be called for job pods.
-	// Regular pods should use containerTerminated() instead.
+	// Regular pods should use shouldStopTailingContainer() instead.
 	tests := []struct {
 		name           string
 		pod            *corev1.Pod
