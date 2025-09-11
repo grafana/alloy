@@ -9,7 +9,11 @@ weight: 400
 # Quickstart Windows monitoring with {{% param "FULL_PRODUCT_NAME" %}}
 
 Get your Windows server metrics flowing to Grafana quickly.
+
 This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.
+
+This quickstart is for local installation in Windows.
+For a more in-depth guide, or if you want to run {{< param "PRODUCT_NAME" >}} in Docker, refer to [Monitor Microsoft Windows servers and desktops with {{< param "FULL_PRODUCT_NAME" >}}](../monitor/monitor-windows/).
 
 ## Before you begin
 
@@ -159,7 +163,7 @@ The comments explain what each section does to help you understand and customize
    1. Click on the Prometheus connection to view its configuration.
    1. Copy the following details from the configuration:
       - **URL** (Remote Write Endpoint) - found in the HTTP section
-      - **Username** - found in the Authentication section  
+      - **Username** - found in the Authentication section
       - **Password/API Key** - this is the API token you generated previously
 
    If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.

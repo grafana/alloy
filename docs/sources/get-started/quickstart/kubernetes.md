@@ -11,6 +11,13 @@ weight: 100
 Get your Kubernetes cluster metrics flowing to Grafana quickly.
 This guide shows you how to deploy {{< param "PRODUCT_NAME" >}} on Kubernetes, configure it to collect essential cluster metrics (nodes, pods, services, containers), and visualize them in Grafana.
 
+This quickstart is for local installation in Kubernetes.
+For more in-depth guides or to collect additional telemetry, refer to:
+
+- [Collect Prometheus metrics](../collect/prometheus-metrics/) for scraping metrics from Kubernetes workloads
+- [Collect Kubernetes logs and forward them to Loki](../collect/logs-in-kubernetes/) for log collection in Kubernetes
+- [Collect OpenTelemetry data and forward to Grafana](../collect/opentelemetry-to-lgtm-stack/) for traces, metrics, and logs with OpenTelemetry in Kubernetes
+
 ## Before you begin
 
 Before you begin, ensure you have the following:

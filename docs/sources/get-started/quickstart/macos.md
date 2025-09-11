@@ -11,6 +11,8 @@ weight: 300
 Get your macOS server metrics flowing to Grafana quickly.
 This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.
 
+This quickstart is for local installation in macOS.
+
 ## Before you begin
 
 Before you begin, ensure you have the following:
@@ -20,10 +22,10 @@ Before you begin, ensure you have the following:
 
 If you don't have a Grafana instance yet, you can:
 
-  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution, or
-  - [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
+- [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution, or
+- [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
 
-  To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/).
+To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/).
 
 ## Step 1: Install {{% param "PRODUCT_NAME" %}}
 
@@ -129,7 +131,7 @@ brew install grafana/grafana/alloy
    1. Click on the Prometheus connection to view its configuration.
    1. Copy the following details from the configuration:
       - **URL** (Remote Write Endpoint) - found in the HTTP section
-      - **Username** - found in the Authentication section  
+      - **Username** - found in the Authentication section
       - **Password/API Key** - this is the API token you generated previously
 
    If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.

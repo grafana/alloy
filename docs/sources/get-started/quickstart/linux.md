@@ -11,6 +11,9 @@ weight: 200
 Get your Linux server metrics flowing to Grafana quickly.
 This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.
 
+This quickstart is for local installation in Linux.
+For a more in-depth guide, or if you want to run {{< param "PRODUCT_NAME" >}} in Docker, refer to [Monitor Linux servers with {{< param "FULL_PRODUCT_NAME" >}}](../monitor/monitor-linux/).
+
 ## Before you begin
 
 Before you begin, ensure you have the following:
@@ -34,41 +37,41 @@ Choose the installation method for your Linux distribution:
 
 1. Import the GPG key and add the Grafana package repository:
 
-  ```shell
-  sudo mkdir -p /etc/apt/keyrings/
-  wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
-  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
-  sudo apt-get update
-  ```
+```shell
+sudo mkdir -p /etc/apt/keyrings/
+wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+sudo apt-get update
+```
 
 1. Install Alloy:
 
-  ```shell
-  sudo apt-get install alloy
-  ```
+```shell
+sudo apt-get install alloy
+```
 
 {{< /tab-content >}}
 {{< tab-content name="RHEL and Fedora" >}}
 
 1. Import the GPG key and add the Grafana YUM repository:
 
-  ```shell
-  wget -q -O gpg.key https://rpm.grafana.com/gpg.key
-  sudo rpm --import gpg.key
-  echo -e '[grafana]\nname=grafana\nbaseurl=https://rpm.grafana.com\nrepo_gpgcheck=1\nenabled=1\ngpgcheck=1\ngpgkey=https://rpm.grafana.com/gpg.key\nsslverify=1\nsslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.repo
-  ```
+```shell
+wget -q -O gpg.key https://rpm.grafana.com/gpg.key
+sudo rpm --import gpg.key
+echo -e '[grafana]\nname=grafana\nbaseurl=https://rpm.grafana.com\nrepo_gpgcheck=1\nenabled=1\ngpgcheck=1\ngpgkey=https://rpm.grafana.com/gpg.key\nsslverify=1\nsslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.repo
+```
 
 1. Update the repository:
 
-  ```shell
-  yum update
-  ```
+```shell
+yum update
+```
 
 1. Install Alloy:
 
-  ```shell
-  sudo dnf install alloy
-  ```
+```shell
+sudo dnf install alloy
+```
 
 {{< /tab-content >}}
 {{< /tabs >}}
@@ -179,7 +182,7 @@ The comments explain what each section does to help you understand and customize
    1. Click on the Prometheus connection to view its configuration.
    1. Copy the following details from the configuration:
       - **URL** (Remote Write Endpoint) - found in the HTTP section
-      - **Username** - found in the Authentication section  
+      - **Username** - found in the Authentication section
       - **Password/API Key** - this is the API token you generated previously
 
    If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
