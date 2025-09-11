@@ -1,0 +1,21 @@
+receivers:
+    awsecscontainermetrics:
+      collection_interval: 30s
+
+processors:
+  filter:
+    error_mode: ignore
+    metrics:
+      metric:
+          - 'metric.name != "ecs.task.memory.reserved" and metric.name != "ecs.task.memory.utilized"'
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [awsecscontainermetrics]
+      processors: [filter]
+      exporters: [otlp]
