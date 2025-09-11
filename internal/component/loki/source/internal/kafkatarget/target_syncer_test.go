@@ -62,7 +62,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			return false
 		}
 		return reflect.DeepEqual([]string{"topic1"}, group.GetTopics())
-	}, 10*time.Minute, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
+	}, 1*time.Minute, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
 
 	client.UpdateTopics([]string{"topic1", "topic2"})
 
