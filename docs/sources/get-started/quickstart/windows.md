@@ -9,10 +9,9 @@ weight: 400
 # Quickstart Windows monitoring with {{% param "FULL_PRODUCT_NAME" %}}
 
 Get your Windows server metrics flowing to Grafana quickly.
+This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana Cloud.
 
-This guide shows you how to install {{< param "PRODUCT_NAME" >}}, configure it to collect essential system metrics (CPU, memory, disk, network), and visualize them in Grafana.
-
-This quickstart is for local installation in Windows.
+This quickstart is for local installation in Windows and sending metrics to Grafana Cloud.
 For a more in-depth guide, or if you want to run {{< param "PRODUCT_NAME" >}} in Docker, refer to [Monitor Microsoft Windows servers and desktops with {{< param "FULL_PRODUCT_NAME" >}}](../monitor/monitor-windows/).
 
 ## Before you begin
@@ -20,12 +19,11 @@ For a more in-depth guide, or if you want to run {{< param "PRODUCT_NAME" >}} in
 Before you begin, ensure you have the following:
 
 - A Windows server with administrator privileges
-- A Grafana instance with Prometheus data source configured
+- A Grafana Cloud account with a Prometheus data source configured
 
   If you don't have a Grafana instance yet, you can:
 
-  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution, or
-  - [Install Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/) on your own infrastructure
+  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution
 
   To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/).
 
@@ -150,25 +148,19 @@ The comments explain what each section does to help you understand and customize
 
    Replace the following:
 
-   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The `remote_write` endpoint URL from your Grafana Cloud account.
+   - _`<USERNAME>`_: The username for your Grafana Cloud Prometheus `remote_write` endpoint.
+   - _`<PASSWORD>`_: The API key or password for your Grafana Cloud Prometheus `remote_write` endpoint.
 
    {{< admonition type="tip" >}}
-   To find your `remote_write` connection details if you are using Grafana Cloud:
+   To find your `remote_write` connection details:
 
    1. Log in to [Grafana Cloud](https://grafana.com/).
    1. Navigate to **Connections** and select **Data sources**.
    1. Find your **Prometheus** connection in the list.
    1. Click on the Prometheus connection to view its configuration.
-   1. Copy the following details from the configuration:
-      - **URL** (Remote Write Endpoint) - found in the HTTP section
-      - **Username** - found in the Authentication section
-      - **Password/API Key** - this is the API token you generated previously
-
-   If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
-   The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
-   {{< /admonition >}}
+   1. Copy the **URL**, **Username**, and **API Key** from the configuration.
+  {{< /admonition >}}
 
 ## Step 3: Restart {{% param "PRODUCT_NAME" %}}
 
@@ -211,9 +203,7 @@ Common issues:
 
 ## Step 4: Visualize your metrics in Grafana
 
-Within a few minutes of starting {{< param "PRODUCT_NAME" >}}, your Windows metrics should appear in Grafana.
-
-### Visualize in Grafana Cloud
+Within a few minutes of starting {{< param "PRODUCT_NAME" >}}, your Windows metrics should appear in Grafana Cloud.
 
 1. Log in to your [Grafana Cloud](https://grafana.com/) instance.
 1. Navigate to **Connections** > **Infrastructure** > **Windows Node**.
@@ -227,14 +217,6 @@ Alternatively, import a community dashboard:
 1. Click **Load**.
 1. Select your Prometheus data source and click **Import**.
 
-### Visualize in self-managed Grafana
-
-1. Open your Grafana instance.
-1. Go to **Dashboards** > **New** > **Import**.
-1. Enter dashboard ID `14694` or download the JSON from the [Grafana dashboard library](https://grafana.com/grafana/dashboards/14694-windows-exporter-dashboard/).
-1. Click **Load**.
-1. Select your Prometheus data source and click **Import**.
-
 ### What you should see
 
 The dashboard displays comprehensive Windows system metrics:
@@ -245,10 +227,6 @@ The dashboard displays comprehensive Windows system metrics:
 - **Network Traffic**: Network interface throughput and errors
 - **System Services**: Status of critical Windows services
 - **Process Information**: Resource usage of key system processes
-
-{{< admonition type="note" >}}
-Metrics should appear in Grafana within a few minutes of starting {{< param "PRODUCT_NAME" >}}.
-{{< /admonition >}}
 
 ## Troubleshoot
 

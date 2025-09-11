@@ -9,7 +9,7 @@ weight: 100
 # Quickstart Kubernetes monitoring with {{% param "FULL_PRODUCT_NAME" %}}
 
 Get your Kubernetes cluster metrics flowing to Grafana quickly.
-This guide shows you how to deploy {{< param "PRODUCT_NAME" >}} on Kubernetes, configure it to collect essential cluster metrics (nodes, pods, services, containers), and visualize them in Grafana.
+This guide shows you how to deploy {{< param "PRODUCT_NAME" >}} on Kubernetes, configure it to collect essential cluster metrics (nodes, pods, services, containers), and visualize them in Grafana Cloud.
 
 This quickstart is for local installation in Kubernetes.
 For more in-depth guides or to collect additional telemetry, refer to:
@@ -25,7 +25,7 @@ Before you begin, ensure you have the following:
 - A Kubernetes cluster with administrative access
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/) configured to access your cluster
 - [Helm](https://helm.sh/docs/intro/install/) installed on your local machine
-- A Grafana instance with Prometheus data source configured
+- A Grafana instance with a Prometheus data source configured
 
   If you don't have a Grafana instance yet, you can:
 
@@ -114,25 +114,19 @@ Before you begin, ensure you have the following:
 
    Replace the following:
 
-   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-   - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-   - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+   - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The `remote_write` endpoint URL from your Grafana Cloud account.
+   - _`<USERNAME>`_: The username for your Grafana Cloud Prometheus `remote_write` endpoint.
+   - _`<PASSWORD>`_: The API key or password for your Grafana Cloud Prometheus `remote_write` endpoint.
 
-   {{< admonition type="tip" >}}
-   To find your `remote_write` connection details if you are using Grafana Cloud:
+  {{< admonition type="tip" >}}
+  To find your `remote_write` connection details:
 
-   1. Log in to [Grafana Cloud](https://grafana.com/).
-   1. Navigate to **Connections** and select **Data sources**.
-   1. Find your **Prometheus** connection in the list.
-   1. Click on the Prometheus connection to view its configuration.
-   1. Copy the following details from the configuration:
-      - **URL** (Remote Write Endpoint) - found in the HTTP section
-      - **Username** - found in the Authentication section  
-      - **Password/API Key** - this is the API token you generated previously
-
-   If you are using a self-managed Grafana connection, the _`<PROMETHEUS_REMOTE_WRITE_URL>`_ should be `"http://<YOUR-PROMETHEUS-SERVER-URL>:9090/api/v1/write"`.
-   The _`<USERNAME>`_ and _`<PASSWORD>`_ are what you set up when you installed Grafana and Prometheus.
-   {{< /admonition >}}
+  1. Log in to [Grafana Cloud](https://grafana.com/).
+  1. Navigate to **Connections** and select **Data sources**.
+  1. Find your **Prometheus** connection in the list.
+  1. Click on the Prometheus connection to view its configuration.
+  1. Copy the **URL**, **Username**, and **API Key** from the configuration.
+  {{< /admonition >}}
 
 1. Deploy {{< param "PRODUCT_NAME" >}}:
 
@@ -208,14 +202,6 @@ Alternatively, import a community dashboard:
 1. Click **Load**.
 1. Select your Prometheus data source and click **Import**.
 
-### Visualize in self-managed Grafana
-
-1. Open your Grafana instance.
-1. Go to **Dashboards** > **New** > **Import**.
-1. Enter dashboard ID `8588` or download the JSON from the [Grafana dashboard library](https://grafana.com/grafana/dashboards/8588-kubernetes-cluster-monitoring-via-prometheus/).
-1. Click **Load**.
-1. Select your Prometheus data source and click **Import**.
-
 ### What you should see
 
 The dashboard displays comprehensive Kubernetes cluster metrics:
@@ -225,10 +211,6 @@ The dashboard displays comprehensive Kubernetes cluster metrics:
 - **Pod Metrics**: Pod resource usage, restart counts, and status
 - **Container Metrics**: Container CPU, memory usage, and limits
 - **Network Metrics**: Network I/O and traffic patterns across the cluster
-
-{{< admonition type="note" >}}
-Metrics should appear in Grafana within a few minutes of deploying {{< param "PRODUCT_NAME" >}}.
-{{< /admonition >}}
 
 ## Troubleshoot
 
