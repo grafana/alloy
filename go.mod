@@ -27,7 +27,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.87.3
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.37.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmatcuk/doublestar v1.3.4
+	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
 	github.com/buger/jsonparser v1.1.1
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4
@@ -506,7 +506,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/briandowns/spinner v1.23.0 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500 // indirect
 	github.com/caarlos0/env/v9 v9.0.0 // indirect
@@ -941,10 +940,10 @@ require (
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.61.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
 	go.opentelemetry.io/contrib/otelconf v0.17.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.37.0 // indirect
-	go.opentelemetry.io/contrib/propagators/jaeger v1.35.0 // indirect
+	go.opentelemetry.io/contrib/propagators/jaeger v1.35.0
 	go.opentelemetry.io/contrib/samplers/jaegerremote v0.30.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.13.0 // indirect
@@ -992,6 +991,8 @@ require (
 	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
 	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
 )
+
+require github.com/bmatcuk/doublestar v1.1.1
 
 // NOTE: replace directives below must always be *temporary*.
 //
