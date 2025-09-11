@@ -62,7 +62,6 @@ cache_rounds = 4
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
 				x.SampleRate = 239
-				x.ContainerIDCacheSize = 4000
 				x.DeprecatedArguments.PidCacheSize = 1000
 				x.DeprecatedArguments.SameFileCacheSize = 3000
 				x.DeprecatedArguments.BuildIDCacheSize = 2000
