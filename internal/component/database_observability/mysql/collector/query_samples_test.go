@@ -2555,9 +2555,9 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
-		require.Eventually(t, func() bool {
-			return !collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
+		// Start runs the query in a background task and we need enough time
+		// to pass so that the query has been triggered atleast once.
+		time.Sleep(500 * time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
