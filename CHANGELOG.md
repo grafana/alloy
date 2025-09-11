@@ -137,6 +137,8 @@ Main (unreleased)
 
 - Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
 
+- The Windows installer and executables are now code signed. (@martincostello)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
