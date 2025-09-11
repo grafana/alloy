@@ -41,7 +41,7 @@ Main (unreleased)
   - This helps prevent issues with ingestion of batches that are too large.
 
 - OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.134.0. (@ptodev)
-  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release.
+  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release, use `otelcol.receiver.otelp` instead.
   - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
     Use `block_on_overflow` instead.
   - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
