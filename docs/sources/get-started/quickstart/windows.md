@@ -21,9 +21,7 @@ Before you begin, ensure you have the following:
 - A Windows server with administrator privileges
 - A Grafana Cloud account with a Prometheus data source configured
 
-  If you don't have a Grafana instance yet, you can:
-
-  - [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/) for a managed solution
+  If you don't have a Grafana instance yet, you can [Set up Grafana Cloud](https://grafana.com/docs/grafana-cloud/get-started/).
 
   To configure a Prometheus data source in Grafana, refer to [Add a Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/).
 
