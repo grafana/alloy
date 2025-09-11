@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
 
@@ -81,12 +82,14 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	mut       sync.RWMutex
-	args      Arguments
-	handler   loki.LogsReceiver
-	receivers []loki.LogsReceiver
-	posFile   positions.Positions
-	tasks     map[positions.Entry]runnerTask
+	tasksMut sync.RWMutex
+	tasks    map[positions.Entry]runnerTask
+
+	handler loki.LogsReceiver
+	posFile positions.Positions
+
+	receiversMut sync.RWMutex
+	receivers    []loki.LogsReceiver
 
 	stopping atomic.Bool
 
@@ -142,12 +145,12 @@ func (c *Component) Run(ctx context.Context) error {
 	})
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
-		c.mut.RLock()
+		c.tasksMut.RLock()
 		c.stopping.Store(true)
 		runner.Stop()
 		c.posFile.Stop()
 		close(c.handler.Chan())
-		c.mut.RUnlock()
+		c.tasksMut.RUnlock()
 	}()
 
 	for {
@@ -155,13 +158,16 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.handler.Chan():
-			c.mut.RLock()
+			c.receiversMut.RLock()
 			for _, receiver := range c.receivers {
 				receiver.Chan() <- entry
 			}
-			c.mut.RUnlock()
+			c.receiversMut.RUnlock()
 		case <-c.updateReaders:
-			c.mut.Lock()
+			// It's important to have the same lock order in Update and Run to avoid
+			// deadlocks.
+			c.tasksMut.Lock()
+			c.receiversMut.RLock()
 
 			// When we are updating tasks we need to continue to read from handler.Chan().
 			// This is done to avoid a race condition where stopping a reader is
@@ -191,7 +197,8 @@ func (c *Component) Run(ctx context.Context) error {
 			// read from it.
 			cancel()
 			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
-			c.mut.Unlock()
+			c.receiversMut.RUnlock()
+			c.tasksMut.Unlock()
 
 			if err != nil && err != context.Canceled {
 				return err
@@ -204,13 +211,23 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	c.args = newArgs
-	c.receivers = newArgs.ForwardTo
+	// It's important to have the same lock order in Update and Run to avoid
+	// deadlocks.
+	c.tasksMut.Lock()
+	defer c.tasksMut.Unlock()
+
+	c.receiversMut.RLock()
+	if receiversChanged(c.receivers, newArgs.ForwardTo) {
+		// Upgrade lock to write.
+		c.receiversMut.RUnlock()
+		c.receiversMut.Lock()
+		c.receivers = newArgs.ForwardTo
+		c.receiversMut.Unlock()
+	} else {
+		c.receiversMut.RUnlock()
+	}
 
 	c.tasks = make(map[positions.Entry]runnerTask)
-
 	if len(newArgs.Targets) == 0 {
 		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
 	}
@@ -228,7 +245,15 @@ func (c *Component) Update(args component.Arguments) error {
 
 		c.reportSize(path)
 
-		reader, err := c.createReader(path, labels)
+		reader, err := c.createReader(readerOptions{
+			path:                path,
+			labels:              labels,
+			encoding:            newArgs.Encoding,
+			decompressionConfig: newArgs.DecompressionConfig,
+			fileWatch:           newArgs.FileWatch,
+			tailFromEnd:         newArgs.TailFromEnd,
+			legacyPositionUsed:  newArgs.LegacyPositionsFile != "",
+		})
 		if err != nil {
 			continue
 		}
@@ -253,9 +278,9 @@ func (c *Component) Update(args component.Arguments) error {
 // DebugInfo returns information about the status of tailed targets.
 // TODO(@tpaschalis) Decorate with more debug information once it's made
 // available, such as the last time a log line was read.
-func (c *Component) DebugInfo() interface{} {
-	c.mut.Lock()
-	defer c.mut.Unlock()
+func (c *Component) DebugInfo() any {
+	c.tasksMut.RLock()
+	defer c.tasksMut.RUnlock()
 	var res readerDebugInfo
 	for e, task := range c.tasks {
 		offset, _ := c.posFile.Get(e.Path, e.Labels)
@@ -280,59 +305,70 @@ type targetInfo struct {
 	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
+type readerOptions struct {
+	path                string
+	labels              model.LabelSet
+	encoding            string
+	decompressionConfig DecompressionConfig
+	fileWatch           FileWatch
+	tailFromEnd         bool
+	legacyPositionUsed  bool
+}
+
 // For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
 // a compressed file, then a decompressor will be created instead.
-func (c *Component) createReader(path string, labels model.LabelSet) (reader, error) {
-	fi, err := os.Stat(path)
+func (c *Component) createReader(opts readerOptions) (reader, error) {
+	fi, err := os.Stat(opts.path)
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
-		c.metrics.totalBytes.DeleteLabelValues(path)
-		return nil, fmt.Errorf("failed to stat path %s", path)
+		level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", opts.path)
+		c.metrics.totalBytes.DeleteLabelValues(opts.path)
+		return nil, fmt.Errorf("failed to stat path %s", opts.path)
 	}
 
 	if fi.IsDir() {
-		level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
-		c.metrics.totalBytes.DeleteLabelValues(path)
-		return nil, fmt.Errorf("failed to tail file, it was a directory %s", path)
+		level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", opts.path)
+		c.metrics.totalBytes.DeleteLabelValues(opts.path)
+		return nil, fmt.Errorf("failed to tail file, it was a directory %s", opts.path)
 	}
 
 	var reader reader
-	if c.args.DecompressionConfig.Enabled {
+	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
 			c.metrics,
 			c.opts.Logger,
 			c.handler,
 			c.posFile,
-			path,
-			labels,
-			c.args.Encoding,
-			c.args.DecompressionConfig,
+			opts.path,
+			opts.labels,
+			opts.encoding,
+			opts.decompressionConfig,
 			c.IsStopping,
 		)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create decompressor", "error", err, "filename", path)
+			level.Error(c.opts.Logger).Log("msg", "failed to create decompressor", "error", err, "filename", opts.path)
 			return nil, fmt.Errorf("failed to create decompressor %s", err)
 		}
 		reader = decompressor
 	} else {
 		pollOptions := watch.PollingFileWatcherOptions{
-			MinPollFrequency: c.args.FileWatch.MinPollFrequency,
-			MaxPollFrequency: c.args.FileWatch.MaxPollFrequency,
+			MinPollFrequency: opts.fileWatch.MinPollFrequency,
+			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		}
 		tailer, err := newTailer(
 			c.metrics,
 			c.opts.Logger,
 			c.handler,
 			c.posFile,
-			path,
-			labels,
-			c.args.Encoding,
+			opts.path,
+			opts.labels,
+			opts.encoding,
 			pollOptions,
-			c.args.TailFromEnd,
+			opts.tailFromEnd,
+			opts.legacyPositionUsed,
 			c.IsStopping,
 		)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create tailer", "error", err, "filename", path)
+			level.Error(c.opts.Logger).Log("msg", "failed to create tailer", "error", err, "filename", opts.path)
 			return nil, fmt.Errorf("failed to create tailer %s", err)
 		}
 		reader = tailer
@@ -351,4 +387,16 @@ func (c *Component) reportSize(path string) {
 		return
 	}
 	c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+}
+
+func receiversChanged(prev, next []loki.LogsReceiver) bool {
+	if len(prev) != len(next) {
+		return true
+	}
+	for i := range prev {
+		if !reflect.DeepEqual(prev[i], next[i]) {
+			return true
+		}
+	}
+	return false
 }

@@ -1,8 +1,13 @@
 receivers:
-  otlp:
-    protocols:
-      grpc:
-      http:
+  googlecloudpubsub:
+    project: otel-project
+    subscription: projects/otel-project/subscriptions/otlp-logs
+    encoding: otlp_proto_trace
+    user_agent: alloy
+    compression: gzip
+    insecure: true
+    ignore_encoding_error: true
+    timeout: "10s"
 
 exporters:
   googlecloud:
@@ -87,14 +92,14 @@ exporters:
 service:
   pipelines:
     traces:
-      receivers: [otlp]
+      receivers: [googlecloudpubsub]
       processors: []
       exporters: [googlecloud, googlecloudpubsub]
     metrics:
-      receivers: [otlp]
+      receivers: [googlecloudpubsub]
       processors: []
       exporters: [googlecloud, googlecloudpubsub]
     logs:
-      receivers: [otlp]
+      receivers: [googlecloudpubsub]
       processors: []
       exporters: [googlecloud, googlecloudpubsub]

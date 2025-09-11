@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"

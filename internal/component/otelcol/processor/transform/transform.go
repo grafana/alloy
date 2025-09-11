@@ -183,14 +183,13 @@ func (args Arguments) convertImpl() (*transformprocessor.Config, error) {
 		input["log_statements"] = args.LogStatements.convert()
 	}
 
-	var result transformprocessor.Config
-	err := mapstructure.Decode(input, &result)
-
+	cfg := transformprocessor.NewFactory().CreateDefaultConfig().(*transformprocessor.Config)
+	err := mapstructure.Decode(input, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

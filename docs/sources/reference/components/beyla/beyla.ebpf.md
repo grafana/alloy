@@ -26,6 +26,7 @@ The number of required capabilities depends on the specific use case.
 Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla) for more information.
 
 In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
+You must also set the `hostPID` flag to `true` in the Pod spec so that in can access all the processes running on the host.
 {{< /admonition >}}
 
 ## Usage
@@ -72,10 +73,13 @@ You can use the following blocks with `beyla.ebpf`:
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
 | `attributes` > [`select`][select]                                      | Configures which attributes to include or exclude for specific sections.                           | no       |
 | [`discovery`][discovery]                                               | Configures the discovery for processes to instrument matching given criteria.                      | no       |
-| `discovery` > [`exclude_services`][services]                           | Configures the services to exclude for the component.                                              | no       |
-| `discovery` > `exclude_services` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude for the component.                                   | no       |
-| `discovery` > [`services`][services]                                   | Configures the services to discover for the component.                                             | no       |
-| `discovery` > `services` > [`kubernetes`][kubernetes services]         | Configures the Kubernetes services to discover for the component.                                  | no       |
+| `discovery` > [`instrument`][services]                                 | Configures the services to discover and instrument for the component.                              | no       |
+| `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
+| `discovery` > `instrument` > [`sampler`][sampler]                      | Configures trace sampling for the service.                                                         | no       |
+| `discovery` > [`exclude_instrument`][services]                         | Configures the services to exclude from instrumentation for the component.                         | no       |
+| `discovery` > `exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude from instrumentation for the component.             | no       |
+| `discovery` > [`default_exclude_instrument`][services]                 | Configures the default services to exclude from instrumentation for the component.                 | no       |
+| `discovery` > `default_exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the default Kubernetes services to exclude from instrumentation for the component.     | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
@@ -84,17 +88,21 @@ You can use the following blocks with `beyla.ebpf`:
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
 | [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
+| [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
+| `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
 
 [routes]: #routes
+[traces]: #traces
 [attributes]: #attributes
 [kubernetes attributes]: #kubernetes-attributes
 [kubernetes services]: #kubernetes-services
 [discovery]: #discovery
 [services]: #services
+[sampler]: #sampler
 [instance_id]: #instance_id
 [select]: #select
 [ebpf]: #ebpf
@@ -135,7 +143,7 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 |----------------------------|----------------|--------------------------------------------------------|---------|----------|
 | `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
 | `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `false` | no       |
+| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
 | `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
 | `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
 | `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
@@ -233,26 +241,21 @@ The `discovery` block configures the discovery for processes to instrument match
 
 It contains the following blocks:
 
-#### `services`
+#### `instrument`
 
-In some scenarios, Beyla instruments a wide variety of services, such as a Kubernetes DaemonSet that instruments all the services in a node.
-The `services` block allows you to filter the services to instrument based on their metadata. If you specify other selectors in the same services entry,
-the instrumented processes need to match all the selector properties.
+The `instrument` block configures the services to discover and instrument using [glob patterns](https://github.com/gobwas/glob).
 
-The same properties are available for both `services`, `exclude_services`, and `survey` blocks.
-The `services` block configures the services to discover for the component.
-The `exclude_services` block configures the services to exclude for the component.
-The `survey` block configures the services that the component will emit information for.
+| Name              | Type           | Description                                                                     | Default | Required |
+|-------------------|----------------|---------------------------------------------------------------------------------|---------|----------|
+| `name`            | `string`       | The name of the service to match.                                               | `""`    | no       |
+| `namespace`       | `string`       | The namespace of the service to match.                                          | `""`    | no       |
+| `open_ports`      | `string`       | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `exe_path`        | `string`       | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `containers_only` | `bool`         | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
+| `exports`         | `list(string)` | Export modes for the service. Valid values: `"metrics"`, `"traces"`.            | `[]`    | no       |
 
-| Name              | Type     | Description                                                                     | Default | Required |
-|-------------------|----------|---------------------------------------------------------------------------------|---------|----------|
-| `name`            | `string` | The name of the service to match.                                               | `""`    | no       |
-| `namespace`       | `string` | The namespace of the service to match.                                          | `""`    | no       |
-| `open_ports`      | `string` | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `exe_path`        | `string` | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
-| `containers_only` | `bool`   | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
-
-`exe_path` accepts a regular expression to be matched against the full executable command line, including the directory where the executable resides on the file system.
+`exe_path` accepts a glob pattern to be matched against the full executable command line, including the directory where the executable resides on the file system.
+Common glob patterns include `*` (matches any sequence of characters) and `?` (matches any single character).
 
 `name` defines a name for the matching instrumented service.
 It's used to populate the `service.name` OTel property or the `service_name` Prometheus property in the exported metrics/traces.
@@ -260,30 +263,49 @@ It's used to populate the `service.name` OTel property or the `service_name` Pro
 `open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
-If the block is defined as `survey` then the component will discover services but instead of instrumenting them via metrics and traces, it will only emit a `survey_info` metric for each.
-This can be helpful in informing external applications of the services available for instrumentation before building out the `service` and `exclude_services` block and telemetry flows through.
+`exports` specifies what types of telemetry data to export for the matching service.
+You can specify `"metrics"`, `"traces"`, or both.
+If empty, the service will export both metrics and traces by default.
 
-#### `default_exclude_services`
+#### `exclude_instrument`
 
-The `default_exclude_services` is special services block that disables instrumentation of Grafana Alloy. The default value for `exe_path` is `"(?:^|\/)(beyla$|alloy$|otelcol[^\/]*$)"`.
+The `exclude_instrument` block configures services to exclude from instrumentation using glob patterns.
+Services matching these criteria won't be instrumented even if they match the `instrument` selection.
+
+The `exclude_instrument` block uses the same configuration options as the `instrument` block.
+
+#### `default_exclude_instrument`
+
+The `default_exclude_instrument` block disables instrumentation of Grafana Alloy and related components by default.
+The default value for `exe_path` uses a glob pattern that matches `beyla`, `alloy`, and `otelcol*` executables.
 Set to empty to allow Alloy to instrument itself as well as these other components.
+
+#### `survey`
+
+The `survey` block configures services for discovery without instrumentation using glob patterns.
+Instead of instrumenting matching services, the component will only emit a `survey_info` metric for each discovered service.
+This can be helpful for informing external applications of the services available for instrumentation.
+
+The `survey` block uses the same configuration options as the `instrument` block.
 
 #### `kubernetes` services
 
 This `kubernetes` block filters the services to instrument based on their Kubernetes metadata. If you specify other selectors in the same services entry,
 the instrumented processes need to match all the selector properties.
 
+When used with `instrument`, `exclude_instrument`, `default_exclude_instrument`, or `survey` blocks, the patterns use glob syntax.
+
 | Name               | Type          | Description                                                                                                        | Default | Required |
 |--------------------|---------------|--------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `daemonset_name`   | `string`      | Regular expression of Kubernetes DaemonSets to match.                                                              | `""`    | no       |
-| `deployment_name`  | `string`      | Regular expression of Kubernetes Deployments to match.                                                             | `""`    | no       |
-| `namespace`        | `string`      | Regular expression of Kubernetes Namespaces to match.                                                              | `""`    | no       |
-| `owner_name`       | `string`      | Regular expression of Kubernetes owners of running Pods to match.                                                  | `""`    | no       |
-| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as regular expression.        | `{}`    | no       |
-| `pod_annotations`  | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as regular expression. | `{}`    | no       |
-| `pod_name`         | `string`      | Regular expression of Kubernetes Pods to match.                                                                    | `""`    | no       |
-| `replicaset_name`  | `string`      | Regular expression of Kubernetes ReplicaSets to match.                                                             | `""`    | no       |
-| `statefulset_name` | `string`      | Regular expression of Kubernetes StatefulSets to match.                                                            | `""`    | no       |
+| `daemonset_name`   | `string`      | Pattern to match Kubernetes DaemonSets.                                                              | `""`    | no       |
+| `deployment_name`  | `string`      | Pattern to match Kubernetes Deployments.                                                             | `""`    | no       |
+| `namespace`        | `string`      | Pattern to match Kubernetes Namespaces.                                                              | `""`    | no       |
+| `owner_name`       | `string`      | Pattern to match Kubernetes owners of running Pods.                                                  | `""`    | no       |
+| `pod_labels`       | `map(string)` | Key-value pairs of labels with keys matching Kubernetes Pods with the provided value as pattern.        | `{}`    | no       |
+| `pod_annotations`  | `map(string)` | Key-value pairs of labels with keys matching Kubernetes annotations with the provided value as pattern. | `{}`    | no       |
+| `pod_name`         | `string`      | Pattern to match Kubernetes Pods.                                                                    | `""`    | no       |
+| `replicaset_name`  | `string`      | Pattern to match Kubernetes ReplicaSets.                                                             | `""`    | no       |
+| `statefulset_name` | `string`      | Pattern to match Kubernetes StatefulSets.                                                            | `""`    | no       |
 
 Example:
 
@@ -291,21 +313,123 @@ Example:
 beyla.ebpf "default" {
   discovery {
     // Instrument all services with 8080 open port
-    services {
+    instrument {
       open_ports = "8080"
     }
     // Instrument all services from the default namespace
-    services {
+    instrument {
       kubernetes {
         namespace = "default"
       }
     }
     // Exclude all services from the kube-system namespace
-    exclude_services {
+    exclude_instrument {
       kubernetes {
         namespace = "kube-system"
       }
     }
+  }
+}
+```
+
+### `traces`
+
+The `traces` block configures trace collection and sampling options for the beyla.ebpf component.
+
+{{< admonition type="note" >}}
+To export traces, you must also configure the [`output`][output] block with a `traces` destination.
+Without an output configuration, traces are collected but not exported.
+{{< /admonition >}}
+
+| Name              | Type           | Description                                                      | Default | Required |
+|-------------------|----------------|------------------------------------------------------------------|---------|----------|
+| `instrumentations` | `list(string)` | List of instrumentations to enable for trace collection.        | `["*"]` | no       |
+
+
+The supported values for `instrumentations` are:
+
+* `*`: Enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `grpc`: Enables the collection of gRPC traces.
+* `gpu`: Enables the collection of GPU performance traces.
+* `http`: Enables the collection of HTTP/HTTPS/HTTP2 traces.
+* `kafka`: Enables the collection of Kafka client/server traces.
+* `mongo`: Enables the collection of MongoDB database traces.
+* `redis`: Enables the collection of Redis client/server database traces.
+* `sql`: Enables the collection of SQL database client call traces.
+
+Example:
+
+```alloy
+beyla.ebpf "default" {
+  traces {
+    instrumentations = ["http", "grpc", "sql"]
+    sampler {
+      name = "traceidratio"
+      arg = "0.1"  // Global 10% sampling rate for all traces
+    }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+```
+
+For per-service sampling configuration, use the `sampler` block within the `discovery` > `services` section instead.
+
+### `sampler`
+
+The `sampler` block configures trace sampling settings. This block can be used in two contexts:
+
+1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
+1. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
+
+The following arguments are supported: 
+
+| Name   | Type     | Description                               | Default | Required |
+|--------|----------|-------------------------------------------|---------|----------|
+| `arg`  | `string` | The argument for the sampling strategy.   | `""`    | no       |
+| `name` | `string` | The name of the sampling strategy to use. | `""`    | no       |
+
+The supported values for `name` are:
+
+* `traceidratio`: Samples traces based on a ratio of trace IDs. The `arg` must be a decimal value between 0 and 1. For example, `"0.1"` for 10% sampling.
+* `always_on`: Always samples traces. No `arg` required.
+* `always_off`: Never samples traces. No `arg` required.
+* `parentbased_always_on`: Uses parent-based sampling that always samples when there's no parent span. This is the default behavior.
+* `parentbased_always_off`: Uses parent-based sampling that never samples when there's no parent span.
+* `parentbased_traceidratio`: Uses parent-based sampling with trace ID ratio-based sampling for root spans. The `arg` must be a decimal value between 0 and 1.
+
+#### Examples
+
+Per-service sampling (configured within `discovery` > `instrument`):
+
+```alloy
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "8080"
+      sampler {
+        name = "traceidratio"
+        arg = "0.1"  // 10% sampling rate for this specific service
+      }
+    }
+  }
+}
+```
+
+Global sampling (configured within `traces`):
+
+```alloy
+beyla.ebpf "default" {
+  traces {
+    instrumentations = ["http", "grpc", "sql"]
+    sampler {
+      name = "traceidratio"
+      arg = "0.1"  // Global 10% sampling rate for all traces
+    }
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
   }
 }
 ```
@@ -417,6 +541,8 @@ The `metrics` block configures which metrics Beyla collects.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
 * `application_span` exports application-level metrics in traces span metrics format.
+* `application_span_otel` exports OpenTelemetry-compatible span metrics.
+* `application_span_sizes` exports span size metrics for trace analysis.
 * `application_host` exports application-level host metrics for host-based pricing.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
@@ -425,8 +551,10 @@ The `metrics` block configures which metrics Beyla collects.
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
 * `grpc` enables the collection of gRPC application metrics.
+* `gpu` enables the collection of GPU performance metrics.
 * `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 * `kafka` enables the collection of Kafka client/server message queue metrics.
+* `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
 
@@ -563,7 +691,7 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 ```alloy
 beyla.ebpf "default" {
   discovery {
-    services {
+    instrument {
       open_ports = <OPEN_PORT>
     }
   }
@@ -599,13 +727,8 @@ This example gets metrics from `beyla.ebpf` for the specified namespace and Pods
 
 ```alloy
 beyla.ebpf "default" {
-  attributes {
-    kubernetes {
-     enable = "true"
-    }
-  }
   discovery {
-    services {
+    instrument {
      kubernetes {
       namespace = "<NAMESPACE>"
       pod_name = "<POD_NAME>"
@@ -653,7 +776,7 @@ This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
 ```alloy
 beyla.ebpf "default" {
   discovery {
-    services {
+    instrument {
       open_ports = <OPEN_PORT>
     }
   }

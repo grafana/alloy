@@ -9,11 +9,11 @@ The following arguments are supported:
 | Name                | Type                       | Description                                                                                | Default      | Required |
 | ------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | ------------ | -------- |
 | `block_on_overflow` | `boolean`                  | The behavior when the component's `TotalSize` limit is reached.                            | `false`      | no       |
-| `blocking`          | `boolean`                  | (Deprecated) If `true`, blocks until the queue has room for a new request.                 | `false`      | no       |
 | `enabled`           | `boolean`                  | Enables a buffer before sending data to the client.                                        | `true`       | no       |
 | `num_consumers`     | `number`                   | Number of readers to send batches written to the queue in parallel.                        | `10`         | no       |
 | `queue_size`        | `number`                   | Maximum number of unwritten batches allowed in the queue at the same time.                 | `1000`       | no       |
 | `sizer`             | `string`                   | How the queue and batching is measured.                                                    | `"requests"` | no       |
+| `wait_for_result`   | `boolean`                  | Determines if incoming requests are blocked until the request is processed or not.         | `false`      | no       |
 | `storage`           | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use to enable a persistent queue mechanism. |              | no       |
 
 The `blocking` argument is deprecated in favor of the `block_on_overflow` argument.

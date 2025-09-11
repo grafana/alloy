@@ -71,7 +71,7 @@ type Component struct {
 }
 
 // New creates a new prometheus.remote_write component.
-func New(o component.Options, c Arguments) (*Component, error) {
+func New(o component.Options, args Arguments) (*Component, error) {
 	// Older versions of prometheus.remote_write used the subpath below, which
 	// added in too many extra unnecessary directories (since o.DataPath is
 	// already unique).
@@ -101,6 +101,10 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
+
+	if err := validateStabilityLevelForRemoteWritev2(o, args); err != nil {
+		return nil, err
+	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
@@ -225,7 +229,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// lifetime.
 	o.OnStateChange(Exports{Receiver: res.receiver})
 
-	if err := res.Update(c); err != nil {
+	if err := res.Update(args); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -322,6 +326,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err != nil {
 		return err
 	}
+
+	if err := validateStabilityLevelForRemoteWritev2(c.opts, cfg); err != nil {
+		return err
+	}
+
 	uid := alloyseed.Get().UID
 	for _, cfg := range convertedConfig.RemoteWriteConfigs {
 		if cfg.Headers == nil {
@@ -340,3 +349,13 @@ func (c *Component) Update(newConfig component.Arguments) error {
 }
 
 func (c *Component) LiveDebugging() {}
+
+func validateStabilityLevelForRemoteWritev2(o component.Options, args Arguments) error {
+	for _, endpoint := range args.Endpoints {
+		if endpoint.ProtobufMessage == PrometheusProtobufMessageV2 && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+			return fmt.Errorf("using remote write v2 (protobuf_message=%s) with endpoint %s requires setting the stability.level flag to experimental", PrometheusProtobufMessageV2, endpoint.Name)
+		}
+	}
+
+	return nil
+}
