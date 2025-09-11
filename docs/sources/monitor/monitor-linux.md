@@ -95,11 +95,6 @@ This scenario uses a `config.alloy` file to configure {{< param "PRODUCT_NAME" >
 You can find this file in the cloned repository at `alloy-scenarios/linux/`.
 The configuration demonstrates how to collect Linux system metrics and logs, then forward them to Prometheus and Loki for storage and visualization.
 
-{{< admonition type="note" >}}
-This scenario uses a containerized setup for demonstration purposes.
-In production environments, you would typically install {{< param "PRODUCT_NAME" >}} directly on each Linux server and configure it to send data to centralized Prometheus and Loki instances.
-{{< /admonition >}}
-
 ### Configure metrics
 
 The metrics configuration in this scenario requires four components that work together to collect, process, and forward system metrics.
@@ -256,7 +251,6 @@ The logging configuration in this scenario collects logs from both systemd journ
 This dual approach ensures comprehensive log coverage for most Linux systems.
 The configuration requires four main components that work together to discover, collect, and forward logs to Loki:
 
-* `discovery.relabel` - defines relabeling rules for systemd journal logs (already described above)
 * `loki.source.journal` - collects logs from systemd journal
 * `local.file_match` - discovers standard log files using glob patterns
 * `loki.source.file` - reads logs from discovered files
