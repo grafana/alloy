@@ -104,7 +104,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | `authentication` > [`kerberos`][kerberos]        | Authenticates against Kafka brokers with Kerberos.                                         | no       |
 | `authentication` > [`plaintext`][plaintext]      | (Deprecated) Authenticates against Kafka brokers with plaintext.                           | no       |
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM.                                         | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                             | no       |
 | `authentication` > [`tls`][tls]                  | (Deprecated) Configures TLS for connecting to the Kafka brokers.                           | no       |
 | `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS key_file.                                              | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"go.uber.org/goleak"
 
 	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func TestSchemaTable(t *testing.T) {
@@ -85,6 +87,7 @@ func TestSchemaTable(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -195,6 +198,7 @@ func TestSchemaTable(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -232,10 +236,11 @@ func TestSchemaTable(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
+		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:           db,
 			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			Logger:       log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -260,17 +265,17 @@ func TestSchemaTable(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 0
+			return strings.Contains(logBuffer.String(), `msg="no schema detected from pg_namespace"`)
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
-		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 0)
+		assert.Len(t, lokiClient.Received(), 0)
 	})
 
 	t.Run("collector logs column with null and empty string default values", func(t *testing.T) {
@@ -337,6 +342,7 @@ func TestSchemaTable(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -418,6 +424,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -496,6 +503,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
