@@ -137,6 +137,8 @@ Main (unreleased)
 
 - Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
 
+- The Windows installer and executables are now code signed. (@martincostello)
+
 - Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
 
 ### Bugfixes
