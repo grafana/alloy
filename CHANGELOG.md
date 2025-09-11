@@ -137,6 +137,8 @@ Main (unreleased)
 
 - Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
 
+- Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
