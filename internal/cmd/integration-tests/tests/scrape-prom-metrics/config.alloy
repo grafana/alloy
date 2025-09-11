@@ -16,8 +16,10 @@ prometheus.scrape "scrape_prom_metrics" {
   ]
   scrape_classic_histograms = true
   scrape_native_histograms = true
+  scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
   scrape_interval = "1s"
   scrape_timeout = "500ms"
+  honor_metadata = true
 }
 
 prometheus.write.queue "scrape_prom_metrics" {

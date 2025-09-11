@@ -7,5 +7,12 @@ import (
 )
 
 func TestOTLPMetrics(t *testing.T) {
-	common.MimirMetricsTest(t, common.OtelDefaultMetrics, common.OtelDefaultHistogramMetrics, "otlp_metrics")
+	config := common.Config{
+		T:                t,
+		TestName:         "otlp_metrics",
+		Metrics:          common.OtelDefaultMetrics,
+		HistogramMetrics: common.OtelDefaultHistogramMetrics,
+		ExpectedMetadata: common.ExpectedMetadata,
+	}
+	common.MimirMetricsTest(config)
 }
