@@ -8,9 +8,6 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    uses: ./.github/workflows/lint.yml
-
   test_linux:
     name: Test (Full)
     runs-on: ubuntu-latest-8-cores
