@@ -162,7 +162,17 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
 	require.NoError(t, err)
 
-	pStr := strings.Split(p.String(), "\n")
-	assert.Contains(t, pStr, "     1: 0x30 M=3 myfunc /bin/bar:1234:0 s=0()")
-	assert.Contains(t, pStr, "3: 0x0/0x0/0x0 /bin/bar  [FN][LN]")
+	p.TimeNanos = 0
+
+	expected := `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 
+Locations
+     1: 0x2000 M=1  :0:0 s=0
+Mappings
+1: 0x0/0x0/0x0   [FN][LN]
+`
+	assert.Equal(t, expected, p.String())
 }
