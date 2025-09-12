@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
@@ -17,10 +18,13 @@ import (
 )
 
 const (
-	QuerySampleName = "query_samples"
-	OP_QUERY_SAMPLE = "query_sample"
-	OP_WAIT_EVENT   = "wait_event"
+	QuerySamplesCollector = "query_samples"
+	OP_QUERY_SAMPLE       = "query_sample"
+	OP_WAIT_EVENT         = "wait_event"
 
+	cpuTimeField              = `, statements.CPU_TIME`
+	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
+	maxTotalMemoryField       = `, statements.MAX_TOTAL_MEMORY`
 	sqlTextField              = `, statements.SQL_TEXT`
 	sqlTextNotNullClause      = ` AND statements.SQL_TEXT IS NOT NULL`
 	digestTextNotNullClause   = ` AND statements.DIGEST_TEXT IS NOT NULL`
@@ -46,13 +50,10 @@ SELECT
 	statements.DIGEST_TEXT,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
-	statements.CPU_TIME,
 	statements.ROWS_EXAMINED,
 	statements.ROWS_SENT,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
-	statements.MAX_CONTROLLED_MEMORY,
-	statements.MAX_TOTAL_MEMORY,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
@@ -76,8 +77,9 @@ const updateSetupConsumers = `
 		SET enabled = 'yes'
 		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
-type QuerySampleArguments struct {
+type QuerySamplesArguments struct {
 	DB                          *sql.DB
+	EngineVersion               semver.Version
 	CollectInterval             time.Duration
 	EntryHandler                loki.EntryHandler
 	DisableQueryRedaction       bool
@@ -87,8 +89,9 @@ type QuerySampleArguments struct {
 	Logger log.Logger
 }
 
-type QuerySample struct {
+type QuerySamples struct {
 	dbConnection                *sql.DB
+	engineVersion               semver.Version
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
 	sqlParser                   parser.Parser
@@ -105,27 +108,28 @@ type QuerySample struct {
 	lastUptime    float64
 }
 
-func NewQuerySample(args QuerySampleArguments) (*QuerySample, error) {
-	c := &QuerySample{
+func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	c := &QuerySamples{
 		dbConnection:                args.DB,
+		engineVersion:               args.EngineVersion,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
 		sqlParser:                   parser.NewTiDBSqlParser(),
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
-		logger:                      log.With(args.Logger, "collector", QuerySampleName),
+		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
 
 	return c, nil
 }
 
-func (c *QuerySample) Name() string {
-	return QuerySampleName
+func (c *QuerySamples) Name() string {
+	return QuerySamplesCollector
 }
 
-func (c *QuerySample) Start(ctx context.Context) error {
+func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
 		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
 	} else {
@@ -138,8 +142,7 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	c.cancel = cancel
 
 	if err := c.initializeBookmark(c.ctx); err != nil {
-		level.Error(c.logger).Log("msg", "failed to initialize bookmark", "err", err)
-		return err
+		return fmt.Errorf("failed to initialize bookmark: %w", err)
 	}
 
 	// Start setup_consumers check goroutine if enabled
@@ -172,16 +175,16 @@ func (c *QuerySample) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) Stopped() bool {
+func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QuerySample) Stop() {
+func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
-func (c *QuerySample) runSetupConsumersCheck() {
+func (c *QuerySamples) runSetupConsumersCheck() {
 	ticker := time.NewTicker(c.setupConsumersCheckInterval)
 
 	for {
@@ -200,7 +203,7 @@ func (c *QuerySample) runSetupConsumersCheck() {
 
 // initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
 // samples that may have been collected previously.
-func (c *QuerySample) initializeBookmark(ctx context.Context) error {
+func (c *QuerySamples) initializeBookmark(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectUptime)
 
 	var uptime float64
@@ -214,7 +217,7 @@ func (c *QuerySample) initializeBookmark(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 	timeRow := c.dbConnection.QueryRowContext(ctx, selectNowAndUptime)
 
 	var now, uptime float64
@@ -233,7 +236,16 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 		textNotNullClause = digestTextNotNullClause
 	}
 
-	query := fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+	query := ""
+	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
+		query = fmt.Sprintf(selectQuerySamples, textField, textNotNullClause, timerClause)
+	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
+		additionalFields := cpuTimeField + textField
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+	} else {
+		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, textNotNullClause, timerClause)
+	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
 	if err != nil {
@@ -293,13 +305,10 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.DigestText,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
-			&row.CPUTime,
 			&row.RowsExamined,
 			&row.RowsSent,
 			&row.RowsAffected,
 			&row.Errors,
-			&row.MaxControlledMemory,
-			&row.MaxTotalMemory,
 			&row.WaitEventID,
 			&row.WaitEndEventID,
 			&row.WaitEventName,
@@ -307,6 +316,15 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectType,
 			&row.WaitTime,
 		}
+
+		if semver.MustParseRange(">=8.0.28")(c.engineVersion) {
+			scanArgs = append(scanArgs, &row.CPUTime)
+		}
+		if semver.MustParseRange(">=8.0.31")(c.engineVersion) {
+			scanArgs = append(scanArgs, &row.MaxControlledMemory)
+			scanArgs = append(scanArgs, &row.MaxTotalMemory)
+		}
+
 		if c.disableQueryRedaction {
 			scanArgs = append(scanArgs, &row.SQLText)
 		}
@@ -403,13 +421,13 @@ func (c *QuerySample) fetchQuerySamples(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		return fmt.Errorf("error during iterating over samples result set: %w", err)
+		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
 	return nil
 }
 
-func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
+func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	rs, err := c.dbConnection.ExecContext(ctx, updateSetupConsumers)
 	if err != nil {
 		return fmt.Errorf("failed to update performance_schema.setup_consumers: %w", err)
@@ -424,7 +442,7 @@ func (c *QuerySample) updateSetupConsumersSettings(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySample) determineTimerClauseAndLimit(uptime float64) (string, float64) {
+func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, float64) {
 	timerClause := endOfTimeline
 	currentOverflows := calculateNumberOfOverflows(uptime)
 	previousOverflows := calculateNumberOfOverflows(c.lastUptime)

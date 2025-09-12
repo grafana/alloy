@@ -10,6 +10,7 @@ import (
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 const DefaultBalancerName = "round_robin"
@@ -38,25 +39,25 @@ type GRPCServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error) {
+func (args *GRPCServerArguments) Convert() (configoptional.Optional[otelconfiggrpc.ServerConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otelconfiggrpc.ServerConfig](), nil
 	}
 
 	// If auth is set add that to the config.
-	var authentication *otelconfigauth.Config
+	var authentication configoptional.Optional[otelconfigauth.Config]
 	if args.Authentication != nil {
 		// If a auth plugin does not implement server auth, an error will be returned here.
 		serverExtension, err := args.Authentication.GetExtension(auth.Server)
 		if err != nil {
-			return nil, err
+			return configoptional.None[otelconfiggrpc.ServerConfig](), err
 		}
-		authentication = &otelconfigauth.Config{
+		authentication = configoptional.Some(otelconfigauth.Config{
 			AuthenticatorID: serverExtension.ID,
-		}
+		})
 	}
 
-	return &otelconfiggrpc.ServerConfig{
+	return configoptional.Some(otelconfiggrpc.ServerConfig{
 		NetAddr: confignet.AddrConfig{
 			Endpoint:  args.Endpoint,
 			Transport: confignet.TransportType(args.Transport),
@@ -71,7 +72,13 @@ func (args *GRPCServerArguments) Convert() (*otelconfiggrpc.ServerConfig, error)
 		Keepalive:            args.Keepalive.Convert(),
 		IncludeMetadata:      args.IncludeMetadata,
 		Auth:                 authentication,
-	}, nil
+	}), nil
+}
+
+// Temporary function until all upstream components are converted to use configoptional.Optional.
+func (args *GRPCServerArguments) ConvertToPtr() (*otelconfiggrpc.ServerConfig, error) {
+	converted, err := args.Convert()
+	return converted.Get(), err
 }
 
 // Extensions exposes extensions used by args.
@@ -95,15 +102,15 @@ type KeepaliveServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveServerArguments) Convert() *otelconfiggrpc.KeepaliveServerConfig {
+func (args *KeepaliveServerArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerConfig] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveServerConfig]()
 	}
 
-	return &otelconfiggrpc.KeepaliveServerConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerConfig{
 		ServerParameters:  args.ServerParameters.Convert(),
 		EnforcementPolicy: args.EnforcementPolicy.Convert(),
-	}
+	})
 }
 
 // KeepaliveServerParamaters holds shared keepalive settings for components
@@ -117,18 +124,18 @@ type KeepaliveServerParamaters struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveServerParamaters) Convert() *otelconfiggrpc.KeepaliveServerParameters {
+func (args *KeepaliveServerParamaters) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveServerParameters]()
 	}
 
-	return &otelconfiggrpc.KeepaliveServerParameters{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerParameters{
 		MaxConnectionIdle:     args.MaxConnectionIdle,
 		MaxConnectionAge:      args.MaxConnectionAge,
 		MaxConnectionAgeGrace: args.MaxConnectionAgeGrace,
 		Time:                  args.Time,
 		Timeout:               args.Timeout,
-	}
+	})
 }
 
 // KeepaliveEnforcementPolicy holds shared keepalive settings for components
@@ -139,15 +146,15 @@ type KeepaliveEnforcementPolicy struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveEnforcementPolicy) Convert() *otelconfiggrpc.KeepaliveEnforcementPolicy {
+func (args *KeepaliveEnforcementPolicy) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveEnforcementPolicy]()
 	}
 
-	return &otelconfiggrpc.KeepaliveEnforcementPolicy{
+	return configoptional.Some(otelconfiggrpc.KeepaliveEnforcementPolicy{
 		MinTime:             args.MinTime,
 		PermitWithoutStream: args.PermitWithoutStream,
-	}
+	})
 }
 
 // GRPCClientArguments holds shared gRPC settings for components which launch
@@ -187,14 +194,16 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 	}
 
 	// Configure authentication if args.Auth is set.
-	var authentication *otelconfigauth.Config
+	var authentication configoptional.Optional[otelconfigauth.Config]
 	if args.Authentication != nil {
 		ext, err := args.Authentication.GetExtension(auth.Client)
 		if err != nil {
 			return nil, err
 		}
 
-		authentication = &otelconfigauth.Config{AuthenticatorID: ext.ID}
+		authentication = configoptional.Some(otelconfigauth.Config{
+			AuthenticatorID: ext.ID,
+		})
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
@@ -244,14 +253,14 @@ type KeepaliveClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveClientArguments) Convert() *otelconfiggrpc.KeepaliveClientConfig {
+func (args *KeepaliveClientArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveClientConfig] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveClientConfig]()
 	}
 
-	return &otelconfiggrpc.KeepaliveClientConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveClientConfig{
 		Time:                args.PingWait,
 		Timeout:             args.PingResponseTimeout,
 		PermitWithoutStream: args.PingWithoutStream,
-	}
+	})
 }

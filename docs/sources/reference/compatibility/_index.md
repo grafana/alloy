@@ -128,6 +128,7 @@ The following components, grouped by namespace, _consume_ Targets.
 
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}

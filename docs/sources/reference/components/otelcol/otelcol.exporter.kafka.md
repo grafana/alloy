@@ -63,27 +63,28 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                                   | Description                                                                 | Required |
-|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                       | no       |
-| [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state. | no       |
-| [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                               | no       |
-| [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                 | no       |
-| [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                            | no       |
-| [`producer`][producer]                                  | Kafka producer configuration,                                               | no       |
-| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.               | no       |
-| [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                 | no       |
-| [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                               | no       |
-| [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                             | no       |
+| Block                                                   | Description                                                                    | Required |
+|---------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
+| `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
+| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
+| `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                                 | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                 | no       |
+| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                            | no       |
+| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                          | no       |
+| [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state.    | no       |
+| [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                                  | no       |
+| [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                        | no       |
+| `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                    | no       |
+| [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
+| [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.                  | no       |
+| [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                            | no       |
+| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                                  | no       |
+| [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -102,6 +103,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [retry]: #retry
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
+[batch]: #batch
 [producer]: #producer
 [compression_params]: #compression_params
 [debug_metrics]: #debug_metrics
@@ -232,9 +234,16 @@ The `retry_on_failure` block configures how failed requests to Kafka are retried
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

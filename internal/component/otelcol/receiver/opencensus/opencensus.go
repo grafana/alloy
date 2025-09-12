@@ -57,7 +57,7 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	grpcServerConfig, err := args.GRPC.Convert()
+	grpcServerConfig, err := args.GRPC.ConvertToPtr()
 	if err != nil {
 		return nil, err
 	}

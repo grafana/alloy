@@ -25,3 +25,4 @@ jobs:
         cache: false
 
     - run: make GO_TAGS="nodocker" test
+

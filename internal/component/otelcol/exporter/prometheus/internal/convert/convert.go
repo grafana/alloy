@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
+	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -177,15 +177,15 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 		instanceLabel string
 	)
 
-	if serviceName, ok := attrs.Get(semconv.AttributeServiceName); ok {
-		if serviceNamespace, ok := attrs.Get(semconv.AttributeServiceNamespace); ok {
+	if serviceName, ok := attrs.Get(string(semconv.ServiceNameKey)); ok {
+		if serviceNamespace, ok := attrs.Get(string(semconv.ServiceNamespaceKey)); ok {
 			jobLabel = fmt.Sprintf("%s/%s", serviceNamespace.AsString(), serviceName.AsString())
 		} else {
 			jobLabel = serviceName.AsString()
 		}
 	}
 
-	if instanceID, ok := attrs.Get(semconv.AttributeServiceInstanceID); ok {
+	if instanceID, ok := attrs.Get(string(semconv.ServiceInstanceIDKey)); ok {
 		instanceLabel = instanceID.AsString()
 	}
 
@@ -196,9 +196,9 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	attrs.Range(func(k string, v pcommon.Value) bool {
 		// Skip attributes that we used for determining the job and instance
 		// labels.
-		if k == semconv.AttributeServiceName ||
-			k == semconv.AttributeServiceNamespace ||
-			k == semconv.AttributeServiceInstanceID {
+		if k == string(semconv.ServiceNameKey) ||
+			k == string(semconv.ServiceNamespaceKey) ||
+			k == string(semconv.ServiceInstanceIDKey) {
 
 			return true
 		}

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.uber.org/zap"
 )
 
@@ -124,8 +124,8 @@ func TestStartTimeMetricMatch(t *testing.T) {
 
 			// We need to make sure the job and instance labels are set before the adjuster is used.
 			pmetrics := tt.inputs
-			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(semconv.AttributeServiceInstanceID, "0")
-			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(semconv.AttributeServiceName, "job")
+			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(string(semconv.ServiceInstanceIDKey), "0")
+			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(string(semconv.ServiceNameKey), "job")
 			assert.NoError(t, stma.AdjustMetrics(tt.inputs))
 			for i := 0; i < tt.inputs.ResourceMetrics().Len(); i++ {
 				rm := tt.inputs.ResourceMetrics().At(i)
@@ -228,8 +228,8 @@ func TestStartTimeMetricFallback(t *testing.T) {
 
 			// We need to make sure the job and instance labels are set before the adjuster is used.
 			pmetrics := tt.inputs
-			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(semconv.AttributeServiceInstanceID, "0")
-			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(semconv.AttributeServiceName, "job")
+			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(string(semconv.ServiceInstanceIDKey), "0")
+			pmetrics.ResourceMetrics().At(0).Resource().Attributes().PutStr(string(semconv.ServiceNameKey), "job")
 			assert.NoError(t, stma.AdjustMetrics(tt.inputs))
 			for i := 0; i < tt.inputs.ResourceMetrics().Len(); i++ {
 				rm := tt.inputs.ResourceMetrics().At(i)
