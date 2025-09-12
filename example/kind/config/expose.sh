@@ -38,4 +38,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Wait for background processes
-wait 
+wait
