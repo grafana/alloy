@@ -72,7 +72,6 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
 		events,
-		samples.ContainerID("123"),
 	)
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
@@ -129,7 +128,6 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
 		events,
-		samples.ContainerID("123"),
 	)
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
@@ -173,7 +171,6 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
 		events,
-		samples.ContainerID("123"),
 	)
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
