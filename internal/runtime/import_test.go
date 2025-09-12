@@ -348,16 +348,16 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		err = ctrl.LoadSource(f, nil, "")
 		require.NoError(t, err)
 
+		require.Eventually(t, func() bool {
+			return ctrl.Realoded()
+		}, 3*time.Second, 10*time.Millisecond)
+
 		// Export should be -10 after update
 		require.Eventually(t, func() bool {
 			export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
 			return export.LastAdded <= -10
 		}, 3*time.Second, 10*time.Millisecond)
 	}
-
-	// This is a hack to make sure we have some time for runtime to scheduled all components
-	// so they can be properly exited
-	time.Sleep(3 * time.Second)
 }
 
 func testConfigError(t *testing.T, config string, expectedError string) {
