@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	specificTest string
-	skipBuild    bool
-	stateful     bool
-	testTimeout  time.Duration
+	specificTest    string
+	skipBuild       bool
+	stateful        bool
+	testTimeout     time.Duration
+	alwaysPrintLogs bool
 )
 
 func main() {
@@ -35,6 +36,7 @@ func main() {
 		"You must run 'docker compose down' manually if you want to switch from stateful to stateless mode."
 	rootCmd.PersistentFlags().BoolVar(&stateful, "stateful", false, statefulUsageString)
 	rootCmd.PersistentFlags().DurationVar(&testTimeout, "test-timeout", common.DefaultTimeout, "Timeout for each individual test")
+	rootCmd.PersistentFlags().BoolVar(&alwaysPrintLogs, "always-print-logs", false, "Always print the test and alloy logs, even if the test passed")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -52,7 +54,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 
 	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
 	if !stateful {
-		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
+		defer executeCommand("docker", []string{"compose", "down", "--rmi"}, "Stopping dependent services")
 		fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
 		time.Sleep(10 * time.Second)
 	} else {
@@ -67,15 +69,9 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, "./tests/") {
 			specificTest = "./tests/" + specificTest
 		}
-		logChan = make(chan TestLog, 1)
 		runSingleTest(ctx, specificTest, 12345, stateful, testTimeout)
 	} else {
-		testDirs, err := filepath.Glob("./tests/*")
-		if err != nil {
-			panic(err)
-		}
-		logChan = make(chan TestLog, len(testDirs))
 		runAllTests(ctx)
 	}
-	reportResults()
+	reportResults(alwaysPrintLogs)
 }

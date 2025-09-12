@@ -1,0 +1,32 @@
+logging {
+    level = "debug"
+}
+
+livedebugging {}
+
+prometheus.scrape "prom_metadata_writequeue" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+  params = { "metric-prefix" = ["prom_metadata_writequeue_"] }
+  forward_to = [
+    prometheus.write.queue.prom_metadata.receiver,
+  ]
+  scrape_classic_histograms = true
+  scrape_native_histograms = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  // Required for metadata support
+  honor_metadata = true
+}
+
+prometheus.write.queue "prom_metadata" {
+    endpoint "mimir" {
+        url = "http://mimir:9009/api/v1/push"
+        flush_interval = "1s"
+        batch_count = 10
+        external_labels = {
+            test_name = "prom_metadata_writequeue",
+        }
+    }
+}

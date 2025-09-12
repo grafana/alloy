@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -28,6 +29,7 @@ const (
 
 type TestLog struct {
 	TestDir    string
+	IsError    bool
 	AlloyLog   string
 	TestOutput string
 }
@@ -36,8 +38,6 @@ type fileInfo struct {
 	path    string
 	relPath string
 }
-
-var logChan chan TestLog
 
 func executeCommand(command string, args []string, taskDescription string) {
 	fmt.Printf("%s...\n", taskDescription)
@@ -153,6 +153,10 @@ func setupTestCommand(ctx context.Context, dirName string, testDir string, alloy
 	return testCmd, nil
 }
 
+var logMux sync.Mutex
+var logs []TestLog
+var hadTestError atomic.Bool
+
 func runSingleTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
 	info, err := os.Stat(testDir)
 	if err != nil {
@@ -191,28 +195,34 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 		Logger:           log.Default(),
 	})
 	if err != nil {
-		logChan <- TestLog{
+		addLog(TestLog{
 			TestDir:  dirName,
 			AlloyLog: fmt.Sprintf("failed to start Alloy container: %v", err),
-		}
+			IsError:  true,
+		})
 		return
 	}
+
 	defer func() {
 		if err := alloyContainer.Terminate(ctx); err != nil {
-			logChan <- TestLog{
+			hadTestError.Store(true)
+			addLog(TestLog{
 				TestDir:  dirName,
 				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
-			}
+				IsError:  true,
+			})
 		}
 	}()
 
 	// Setup and run test command
 	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer, testTimeout)
 	if err != nil {
-		logChan <- TestLog{
+		hadTestError.Store(true)
+		addLog(TestLog{
 			TestDir:  dirName,
 			AlloyLog: fmt.Sprintf("failed to setup test command: %v", err),
-		}
+			IsError:  true,
+		})
 		return
 	}
 	if stateful {
@@ -220,19 +230,23 @@ func runSingleTest(ctx context.Context, testDir string, port int, stateful bool,
 			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
 			fmt.Sprintf("%s=true", common.TestStatefulEnv))
 	}
+
 	testOutput, errTest := testCmd.CombinedOutput()
 
-	// Collect and report logs if test failed
+	// Collect and report logs
 	alloyLogs, _ := alloyContainer.Logs(ctx)
 	alloyLog, _ := io.ReadAll(alloyLogs)
+	testLogs := TestLog{
+		TestDir:    dirName,
+		AlloyLog:   string(alloyLog),
+		TestOutput: string(testOutput),
+	}
 
 	if errTest != nil {
-		logChan <- TestLog{
-			TestDir:    dirName,
-			AlloyLog:   string(alloyLog),
-			TestOutput: string(testOutput),
-		}
+		testLogs.IsError = true
+		hadTestError.Store(true)
 	}
+	addLog(testLogs)
 }
 
 func runAllTests(ctx context.Context) {
@@ -253,18 +267,29 @@ func runAllTests(ctx context.Context) {
 	wg.Wait()
 }
 
-func reportResults() {
+func addLog(testLog TestLog) {
+	logMux.Lock()
+	defer logMux.Unlock()
+	logs = append(logs, testLog)
+}
+
+func reportResults(alwaysPrintLogs bool) {
 	testsFailed := 0
-	close(logChan)
-	for log := range logChan {
-		if strings.Contains(log.TestOutput, "build constraints exclude all Go files") {
-			fmt.Printf("Test %q is not applicable for this OS, ignoring\n", log.TestDir)
-			continue
+	if alwaysPrintLogs || hadTestError.Load() {
+		for _, log := range logs {
+			if strings.Contains(log.TestOutput, "build constraints exclude all Go files") {
+				fmt.Printf("Test %q is not applicable for this OS, ignoring\n", log.TestDir)
+				continue
+			}
+			if log.IsError {
+				fmt.Printf("Failure detected in %s:\n", log.TestDir)
+				testsFailed++
+			} else {
+				fmt.Printf("Tests in %s were successful:\n", log.TestDir)
+			}
+			fmt.Println("Test output:", log.TestOutput)
+			fmt.Println("Alloy logs:", log.AlloyLog)
 		}
-		fmt.Printf("Failure detected in %s:\n", log.TestDir)
-		fmt.Println("Test output:", log.TestOutput)
-		fmt.Println("Alloy logs:", log.AlloyLog)
-		testsFailed++
 	}
 
 	if testsFailed > 0 {
