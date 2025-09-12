@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -317,6 +318,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		ctrl.Run(ctx)
 	}()
 
+	require.Eventually(t, func() bool {
+		return ctrl.Ready()
+	}, 3*time.Second, 10*time.Millisecond)
+
 	// Check for initial condition
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -370,7 +375,7 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 }
 
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
