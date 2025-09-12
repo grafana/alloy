@@ -372,6 +372,10 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 		defer wg.Done()
 		ctrl.Run(ctx)
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.Ready()
+	}, 3*time.Second, 10*time.Millisecond)
 }
 
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
