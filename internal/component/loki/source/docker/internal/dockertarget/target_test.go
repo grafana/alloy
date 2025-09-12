@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,12 +19,13 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 )
 
 func TestDockerTarget(t *testing.T) {
@@ -116,15 +118,31 @@ func TestStartStopStressTest(t *testing.T) {
 	require.NoError(t, err)
 
 	tgt.StartIfNotRunning()
+
+	// Stress test the concurrency of StartIfNotRunning and Stop
+	wg := sync.WaitGroup{}
 	for range 1000 {
-		go tgt.StartIfNotRunning()
-		go tgt.Stop()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tgt.StartIfNotRunning()
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tgt.Stop()
+		}()
 	}
+	wg.Wait()
 }
 
 func newDockerServer(t *testing.T) *httptest.Server {
 	h := func(w http.ResponseWriter, r *http.Request) {
-		switch path := r.URL.Path; {
+		path := r.URL.Path
+		ctx := r.Context()
+		var writeErr error
+		switch {
 		case strings.HasSuffix(path, "/logs"):
 			var filePath string
 			if strings.Contains(r.URL.RawQuery, "since=0") {
@@ -134,8 +152,7 @@ func newDockerServer(t *testing.T) *httptest.Server {
 			}
 			dat, err := os.ReadFile(filePath)
 			require.NoError(t, err)
-			_, err = w.Write(dat)
-			require.NoError(t, err)
+			_, writeErr = w.Write(dat)
 		default:
 			w.Header().Set("Content-Type", "application/json")
 			info := container.InspectResponse{
@@ -144,8 +161,16 @@ func newDockerServer(t *testing.T) *httptest.Server {
 				Config:            &container.Config{Tty: false},
 				NetworkSettings:   &container.NetworkSettings{},
 			}
-			err := json.NewEncoder(w).Encode(info)
-			require.NoError(t, err)
+			writeErr = json.NewEncoder(w).Encode(info)
+		}
+		if writeErr != nil {
+			select {
+			case <-ctx.Done():
+				// Context was done, the write error is likely client disconnect or server shutdown, ignore
+				return
+			default:
+				require.NoError(t, writeErr, "unexpected write error not caused by context being done")
+			}
 		}
 	}
 
