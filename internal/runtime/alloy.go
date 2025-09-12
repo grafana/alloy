@@ -306,7 +306,7 @@ func (f *Runtime) Run(ctx context.Context) {
 			}
 
 			f.scheduledOnce.Store(true)
-			f.realoaded.Store(true)
+			f.reloaded.Store(true)
 		}
 	}
 }
