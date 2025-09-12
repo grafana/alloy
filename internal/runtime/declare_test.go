@@ -351,6 +351,10 @@ func TestDeclare(t *testing.T) {
 			}()
 
 			require.Eventually(t, func() bool {
+				return ctrl.Ready()
+			}, 3*time.Second, 10*time.Millisecond)
+
+			require.Eventually(t, func() bool {
 				export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
 				return export.LastAdded == tc.expected
 			}, 3*time.Second, 10*time.Millisecond)
@@ -391,6 +395,11 @@ func TestDeclareModulePath(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.Ready()
+	}, 3*time.Second, 10*time.Millisecond)
+
 	time.Sleep(30 * time.Millisecond)
 	passthrough := getExport[testcomponents.PassthroughExports](t, ctrl, "", "testcomponents.passthrough.pass")
 	require.Equal(t, passthrough.Output, "")
