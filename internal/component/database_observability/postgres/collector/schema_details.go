@@ -85,6 +85,16 @@ const (
 		AND NOT attr.attisdropped`
 
 	// selectIndexes retrieves column-based and expression-based indexes on a specified table
+	/*
+		Postgres indexes can contain:
+		1. Regular columns (pg_index.indkey[pos] != 0)
+		2. Expressions (pg_index.indkey[pos] = 0)
+		3. Mixed indexes with both columns and expressions
+		pg_index.indkey: array of column numbers, 0 means expression
+		generate_subscripts: creates positions 1,2,3... for each indkey element
+		pg_get_indexdef(indexrelid, pos+1, true): gets expression text
+		array_agg FILTERs: separate columns and expressions into different arrays
+	*/
 	selectIndexes = `
 	SELECT 
 		index_relations.relname as index_name,
