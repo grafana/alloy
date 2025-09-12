@@ -129,8 +129,9 @@ type Runtime struct {
 
 	loadFinished chan struct{}
 
-	loadMut    sync.RWMutex
-	loadedOnce atomic.Bool
+	loadMut      sync.RWMutex
+	loadedOnce   atomic.Bool
+	loadComplete atomic.Bool
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
@@ -297,10 +298,11 @@ func (f *Runtime) Run(ctx context.Context) {
 				}
 			}
 
-			err := f.sched.Synchronize(runnables)
-			if err != nil {
+			if err := f.sched.Synchronize(runnables); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
+
+			f.loadComplete.Store(true)
 		}
 	}
 }
@@ -344,6 +346,8 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 	f.loadMut.Lock()
 	defer f.loadMut.Unlock()
 
+	f.loadComplete.Store(false)
+
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {
 		// The first call to Load should not run any components if there were
@@ -363,4 +367,9 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 // Ready returns whether the Alloy controller has finished its initial load.
 func (f *Runtime) Ready() bool {
 	return f.loadedOnce.Load()
+}
+
+// LoadComplete returns true when the components loaded via LoadSource have been scheduled and are running. Used in testing.
+func (f *Runtime) LoadComplete() bool {
+	return f.loadComplete.Load()
 }
