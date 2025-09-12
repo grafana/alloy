@@ -439,7 +439,7 @@ local.file "postgres_secret_<your_DB_name>" {
 
 prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
-  enabled_collectors = ["database", "stat_statements"]
+  enabled_collectors = ["stat_statements"]
 
   autodiscovery {
     enabled = true
@@ -454,7 +454,7 @@ database_observability.postgres "postgres_<your_DB_name>" {
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
-  enable_collectors = ["query_samples"]
+  enable_collectors = ["query_samples", "query_details"]
 
   // OPTIONAL: if `query_samples` collector is enabled, you can use
   // the following setting to disable sql text redaction (by default
