@@ -4,7 +4,6 @@ package reporter
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
 	"github.com/google/pprof/profile"
@@ -81,9 +80,19 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
 	require.NoError(t, err)
 
-	pStr := strings.Split(p.String(), "\n")
-	assert.Contains(t, pStr, "     1: 0x30 M=3 myfunc /bin/bar:1234:0 s=0()")
-	assert.Contains(t, pStr, "3: 0x0/0x0/0x0 /bin/bar  [FN][LN]")
+	p.TimeNanos = 0
+	expected := `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 
+Locations
+     1: 0x30 M=2 myfunc /bin/bar:1234:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0 /bin/bar  [FN][LN]
+`
+	assert.Equal(t, expected, p.String())
 }
 
 func singleFrameNative(mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, mappingStart, mappingEnd libpf.Address, mappingFileOffset uint64) libpf.Frames {
@@ -127,9 +136,19 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
 	require.NoError(t, err)
 
-	pStr := strings.Split(p.String(), "\n")
-	assert.Contains(t, pStr, "     1: 0x1000 M=3 ")
-	assert.Contains(t, pStr, "3: 0x1000/0x2000/0x100 /usr/lib/libexample.so  ")
+	p.TimeNanos = 0
+	expected := `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 
+Locations
+     1: 0x1000 M=2 
+Mappings
+1: 0x0/0x0/0x0   
+2: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
+`
+	assert.Equal(t, expected, p.String())
 }
 
 func TestPPROFReporter_WithoutMapping(t *testing.T) {
@@ -163,7 +182,6 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 	require.NoError(t, err)
 
 	p.TimeNanos = 0
-
 	expected := `PeriodType: cpu nanoseconds
 Period: 10309278
 Samples:
