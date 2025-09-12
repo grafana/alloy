@@ -110,8 +110,8 @@ type functionsKey struct {
 }
 
 type locationsKey struct {
-	fid  libpf.FileID
-	addr libpf.AddressOrLineno
+	mappingId uint64
+	addr      libpf.AddressOrLineno
 }
 type mappingKey struct {
 	Start libpf.Address
@@ -129,6 +129,10 @@ type ProfileBuilder struct {
 	Target  *discovery.Target
 
 	dummyMapping *profile.Mapping
+}
+
+func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
+	return p.dummyMapping
 }
 
 func (p *ProfileBuilder) Mapping(
@@ -199,10 +203,10 @@ func (p *ProfileBuilder) AddValue(v int64, sample *profile.Sample) {
 	sample.Value[0] += v * p.Profile.Period
 }
 
-func (p *ProfileBuilder) Location(fid libpf.FileID, addr libpf.AddressOrLineno) (*profile.Location, bool) {
+func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno) (*profile.Location, bool) {
 	key := locationsKey{
-		fid:  fid,
-		addr: addr,
+		mappingId: m.ID,
+		addr:      addr,
 	}
 	loc, ok := p.locations[key]
 	if ok {
@@ -210,7 +214,6 @@ func (p *ProfileBuilder) Location(fid libpf.FileID, addr libpf.AddressOrLineno) 
 	}
 	loc = p.p.locations.pop()
 	loc.ID = uint64(len(p.Profile.Location) + 1)
-	loc.Mapping = p.dummyMapping
 	p.locations[key] = loc
 	p.Profile.Location = append(p.Profile.Location, loc)
 	return loc, true

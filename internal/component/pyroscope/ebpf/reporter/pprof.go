@@ -195,8 +195,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 			continue
 		}
 		b := bs.BuilderForSample(target, uint32(traceKey.Pid))
-		fakeMapping, _ := b.Mapping(0, libpf.FrameMappingFile{})
-		fakeMappingFileID := libpf.NewFileID(0, 0)
+		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
 
@@ -213,29 +212,29 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 
 		for i := range traceInfo.Frames {
 			fr := traceInfo.Frames[i].Value()
-			pfFileID := fakeMappingFileID
+			var (
+				mapping  *profile.Mapping
+				location *profile.Location
+				fresh    bool
+			)
 			if fr.MappingFile.Valid() {
-				pfFileID = fr.MappingFile.Value().FileID
-			}
-			pfAddrOrLineNo := fr.AddressOrLineno
-			location, locationFresh := b.Location(pfFileID, pfAddrOrLineNo)
-
-			if locationFresh {
-				if fr.MappingFile.Valid() {
-					mapping, mappingFresh := b.Mapping(fr.MappingStart, fr.MappingFile)
-					if mappingFresh {
-						pfMapping := fr.MappingFile.Value()
-						mapping.Start = uint64(fr.MappingStart)
-						mapping.Limit = uint64(fr.MappingEnd)
-						mapping.Offset = fr.MappingFileOffset
-						mapping.File = pfMapping.FileName.String()
-						mapping.BuildID = pfMapping.GnuBuildID
-					}
-					location.Mapping = mapping
-				} else {
-					location.Mapping = fakeMapping
+				pfMapping := fr.MappingFile.Value()
+				mapping, fresh = b.Mapping(fr.MappingStart, fr.MappingFile)
+				if fresh {
+					mapping.Start = uint64(fr.MappingStart)
+					mapping.Limit = uint64(fr.MappingEnd)
+					mapping.Offset = fr.MappingFileOffset
+					mapping.File = pfMapping.FileName.String()
+					mapping.BuildID = pfMapping.GnuBuildID
 				}
-				location.Address = uint64(pfAddrOrLineNo)
+			} else {
+				mapping = fakeMapping
+			}
+
+			location, fresh = b.Location(mapping, fr.AddressOrLineno)
+			if fresh {
+				location.Mapping = mapping
+				location.Address = uint64(fr.AddressOrLineno)
 				switch fr.Type {
 				case libpf.NativeFrame:
 					p.symbolizeNativeFrame(b, location, fr)
@@ -295,9 +294,6 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
-	//	if !fr.MappingFile.Valid() {
-	//		return
-	//	}
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return
