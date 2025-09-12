@@ -37,6 +37,10 @@ var DefaultArguments = Arguments{
 	},
 	DisableDefaultMetrics:   false,
 	CustomQueriesConfigPath: "",
+	StatStatementFlags: StatStatementFlags{
+		IncludeQuery: false,
+		QueryLength:  120,
+	},
 }
 
 // Arguments configures the prometheus.exporter.postgres component
@@ -53,7 +57,8 @@ type Arguments struct {
 	EnabledCollectors       []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Blocks
-	AutoDiscovery AutoDiscovery `alloy:"autodiscovery,block,optional"`
+	AutoDiscovery      AutoDiscovery      `alloy:"autodiscovery,block,optional"`
+	StatStatementFlags StatStatementFlags `alloy:"stat_statements,block,optional"`
 }
 
 func (a *Arguments) Validate() error {
@@ -73,6 +78,12 @@ type AutoDiscovery struct {
 	DatabaseDenylist  []string `alloy:"database_denylist,attr,optional"`
 }
 
+// StatStatementFlags describe the flags to pass along the activation of the stat_statements collector
+type StatStatementFlags struct {
+	IncludeQuery bool `alloy:"include_query,attr,optional"`
+	QueryLength  uint `alloy:"query_length,attr,optional"`
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
@@ -89,6 +100,8 @@ func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 		QueryPath:              a.CustomQueriesConfigPath,
 		Instance:               instanceName,
 		EnabledCollectors:      a.EnabledCollectors,
+		IncludeQuery:           a.StatStatementFlags.IncludeQuery,
+		QueryLength:            a.StatStatementFlags.QueryLength,
 	}
 }
 
