@@ -32,25 +32,43 @@ tasks:
     run: once
     cmds:
       - helm repo add grafana https://grafana.github.io/helm-charts
+      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
       - helm repo update
 
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart
-    deps: [cluster:create]
+    deps: [cluster:create, update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
         -n monitoring --create-namespace
         grafana/grafana-cloud-onboarding
         --set "cluster.name=example-kind-cluster"
-        --set "grafanaCloud.fleetManagement.auth.password={{.ENV.GRAFANA_CLOUD_API_KEY}}"
-        --set "grafanaCloud.fleetManagement.auth.username={{.ENV.REMOTE_CFG_USERNAME}}"
-        --set "grafanaCloud.fleetManagement.url={{.ENV.REMOTE_CFG_URL}}"
+        --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
+        --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
+        --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
         --wait
 
   remove:cloud-onboarding:local:
     desc: Remove Grafana Cloud Onboarding helm chart
+    deps: [update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
+
+  # TODO: configure this using values.yaml to use Alloy instead of Otel Collector
+  deploy:otel-demo:
+    desc: Deploy OpenTelemetry Demo example applications
+    deps: [cluster:create, update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install otel-demo
+        -n otel-demo --create-namespace
+        open-telemetry/opentelemetry-demo
+        --wait
+
+  remove:otel-demo:
+    desc: Remove OpenTelemetry Demo helm chart
+    deps: [update-helm-repos]
+    cmds:
+      - helm --kubeconfig {{.KUBECONFIG}} uninstall otel-demo -n otel-demo
 
   expose:
     desc: Expose all services on localhost via port-forward
