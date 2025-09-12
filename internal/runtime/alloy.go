@@ -131,6 +131,8 @@ type Runtime struct {
 
 	loadMut    sync.RWMutex
 	loadedOnce atomic.Bool
+	// scheduledOnce is used to indicate that services and components have been scheduled at least once.
+	scheduledOnce atomic.Bool
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
@@ -297,10 +299,11 @@ func (f *Runtime) Run(ctx context.Context) {
 				}
 			}
 
-			err := f.sched.Synchronize(runnables)
-			if err != nil {
+			if err := f.sched.Synchronize(runnables); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
+
+			f.scheduledOnce.Store(true)
 		}
 	}
 }
@@ -360,7 +363,7 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 	return diags.ErrorOrNil()
 }
 
-// Ready returns whether the Alloy controller has finished its initial load.
+// Ready returns whether the Alloy controller has finished its initial load and scheduled all components and services.
 func (f *Runtime) Ready() bool {
-	return f.loadedOnce.Load()
+	return f.scheduledOnce.Load()
 }
