@@ -48,7 +48,7 @@ sample_rate = 239
 pid_cache_size = 1000
 build_id_cache_size = 2000
 same_file_cache_size = 3000
-container_id_cache_size = 4000
+container_id_cache_size = 1024
 cache_rounds = 4
 `,
 			expected: func() Arguments {
@@ -66,6 +66,7 @@ cache_rounds = 4
 				x.DeprecatedArguments.SameFileCacheSize = 3000
 				x.DeprecatedArguments.BuildIDCacheSize = 2000
 				x.DeprecatedArguments.CacheRounds = 4
+				x.DeprecatedArguments.ContainerIDCacheSize = 1024
 				return x
 			},
 		},

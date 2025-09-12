@@ -219,19 +219,18 @@ func (c *Component) checkTraceFS() {
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		OffCPUThreshold:      0,
-		GoEnabled:            true,
+		CollectInterval: 15 * time.Second,
+		SampleRate:      19,
+		Demangle:        "none",
+		PythonEnabled:   true,
+		PerlEnabled:     true,
+		PHPEnabled:      true,
+		HotspotEnabled:  true,
+		RubyEnabled:     true,
+		V8Enabled:       true,
+		DotNetEnabled:   true,
+		OffCPUThreshold: 0,
+		GoEnabled:       true,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
