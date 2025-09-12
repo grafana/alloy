@@ -245,15 +245,17 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 					// that are not originated from a native or interpreted
 					// program.
 				default:
-					location.Line = []profile.Line{{
-						Line: int64(fr.SourceLine),
-						Function: b.Function(
-							fr.FunctionName,
-							fr.SourceFile,
-						)},
+					if fr.FunctionName != libpf.NullString {
+						location.Line = []profile.Line{{
+							Line: int64(fr.SourceLine),
+							Function: b.Function(
+								fr.FunctionName,
+								fr.SourceFile,
+							)},
+						}
+						location.Mapping.HasFunctions = true
+						location.Mapping.HasLineNumbers = true
 					}
-					location.Mapping.HasFunctions = true
-					location.Mapping.HasLineNumbers = true
 				}
 			}
 			if fr.Type == libpf.PythonFrame && len(location.Line) == 1 && location.Line[0].Function.Name == "<interpreter trampoline>" {

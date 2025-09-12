@@ -185,9 +185,9 @@ Samples:
 cpu/nanoseconds
    10309278: 1 
 Locations
-     1: 0x2000 M=1  :0:0 s=0
+     1: 0x2000 M=1 
 Mappings
-1: 0x0/0x0/0x0   [FN][LN]
+1: 0x0/0x0/0x0   
 `
 	assert.Equal(t, expected, p.String())
 }
