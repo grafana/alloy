@@ -113,7 +113,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
