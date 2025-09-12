@@ -349,7 +349,7 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return ctrl.Realoded()
+			return ctrl.Reloaded()
 		}, 3*time.Second, 10*time.Millisecond)
 
 		// Export should be -10 after update

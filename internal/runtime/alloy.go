@@ -133,8 +133,8 @@ type Runtime struct {
 	loadedOnce atomic.Bool
 	// scheduledOnce is used to indicate that services and components have been scheduled at least once.
 	scheduledOnce atomic.Bool
-	// realoaded is used in test to make sure a reload have happened.
-	realoaded atomic.Bool
+	// reloaded is used in test to make sure a reload have happened.
+	reloaded atomic.Bool
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
@@ -357,7 +357,7 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 		return diags
 	}
 
-	f.realoaded.Store(false)
+	f.reloaded.Store(false)
 	f.loadedOnce.Store(true)
 
 	select {
@@ -373,6 +373,6 @@ func (f *Runtime) Ready() bool {
 	return f.scheduledOnce.Load()
 }
 
-func (f *Runtime) Realoded() bool {
-	return f.realoaded.Load()
+func (f *Runtime) Reloaded() bool {
+	return f.reloaded.Load()
 }
