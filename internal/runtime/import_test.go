@@ -19,6 +19,7 @@ import (
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/module/string"
+	"github.com/grafana/alloy/internal/runtime/internal/testservices"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
@@ -360,11 +361,18 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
-
 	ctx, cancel := context.WithCancel(t.Context())
-	// cancel context immediately.
-	cancel()
-	ctrl.Run(ctx)
+	var wg sync.WaitGroup
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ctrl.Run(ctx)
+	}()
 }
 
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
@@ -375,7 +383,9 @@ func setup(t *testing.T, config string, reg prometheus.Registerer, stability fea
 		DataPath:     t.TempDir(),
 		MinStability: stability,
 		Reg:          reg,
-		Services:     []service.Service{},
+		Services: []service.Service{
+			&testservices.Fake{},
+		},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
