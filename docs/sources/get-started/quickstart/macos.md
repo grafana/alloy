@@ -132,7 +132,7 @@ brew install grafana/grafana/alloy
 1. Start the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   brew services start alloy
+   brew services start grafana/grafana/alloy
    ```
 
 1. (Optional) Verify that {{< param "PRODUCT_NAME" >}} is running:
@@ -148,7 +148,7 @@ brew install grafana/grafana/alloy
 If {{< param "PRODUCT_NAME" >}} fails to start, check the logs for error messages:
 
 ```shell
-brew services info alloy
+brew services info grafana/grafana/alloy
 ```
 
 Common issues:
@@ -156,7 +156,7 @@ Common issues:
 - **Configuration syntax errors**: Check your configuration file for typos or missing values
 - **Network connectivity**: Verify your Grafana Cloud credentials and network access
 - **Permission errors**: Ensure {{< param "PRODUCT_NAME" >}} has read access to system metrics
-- **Homebrew service issues**: Try restarting with `brew services restart alloy`
+- **Homebrew service issues**: Try restarting with `brew services restart grafana/grafana/alloy`
 - **Port conflicts**: Ensure port 12345 is not in use by another service
 
 ## Step 4: Visualize your metrics in Grafana
@@ -203,7 +203,7 @@ ps aux | grep alloy
 ### Check {{< param "PRODUCT_NAME" >}} logs
 
 ```shell
-brew services info alloy
+brew services info grafana/grafana/alloy
 tail -f /opt/homebrew/var/log/alloy.log
 ```
 
@@ -242,7 +242,7 @@ Open your browser and navigate to `http://localhost:12345` to inspect:
 - **Network timeout**: Check firewall settings and network connectivity to your Prometheus endpoint
 - **Authentication failed**: Verify your Grafana Cloud credentials are correct
 - **Configuration errors**: Check the syntax of your configuration file
-- **Port conflicts**: Ensure port 12345 is not in use by another service
+- **Port conflicts**: Ensure port 12345 isn't in use by another service
 
 ### macOS-specific troubleshooting
 
