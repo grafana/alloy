@@ -54,22 +54,6 @@ tasks:
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
 
-  # TODO: configure this using values.yaml to use Alloy instead of Otel Collector
-  deploy:otel-demo:
-    desc: Deploy OpenTelemetry Demo example applications
-    deps: [cluster:create, update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install otel-demo
-        -n otel-demo --create-namespace
-        open-telemetry/opentelemetry-demo
-        --wait
-
-  remove:otel-demo:
-    desc: Remove OpenTelemetry Demo helm chart
-    deps: [update-helm-repos]
-    cmds:
-      - helm --kubeconfig {{.KUBECONFIG}} uninstall otel-demo -n otel-demo
-
   expose:
     desc: Expose all services on localhost via port-forward
     deps: [deploy:cloud-onboarding:local]
