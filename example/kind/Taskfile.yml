@@ -1,6 +1,10 @@
-# https://taskfile.dev
+# Install the task command from here: https://taskfile.dev
+# It's a much more human-friendly version of Makefiles.
 
 version: "3"
+
+dotenv:
+  - .env.credentials
 
 vars:
   KUBECONFIG: build/kubeconfig.yaml
@@ -31,21 +35,20 @@ tasks:
       - helm repo update
 
   deploy:cloud-onboarding:local:
-    desc: Deploy Grafana Cloud Collector helm chart using local checkout
+    desc: Deploy Grafana Cloud Onboarding helm chart
     deps: [cluster:create]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
         -n monitoring --create-namespace
-        {{.TASK_DIR}}/../../../grafana-cloud-onboarding-helm-chart/charts/grafana-cloud-onboarding/
-        --values {{.TASK_DIR}}/config/grafana-cloud-onboarding/values.yaml
-        --set "cluster.name=$(kubectl config current-context)"
-        --set "grafanaCloud.fleetManagement.auth.password={{.GRAFANA_CLOUD_API_KEY}}"
-        --set "grafanaCloud.fleetManagement.auth.username={{.REMOTE_CFG_USERNAME}}"
-        --set "grafanaCloud.fleetManagement.url={{.REMOTE_CFG_URL}}"
+        grafana/grafana-cloud-onboarding
+        --set "cluster.name=example-kind-cluster"
+        --set "grafanaCloud.fleetManagement.auth.password={{.ENV.GRAFANA_CLOUD_API_KEY}}"
+        --set "grafanaCloud.fleetManagement.auth.username={{.ENV.REMOTE_CFG_USERNAME}}"
+        --set "grafanaCloud.fleetManagement.url={{.ENV.REMOTE_CFG_URL}}"
         --wait
 
   remove:cloud-onboarding:local:
-    desc: Remove Grafana Cloud Collector helm chart
+    desc: Remove Grafana Cloud Onboarding helm chart
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
 
