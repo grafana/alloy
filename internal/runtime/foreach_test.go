@@ -136,7 +136,7 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 	}()
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {

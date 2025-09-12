@@ -351,7 +351,7 @@ func TestDeclare(t *testing.T) {
 			}()
 
 			require.Eventually(t, func() bool {
-				return ctrl.Ready()
+				return ctrl.LoadComplete()
 			}, 3*time.Second, 10*time.Millisecond)
 
 			require.Eventually(t, func() bool {
@@ -397,7 +397,7 @@ func TestDeclareModulePath(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	time.Sleep(30 * time.Millisecond)
@@ -620,7 +620,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			require.NoError(t, ctrl.LoadSource(f, nil, ""))
 
 			require.Eventually(t, func() bool {
-				return ctrl.Ready()
+				return ctrl.LoadComplete()
 			}, 3*time.Second, 10*time.Millisecond)
 
 			require.Eventually(t, func() bool {

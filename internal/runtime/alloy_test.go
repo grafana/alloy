@@ -177,7 +177,7 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 	}
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	cancel()

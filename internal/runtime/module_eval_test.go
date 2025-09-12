@@ -77,7 +77,7 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
@@ -142,7 +142,7 @@ func TestUpdates_ThroughModule(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
@@ -208,7 +208,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
-		return ctrl.Ready()
+		return ctrl.LoadComplete()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	// Verify updates propagated correctly.
