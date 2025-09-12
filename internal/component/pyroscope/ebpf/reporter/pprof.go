@@ -297,6 +297,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
+
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return
