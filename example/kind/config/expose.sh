@@ -7,7 +7,7 @@ KUBECONFIG=${1:-build/kubeconfig.yaml}
 POD_NAME=$(kubectl --kubeconfig "$KUBECONFIG" get pods -n monitoring -l app.kubernetes.io/name=alloy-daemon -o jsonpath="{.items[0].metadata.name}")
 
 if [ -z "$POD_NAME" ]; then
-    echo "Error: No pods found for grafana-cloud-collector-alloy-starter daemonset"
+    echo "Error: No pods found with label 'app.kubernetes.io/name=alloy-daemon' in namespace 'monitoring'"
     exit 1
 fi
 
