@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
+	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/module/string"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // use const to avoid lint error
@@ -360,22 +360,11 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
+
 	ctx, cancel := context.WithCancel(t.Context())
-	var wg sync.WaitGroup
-	defer func() {
-		cancel()
-		wg.Wait()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ctrl.Run(ctx)
-	}()
-
-	require.Eventually(t, func() bool {
-		return ctrl.Ready()
-	}, 3*time.Second, 10*time.Millisecond)
+	// cancel context immediately.
+	cancel()
+	ctrl.Run(ctx)
 }
 
 func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
