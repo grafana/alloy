@@ -354,6 +354,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 			return export.LastAdded <= -10
 		}, 3*time.Second, 10*time.Millisecond)
 	}
+
+	// This is a hack to make sure we have some time for runtime to scheduled all components
+	// so they can be properly exited
+	time.Sleep(3 * time.Second)
 }
 
 func testConfigError(t *testing.T, config string, expectedError string) {
