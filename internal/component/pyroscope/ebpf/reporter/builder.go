@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package reporter
 
@@ -55,6 +55,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	target *discovery.Target,
 	pid uint32,
 ) *ProfileBuilder {
+
 	labelsHash, _ := target.Labels()
 
 	k := builderHashKey{labelsHash: labelsHash}
@@ -69,14 +70,15 @@ func (b *ProfileBuilders) BuilderForSample(
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	if b.opt.Origin == support.TraceOriginSampling {
+	switch b.opt.Origin {
+	case support.TraceOriginSampling:
 		sampleType = []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}}
 		periodType = &profile.ValueType{Type: "cpu", Unit: "nanoseconds"}
 		period = time.Second.Nanoseconds() / b.opt.SampleRate
-	} else if b.opt.Origin == support.TraceOriginOffCPU {
+	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	} else {
+	default:
 		panic(fmt.Sprintf("unknown sample type %v", sampleType))
 	}
 	dummyMapping := &profile.Mapping{
@@ -135,6 +137,7 @@ func (p *ProfileBuilder) Mapping(
 	start libpf.Address,
 	file libpf.FrameMappingFile,
 ) (*profile.Mapping, bool) {
+
 	k := mappingKey{
 		Start: start,
 		File:  file,

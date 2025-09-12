@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package reporter
 
@@ -63,6 +63,7 @@ func NewPPROF(
 	cfg *Config,
 	sd discovery.TargetProducer,
 ) *PPROFReporter {
+
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
 		cfg:         cfg,
@@ -161,9 +162,9 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for cid, ts := range reportedEvents {
+	for _, ts := range reportedEvents {
 		for origin, events := range ts {
-			pp := p.createProfile(origin, events, cid)
+			pp := p.createProfile(origin, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -176,7 +177,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents, cid samples.ContainerID) []PPROF {
+func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.cfg.ExtraNativeSymbolResolver != nil {
 			p.cfg.ExtraNativeSymbolResolver.Cleanup()
@@ -291,6 +292,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
+
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return

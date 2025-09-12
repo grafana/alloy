@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package ebpf
 
@@ -113,7 +113,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
