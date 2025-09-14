@@ -127,6 +127,8 @@ If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denyl
 The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
 This configuration takes effect only when the `stat_statements` collector is enabled.
 
+The following arguments are supported:
+
 The following aeguments are supported:
 | Name            | Type     | Description                                         | Default | Required |
 | --------------- | -------- | --------------------------------------------------- | ------- | -------- |
