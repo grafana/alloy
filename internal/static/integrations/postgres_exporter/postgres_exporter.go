@@ -39,8 +39,12 @@ type Config struct {
 	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
 	// user-facing docs for more information.
-	EnabledCollectors []string
+	EnabledCollectors  []string
+	StatStatementFlags StatStatementFlags
+}
 
+// Config for the stat statement flags
+type StatStatementFlags struct {
 	IncludeQuery bool
 	QueryLength  uint
 }
@@ -179,7 +183,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 
 	// This is a hack to force the command line flag values for the stat_statements collector.
 	// These flags are not exposed outside the package and cannot be mutated afterwards.
-	if cfg.IncludeQuery {
+	if cfg.StatStatementFlags.IncludeQuery {
 		iqf := kingpin.CommandLine.GetFlag("collector.stat_statements.include_query")
 		qlf := kingpin.CommandLine.GetFlag("collector.stat_statements.query_length")
 
@@ -188,7 +192,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		}
 
 		iqf.Model().Value.Set("true")
-		qlf.Model().Value.Set(fmt.Sprintf("%d", cfg.QueryLength))
+		qlf.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
 	}
 
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
