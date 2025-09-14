@@ -107,7 +107,7 @@ PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
-    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY ENABLE_SLICE_LABELS \
 
 #
 # Constants for targets
@@ -127,9 +127,22 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+
+# Set ENABLE_SLICE_LABELS=0 to disable the slicelabels build tag
+ENABLE_SLICE_LABELS ?= 1
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
+RAW_GO_TAGS := $(strip $(GO_TAGS))
+ifeq ($(ENABLE_SLICE_LABELS),1)
+RAW_GO_TAGS := $(strip $(RAW_GO_TAGS) slicelabels)
+endif
+BUILD_TAGS := $(subst $(space),$(comma),$(strip $(RAW_GO_TAGS)))
+
 DEFAULT_FLAGS    := $(GO_FLAGS)
-DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
-RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(GO_TAGS)"
+DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(BUILD_TAGS)"
+RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(BUILD_TAGS)"
 
 ifeq ($(RELEASE_BUILD),1)
 GO_FLAGS := $(DEFAULT_FLAGS) $(RELEASE_GO_FLAGS)
