@@ -122,7 +122,7 @@ type Arguments struct {
 	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
 	// The validation scheme to use for metric names.
-	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
+	MetricNameValidationScheme model.ValidationScheme `alloy:"metric_name_validation_scheme,attr,optional"`
 	// The escaping scheme to use for metric names.
 	MetricNameEscapingScheme string `alloy:"metric_name_escaping_scheme,attr,optional"`
 	// The fallback protocol to use if the target does not provide a valid Content-Type header.
@@ -159,7 +159,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
 		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme:     config.LegacyValidationConfig,
+		MetricNameValidationScheme:     model.LegacyValidation,
 		ConvertClassicHistogramsToNHCB: false,
 		EnableCompression:              true,
 		NativeHistogramBucketLimit:     0,
@@ -220,14 +220,14 @@ func (arg *Arguments) Validate() error {
 	}
 
 	switch arg.MetricNameValidationScheme {
-	case config.UTF8ValidationConfig, config.LegacyValidationConfig:
+	case model.UTF8Validation, model.LegacyValidation:
 	default:
-		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, config.UTF8ValidationConfig, config.LegacyValidationConfig)
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
 	}
 
 	switch arg.MetricNameEscapingScheme {
 	case "":
-		if arg.MetricNameValidationScheme == config.LegacyValidationConfig {
+		if arg.MetricNameValidationScheme == model.LegacyValidation {
 			arg.MetricNameEscapingScheme = model.EscapeUnderscores
 		} else {
 			arg.MetricNameEscapingScheme = model.AllowUTF8
@@ -238,7 +238,7 @@ func (arg *Arguments) Validate() error {
 		return fmt.Errorf("invalid metric_name_escaping_scheme: %q, supported values: %v", arg.MetricNameEscapingScheme, supportedValues)
 	}
 
-	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != config.UTF8ValidationConfig {
+	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != model.UTF8Validation {
 		return fmt.Errorf("metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'")
 	}
 

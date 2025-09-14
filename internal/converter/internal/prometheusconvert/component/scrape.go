@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"golang.org/x/exp/maps"
 
 	prom_config "github.com/prometheus/prometheus/config"
@@ -54,7 +55,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 	}
 
 	// Set the escaping and validation scheme to default values in Alloy for maximum compatibility with backends.
-	scrapeConfig.MetricNameValidationScheme = prom_config.LegacyValidationConfig
+	scrapeConfig.MetricNameValidationScheme = model.LegacyValidation
 	scrapeConfig.MetricNameEscapingScheme = "" // this will default to underscores given the legacy validation scheme
 
 	alloyArgs := &scrape.Arguments{
