@@ -130,7 +130,7 @@ The following aeguments are supported:
 | Name                 | Type           | Description                                                                    | Default | Required |
 |----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
 | `include_query`      | `bool`         | Enable the selection of query ID and SQL statement.                            | `false` | no       |
-| `query_length`       | `number`       | Maximum length of the statement query text.                                    | `200`   | no       |
+| `query_length`       | `number`       | Maximum length of the statement query text.                                    | `120`   | no       |
 
 ## Exported fields
 
