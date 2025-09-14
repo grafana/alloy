@@ -26,10 +26,8 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 [`awsecscontainermetrics`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awsecscontainermetricsreceiver
 {{< /admonition >}}
 
-This receiver supports ECS Fargate and ECS on EC2.  
-It requires the [ECS Task Metadata Endpoint V4](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html) which is automatically available within the task's containers.  
-Therefore, you should run the {{< param "PRODUCT_NAME" >}} collector using this receiver as a sidecar within the task you want to monitor.  
-Refer to the upstream  [`awsecscontainermetrics`][] receiver documentation for more details.  
+This receiver supports ECS Fargate and ECS on EC2. It uses [ECS Task Metadata Endpoint V4](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html) which is automatically available within the task's containers. Therefore, you should run the {{< param "PRODUCT_NAME" >}} collector using this receiver as a sidecar within the task you want to monitor. Refer to the upstream  [`awsecscontainermetrics`][] receiver documentation for more details.
+
 You can specify multiple `otelcol.receiver.awsecscontainermetrics` components by giving them different labels.
 
 [`awsecscontainermetrics`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awsecscontainermetricsreceiver
@@ -92,7 +90,7 @@ The following example collects eight task-level metrics from the 52 metrics avai
 
 ```alloy
 otelcol.receiver.awsecscontainermetrics "default" {
-  collection_interval = "30s"
+  collection_interval = "60s"
 
   output {
     metrics = [otelcol.processor.filter.default.input]

@@ -21,7 +21,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 				output {}
 			`,
-			expected: awsecscontainermetricsreceiver.Config{},
+			expected: awsecscontainermetricsreceiver.Config{
+				CollectionInterval: 20 * time.Second,
+			},
 		},
 		{
 			testName: "configuration with collection interval",

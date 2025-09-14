@@ -41,21 +41,11 @@ var _ receiver.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	cfg := awsecscontainermetricsreceiver.NewFactory().CreateDefaultConfig().(*awsecscontainermetricsreceiver.Config)
 	*args = Arguments{
-		// TODO: Let default be set by otel component?
-		// CollectionInterval: 20 * time.Second,
+		CollectionInterval: cfg.CollectionInterval,
 	}
 	args.DebugMetrics.SetToDefault()
-}
-
-// Validate implements syntax.Validator.
-func (args *Arguments) Validate() error {
-	_, err := args.Convert()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Convert implements receiver.Arguments.

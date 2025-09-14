@@ -10,7 +10,7 @@ otelcol.processor.filter "default" {
 	error_mode = "ignore"
 
 	metrics {
-		metric = ["name == \"ecs.task.memory.reserved\"", "name == \"ecs.task.memory.utilized\""]
+		metric = ["metric.name != \"ecs.task.memory.reserved\" and metric.name != \"ecs.task.memory.utilized\""]
 	}
 
 	output {
