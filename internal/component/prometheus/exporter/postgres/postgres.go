@@ -100,8 +100,10 @@ func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 		QueryPath:              a.CustomQueriesConfigPath,
 		Instance:               instanceName,
 		EnabledCollectors:      a.EnabledCollectors,
-		IncludeQuery:           a.StatStatementFlags.IncludeQuery,
-		QueryLength:            a.StatStatementFlags.QueryLength,
+		StatStatementFlags: postgres_exporter.StatStatementFlags{
+			IncludeQuery: a.StatStatementFlags.IncludeQuery,
+			QueryLength:  a.StatStatementFlags.QueryLength,
+		},
 	}
 }
 
