@@ -127,10 +127,10 @@ If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denyl
 The `stat_statements` block configures the selection of both the query ID and the full SQL statement. This configuration takes effect only when the `stat_statements` collector is enabled.
 
 The following aeguments are supported:
-| Name                 | Type           | Description                                                                    | Default | Required |
-|----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `include_query`      | `bool`         | Enable the selection of query ID and SQL statement.                            | `false` | no       |
-| `query_length`       | `number`       | Maximum length of the statement query text.                                    | `120`   | no       |
+| Name            | Type     | Description                                         | Default | Required |
+| --------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
+| `query_length`  | `number` | Maximum length of the statement query text.         | `120`   | no       |
 
 ## Exported fields
 
