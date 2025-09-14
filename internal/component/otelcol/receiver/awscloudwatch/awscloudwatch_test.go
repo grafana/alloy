@@ -24,7 +24,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: awscloudwatchreceiver.Config{
 				Region: "us-west-2",
-				Logs: &awscloudwatchreceiver.LogsConfig{
+				Logs: awscloudwatchreceiver.LogsConfig{
 					StartFrom:           "",
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
@@ -64,7 +64,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Region:       "us-east-1",
 				Profile:      "prod",
 				IMDSEndpoint: "http://169.254.169.254",
-				Logs: &awscloudwatchreceiver.LogsConfig{
+				Logs: awscloudwatchreceiver.LogsConfig{
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
 					Groups: awscloudwatchreceiver.GroupConfig{
@@ -101,7 +101,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: awscloudwatchreceiver.Config{
 				Region: "us-west-2",
-				Logs: &awscloudwatchreceiver.LogsConfig{
+				Logs: awscloudwatchreceiver.LogsConfig{
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
 					Groups: awscloudwatchreceiver.GroupConfig{
@@ -140,7 +140,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: awscloudwatchreceiver.Config{
 				Region: "us-west-2",
-				Logs: &awscloudwatchreceiver.LogsConfig{
+				Logs: awscloudwatchreceiver.LogsConfig{
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
 					Groups: awscloudwatchreceiver.GroupConfig{
@@ -169,7 +169,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: awscloudwatchreceiver.Config{
 				Region: "us-west-2",
-				Logs: &awscloudwatchreceiver.LogsConfig{
+				Logs: awscloudwatchreceiver.LogsConfig{
 					StartFrom:           "2025-06-25T00:00:00Z",
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,

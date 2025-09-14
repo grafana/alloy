@@ -55,7 +55,7 @@ jobs:
           GITHUB_APP_PRIVATE_KEY=updater-app:private-key
 
     - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         persist-credentials: false
 
@@ -87,6 +87,11 @@ jobs:
           "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
           "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
           "destination_branch": "master",
+          "pull_request_branch_prefix": "auto-merge/updater/alloy",
+          "pull_request_enabled": true,
+          "pull_request_existing_strategy": "replace",
+          "pull_request_message": "Created by https://github.com/grafana/alloy/actions/runs/${{ github.run_id }}. This PR will auto-merge once CI has passed.",
+          "pull_request_team_reviewers": [],
           "repo_name": "deployment_tools",
           "update_jsonnet_attribute_configs": [
             {

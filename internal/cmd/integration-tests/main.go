@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,11 +8,16 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	tc "github.com/testcontainers/testcontainers-go/modules/compose"
+
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
-var specificTest string
-var skipBuild bool
+var (
+	specificTest string
+	skipBuild    bool
+	stateful     bool
+	testTimeout  time.Duration
+)
 
 func main() {
 	rootCmd := &cobra.Command{
@@ -24,6 +28,13 @@ func main() {
 
 	rootCmd.PersistentFlags().StringVar(&specificTest, "test", "", "Specific test directory to run")
 	rootCmd.PersistentFlags().BoolVar(&skipBuild, "skip-build", false, "Skip building Alloy")
+	statefulUsageString := "Run the tests in a stateful manner. " +
+		"The docker compose setup will not be torn down after the tests complete. " +
+		"Any queries will be run with a start time set to the alloy container start time. " +
+		"This is useful for a fast iteration loop locally but should not be used in CI." +
+		"You must run 'docker compose down' manually if you want to switch from stateful to stateless mode."
+	rootCmd.PersistentFlags().BoolVar(&stateful, "stateful", false, statefulUsageString)
+	rootCmd.PersistentFlags().DurationVar(&testTimeout, "test-timeout", common.DefaultTimeout, "Timeout for each individual test")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -32,31 +43,24 @@ func main() {
 }
 
 func runIntegrationTests(cmd *cobra.Command, args []string) {
+	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, specific-test=%s)\n", stateful, skipBuild, specificTest)
+
+	ctx := cmd.Context()
 	if !skipBuild {
 		buildAlloy()
 	}
 
-	err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-	if err != nil {
-		fmt.Println("error setting environment variable:", err)
-		return
+	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
+	if !stateful {
+		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
+		fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
+		time.Sleep(10 * time.Second)
+	} else {
+		// This has been the observed set of services that are required to be healthy for the tests to run. We cannot
+		// wait for all services as we have an init container that is expected to exit.
+		// After all services get a healthcheck we can use this 100% of the time instead of the hardcoded "wait 10 seconds".
+		executeCommand("docker", []string{"compose", "up", "kafka", "loki", "--wait"}, "Waiting for necessary compose services to be healthy")
 	}
-
-	compose, err := tc.NewDockerCompose("./docker-compose.yaml")
-	if err != nil {
-		panic(fmt.Errorf("failed to parse the docker compose file: %v", err))
-	}
-
-	ctx := context.Background()
-	fmt.Println("Start test containers with docker compose config")
-	err = compose.Up(ctx)
-	if err != nil {
-		panic(fmt.Errorf("could not start the docker compose: %v", err))
-	}
-	defer compose.Down(context.Background(), tc.RemoveImagesAll)
-
-	fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
-	time.Sleep(10 * time.Second)
 
 	if specificTest != "" {
 		fmt.Println("Running", specificTest)
@@ -64,7 +68,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 			specificTest = "./tests/" + specificTest
 		}
 		logChan = make(chan TestLog, 1)
-		runSingleTest(ctx, specificTest, 12345)
+		runSingleTest(ctx, specificTest, 12345, stateful, testTimeout)
 	} else {
 		testDirs, err := filepath.Glob("./tests/*")
 		if err != nil {

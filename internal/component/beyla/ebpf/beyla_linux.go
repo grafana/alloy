@@ -17,18 +17,20 @@ import (
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
 	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/prom"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"go.opentelemetry.io/obi/pkg/export/attributes"
+	"go.opentelemetry.io/obi/pkg/export/debug"
+	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/export/prom"
+	"go.opentelemetry.io/obi/pkg/filter"
+	"go.opentelemetry.io/obi/pkg/kubeflags"
+	"go.opentelemetry.io/obi/pkg/services"
+	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -177,7 +179,7 @@ func (args Selections) Convert() attributes.Selection {
 func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	d := beyla.DefaultConfig.Discovery
 
-	// Services
+	// Services (deprecated)
 	srv, err := args.Services.Convert()
 	if err != nil {
 		return d, err
@@ -196,6 +198,30 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 		d.DefaultExcludeServices = defaultExcludeSrv
 	}
 
+	if len(args.Instrument) > 0 {
+		instrument, err := args.Instrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.Instrument = instrument
+	}
+
+	if len(args.ExcludeInstrument) > 0 {
+		excludeInstrument, err := args.ExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.ExcludeInstrument = excludeInstrument
+	}
+
+	if len(args.DefaultExcludeInstrument) > 0 {
+		defaultExcludeInstrument, err := args.DefaultExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return d, err
+		}
+		d.DefaultExcludeInstrument = defaultExcludeInstrument
+	}
+
 	// Survey
 	survey, err := args.Survey.ConvertGlob()
 	if err != nil {
@@ -211,33 +237,65 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	return d, nil
 }
 
+func convertExportModes(modes []string) (services.ExportModes, error) {
+	var ret services.ExportModes
+
+	for _, m := range modes {
+		if m != "metrics" && m != "traces" {
+			return ret, fmt.Errorf("invalid export mode: '%s'", m)
+		}
+	}
+
+	// FIXME: there's no public API to construct ExportModes other than from a
+	// YAML blob. Once that gets fixed upstream, get rid of this intermediate
+	// YAML serialisation
+	out, err := yaml.Marshal(modes)
+
+	if err != nil {
+		return ret, err
+	}
+
+	var node yaml.Node
+
+	if err := yaml.Unmarshal(out, &node); err != nil {
+		return ret, err
+	}
+
+	if err := ret.UnmarshalYAML(node.Content[0]); err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
 func serviceConvert[Attr any](
 	s Service,
 	convertFunc func(string) (Attr, error),
-	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, error) {
+	convertKubernetesFunc func(KubernetesService) (map[string]*Attr, error)) (services.PortEnum, Attr, map[string]*Attr, map[string]*Attr, map[string]*Attr, services.ExportModes, error) {
 
 	var paths Attr
 	var kubernetes map[string]*Attr
 	var podLabels map[string]*Attr
 	var podAnnotations map[string]*Attr
+	var exportModes services.ExportModes
 
 	ports, err := stringToPortEnum(s.OpenPorts)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	paths, err = convertFunc(s.Path)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	kubernetes, err = convertKubernetesFunc(s.Kubernetes)
 	if err != nil {
-		return ports, paths, kubernetes, podLabels, podAnnotations, err
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 	}
 	podLabels = map[string]*Attr{}
 	for k, v := range s.Kubernetes.PodLabels {
 		label, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, err
+			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podLabels[k] = &label
 	}
@@ -246,17 +304,24 @@ func serviceConvert[Attr any](
 	for k, v := range s.Kubernetes.PodAnnotations {
 		annotation, err := convertFunc(v)
 		if err != nil {
-			return ports, paths, kubernetes, podLabels, podAnnotations, err
+			return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
 		}
 		podAnnotations[k] = &annotation
 	}
-	return ports, paths, kubernetes, podLabels, podAnnotations, nil
+
+	exportModes, err = convertExportModes(s.ExportModes)
+
+	if err != nil {
+		return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err
+	}
+
+	return ports, paths, kubernetes, podLabels, podAnnotations, exportModes, nil
 }
 
 func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 	var attrs services.RegexDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToRegexpAttr,
 			convertKubernetes,
@@ -280,7 +345,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
-			ExportModes:    s.ExportModes,
+			ExportModes:    exportModes,
 			SamplerConfig:  samplerConfig,
 		})
 	}
@@ -290,7 +355,7 @@ func (args Services) Convert() (services.RegexDefinitionCriteria, error) {
 func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 	var attrs services.GlobDefinitionCriteria
 	for _, s := range args {
-		ports, paths, kubernetes, podLabels, podAnnotations, err := serviceConvert(
+		ports, paths, kubernetes, podLabels, podAnnotations, exportModes, err := serviceConvert(
 			s,
 			stringToGlobAttr,
 			convertKubernetesGlob,
@@ -314,7 +379,7 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
 			PodAnnotations: podAnnotations,
-			ExportModes:    s.ExportModes,
+			ExportModes:    exportModes,
 			SamplerConfig:  samplerConfig,
 		})
 	}
@@ -536,6 +601,17 @@ func (c *Component) Run(ctx context.Context) error {
 		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
 	}
 
+	// Add deprecation warnings for legacy discovery fields
+	if len(c.args.Discovery.Services) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.services is deprecated, use discovery.instrument instead")
+	}
+	if len(c.args.Discovery.ExcludeServices) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.exclude_services is deprecated, use discovery.exclude_instrument instead")
+	}
+	if len(c.args.Discovery.DefaultExcludeServices) > 0 {
+		level.Warn(c.opts.Logger).Log("msg", "discovery.default_exclude_services is deprecated, use discovery.default_exclude_instrument instead")
+	}
+
 	var cancel context.CancelFunc
 	var cancelG *errgroup.Group
 	for {
@@ -550,9 +626,8 @@ func (c *Component) Run(ctx context.Context) error {
 				cancel()
 				level.Info(c.opts.Logger).Log("msg", "waiting for Beyla to terminate")
 				if err := cancelG.Wait(); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "failed to terminate Beyla", "err", err)
+					level.Error(c.opts.Logger).Log("msg", "Beyla terminated with error", "err", err)
 					c.reportUnhealthy(err)
-					return err
 				}
 			}
 
@@ -727,30 +802,76 @@ func (args *Arguments) Validate() error {
 	}
 
 	if hasAppFeature {
-		if len(args.Discovery.Services) == 0 && len(args.Discovery.Survey) == 0 {
-			return fmt.Errorf("discovery.services or discovery.survey is required when application features are enabled")
+		// Check if any discovery method is configured (new or legacy)
+		hasAnyDiscovery := len(args.Discovery.Services) > 0 ||
+			len(args.Discovery.Survey) > 0 ||
+			len(args.Discovery.Instrument) > 0
+
+		if !hasAnyDiscovery {
+			return fmt.Errorf("discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled")
 		}
+
+		// Validate legacy services field
 		if len(args.Discovery.Services) > 0 {
 			if err := args.Discovery.Services.Validate(); err != nil {
 				return fmt.Errorf("invalid discovery configuration: %s", err.Error())
 			}
 		}
+
+		// Validate survey field
 		if len(args.Discovery.Survey) > 0 {
 			if err := args.Discovery.Survey.Validate(); err != nil {
 				return fmt.Errorf("invalid survey configuration: %s", err.Error())
 			}
 		}
+
+		// Validate new instrument field
+		if len(args.Discovery.Instrument) > 0 {
+			if err := args.Discovery.Instrument.Validate(); err != nil {
+				return fmt.Errorf("invalid instrument configuration: %s", err.Error())
+			}
+		}
 	}
 
+	// Validate legacy exclude_services field
 	if len(args.Discovery.ExcludeServices) > 0 {
 		if err := args.Discovery.ExcludeServices.Validate(); err != nil {
 			return fmt.Errorf("invalid exclude_services configuration: %s", err.Error())
 		}
 	}
 
+	// Validate new exclude_instrument field
+	if len(args.Discovery.ExcludeInstrument) > 0 {
+		if err := args.Discovery.ExcludeInstrument.Validate(); err != nil {
+			return fmt.Errorf("invalid exclude_instrument configuration: %s", err.Error())
+		}
+	}
+
+	// Validate new default_exclude_instrument field
+	if len(args.Discovery.DefaultExcludeInstrument) > 0 {
+		if err := args.Discovery.DefaultExcludeInstrument.Validate(); err != nil {
+			return fmt.Errorf("invalid default_exclude_instrument configuration: %s", err.Error())
+		}
+	}
+
+	// Validate per-service samplers for legacy services
 	for i, service := range args.Discovery.Services {
 		if err := service.Sampler.Validate(); err != nil {
 			return fmt.Errorf("invalid sampler configuration in discovery.services[%d]: %s", i, err.Error())
+		}
+	}
+
+	// Validate per-service samplers for new instrument field
+	for i, service := range args.Discovery.Instrument {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.instrument[%d]: %s", i, err.Error())
+		}
+	}
+
+	// Validate per-service samplers for survey field
+	for i, service := range args.Discovery.Survey {
+		if err := service.Sampler.Validate(); err != nil {
+			return fmt.Errorf("invalid sampler configuration in discovery.survey[%d]: %s", i, err.Error())
 		}
 	}
 

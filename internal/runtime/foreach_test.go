@@ -136,6 +136,10 @@ func testConfigForEach(t *testing.T, config string, reloadConfig string, update 
 	}()
 
 	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
+	require.Eventually(t, func() bool {
 		sum := getDebugInfo[int](t, ctrl, "", "testcomponents.summation_receiver.sum")
 		return sum >= 10
 	}, 3*time.Second, 10*time.Millisecond)

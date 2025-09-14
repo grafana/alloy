@@ -35,7 +35,7 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueSettings.StorageID)
+			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueBatchConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -79,7 +79,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
 		Metadata:       toKafkaMetadata(cfg.Metadata),
 		Retry:          toRetryArguments(cfg.BackOffConfig),
-		Queue:          toQueueArguments(cfg.QueueSettings),
+		Queue:          toQueueArguments(cfg.QueueBatchConfig),
 		Producer:       toKafkaProducer(cfg.Producer),
 
 		TLS: tlsCfgPtr,

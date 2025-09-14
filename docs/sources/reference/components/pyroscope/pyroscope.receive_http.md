@@ -27,11 +27,11 @@ pyroscope.receive_http "<LABEL>" {
 }
 ```
 
-The component starts an HTTP server supporting the following endpoint.
+The component starts an HTTP server supporting the following endpoints:
 
-* `POST /ingest` - send profiles to the component, which is forwarded to the receivers as configured in the `forward_to argument`.
+* `POST /ingest`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope ingest API.
-* `POST /push.v1.PusherService/Push` - send profiles to the component, which is forwarded to the receivers as configured in the `forward_to argument`.
+* `POST /push.v1.PusherService/Push`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope pushv1.PusherService Connect API.
 
 ## Arguments
@@ -39,7 +39,7 @@ The component starts an HTTP server supporting the following endpoint.
 You can use the following argument with `pyroscope.receive_http`:
 
 | Name         | Type                     | Description                            | Default | Required |
-|--------------|--------------------------|----------------------------------------|---------|----------|
+| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
 | `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
 
 ## Blocks
@@ -47,7 +47,7 @@ You can use the following argument with `pyroscope.receive_http`:
 You can use the following block with `pyroscope.receive_http`:
 
 | Name           | Description                                        | Required |
-|----------------|----------------------------------------------------|----------|
+| -------------- | -------------------------------------------------- | -------- |
 | [`http`][http] | Configures the HTTP server that receives requests. | no       |
 
 [http]: #http
@@ -58,14 +58,14 @@ The `http` block configures the HTTP server.
 
 You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
 
-| Name                   | Type       | Description                                                                                                      | Default  | Required |
-|------------------------|------------|------------------------------------------------------------------------------------------------------------------|----------|----------|
-| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 16384.                                              | `16384`  | no       |
-| `listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no       |
-| `listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no       |
-| `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                | `"120s"` | no       |
-| `server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                                | `"30s"`  | no       |
-| `server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                               | `"30s"`  | no       |
+| Name                   | Type       | Description                                                                                                  | Default  | Required |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------------ | -------- | -------- |
+| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 16384.                                          | `16384`  | no       |
+| `listen_address`       | `string`   | Network address on which the server listens for connections. Defaults to accepting all incoming connections. | `""`     | no       |
+| `listen_port`          | `int`      | Port number on which the server listens for connections.                                                     | `8080`   | no       |
+| `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                            | `"120s"` | no       |
+| `server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                            | `"30s"`  | no       |
+| `server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                           | `"30s"`  | no       |
 
 ## Exported fields
 
@@ -78,33 +78,11 @@ You can use the following arguments to configure the `http` block. Any omitted f
 ## Debug metrics
 
 `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-`pyroscope_receive_http_tcp_connections_limit` (gauge): The max number of TCP connections that can be accepted (0 means no limit).
+`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
 
+## Troubleshoot
 
-## Connection limit errors
-
-If you see errors like `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"` in components that push to `pyroscope.receive_http` (such as `pyroscope.write`), this may be caused by reaching the TCP connection limit of `pyroscope.receive_http`.
-
-To diagnose this issue:
-
-1. Check the `pyroscope_receive_http_tcp_connections` metric to see if it's approaching or at the `pyroscope_receive_http_tcp_connections_limit`.
-2. If the connection limit is being reached, you have several options:
-
-   **Option A: Increase the connection limit**
-   
-   ```alloy
-   pyroscope.receive_http "default" {
-     http {
-       conn_limit = 32768  // Increase from default 16384
-       // ... other settings
-     }
-     // ... rest of configuration
-   }
-   ```
-
-   **Option B: Horizontal scaling**
-   
-   Deploy multiple instances of `pyroscope.receive_http` behind a load balancer to distribute the connection load across multiple receivers. This approach provides better scalability and fault tolerance.
+{{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
@@ -138,7 +116,7 @@ pyroscope.write "production" {
 
 {{< admonition type="note" >}}
 This example demonstrates forwarding to multiple `pyroscope.write` components.
-This configuration duplicates the received profiles and send a copy to each configured `pyroscope.write` component.
+This configuration duplicates the received profiles and sends a copy to each configured `pyroscope.write` component.
 {{< /admonition >}}
 
 You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed.

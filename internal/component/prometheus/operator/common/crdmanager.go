@@ -145,7 +145,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// Start prometheus scrape manager.
-	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls, prometheus.NoopMetadataStore{})
 	opts := &scrape.Options{}
 	c.scrapeManager, err = scrape.NewManager(opts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
@@ -434,9 +434,14 @@ func (c *crdManager) apply() error {
 	for _, sc := range c.scrapeConfigs {
 		scs = append(scs, sc)
 	}
-	err = c.scrapeManager.ApplyConfig(&config.Config{
-		ScrapeConfigs: scs,
-	})
+
+	cfg, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.logger)))
+	if err != nil {
+		return fmt.Errorf("loading empty config: %w", err)
+	}
+	cfg.ScrapeConfigs = scs
+
+	err = c.scrapeManager.ApplyConfig(cfg)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "error applying scrape configs", "err", err)
 		return err

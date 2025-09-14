@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
 )
 
 // Arguments configures the Beyla component.
@@ -75,14 +74,14 @@ type SamplerConfig struct {
 }
 
 type Service struct {
-	Name           string               `alloy:"name,attr,optional"`
-	Namespace      string               `alloy:"namespace,attr,optional"`
-	OpenPorts      string               `alloy:"open_ports,attr,optional"`
-	Path           string               `alloy:"exe_path,attr,optional"`
-	Kubernetes     KubernetesService    `alloy:"kubernetes,block,optional"`
-	ContainersOnly bool                 `alloy:"containers_only,attr,optional"`
-	ExportModes    services.ExportModes `alloy:"exports,attr,optional"`
-	Sampler        SamplerConfig        `alloy:"sampler,block,optional"`
+	Name           string            `alloy:"name,attr,optional"`
+	Namespace      string            `alloy:"namespace,attr,optional"`
+	OpenPorts      string            `alloy:"open_ports,attr,optional"`
+	Path           string            `alloy:"exe_path,attr,optional"`
+	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
+	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
+	ExportModes    []string          `alloy:"exports,attr,optional"`
+	Sampler        SamplerConfig     `alloy:"sampler,block,optional"`
 }
 
 type KubernetesService struct {
@@ -98,12 +97,19 @@ type KubernetesService struct {
 }
 
 type Discovery struct {
-	Services                        Services `alloy:"services,block,optional"`
-	ExcludeServices                 Services `alloy:"exclude_services,block,optional"`
-	DefaultExcludeServices          Services `alloy:"default_exclude_services,block,optional"`
-	Survey                          Services `alloy:"survey,block,optional"`
-	SkipGoSpecificTracers           bool     `alloy:"skip_go_specific_tracers,attr,optional"`
-	ExcludeOTelInstrumentedServices bool     `alloy:"exclude_otel_instrumented_services,attr,optional"`
+	// Deprecated: Use discovery.instrument instead
+	Services Services `alloy:"services,block,optional"`
+	// Deprecated: Use discovery.exlcude_instrument instead
+	ExcludeServices Services `alloy:"exclude_services,block,optional"`
+	// Deprecated: Use discovery.default_exclude_instrument instead
+	DefaultExcludeServices   Services `alloy:"default_exclude_services,block,optional"`
+	Survey                   Services `alloy:"survey,block,optional"`
+	Instrument               Services `alloy:"instrument,block,optional"`
+	ExcludeInstrument        Services `alloy:"exclude_instrument,block,optional"`
+	DefaultExcludeInstrument Services `alloy:"default_exclude_instrument,block,optional"`
+
+	SkipGoSpecificTracers           bool `alloy:"skip_go_specific_tracers,attr,optional"`
+	ExcludeOTelInstrumentedServices bool `alloy:"exclude_otel_instrumented_services,attr,optional"`
 }
 
 type Metrics struct {
@@ -119,7 +125,7 @@ type Traces struct {
 }
 
 type Network struct {
-	// Deprecated: Use Metrics.Features instead.
+	// Deprecated: Add "network" to metrics.features instead
 	Enable             bool          `alloy:"enable,attr,optional"`
 	Source             string        `alloy:"source,attr,optional"`
 	AgentIP            string        `alloy:"agent_ip,attr,optional"`

@@ -10,6 +10,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/v3/pkg/ingester/wal"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -22,10 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
-
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
 type testCase struct {
@@ -123,15 +121,14 @@ func TestQueueClient(t *testing.T) {
 
 			// Instance the client
 			cfg := Config{
-				URL:            serverURL,
-				BatchWait:      tc.batchWait,
-				BatchSize:      tc.batchSize,
-				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-				ExternalLabels: lokiflag.LabelSet{},
-				Timeout:        1 * time.Second,
-				TenantID:       "",
-				Queue:          tc.queueConfig,
+				URL:           serverURL,
+				BatchWait:     tc.batchWait,
+				BatchSize:     tc.batchSize,
+				Client:        config.HTTPClientConfig{},
+				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+				Timeout:       1 * time.Second,
+				TenantID:      "",
+				Queue:         tc.queueConfig,
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
@@ -265,14 +262,13 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	// Instance the client
 	cfg := Config{
-		URL:            serverURL,
-		BatchWait:      time.Millisecond * 50,
-		BatchSize:      10,
-		Client:         config.HTTPClientConfig{},
-		BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-		ExternalLabels: lokiflag.LabelSet{},
-		Timeout:        1 * time.Second,
-		TenantID:       "",
+		URL:           serverURL,
+		BatchWait:     time.Millisecond * 50,
+		BatchSize:     10,
+		Client:        config.HTTPClientConfig{},
+		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+		Timeout:       1 * time.Second,
+		TenantID:      "",
 		Queue: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,
@@ -360,14 +356,13 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 
 	// Instance the client
 	cfg := Config{
-		URL:            serverURL,
-		BatchWait:      time.Millisecond * 50,
-		BatchSize:      10,
-		Client:         config.HTTPClientConfig{},
-		BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-		ExternalLabels: lokiflag.LabelSet{},
-		Timeout:        1 * time.Second,
-		TenantID:       "",
+		URL:           serverURL,
+		BatchWait:     time.Millisecond * 50,
+		BatchSize:     10,
+		Client:        config.HTTPClientConfig{},
+		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+		Timeout:       1 * time.Second,
+		TenantID:      "",
 		Queue: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,

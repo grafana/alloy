@@ -11,12 +11,10 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func BuildLokiEntryWithTimestamp(level logging.Level, op, instanceKey, line string, timestamp int64) loki.Entry {
+func BuildLokiEntryWithTimestamp(level logging.Level, op, line string, timestamp int64) loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{
-			"job":      JobName,
-			"op":       model.LabelValue(op),
-			"instance": model.LabelValue(instanceKey),
+			"op": model.LabelValue(op),
 		},
 		Entry: logproto.Entry{
 			Timestamp: time.Unix(0, timestamp),
@@ -25,6 +23,6 @@ func BuildLokiEntryWithTimestamp(level logging.Level, op, instanceKey, line stri
 	}
 }
 
-func BuildLokiEntry(level logging.Level, op, instanceKey, line string) loki.Entry {
-	return BuildLokiEntryWithTimestamp(level, op, instanceKey, line, time.Now().UnixNano())
+func BuildLokiEntry(level logging.Level, op, line string) loki.Entry {
+	return BuildLokiEntryWithTimestamp(level, op, line, time.Now().UnixNano())
 }

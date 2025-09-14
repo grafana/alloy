@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package ebpf
 
@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
@@ -23,8 +24,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
-	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/table"
-	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
 
 func init() {
@@ -46,31 +45,23 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	cgroups, err := reporter.NewContainerIDCache(args.ContainerIDCacheSize)
-	if err != nil {
-		return nil, err
-	}
-	dynamicProfilingPolicy := cfg.PyroscopeDynamicProfilingPolicy
-	discovery := discovery2.NewTargetProducer(cgroups, args.targetsOptions(dynamicProfilingPolicy))
+	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
+	discovery := discovery2.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
 	ms := newMetrics(opts.Registerer)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
 
-	var nfs samples.NativeSymbolResolver
-	if cfg.SymbolizeNativeFrames {
-		tf := irsymcache.TableTableFactory{
-			Options: []table.Option{
-				table.WithFiles(),
-				table.WithLines(),
-			},
-		}
-		nfs, err = irsymcache.NewFSCache(tf, irsymcache.Options{
-			SizeEntries: uint32(cfg.SymbCacheSizeEntries),
-			Path:        cfg.SymbCachePath,
-		})
-		if err != nil {
-			return nil, err
-		}
+	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
+		Options: []lidia.Option{
+			lidia.WithFiles(),
+			lidia.WithLines(),
+		},
+	}, irsymcache.Options{
+		SizeEntries: uint32(args.SymbCacheSizeEntries),
+		Path:        args.SymbCachePath,
+	})
+	if err != nil {
+		return nil, err
 	}
 	cfg.FileObserver = nfs
 
@@ -91,12 +82,14 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter, err = reporter.New(opts.Logger, cgroups, cfg, discovery, nfs, reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
-		res.sendProfiles(ctx, ps)
-	}))
-	if err != nil {
-		return nil, err
-	}
+	cfg.Reporter = reporter.NewPPROF(opts.Logger, &reporter.Config{
+		ExtraNativeSymbolResolver: nfs,
+		ReportInterval:            cfg.ReporterInterval,
+		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
+		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
+			res.sendProfiles(ctx, ps)
+		}),
+	}, discovery)
 	if cfg.VerboseMode {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -120,7 +113,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
@@ -227,18 +219,23 @@ func (c *Component) checkTraceFS() {
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		GoEnabled:            false,
+		CollectInterval: 15 * time.Second,
+		SampleRate:      19,
+		Demangle:        "none",
+		PythonEnabled:   true,
+		PerlEnabled:     true,
+		PHPEnabled:      true,
+		HotspotEnabled:  true,
+		RubyEnabled:     true,
+		V8Enabled:       true,
+		DotNetEnabled:   true,
+		OffCPUThreshold: 0,
+		GoEnabled:       true,
+
+		// undocumented
+		PyroscopeDynamicProfilingPolicy: true,
+		SymbCachePath:                   "/tmp/symb-cache",
+		SymbCacheSizeEntries:            2048,
 	}
 }
 
@@ -257,11 +254,11 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 		return nil, err
 	}
 
-	cfg := new(controller.Config)
-	*cfg = *cfgProtoType
+	cfg := &controller.Config{Config: cfgProtoType}
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
+	cfg.OffCPUThreshold = args.OffCPUThreshold
 	return cfg, nil
 }
 
