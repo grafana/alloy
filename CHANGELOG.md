@@ -86,6 +86,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
+
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
 
 - `pyroscope.write`, `pyroscope.receive_http` components include `trace_id` in logs and propagate it downstream. (@korniltsev)
