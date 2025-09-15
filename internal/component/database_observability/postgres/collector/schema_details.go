@@ -409,8 +409,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 			return nil, err
 		}
 
-		// Expression-based indexes are nullable TODO: check if this is always true
-		nullable := len(expressions) > 0
+		// TODO: Expression-based indexes nullability difficult to determine
 
 		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
 			Name:        indexName,
@@ -418,7 +417,6 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 			Unique:      unique,
 			Columns:     columns,
 			Expressions: expressions,
-			Nullable:    nullable,
 		})
 	}
 
