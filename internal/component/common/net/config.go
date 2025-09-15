@@ -59,12 +59,12 @@ func (h *HTTPConfig) Into(c *dskit.Config) {
 	c.HTTPServerIdleTimeout = h.ServerIdleTimeout
 	if h.TLSConfig != nil {
 		h.TLSConfig.Into(&c.HTTPTLSConfig)
-	}
-	if h.TLSConfig.MinVersion != c.MinVersion {
-		c.MinVersion = h.TLSConfig.MinVersion
-	}
-	if h.TLSConfig.CipherSuites != c.CipherSuites {
-		c.CipherSuites = h.TLSConfig.CipherSuites
+		if h.TLSConfig.MinVersion != c.MinVersion {
+			c.MinVersion = h.TLSConfig.MinVersion
+		}
+		if h.TLSConfig.CipherSuites != c.CipherSuites {
+			c.CipherSuites = h.TLSConfig.CipherSuites
+		}
 	}
 }
 
