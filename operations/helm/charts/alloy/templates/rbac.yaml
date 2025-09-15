@@ -41,8 +41,7 @@ metadata:
     app.kubernetes.io/component: rbac
 rules:
   {{- .Values.rbac.rules | toYaml | nindent 2 }}
-  - nonResourceURLs: ["/metrics"]
-    verbs: ["get"]
+  {{- .Values.rbac.clusterRules | toYaml | nindent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

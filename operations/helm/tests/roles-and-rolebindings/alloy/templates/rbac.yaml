@@ -21,9 +21,6 @@ rules:
     - endpoints
     - endpointslices
     - ingresses
-    - nodes
-    - nodes/proxy
-    - nodes/metrics
     - pods
     - services
     verbs:
