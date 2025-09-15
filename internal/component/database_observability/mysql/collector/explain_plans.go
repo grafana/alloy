@@ -652,7 +652,10 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		_, _ = conn.ExecContext(ctx, "USE `performance_schema`")
+		conn.Close()
+	}()
 
 	useStatement := fmt.Sprintf("USE `%s`", qi.schemaName)
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
