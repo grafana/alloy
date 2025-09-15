@@ -48,7 +48,7 @@ You can use the following argument with `prometheus.receive_http`:
 
 ## Blocks
 
-You can use the following block with `prometheus.receive_http`:
+You can use the following blocks with `prometheus.receive_http`:
 
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |

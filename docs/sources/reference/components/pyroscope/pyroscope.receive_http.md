@@ -44,7 +44,7 @@ You can use the following argument with `pyroscope.receive_http`:
 
 ## Blocks
 
-You can use the following block with `pyroscope.receive_http`:
+You can use the following blocks with `pyroscope.receive_http`:
 
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
