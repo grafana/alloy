@@ -8,11 +8,11 @@ headless: true
 | ------------------ | -------- | ---------------------------------------------------------------- | ---------------- | -------- |
 | `cert_pem`         | `string` | PEM data of the server TLS certificate.                          | `""`             | no       |
 | `cert_file`        | `string` | Path to the server TLS certificate on disk.                      | `""`             | no       |
-| `key_file`         | `string` | Path to the server TLS key on disk.                              | `""`             | no       |
-| `key_pem`          | `secret` | PEM data of the server TLS key.                                  | `""`             | no       |
 | `client_auth_type` | `string` | Client authentication to use.                                    | `"NoClientCert"` | no       |
 | `client_ca_file`   | `string` | Path to the client CA file on disk to validate requests against. | `""`             | no       |
 | `client_ca_pem`    | `string` | PEM data of the client CA to validate requests against.          | `""`             | no       |
+| `key_file`         | `string` | Path to the server TLS key on disk.                              | `""`             | no       |
+| `key_pem`          | `secret` | PEM data of the server TLS key.                                  | `""`             | no       |
 
 The following pairs of arguments are mutually exclusive and can't both be set simultaneously:
 
