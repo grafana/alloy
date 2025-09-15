@@ -63,7 +63,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.11
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.6.3
+	github.com/grafana/beyla/v2 v2.6.4
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20250514165824-dd4adf36ad34
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -81,7 +81,7 @@ require (
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
-	github.com/grafana/walqueue v0.0.0-20250911194803-af34c547ff72 // Targeting the prwv2 branch until merged
+	github.com/grafana/walqueue v0.0.0-20250915180159-d08530fddc89 // Targeting the prwv2 branch until merged
 	github.com/hashicorp/consul/api v1.32.1
 	github.com/hashicorp/go-discover v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -1068,7 +1068,7 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.3
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.4
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250903104920-08eeb4019222
 

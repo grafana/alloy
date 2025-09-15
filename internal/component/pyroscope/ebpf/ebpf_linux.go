@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package ebpf
 
@@ -113,7 +113,6 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-
 	c.checkTraceFS()
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
@@ -220,19 +219,18 @@ func (c *Component) checkTraceFS() {
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		ContainerIDCacheSize: 1024,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		OffCPUThreshold:      0,
-		GoEnabled:            true,
+		CollectInterval: 15 * time.Second,
+		SampleRate:      19,
+		Demangle:        "none",
+		PythonEnabled:   true,
+		PerlEnabled:     true,
+		PHPEnabled:      true,
+		HotspotEnabled:  true,
+		RubyEnabled:     true,
+		V8Enabled:       true,
+		DotNetEnabled:   true,
+		OffCPUThreshold: 0,
+		GoEnabled:       true,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
