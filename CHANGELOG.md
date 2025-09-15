@@ -86,8 +86,6 @@ Main (unreleased)
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
-- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
-
 ### Enhancements
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
