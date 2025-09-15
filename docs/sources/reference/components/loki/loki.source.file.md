@@ -51,12 +51,10 @@ If not set, it defaults to UTF-8.
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
 
-{{< admonition type="note" >}}
-The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is converted to the new format.
+The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
+The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
-If you add any labels before `loki.source.file`, then the positions file conversion won't work.
-The legacy positions file didn't have a concept of labels in the positions file, so the conversion assumes no labels.
-{{< /admonition >}}
+When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
 ## Blocks
 

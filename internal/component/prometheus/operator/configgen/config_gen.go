@@ -178,6 +178,7 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	c.ScrapeInterval = config.DefaultGlobalConfig.ScrapeInterval
 	c.ScrapeTimeout = config.DefaultGlobalConfig.ScrapeTimeout
 	c.ScrapeProtocols = config.DefaultGlobalConfig.ScrapeProtocols
+	c.ScrapeFallbackProtocol = config.PrometheusText0_0_4 // Keep the same as Prometheus V2
 
 	if opt.DefaultScrapeInterval != 0 {
 		c.ScrapeInterval = model.Duration(opt.DefaultScrapeInterval)

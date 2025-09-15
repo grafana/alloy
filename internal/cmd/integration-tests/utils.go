@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,13 +11,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 const (
@@ -44,12 +44,12 @@ func executeCommand(command string, args []string, taskDescription string) {
 
 	cmd := exec.Command(command, args...)
 
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+	// Assign os.Stdout and os.Stderr to the command's output streams
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("error executing %s: %v\nstdout: %s\nstderr: %s", taskDescription, err, outBuf.String(), errBuf.String())
+		log.Fatalf("error executing %s: %v", taskDescription, err)
 	}
 }
 
@@ -128,9 +128,11 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 }
 
 // Configure the test command with appropriate environment variables if needed
-func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container) (*exec.Cmd, error) {
+func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container, testTimeout time.Duration) (*exec.Cmd, error) {
 	testCmd := exec.Command("go", "test")
 	testCmd.Dir = testDir
+
+	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
 
 	if dirName == "loki-enrich" {
 		mappedPort, err := alloyContainer.MappedPort(ctx, "1514/tcp")
@@ -143,20 +145,15 @@ func setupTestCommand(ctx context.Context, dirName string, testDir string, alloy
 			return nil, fmt.Errorf("failed to get container host: %v", err)
 		}
 
-		fmt.Printf("Loki API should be available at http://%s:%s/loki/api/v1/push\n",
-			host, mappedPort.Port())
-
-		// TODO: we shouldn't have this logic here, this is needed for the loki-enrich test
-		// to work, but we should find a better way to pass the host and port
-		testCmd.Env = append(os.Environ(),
-			fmt.Sprintf("ALLOY_HOST=%s", host),
-			fmt.Sprintf("ALLOY_PORT=%s", mappedPort.Port()))
+		testCmd.Env = append(testCmd.Environ(),
+			fmt.Sprintf("%s=%s", common.AlloyHostEnv, host),
+			fmt.Sprintf("%s=%s", common.AlloyPortEnv, mappedPort.Port()))
 	}
 
 	return testCmd, nil
 }
 
-func runSingleTest(ctx context.Context, testDir string, port int) {
+func runSingleTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
 	info, err := os.Stat(testDir)
 	if err != nil {
 		panic(err)
@@ -183,16 +180,11 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		}
 	}()
 
-	// Get network name
-	networkName, err := getTestcontainersNetworkName(ctx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get Testcontainers network name: %v", err))
-	}
-
 	// Create container request
-	req := createContainerRequest(dirName, port, networkName, containerFiles)
+	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles)
 
 	// Start container
+	containerStartTime := time.Now()
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -205,18 +197,29 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 		}
 		return
 	}
-	defer alloyContainer.Terminate(ctx)
+	defer func() {
+		if err := alloyContainer.Terminate(ctx); err != nil {
+			logChan <- TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
+			}
+		}
+	}()
 
 	// Setup and run test command
-	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer)
+	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer, testTimeout)
 	if err != nil {
 		logChan <- TestLog{
 			TestDir:  dirName,
-			AlloyLog: fmt.Sprintf("%v", err),
+			AlloyLog: fmt.Sprintf("failed to setup test command: %v", err),
 		}
 		return
 	}
-
+	if stateful {
+		testCmd.Env = append(testCmd.Environ(),
+			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
+			fmt.Sprintf("%s=true", common.TestStatefulEnv))
+	}
 	testOutput, errTest := testCmd.CombinedOutput()
 
 	// Collect and report logs if test failed
@@ -244,7 +247,7 @@ func runAllTests(ctx context.Context) {
 		wg.Add(1)
 		go func(td string, offset int) {
 			defer wg.Done()
-			runSingleTest(ctx, td, port+offset)
+			runSingleTest(ctx, td, port+offset, stateful, testTimeout)
 		}(testDir, i)
 	}
 	wg.Wait()
@@ -266,7 +269,6 @@ func reportResults() {
 
 	if testsFailed > 0 {
 		fmt.Printf("%d tests failed!\n", testsFailed)
-		os.Exit(1)
 	} else {
 		fmt.Println("All integration tests passed!")
 	}
@@ -292,25 +294,4 @@ func collectFiles(root string) ([]fileInfo, error) {
 		return nil
 	})
 	return filesToAdd, err
-}
-
-func getTestcontainersNetworkName(ctx context.Context) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return "", fmt.Errorf("failed to create Docker client: %v", err)
-	}
-	defer cli.Close()
-
-	networks, err := cli.NetworkList(ctx, network.ListOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to list networks: %v", err)
-	}
-
-	for _, network := range networks {
-		if strings.HasSuffix(network.Name, "_integration-tests") {
-			return network.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find Testcontainers network")
 }

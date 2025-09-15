@@ -13,7 +13,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func init() {
@@ -99,7 +98,7 @@ func toSplunkConfig(cfg *splunkhecexporter.Config) splunkhec_config.SplunkConf {
 		UseMultiMetricFormat:    cfg.UseMultiMetricFormat,
 		Heartbeat:               toSplunkHecHeartbeat(cfg.Heartbeat),
 		Telemetry:               toSplunkHecTelemetry(cfg.Telemetry),
-		BatcherConfig:           toSplunkHecBatcherConfig(cfg.BatcherConfig),
+		DeprecatedBatcher:       toSplunkHecBatcherConfig(cfg.DeprecatedBatcher),
 		HecFields:               toSplunkHecFields(cfg.HecFields),
 	}
 }
@@ -119,13 +118,17 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 	}
 }
 
-func toSplunkHecBatcherConfig(cfg exporterhelper.BatcherConfig) splunkhec_config.BatcherConfig { //nolint:staticcheck
-	sizer, _ := cfg.SizeConfig.Sizer.MarshalText()
-	return splunkhec_config.BatcherConfig{
+func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) *splunkhec_config.DeprecatedBatchConfig {
+	if !cfg.Enabled {
+		return nil
+	}
+	//nolint:staticcheck
+	sizer, _ := cfg.Sizer.MarshalText()
+	return &splunkhec_config.DeprecatedBatchConfig{
 		Enabled:      cfg.Enabled,
 		FlushTimeout: cfg.FlushTimeout,
-		MinSize:      cfg.SizeConfig.MinSize,
-		MaxSize:      cfg.SizeConfig.MaxSize,
+		MinSize:      cfg.MinSize,
+		MaxSize:      cfg.MaxSize,
 		Sizer:        string(sizer),
 	}
 }

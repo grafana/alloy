@@ -43,6 +43,9 @@ It takes three arguments:
 * The first two arguments are a of type `list(map(string))`. The keys of the map are strings.
   The value for each key could be of any Alloy type such as a `string`, `integer`, `map`, or a `capsule`.
 * The third input is an `array` containing strings. The strings are the keys whose value has to match for maps to be combined.
+* (optional) The fourth input is a `boolean` which defaults to `false`. 
+  When it is set to `true`, each item from the first argument will be passed through even if there is no match.
+  This is helpful if you want to enrich the first list with attributes from the second list, without losing any of the information from the first list.
 
 The maps that don't contain all the keys provided in the third argument will be discarded. When maps are combined and both contain the same keys, the last value from the second argument will be used.
 
@@ -73,15 +76,25 @@ for every map in arg1:
 Examples using discovery and exporter components:
 
 ```alloy
-> array.combine_maps(discovery.kubernetes.k8s_pods.targets, prometheus.exporter.postgres, ["instance"])
+> array.combine_maps(prometheus.exporter.postgres.example.targets, discovery.kubernetes.k8s_pods.targets, ["instance"], true)
 
-> array.combine_maps(prometheus.exporter.redis.default.targets, [{"instance"="1.1.1.1", "testLabelKey" = "testLabelVal"}], ["instance"])
+> array.combine_maps(prometheus.exporter.redis.default.targets, [{"instance"="1.1.1.1", "testLabelKey" = "testLabelVal"}], ["instance"], true)
 ```
+
+In the examples above the fourth argument is set to `true` so that the original targets from the exporters will still be preserved and scraped
+even if they cannot be enriched with values from the second argument.
 
 You can find more examples in the [tests][].
 
+{{< admonition type="note" >}}
+`array.combine_maps` can be useful for enriching Prometheus service discovery targets prior to a Prometheus scrape.
+It cannot be used to enrich Prometheus metrics with labels from service discovery components.
+You can use the [prometheus.enrich][] component for this purpose.
+
+[prometheus.enrich](../components/prometheus/prometheus.enrich)
+{{< /admonition >}}
+
 [tests]: https://github.com/grafana/alloy/blob/main/syntax/vm/vm_stdlib_test.go
-[experimental]: https://grafana.com/docs/release-life-cycle/
 
 ## array.group_by
 

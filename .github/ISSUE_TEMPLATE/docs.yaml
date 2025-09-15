@@ -126,6 +126,7 @@ body:
       - otelcol.receiver.file_stats
       - otelcol.receiver.filelog
       - otelcol.receiver.fluentforward
+      - otelcol.receiver.googlecloudpubsub
       - otelcol.receiver.influxdb
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka
@@ -140,6 +141,7 @@ body:
       - otelcol.receiver.vcenter
       - otelcol.receiver.zipkin
       - otelcol.storage.file
+      - prometheus.enrich
       - prometheus.exporter.apache
       - prometheus.exporter.azure
       - prometheus.exporter.blackbox

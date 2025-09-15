@@ -16,15 +16,19 @@ var (
 	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.postgres\.database\.azure\.com`)
 )
 
+var engineVersionRegex = regexp.MustCompile(`(?P<version>^[1-9]+\.[1-9]+)(?P<suffix>.*)?$`)
+
 type ConnectionInfoArguments struct {
-	DSN      string
-	Registry *prometheus.Registry
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
 }
 
 type ConnectionInfo struct {
-	DSN        string
-	Registry   *prometheus.Registry
-	InfoMetric *prometheus.GaugeVec
+	DSN           string
+	Registry      *prometheus.Registry
+	EngineVersion string
+	InfoMetric    *prometheus.GaugeVec
 
 	running *atomic.Bool
 }
@@ -34,15 +38,16 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		Namespace: "database_observability",
 		Name:      "connection_info",
 		Help:      "Information about the connection",
-	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine"})
+	}, []string{"provider_name", "provider_region", "db_instance_identifier", "engine", "engine_version"})
 
 	args.Registry.MustRegister(infoMetric)
 
 	return &ConnectionInfo{
-		DSN:        args.DSN,
-		Registry:   args.Registry,
-		InfoMetric: infoMetric,
-		running:    &atomic.Bool{},
+		DSN:           args.DSN,
+		Registry:      args.Registry,
+		EngineVersion: args.EngineVersion,
+		InfoMetric:    infoMetric,
+		running:       &atomic.Bool{},
 	}, nil
 }
 
@@ -58,6 +63,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		dbInstanceIdentifier = "unknown"
 		engine               = "postgres"
+		engineVersion        = "unknown"
 	)
 
 	parts, err := ParseURL(c.DSN)
@@ -81,7 +87,13 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			}
 		}
 	}
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine).Set(1)
+
+	matches := engineVersionRegex.FindStringSubmatch(c.EngineVersion)
+	if len(matches) > 1 {
+		engineVersion = matches[1]
+	}
+
+	c.InfoMetric.WithLabelValues(providerName, providerRegion, dbInstanceIdentifier, engine, engineVersion).Set(1)
 	return nil
 }
 

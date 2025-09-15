@@ -28,7 +28,7 @@ jobs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - name: Find fuzz tests
@@ -79,7 +79,7 @@ jobs:
         include: ${{ fromJson(needs.find-tests.outputs.tests) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
 
@@ -93,7 +93,7 @@ jobs:
         run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
@@ -160,7 +160,7 @@ jobs:
 
       - name: Create new issue
         if: ${{ failure() && steps.new-failure.outputs.file != '' && inputs.create-issue }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const failureName = "${FAILED_NAME}";

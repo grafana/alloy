@@ -80,7 +80,7 @@ func TestInstanceKey(t *testing.T) {
 				ResourceType:  "Microsoft.Storage/storageAccounts",
 				Metrics:       []string{"Availability"},
 			},
-			expectedInstanceLabel: "0cd3771ca70c15c7d7a14da3ab603c85",
+			expectedInstanceLabel: "aa354aa3a12cfb94dc18a0c65eeb5384",
 		},
 		{
 			testName:      "blackbox",
@@ -387,7 +387,13 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "windows",
 			componentName: "prometheus.exporter.windows",
 			args: windows.Arguments{
-				EnabledCollectors: []string{"cpu", "cs", "logical_disk", "net", "os", "service", "system"},
+				EnabledCollectors: []string{"cpu", "logical_disk", "net", "os", "service", "system"},
+				LogicalDisk: windows.LogicalDiskConfig{
+					EnabledList: []string{"metrics"},
+				},
+				Net: windows.NetConfig{
+					EnabledList: []string{"metrics"},
+				},
 			},
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",

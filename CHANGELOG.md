@@ -28,19 +28,71 @@ Main (unreleased)
 
   See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+- `prometheus.exporter.windows` dependency has been updated to v0.31.1. (@dehaansa)
+  - There are various renamed metrics and two removed collectors (`cs`, `logon`), see the [v1.11 release notes][1_11-release-notes] for more information.
+
+    [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
+
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
+
+- [`otelcol.processor.batch`] Two arguments have different default values. (@ptodev)
+  - `send_batch_size` is now set to 2000 by default. It used to be 8192.
+  - `send_batch_max_size` is now set to 3000 by default. It used to be 0.
+  - This helps prevent issues with ingestion of batches that are too large.
+
+- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.134.0. (@ptodev)
+  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release, use `otelcol.receiver.otelp` instead.
+  - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
+    Use `block_on_overflow` instead.
+  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
+    Also removed the `SASL/AWS_MSK_IAM` authentication mechanism.
+  - [`otelcol.exporter.splunkhec`] The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
+  - [`otelcol.exporter.loadbalancing`] Use a linear probe to decrease variance caused by hash collisions, which was causing a non-uniform distribution of loadbalancing.
+  - [`otelcol.connector.servicegraph`] The `database_name_attribute` argument has been removed.
+  - [`otelcol.connector.spanmetrics`] Adds a default maximum number of exemplars within the metric export interval.
+  - [`otelcol.processor.tail_sampling`] Add a new `block_on_overflow` config attribute.
 
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
+- Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `query_sample` collector now supports auto-enabling the necessary `setup_consumers` settings (@cristiangreco)
+  - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
+  - include `server_id` label on log entries (@matthewnolf)
+  - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
+  - updated the config blocks and documentation (@cristiangreco)
+
+- (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
+  - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
+  - add `query_sample` collector for postgres (@gaantunes)
+  - add `schema_table` collector for postgres (@fridgepoet)
+  - include `server_id` label on logs and metrics (@matthewnolf)
+
+- Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
+
+- Add otel collector converter for `otelcol.receiver.googlecloudpubsub`. (@kalleep)
+
+- (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
+  When set to `true`, it will propagate metric metadata to downstream components.
+
+- Add a flag to pyroscope.ebpf alloy configuration to set the off-cpu profiling threshold. (@luweglarz)
+
+- Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
 ### Enhancements
+
+- Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
+
+- `pyroscope.write`, `pyroscope.receive_http` components include `trace_id` in logs and propagate it downstream. (@korniltsev)
+
+- Improve logging in `pyroscope.write` component. (@korniltsev)
+
+- Add comprehensive latency metrics to `pyroscope.write` component with endpoint-specific tracking for both push and ingest operations. (@korniltsev, @claude)
 
 - `prometheus.scrape` now supports `convert_classic_histograms_to_nhcb`, `enable_compression`, `metric_name_validation_scheme`, `metric_name_escaping_scheme`, `native_histogram_bucket_limit`, and `native_histogram_min_bucket_factor` arguments. See reference documentation for more details. (@thampiotr)
 
@@ -62,15 +114,67 @@ Main (unreleased)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
+- Add support to validate references, stdlib functions and arguments when using validate command. (@kalleep)
+
+- Update the `prometheus.exporter.process` component to get the `remove_empty_groups` option. (@dehaansa)
+
+- Remove unnecessary allocations in `stage.static_labels`. (@kalleep)
+
+- Upgrade `beyla.ebpf` from Beyla version v2.2.5 to v2.5.8 The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.5.2) (@marctc)
+
+- `prometheus.exporter.azure` supports setting `interval` and `timespan` independently allowing for further look back when querying metrics. (@kgeckhart)
+
+- `loki.source.journal` now supports `legacy_positon` block that can be used to translate Static Agent or Promtail position files. (@kalleep)
+
+- Normalize attr key name in logfmt logger. (@zry98)
+
+- (_Experimental_) Add an extra parameter to the `array.combine_maps` standard library function
+  to enable preserving the first input list even if there is no match. (@ptodev)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
+
+- Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
+
+- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
+
+- Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
+
+- The Windows installer and executables are now code signed. (@martincostello)
+
+- Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
 
-- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
-
 - Fix ebpf profiler metrics `pyroscope_ebpf_active_targets`, `pyroscope_ebpf_profiling_sessions_total`, `pyroscope_ebpf_profiling_sessions_failing_total` not being updated. (luweglarz)
 
 - Fix `prometheus.operator.podmonitors` so it now handle portNumber from PodMonitor CRD. (@kalleep)
+
+- Fix `pyroscope.receive_http` so it does not restart server if the server configuration has not changed. (@korniltsev)
+
+- Increase default connection limit in `pyroscope.receive_http` from 100 to 16k. (@korniltsev)
+
+- Fix issue in `prometheus.remote_write`'s WAL which could allow it to hold an active series forever. (@kgeckhart)
+
+- Fix issue in static and promtail converter where metrics type was not properly handled. (@kalleep)
+
+- Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
+
+- Fix `database_observability.mysql` and `database_observability.postgres` crashing alloy process due to uncaught errors.
+
+- Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
+
+- Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
+
+v1.10.2
+-----------------
+
+### Bugfixes
+
+- Fix issue in `prometheus.write.queue` causing inability to increase shard count if existing WAL data was present on start. (@kgeckhart)
+
+- Fix issue with `loki.source.gcplog` when push messages sent by gcp pub/sub only includes `messageId`. (@kalleep)
 
 v1.10.1
 -----------------
@@ -168,6 +272,8 @@ v1.10.0
 - Update the `prometheus.exporter.postgres` component with latest changes and bugfixes for Postgres17 (@cristiangreco)
 
 - Add `tail_from_end` argument to `loki.source.podlogs` to optionally start reading from the end of a log stream for newly discovered pods. (@harshrai654)
+
+- Remove limitation in `loki.source.file` when `legacy_position_file` is unset. Alloy can now recover legacy positions even if labels are added. (@kalleep)
 
 ### Bugfixes
 

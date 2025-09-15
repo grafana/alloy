@@ -20,6 +20,7 @@ func TestConfig_ToScrapeSettings(t *testing.T) {
 		Metrics:                  []string{"MetricA"},
 		MetricAggregations:       []string{"MiNimUm"},
 		Timespan:                 "timespan_me",
+		Interval:                 "interval_me",
 		IncludedResourceTags:     []string{"tag_me"},
 		MetricNamespace:          "namespace_me",
 		MetricNameTemplate:       "name_template_me",
@@ -31,7 +32,7 @@ func TestConfig_ToScrapeSettings(t *testing.T) {
 		ResourceType:    "resourceType",
 		Filter:          "filter_me",
 		Timespan:        "timespan_me",
-		Interval:        to.Ptr("timespan_me"),
+		Interval:        to.Ptr("interval_me"),
 		Metrics:         []string{"MetricA"},
 		MetricNamespace: "namespace_me",
 		Aggregations:    []string{"MiNimUm"},
@@ -85,18 +86,6 @@ func TestConfig_ToScrapeSettings(t *testing.T) {
 			},
 		},
 		{
-			name: "sets config timespan to setting interval and timespan",
-			configModifier: func(config azure_exporter.Config) azure_exporter.Config {
-				config.Timespan = "timespan-value"
-				return config
-			},
-			toExpectedSettings: func(settings metrics.RequestMetricSettings) metrics.RequestMetricSettings {
-				settings.Timespan = "timespan-value"
-				settings.Interval = to.Ptr[string]("timespan-value")
-				return settings
-			},
-		},
-		{
 			name: "sets regions and top when using regions with no dimensions",
 			configModifier: func(config azure_exporter.Config) azure_exporter.Config {
 				config.Regions = []string{"uswest", "useast"}
@@ -126,6 +115,8 @@ func TestConfig_Validate(t *testing.T) {
 		ResourceType:          "resourceType",
 		Metrics:               []string{"MetricA"},
 		AzureCloudEnvironment: "azurecloud",
+		Interval:              "PT1M",
+		Timespan:              "PT5M",
 	}
 
 	baseConfigValid := t.Run("Base Config is Valid", func(t *testing.T) {
@@ -194,6 +185,28 @@ func TestConfig_Validate(t *testing.T) {
 			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
 				config.ResourceGraphQueryFilter = "filter the resources"
 				config.Regions = []string{"uswest", "useast"}
+				return config
+			},
+		},
+		{
+			name: "invalid interval",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.Interval = "Not a valid interval"
+				return config
+			},
+		},
+		{
+			name: "invalid timespan",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.Timespan = "Not a valid timespan"
+				return config
+			},
+		},
+		{
+			name: "interval larger than timespan",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.Timespan = "PT1M"
+				config.Interval = "PT5M"
 				return config
 			},
 		},

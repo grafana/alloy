@@ -28,22 +28,24 @@ func createIntegration(opts component.Options, args component.Arguments, default
 // DefaultArguments holds the default arguments for the prometheus.exporter.process
 // component.
 var DefaultArguments = Arguments{
-	ProcFSPath: "/proc",
-	Children:   true,
-	Threads:    true,
-	SMaps:      true,
-	Recheck:    false,
+	ProcFSPath:        "/proc",
+	Children:          true,
+	Threads:           true,
+	SMaps:             true,
+	Recheck:           false,
+	RemoveEmptyGroups: false,
 }
 
 // Arguments configures the prometheus.exporter.process component
 type Arguments struct {
 	ProcessExporter []MatcherGroup `alloy:"matcher,block,optional"`
 
-	ProcFSPath string `alloy:"procfs_path,attr,optional"`
-	Children   bool   `alloy:"track_children,attr,optional"`
-	Threads    bool   `alloy:"track_threads,attr,optional"`
-	SMaps      bool   `alloy:"gather_smaps,attr,optional"`
-	Recheck    bool   `alloy:"recheck_on_scrape,attr,optional"`
+	ProcFSPath        string `alloy:"procfs_path,attr,optional"`
+	Children          bool   `alloy:"track_children,attr,optional"`
+	Threads           bool   `alloy:"track_threads,attr,optional"`
+	SMaps             bool   `alloy:"gather_smaps,attr,optional"`
+	Recheck           bool   `alloy:"recheck_on_scrape,attr,optional"`
+	RemoveEmptyGroups bool   `alloy:"remove_empty_groups,attr,optional"`
 }
 
 // MatcherGroup taken and converted to Alloy from github.com/ncabatoff/process-exporter/config
