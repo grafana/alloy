@@ -143,6 +143,8 @@ Main (unreleased)
 
 - Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
 
+- Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
