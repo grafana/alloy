@@ -56,7 +56,7 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	convertedHttpServer, err := args.HTTPServer.Convert()
+	convertedHttpServer, err := args.HTTPServer.ConvertToPtr()
 	if err != nil {
 		return nil, err
 	}

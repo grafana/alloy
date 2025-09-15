@@ -3,6 +3,7 @@ package transform_test
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -25,7 +26,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"error_mode": "propagate",
+				"error_mode":         "propagate",
+				"trace_statements":   []interface{}{},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -35,7 +40,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"error_mode": "ignore",
+				"error_mode":         "ignore",
+				"trace_statements":   []interface{}{},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -61,6 +70,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -132,6 +144,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -227,6 +240,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -253,6 +267,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -304,6 +321,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -391,6 +409,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -430,6 +449,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -454,6 +476,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"trace_statements":   []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -479,6 +504,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -509,6 +537,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"profile_statements": []interface{}{},
+				"trace_statements":   []interface{}{},
 			},
 		},
 		{
@@ -639,6 +670,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -732,6 +764,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -863,10 +896,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			// Validate the two configs
 			require.NoError(t, actual.Validate())
-			require.NoError(t, expectedCfg.Validate())
+			// Don't validate expectedCfg, because it contains internal slices
+			// with OTTL functions that aren't part of the config -
+			// they are just a way to store internal state.
+			// The validation would fail because those functions won't be registered.
+			// You'd have to register those functions by creating a factory first.
 
-			// Compare the two configs
-			require.Equal(t, expectedCfg, *actual)
+			// Compare the two configs by marshaling to JSON.
+			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
 }

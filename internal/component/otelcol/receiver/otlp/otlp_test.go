@@ -141,16 +141,16 @@ func TestUnmarshalDefault(t *testing.T) {
 					Transport: "tcp",
 				},
 				ReadBufferSize: 524288,
-				Keepalive: &configgrpc.KeepaliveServerConfig{
-					ServerParameters:  &configgrpc.KeepaliveServerParameters{},
-					EnforcementPolicy: &configgrpc.KeepaliveEnforcementPolicy{},
-				},
+				Keepalive: configoptional.Some[configgrpc.KeepaliveServerConfig](configgrpc.KeepaliveServerConfig{
+					ServerParameters:  configoptional.Some[configgrpc.KeepaliveServerParameters](configgrpc.KeepaliveServerParameters{}),
+					EnforcementPolicy: configoptional.Some[configgrpc.KeepaliveEnforcementPolicy](configgrpc.KeepaliveEnforcementPolicy{}),
+				}),
 			}),
 			HTTP: configoptional.Some[otlpreceiver.HTTPConfig](otlpreceiver.HTTPConfig{
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint:              "0.0.0.0:4318",
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
-					CORS:                  &confighttp.CORSConfig{},
+					CORS:                  configoptional.Some[confighttp.CORSConfig](confighttp.CORSConfig{}),
 				},
 				TracesURLPath:  "/v1/traces",
 				MetricsURLPath: "/v1/metrics",
