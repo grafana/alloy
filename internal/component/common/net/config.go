@@ -108,12 +108,12 @@ func (g *GRPCConfig) Into(c *dskit.Config) {
 	c.GRPCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
 	if g.TLSConfig != nil {
 		g.TLSConfig.Into(&c.GRPCTLSConfig)
-	}
-	if g.TLSConfig.MinVersion != c.MinVersion {
-		c.MinVersion = g.TLSConfig.MinVersion
-	}
-	if g.TLSConfig.CipherSuites != c.CipherSuites {
-		c.CipherSuites = g.TLSConfig.CipherSuites
+		if g.TLSConfig.MinVersion != c.MinVersion {
+			c.MinVersion = g.TLSConfig.MinVersion
+		}
+		if g.TLSConfig.CipherSuites != c.CipherSuites {
+			c.CipherSuites = g.TLSConfig.CipherSuites
+		}
 	}
 }
 
