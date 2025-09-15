@@ -78,8 +78,6 @@ Main (unreleased)
 - Add otel collector converter for `otelcol.receiver.googlecloudpubsub`. (@kalleep)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
-  
-- Add otel collector converter for `otelcol.exporter.googlecloudpubsub`. (@eraac)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
