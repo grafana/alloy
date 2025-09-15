@@ -232,7 +232,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				mapping = fakeMapping
 			}
 
-			location, fresh = b.Location(mapping, fr.AddressOrLineno)
+			location, fresh = b.Location(mapping, fr.AddressOrLineno, fr.FunctionName, fr.SourceLine)
 			if fresh {
 				location.Mapping = mapping
 				location.Address = uint64(fr.AddressOrLineno)

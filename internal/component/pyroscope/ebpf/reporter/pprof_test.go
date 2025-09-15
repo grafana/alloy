@@ -191,3 +191,64 @@ Mappings
 `
 	assert.Equal(t, expected, p.String())
 }
+
+func TestPPROFReporter_Bug(t *testing.T) {
+	rep := newReporter()
+
+	frames := make(libpf.Frames, 0, 1)
+	frames.Append(&libpf.Frame{
+		Type:            libpf.KernelFrame,
+		AddressOrLineno: 0x2000,
+	})
+	frames.Append(&libpf.Frame{
+		Type:         libpf.PythonFrame,
+		FunctionName: libpf.Intern("f1"),
+		SourceLine:   42,
+	})
+	frames.Append(&libpf.Frame{
+		Type:         libpf.PythonFrame,
+		FunctionName: libpf.Intern("f2"),
+		SourceLine:   239,
+	})
+	frames.Append(&libpf.Frame{
+		Type:         libpf.PythonFrame,
+		FunctionName: libpf.Intern("f2"),
+		SourceLine:   240,
+	})
+
+	traceKey := samples.TraceAndMetaKey{
+		Pid: 123,
+	}
+	events := samples.KeyToEventMapping{
+		traceKey: &samples.TraceEvents{
+			Frames:     frames,
+			Timestamps: []uint64{42},
+		},
+	}
+
+	profiles := rep.createProfile(
+		support.TraceOriginSampling,
+		events,
+	)
+	require.Len(t, profiles, 1)
+	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
+
+	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+	require.NoError(t, err)
+
+	p.TimeNanos = 0
+	expected := `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 3 4 
+Locations
+     1: 0x2000 M=1 
+     2: 0x0 M=1 f1 :42:0 s=0()
+     3: 0x0 M=1 f2 :239:0 s=0()
+     4: 0x0 M=1 f2 :240:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   [FN][LN]
+`
+	assert.Equal(t, expected, p.String())
+}
