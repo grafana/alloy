@@ -22,10 +22,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	otelmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 func init() {
@@ -118,6 +120,9 @@ type Component struct {
 
 func (c *Component) Run(ctx context.Context) error {
 	c.checkTraceFS()
+
+	otelmetrics.Start(noop.Meter{}) // todo export actual metrics, improve upstream to not be global variable
+
 	ctlr := controller.New(c.cfg)
 	const sessionMaxErrors = 3
 	var err error

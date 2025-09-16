@@ -16,8 +16,10 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 
-	discovery "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 )
+
+var testContainerId = samples.ContainerID("")
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
 	frames := make(libpf.Frames, 0, 1)
@@ -74,6 +76,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		"",
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -130,6 +133,7 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 	}
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		testContainerId,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -173,6 +177,7 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		testContainerId,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -231,6 +236,7 @@ func TestPPROFReporter_Bug(t *testing.T) {
 
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		testContainerId,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -317,6 +323,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		testContainerId,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -380,6 +387,7 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 
 	profiles := rep.createProfile(
 		support.TraceOriginSampling,
+		testContainerId,
 		events,
 	)
 	require.Len(t, profiles, 1)
