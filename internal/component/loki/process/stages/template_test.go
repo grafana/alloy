@@ -366,7 +366,6 @@ func TestTemplateStage_Process(t *testing.T) {
 }
 
 func BenchmarkTemplateStage(b *testing.B) {
-
 	var entry Entry
 	gen := func(n int) map[string]any {
 		m := make(map[string]any, n)
