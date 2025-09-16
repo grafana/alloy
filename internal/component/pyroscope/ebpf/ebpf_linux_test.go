@@ -1,4 +1,4 @@
-//go:build ((linux && arm64) || (linux && amd64)) && pyroscope_ebpf
+//go:build (linux && arm64) || (linux && amd64)
 
 package ebpf
 
@@ -48,10 +48,9 @@ sample_rate = 239
 pid_cache_size = 1000
 build_id_cache_size = 2000
 same_file_cache_size = 3000
-container_id_cache_size = 4000
+container_id_cache_size = 1024
 cache_rounds = 4
-collect_user_profile = true
-collect_kernel_profile = false`,
+`,
 			expected: func() Arguments {
 				x := NewDefaultArguments()
 				x.Targets = []discovery.Target{
@@ -63,13 +62,11 @@ collect_kernel_profile = false`,
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
 				x.SampleRate = 239
-				x.CollectUserProfile = true
-				x.CollectKernelProfile = false
-				x.ContainerIDCacheSize = 4000
 				x.DeprecatedArguments.PidCacheSize = 1000
 				x.DeprecatedArguments.SameFileCacheSize = 3000
 				x.DeprecatedArguments.BuildIDCacheSize = 2000
 				x.DeprecatedArguments.CacheRounds = 4
+				x.DeprecatedArguments.ContainerIDCacheSize = 1024
 				return x
 			},
 		},

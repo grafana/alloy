@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package ebpf
 
@@ -14,7 +14,6 @@ import (
 const maxSendConcurrency = 32
 
 func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
-	var err error
 	start := time.Now()
 	pool := workerPool{}
 	n := len(ps)
@@ -39,7 +38,7 @@ func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 
 		job := func() {
 			samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
-			err = appender.Append(ctx, p.Labels, samples)
+			err := appender.Append(ctx, p.Labels, samples)
 			if err != nil {
 				level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
 			}

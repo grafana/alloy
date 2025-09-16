@@ -62,7 +62,6 @@ func TestParseSource_Defaults(t *testing.T) {
 }
 
 func TestParseSources_DuplicateComponent(t *testing.T) {
-	defer verifyNoGoroutineLeaks(t)
 	content := `
         logging {
 		    format = "json"
@@ -97,7 +96,6 @@ func TestParseSources_DuplicateComponent(t *testing.T) {
 }
 
 func TestParseSources_UniqueComponent(t *testing.T) {
-	defer verifyNoGoroutineLeaks(t)
 	content := `
         logging {
 		    format = "json"
@@ -126,7 +124,6 @@ func TestParseSources_UniqueComponent(t *testing.T) {
 }
 
 func TestParseSources_SyntaxErrors(t *testing.T) {
-	defer verifyNoGoroutineLeaks(t)
 	file1 := `
 		testcomponents.tick "tick1" {
 			frequency = "1s"

@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package reporter
 
@@ -63,6 +63,7 @@ func NewPPROF(
 	cfg *Config,
 	sd discovery.TargetProducer,
 ) *PPROFReporter {
+
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
 		cfg:         cfg,
@@ -161,9 +162,9 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for cid, ts := range reportedEvents {
+	for _, ts := range reportedEvents {
 		for origin, events := range ts {
-			pp := p.createProfile(origin, events, cid)
+			pp := p.createProfile(origin, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -176,7 +177,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents, cid samples.ContainerID) []PPROF {
+func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.cfg.ExtraNativeSymbolResolver != nil {
 			p.cfg.ExtraNativeSymbolResolver.Cleanup()
@@ -195,7 +196,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 			continue
 		}
 		b := bs.BuilderForSample(target, uint32(traceKey.Pid))
-		fakeMapping, _ := b.Mapping(0, libpf.FrameMappingFile{})
+		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
 
@@ -212,26 +213,29 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 
 		for i := range traceInfo.Frames {
 			fr := traceInfo.Frames[i].Value()
-			pfMapping := fr.MappingFile.Value()
-			pfFileID := pfMapping.FileID
-			pfAddrOrLineNo := fr.AddressOrLineno
-			location, locationFresh := b.Location(pfFileID, pfAddrOrLineNo)
-
-			if locationFresh {
-				if fr.MappingFile.Valid() {
-					mapping, mappingFresh := b.Mapping(fr.MappingStart, fr.MappingFile)
-					if mappingFresh {
-						mapping.Start = uint64(fr.MappingStart)
-						mapping.Limit = uint64(fr.MappingEnd)
-						mapping.Offset = fr.MappingFileOffset
-						mapping.File = pfMapping.FileName.String()
-						mapping.BuildID = pfMapping.GnuBuildID
-					}
-					location.Mapping = mapping
-				} else {
-					location.Mapping = fakeMapping
+			var (
+				mapping  *profile.Mapping
+				location *profile.Location
+				fresh    bool
+			)
+			if fr.MappingFile.Valid() {
+				pfMapping := fr.MappingFile.Value()
+				mapping, fresh = b.Mapping(fr.MappingStart, fr.MappingFile)
+				if fresh {
+					mapping.Start = uint64(fr.MappingStart)
+					mapping.Limit = uint64(fr.MappingEnd)
+					mapping.Offset = fr.MappingFileOffset
+					mapping.File = pfMapping.FileName.String()
+					mapping.BuildID = pfMapping.GnuBuildID
 				}
-				location.Address = uint64(pfAddrOrLineNo)
+			} else {
+				mapping = fakeMapping
+			}
+
+			location, fresh = b.Location(mapping, fr.AddressOrLineno, fr.FunctionName, fr.SourceLine)
+			if fresh {
+				location.Mapping = mapping
+				location.Address = uint64(fr.AddressOrLineno)
 				switch fr.Type {
 				case libpf.NativeFrame:
 					p.symbolizeNativeFrame(b, location, fr)
@@ -241,15 +245,17 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 					// that are not originated from a native or interpreted
 					// program.
 				default:
-					location.Line = []profile.Line{{
-						Line: int64(fr.SourceLine),
-						Function: b.Function(
-							fr.FunctionName,
-							fr.SourceFile,
-						)},
+					if fr.FunctionName != libpf.NullString {
+						location.Line = []profile.Line{{
+							Line: int64(fr.SourceLine),
+							Function: b.Function(
+								fr.FunctionName,
+								fr.SourceFile,
+							)},
+						}
+						location.Mapping.HasFunctions = true
+						location.Mapping.HasLineNumbers = true
 					}
-					location.Mapping.HasFunctions = true
-					location.Mapping.HasLineNumbers = true
 				}
 			}
 			if fr.Type == libpf.PythonFrame && len(location.Line) == 1 && location.Line[0].Function.Name == "<interpreter trampoline>" {
@@ -291,6 +297,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
+
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return

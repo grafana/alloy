@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build linux && (arm64 || amd64)
 
 package reporter
 
@@ -55,6 +55,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	target *discovery.Target,
 	pid uint32,
 ) *ProfileBuilder {
+
 	labelsHash, _ := target.Labels()
 
 	k := builderHashKey{labelsHash: labelsHash}
@@ -69,14 +70,15 @@ func (b *ProfileBuilders) BuilderForSample(
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	if b.opt.Origin == support.TraceOriginSampling {
+	switch b.opt.Origin {
+	case support.TraceOriginSampling:
 		sampleType = []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}}
 		periodType = &profile.ValueType{Type: "cpu", Unit: "nanoseconds"}
 		period = time.Second.Nanoseconds() / b.opt.SampleRate
-	} else if b.opt.Origin == support.TraceOriginOffCPU {
+	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	} else {
+	default:
 		panic(fmt.Sprintf("unknown sample type %v", sampleType))
 	}
 	dummyMapping := &profile.Mapping{
@@ -110,8 +112,10 @@ type functionsKey struct {
 }
 
 type locationsKey struct {
-	fid  libpf.FileID
-	addr libpf.AddressOrLineno
+	mappingId uint64
+	addr      libpf.AddressOrLineno
+	name      libpf.String
+	line      libpf.SourceLineno
 }
 type mappingKey struct {
 	Start libpf.Address
@@ -131,10 +135,15 @@ type ProfileBuilder struct {
 	dummyMapping *profile.Mapping
 }
 
+func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
+	return p.dummyMapping
+}
+
 func (p *ProfileBuilder) Mapping(
 	start libpf.Address,
 	file libpf.FrameMappingFile,
 ) (*profile.Mapping, bool) {
+
 	k := mappingKey{
 		Start: start,
 		File:  file,
@@ -199,10 +208,12 @@ func (p *ProfileBuilder) AddValue(v int64, sample *profile.Sample) {
 	sample.Value[0] += v * p.Profile.Period
 }
 
-func (p *ProfileBuilder) Location(fid libpf.FileID, addr libpf.AddressOrLineno) (*profile.Location, bool) {
+func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno, name libpf.String, line libpf.SourceLineno) (*profile.Location, bool) {
 	key := locationsKey{
-		fid:  fid,
-		addr: addr,
+		mappingId: m.ID,
+		addr:      addr,
+		name:      name,
+		line:      line,
 	}
 	loc, ok := p.locations[key]
 	if ok {
@@ -210,7 +221,6 @@ func (p *ProfileBuilder) Location(fid libpf.FileID, addr libpf.AddressOrLineno) 
 	}
 	loc = p.p.locations.pop()
 	loc.ID = uint64(len(p.Profile.Location) + 1)
-	loc.Mapping = p.dummyMapping
 	p.locations[key] = loc
 	p.Profile.Location = append(p.Profile.Location, loc)
 	return loc, true
