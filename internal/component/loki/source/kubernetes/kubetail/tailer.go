@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 
@@ -112,27 +111,30 @@ func (t *tailer) Run(ctx context.Context) {
 		err := t.tail(ctx, handler)
 		if err == nil {
 			// Check if we should stop tailing this container
-			// Use different logic for job pods vs regular pods
-			isJob, jobCheckErr := t.isTargetJobPod(ctx)
-			if jobCheckErr != nil {
-				level.Warn(t.log).Log("msg", "could not determine if pod is a job; will retry tailing", "err", jobCheckErr)
-			} else if isJob {
-				// For job pods, use special grace period logic to ensure all logs are captured
-				finished, err := t.shouldStopTailingJobContainer(ctx)
-				if finished {
-					level.Info(t.log).Log("msg", "should stop tailing job container, stopping tailer")
-					return
-				} else if err != nil {
-					level.Warn(t.log).Log("msg", "could not determine if should stop tailing job container; will retry tailing", "err", err)
-				}
+			// Fetch pod info once and use different logic for job pods vs regular pods
+			podInfo, podCheckErr := t.getPodInfo(ctx)
+			if podCheckErr != nil {
+				level.Warn(t.log).Log("msg", "could not get pod info; will retry tailing", "err", podCheckErr)
 			} else {
-				// For regular pods, use standard termination logic
-				terminated, err := t.shouldStopTailingContainer(ctx)
-				if terminated {
-					level.Info(t.log).Log("msg", "container terminated, stopping tailer")
-					return
-				} else if err != nil {
-					level.Warn(t.log).Log("msg", "could not determine if container terminated; will retry tailing", "err", err)
+				isJob := isJobPod(podInfo)
+				if isJob {
+					// For job pods, use special grace period logic to ensure all logs are captured
+					finished, err := t.shouldStopTailingJobContainer(ctx, podInfo)
+					if finished {
+						level.Info(t.log).Log("msg", "should stop tailing job container, stopping tailer")
+						return
+					} else if err != nil {
+						level.Warn(t.log).Log("msg", "could not determine if should stop tailing job container; will retry tailing", "err", err)
+					}
+				} else {
+					// For regular pods, use standard termination logic
+					terminated, err := t.shouldStopTailingContainer(ctx, podInfo)
+					if terminated {
+						level.Info(t.log).Log("msg", "container terminated, stopping tailer")
+						return
+					} else if err != nil {
+						level.Warn(t.log).Log("msg", "could not determine if container terminated; will retry tailing", "err", err)
+					}
 				}
 			}
 		}
@@ -333,16 +335,10 @@ func isJobPod(pod *corev1.Pod) bool {
 // This function implements standard Kubernetes restart policy logic and should
 // be used for regular pods. Job pods should use shouldStopTailingJobContainer()
 // instead, which has special handling for job lifecycle.
-func (t *tailer) shouldStopTailingContainer(ctx context.Context) (terminated bool, err error) {
+func (t *tailer) shouldStopTailingContainer(ctx context.Context, podInfo *corev1.Pod) (terminated bool, err error) {
 	var (
-		key           = t.target.NamespacedName()
 		containerName = t.target.ContainerName()
 	)
-
-	podInfo, err := t.opts.Client.CoreV1().Pods(key.Namespace).Get(ctx, key.Name, metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
 
 	// The pod UID is different than the one we were tailing; our UID has
 	// terminated.
@@ -424,26 +420,10 @@ func (t *tailer) shouldStopTailingContainer(ctx context.Context) (terminated boo
 // - Job controller deletes pods quickly after completion
 // - Logs are still buffered in kubelet after container termination
 // - Pod discovery happens after job completion
-func (t *tailer) shouldStopTailingJobContainer(ctx context.Context) (finished bool, err error) {
+func (t *tailer) shouldStopTailingJobContainer(ctx context.Context, podInfo *corev1.Pod) (finished bool, err error) {
 	var (
-		key           = t.target.NamespacedName()
 		containerName = t.target.ContainerName()
 	)
-
-	podInfo, err := t.opts.Client.CoreV1().Pods(key.Namespace).Get(ctx, key.Name, metav1.GetOptions{})
-	if err != nil {
-		// If the pod is not found, it may have been deleted by the job controller.
-		// For job pods, we should try a few more times to get any remaining logs
-		// before giving up, as logs might still be available even after pod deletion.
-		if apierrors.IsNotFound(err) {
-			// Pod was deleted - this is common for completed jobs
-			// We should stop tailing as no more logs will be available
-			level.Info(t.log).Log("msg", "job pod was deleted, stopping tailer", "pod", key.String())
-			return true, nil
-		}
-		// Other errors (network issues, etc.) - keep trying
-		return false, err
-	}
 
 	containerInfo, _, found := findContainerStatus(podInfo, containerName)
 	if !found {
@@ -467,7 +447,7 @@ func (t *tailer) shouldStopTailingJobContainer(ctx context.Context) (finished bo
 		if podInfo.DeletionTimestamp != nil {
 			// Pod is being deleted - we should try to get remaining logs quickly
 			// but we know the pod won't be around much longer
-			level.Debug(t.log).Log("msg", "job pod is being deleted, will stop tailing soon", "pod", key.String())
+			level.Debug(t.log).Log("msg", "job pod is being deleted, will stop tailing soon", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name))
 			return true, nil
 		}
 
@@ -497,7 +477,7 @@ func (t *tailer) shouldStopTailingJobContainer(ctx context.Context) (finished bo
 		// For now, we'll be conservative and continue tailing for a reasonable period
 		maxWaitTime := 60 * time.Second // Maximum time to wait for logs
 		if time.Since(terminatedAt) > maxWaitTime {
-			level.Debug(t.log).Log("msg", "job container terminated and max wait time exceeded", "pod", key.String(), "container", containerName)
+			level.Debug(t.log).Log("msg", "job container terminated and max wait time exceeded", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name), "container", containerName)
 			return true, nil
 		}
 
@@ -509,19 +489,13 @@ func (t *tailer) shouldStopTailingJobContainer(ctx context.Context) (finished bo
 	return false, nil
 }
 
-// isTargetJobPod determines if the target pod is a job pod by checking its owner references.
-// This is a helper function that fetches the pod info and calls isJobPod.
-func (t *tailer) isTargetJobPod(ctx context.Context) (bool, error) {
+// getPodInfo fetches the current pod information from the Kubernetes API.
+func (t *tailer) getPodInfo(ctx context.Context) (*corev1.Pod, error) {
 	var (
 		key = t.target.NamespacedName()
 	)
 
-	podInfo, err := t.opts.Client.CoreV1().Pods(key.Namespace).Get(ctx, key.Name, metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	return isJobPod(podInfo), nil
+	return t.opts.Client.CoreV1().Pods(key.Namespace).Get(ctx, key.Name, metav1.GetOptions{})
 }
 
 // parseKubernetesLog parses a log line returned from the Kubernetes API,
