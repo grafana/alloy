@@ -10,9 +10,9 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
+	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -20,11 +20,11 @@ var (
 	reg = prometheus.NewRegistry()
 )
 
-func newWrite() (*write.Component, pyroscope.Appendable) {
+func newWrite() pyroscope.Appendable {
 	var receiver pyroscope.Appendable
 	e := write.GetDefaultEndpointOptions()
 	e.URL = "http://localhost:4040"
-	w, err := write.New(
+	_, err := write.New(
 		log.With(l, "component", "write"),
 		noop.Tracer{},
 		reg,
@@ -39,8 +39,7 @@ func newWrite() (*write.Component, pyroscope.Appendable) {
 		_ = l.Log("msg", "error creating write component", "err", err)
 		os.Exit(1)
 	}
-	return w, receiver
-
+	return receiver
 }
 
 func newEbpf(forward pyroscope.Appendable) *ebpf.Component {
@@ -63,17 +62,19 @@ func newEbpf(forward pyroscope.Appendable) *ebpf.Component {
 }
 
 func main() {
-	w, r := newWrite()
-	e := newEbpf(r)
+	w := newWrite()
+	e := newEbpf(w)
 
-	g, ctx := errgroup.WithContext(context.Background())
-	g.Go(func() error {
-		return w.Run(ctx)
-	})
-	g.Go(func() error {
+	g := run.Group{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	g.Add(func() error {
 		return e.Run(ctx)
+	}, func(err error) {
+		cancel()
 	})
-	if err := g.Wait(); err != nil {
+	if err := g.Run(); err != nil {
 		_ = l.Log("msg", "error running component", "err", err)
 		os.Exit(1)
 	}

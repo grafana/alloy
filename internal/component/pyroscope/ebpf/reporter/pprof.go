@@ -313,6 +313,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
+
 	if !fr.MappingFile.Valid() {
 		return
 	}
