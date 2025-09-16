@@ -42,7 +42,7 @@ func init() {
 	python.NoContinueWithNextUnwinder.Store(true)
 }
 
-func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (component.Component, error) {
+func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
 	cfg, err := args.Convert()
 	if err != nil {
 		return nil, err
@@ -88,6 +88,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		ExtraNativeSymbolResolver: nfs,
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
+		Demangle:                  args.Demangle,
 		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
 		}),

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/ianlancetaylor/demangle"
 	"go.opentelemetry.io/ebpf-profiler/host"
 
 	"github.com/go-kit/log"
@@ -43,6 +44,7 @@ func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) 
 type Config struct {
 	ReportInterval   time.Duration
 	SamplesPerSecond int64
+	Demangle         string
 
 	ExtraNativeSymbolResolver samples.NativeSymbolResolver
 	Consumer                  PPROFConsumer
@@ -238,7 +240,18 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				location.Address = uint64(fr.AddressOrLineno)
 				switch fr.Type {
 				case libpf.NativeFrame:
-					p.symbolizeNativeFrame(b, location, fr)
+					if fr.FunctionName == libpf.NullString {
+						p.symbolizeNativeFrame(b, location, fr)
+					} else {
+						location.Line = []profile.Line{{
+							Function: b.Function(
+								p.demangle(fr.FunctionName),
+								fr.SourceFile,
+							),
+						}}
+						location.Mapping.HasFunctions = true
+					}
+
 				case libpf.AbortFrame:
 					// Next step: Figure out how the OTLP protocol
 					// could handle artificial frames, like AbortFrame,
@@ -297,7 +310,9 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	loc *profile.Location,
 	fr libpf.Frame,
 ) {
-
+	if !fr.MappingFile.Valid() {
+		return
+	}
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return
@@ -313,11 +328,24 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 		ReturnAddress: false,
 	}
 	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, hostFrame, func(si samples.SourceInfo) {
-		if si.FunctionName == libpf.NullString && si.FilePath == libpf.NullString {
+		name := si.FunctionName
+		if name == libpf.NullString && si.FilePath == libpf.NullString {
 			return
 		}
+		name = p.demangle(name)
 		loc.Mapping.HasFunctions = true
-		line := profile.Line{Function: b.Function(si.FunctionName, si.FilePath)}
+		line := profile.Line{Function: b.Function(name, si.FilePath)}
 		loc.Line = append(loc.Line, line)
 	})
+}
+
+func (p *PPROFReporter) demangle(name libpf.String) libpf.String {
+	if name == libpf.NullString {
+		return name
+	}
+	if p.cfg.Demangle == "none" {
+		return name
+	}
+	options := convertDemangleOptions(p.cfg.Demangle)
+	return libpf.Intern(demangle.Filter(name.String(), options...))
 }
