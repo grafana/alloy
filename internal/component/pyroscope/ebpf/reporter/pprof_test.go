@@ -257,13 +257,15 @@ Mappings
 }
 
 func TestPPROFReporter_Demangle(t *testing.T) {
+	fid := libpf.NewFileID(7, 13)
+	key := symbolizerKey{
+		fid:  host.FileIDFromLibpf(fid),
+		addr: 0xcafe00de,
+	}
 	rep := newReporter()
 	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
 		symbols: map[symbolizerKey]samples.SourceInfo{
-			symbolizerKey{
-				id:   host.FileIDFromLibpf(libpf.NewFileID(7, 13)),
-				addr: 0xcafe00de,
-			}: {
+			key: {
 				LineNumber:   9,
 				FunctionName: libpf.Intern("_ZN15PlatformMonitor4waitEm"),
 			},
@@ -287,7 +289,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		MappingStart:    0xcafe0000,
 		MappingEnd:      0xcafe1000,
 		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   libpf.NewFileID(7, 13),
+			FileID:   fid,
 			FileName: libpf.Intern("libfoo.so"),
 		}),
 	})
@@ -298,7 +300,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		MappingStart:    0xcafe0000,
 		MappingEnd:      0xcafe1000,
 		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
-			FileID:   libpf.NewFileID(7, 13),
+			FileID:   fid,
 			FileName: libpf.Intern("libfoo.so"),
 		}),
 	})
@@ -408,7 +410,7 @@ type symbolizer struct {
 }
 
 type symbolizerKey struct {
-	id   host.FileID
+	fid  host.FileID
 	addr uint64
 }
 
@@ -421,7 +423,7 @@ func (s symbolizer) ObserveExecutable(id host.FileID, ref *pfelf.Reference) erro
 }
 
 func (s symbolizer) ResolveAddress(file host.FileID, addr uint64) (samples.SourceInfo, error) {
-	return s.symbols[symbolizerKey{id: file, addr: addr}], nil
+	return s.symbols[symbolizerKey{fid: file, addr: addr}], nil
 }
 
 func (s symbolizer) Cleanup() {
