@@ -147,6 +147,8 @@ Main (unreleased)
 
 - Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
 
+- Reduce CPU of `prometheus.write.queue` by eliminating duplicate calls to calculate the protobuf Size. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
