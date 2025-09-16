@@ -81,6 +81,9 @@ func TestAlloyConfigConvert(t *testing.T) {
 		QueryPath:              "/tmp/queries.yaml",
 		Instance:               "test-instance",
 		EnabledCollectors:      []string{"collector1", "collector2"},
+		StatStatementFlags: postgres_exporter.StatStatementFlags{
+			QueryLength: 120,
+		},
 	}
 	require.Equal(t, expected, *c)
 }
