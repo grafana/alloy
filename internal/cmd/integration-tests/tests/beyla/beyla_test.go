@@ -21,4 +21,3 @@ func TestBeylaTraces(t *testing.T) {
 	}
 	common.TracesTest(t, tags, "beyla")
 }
-}
