@@ -38,7 +38,7 @@ func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		metricMetadata, err = GetMetadata("")
 		assert.NoError(c, err)
-		assert.Subset(t, maps.Keys(metricMetadata.Data), expectedMetricsWithMetadata, "did not find metadata for the expected metrics")
+		assert.Subset(c, maps.Keys(metricMetadata.Data), expectedMetricsWithMetadata, "did not find metadata for the expected metrics")
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for metricName, expectedMeta := range expectedMetadata {
