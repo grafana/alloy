@@ -147,6 +147,8 @@ Main (unreleased)
 
 - Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
 
+- Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
