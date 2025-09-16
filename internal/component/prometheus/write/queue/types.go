@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -45,11 +46,13 @@ func (rc *Arguments) SetToDefault() {
 
 func defaultEndpointConfig() EndpointConfig {
 	return EndpointConfig{
-		Timeout:          30 * time.Second,
-		RetryBackoff:     1 * time.Second,
-		MaxRetryAttempts: 0,
-		BatchCount:       1_000,
-		FlushInterval:    1 * time.Second,
+		Timeout:           30 * time.Second,
+		RetryBackoff:      1 * time.Second,
+		MaxRetryAttempts:  0,
+		BatchCount:        1_000,
+		FlushInterval:     1 * time.Second,
+		MetadataCacheSize: 1000,
+		ProtobufMessage:   RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1),
 		Parallelism: ParallelismConfig{
 			DriftScaleUp:                60 * time.Second,
 			DriftScaleDown:              30 * time.Second,
@@ -92,6 +95,11 @@ func (r *Arguments) Validate() error {
 		if conn.Parallelism.AllowedNetworkErrorFraction < 0 || conn.Parallelism.AllowedNetworkErrorFraction > 1 {
 			return fmt.Errorf("allowed_network_error_percent must be between 0.00 and 1.00")
 		}
+		if conn.ProtobufMessage == RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2) {
+			if conn.MetadataCacheSize <= 0 {
+				return fmt.Errorf("metadata_cache_size must be greater than 0 when using Remote Write V2")
+			}
+		}
 	}
 
 	return nil
@@ -126,6 +134,33 @@ type EndpointConfig struct {
 	ProxyFromEnvironment bool `alloy:"proxy_from_environment,attr,optional"`
 	// ProxyConnectHeaders specify the headers to send to proxies during CONNECT requests.
 	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
+	// ProtobufMessage specifies if Remote Write V1 or V2 should be used
+	ProtobufMessage RemoteWriteProtoMsg `alloy:"protobuf_message,attr,optional"`
+	// MetadataCacheSize specifies the size of the metadata cache if using Remote Write V2
+	MetadataCacheSize int `alloy:"metadata_cache_size,attr,optional"`
+}
+
+// Wrapper is required to unmarshal the config.RemoteWriteProtoMsg type
+type RemoteWriteProtoMsg config.RemoteWriteProtoMsg
+
+// MarshalText implements encoding.TextMarshaler
+func (s RemoteWriteProtoMsg) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *RemoteWriteProtoMsg) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case string(config.RemoteWriteProtoMsgV1):
+		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1)
+	case string(config.RemoteWriteProtoMsgV2):
+		*s = RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV2)
+	default:
+		return fmt.Errorf("unknown remote write proto message: %s", str)
+	}
+
+	return nil
 }
 
 type TLSConfig struct {
@@ -176,6 +211,8 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		ProxyURL:             cc.ProxyURL,
 		ProxyFromEnvironment: cc.ProxyFromEnvironment,
 		ProxyConnectHeaders:  proxyConnectHeaders,
+		ProtobufMessage:      config.RemoteWriteProtoMsg(cc.ProtobufMessage),
+		MetadataCacheSize:    cc.MetadataCacheSize,
 		Parallelism: types.ParallelismConfig{
 			AllowedDrift:                cc.Parallelism.DriftScaleUp,
 			MinimumScaleDownDrift:       cc.Parallelism.DriftScaleDown,
