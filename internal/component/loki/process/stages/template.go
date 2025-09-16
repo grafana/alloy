@@ -88,11 +88,6 @@ func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
 		cfgs:     config,
 		logger:   logger,
 		template: t,
-		bufPool: sync.Pool{
-			New: func() any {
-				return &bytes.Buffer{}
-			},
-		},
 	}), nil
 }
 
@@ -101,7 +96,12 @@ type templateStage struct {
 	cfgs     TemplateConfig
 	logger   log.Logger
 	template *template.Template
-	bufPool  sync.Pool
+}
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return &bytes.Buffer{}
+	},
 }
 
 // Process implements Stage
@@ -123,10 +123,10 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 	}
 	td["Entry"] = *entry
 
-	buf := o.bufPool.Get().(*bytes.Buffer)
+	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
-		o.bufPool.Put(buf)
+		bufPool.Put(buf)
 	}()
 
 	err := o.template.Execute(buf, td)
