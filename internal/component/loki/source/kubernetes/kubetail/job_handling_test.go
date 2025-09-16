@@ -436,7 +436,7 @@ func TestShouldStopTailingJobContainer(t *testing.T) {
 			podInfo, err := tailer.getPodInfo(ctx)
 			require.NoError(t, err, "should be able to get pod info")
 
-			result, err := tailer.shouldStopTailingJobContainer(ctx, podInfo)
+			result, err := tailer.shouldStopTailingJobContainer(podInfo)
 
 			if tc.expectedError {
 				assert.Error(t, err, tc.description)

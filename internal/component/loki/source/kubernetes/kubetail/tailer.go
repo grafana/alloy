@@ -119,7 +119,7 @@ func (t *tailer) Run(ctx context.Context) {
 				isJob := isJobPod(podInfo)
 				if isJob {
 					// For job pods, use special grace period logic to ensure all logs are captured
-					finished, err := t.shouldStopTailingJobContainer(ctx, podInfo)
+					finished, err := t.shouldStopTailingJobContainer(podInfo)
 					if finished {
 						level.Info(t.log).Log("msg", "should stop tailing job container, stopping tailer")
 						return
@@ -128,7 +128,7 @@ func (t *tailer) Run(ctx context.Context) {
 					}
 				} else {
 					// For regular pods, use standard termination logic
-					terminated, err := t.shouldStopTailingContainer(ctx, podInfo)
+					terminated, err := t.shouldStopTailingContainer(podInfo)
 					if terminated {
 						level.Info(t.log).Log("msg", "container terminated, stopping tailer")
 						return
@@ -335,7 +335,7 @@ func isJobPod(pod *corev1.Pod) bool {
 // This function implements standard Kubernetes restart policy logic and should
 // be used for regular pods. Job pods should use shouldStopTailingJobContainer()
 // instead, which has special handling for job lifecycle.
-func (t *tailer) shouldStopTailingContainer(ctx context.Context, podInfo *corev1.Pod) (terminated bool, err error) {
+func (t *tailer) shouldStopTailingContainer(podInfo *corev1.Pod) (terminated bool, err error) {
 	var (
 		containerName = t.target.ContainerName()
 	)
@@ -420,7 +420,7 @@ func (t *tailer) shouldStopTailingContainer(ctx context.Context, podInfo *corev1
 // - Job controller deletes pods quickly after completion
 // - Logs are still buffered in kubelet after container termination
 // - Pod discovery happens after job completion
-func (t *tailer) shouldStopTailingJobContainer(ctx context.Context, podInfo *corev1.Pod) (finished bool, err error) {
+func (t *tailer) shouldStopTailingJobContainer(podInfo *corev1.Pod) (finished bool, err error) {
 	var (
 		containerName = t.target.ContainerName()
 	)
