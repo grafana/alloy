@@ -591,6 +591,8 @@ prometheus.scrape "integrations_oracledb" {
 
 prometheus.exporter.postgres "integrations_postgres_exporter" {
 	data_source_names = ["postgres://postgres:password@localhost:5432/postgres?sslmode=disable"]
+
+	stat_statements { }
 }
 
 discovery.relabel "integrations_postgres_exporter" {
