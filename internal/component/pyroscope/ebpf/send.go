@@ -23,7 +23,7 @@ func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 	defer func() {
 		pool.stop()
 		cancel()
-		level.Debug(c.options.Logger).Log("msg", "sent profiles", "duration", time.Since(start), "queued", queued)
+		level.Debug(c.logger).Log("msg", "sent profiles", "duration", time.Since(start), "queued", queued)
 	}()
 	j := 0
 	for _, p := range ps {
@@ -40,7 +40,7 @@ func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 			samples := []*pyroscope.RawSample{{RawProfile: rawProfile}}
 			err := appender.Append(ctx, p.Labels, samples)
 			if err != nil {
-				level.Error(c.options.Logger).Log("msg", "ebpf pprof write", "err", err)
+				level.Error(c.logger).Log("msg", "ebpf pprof write", "err", err)
 			}
 		}
 		select {
@@ -49,7 +49,7 @@ func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 		case <-ctx.Done():
 			dropped := n - j
 			c.metrics.pprofsDroppedTotal.Add(float64(dropped))
-			level.Debug(c.options.Logger).Log("msg", "dropped profiles", "count", dropped)
+			level.Debug(c.logger).Log("msg", "dropped profiles", "count", dropped)
 			return
 		}
 		j++

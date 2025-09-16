@@ -143,6 +143,10 @@ Main (unreleased)
 
 - Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
 
+- Add `protobuf_message` and `metadata_cache_size` arguments to `prometheus.write.queue` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@dehaansa)
+
+- Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
+
 - Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
 
 ### Bugfixes
