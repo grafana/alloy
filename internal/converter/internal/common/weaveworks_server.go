@@ -105,7 +105,7 @@ func ValidateWeaveWorksServerCfg(cfg server.Config) diag.Diagnostics {
 }
 
 func convertDSKitTLSToAlloy(dskitTLS server.TLSConfig) *fnet.TLSConfig {
-	if dskitTLS.TLSCertPath == "" && dskitTLS.TLSCert == "" {
+	if !isTLSConfigured(dskitTLS) {
 		return nil
 	}
 
@@ -118,4 +118,8 @@ func convertDSKitTLSToAlloy(dskitTLS server.TLSConfig) *fnet.TLSConfig {
 		ClientCAFile: dskitTLS.ClientCAs,
 		ClientCA:     dskitTLS.ClientCAsText,
 	}
+}
+
+func isTLSConfigured(cfg server.TLSConfig) bool {
+	return cfg.TLSCertPath != "" || cfg.TLSCert != ""
 }
