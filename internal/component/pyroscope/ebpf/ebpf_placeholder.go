@@ -1,4 +1,4 @@
-//go:build !(linux && (arm64 || amd64)) || !pyroscope_ebpf
+//go:build !(linux && (arm64 || amd64))
 
 package ebpf
 
