@@ -30,8 +30,6 @@ import (
 	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -239,31 +237,21 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 }
 
 func convertExportModes(modes []string) (services.ExportModes, error) {
-	var ret services.ExportModes
+	if modes == nil {
+		return services.ExportModeUnset, nil
+	}
+
+	ret := services.NewExportModes()
 
 	for _, m := range modes {
-		if m != "metrics" && m != "traces" {
+		switch m {
+		case "metrics":
+			ret.AllowMetrics()
+		case "traces":
+			ret.AllowTraces()
+		default:
 			return ret, fmt.Errorf("invalid export mode: '%s'", m)
 		}
-	}
-
-	// FIXME: there's no public API to construct ExportModes other than from a
-	// YAML blob. Once that gets fixed upstream, get rid of this intermediate
-	// YAML serialisation
-	out, err := yaml.Marshal(modes)
-
-	if err != nil {
-		return ret, err
-	}
-
-	var node yaml.Node
-
-	if err := yaml.Unmarshal(out, &node); err != nil {
-		return ret, err
-	}
-
-	if err := ret.UnmarshalYAML(node.Content[0]); err != nil {
-		return ret, err
 	}
 
 	return ret, nil
