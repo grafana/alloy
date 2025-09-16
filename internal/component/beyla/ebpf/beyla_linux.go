@@ -41,6 +41,7 @@ import (
 )
 
 func init() {
+	beyla.OverrideOBIGlobalConfig()
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
 		Stability: featuregate.StabilityGenerallyAvailable,
