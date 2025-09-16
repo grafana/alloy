@@ -69,14 +69,11 @@ var metricPrefixQueryParam = "metric-prefix"
 func handleWithPrefixSupport(w http.ResponseWriter, r *http.Request) {
 	prefix := r.URL.Query().Get(metricPrefixQueryParam)
 	if prefix == "" {
-		log.Printf("serving with no metric prefix")
 		defaultHandler.ServeHTTP(w, r)
 		return
 	}
 
 	// Wrap the registry with the provided prefix and serve the metrics from it
-	log.Printf("serving metrics with prefix %s", prefix)
-
 	reg := prometheus.NewRegistry()
 	prefixedCollector := prometheus.WrapCollectorWithPrefix(prefix, registry)
 	reg.MustRegister(prefixedCollector)
