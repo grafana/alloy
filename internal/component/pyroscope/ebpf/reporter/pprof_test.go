@@ -4,7 +4,6 @@ package reporter
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/google/pprof/profile"
@@ -325,7 +324,6 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 	require.NoError(t, err)
 
 	p.TimeNanos = 0
-	fmt.Println(p.String())
 	expected := `PeriodType: cpu nanoseconds
 Period: 10309278
 Samples:
@@ -336,6 +334,68 @@ Locations
      2: 0xface000 M=1 
      3: 0xcafe00ef M=2 ConcurrentGCThread::run() :0:0 s=0()
      4: 0xcafe00de M=2 PlatformMonitor::wait(unsigned long) :0:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   
+2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
+`
+	assert.Equal(t, expected, p.String())
+}
+
+func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
+	rep := newReporter()
+	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{}
+	rep.cfg.ReporterUnsymbolizedStubs = true
+
+	frames := make(libpf.Frames, 0, 1)
+	frames.Append(&libpf.Frame{
+		Type:            libpf.KernelFrame,
+		AddressOrLineno: 0x2000,
+	})
+	frames.Append(&libpf.Frame{
+		Type:            libpf.NativeFrame,
+		AddressOrLineno: 0xface000,
+	})
+	frames.Append(&libpf.Frame{
+		Type:            libpf.NativeFrame,
+		AddressOrLineno: 0xcafe00ef,
+		MappingStart:    0xcafe0000,
+		MappingEnd:      0xcafe1000,
+		MappingFile: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+			FileID:   libpf.NewFileID(7, 13),
+			FileName: libpf.Intern("libfoo.so"),
+		}),
+	})
+
+	traceKey := samples.TraceAndMetaKey{
+		Pid: 123,
+	}
+	events := samples.KeyToEventMapping{
+		traceKey: &samples.TraceEvents{
+			Frames:     frames,
+			Timestamps: []uint64{42},
+		},
+	}
+
+	profiles := rep.createProfile(
+		support.TraceOriginSampling,
+		events,
+	)
+	require.Len(t, profiles, 1)
+	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
+
+	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+	require.NoError(t, err)
+
+	p.TimeNanos = 0
+	expected := `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 3 
+Locations
+     1: 0x2000 M=1 
+     2: 0xface000 M=1 
+     3: 0xcafe00ef M=2 $ libfoo.so + 0xcafe00ef :0:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
 2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]

@@ -45,6 +45,7 @@ func newEbpf(forward pyroscope.Appendable) *ebpf.Component {
 	args := ebpf.NewDefaultArguments()
 	args.PyroscopeDynamicProfilingPolicy = false
 	args.ForwardTo = []pyroscope.Appendable{forward}
+	args.ReporterUnsymbolizedStubs = true
 	args.Demangle = "full"
 	e, err := ebpf.New(
 		log.With(l, "component", "ebpf"),

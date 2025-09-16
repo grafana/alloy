@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/ianlancetaylor/demangle"
 	"go.opentelemetry.io/ebpf-profiler/host"
 
 	"github.com/go-kit/log"
@@ -42,9 +41,10 @@ func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) 
 }
 
 type Config struct {
-	ReportInterval   time.Duration
-	SamplesPerSecond int64
-	Demangle         string
+	ReportInterval            time.Duration
+	SamplesPerSecond          int64
+	Demangle                  string
+	ReporterUnsymbolizedStubs bool
 
 	ExtraNativeSymbolResolver samples.NativeSymbolResolver
 	Consumer                  PPROFConsumer
@@ -242,6 +242,9 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				case libpf.NativeFrame:
 					if fr.FunctionName == libpf.NullString {
 						p.symbolizeNativeFrame(b, location, fr)
+						if location.Line == nil && p.cfg.ReporterUnsymbolizedStubs {
+							p.symbolizeStub(b, location, fr)
+						}
 					} else {
 						location.Line = []profile.Line{{
 							Function: b.Function(
@@ -339,13 +342,15 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	})
 }
 
-func (p *PPROFReporter) demangle(name libpf.String) libpf.String {
-	if name == libpf.NullString {
-		return name
+func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Location, fr libpf.Frame) {
+	if location.Mapping.File == "" {
+		return
 	}
-	if p.cfg.Demangle == "none" {
-		return name
-	}
-	options := convertDemangleOptions(p.cfg.Demangle)
-	return libpf.Intern(demangle.Filter(name.String(), options...))
+	location.Line = []profile.Line{{
+		Function: b.Function(
+			libpf.Intern(fmt.Sprintf("$ %s + 0x%x", location.Mapping.File, fr.AddressOrLineno)),
+			fr.SourceFile,
+		),
+	}}
+	location.Mapping.HasFunctions = true
 }

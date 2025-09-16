@@ -85,10 +85,11 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}
 
 	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
-		ExtraNativeSymbolResolver: nfs,
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
+		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
+		ExtraNativeSymbolResolver: nfs,
 		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
 		}),
