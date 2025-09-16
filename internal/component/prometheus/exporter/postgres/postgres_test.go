@@ -18,8 +18,8 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 	custom_queries_config_path = "/tmp/queries.yaml"
 
 	stat_statements {
-    include_query = true
-    query_length = 200
+		include_query = true
+		query_length = 200
 	}
 	
 	autodiscovery {
