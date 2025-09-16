@@ -191,8 +191,17 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 			return nil, fmt.Errorf("failed to find collector.stat_statements.include_query or collector.stat_statements.query_length in postgres_exporter")
 		}
 
-		includeQueryFlag.Model().Value.Set("true")
-		queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
+		err := includeQueryFlag.Model().Value.Set("true")
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to set include query flag using Kingpin : %w", err)
+		}
+
+		err = queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to set query length flag using Kingpin : %w", err)
+		}
 	}
 
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
