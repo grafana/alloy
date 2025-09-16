@@ -43,7 +43,7 @@ type Config struct {
 	StatStatementFlags StatStatementFlags
 }
 
-// Config for the stat statement flags
+// Config for the stat_statement collector flags
 type StatStatementFlags struct {
 	IncludeQuery bool
 	QueryLength  uint
