@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -87,6 +88,11 @@ func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
 		cfgs:     config,
 		logger:   logger,
 		template: t,
+		bufPool: sync.Pool{
+			New: func() any {
+				return &bytes.Buffer{}
+			},
+		},
 	}), nil
 }
 
@@ -95,11 +101,13 @@ type templateStage struct {
 	cfgs     TemplateConfig
 	logger   log.Logger
 	template *template.Template
+	bufPool  sync.Pool
 }
 
 // Process implements Stage
-func (o *templateStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
-	td := make(map[string]interface{})
+func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+	// We allocate space for all extracted values + Value and Entry
+	td := make(map[string]any, len(extracted)+2)
 	for k, v := range extracted {
 		s, err := getString(v)
 		if err != nil {
@@ -115,7 +123,12 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]inte
 	}
 	td["Entry"] = *entry
 
-	buf := &bytes.Buffer{}
+	buf := o.bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		o.bufPool.Put(buf)
+	}()
+
 	err := o.template.Execute(buf, td)
 	if err != nil {
 		if Debug {
