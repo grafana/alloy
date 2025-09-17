@@ -180,6 +180,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		sz := req.Profile.SizeVT()
 		l := log.With(p.logger, "metric", metric, "sz", sz)
 		ls := labels.NewBuilder(nil)
+		// todo do not use AsMap()
 		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
 		}
