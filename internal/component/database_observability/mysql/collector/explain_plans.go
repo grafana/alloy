@@ -652,15 +652,17 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
-	defer func() {
-		_, _ = conn.ExecContext(ctx, "USE `performance_schema`")
-		conn.Close()
-	}()
+	defer conn.Close()
 
 	useStatement := fmt.Sprintf("USE `%s`", qi.schemaName)
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
 		return nil, fmt.Errorf("failed to set schema: %w", err)
 	}
+	defer func() {
+		// Switch to performance_schema to avoid that when the connection
+		// is reused by some other collector, it uses the wrong schema.
+		_, _ = conn.ExecContext(ctx, "USE `performance_schema`")
+	}()
 
 	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
 	if err := rsExplain.Err(); err != nil {
