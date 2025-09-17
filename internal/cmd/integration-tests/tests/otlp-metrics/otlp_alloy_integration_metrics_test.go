@@ -19,5 +19,10 @@ func TestAlloyIntegrationMetrics(t *testing.T) {
 		"otelcol_receiver_accepted_spans_total",
 		"otelcol_receiver_refused_spans_total",
 	}
-	common.MimirMetricsTest(t, OTLPMetrics, []string{}, "otlp_integration")
+	config := common.Config{
+		T:        t,
+		TestName: "otlp_integration",
+		Metrics:  OTLPMetrics,
+	}
+	common.MimirMetricsTest(config)
 }

@@ -69,8 +69,24 @@ func TestSNMPMetrics(t *testing.T) {
 		"hrDeviceID",
 		"up",
 	}
-	common.MimirMetricsTest(t, SNMPMetrics, []string{}, "snmp_metrics")
-	common.MimirMetricsTest(t, SNMPMetrics, []string{}, "snmp_metrics2")
-	common.MimirMetricsTest(t, SNMPMetrics3, []string{}, "snmp_metrics3")
-	common.MimirMetricsTest(t, SNMPMetrics4, []string{}, "snmp_metrics4")
+	common.MimirMetricsTest(common.Config{
+		T:        t,
+		TestName: "snmp_metrics",
+		Metrics:  SNMPMetrics,
+	})
+	common.MimirMetricsTest(common.Config{
+		T:        t,
+		TestName: "snmp_metrics2",
+		Metrics:  SNMPMetrics,
+	})
+	common.MimirMetricsTest(common.Config{
+		T:        t,
+		TestName: "snmp_metrics3",
+		Metrics:  SNMPMetrics3,
+	})
+	common.MimirMetricsTest(common.Config{
+		T:        t,
+		TestName: "snmp_metrics4",
+		Metrics:  SNMPMetrics4,
+	})
 }

@@ -5,6 +5,17 @@ import (
 	"fmt"
 )
 
+type MetadataResponse struct {
+	Status string                `json:"status"`
+	Data   map[string][]Metadata `json:"data"`
+}
+
+type Metadata struct {
+	Type string `json:"type"`
+	Help string `json:"help"`
+	Unit string `json:"unit"`
+}
+
 type MetricsResponse struct {
 	Status string   `json:"status"`
 	Data   []Metric `json:"data"`
@@ -52,6 +63,22 @@ type Value struct {
 type Metric struct {
 	TestName string `json:"test_name"`
 	Name     string `json:"__name__"`
+}
+
+func (m *MetadataResponse) String() string {
+	json, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Sprintf("error marshalling metadata response: %v", err)
+	}
+	return string(json)
+}
+
+func (m *MetadataResponse) Unmarshal(data []byte) error {
+	return json.Unmarshal(data, m)
+}
+
+func (m *Metadata) Unmarshal(data []byte) error {
+	return json.Unmarshal(data, m)
 }
 
 func (m *MetricResponse) Unmarshal(data []byte) error {

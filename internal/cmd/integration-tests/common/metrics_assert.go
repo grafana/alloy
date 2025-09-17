@@ -12,6 +12,14 @@ import (
 
 const promURL = "http://localhost:9009/prometheus/api/v1/"
 
+type Config struct {
+	T                *testing.T
+	TestName         string
+	Metrics          []string
+	HistogramMetrics []string
+	ExpectedMetadata map[string]Metadata
+}
+
 // Default metrics list according to what the prom-gen app is generating.
 var PromDefaultMetrics = []string{
 	"golang_counter",
@@ -25,6 +33,8 @@ var PromDefaultMetrics = []string{
 // Default native histogram metrics list according to what the prom-gen app is generating.
 var PromDefaultNativeHistogramMetrics = []string{
 	"golang_native_histogram",
+	"golang_mixed_histogram",
+	"golang_summary",
 }
 
 // Default metrics list according to what the otel-gen app is generating.
@@ -43,6 +53,51 @@ var OtelDefaultHistogramMetrics = []string{
 	"example_exponential_float_histogram",
 }
 
+var ExpectedMetadata = map[string]Metadata{
+	"golang_counter": {
+		Type: "counter",
+		Help: "The counter description string",
+	},
+	"golang_gauge": {
+		Type: "gauge",
+		Help: "The gauge description string",
+	},
+	"golang_histogram_bucket": {
+		Type: "histogram",
+		Help: "The histogram description string",
+	},
+	"golang_mixed_histogram": {
+		// This is the native histogram -
+		// it doesn't have a _bucket, _sum, or _count suffix.
+		Type: "histogram",
+		Help: "The mixed_histogram description string",
+	},
+	"golang_mixed_histogram_bucket": {
+		Type: "histogram",
+		Help: "The mixed_histogram description string",
+	},
+	"golang_mixed_histogram_count": {
+		Type: "histogram",
+		Help: "The mixed_histogram description string",
+	},
+	"golang_mixed_histogram_sum": {
+		Type: "histogram",
+		Help: "The mixed_histogram description string",
+	},
+	"golang_summary": {
+		Type: "summary",
+		Help: "The summary description string",
+	},
+	"golang_summary_count": {
+		Type: "summary",
+		Help: "The summary description string",
+	},
+	"golang_summary_sum": {
+		Type: "summary",
+		Help: "The summary description string",
+	},
+}
+
 // MetricQuery returns a formatted Prometheus metric query with a given metricName and the given test_name label.
 func MetricQuery(metricName string, testName string) string {
 	// https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries
@@ -59,25 +114,53 @@ func MetricsQuery(testName string) string {
 	return query
 }
 
-// MimirMetricsTest checks that all given metrics are stored in Mimir.
-func MimirMetricsTest(t *testing.T, metrics []string, histogramMetrics []string, testName string) {
-	AssertStatefulTestEnv(t)
+// MetadataQuery returns the list of available metadata matching the given test_name label.
+func MetadataQuery(testName string) string {
+	query := fmt.Sprintf("%smetadata", promURL)
+	return query
+}
 
-	AssertMetricsAvailable(t, metrics, histogramMetrics, testName)
-	for _, metric := range metrics {
+// MimirMetricsTest checks that all given metrics are stored in Mimir.
+func MimirMetricsTest(c Config) {
+	AssertStatefulTestEnv(c.T)
+
+	AssertMetadataAvailable(c.T, c.Metrics, c.HistogramMetrics, c.ExpectedMetadata, c.TestName)
+	AssertMetricsAvailable(c.T, c.Metrics, c.HistogramMetrics, c.TestName)
+	for _, metric := range c.Metrics {
 		metric := metric
-		t.Run(metric, func(t *testing.T) {
+		c.T.Run(metric, func(t *testing.T) {
 			t.Parallel()
-			AssertMetricData(t, MetricQuery(metric, testName), metric, testName)
+			AssertMetricData(t, MetricQuery(metric, c.TestName), metric, c.TestName)
 		})
 	}
-	for _, metric := range histogramMetrics {
+	for _, metric := range c.HistogramMetrics {
 		metric := metric
-		t.Run(metric, func(t *testing.T) {
+		c.T.Run(metric, func(t *testing.T) {
 			t.Parallel()
-			AssertHistogramData(t, MetricQuery(metric, testName), metric, testName)
+			AssertHistogramData(t, MetricQuery(metric, c.TestName), metric, c.TestName)
 		})
 	}
+}
+
+func AssertMetadataAvailable(t *testing.T, metrics []string, histogramMetrics []string, expectedMetadata map[string]Metadata, testName string) {
+	query := MetadataQuery(testName)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		var missingMetadata []string // Reset the slice on each retry
+		var metadataResponse MetadataResponse
+		err := FetchDataFromURL(query, &metadataResponse)
+		assert.NoError(c, err)
+
+		for metric, metadata := range expectedMetadata {
+			metadataList, exists := metadataResponse.Data[metric]
+			if !exists || len(metadataList) == 0 || !checkMetadata(metadata, metadataList[0]) {
+				missingMetadata = append(missingMetadata, metric)
+			}
+		}
+		assert.Empty(c, missingMetadata,
+			"err", err,
+			"missing metadata", missingMetadata,
+			"received metadata", metadataResponse.String())
+	}, DefaultTimeout, DefaultRetryInterval)
 }
 
 // AssertMetricsAvailable performs a Prometheus query and expect the result to eventually contain the list of expected metrics.
@@ -110,6 +193,19 @@ func findMissingMetrics(expectedMetrics []string, actualMetrics map[string]struc
 		}
 	}
 	return missingMetrics
+}
+
+func checkMetadata(expectedMetadata Metadata, actualMetadata Metadata) bool {
+	if expectedMetadata.Type != actualMetadata.Type {
+		return false
+	}
+	if expectedMetadata.Help != actualMetadata.Help {
+		return false
+	}
+	if expectedMetadata.Unit != actualMetadata.Unit {
+		return false
+	}
+	return true
 }
 
 // AssertHistogramData performs a Prometheus query and expect the result to eventually contain the expected histogram.

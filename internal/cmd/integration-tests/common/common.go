@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -35,7 +36,12 @@ func FetchDataFromURL(url string, target Unmarshaler) error {
 		return fmt.Errorf("Non-OK HTTP status: %s, body: %s, url: %s", resp.Status, string(bodyBytes), url)
 	}
 
-	return target.Unmarshal(bodyBytes)
+	err = target.Unmarshal(bodyBytes)
+	if err != nil {
+		log.Printf("error unmarshalling message from %s: %s", url, string(bodyBytes))
+	}
+
+	return err
 }
 
 // AssertStatefulTestEnv verifies the environment is properly configured if the test is supposed to be stateful
