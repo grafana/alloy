@@ -1,0 +1,4 @@
+
+pyroscope.ebpf "e" {
+    forward_to = []
+}

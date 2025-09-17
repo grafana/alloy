@@ -10,9 +10,7 @@ import (
 	"strings"
 )
 
-var embeddedArchiveVersion = 300
-
-var EmbeddedArchive = Archive{data: embeddedArchiveData, version: embeddedArchiveVersion, format: ArchiveFormatTarGz}
+var EmbeddedArchive = Archive{data: embeddedArchiveData, format: ArchiveFormatTarGz}
 
 func (d *Distribution) LibPath() string {
 	return filepath.Join(d.extractedDir, "lib/libasyncProfiler.so")

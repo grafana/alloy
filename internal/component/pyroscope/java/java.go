@@ -11,16 +11,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	labelProcessID = "__process_pid__"
+	LabelProcessID = "__process_pid__"
 )
 
 func init() {
@@ -30,28 +32,39 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			if os.Getuid() != 0 {
-				return nil, fmt.Errorf("java profiler: must be run as root")
-			}
 			a := args.(Arguments)
-			var profiler = asprof.NewProfiler(a.TmpDir, asprof.EmbeddedArchive)
-			err := profiler.ExtractDistributions()
-			if err != nil {
-				return nil, fmt.Errorf("extract async profiler: %w", err)
-			}
+			id := opts.ID
+			logger := opts.Logger
+			reg := opts.Registerer
 
-			forwardTo := pyroscope.NewFanout(a.ForwardTo, opts.ID, opts.Registerer)
-			c := &javaComponent{
-				opts:        opts,
-				args:        a,
-				forwardTo:   forwardTo,
-				profiler:    profiler,
-				pid2process: make(map[int]*profilingLoop),
-			}
-			c.updateTargets(a)
-			return c, nil
+			return New(logger, reg, id, a)
 		},
 	})
+}
+
+func New(logger log.Logger, reg prometheus.Registerer, id string, a Arguments) (*Component, error) {
+	if os.Getuid() != 0 {
+		return nil, fmt.Errorf("java profiler: must be run as root")
+	}
+
+	//dist, err := asprof.ExtractDistribution(asprof.EmbeddedArchive, a.TmpDir)
+	//if err != nil {
+	//	return nil, fmt.Errorf("extract async profiler: %w", err)
+	//}
+	dist := asprof.NewExtractedDistribution("/home/korniltsev/async-profiler/build")
+	var profiler = asprof.NewProfiler(dist)
+
+	forwardTo := pyroscope.NewFanout(a.ForwardTo, id, reg)
+
+	c := &Component{
+		logger:      logger,
+		args:        a,
+		forwardTo:   forwardTo,
+		profiler:    profiler,
+		pid2process: make(map[int]*profilingLoop),
+	}
+	c.updateTargets(a)
+	return c, nil
 }
 
 type debugInfo struct {
@@ -75,12 +88,12 @@ type debugInfoProfiledTarget struct {
 }
 
 var (
-	_ component.DebugComponent = (*javaComponent)(nil)
-	_ component.Component      = (*javaComponent)(nil)
+	_ component.DebugComponent = (*Component)(nil)
+	_ component.Component      = (*Component)(nil)
 )
 
-type javaComponent struct {
-	opts      component.Options
+type Component struct {
+	logger    log.Logger
 	args      Arguments
 	forwardTo *pyroscope.Fanout
 
@@ -89,7 +102,7 @@ type javaComponent struct {
 	profiler    *asprof.Profiler
 }
 
-func (j *javaComponent) Run(ctx context.Context) error {
+func (j *Component) Run(ctx context.Context) error {
 	defer func() {
 		j.stop()
 	}()
@@ -97,7 +110,7 @@ func (j *javaComponent) Run(ctx context.Context) error {
 	return nil
 }
 
-func (j *javaComponent) DebugInfo() interface{} {
+func (j *Component) DebugInfo() interface{} {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
 	var di debugInfo
@@ -112,43 +125,43 @@ func (j *javaComponent) DebugInfo() interface{} {
 	return &di
 }
 
-func (j *javaComponent) Update(args component.Arguments) error {
+func (j *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	j.forwardTo.UpdateChildren(newArgs.ForwardTo)
 	j.updateTargets(newArgs)
 	return nil
 }
 
-func (j *javaComponent) updateTargets(args Arguments) {
+func (j *Component) updateTargets(args Arguments) {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
 	j.args = args
 
 	active := make(map[int]struct{})
 	for _, target := range args.Targets {
-		pidStr, ok := target.Get(labelProcessID)
+		pidStr, ok := target.Get(LabelProcessID)
 		if !ok {
-			_ = level.Error(j.opts.Logger).Log("msg", "could not find PID label", "pid", pidStr)
+			_ = level.Error(j.logger).Log("msg", "could not find PID label", "pid", pidStr)
 			continue
 		}
 		pid64, err := strconv.ParseInt(pidStr, 10, 32)
 		if err != nil {
-			_ = level.Error(j.opts.Logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
+			_ = level.Error(j.logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
 			continue
 		}
 		pid := int(pid64)
 
-		_ = level.Debug(j.opts.Logger).Log("msg", "active target",
+		_ = level.Debug(j.logger).Log("msg", "active target",
 			"target", fmt.Sprintf("%+v", target),
 			"pid", pid)
 		if err != nil {
-			_ = level.Error(j.opts.Logger).Log("msg", "invalid target", "target", fmt.Sprintf("%v", target), "err", err)
+			_ = level.Error(j.logger).Log("msg", "invalid target", "target", fmt.Sprintf("%v", target), "err", err)
 			continue
 		}
 		proc := j.pid2process[pid]
 		if proc == nil {
-			proc = newProfilingLoop(pid, target, j.opts.Logger, j.profiler, j.forwardTo, j.args.ProfilingConfig)
-			_ = level.Debug(j.opts.Logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
+			proc = newProfilingLoop(pid, target, j.logger, j.profiler, j.forwardTo, j.args.ProfilingConfig)
+			_ = level.Debug(j.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
 			j.pid2process[pid] = proc
 		} else {
 			proc.update(target, j.args.ProfilingConfig)
@@ -159,19 +172,19 @@ func (j *javaComponent) updateTargets(args Arguments) {
 		if _, ok := active[pid]; ok {
 			continue
 		}
-		_ = level.Debug(j.opts.Logger).Log("msg", "inactive target", "pid", pid)
+		_ = level.Debug(j.logger).Log("msg", "inactive target", "pid", pid)
 		_ = j.pid2process[pid].Close()
 		delete(j.pid2process, pid)
 	}
 }
 
-func (j *javaComponent) stop() {
-	_ = level.Debug(j.opts.Logger).Log("msg", "stopping")
+func (j *Component) stop() {
+	_ = level.Debug(j.logger).Log("msg", "stopping")
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
 	for _, proc := range j.pid2process {
 		proc.Close()
-		_ = level.Debug(j.opts.Logger).Log("msg", "stopped", "pid", proc.pid)
+		_ = level.Debug(j.logger).Log("msg", "stopped", "pid", proc.pid)
 		delete(j.pid2process, proc.pid)
 	}
 }

@@ -13,9 +13,7 @@ var embeddedArchiveData []byte
 // bin/asprof
 // lib/libasyncProfiler.dylib
 
-var embeddedArchiveVersion = 300
-
-var EmbeddedArchive = Archive{data: embeddedArchiveData, version: embeddedArchiveVersion, format: ArchiveFormatZip}
+var EmbeddedArchive = Archive{data: embeddedArchiveData, format: ArchiveFormatZip}
 
 func (d *Distribution) LibPath() string {
 	return filepath.Join(d.extractedDir, "lib/libasyncProfiler.dylib")
