@@ -202,13 +202,13 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 
 	switch {
 	case podNamespace == "":
-		return nil, fmt.Errorf("missing pod namespace label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod namespace label")
 	case podName == "":
-		return nil, fmt.Errorf("missing pod name label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod name label")
 	case podContainerName == "":
-		return nil, fmt.Errorf("missing pod container name label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod container name label")
 	case podUID == "":
-		return nil, fmt.Errorf("missing pod UID label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod UID label")
 	}
 
 	// Make sure that LabelPodNamespace, LabelPodName, LabelPodContainerName, and
@@ -244,7 +244,7 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 	res.Range(func(l labels.Label) {
 		// Check label values are valid, drop the target if not.
 		if !model.LabelValue(l.Value).IsValid() {
-			res = nil
+			res = labels.EmptyLabels()
 			err = fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
 			return
 		}

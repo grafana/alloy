@@ -114,7 +114,7 @@ func (t *Target) run() {
 }
 
 func (t *Target) handleMessage(msg *gelf.Message) {
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 
 	// Add all labels from the config.
 	for k, v := range t.config.Labels {

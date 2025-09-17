@@ -122,7 +122,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// common labels contains all record-wide labels
-	commonLabels := labels.NewBuilder(nil)
+	commonLabels := labels.NewBuilder(labels.EmptyLabels())
 	commonLabels.Set("__aws_firehose_request_id", req.Header.Get("X-Amz-Firehose-Request-Id"))
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 

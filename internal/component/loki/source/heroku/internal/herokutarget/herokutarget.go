@@ -83,7 +83,7 @@ func (h *HerokuTarget) drain(w http.ResponseWriter, r *http.Request) {
 	for herokuScanner.Scan() {
 		ts := time.Now()
 		message := herokuScanner.Message()
-		lb := labels.NewBuilder(nil)
+		lb := labels.NewBuilder(labels.EmptyLabels())
 		lb.Set("__heroku_drain_host", message.Hostname)
 		lb.Set("__heroku_drain_app", message.Application)
 		lb.Set("__heroku_drain_proc", message.Process)

@@ -394,7 +394,7 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 	var (
 		protoLabels  = make([]*typesv1.LabelPair, 0, lbs.Len()+len(f.config.ExternalLabels))
 		protoSamples = make([]*pushv1.RawSample, 0, len(samples))
-		lbsBuilder   = labels.NewBuilder(nil)
+		lbsBuilder   = labels.NewBuilder(labels.EmptyLabels())
 	)
 
 	lbs.Range(func(label labels.Label) {
