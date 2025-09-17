@@ -8,9 +8,11 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -72,4 +74,48 @@ func (d Distribution) Execute(argv []string) (string, string, error) {
 		return stdout.String(), stderr.String(), fmt.Errorf("asprof failed to run %s: %w", exe, err)
 	}
 	return stdout.String(), stderr.String(), nil
+}
+
+func ExtractDistribution(a Archive, tmpDir, distName string) (Distribution, error) {
+	d := Distribution{}
+	fsMutex.Lock()
+	defer fsMutex.Unlock()
+
+	var launcher, lib []byte
+	err := readArchive(a.data, a.format, func(name string, fi fs.FileInfo, data []byte) error {
+		if strings.Contains(name, "asprof") {
+			launcher = data
+		}
+		if strings.Contains(name, "libasyncProfiler") {
+			lib = data
+		}
+		return nil
+	})
+	if err != nil {
+		return d, err
+	}
+	if launcher == nil || lib == nil {
+		return d, fmt.Errorf("failed to find libasyncProfiler in archive %s", distName)
+	}
+
+	fileMap := map[string][]byte{}
+	fileMap[filepath.Join(distName, d.LauncherPath())] = launcher
+	fileMap[filepath.Join(distName, d.LibPath())] = lib
+	tmpDirFile, err := os.Open(tmpDir)
+	if err != nil {
+		return d, fmt.Errorf("failed to open tmp dir %s: %w", tmpDir, err)
+	}
+	defer tmpDirFile.Close()
+
+	if err = checkTempDirPermissions(tmpDirFile); err != nil {
+		return d, err
+	}
+
+	for path, data := range fileMap {
+		if err = writeFile(tmpDirFile, path, data, true); err != nil {
+			return d, err
+		}
+	}
+	d.extractedDir = filepath.Join(tmpDir, distName)
+	return d, nil
 }
