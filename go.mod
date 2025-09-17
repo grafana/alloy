@@ -862,7 +862,7 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/tinylru v1.2.1 // indirect
-	github.com/tidwall/wal v1.1.8 // indirect
+	github.com/tidwall/wal v1.2.0 // indirect
 	github.com/tinylib/msgp v1.4.0 // indirect
 	github.com/tjhop/slog-gokit v0.1.4 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
