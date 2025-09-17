@@ -15,6 +15,7 @@ import (
 func StartPyroscopeContainer(t *testing.T, ctx context.Context, l log.Logger) (testcontainers.Container, string) {
 	req := testcontainers.ContainerRequest{
 		Image:        "grafana/pyroscope:latest",
+		Cmd:          []string{"--ingester.min-ready-duration=0s"},
 		ExposedPorts: []string{"4040/tcp"},
 		WaitingFor:   wait.ForHTTP("/ready").WithPort("4040/tcp"),
 		Env: map[string]string{
