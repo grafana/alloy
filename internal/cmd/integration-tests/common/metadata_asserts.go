@@ -36,7 +36,7 @@ func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
 	var metricMetadata MetadataResponse
 	var err error
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		metricMetadata, err = GetMetadata("")
+		metricMetadata, err = GetMetadata()
 		assert.NoError(c, err)
 		assert.Subset(c, maps.Keys(metricMetadata.Data), expectedMetricsWithMetadata, "did not find metadata for the expected metrics")
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
@@ -69,14 +69,15 @@ func (m *MetadataResponse) Unmarshal(bytes []byte) error {
 	return json.Unmarshal(bytes, &m)
 }
 
-func MetadataQuery(metricName string) string {
-	return fmt.Sprintf("%smetadata?metric=%s", promURL, metricName)
+func MetadataQuery() string {
+	// https://prometheus.io/docs/prometheus/latest/querying/api/#querying-metric-metadata
+	return fmt.Sprintf("%smetadata", promURL)
 }
 
-// GetMetadata returns all available metric metadata or metadata for a specific metric if metricName is provided
-func GetMetadata(optionalMetricName string) (MetadataResponse, error) {
+// GetMetadata returns all available metric metadata
+func GetMetadata() (MetadataResponse, error) {
 	var metadataResponse MetadataResponse
-	query := MetadataQuery(optionalMetricName)
+	query := MetadataQuery()
 	err := FetchDataFromURL(query, &metadataResponse)
 	return metadataResponse, err
 }
