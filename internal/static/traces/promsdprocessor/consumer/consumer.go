@@ -15,7 +15,7 @@ import (
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 )
@@ -187,7 +187,7 @@ func (c *Consumer) getPodIP(ctx context.Context, attrs pcommon.Map) string {
 				return ip
 			}
 		case PodAssociationHostnameLabel:
-			hostname := stringAttributeFromMap(attrs, semconv.AttributeHostName)
+			hostname := stringAttributeFromMap(attrs, string(semconv.HostNameKey))
 			if net.ParseIP(hostname) != nil {
 				return hostname
 			}

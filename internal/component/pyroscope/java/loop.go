@@ -245,10 +245,7 @@ func (p *profilingLoop) start() error {
 		argv = append(argv, "--lock", cfg.Lock)
 	}
 	if cfg.LogLevel != "" {
-		argv = append(argv, "--loglevel", cfg.LogLevel)
-	}
-	if cfg.Quiet {
-		argv = append(argv, "--quiet")
+		argv = append(argv, "-L", cfg.LogLevel)
 	}
 	argv = append(argv,
 		"start",

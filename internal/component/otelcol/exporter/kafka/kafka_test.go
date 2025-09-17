@@ -23,7 +23,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			TimeoutSettings: exporterhelper.TimeoutConfig{
 				Timeout: 5 * time.Second,
 			},
-			QueueSettings: exporterhelper.QueueBatchConfig{
+			QueueBatchConfig: exporterhelper.QueueBatchConfig{
 				Enabled:      true,
 				NumConsumers: 10,
 				QueueSize:    1000,
@@ -229,7 +229,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
-				QueueSettings: exporterhelper.QueueBatchConfig{
+				QueueBatchConfig: exporterhelper.QueueBatchConfig{
 					Enabled:      true,
 					NumConsumers: 11,
 					QueueSize:    1001,

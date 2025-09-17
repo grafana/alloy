@@ -19,6 +19,9 @@ otelcol.exporter.otlp "default" {
 }
 
 otelcol.processor.batch "_2_default" {
+	send_batch_size     = 8192
+	send_batch_max_size = 0
+
 	output {
 		metrics = [otelcol.exporter.otlp._2_default.input]
 	}

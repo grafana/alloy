@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.11.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2. (@thampiotr)
@@ -35,6 +38,23 @@ Main (unreleased)
 
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
+- [`otelcol.processor.batch`] Two arguments have different default values. (@ptodev)
+  - `send_batch_size` is now set to 2000 by default. It used to be 8192.
+  - `send_batch_max_size` is now set to 3000 by default. It used to be 0.
+  - This helps prevent issues with ingestion of batches that are too large.
+
+- OpenTelemetry Collector dependencies upgraded from v0.128.0 to v0.134.0. (@ptodev)
+  - The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release, use `otelcol.receiver.otelp` instead.
+  - [`otelcol.exporter.*`] The deprecated `blocking` argument in the `sending_queue` block has been removed.
+    Use `block_on_overflow` instead.
+  - [`otelcol.receiver.kafka`, `otelcol.exporter.kafka`]: Removed the `broker_addr` argument from the `aws_msk` block.
+    Also removed the `SASL/AWS_MSK_IAM` authentication mechanism.
+  - [`otelcol.exporter.splunkhec`] The `batcher` block is deprecated and will be removed in a future release. Use the `queue` block instead.
+  - [`otelcol.exporter.loadbalancing`] Use a linear probe to decrease variance caused by hash collisions, which was causing a non-uniform distribution of loadbalancing.
+  - [`otelcol.connector.servicegraph`] The `database_name_attribute` argument has been removed.
+  - [`otelcol.connector.spanmetrics`] Adds a default maximum number of exemplars within the metric export interval.
+  - [`otelcol.processor.tail_sampling`] Add a new `block_on_overflow` config attribute.
+
 ### Features
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
@@ -47,6 +67,7 @@ Main (unreleased)
   - `query_sample` collector is now compatible with mysql less than 8.0.28 (@cristiangreco)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
+  - updated the config blocks and documentation (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
@@ -67,6 +88,8 @@ Main (unreleased)
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
 ### Enhancements
+
+- Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
 
@@ -119,6 +142,22 @@ Main (unreleased)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by bringing in an upstream change to only track series in a slice if there's a hash conflict. (@kgeckhart)
 
+- Reduce log level from warning for `loki.write` when request fails and will be retried. (@kalleep)
+
+- Fix slow updates to `loki.source.file` when only targets have changed and pipeline is blocked on writes. (@kalleep)
+
+- Reduced allocation in `loki.write` when using external labels with mutliple endpoints. (@kalleep)
+
+- The Windows installer and executables are now code signed. (@martincostello)
+
+- Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
+
+- Add `protobuf_message` and `metadata_cache_size` arguments to `prometheus.write.queue` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@dehaansa)
+
+- Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
+
+- Reduce CPU of `prometheus.write.queue` by eliminating duplicate calls to calculate the protobuf Size. (@kgeckhart)
+
 ### Bugfixes
 
 - Update `webdevops/go-common` dependency to resolve concurrent map write panic. (@dehaansa)
@@ -137,7 +176,11 @@ Main (unreleased)
 
 - Fix `prometheus.operator.*` components to allow them to scrape correctly Prometheus Operator CRDs. (@thomas-gouveia)
 
+- Fix `database_observability.mysql` and `database_observability.postgres` crashing alloy process due to uncaught errors.
+
 - Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
+
+- Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
 
 v1.10.2
 -----------------
