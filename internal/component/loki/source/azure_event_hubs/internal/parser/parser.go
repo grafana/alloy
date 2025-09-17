@@ -199,12 +199,10 @@ func (e *AzureEventHubsTargetMessageParser) getTime(messageTime time.Time, useIn
 }
 
 func (e *AzureEventHubsTargetMessageParser) getLabels(logRecord *azureMonitorResourceLog, relabelConfig []*relabel.Config) model.LabelSet {
-	lbs := labels.Labels{
-		{
-			Name:  "__azure_event_hubs_category",
-			Value: logRecord.Category,
-		},
-	}
+	lbs := labels.New(labels.Label{
+		Name:  "__azure_event_hubs_category",
+		Value: logRecord.Category,
+	})
 
 	var processed labels.Labels
 	// apply relabeling
