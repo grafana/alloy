@@ -122,6 +122,14 @@ services:
     networks:
       - integration-tests
 
+  pyroscope:
+    image: grafana/pyroscope
+    container_name: pyroscope
+    ports:
+      - "4040:4040"
+    networks:
+      - integration-tests
+
 networks:
   integration-tests:
     driver: bridge

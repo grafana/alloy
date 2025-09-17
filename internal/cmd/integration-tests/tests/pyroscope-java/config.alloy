@@ -1,0 +1,42 @@
+discovery.docker "d" {
+    host = "unix:///host-docker.sock"
+}
+
+discovery.process "p" {
+    join = discovery.docker.d.targets
+}
+
+discovery.relabel "l" {
+	targets = discovery.process.p.targets
+
+	rule {
+		source_labels = ["__meta_process_exe"]
+		regex  = "^(.*/java)$"
+		action = "keep"
+	}
+	rule {
+	    source_labels = ["__meta_docker_container_name"]
+	    regex = ".*kafka.*"
+	    action = "keep"
+	}
+	rule {
+	    source_labels = ["__meta_docker_container_name"]
+	    target_label = "service_name"
+	    replacement = "integration-test/java$1"
+	}
+}
+
+pyroscope.java "j" {
+	targets    = discovery.relabel.l.output
+	forward_to = [pyroscope.write.w.receiver]
+}
+
+pyroscope.write "w" {
+	endpoint {
+		url = "http://pyroscope:4040"
+	}
+}
+
+logging {
+	level = "debug"
+}
