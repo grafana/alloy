@@ -212,7 +212,7 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 			}
 		}
 	}
-	
+
 	return newLabels.Labels()
 }
 

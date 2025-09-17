@@ -46,7 +46,7 @@ func TracesTest(t *testing.T, tags map[string]string, testName string) {
 		tags = make(map[string]string)
 	}
 	tags["test_name"] = testName
-	
+
 	AssertTracesAvailable(t, tags)
 }
 
@@ -58,7 +58,7 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string) {
 		err := FetchDataFromURL(query, &searchResponse)
 		assert.NoError(c, err)
 		assert.NotEmpty(c, searchResponse.Traces, "Expected to find traces matching the search criteria")
-		
+
 		// Additional validation - ensure we have actual trace data
 		if len(searchResponse.Traces) > 0 {
 			trace := searchResponse.Traces[0]

@@ -661,7 +661,6 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 
 // Convert Otel Exemplar to Prometheus Exemplar.
 func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Time) exemplar.Exemplar {
-
 	exemplarLabels := labels.NewScratchBuilder(0)
 
 	if traceID := otelExemplar.TraceID(); !traceID.IsEmpty() {
