@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -194,7 +193,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			lastErr = err
 			continue
 		}
-		sort.Sort(ls)
 
 		lb := labels.NewBuilder(ls)
 

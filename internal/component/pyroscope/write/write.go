@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -660,8 +659,6 @@ func validateLabels(lbls labels.Labels) error {
 	if lbls.Len() == 0 {
 		return labelset.ErrServiceNameIsRequired
 	}
-
-	sort.Sort(lbls)
 
 	lastLabelName := ""
 	for _, l := range lbls {
