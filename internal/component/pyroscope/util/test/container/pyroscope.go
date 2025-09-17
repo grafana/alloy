@@ -1,5 +1,3 @@
-//go:build !nodocker
-
 package container
 
 import (
