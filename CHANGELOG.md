@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.11.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2. (@thampiotr)
