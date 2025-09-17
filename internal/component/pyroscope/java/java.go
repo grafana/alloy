@@ -34,10 +34,20 @@ func init() {
 				return nil, fmt.Errorf("java profiler: must be run as root")
 			}
 			a := args.(Arguments)
-			var profiler = asprof.NewProfiler(a.TmpDir, asprof.EmbeddedArchive)
-			err := profiler.ExtractDistributions()
-			if err != nil {
-				return nil, fmt.Errorf("extract async profiler: %w", err)
+			var (
+				dist asprof.Distribution
+				err  error
+			)
+			if a.Dist != "" {
+				dist, err = asprof.NewExtractedDistribution(a.Dist)
+				if err != nil {
+					return nil, fmt.Errorf("invalid asprof dist: %w", err)
+				}
+			} else {
+				dist, err = asprof.ExtractDistribution(asprof.EmbeddedArchive, a.TmpDir, asprof.EmbeddedArchive.DistName())
+				if err != nil {
+					return nil, fmt.Errorf("extract asprof: %w", err)
+				}
 			}
 
 			forwardTo := pyroscope.NewFanout(a.ForwardTo, opts.ID, opts.Registerer)
@@ -45,7 +55,7 @@ func init() {
 				opts:        opts,
 				args:        a,
 				forwardTo:   forwardTo,
-				profiler:    profiler,
+				profiler:    dist,
 				pid2process: make(map[int]*profilingLoop),
 			}
 			c.updateTargets(a)
@@ -86,7 +96,7 @@ type javaComponent struct {
 
 	mutex       sync.Mutex
 	pid2process map[int]*profilingLoop
-	profiler    *asprof.Profiler
+	profiler    asprof.Distribution
 }
 
 func (j *javaComponent) Run(ctx context.Context) error {
@@ -141,10 +151,6 @@ func (j *javaComponent) updateTargets(args Arguments) {
 		_ = level.Debug(j.opts.Logger).Log("msg", "active target",
 			"target", fmt.Sprintf("%+v", target),
 			"pid", pid)
-		if err != nil {
-			_ = level.Error(j.opts.Logger).Log("msg", "invalid target", "target", fmt.Sprintf("%v", target), "err", err)
-			continue
-		}
 		proc := j.pid2process[pid]
 		if proc == nil {
 			proc = newProfilingLoop(pid, target, j.opts.Logger, j.profiler, j.forwardTo, j.args.ProfilingConfig)

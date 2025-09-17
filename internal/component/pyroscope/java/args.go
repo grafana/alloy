@@ -14,6 +14,9 @@ type Arguments struct {
 
 	TmpDir          string          `alloy:"tmp_dir,attr,optional"`
 	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
+
+	// undocumented
+	Dist string `alloy:"dist,block,optional"`
 }
 
 type ProfilingConfig struct {
