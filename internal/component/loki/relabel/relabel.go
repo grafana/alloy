@@ -247,7 +247,7 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 	lbls := builder.Labels()
 	lbls, _ = relabel.Process(lbls, c.rcs...)
 
-	relabeled := make(model.LabelSet, len(lbls))
+	relabeled := make(model.LabelSet, lbls.Len())
 	lbls.Range(func(lbl labels.Label) {
 		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})

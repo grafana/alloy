@@ -13,7 +13,7 @@ import (
 )
 
 func format(lbs labels.Labels, cfg []*relabel.Config) model.LabelSet {
-	if len(lbs) == 0 {
+	if lbs.IsEmpty() {
 		return nil
 	}
 	processed, _ := relabel.Process(lbs, cfg...)
