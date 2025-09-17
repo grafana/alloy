@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -38,45 +36,6 @@ type TestLog struct {
 type fileInfo struct {
 	path    string
 	relPath string
-}
-
-func getDockerSocketPath() (string, error) {
-	contextCmd := exec.Command("docker", "context", "show")
-	contextOutput, err := contextCmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to get docker context: %w", err)
-	}
-	contextName := strings.TrimSpace(string(contextOutput))
-
-	inspectCmd := exec.Command("docker", "context", "inspect", contextName)
-	inspectOutput, err := inspectCmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect docker context %s: %w", contextName, err)
-	}
-
-	var contexts []struct {
-		Endpoints struct {
-			Docker struct {
-				Host string `json:"Host"`
-			} `json:"docker"`
-		} `json:"Endpoints"`
-	}
-
-	if err := json.Unmarshal(inspectOutput, &contexts); err != nil {
-		return "", fmt.Errorf("failed to parse docker context inspect output: %w", err)
-	}
-
-	if len(contexts) == 0 {
-		return "", fmt.Errorf("no docker contexts found")
-	}
-
-	host := contexts[0].Endpoints.Docker.Host
-	if !strings.HasPrefix(host, "unix://") {
-		return "", fmt.Errorf("docker host is not a unix socket: %s", host)
-	}
-
-	socketPath := strings.TrimPrefix(host, "unix://")
-	return socketPath, nil
 }
 
 func executeCommand(command string, args []string, taskDescription string) {
@@ -130,9 +89,6 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 
 // Create a container request based on the test directory
 func createContainerRequest(dirName string, port int, networkName string, containerFiles []testcontainers.ContainerFile) testcontainers.ContainerRequest {
-	pyroscope := strings.Contains(dirName, "pyroscope")
-	beyla := dirName == "beyla"
-
 	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build natPort: %v", err))
@@ -152,19 +108,10 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 		},
 		Privileged: true,
 	}
-	dockerSocketPath, err := getDockerSocketPath()
-	if err != nil {
-		panic(fmt.Sprintf("failed to get docker socket path: %v", err))
-	}
-	if beyla || pyroscope {
+
+	// Apply special configurations for specific tests
+	if dirName == "beyla" {
 		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
-			if pyroscope {
-				hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
-					Type:   mount.TypeBind,
-					Source: dockerSocketPath,
-					Target: "/host-docker.sock",
-				})
-			}
 			hostConfig.Privileged = true
 			hostConfig.CapAdd = []string{"SYS_ADMIN", "SYS_PTRACE", "SYS_RESOURCE"}
 			hostConfig.SecurityOpt = []string{"apparmor:unconfined"}
