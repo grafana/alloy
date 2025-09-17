@@ -1,4 +1,4 @@
-package tracelog
+package util
 
 import (
 	"github.com/go-kit/log"

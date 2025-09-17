@@ -95,7 +95,7 @@ func main() {
 	}
 }
 
-func newJava(ps pids, w pyroscope.Appendable) interface{ Run(context.Context) error } {
+func newJava(ps pids, w pyroscope.Appendable) *java.Component {
 	args := java.DefaultArguments()
 	args.ForwardTo = []pyroscope.Appendable{w}
 	for _, pid := range ps {

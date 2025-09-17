@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/component/pyroscope/util/tracelog"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
@@ -261,7 +260,7 @@ func (f *fanOutClient) Push(
 		dl                    any
 		ok                    bool
 		reqSize, profileCount = requestSize(req)
-		l                     = tracelog.TraceLog(f.logger, sp)
+		l                     = util.TraceLog(f.logger, sp)
 		st                    = time.Now()
 	)
 	if dl, ok = ctx.Deadline(); !ok {
@@ -467,7 +466,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		dl                    any
 		ok                    bool
 		reqSize, profileCount = int64(len(profile.RawBody)), int64(1)
-		l                     = tracelog.TraceLog(f.logger, sp)
+		l                     = util.TraceLog(f.logger, sp)
 		st                    = time.Now()
 	)
 	if dl, ok = ctx.Deadline(); !ok {

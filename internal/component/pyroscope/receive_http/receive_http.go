@@ -14,7 +14,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/component/pyroscope/util/tracelog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/trace"
@@ -171,7 +170,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 
 	ctx, sp := c.tracer.Start(ctx, "/push.v1.PusherService/Push")
 	defer sp.End()
-	l := tracelog.TraceLog(c.logger, sp)
+	l := pyroutil.TraceLog(c.logger, sp)
 
 	var wg sync.WaitGroup
 	var errs error
@@ -225,7 +224,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	ctx, sp := c.tracer.Start(ctx, "/ingest")
 	defer sp.End()
 
-	l := tracelog.TraceLog(c.logger, sp)
+	l := pyroutil.TraceLog(c.logger, sp)
 
 	// Parse labels early
 	var lbls labels.Labels
