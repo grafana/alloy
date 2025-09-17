@@ -187,21 +187,22 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 	}
 
 	entryLabels := make(model.LabelSet)
-	for _, lbl := range lbs {
+	lbs.Range(func(lbl labels.Label) {
 		// if internal label and not reserved, drop
 		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != lokiClient.ReservedLabelTenantID {
-			continue
+			return
 		}
 
 		// ignore invalid labels
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+			return
 		}
 
 		entryLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
+
 	return entryLabels
 }
 

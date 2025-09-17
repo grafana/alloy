@@ -216,19 +216,19 @@ func (e *AzureEventHubsTargetMessageParser) getLabels(logRecord *azureMonitorRes
 
 	// final labelset that will be sent to loki
 	resultLabels := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		// ignore internal labels
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		// ignore invalid labels
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValid() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+			return
 		}
 		resultLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return resultLabels
 }

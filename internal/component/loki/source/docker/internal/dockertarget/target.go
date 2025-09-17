@@ -312,12 +312,12 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
 }

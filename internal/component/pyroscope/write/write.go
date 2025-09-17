@@ -392,30 +392,30 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
 	var (
-		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
+		protoLabels  = make([]*typesv1.LabelPair, 0, lbs.Len()+len(f.config.ExternalLabels))
 		protoSamples = make([]*pushv1.RawSample, 0, len(samples))
 		lbsBuilder   = labels.NewBuilder(nil)
 	)
 
-	for _, label := range lbs {
+	lbs.Range(func(label labels.Label) {
 		// filter reserved labels, with exceptions for __name__ and __delta__.
 		if strings.HasPrefix(label.Name, model.ReservedLabelPrefix) &&
 			label.Name != labels.MetricName &&
 			label.Name != pyroscope.LabelNameDelta {
 
-			continue
+			return
 		}
 		lbsBuilder.Set(label.Name, label.Value)
-	}
+	})
 	for name, value := range f.config.ExternalLabels {
 		lbsBuilder.Set(name, value)
 	}
-	for _, l := range lbsBuilder.Labels() {
+	lbsBuilder.Labels().Range(func(l labels.Label) {
 		protoLabels = append(protoLabels, &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})
-	}
+	})
 	for _, sample := range samples {
 		protoSamples = append(protoSamples, &pushv1.RawSample{
 			ID:         sample.ID,
@@ -661,28 +661,37 @@ func validateLabels(lbls labels.Labels) error {
 	}
 
 	lastLabelName := ""
-	for _, l := range lbls {
+	var err error = nil
+	lbls.Range(func(l labels.Label) {
+		if err != nil {
+			return // short-circuit so we return the first encountered error
+		}
+
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return fmt.Errorf("duplicate label name: %s", l.Name)
+			err = fmt.Errorf("duplicate label name: %s", l.Name)
+			return
 		}
 
 		// Validate label value
 		if !model.LabelValue(l.Value).IsValid() {
-			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+			err = fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+			return
 		}
 
 		// Skip label name validation for pyroscope reserved labels
 		if l.Name != pyroscope.LabelName {
 			// Validate label name
-			if err := labelset.ValidateLabelName(l.Name); err != nil {
-				return fmt.Errorf("invalid label name: %w", err)
+			// two errors is ok?
+			if err = labelset.ValidateLabelName(l.Name); err != nil {
+				err = fmt.Errorf("invalid label name: %w", err)
+				return
 			}
 		}
 
 		lastLabelName = l.Name
-	}
+	})
 
-	return nil
+	return err
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {

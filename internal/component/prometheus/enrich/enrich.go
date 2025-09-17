@@ -200,21 +200,20 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 		return lbls
 	}
 
-	newLabels := lbls.Copy()
-
+	newLabels := labels.NewBuilder(lbls.Copy())
 	if len(c.args.LabelsToCopy) == 0 {
 		for k, v := range targetSet {
-			newLabels = append(newLabels, labels.Label{Name: string(k), Value: string(v)})
+			newLabels.Set(string(k), string(v))
 		}
 	} else {
 		for _, label := range c.args.LabelsToCopy {
 			if value, ok := targetSet[model.LabelName(label)]; ok {
-				newLabels = append(newLabels, labels.Label{Name: label, Value: string(value)})
+				newLabels.Set(label, string(value))
 			}
 		}
 	}
-
-	return newLabels
+	
+	return newLabels.Labels()
 }
 
 func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {

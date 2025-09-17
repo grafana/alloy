@@ -75,10 +75,10 @@ func newTailer(l log.Logger, task *tailerTask) *tailer {
 }
 
 func newLabelSet(l labels.Labels) model.LabelSet {
-	res := make(model.LabelSet, len(l))
-	for _, pair := range l {
-		res[model.LabelName(pair.Name)] = model.LabelValue(pair.Value)
-	}
+	res := make(model.LabelSet, l.Len())
+	l.Range(func(l labels.Label) {
+		res[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+	})
 	return res
 }
 
