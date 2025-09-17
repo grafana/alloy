@@ -16,7 +16,7 @@ type Arguments struct {
 	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
 
 	// undocumented
-	Dist string `alloy:"dist,block,optional"`
+	Dist string `alloy:"dist,attr,optional"`
 }
 
 type ProfilingConfig struct {
