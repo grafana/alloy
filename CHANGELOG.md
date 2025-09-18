@@ -176,6 +176,8 @@ v1.11.0-rc.0
 
 - Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
 
+- Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
+
 v1.10.2
 -----------------
 
