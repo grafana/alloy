@@ -26,4 +26,4 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - run: make test-pyroscope
+      - run: sudo make test-pyroscope
