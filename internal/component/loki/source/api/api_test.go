@@ -613,7 +613,8 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 }
 
 func getFreePort(t *testing.T, exclude ...int) int {
-	for range 10 {
+	const maxRetries = 10
+	for range maxRetries {
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		if !slices.Contains(exclude, port) {
