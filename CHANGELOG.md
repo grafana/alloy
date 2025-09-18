@@ -15,13 +15,24 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
+- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
 ### Bugfixes
 
+
 - Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
+
+- **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
+  - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
+  - Proper handling of pod deletion and race conditions between job completion and controller cleanup
+  - Separation of concerns: `shouldStopTailingContainer()` handles standard Kubernetes restart policies for regular pods, while `shouldStopTailingJobContainer()` handles job-specific lifecycle with grace periods
+  - Enhanced deduplication mechanisms to prevent duplicate log collection while ensuring comprehensive coverage
+  - Comprehensive test coverage including unit tests and deduplication validation
+  This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
 
 v1.11.0-rc.0
 -----------------
@@ -92,8 +103,6 @@ v1.11.0-rc.0
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
 - Add otel collector converter for `otelcol.receiver.googlecloudpubsub`. (@kalleep)
-
-- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
 - (_Experimental_) Add a `honor_metadata` configuration argument to the `prometheus.scrape` component.
   When set to `true`, it will propagate metric metadata to downstream components.
@@ -190,14 +199,6 @@ v1.11.0-rc.0
 - Fix data race in`loki.source.docker` that could cause Alloy to panic. (@kalleep)
 
 - Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
-
-- **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
-  - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
-  - Proper handling of pod deletion and race conditions between job completion and controller cleanup
-  - Separation of concerns: `shouldStopTailingContainer()` handles standard Kubernetes restart policies for regular pods, while `shouldStopTailingJobContainer()` handles job-specific lifecycle with grace periods
-  - Enhanced deduplication mechanisms to prevent duplicate log collection while ensuring comprehensive coverage
-  - Comprehensive test coverage including unit tests and deduplication validation
-  This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
 
 v1.10.2
 -----------------
