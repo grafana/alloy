@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -35,8 +34,7 @@ import (
 const localhost = "127.0.0.1"
 
 func TestLokiPushTarget(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -123,8 +121,7 @@ regex = "dropme"
 }
 
 func TestLokiPushTargetForRedirect(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -198,8 +195,7 @@ regex = "dropme"
 }
 
 func TestLokiPushTargetWithXScopeOrgIDHeader(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -290,8 +286,7 @@ regex = "dropme"
 }
 
 func TestPlaintextPushTarget(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()
@@ -360,8 +355,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 }
 
 func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()
@@ -439,9 +433,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 }
 
 func TestReady(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
-
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()

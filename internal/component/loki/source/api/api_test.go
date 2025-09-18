@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/go-kit/log"
 	"github.com/phayes/freeport"
 
 	"github.com/grafana/dskit/flagext"
@@ -33,7 +34,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -101,7 +101,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
 		a.UseIncomingTimestamp = true
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	_, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -148,7 +148,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 		a.UseIncomingTimestamp = true
 		a.Labels = map[string]string{"test_label": "before"}
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	c, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -224,7 +224,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 		a.Server.HTTP.ListenPort = 8537
 		a.ForwardTo = mapToChannels(receivers)
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 
 	comp, err := New(opts, args)
 	require.NoError(t, err)
@@ -342,7 +342,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			comp, err := New(
-				defaultOptions(t),
+				defaultOptions(),
 				tc.args,
 			)
 			require.NoError(t, err)
@@ -384,7 +384,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
 		a.UseIncomingTimestamp = true
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	_, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -454,7 +454,7 @@ func TestDefaultServerConfig(t *testing.T) {
 	args.Server = nil // user did not define server options
 
 	comp, err := New(
-		defaultOptions(t),
+		defaultOptions(),
 		args,
 	)
 	require.NoError(t, err)
@@ -565,10 +565,10 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	return lokiClient
 }
 
-func defaultOptions(t *testing.T) component.Options {
+func defaultOptions() component.Options {
 	return component.Options{
 		ID:         "loki.source.api.test",
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     log.NewNopLogger(),
 		Registerer: prometheus.NewRegistry(),
 	}
 }
