@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
+
 v1.11.0-rc.0
 -----------------
 
@@ -117,8 +122,6 @@ v1.11.0-rc.0
 - Switch to the community maintained fork of `go-jmespath` that has more features. (@dehaansa)
 
 - Add a `stage.pattern` stage to `loki.process` that uses LogQL patterns to parse logs. (@dehaansa)
-
-- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
 - Add support to validate references, stdlib functions and arguments when using validate command. (@kalleep)
 
