@@ -10,6 +10,11 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+
 v1.11.0-rc.0
 -----------------
 
@@ -68,7 +73,6 @@ v1.11.0-rc.0
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
   - updated the config blocks and documentation (@cristiangreco)
-  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
