@@ -12,10 +12,12 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/go-kit/log"
 	"github.com/phayes/freeport"
 
 	"github.com/grafana/dskit/flagext"
@@ -33,7 +35,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -101,7 +102,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
 		a.UseIncomingTimestamp = true
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	_, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -148,7 +149,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 		a.UseIncomingTimestamp = true
 		a.Labels = map[string]string{"test_label": "before"}
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	c, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -224,7 +225,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 		a.Server.HTTP.ListenPort = 8537
 		a.ForwardTo = mapToChannels(receivers)
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 
 	comp, err := New(opts, args)
 	require.NoError(t, err)
@@ -269,7 +270,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	httpPort := getFreePort(t)
-	grpcPort := getFreePort(t)
+	grpcPort := getFreePort(t, httpPort)
 	tests := []struct {
 		name            string
 		args            Arguments
@@ -295,7 +296,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 		{
 			name:            "change in port requires server restart",
 			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(getFreePort(t), grpcPort),
+			newArgs:         testArgsWithPorts(getFreePort(t, httpPort, grpcPort), grpcPort),
 			restartRequired: true,
 		},
 		{
@@ -342,7 +343,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			comp, err := New(
-				defaultOptions(t),
+				defaultOptions(),
 				tc.args,
 			)
 			require.NoError(t, err)
@@ -384,7 +385,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 		a.ForwardTo = []loki.LogsReceiver{receiver.LogsReceiver()}
 		a.UseIncomingTimestamp = true
 	})
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 	_, shutdown := startTestComponent(t, opts, args, ctx)
 	defer shutdown()
 
@@ -454,7 +455,7 @@ func TestDefaultServerConfig(t *testing.T) {
 	args.Server = nil // user did not define server options
 
 	comp, err := New(
-		defaultOptions(t),
+		defaultOptions(),
 		args,
 	)
 	require.NoError(t, err)
@@ -535,7 +536,7 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 
 func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
 	channels := make([]loki.LogsReceiver, len(clients))
-	for i := 0; i < len(clients); i++ {
+	for i := range clients {
 		channels[i] = clients[i].LogsReceiver()
 	}
 	return channels
@@ -565,10 +566,10 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	return lokiClient
 }
 
-func defaultOptions(t *testing.T) component.Options {
+func defaultOptions() component.Options {
 	return component.Options{
 		ID:         "loki.source.api.test",
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     log.NewNopLogger(),
 		Registerer: prometheus.NewRegistry(),
 	}
 }
@@ -580,7 +581,9 @@ func testArgsWith(t *testing.T, mutator func(arguments *Arguments)) Arguments {
 }
 
 func testArgs(t *testing.T) Arguments {
-	return testArgsWithPorts(getFreePort(t), getFreePort(t))
+	httpPort := getFreePort(t)
+	grpPort := getFreePort(t, httpPort)
+	return testArgsWithPorts(httpPort, grpPort)
 }
 
 func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
@@ -609,8 +612,16 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 	}
 }
 
-func getFreePort(t *testing.T) int {
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	return port
+func getFreePort(t *testing.T, exclude ...int) int {
+	const maxRetries = 10
+	for range maxRetries {
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		if !slices.Contains(exclude, port) {
+			return port
+		}
+	}
+
+	t.Fatal("fail to get free port")
+	return 0
 }
