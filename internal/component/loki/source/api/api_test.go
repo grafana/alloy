@@ -270,7 +270,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	httpPort := getFreePort(t)
-	grpcPort := getFreePortExcluding(t, httpPort)
+	grpcPort := getFreePort(t, httpPort)
 	tests := []struct {
 		name            string
 		args            Arguments
@@ -296,7 +296,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 		{
 			name:            "change in port requires server restart",
 			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(getFreePortExcluding(t, httpPort, grpcPort), grpcPort),
+			newArgs:         testArgsWithPorts(getFreePort(t, httpPort, grpcPort), grpcPort),
 			restartRequired: true,
 		},
 		{
@@ -582,7 +582,7 @@ func testArgsWith(t *testing.T, mutator func(arguments *Arguments)) Arguments {
 
 func testArgs(t *testing.T) Arguments {
 	httpPort := getFreePort(t)
-	grpPort := getFreePortExcluding(t, httpPort)
+	grpPort := getFreePort(t, httpPort)
 	return testArgsWithPorts(httpPort, grpPort)
 }
 
@@ -612,15 +612,8 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 	}
 }
 
-func getFreePort(t *testing.T) int {
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	return port
-}
-
-func getFreePortExcluding(t *testing.T, exclude ...int) int {
+func getFreePort(t *testing.T, exclude ...int) int {
 	for range 10 {
-		var err error
 		port, err := freeport.GetFreePort()
 		require.NoError(t, err)
 		if !slices.Contains(exclude, port) {
