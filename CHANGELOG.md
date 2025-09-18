@@ -23,7 +23,7 @@ Main (unreleased)
 
 ### Bugfixes
 
-v1.11.0-rc.0
+v1.11.0-rc.1
 -----------------
 
 ### Breaking changes
