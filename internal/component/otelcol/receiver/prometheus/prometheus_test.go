@@ -117,7 +117,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.JobLabel, Value: "testJob"},
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "foo", Value: "bar"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -144,7 +143,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.JobLabel, Value: "testJob"},
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "service", Value: "api"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -165,7 +163,6 @@ func TestComprehensive(t *testing.T) {
 				labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 				labels.Label{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
 				labels.Label{Name: "method", Value: "GET"},
-				labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 				labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 				labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 			)
@@ -180,7 +177,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "le", Value: "+Inf"},
 			labels.Label{Name: "method", Value: "GET"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -193,7 +189,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.JobLabel, Value: "testJob"},
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "method", Value: "GET"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -206,7 +201,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.JobLabel, Value: "testJob"},
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "method", Value: "GET"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -219,7 +213,6 @@ func TestComprehensive(t *testing.T) {
 			labels.Label{Name: model.JobLabel, Value: "testJob"},
 			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
 			labels.Label{Name: "endpoint", Value: "/api/v1"},
-			labels.Label{Name: model.MetricNameLabel, Value: "otel_scope_info"},
 			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
 			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
 		)
@@ -378,6 +371,62 @@ func TestHistogram(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+// TestDuplicateLabelNamesError verifies that metrics with duplicate label names
+// are properly rejected with the expected error message. This essentially verifies that
+// labels.New() will ensure that labels are sorted
+func TestDuplicateLabelNamesError(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	// Override our settings so metrics get forwarded to metricCh.
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	lbls := labels.New(
+		labels.Label{Name: model.MetricNameLabel, Value: "test_metric"},
+		labels.Label{Name: model.JobLabel, Value: "testJob"},
+		labels.Label{Name: model.MetricNameLabel, Value: "duplicate_name"}, // Duplicate __name__
+		labels.Label{Name: "instance", Value: "localhost:8080"})
+
+	ctx = context.Background()
+	ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
+	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
+	app := exports.Receiver.Appender(ctx)
+
+	ts := time.Now().Unix()
+
+	_, err = app.Append(0, lbls, ts, 42.0)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid sample: non-unique label names:")
 }
 
 // makeMetricsOutput returns a ConsumerArguments which will forward metrics to
