@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64)
+//go:build unix
 
 package reporter
 
@@ -41,8 +41,10 @@ func (f PPROFConsumerFunc) ConsumePprofProfiles(ctx context.Context, p []PPROF) 
 }
 
 type Config struct {
-	ReportInterval   time.Duration
-	SamplesPerSecond int64
+	ReportInterval            time.Duration
+	SamplesPerSecond          int64
+	Demangle                  string
+	ReporterUnsymbolizedStubs bool
 
 	ExtraNativeSymbolResolver samples.NativeSymbolResolver
 	Consumer                  PPROFConsumer
@@ -232,13 +234,27 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				mapping = fakeMapping
 			}
 
-			location, fresh = b.Location(mapping, fr.AddressOrLineno)
+			location, fresh = b.Location(mapping, fr.AddressOrLineno, fr.FunctionName, fr.SourceLine)
 			if fresh {
 				location.Mapping = mapping
 				location.Address = uint64(fr.AddressOrLineno)
 				switch fr.Type {
 				case libpf.NativeFrame:
-					p.symbolizeNativeFrame(b, location, fr)
+					if fr.FunctionName == libpf.NullString {
+						p.symbolizeNativeFrame(b, location, fr)
+						if location.Line == nil && p.cfg.ReporterUnsymbolizedStubs {
+							p.symbolizeStub(b, location, fr)
+						}
+					} else {
+						location.Line = []profile.Line{{
+							Function: b.Function(
+								p.demangle(fr.FunctionName),
+								fr.SourceFile,
+							),
+						}}
+						location.Mapping.HasFunctions = true
+					}
+
 				case libpf.AbortFrame:
 					// Next step: Figure out how the OTLP protocol
 					// could handle artificial frames, like AbortFrame,
@@ -298,6 +314,9 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	fr libpf.Frame,
 ) {
 
+	if !fr.MappingFile.Valid() {
+		return
+	}
 	mappingFile := fr.MappingFile.Value()
 	if mappingFile.FileName == process.VdsoPathName {
 		return
@@ -313,11 +332,26 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 		ReturnAddress: false,
 	}
 	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, hostFrame, func(si samples.SourceInfo) {
-		if si.FunctionName == libpf.NullString && si.FilePath == libpf.NullString {
+		name := si.FunctionName
+		if name == libpf.NullString && si.FilePath == libpf.NullString {
 			return
 		}
+		name = p.demangle(name)
 		loc.Mapping.HasFunctions = true
-		line := profile.Line{Function: b.Function(si.FunctionName, si.FilePath)}
+		line := profile.Line{Function: b.Function(name, si.FilePath)}
 		loc.Line = append(loc.Line, line)
 	})
+}
+
+func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Location, fr libpf.Frame) {
+	if location.Mapping.File == "" {
+		return
+	}
+	location.Line = []profile.Line{{
+		Function: b.Function(
+			libpf.Intern(fmt.Sprintf("$ %s + 0x%x", location.Mapping.File, fr.AddressOrLineno)),
+			fr.SourceFile,
+		),
+	}}
+	location.Mapping.HasFunctions = true
 }

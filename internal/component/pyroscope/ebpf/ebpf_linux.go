@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -18,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	discovery2 "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
@@ -34,22 +36,22 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			arguments := args.(Arguments)
-			return New(opts, arguments)
+			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
 }
 
-func New(opts component.Options, args Arguments) (component.Component, error) {
+func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
 	cfg, err := args.Convert()
 	if err != nil {
 		return nil, err
 	}
 	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
 	discovery := discovery2.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
-	ms := newMetrics(opts.Registerer)
+	ms := newMetrics(reg)
 
-	appendable := pyroscope.NewFanout(args.ForwardTo, opts.ID, opts.Registerer)
+	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
 	nfs, err := irsymcache.NewFSCache(irsymcache.TableTableFactory{
 		Options: []lidia.Option{
@@ -73,7 +75,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 
 	res := &Component{
 		cfg:                    cfg,
-		options:                opts,
+		logger:                 logger,
 		metrics:                ms,
 		appendable:             appendable,
 		args:                   args,
@@ -82,10 +84,12 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 		argsUpdate:             make(chan Arguments, 4),
 	}
 
-	cfg.Reporter = reporter.NewPPROF(opts.Logger, &reporter.Config{
-		ExtraNativeSymbolResolver: nfs,
+	cfg.Reporter = reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
+		Demangle:                  args.Demangle,
+		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
+		ExtraNativeSymbolResolver: nfs,
 		Consumer: reporter.PPROFConsumerFunc(func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
 		}),
@@ -98,7 +102,7 @@ func New(opts component.Options, args Arguments) (component.Component, error) {
 }
 
 type Component struct {
-	options                component.Options
+	logger                 log.Logger
 	args                   Arguments
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
@@ -161,13 +165,13 @@ func (c *Component) Update(args component.Arguments) error {
 	select {
 	case c.argsUpdate <- newArgs:
 	default:
-		_ = level.Debug(c.options.Logger).Log("msg", "dropped args update")
+		_ = level.Debug(c.logger).Log("msg", "dropped args update")
 	}
 	return nil
 }
 
 func (c *Component) reportUnhealthy(err error) {
-	_ = level.Error(c.options.Logger).
+	_ = level.Error(c.logger).
 		Log("msg", "unhealthy", "err", err)
 
 	c.healthMut.Lock()
@@ -204,15 +208,15 @@ func (c *Component) checkTraceFS() {
 		if err != nil {
 			continue
 		}
-		level.Debug(c.options.Logger).Log("msg", "found tracefs at "+p)
+		level.Debug(c.logger).Log("msg", "found tracefs at "+p)
 		return
 	}
 	mountPath := candidates[0]
 	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
 	if err != nil {
-		level.Error(c.options.Logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
+		level.Error(c.logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
 	} else {
-		level.Debug(c.options.Logger).Log("msg", "mounted tracefs at "+mountPath)
+		level.Debug(c.logger).Log("msg", "mounted tracefs at "+mountPath)
 	}
 }
 

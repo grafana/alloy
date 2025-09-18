@@ -59,7 +59,7 @@ func TestSendProfilesConcurrently(t *testing.T) {
 			reg := prometheus.NewRegistry()
 			c := new(Component)
 			c.metrics = newMetrics(reg)
-			c.options.Logger = util.TestAlloyLogger(t)
+			c.logger = util.TestLogger(t)
 			c.args.CollectInterval = td.collectionInterval
 			successes := atomic.Uint32{}
 			failures := atomic.Uint32{}

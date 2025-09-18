@@ -10,6 +10,9 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+v1.11.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2. (@thampiotr)
@@ -65,6 +68,7 @@ Main (unreleased)
   - include `server_id` label on log entries (@matthewnolf)
   - support receiving targets argument and relabel those to include `server_id` (@matthewnolf)
   - updated the config blocks and documentation (@cristiangreco)
+  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - add `query_tables` collector for postgres (@matthewnolf)
@@ -85,6 +89,8 @@ Main (unreleased)
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
 ### Enhancements
+
+- Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
 
 - Fix `pyroscope.write` component's `AppendIngest` method to respect configured timeout and implement retry logic. The method now properly uses the configured `remote_timeout`, includes retry logic with exponential backoff, and tracks metrics for sent/dropped bytes and profiles consistently with the `Append` method. (@korniltsev)
 
@@ -142,6 +148,12 @@ Main (unreleased)
 - The Windows installer and executables are now code signed. (@martincostello)
 
 - Reduce compressed request size in `prometheus.write.queue` by ensuring append order is maintained when sending metrics to the WAL. (@kgeckhart)
+
+- Add `protobuf_message` and `metadata_cache_size` arguments to `prometheus.write.queue` endpoint configuration to support both Prometheus Remote Write v1 and v2 protocols. The default remains `"prometheus.WriteRequest"` (v1) for backward compatibility. (@dehaansa)
+
+- Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
+
+- Reduce CPU of `prometheus.write.queue` by eliminating duplicate calls to calculate the protobuf Size. (@kgeckhart)
 
 ### Bugfixes
 

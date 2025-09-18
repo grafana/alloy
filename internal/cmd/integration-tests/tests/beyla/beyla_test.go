@@ -21,9 +21,3 @@ func TestBeylaTraces(t *testing.T) {
 	}
 	common.TracesTest(t, tags, "beyla")
 }
-
-func TestBeylaMetricsAndTraces(t *testing.T) {
-	// Run both metrics and traces tests together
-	t.Run("metrics", TestBeylaMetrics)
-	t.Run("traces", TestBeylaTraces)
-}
