@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -269,7 +270,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	httpPort := getFreePort(t)
-	grpcPort := getFreePort(t)
+	grpcPort := getFreePortExcluding(t, httpPort)
 	tests := []struct {
 		name            string
 		args            Arguments
@@ -295,7 +296,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 		{
 			name:            "change in port requires server restart",
 			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(getFreePort(t), grpcPort),
+			newArgs:         testArgsWithPorts(getFreePortExcluding(t, httpPort, grpcPort), grpcPort),
 			restartRequired: true,
 		},
 		{
@@ -535,7 +536,7 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 
 func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
 	channels := make([]loki.LogsReceiver, len(clients))
-	for i := 0; i < len(clients); i++ {
+	for i := range clients {
 		channels[i] = clients[i].LogsReceiver()
 	}
 	return channels
@@ -580,7 +581,9 @@ func testArgsWith(t *testing.T, mutator func(arguments *Arguments)) Arguments {
 }
 
 func testArgs(t *testing.T) Arguments {
-	return testArgsWithPorts(getFreePort(t), getFreePort(t))
+	httpPort := getFreePort(t)
+	grpPort := getFreePortExcluding(t, httpPort)
+	return testArgsWithPorts(httpPort, grpPort)
 }
 
 func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
@@ -613,4 +616,18 @@ func getFreePort(t *testing.T) int {
 	port, err := freeport.GetFreePort()
 	require.NoError(t, err)
 	return port
+}
+
+func getFreePortExcluding(t *testing.T, exclude ...int) int {
+	for range 10 {
+		var err error
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		if !slices.Contains(exclude, port) {
+			return port
+		}
+	}
+
+	t.Fatal("fail to get free port")
+	return 0
 }
