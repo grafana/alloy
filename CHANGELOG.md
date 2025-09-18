@@ -186,6 +186,8 @@ v1.11.0-rc.0
 
 - Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
 
+- Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
 v1.10.2
 -----------------
 
