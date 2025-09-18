@@ -176,7 +176,7 @@ integration-test:
 .PHONY: test-pyroscope
 test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
-	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+	sudo cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
 		$(GO_ENV) go build .
 
 #

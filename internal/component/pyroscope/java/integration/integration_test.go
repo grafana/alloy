@@ -25,6 +25,11 @@ import (
 )
 
 func TestPyroscopeJavaIntegration(t *testing.T) {
+	// Skip test if running on GitHub Actions and job name doesn't match
+	if os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("GITHUB_JOB") != "test_pyroscope" {
+		t.Skip("Skipping Pyroscope Java integration test in GitHub Actions (job name is not test_pyroscope)")
+	}
+
 	wg := sync.WaitGroup{}
 	defer func() {
 		wg.Wait()
