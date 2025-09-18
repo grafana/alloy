@@ -31,6 +31,8 @@ Main (unreleased)
   - Comprehensive test coverage including unit tests and deduplication validation
   This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
 
+- Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
 v1.11.0-rc.0
 -----------------
 
