@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/dskit/server"
 
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -24,6 +25,7 @@ func WeaveworksServerToAlloyServer(config server.Config) *fnet.ServerConfig {
 			ServerReadTimeout:  config.HTTPServerReadTimeout,
 			ServerWriteTimeout: config.HTTPServerWriteTimeout,
 			ServerIdleTimeout:  config.HTTPServerIdleTimeout,
+			TLSConfig:          convertDSKitTLSToAlloy(config.HTTPTLSConfig),
 		},
 		GRPC: &fnet.GRPCConfig{
 			ListenAddress:              config.GRPCListenAddress,
@@ -35,6 +37,7 @@ func WeaveworksServerToAlloyServer(config server.Config) *fnet.ServerConfig {
 			ServerMaxRecvMsg:           config.GRPCServerMaxRecvMsgSize,
 			ServerMaxSendMsg:           config.GRPCServerMaxSendMsgSize,
 			ServerMaxConcurrentStreams: config.GRPCServerMaxConcurrentStreams,
+			TLSConfig:                  convertDSKitTLSToAlloy(config.GRPCTLSConfig),
 		},
 		GracefulShutdownTimeout: config.ServerGracefulShutdownTimeout,
 	}
@@ -57,12 +60,6 @@ func ValidateWeaveWorksServerCfg(cfg server.Config) diag.Diagnostics {
 	}
 	if cfg.MinVersion != defaultCfg.MinVersion {
 		diags.Add(diag.SeverityLevelError, "tls_min_version is not supported in server config")
-	}
-	if cfg.HTTPTLSConfig != defaultCfg.HTTPTLSConfig {
-		diags.Add(diag.SeverityLevelError, "http_tls_config is not supported in server config")
-	}
-	if cfg.GRPCTLSConfig != defaultCfg.GRPCTLSConfig {
-		diags.Add(diag.SeverityLevelError, "grpc_tls_config is not supported in server config")
 	}
 	if cfg.RegisterInstrumentation {
 		diags.Add(diag.SeverityLevelError, "register_instrumentation is not supported in server config")
@@ -105,4 +102,24 @@ func ValidateWeaveWorksServerCfg(cfg server.Config) diag.Diagnostics {
 	}
 
 	return diags
+}
+
+func convertDSKitTLSToAlloy(dskitTLS server.TLSConfig) *fnet.TLSConfig {
+	if !isTLSConfigured(dskitTLS) {
+		return nil
+	}
+
+	return &fnet.TLSConfig{
+		Cert:         dskitTLS.TLSCert,
+		Key:          alloytypes.Secret(dskitTLS.TLSKey),
+		CertFile:     dskitTLS.TLSCertPath,
+		KeyFile:      dskitTLS.TLSKeyPath,
+		ClientAuth:   dskitTLS.ClientAuth,
+		ClientCAFile: dskitTLS.ClientCAs,
+		ClientCA:     dskitTLS.ClientCAsText,
+	}
+}
+
+func isTLSConfigured(cfg server.TLSConfig) bool {
+	return cfg.TLSCertPath != "" || cfg.TLSCert != ""
 }

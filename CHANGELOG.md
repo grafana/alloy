@@ -15,6 +15,10 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
+### Enhancements
+
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
 v1.11.0-rc.0
 -----------------
 
