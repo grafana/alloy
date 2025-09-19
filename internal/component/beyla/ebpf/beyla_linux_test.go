@@ -1488,3 +1488,18 @@ func TestServices_Convert_SamplerConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestEnvVars(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	t.Setenv("BEYLA_TRACE_PRINTER", "json")
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
+}
