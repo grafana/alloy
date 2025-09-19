@@ -24,14 +24,14 @@ discovery.relabel "prometheus1" {
 
 	rule {
 		source_labels = ["__address2__"]
-		regex         = "\""
+		regex         = `"`
 		target_label  = "instance"
 		replacement   = "${1}"
 	}
 
 	rule {
 		source_labels = ["__address3__"]
-		regex         = "\""
+		regex         = `"`
 		target_label  = "instance"
 		replacement   = "${1}"
 	}
