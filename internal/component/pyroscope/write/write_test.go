@@ -1,18 +1,23 @@
 package write
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
@@ -574,6 +579,172 @@ func Test_Write_AppendIngest(t *testing.T) {
 	suite.Run(t, new(AppendIngestTestSuite))
 }
 
+func Test_Write_HttpClientTrace(t *testing.T) {
+	testCases := []struct {
+		name                string
+		traceAll            bool
+		traceErrors         bool
+		simulateError       bool
+		expectTraceLogs     bool
+		expectedLogMessages []string
+	}{
+		{
+			name:                "all_requests_tracing_enabled_success",
+			traceAll:            true,
+			traceErrors:         false,
+			simulateError:       false,
+			expectTraceLogs:     true,
+			expectedLogMessages: []string{"GetConn", "GotConn", "WroteHeaders", "GotFirstResponseByte"},
+		},
+		{
+			name:                "all_requests_tracing_enabled_error",
+			traceAll:            true,
+			traceErrors:         false,
+			simulateError:       true,
+			expectTraceLogs:     true,
+			expectedLogMessages: []string{"GetConn", "GotConn", "WroteHeaders"},
+		},
+		{
+			name:                "error_only_tracing_success",
+			traceAll:            false,
+			traceErrors:         true,
+			simulateError:       false,
+			expectTraceLogs:     false,
+			expectedLogMessages: []string{},
+		},
+		{
+			name:                "error_only_tracing_error",
+			traceAll:            false,
+			traceErrors:         true,
+			simulateError:       true,
+			expectTraceLogs:     true,
+			expectedLogMessages: []string{"GetConn", "GotConn", "WroteHeaders"},
+		},
+		{
+			name:                "tracing_disabled_success",
+			traceAll:            false,
+			traceErrors:         false,
+			simulateError:       false,
+			expectTraceLogs:     false,
+			expectedLogMessages: []string{},
+		},
+		{
+			name:                "tracing_disabled_error",
+			traceAll:            false,
+			traceErrors:         false,
+			simulateError:       true,
+			expectTraceLogs:     false,
+			expectedLogMessages: []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			logBuf := bytes.NewBuffer(nil)
+			l := log.NewSyncLogger(log.NewLogfmtLogger(logBuf))
+
+			handler := http.NewServeMux()
+			pushpath, pushHandler := pushv1connect.NewPusherServiceHandler(PushFunc(
+				func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+					if tc.simulateError {
+						return nil, connect.NewError(connect.CodeInternal, errors.New("simulated error"))
+					}
+					return &connect.Response[pushv1.PushResponse]{}, nil
+				},
+			))
+			handler.Handle(pushpath, pushHandler)
+			handler.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
+				if tc.simulateError {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})
+
+			server := httptest.NewServer(handler)
+			defer server.Close()
+
+			argument := DefaultArguments()
+			argument.Tracing.HttpClientTraceAll = tc.traceAll
+			argument.Tracing.HttpClientTraceErrors = tc.traceErrors
+			argument.Endpoints = []*EndpointOptions{{
+				URL:               server.URL,
+				RemoteTimeout:     GetDefaultEndpointOptions().RemoteTimeout,
+				MaxBackoffRetries: -1,
+			}}
+
+			var export Exports
+			var wg sync.WaitGroup
+			wg.Add(1)
+			c, _ := New(
+				l,
+				noop.Tracer{},
+				prometheus.NewRegistry(),
+				func(e Exports) {
+					defer wg.Done()
+					export = e
+				},
+				"",
+				"",
+				argument,
+			)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			go c.Run(ctx)
+			wg.Wait()
+			require.NotNil(t, export.Receiver)
+			for _, push := range []bool{true, false} {
+				name := "push"
+				if !push {
+					name = "ingest"
+				}
+				t.Run(name, func(t *testing.T) {
+					var err error
+					if push {
+						err = export.Receiver.Appender().Append(ctx, labels.FromMap(map[string]string{
+							"__name__": "test",
+							"job":      "foo",
+						}), []*pyroscope.RawSample{
+							{ID: "test-request-id", RawProfile: []byte("pprofraw")},
+						})
+					} else {
+						err = export.Receiver.Appender().AppendIngest(ctx, &pyroscope.IncomingProfile{
+							RawBody: []byte("pprofraw"),
+							Labels:  labels.FromMap(map[string]string{"__name__": "test", "job": "foo"}),
+							URL:     &url.URL{Path: "/ingest"},
+						})
+					}
+
+					if tc.simulateError {
+						require.Error(t, err)
+					} else {
+						require.NoError(t, err)
+					}
+
+					if tc.expectTraceLogs {
+						foundTraceLog := false
+						for _, expectedMsg := range tc.expectedLogMessages {
+							if strings.Contains(logBuf.String(), fmt.Sprintf("msg=%s", expectedMsg)) {
+								foundTraceLog = true
+								break
+							}
+						}
+						require.True(t, foundTraceLog,
+							"Expected to find at least one trace log message from %v in logs: %s",
+							tc.expectedLogMessages, logBuf.String())
+					} else {
+						for _, expectedMsg := range []string{"GetConn", "GotConn", "WroteHeaders", "GotFirstResponseByte"} {
+							require.NotContains(t, logBuf.String(), fmt.Sprintf("msg=%s", expectedMsg),
+								"Expected no trace logs but found %s in: %s", expectedMsg, logBuf.String())
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 	_, handler := pushv1connect.NewPusherServiceHandler(PushFunc(
 		func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -682,4 +853,94 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ClientTrace_ConcurrentAccess_TLS_DataRace(t *testing.T) {
+	logBuf := bytes.NewBuffer(nil)
+	l := log.NewSyncLogger(log.NewLogfmtLogger(logBuf))
+
+	handler := http.NewServeMux()
+	handler.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
+		responseSize := (r.ContentLength % 5) + 1
+		responseBody := strings.Repeat("x", int(responseSize*1000))
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(responseBody))
+	})
+
+	server := httptest.NewTLSServer(handler)
+	defer server.Close()
+
+	argument := DefaultArguments()
+	argument.Tracing.HttpClientTraceAll = true
+	argument.Endpoints = []*EndpointOptions{{
+		URL:           server.URL,
+		RemoteTimeout: GetDefaultEndpointOptions().RemoteTimeout,
+		HTTPClientConfig: func() *config.HTTPClientConfig {
+			cfg := config.CloneDefaultHTTPClientConfig()
+			cfg.TLSConfig.InsecureSkipVerify = true // Trust the self-signed certificate
+			return cfg
+		}(),
+	}}
+
+	var wg sync.WaitGroup
+	var export Exports
+	wg.Add(1)
+	c, err := New(
+		l,
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(e Exports) {
+			defer wg.Done()
+			export = e
+		},
+		"Alloy/239",
+		"",
+		argument,
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go c.Run(ctx)
+	wg.Wait()
+	require.NotNil(t, export.Receiver)
+
+	const numGoroutines = 100
+	const requestsPerGoroutine = 10
+
+	var testWg sync.WaitGroup
+	testWg.Add(numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(goroutineID int) {
+			defer testWg.Done()
+			for j := 0; j < requestsPerGoroutine; j++ {
+				profileSize := (goroutineID*j)%10 + 1
+				profileData := bytes.Repeat([]byte("profile-data"), profileSize*100)
+				profile := &pyroscope.IncomingProfile{
+					RawBody: profileData,
+					Labels: labels.FromMap(map[string]string{
+						"__name__":     "test-concurrent",
+						"goroutine_id": fmt.Sprintf("%d", goroutineID),
+						"request_id":   fmt.Sprintf("%d", j),
+					}),
+					URL:         &url.URL{Path: "/ingest"},
+					ContentType: []string{"application/octet-stream"},
+				}
+
+				err := export.Receiver.Appender().AppendIngest(ctx, profile)
+				require.NoError(t, err)
+			}
+		}(i)
+	}
+
+	testWg.Wait()
+
+	logOutput := logBuf.String()
+	require.Contains(t, logOutput, "msg=GetConn")
+	require.Contains(t, logOutput, "msg=GotConn")
+	require.Contains(t, logOutput, "msg=TLSHandshakeStart")
+	require.Contains(t, logOutput, "msg=TLSHandshakeDone")
 }
