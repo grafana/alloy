@@ -318,6 +318,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
 			return strings.EqualFold(schema, datname)
 		}) {
+
 			continue
 		}
 
