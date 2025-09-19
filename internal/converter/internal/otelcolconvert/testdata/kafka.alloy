@@ -28,12 +28,11 @@ otelcol.receiver.kafka "default" {
 		sasl {
 			username  = "fakeusername"
 			password  = "fakepassword"
-			mechanism = "AWS_MSK_IAM"
+			mechanism = "AWS_MSK_IAM_OAUTHBEARER"
 			version   = 1
 
 			aws_msk {
-				region      = "us-east-1"
-				broker_addr = "broker:9092"
+				region = "us-east-1"
 			}
 		}
 
@@ -109,8 +108,7 @@ otelcol.exporter.kafka "default" {
 			version   = 1
 
 			aws_msk {
-				region      = "us-east-1"
-				broker_addr = "broker:9092"
+				region = "us-east-1"
 			}
 		}
 

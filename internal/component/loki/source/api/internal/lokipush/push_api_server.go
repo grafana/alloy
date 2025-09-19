@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -194,7 +193,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			lastErr = err
 			continue
 		}
-		sort.Sort(ls)
 
 		lb := labels.NewBuilder(ls)
 
@@ -205,19 +203,19 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 
 		// Apply relabeling
 		processed, keep := relabel.Process(lb.Labels(), relabelRules...)
-		if !keep || len(processed) == 0 {
+		if !keep || processed.Len() == 0 {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		// Convert to model.LabelSet
 		filtered := model.LabelSet{}
-		for i := range processed {
-			if strings.HasPrefix(processed[i].Name, "__") {
-				continue
+		processed.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, "__") {
+				return
 			}
-			filtered[model.LabelName(processed[i].Name)] = model.LabelValue(processed[i].Value)
-		}
+			filtered[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+		})
 
 		// Add tenant ID to the filtered labels if it is set
 		if tenantID != "" {

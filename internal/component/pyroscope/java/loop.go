@@ -183,7 +183,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
 		l := log.With(p.logger, "metric", metric, "sz", sz)
-		ls := labels.NewBuilder(nil)
+		ls := labels.NewBuilder(labels.EmptyLabels())
 		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
 		}
@@ -245,10 +245,7 @@ func (p *profilingLoop) start() error {
 		argv = append(argv, "--lock", cfg.Lock)
 	}
 	if cfg.LogLevel != "" {
-		argv = append(argv, "--loglevel", cfg.LogLevel)
-	}
-	if cfg.Quiet {
-		argv = append(argv, "--quiet")
+		argv = append(argv, "-L", cfg.LogLevel)
 	}
 	argv = append(argv,
 		"start",

@@ -23,8 +23,8 @@ import (
 )
 
 const (
+	ExplainPlanCollector   = "explain_plans"
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
-	ExplainPlanName        = "explain_plans"
 )
 
 const selectQueriesForExplainPlan = `
@@ -249,13 +249,13 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		perScrapeRatio: args.PerScrapeRatio,
 		entryHandler:   args.EntryHandler,
 		lastSeen:       args.InitialLookback,
-		logger:         log.With(args.Logger, "collector", ExplainPlanName),
+		logger:         log.With(args.Logger, "collector", ExplainPlanCollector),
 		running:        atomic.NewBool(false),
 	}, nil
 }
 
 func (c *ExplainPlan) Name() string {
-	return ExplainPlanName
+	return ExplainPlanCollector
 }
 
 func (c *ExplainPlan) Start(ctx context.Context) error {

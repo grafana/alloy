@@ -165,8 +165,6 @@ type queueClient struct {
 
 	wg sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// series cache
 	series        map[chunks.HeadSeriesRef]model.LabelSet
 	seriesSegment map[chunks.HeadSeriesRef]int
@@ -208,7 +206,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		externalLabels:      cfg.ExternalLabels.LabelSet,
 		ctx:                 ctx,
 		cancel:              cancel,
 		maxStreams:          maxStreams,
@@ -599,9 +596,6 @@ func (c *queueClient) StopNow() {
 }
 
 func (c *queueClient) processLabels(lbs model.LabelSet) (model.LabelSet, string) {
-	if len(c.externalLabels) > 0 {
-		lbs = c.externalLabels.Merge(lbs)
-	}
 	tenantID := c.getTenantID(lbs)
 	return lbs, tenantID
 }

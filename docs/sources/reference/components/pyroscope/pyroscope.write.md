@@ -157,28 +157,9 @@ All metrics include an `endpoint` label identifying the specific endpoint URL. T
 - `ingest_endpoint`: Per-endpoint latency for ingest operations
 - `ingest_downstream`: Downstream request latency for ingest operations
 
-## Connection limit errors
+## Troubleshoot
 
-If you encounter errors like `"failed to push to endpoint" err="deadline_exceeded: context deadline exceeded"` when `pyroscope.write` is pushing to a `pyroscope.receive_http` component, this may indicate that the receiving component has reached its TCP connection limit.
-
-To resolve this issue:
-
-1. Check the `pyroscope_receive_http_tcp_connections` and `pyroscope_receive_http_tcp_connections_limit` metrics on the `pyroscope.receive_http` component.
-1. If the connection limit is being reached, you have several options:
-
-   **Option A: Increase the connection limit** in the `pyroscope.receive_http` configuration:
-   
-   ```alloy
-   pyroscope.receive_http "example" {
-     http {
-       conn_limit = 32768  // Increase from default 16384
-       // ... other settings
-     }
-     // ... rest of configuration
-   }
-   ```
-
-   **Option B: Horizontal scaling** - Deploy multiple instances of `pyroscope.receive_http` behind a load balancer to distribute the connection load.
+{{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
