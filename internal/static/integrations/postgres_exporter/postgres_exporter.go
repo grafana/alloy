@@ -39,14 +39,10 @@ type Config struct {
 	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
 	// user-facing docs for more information.
-	EnabledCollectors  []string
-	StatStatementFlags StatStatementFlags
-}
+	EnabledCollectors []string
 
-// Config for the stat_statement collector flags
-type StatStatementFlags struct {
-	IncludeQuery bool
-	QueryLength  uint
+	StatStatementIncludeQuery bool
+	StatStatementQueryLength  uint
 }
 
 // Name returns the name of the integration this config is for.
@@ -183,7 +179,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 
 	// This is a hack to force the command line flag values for the stat_statements collector.
 	// These flags are not exposed outside the package and cannot be mutated afterwards.
-	if cfg.StatStatementFlags.IncludeQuery {
+	if cfg.StatStatementIncludeQuery {
 		includeQueryFlag := kingpin.CommandLine.GetFlag("collector.stat_statements.include_query")
 		queryLengthFlag := kingpin.CommandLine.GetFlag("collector.stat_statements.query_length")
 
@@ -197,7 +193,7 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 			return nil, fmt.Errorf("failed to set include query flag using Kingpin : %w", err)
 		}
 
-		err = queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementFlags.QueryLength))
+		err = queryLengthFlag.Model().Value.Set(fmt.Sprintf("%d", cfg.StatStatementQueryLength))
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to set query length flag using Kingpin : %w", err)
