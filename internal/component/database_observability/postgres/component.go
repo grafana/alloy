@@ -69,6 +69,8 @@ type Arguments struct {
 
 	QuerySampleArguments QuerySampleArguments `alloy:"query_samples,block,optional"`
 	QueryTablesArguments QueryTablesArguments `alloy:"query_details,block,optional"`
+
+	ExplainPlanArguments ExplainPlanArguments `alloy:"explain_plans,block,optional"`
 }
 
 type QuerySampleArguments struct {
@@ -88,6 +90,18 @@ var DefaultArguments = Arguments{
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
 	},
+	ExplainPlanArguments: ExplainPlanArguments{
+		CollectInterval: 1 * time.Minute,
+		PerCollectRatio: 1.0,
+		InitialLookback: 24 * time.Hour,
+	},
+}
+
+type ExplainPlanArguments struct {
+	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
+	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 }
 
 func (a *Arguments) SetToDefault() {
@@ -275,6 +289,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryTablesName: false,
 		collector.QuerySampleName: false,
 		collector.SchemaTableName: false,
+		collector.ExplainPlanName: false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -365,6 +380,28 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			return err
 		}
 		c.collectors = append(c.collectors, stCollector)
+	}
+
+	if collectors[collector.ExplainPlanName] {
+		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
+			DB:              c.dbConnection,
+			DSN:             string(c.args.DataSourceName),
+			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
+			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
+			Logger:          c.opts.Logger,
+			DBVersion:       engineVersion,
+			EntryHandler:    entryHandler,
+			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
+		})
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create ExplainPlan collector", "err", err)
+			return err
+		}
+		if err := epCollector.Start(context.Background()); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start ExplainPlan collector", "err", err)
+			return err
+		}
+		c.collectors = append(c.collectors, epCollector)
 	}
 	return nil
 }
