@@ -164,6 +164,7 @@ body:
       - prometheus.exporter.snmp
       - prometheus.exporter.snowflake
       - prometheus.exporter.squid
+      - prometheus.exporter.static
       - prometheus.exporter.statsd
       - prometheus.exporter.unix
       - prometheus.exporter.windows
