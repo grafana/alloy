@@ -96,11 +96,11 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 func publicLabels(lset labels.Labels) labels.Labels {
 	lb := labels.NewBuilder(lset)
 
-	for _, l := range lset {
+	lset.Range(func(l labels.Label) {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
 			lb.Del(l.Name)
 		}
-	}
+	})
 
 	return lb.Labels()
 }
@@ -202,13 +202,13 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 
 	switch {
 	case podNamespace == "":
-		return nil, fmt.Errorf("missing pod namespace label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod namespace label")
 	case podName == "":
-		return nil, fmt.Errorf("missing pod name label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod name label")
 	case podContainerName == "":
-		return nil, fmt.Errorf("missing pod container name label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod container name label")
 	case podUID == "":
-		return nil, fmt.Errorf("missing pod UID label")
+		return labels.EmptyLabels(), fmt.Errorf("missing pod UID label")
 	}
 
 	// Make sure that LabelPodNamespace, LabelPodName, LabelPodContainerName, and
@@ -228,11 +228,11 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 
 	// Meta labels are deleted after relabelling. Other internal labels propagate
 	// to the target which decides whether they will be part of their label set.
-	for _, l := range lset {
+	lset.Range(func(l labels.Label) {
 		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
 			lb.Del(l.Name)
 		}
-	}
+	})
 
 	// Default the instance label to the target address.
 	if !lset.Has(model.InstanceLabel) {
@@ -241,11 +241,13 @@ func PrepareLabels(lset labels.Labels, defaultJob string) (res labels.Labels, er
 	}
 
 	res = lb.Labels()
-	for _, l := range res {
+	res.Range(func(l labels.Label) {
 		// Check label values are valid, drop the target if not.
 		if !model.LabelValue(l.Value).IsValid() {
-			return nil, fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
+			res = labels.EmptyLabels()
+			err = fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
+			return
 		}
-	}
-	return res, nil
+	})
+	return res, err
 }
