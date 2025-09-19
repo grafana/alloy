@@ -312,6 +312,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
+- [otelcol.exporter.azureblob](../components/otelcol/otelcol.exporter.azureblob)
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
