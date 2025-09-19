@@ -102,6 +102,8 @@ v1.11.0-rc.1
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+
 ### Enhancements
 
 - Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
