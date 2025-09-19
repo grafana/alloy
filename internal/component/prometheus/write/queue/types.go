@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func defaultArgs() Arguments {
@@ -46,13 +47,14 @@ func (rc *Arguments) SetToDefault() {
 
 func defaultEndpointConfig() EndpointConfig {
 	return EndpointConfig{
-		Timeout:           30 * time.Second,
-		RetryBackoff:      1 * time.Second,
-		MaxRetryAttempts:  0,
-		BatchCount:        1_000,
-		FlushInterval:     1 * time.Second,
-		MetadataCacheSize: 1000,
-		ProtobufMessage:   RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1),
+		Timeout:              30 * time.Second,
+		RetryBackoff:         1 * time.Second,
+		MaxRetryAttempts:     0,
+		BatchCount:           1_000,
+		FlushInterval:        1 * time.Second,
+		MetadataCacheEnabled: false,
+		MetadataCacheSize:    1000,
+		ProtobufMessage:      RemoteWriteProtoMsg(config.RemoteWriteProtoMsgV1),
 		Parallelism: ParallelismConfig{
 			DriftScaleUp:                60 * time.Second,
 			DriftScaleDown:              30 * time.Second,
@@ -136,7 +138,9 @@ type EndpointConfig struct {
 	ProxyConnectHeaders map[string]alloytypes.Secret `alloy:"proxy_connect_headers,attr,optional"`
 	// ProtobufMessage specifies if Remote Write V1 or V2 should be used
 	ProtobufMessage RemoteWriteProtoMsg `alloy:"protobuf_message,attr,optional"`
-	// MetadataCacheSize specifies the size of the metadata cache if using Remote Write V2
+	// MetadataCacheEnabled enables an LRU cache for tracking Metadata to support sparse metadata sending. Only valid if using Remote Write V2.
+	MetadataCacheEnabled bool `alloy:"metadata_cache_enabled,attr,optional"`
+	// MetadataCacheSize specifies the size of the metadata cache if using Remote Write V2 with the cache enabled.
 	MetadataCacheSize int `alloy:"metadata_cache_size,attr,optional"`
 }
 
@@ -212,6 +216,7 @@ func (cc EndpointConfig) ToNativeType() types.ConnectionConfig {
 		ProxyFromEnvironment: cc.ProxyFromEnvironment,
 		ProxyConnectHeaders:  proxyConnectHeaders,
 		ProtobufMessage:      config.RemoteWriteProtoMsg(cc.ProtobufMessage),
+		EnableMetadataCache:  cc.MetadataCacheEnabled,
 		MetadataCacheSize:    cc.MetadataCacheSize,
 		Parallelism: types.ParallelismConfig{
 			AllowedDrift:                cc.Parallelism.DriftScaleUp,
