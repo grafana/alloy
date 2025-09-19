@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
@@ -1502,4 +1503,42 @@ func TestEnvVars(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
+}
+
+func TestSurveyDisabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.False(t, cfg.Discovery.SurveyEnabled())
+	require.NotEqual(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.NotEqual(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+func TestSurveyEnabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+			Discovery: Discovery{
+				Survey: Services{
+					{
+						Name: "foo",
+					},
+				},
+			},
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Len(t, cfg.Discovery.Survey, 1)
+	require.True(t, cfg.Discovery.SurveyEnabled())
+	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
 }

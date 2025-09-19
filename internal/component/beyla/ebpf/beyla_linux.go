@@ -594,6 +594,10 @@ func (c *Component) loadConfig() (*beyla.Config, error) {
 		return nil, fmt.Errorf("failed to parse env: %w", err)
 	}
 
+	if cfg.Discovery.SurveyEnabled() {
+		cfg.Discovery.OverrideDefaultExcludeForSurvey()
+	}
+
 	c.reg = prometheus.NewRegistry()
 	c.reportHealthy()
 
