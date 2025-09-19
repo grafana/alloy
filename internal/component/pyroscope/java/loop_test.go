@@ -18,26 +18,20 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
 )
 
 type mockProfiler struct {
 	mock.Mock
-	dist *asprof.Distribution
 }
 
-func (m *mockProfiler) CopyLib(dist *asprof.Distribution, pid int) error {
-	args := m.Called(dist, pid)
+func (m *mockProfiler) CopyLib(pid int) error {
+	args := m.Called(pid)
 	return args.Error(0)
 }
 
-func (m *mockProfiler) Execute(dist *asprof.Distribution, argv []string) (string, string, error) {
-	args := m.Called(dist, argv)
+func (m *mockProfiler) Execute(argv []string) (string, string, error) {
+	args := m.Called(argv)
 	return args.String(0), args.String(1), args.Error(2)
-}
-
-func (m *mockProfiler) Distribution() *asprof.Distribution {
-	return m.dist
 }
 
 type mockAppendable struct {
@@ -73,17 +67,17 @@ func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyros
 }
 
 func TestProfilingLoop_StartStop(t *testing.T) {
-	profiler := &mockProfiler{dist: &asprof.Distribution{}}
+	profiler := &mockProfiler{}
 	appendable := &mockAppendable{}
 	pid := os.Getpid()
 	jfrPath := fmt.Sprintf("/tmp/asprof-%d-%d.jfr", pid, pid)
 
 	pCh := make(chan *profilingLoop)
 
-	profiler.On("CopyLib", profiler.dist, pid).Return(nil).Once()
+	profiler.On("CopyLib", pid).Return(nil).Once()
 
 	// expect the profiler to be executed with the correct arguments to start it
-	profiler.On("Execute", profiler.dist, []string{
+	profiler.On("Execute", []string{
 		"-f",
 		jfrPath,
 		"-o", "jfr",
@@ -103,7 +97,7 @@ func TestProfilingLoop_StartStop(t *testing.T) {
 	}).Return("", "", nil).Once()
 
 	// expect the profiler to be executed with the correct arguments to stop it
-	profiler.On("Execute", profiler.dist, []string{
+	profiler.On("Execute", []string{
 		"stop",
 		"-o", "jfr",
 		strconv.Itoa(pid),

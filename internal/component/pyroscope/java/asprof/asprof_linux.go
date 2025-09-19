@@ -10,22 +10,20 @@ import (
 	"strings"
 )
 
-var embeddedArchiveVersion = 300
+var EmbeddedArchive = Archive{data: embeddedArchiveData, format: ArchiveFormatTarGz}
 
-var EmbeddedArchive = Archive{data: embeddedArchiveData, version: embeddedArchiveVersion, format: ArchiveFormatTarGz}
-
-func (d *Distribution) LibPath() string {
+func (d Distribution) LibPath() string {
 	return filepath.Join(d.extractedDir, "lib/libasyncProfiler.so")
 }
 
-func (p *Profiler) CopyLib(dist *Distribution, pid int) error {
+func (d Distribution) CopyLib(pid int) error {
 	fsMutex.Lock()
 	defer fsMutex.Unlock()
-	libData, err := os.ReadFile(dist.LibPath())
+	libData, err := os.ReadFile(d.LibPath())
 	if err != nil {
 		return err
 	}
-	launcherData, err := os.ReadFile(dist.LauncherPath())
+	launcherData, err := os.ReadFile(d.LauncherPath())
 	if err != nil {
 		return err
 	}
@@ -35,8 +33,8 @@ func (p *Profiler) CopyLib(dist *Distribution, pid int) error {
 		return fmt.Errorf("failed to open proc root %s: %w", procRoot, err)
 	}
 	defer procRootFile.Close()
-	dstLibPath := strings.TrimPrefix(dist.LibPath(), "/")
-	dstLauncherPath := strings.TrimPrefix(dist.LauncherPath(), "/")
+	dstLibPath := strings.TrimPrefix(d.LibPath(), "/")
+	dstLauncherPath := strings.TrimPrefix(d.LauncherPath(), "/")
 	if err = writeFile(procRootFile, dstLibPath, libData, false); err != nil {
 		return err
 	}
@@ -48,15 +46,5 @@ func (p *Profiler) CopyLib(dist *Distribution, pid int) error {
 }
 
 func ProcessPath(path string, pid int) string {
-	f := procFile{path, pid}
-	return f.procRootPath()
-}
-
-type procFile struct {
-	path string
-	pid  int
-}
-
-func (f *procFile) procRootPath() string {
-	return filepath.Join("/proc", strconv.Itoa(f.pid), "root", f.path)
+	return filepath.Join("/proc", strconv.Itoa(pid), "root", path)
 }
