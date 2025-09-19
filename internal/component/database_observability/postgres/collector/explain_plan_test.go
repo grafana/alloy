@@ -2261,14 +2261,14 @@ func TestReplaceDatabaseNameInDSN(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a minimal ExplainPlan instance for testing
 			ep := &ExplainPlan{}
-			
+
 			result, err := ep.replaceDatabaseNameInDSN(tt.dsn, tt.newDBName)
-			
+
 			if tt.expectError {
 				require.Error(t, err)
 				return
 			}
-			
+
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
 		})
