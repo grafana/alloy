@@ -28,8 +28,7 @@ type crdManagerFactoryHungRun struct {
 	stopRun         chan struct{}
 }
 
-func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger,
-	_ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
 	return &crdManagerHungRun{m.running, m.contextCenceled, m.stopRun}
 }
 
