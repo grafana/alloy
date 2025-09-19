@@ -681,7 +681,6 @@ func validateLabels(lbls labels.Labels) error {
 		// Skip label name validation for pyroscope reserved labels
 		if l.Name != pyroscope.LabelName {
 			// Validate label name
-			// two errors is ok?
 			if err = labelset.ValidateLabelName(l.Name); err != nil {
 				err = fmt.Errorf("invalid label name: %w", err)
 				return

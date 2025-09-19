@@ -158,8 +158,6 @@ func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	// think: can we actually remove this? seems like yes
-
 	labelHash := l.Hash()
 	globalID, found := s.labelsHashToGlobal[labelHash]
 	if found {
