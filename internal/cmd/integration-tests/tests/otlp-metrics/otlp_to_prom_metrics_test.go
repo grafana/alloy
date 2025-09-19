@@ -17,5 +17,12 @@ func TestOTLPToPromMetrics(t *testing.T) {
 		"example_float_histogram_bucket",
 	}
 
-	common.MimirMetricsTest(t, metrics, common.OtelDefaultHistogramMetrics, "otlp_to_prom_metrics")
+	config := common.Config{
+		T:                t,
+		TestName:         "otlp_to_prom_metrics",
+		Metrics:          metrics,
+		HistogramMetrics: common.OtelDefaultHistogramMetrics,
+		ExpectedMetadata: common.ExpectedMetadata,
+	}
+	common.MimirMetricsTest(config)
 }

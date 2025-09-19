@@ -25,6 +25,7 @@ var removeOldSemconvFeatureGate = featuregate.GlobalRegistry().MustRegister(
 	featuregate.WithRegisterFromVersion("v0.101.0"),
 	featuregate.WithRegisterDescription("When enabled, the net.host.name, net.host.port, and http.scheme resource attributes are no longer added to metrics. Use server.address, server.port, and url.scheme instead."),
 	featuregate.WithRegisterReferenceURL("https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/32814"),
+	featuregate.WithRegisterToVersion("v0.130.0"),
 )
 
 // isDiscernibleHost checks if a host can be used as a value for the 'host.name' key.
