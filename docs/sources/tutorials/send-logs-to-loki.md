@@ -117,7 +117,7 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
     > We recommend using the `Editor` tab to copy and paste the Docker Compose file. However, you can also use a terminal editor like `nano` or `vim`.
    {{< /docs/ignore >}}
 
-   ```yaml
+    ```yaml
     version: '3'
     services:
       loki:
@@ -167,12 +167,12 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
         image: grafana/grafana:11.0.0
         ports:
           - "3000:3000"
-    ```
+     ```
 
 1. To start the local Grafana instance, run the following command.
 
    ```bash
-    docker compose up -d
+   docker compose up -d
    ```
     <!-- INTERACTIVE ignore START -->
     {{< admonition type="note" >}}
@@ -337,7 +337,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
    ```bash
-    curl -X POST http://localhost:12345/-/reload
+   curl -X POST http://localhost:12345/-/reload
    ```
    <!-- INTERACTIVE ignore START -->
    {{< admonition type="tip" >}}
@@ -360,7 +360,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 {{< docs/ignore >}}
 
    ```bash
-    sudo systemctl reload alloy
+   sudo systemctl reload alloy
    ```
 
 {{< /docs/ignore >}}
