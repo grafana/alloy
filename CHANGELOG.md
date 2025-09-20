@@ -12,6 +12,7 @@ Main (unreleased)
 
 ### Features
 
+ - Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
