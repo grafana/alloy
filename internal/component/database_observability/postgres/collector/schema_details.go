@@ -413,7 +413,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		}
 
 		// nullable if has nullable columns or has expressions
-		nullable := hasNullableColumn || len(expressions) > 0 // TODO: assume that expressions are nullable
+		nullable := hasNullableColumn || len(expressions) > 0 // TODO: assume that indexes with any expressions are nullable
 
 		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
 			Name:        indexName,
