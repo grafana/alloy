@@ -22,11 +22,9 @@ Main (unreleased)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
-- Use new cache for metadata cache in `prometheus.write.queue` and support disabling the metadata cache with it disable by default. (@kgeckhart, @dehaansa)
-
 ### Bugfixes
 
-v1.11.0-rc.1
+v1.11.0-rc.2
 -----------------
 
 ### Breaking changes
@@ -167,6 +165,8 @@ v1.11.0-rc.1
 - Reduce allocations for `loki.process` when `stage.template` is used. (@kalleep)
 
 - Reduce CPU of `prometheus.write.queue` by eliminating duplicate calls to calculate the protobuf Size. (@kgeckhart)
+
+- Use new cache for metadata cache in `prometheus.write.queue` and support disabling the metadata cache with it disable by default. (@kgeckhart, @dehaansa)
 
 ### Bugfixes
 
