@@ -94,6 +94,8 @@ const (
 		generate_subscripts: creates positions 1,2,3... for each indkey element
 		pg_get_indexdef(indexrelid, pos+1, true): gets expression text
 		array_agg FILTERs: separate columns and expressions into different arrays
+		column_nullables: array of nullability for each column (for Go processing)
+		bool_or(NOT pg_attribute.attnotnull): true if ANY column is nullable
 	*/
 	selectIndexes = `
 	SELECT 
@@ -109,7 +111,8 @@ const (
 			CASE WHEN pg_index.indkey[pos] = 0
 			THEN pg_get_indexdef(pg_index.indexrelid, pos + 1, true)
 			END ORDER BY pos
-		) FILTER (WHERE pg_index.indkey[pos] = 0) as expressions
+		) FILTER (WHERE pg_index.indkey[pos] = 0) as expressions,
+		bool_or(NOT pg_attribute.attnotnull) as has_nullable_column
 	FROM pg_class table_relations
 	JOIN pg_index ON table_relations.oid = pg_index.indrelid 
 	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid
@@ -401,15 +404,16 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 
 	for indexesRS.Next() {
 		var indexName, indexType string
-		var unique bool
+		var unique, hasNullableColumn bool
 		var columns, expressions pq.StringArray
 
-		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions); err != nil {
+		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions, &hasNullableColumn); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan indexes", "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
-		// TODO: Expression-based indexes nullability difficult to determine
+		// nullable if has nullable columns or has expressions
+		nullable := hasNullableColumn || len(expressions) > 0 // TODO: assume that expressions are nullable
 
 		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
 			Name:        indexName,
@@ -417,6 +421,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 			Unique:      unique,
 			Columns:     columns,
 			Expressions: expressions,
+			Nullable:    nullable,
 		})
 	}
 
