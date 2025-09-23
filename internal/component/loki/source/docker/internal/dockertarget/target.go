@@ -304,7 +304,7 @@ func (t *Target) Details() map[string]string {
 
 func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
@@ -312,12 +312,12 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
 }

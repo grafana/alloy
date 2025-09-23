@@ -14,6 +14,13 @@ scrape_configs:
         http_server_read_timeout: 10s
         http_server_write_timeout: 10s
         http_server_idle_timeout: 10s
+        http_tls_config:
+          cert_file: /var/cert
+          key_file: /var/key
+          client_ca_file: /var/ca
+          client_auth_type: RequireAndVerifyClientCert
+          cert: my_cert
+          client_ca: my_ca
 
         grpc_listen_address: 127.0.0.1
         grpc_listen_port: 9095
@@ -24,6 +31,13 @@ scrape_configs:
         grpc_server_max_recv_msg_size: 1000
         grpc_server_max_send_msg_size: 1000
         grpc_server_max_concurrent_streams: 100
+        grpc_tls_config:
+          cert_file: /var/cert
+          key_file: /var/key
+          client_ca_file: /var/ca
+          client_auth_type: RequireAndVerifyClientCert
+          cert: my_cert
+          client_ca: my_ca
     relabel_configs:
       - source_labels:
           - __trail__
