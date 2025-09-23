@@ -112,7 +112,7 @@ const (
 			THEN pg_get_indexdef(pg_index.indexrelid, pos + 1, true)
 			END ORDER BY pos
 		) FILTER (WHERE pg_index.indkey[pos] = 0) as expressions,
-		bool_or(NOT pg_attribute.attnotnull) as has_nullable_column
+		COALESCE(bool_or(NOT pg_attribute.attnotnull), false) as has_nullable_column
 	FROM pg_class table_relations
 	JOIN pg_index ON table_relations.oid = pg_index.indrelid 
 	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid
