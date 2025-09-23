@@ -23,6 +23,8 @@ Main (unreleased)
 
 - Use new cache for metadata cache in `prometheus.write.queue` and support disabling the metadata cache with it disable by default. (@kgeckhart, @dehaansa)
 
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
 ### Bugfixes
 
 v1.11.0-rc.1
