@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.azureblob/
-aliases:
-  - ../otelcol.exporter.azureblob/
 description: Learn about otelcol.exporter.azureblob
 labels:
   stage: experimental
@@ -14,7 +12,7 @@ title: otelcol.exporter.azureblob
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.exporter.azureblob` accepts telemetry data from other `otelcol` components and writes them to Azure Blob Storage.
+`otelcol.exporter.azureblob` receives telemetry data from other `otelcol` components and writes it to Azure Blob Storage.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.azureblob` is a wrapper over the upstream OpenTelemetry Collector [`azureblob`][] exporter.
@@ -48,18 +46,26 @@ This component doesn't support any top-level arguments.
 
 You can use the following blocks with `otelcol.exporter.azureblob`:
 
-| Block                                      | Description                                                                 | Required |
-|--------------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`blob_uploader`][blob_uploader]           | Configures destination and blob naming.                                     | yes      |
-| [`debug_metrics`][debug_metrics]           | Configures the metrics that this component generates to monitor its state.  | no       |
-| [`marshaler`][marshaler]                   | Marshaler used to produce output data.                                      | no       |
-| [`append_blob`][append_blob]               | Enables append blob mode and separator.                                     | no       |
-| [`encodings`][encodings]                   | Overrides marshaler via extension encodings per-signal.                     | no       |
-| [`retry_on_failure`][retry_on_failure]     | Configures retry backoff for failed requests.                               | no       |
-| [`sending_queue`][sending_queue]           | Configures batching of data before sending.                                 | no       |
-| `sending_queue` > [`batch`][batch]         | Configures batching requests based on a timeout and a minimum number of items. | no    |
+| Block                                                    | Description                                                                    | Required |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
+| [`blob_uploader`][blob_uploader]                         | Configures destination and blob naming.                                        | yes      |
+| `blob_uploader` > [`auth`][auth]                         | Configures Azure authentication.                                               | no       |
+| `blob_uploader` > [`container`][container]               | Configures the container name for logs, metrics, and traces.                   | no       |
+| `blob_uploader` > [`blob_name_format`][blob_name_format] | Configures the blob name format.                                               | no       |
+| [`append_blob`][append_blob]                             | Enables append blob mode and separator.                                        | no       |
+| [`debug_metrics`][debug_metrics]                         | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`encodings`][encodings]                                 | Overrides marshaler via extension encodings per-signal.                        | no       |
+| [`marshaler`][marshaler]                                 | Marshaler used to produce output data.                                         | no       |
+| [`retry_on_failure`][retry_on_failure]                   | Configures retry backoff for failed requests.                                  | no       |
+| [`sending_queue`][sending_queue]                         | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                       | Configures batching requests based on a timeout and a minimum number of items. | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `blob_uploader` > `auth` refers to an `auth` block defined inside a `blob_uploader` block.
 
 [blob_uploader]: #blob_uploader
+[auth]: #auth
+[container]: #container
 [marshaler]: #marshaler
 [append_blob]: #append_blob
 [encodings]: #encodings
@@ -67,8 +73,6 @@ You can use the following blocks with `otelcol.exporter.azureblob`:
 [debug_metrics]: #debug_metrics
 [sending_queue]: #sending_queue
 [batch]: #batch
-
-> Note: Exact fields and defaults follow the upstream exporter. See sections below.
 
 ### `blob_uploader`
 
@@ -78,39 +82,39 @@ The `blob_uploader` block configures the Azure Blob Storage destination and nami
 
 The following arguments are supported:
 
-| Name                | Type     | Description                                           | Default         | Required |
-|---------------------|----------|-------------------------------------------------------|-----------------|----------|
-| `url`               | `string` | Azure Storage account URL.                            |                 | no       |
+| Name  | Type     | Description                | Default | Required |
+| ----- | -------- | -------------------------- | ------- | -------- |
+| `url` | `string` | Azure Storage account URL. |         | no       |
 
-#### `blob_uploader` > `auth`
+### `auth`
 
-| Name                   | Type     | Description                                                                 | Default              | Required |
-|------------------------|----------|-----------------------------------------------------------------------------|----------------------|----------|
+| Name                   | Type     | Description                                                                                                                             | Default               | Required |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | -------- |
 | `type`                 | `string` | Authentication type: `connection_string`, `service_principal`, `system_managed_identity`, `user_managed_identity`, `workload_identity`. | `"connection_string"` | no       |
-| `tenant_id`            | `string` | Azure AD tenant ID (for service principal).                                  |                      | no       |
-| `client_id`            | `string` | Azure AD client ID (for service principal or user-managed identity).         |                      | no       |
-| `client_secret`        | `string` | Azure AD client secret (for service principal).                               |                      | no       |
-| `connection_string`    | `string` | Azure Storage connection string.                                             |                      | no       |
-| `federated_token_file` | `string` | Path to federated token for workload identity.                                |                      | no       |
+| `tenant_id`            | `string` | Azure AD tenant ID for service principal.                                                                                               |                       | no       |
+| `client_id`            | `string` | Azure AD client ID for service principal or user-managed identity.                                                                      |                       | no       |
+| `client_secret`        | `string` | Azure AD client secret for service principal.                                                                                           |                       | no       |
+| `connection_string`    | `string` | Azure Storage connection string.                                                                                                        |                       | no       |
+| `federated_token_file` | `string` | Path to federated token for workload identity.                                                                                          |                       | no       |
 
-#### `blob_uploader` > `container`
+### `container`
 
-| Name      | Type     | Description                         | Default   | Required |
-|-----------|----------|-------------------------------------|-----------|----------|
-| `logs`    | `string` | Container name for logs.            | `"logs"` | no       |
-| `metrics` | `string` | Container name for metrics.         | `"metrics"` | no     |
-| `traces`  | `string` | Container name for traces.          | `"traces"` | no     |
+| Name      | Type     | Description                 | Default     | Required |
+| --------- | -------- | --------------------------- | ----------- | -------- |
+| `logs`    | `string` | Container name for logs.    | `"logs"`    | no       |
+| `metrics` | `string` | Container name for metrics. | `"metrics"` | no       |
+| `traces`  | `string` | Container name for traces.  | `"traces"`  | no       |
 
-#### `blob_uploader` > `blob_name_format`
+### `blob_name_format`
 
-| Name                         | Type                | Description                                             | Default                              | Required |
-|------------------------------|---------------------|---------------------------------------------------------|--------------------------------------|----------|
-| `metrics_format`             | `string`            | Blob name format for metrics.                           | `"2006/01/02/metrics_15_04_05.json"` | no       |
-| `logs_format`                | `string`            | Blob name format for logs.                              | `"2006/01/02/logs_15_04_05.json"`    | no       |
-| `traces_format`              | `string`            | Blob name format for traces.                            | `"2006/01/02/traces_15_04_05.json"`  | no       |
-| `serial_num_range`           | `int`               | Upper bound (exclusive) for random serial suffix.       | `10000`                              | no       |
-| `serial_num_before_extension`| `boolean`           | Place serial before file extension.                     | `false`                              | no       |
-| `params`                     | `map[string]string` | Additional template parameters.                         |                                      | no       |
+| Name                          | Type                | Description                               | Default                              | Required |
+| ----------------------------- | ------------------- | ----------------------------------------- | ------------------------------------ | -------- |
+| `metrics_format`              | `string`            | Blob name format for metrics.             | `"2006/01/02/metrics_15_04_05.json"` | no       |
+| `logs_format`                 | `string`            | Blob name format for logs.                | `"2006/01/02/logs_15_04_05.json"`    | no       |
+| `traces_format`               | `string`            | Blob name format for traces.              | `"2006/01/02/traces_15_04_05.json"`  | no       |
+| `serial_num_range`            | `int`               | Upper limit for the random serial suffix. | `10000`                              | no       |
+| `serial_num_before_extension` | `boolean`           | Place serial before file extension.       | `false`                              | no       |
+| `params`                      | `map[string]string` | Additional template parameters.           |                                      | no       |
 
 ### `debug_metrics`
 
@@ -118,21 +122,24 @@ The following arguments are supported:
 
 ### `marshaler`
 
-Marshaler determines the format of data written to Azure Blob Storage. Supported values:
-
-* `otlp_json` (default): the OpenTelemetry Protocol format represented as JSON.
-* `otlp_proto`: the OpenTelemetry Protocol format represented as Protocol Buffers.
+Marshaler determines the format of data written to Azure Blob Storage. 
 
 | Name   | Type     | Description                            | Default       | Required |
 |--------|----------|----------------------------------------|---------------|----------|
 | `type` | `string` | Marshaler used to produce output data. | `"otlp_json"` | no       |
 
+Supported values for `type`:
+
+* `otlp_json`: The OpenTelemetry protocol format represented as JSON.
+* `otlp_proto`: The OpenTelemetry protocol format represented as Protocol Buffers.
+
+
 ### `append_blob`
 
-| Name        | Type      | Description                                | Default |
-|-------------|-----------|--------------------------------------------|---------|
-| `enabled`   | `boolean` | Enable append blob mode.                   | `false` |
-| `separator` | `string`  | Separator used when appending content.     | `"\n"` |
+| Name        | Type      | Description                            | Default |
+| ----------- | --------- | -------------------------------------- | ------- |
+| `enabled`   | `boolean` | Enable append blob mode.               | `false` |
+| `separator` | `string`  | Separator used when appending content. | `"\n"`  |
 
 ### `encodings`
 
@@ -156,14 +163,14 @@ Overrides `marshaler` via extension encodings per signal. Values should be OTel 
 
 Configures retry backoff for failed requests.
 
-| Name                   | Type       | Description                              | Default         |
-|------------------------|------------|------------------------------------------|-----------------|
-| `enabled`              | `boolean`  | Enable retries.                          | `true`          |
-| `initial_interval`     | `duration` | Initial backoff interval.                | `5s`            |
-| `randomization_factor` | `float`    | Randomization factor for backoff jitter. | `0.5`           |
-| `multiplier`           | `float`    | Exponential backoff multiplier.          | `1.5`           |
-| `max_interval`         | `duration` | Maximum backoff interval.                | `30s`           |
-| `max_elapsed_time`     | `duration` | Maximum total retry time.                | `5m`            |
+| Name                   | Type       | Description                              | Default |
+| ---------------------- | ---------- | ---------------------------------------- | ------- |
+| `enabled`              | `boolean`  | Enable retries.                          | `true`  |
+| `initial_interval`     | `duration` | Initial backoff interval.                | `5s`    |
+| `randomization_factor` | `float`    | Randomization factor for backoff jitter. | `0.5`   |
+| `multiplier`           | `float`    | Exponential backoff multiplier.          | `1.5`   |
+| `max_interval`         | `duration` | Maximum backoff interval.                | `30s`   |
+| `max_elapsed_time`     | `duration` | Maximum total retry time.                | `5m`    |
 
 ## Exported fields
 
@@ -173,7 +180,7 @@ The following fields are exported and can be referenced by other components:
 |---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+`input` accepts `otelcol.Consumer` data for any telemetry signal.
 
 ## Example
 
