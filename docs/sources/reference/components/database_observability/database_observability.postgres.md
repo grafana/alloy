@@ -40,6 +40,7 @@ The following collectors are configurable:
 | `query_details`  | Collect queries information.                                          | no                 |
 | `query_samples`  | Collect query samples and wait events information.                    | no                 |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | no                 |
+| `explain_plans`  | Collect query explain plans.                                          | no                 |
 
 ## Blocks
 
@@ -50,10 +51,12 @@ You can use the following blocks with `database_observability.postgres`:
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
+| [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
+[explain_plans]: #explain_plans
 
 ### `query_details`
 
@@ -71,6 +74,15 @@ You can use the following blocks with `database_observability.postgres`:
 ### `schema_details`
 
 This collector has no config options.
+
+### `explain_plans`
+
+| Name                           | Type           | Description                                          | Default | Required |
+|--------------------------------|----------------|------------------------------------------------------|---------|----------|
+| `collect_interval`             | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
+| `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| `initial_lookback`             | `duration`     | The amount of time to look back for explain plans.   | `24h`   | no       |
+| `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
 ## Example
 

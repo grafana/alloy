@@ -16,6 +16,9 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
 
+- (_Experimental_) Additions to experimental `database_observability.postgres` component:
+  - `explain_plans` added the explain plan collector (@rgeyer)
+
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
 ### Enhancements
