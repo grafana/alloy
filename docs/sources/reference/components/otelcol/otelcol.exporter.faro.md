@@ -44,16 +44,17 @@ The `otelcol.exporter.faro` component doesn't support any arguments. You can con
 
 You can use the following blocks with `otelcol.exporter.faro`:
 
-| Block                                                 | Description                                                                | Required |
-| ----------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
-| [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                      | yes      |
-| `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                    | no       |
-| `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests. | no       |
-| `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                        | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                              | no       |
-| [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state. | no       |
-| [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                            | no       |
-| [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                | no       |
+| Block                                                 | Description                                                                    | Required |
+|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
+| `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
+| `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
+| `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                                  | no       |
+| [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
@@ -64,12 +65,13 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [cookies]: #cookies
 [compression_params]: #compression_params
 [sending_queue]: #sending_queue
+[batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the HTTP client used by the component.
 
@@ -113,16 +115,23 @@ The `retry_on_failure` block configures how failed requests to the HTTP server a
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for logs and traces.

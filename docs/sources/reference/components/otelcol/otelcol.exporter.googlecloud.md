@@ -4,10 +4,11 @@ description: Learn about otelcol.exporter.googlecloud
 labels:
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.googlecloud
 ---
-
-<span class="badge docs-labels__stage docs-labels__item">Community</span>
 
 # `otelcol.exporter.googlecloud`
 
@@ -42,7 +43,7 @@ Refer to the original [Google Cloud Exporter][] document.
 You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 | Name                        | Type     | Description                                                                                                                                                                                                                        | Default                                         | Required |
-| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------- |
+|-----------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|----------|
 | `project`                   | `string` | GCP project identifier.                                                                                                                                                                                                            | Fetch from credentials                          | no       |
 | `destination_project_quota` | `bool`   | Counts quota for traces and metrics against the project to which the data is sent as opposed to the project associated with the Collector's service account. For example, when setting `project_id` or using multi-project export. | `false`                                         | no       |
 | `user_agent`                | `string` | Override the user agent string sent on requests to Cloud Monitoring (currently only applies to metrics). Specify `{{version}}` to include the application version number.                                                          | `"opentelemetry-collector-contrib {{version}}"` | no       |
@@ -51,15 +52,16 @@ You can use the following arguments with `otelcol.exporter.googlecloud`:
 
 You can use the following blocks with `otelcol.exporter.googlecloud`:
 
-| Block                                             | Description                                                                | Required |
-|---------------------------------------------------|----------------------------------------------------------------------------|----------|
-| [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state. | no       |
-| [`impersonate`][impersonate]                      | Configuration for service account impersonation                            | no       |
-| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                           | no       |
-| [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                     | no       |
-| [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                | no       |
-| [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                | no       |
-| [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                           | no       |
+| Block                                             | Description                                                                    | Required |
+|---------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`debug_metrics`][debug_metrics]                  | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`impersonate`][impersonate]                      | Configuration for service account impersonation                                | no       |
+| [`log`][log]                                      | Configuration for sending logs to Cloud Logging.                               | no       |
+| [`metric`][metric]                                | Configuration for sending metrics to Cloud Monitoring.                         | no       |
+| [`metric` > `experimental_wal`][experimental_wal] | Configuration for write ahead log for time series requests.                    | no       |
+| [`sending_queue`][sending_queue]                  | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`trace`][trace]                                  | Configuration for sending traces to Cloud Trace.                               | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `metric` > `experimental_wal` refers to a `experimental_wal` block defined inside a `metric` block.
@@ -70,6 +72,7 @@ For example, `metric` > `experimental_wal` refers to a `experimental_wal` block 
 [metric]: #metric
 [experimental_wal]: #experimental_wal
 [sending_queue]: #sending_queue
+[batch]: #batch
 [trace]: #trace
 
 ### `debug_metrics`
@@ -91,7 +94,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name                          | Type           | Description                                                                                                                                                                                                | Default                      | Required |
-| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------- |
+|-------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|----------|
 | `compression`                 | `string`       | Compression format for Log gRPC requests. Supported values: [`gzip`].                                                                                                                                      | `""` (no compression)        | no       |
 | `default_log_name`            | `string`       | Defines a default name for log entries. If left unset, and a log entry doesn't have the `gcp.log_name` attribute set, the exporter returns an error processing that entry.                                 | `""`                         | no       |
 | `endpoint`                    | `string`       | Endpoint where log data is sent.                                                                                                                                                                           | `logging.googleapis.com:443` | no       |
@@ -108,7 +111,7 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name                                   | Type           | Description                                                                                                                                                                                                                 | Default                                                          | Required |
-| -------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------- |
+|----------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|----------|
 | `compression`                          | `string`       | Compression format for Metrics gRPC requests. Supported values: [`gzip`].                                                                                                                                                   | `""` (no compression)                                            | no       |
 | `create_metric_descriptor_buffer_size` | `number`       | Buffer size for the  channel which asynchronously calls CreateMetricDescriptor.                                                                                                                                             | `10`                                                             | no       |
 | `create_service_timeseries`            | `bool`         | If true, this sends all timeseries using `CreateServiceTimeSeries`. Implicitly, this sets `skip_create_descriptor` to true.                                                                                                 | `false`                                                          | no       |
@@ -131,20 +134,27 @@ The following arguments are supported:
 The following arguments are supported:
 
 | Name          | Type     | Description                                                                              | Default | Required |
-| ------------- | -------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+|---------------|----------|------------------------------------------------------------------------------------------|---------|----------|
 | `directory`   | `string` | Path to local directory for the WAL file.                                                | `"./"`  | yes      |
 | `max_backoff` | `string` | Max duration to retry requests on network errors (`UNAVAILABLE` or `DEADLINE_EXCEEDED`). | `"1h"`  | no       |
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `trace`
 
 | Name                                 | Type           | Description                                                                                                                                                                      | Default                           | Required |
-| ------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | -------- |
+|--------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|----------|
 | `attribute_mappings`                 | `list(object)` | Determines how to map from OpenTelemetry attribute keys to Google Cloud Trace keys. By default, it changes HTTP and service keys so that they appear more prominently in the UI. | `[]`                              | no       |
 | `attribute_mappings` > `key`         | `string`       | The OpenTelemetry attribute key.                                                                                                                                                 | `""`                              | no       |
 | `attribute_mappings` > `replacement` | `string`       | The attribute sent to Google Cloud Trace.                                                                                                                                        | `""`                              | no       |

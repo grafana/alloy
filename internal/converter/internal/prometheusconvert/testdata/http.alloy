@@ -64,7 +64,6 @@ prometheus.scrape "netbox_snmp" {
 		Authorization = ["something", "something else"],
 		Host          = ["localhost"],
 	}
-	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.remote_write "default" {

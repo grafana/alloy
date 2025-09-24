@@ -66,7 +66,7 @@ otelcol.connector.spanmetrics "<LABEL>" {
 You can use the following arguments with `otelcol.connector.spanmetrics`:
 
 | Name                              | Type           | Description                                                                                           | Default                 | Required |
-| --------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- | ----------------------- | -------- |
+|-----------------------------------|----------------|-------------------------------------------------------------------------------------------------------|-------------------------|----------|
 | `aggregation_temporality`         | `string`       | Configures whether to reset the metrics after flushing.                                               | `"CUMULATIVE"`          | no       |
 | `dimensions_cache_size`           | `number`       | (Deprecated: use `aggregation_cardinality_limit` instead) How many dimensions to cache.               | `0`                     | no       |
 | `exclude_dimensions`              | `list(string)` | List of dimensions to be excluded from the default set of dimensions.                                 | `[]`                    | no       |
@@ -136,14 +136,14 @@ You can't specify both blocks in the same configuration.
 
 ### `histogram`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `histogram` block configures the histogram derived from spans' durations.
 
 The following attributes are supported:
 
 | Name      | Type     | Description                     | Default | Required |
-| --------- | -------- | ------------------------------- | ------- | -------- |
+|-----------|----------|---------------------------------|---------|----------|
 | `disable` | `bool`   | Disable all histogram metrics.  | `false` | no       |
 | `unit`    | `string` | Configures the histogram units. | `"ms"`  | no       |
 
@@ -154,7 +154,7 @@ The supported values for `unit` are:
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-metrics.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -178,7 +178,7 @@ The default dimensions are always added if not listed in `exclude_dimensions`. I
 The following attributes are supported:
 
 | Name      | Type     | Description                                      | Default | Required |
-| --------- | -------- | ------------------------------------------------ | ------- | -------- |
+|-----------|----------|--------------------------------------------------|---------|----------|
 | `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
 | `default` | `string` | Value to use if the attribute is missing.        |         | no       |
 
@@ -201,7 +201,7 @@ The `events` block configures the `events` metric, which tracks [span events][sp
 The following attributes are supported:
 
 | Name      | Type   | Description                | Default | Required |
-| --------- | ------ | -------------------------- | ------- | -------- |
+|-----------|--------|----------------------------|---------|----------|
 | `enabled` | `bool` | Enables all events metric. | `false` | no       |
 
 At least one nested `dimension` block is required if `enabled` is set to `true`.
@@ -215,9 +215,9 @@ The `exemplars` block configures how to attach exemplars to histograms.
 The following attributes are supported:
 
 | Name                 | Type     | Description                                                                 | Default | Required |
-| -------------------- | -------- | --------------------------------------------------------------------------- | ------- | -------- |
+|----------------------|----------|-----------------------------------------------------------------------------|---------|----------|
 | `enabled`            | `bool`   | Configures whether to add exemplars to histograms.                          | `false` | no       |
-| `max_per_data_point` | `number` | Limits the number of exemplars that can be added to a unique dimension set. | `null`  | no       |
+| `max_per_data_point` | `number` | The maximum number of exemplars to attach to a single metric data point.    | `5`     | no       |
 
 `max_per_data_point` can help with reducing memory consumption.
 
@@ -228,7 +228,7 @@ The `exponential` block configures a histogram with exponential buckets.
 The following attributes are supported:
 
 | Name       | Type     | Description                                                      | Default | Required |
-| ---------- | -------- | ---------------------------------------------------------------- | ------- | -------- |
+|------------|----------|------------------------------------------------------------------|---------|----------|
 | `max_size` | `number` | Maximum number of buckets per positive or negative number range. | `160`   | no       |
 
 ### `explicit`
@@ -238,7 +238,7 @@ The `explicit` block configures a histogram with explicit buckets.
 The following attributes are supported:
 
 | Name      | Type             | Description                | Default                                                                                                                      | Required |
-| --------- | ---------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
+|-----------|------------------|----------------------------|------------------------------------------------------------------------------------------------------------------------------|----------|
 | `buckets` | `list(duration)` | List of histogram buckets. | `["2ms", "4ms", "6ms", "8ms", "10ms", "50ms", "100ms", "200ms", "400ms", "800ms", "1s", "1400ms", "2s", "5s", "10s", "15s"]` | no       |
 
 ## Exported fields
@@ -246,7 +246,7 @@ The following attributes are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` traces telemetry data.

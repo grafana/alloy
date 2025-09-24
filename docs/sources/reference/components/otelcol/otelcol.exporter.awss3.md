@@ -42,7 +42,7 @@ otelcol.exporter.awss3 "<LABEL>" {
 You can use the following argument with `otelcol.exporter.awss3`:
 
 | Name      | Type       | Description                                      | Default | Required |
-| --------- | ---------- | ------------------------------------------------ | ------- | -------- |
+|-----------|------------|--------------------------------------------------|---------|----------|
 | `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
@@ -50,29 +50,31 @@ You can use the following argument with `otelcol.exporter.awss3`:
 You can use the following blocks with `otelcol.exporter.awss3`:
 
 | Block                                          | Description                                                                                              | Required |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
+|------------------------------------------------|----------------------------------------------------------------------------------------------------------|----------|
 | [`s3_uploader`][s3_uploader]                   | Configures the AWS S3 bucket details to send telemetry data to.                                          | yes      |
 | [`debug_metrics`][debug_metrics]               | Configures the metrics that this component generates to monitor its state.                               | no       |
 | [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
 | [`resource_attrs_to_s3`][resource_attrs_to_s3] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no       |
 | [`sending_queue`][sending_queue]               | Configures batching of data before sending.                                                              | no       |
+| `sending_queue` > [`batch`][batch]             | Configures batching requests based on a timeout and a minimum number of items.                           | no       |
 
 [s3_uploader]: #s3_uploader
 [marshaler]: #marshaler
 [debug_metrics]: #debug_metrics
 [sending_queue]: #sending_queue
+[batch]: #batch
 [resource_attrs_to_s3]: #resource_attrs_to_s3-block
 
 ### `s3_uploader`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `s3_uploader` block configures the AWS S3 bucket details used by the component.
 
 The following arguments are supported:
 
 | Name                  | Type       | Description                                                                                           | Default                                       | Required |
-| --------------------- | ---------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
+|-----------------------|------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
 | `s3_bucket`           | `string`   | The S3 bucket.                                                                                        |                                               | yes      |
 | `s3_prefix`           | `string`   | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
 | `acl`                 | `string`   | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
@@ -115,21 +117,28 @@ Marshaler determines the format of data sent to AWS S3. Currently, the following
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default       | Required |
-| ------ | -------- | -------------------------------------- | ------------- | -------- |
+|--------|----------|----------------------------------------|---------------|----------|
 | `type` | `string` | Marshaler used to produce output data. | `"otlp_json"` | no       |
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to S3.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### resource_attrs_to_s3 block
 
 The following arguments are supported:
 
 | Name        | Type     | Description                                                                  | Default | Required |
-| ----------- | -------- | ---------------------------------------------------------------------------- | ------- | -------- |
+|-------------|----------|------------------------------------------------------------------------------|---------|----------|
 | `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
 
 When `s3_prefix` is set, it dynamically overrides [`s3_uploader`][s3_uploader] > `s3_prefix`.
@@ -147,7 +156,7 @@ Otherwise, [`s3_uploader`][s3_uploader] > `s3_prefix` will serve as the fallback
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

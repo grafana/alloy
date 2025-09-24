@@ -12,8 +12,10 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/component/common/loki/limit"
+	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -205,12 +207,23 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}
 
+	externalLabels := utils.ToLabelSet(c.args.ExternalLabels)
 	// if WAL is enabled, the WAL writer should be the destination sink. Otherwise, the client manager
 	if walCfg.Enabled {
-		c.sink = c.walWriter
+		c.sink = newEntryHandler(c.walWriter, externalLabels)
 	} else {
-		c.sink = c.clientManger
+		c.sink = newEntryHandler(c.clientManger, externalLabels)
 	}
 
-	return err
+	return nil
+}
+
+func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
+	if len(externalLabels) == 0 {
+		return handler
+	}
+	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
+		e.Labels = externalLabels.Merge(e.Labels)
+		return e
+	})
 }

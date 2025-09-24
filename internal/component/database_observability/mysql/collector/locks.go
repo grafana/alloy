@@ -11,12 +11,13 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	LocksName       = "locks"
+	LocksCollector  = "locks"
 	OP_DATA_LOCKS   = "query_data_locks"
 	selectDataLocks = `
 		SELECT
@@ -43,9 +44,8 @@ const (
 				AND blocking_stmt_current.EVENT_ID < blocking_lock.EVENT_ID`
 )
 
-type LockArguments struct {
+type LocksArguments struct {
 	DB                *sql.DB
-	InstanceKey       string
 	CollectInterval   time.Duration
 	LockWaitThreshold time.Duration
 	EntryHandler      loki.EntryHandler
@@ -53,9 +53,8 @@ type LockArguments struct {
 	Logger log.Logger
 }
 
-type LockCollector struct {
+type Locks struct {
 	mySQLClient     *sql.DB
-	instanceKey     string
 	collectInterval time.Duration
 	logger          log.Logger
 	entryHandler    loki.EntryHandler
@@ -68,11 +67,11 @@ type LockCollector struct {
 	cancel            context.CancelFunc
 }
 
-func (c *LockCollector) Name() string {
-	return LocksName
+func (c *Locks) Name() string {
+	return LocksCollector
 }
 
-func NewLock(args LockArguments) (*LockCollector, error) {
+func NewLocks(args LocksArguments) (*Locks, error) {
 	if args.DB == nil {
 		return nil, errors.New("nil DB connection")
 	}
@@ -81,18 +80,17 @@ func NewLock(args LockArguments) (*LockCollector, error) {
 		return nil, err
 	}
 
-	return &LockCollector{
+	return &Locks{
 		mySQLClient:       args.DB,
-		instanceKey:       args.InstanceKey,
 		collectInterval:   args.CollectInterval,
 		lockTimeThreshold: args.LockWaitThreshold,
 		entryHandler:      args.EntryHandler,
-		logger:            log.With(args.Logger, "collector", LocksName),
+		logger:            log.With(args.Logger, "collector", LocksCollector),
 		running:           &atomic.Bool{},
 	}, nil
 }
 
-func (c *LockCollector) Start(ctx context.Context) error {
+func (c *Locks) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
@@ -125,26 +123,25 @@ func (c *LockCollector) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *LockCollector) Stopped() bool {
+func (c *Locks) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *LockCollector) Stop() {
+func (c *Locks) Stop() {
 	c.cancel()
 }
 
-func (c *LockCollector) fetchLocks(ctx context.Context) error {
+func (c *Locks) fetchLocks(ctx context.Context) error {
 	rsdl, err := c.mySQLClient.QueryContext(ctx, selectDataLocks)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query data locks", "err", err)
-		return err
+		return fmt.Errorf("failed to query data locks: %w", err)
 	}
 	defer rsdl.Close()
 
 	for rsdl.Next() {
 		var waitingTimerWait, waitingLockTime, blockingTimerWait, blockingLockTime float64
-		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText string
+		var waitingDigest, waitingDigestText, blockingDigest, blockingDigestText sql.NullString
 
 		err := rsdl.Scan(&waitingTimerWait, &waitingLockTime, &waitingDigest, &waitingDigestText,
 			&blockingTimerWait, &blockingLockTime, &blockingDigest, &blockingDigestText)
@@ -157,23 +154,22 @@ func (c *LockCollector) fetchLocks(ctx context.Context) error {
 		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
 				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
-				waitingDigest,
-				waitingDigestText,
-				blockingDigest,
-				blockingDigestText,
+				waitingDigest.String,
+				waitingDigestText.String,
+				blockingDigest.String,
+				blockingDigestText.String,
 				picosecondsToMilliseconds(waitingTimerWait),
 				picosecondsToMilliseconds(waitingLockTime),
 				picosecondsToMilliseconds(blockingTimerWait),
 				picosecondsToMilliseconds(blockingLockTime),
 			)
 
-			c.entryHandler.Chan() <- buildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, c.instanceKey, lockMsg)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, lockMsg)
 		}
 	}
 
 	if err := rsdl.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over locks result set", "err", err)
-		return err
+		return fmt.Errorf("failed to iterate over locks result set: %w", err)
 	}
 
 	return nil

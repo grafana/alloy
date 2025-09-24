@@ -31,6 +31,7 @@ type Appender interface {
 }
 
 type RawSample struct {
+	ID string
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte
 }

@@ -35,6 +35,7 @@ const (
 	StageTypeMultiline          = "multiline"
 	StageTypeOutput             = "output"
 	StageTypePack               = "pack"
+	StageTypePattern            = "pattern"
 	StageTypePipeline           = "pipeline"
 	StageTypeRegex              = "regex"
 	StageTypeReplace            = "replace"
@@ -256,6 +257,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		s = newEventLogMessageStage(logger, cfg.EventLogMessageConfig)
 	case cfg.WindowsEventConfig != nil:
 		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
+	case cfg.PatternConfig != nil:
+		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}

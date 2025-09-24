@@ -181,6 +181,11 @@ Here is an example using those stages:
 // It watches cluster state and ensures targets are continually synced with what is currently running in your cluster.
 discovery.kubernetes "pod" {
   role = "pod"
+  // Restrict to pods on the node to reduce cpu & memory usage
+  selectors {
+    role = "pod"
+    field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+  }
 }
 
 // discovery.relabel rewrites the label set of the input targets by applying one or more relabeling rules.
@@ -226,7 +231,7 @@ discovery.relabel "pod_logs" {
     replacement = "$1"
   }
 
-  // Label creation - "container" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
+  // Label creation - "__path__" field from "__meta_kubernetes_pod_uid" and "__meta_kubernetes_pod_container_name"
   // Concatenate values __meta_kubernetes_pod_uid/__meta_kubernetes_pod_container_name.log
   rule {
     source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
@@ -269,6 +274,10 @@ Replace the following values:
 
 * _`<CLUSTER_NAME>`_: The label for this specific Kubernetes cluster, such as `production` or `us-east-1`.
 * _`<WRITE_COMPONENT_NAME>`_: The name of your `loki.write` component, such as `default`.
+
+{{< admonition type="note" >}}
+Refer to [Limit to only Pods on the same node][discovery.kubernetes_samenode] for more information about restricting to Pods on the same node.
+{{< /admonition >}}
 
 ### Kubernetes Cluster Events
 
@@ -317,6 +326,7 @@ Replace the following values:
 
 [Loki]: https://grafana.com/oss/loki/
 [discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
+[discovery.kubernetes_samenode]: ../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node
 [loki.write]: ../../reference/components/loki/loki.write/
 [local.file_match]: ../../reference/components/local/local.file_match/
 [loki.source.file]: ../../reference/components/loki/loki.source.file/

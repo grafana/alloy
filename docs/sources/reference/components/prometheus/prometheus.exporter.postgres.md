@@ -252,6 +252,19 @@ prometheus.remote_write "demo" {
 }
 ```
 
+### Escape special characters in postgres url
+
+If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
+
+```alloy
+prometheus.exporter.postgres "example" {
+  data_source_names = [
+    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable"
+  ]
+}
+```
+This ensures the DSN remains valid and correctly parsed.
+
 Replace the following:
 
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.

@@ -173,6 +173,12 @@ endif
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
 
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
+
 #
 # Targets for building binaries
 #
@@ -282,6 +288,14 @@ else
 	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
 	go generate ./internal/static/integrations/snmp_exporter/common; \
 	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
 endif
 
 #

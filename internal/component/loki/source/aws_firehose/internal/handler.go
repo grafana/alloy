@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/v3/pkg/logproto"
-	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
+	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -122,7 +122,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// common labels contains all record-wide labels
-	commonLabels := labels.NewBuilder(nil)
+	commonLabels := labels.NewBuilder(labels.EmptyLabels())
 	commonLabels.Set("__aws_firehose_request_id", req.Header.Get("X-Amz-Firehose-Request-Id"))
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
@@ -187,19 +187,22 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 	}
 
 	entryLabels := make(model.LabelSet)
-	for _, lbl := range lbs {
+	lbs.Range(func(lbl labels.Label) {
 		// if internal label and not reserved, drop
 		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != lokiClient.ReservedLabelTenantID {
-			continue
+			return
 		}
 
 		// ignore invalid labels
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+			return
 		}
 
 		entryLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
+
 	return entryLabels
 }
 
@@ -319,12 +322,16 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !labelName.IsValidLegacy() {
 			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
 
 			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
+			// TODO: add support for different validation schemes.
+			//nolint:staticcheck
 			if !labelName.IsValidLegacy() {
 				// This situation can happen when:
 				// - the header with label information is a valid JSON

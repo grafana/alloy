@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/prometheus/common/model"
-	"golang.org/x/exp/slices"
 
 	"github.com/grafana/loki/v3/pkg/logproto"
 

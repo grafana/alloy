@@ -54,6 +54,8 @@ func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
+	cfg.MetricNameValidationScheme = promconfig.LegacyValidationConfig
+	cfg.MetricNameEscapingScheme = model.EscapeUnderscores
 	return cfg
 }
 

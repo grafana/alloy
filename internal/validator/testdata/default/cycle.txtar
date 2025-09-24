@@ -1,0 +1,26 @@
+cyclic graph
+-- main.alloy --
+
+prometheus.relabel "label1" {
+  forward_to = [prometheus.relabel.label2.receiver]
+}
+
+prometheus.relabel "label2" {
+  forward_to = [prometheus.relabel.label1.receiver]
+}
+
+prometheus.relabel "label3" {
+  forward_to = [prometheus.relabel.label4.receiver]
+}
+
+prometheus.relabel "label4" {
+  forward_to = [prometheus.relabel.label5.receiver]
+}
+
+prometheus.relabel "label5" {
+  forward_to = [prometheus.relabel.label3.receiver]
+}
+
+prometheus.relabel "label6" {
+  forward_to = [prometheus.relabel.label6.receiver]
+}

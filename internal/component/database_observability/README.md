@@ -1,5 +1,7 @@
 # Setting Up Database Observability with Grafana Cloud
 
+> NOTE: while the components `database_observability.mysql` and `database_observability.postgres` are marked as experimental, it is recommended to refer to the ["next"](https://grafana.com/docs/alloy/next/reference/components/database_observability/) version of docs for a complete reference documentation.
+
 ## MySQL
 
 ### Setting up the MySQL database
@@ -72,13 +74,19 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. Optionally enable the `events_statements_cpu` consumer if you want to capture query samples. Verify the current setting:
+6. [OPTIONAL] Increase `performance_schema_max_sql_text_length` to `4096` if you want to collect the actual, unredacted sql text from queries samples (this requires setting `disable_query_redaction` to `true`, see later). Verify that the changes have been applied:
 
-```promql
-database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name="events_statements_cpu"}
+```sql
+SHOW VARIABLES LIKE 'performance_schema_max_sql_text_length';
+
++----------------------------------------+-------+
+| Variable_name                          | Value |
++----------------------------------------+-------+
+| performance_schema_max_sql_text_length | 4096  |
++----------------------------------------+-------+
 ```
 
-or with a sql query:
+7. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
@@ -90,13 +98,30 @@ Use this statement to enable the consumer if it's disabled:
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_cpu';
 ```
 
-7. Optionally enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings:
+Note that the `events_statements_cpu` consumer will be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumer on your behalf then extend the grants of the `db-o11y` user:
 
-```promql
-database_observability_setup_consumers_enabled{job="integrations/db-o11y", consumer_name=~"events_waits_(current|history)"}
+```sql
+GRANT UPDATE ON performance_schema.setup_consumers TO 'db-o11y'@'%';
 ```
 
-or with a sql query:
+and additionally enable these options:
+
+```
+database_observability.mysql "mysql_<your_DB_name>" {
+  enable_collectors = ["query_samples"]
+
+  // Global option to allow writing to performance_schema tables
+  allow_update_performance_schema_settings = true
+
+  // Option to allow the `query_samples` collector to
+  // enable the 'events_statements_cpu' consumer
+  query_samples {
+    auto_enable_setup_consumers = true
+  }
+}
+```
+
+8. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
@@ -107,6 +132,8 @@ Use this statement to enable the consumers if they are disabled:
 ```sql
 UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME IN ('events_waits_current', 'events_waits_history');
 ```
+
+As noted in the step above, these consumers will be disabled again when the database is restarted. If you prefer Alloy to verify and enable the consumers on your behalf then follow the instructions from the step above.
 
 ### Running and configuring Alloy
 
@@ -135,15 +162,24 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
 database_observability.mysql "mysql_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
-  collect_interval  = "1m"
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 
-  // OPTIONAL: if `query_sample` collector is enabled, you can use
+  // OPTIONAL: if `query_samples` collector is enabled, you can use
   // the following setting to disable sql text redaction (by default
   // query samples are redacted).
-  disable_query_redaction = true
+  query_samples {
+    disable_query_redaction = true
+  }
+
+  // OPTIONAL: provide additional information specific to the Cloud Provider
+  // that hosts the database to enable certain infrastructure observability features.
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
 }
 
 loki.relabel "database_observability_mysql_<your_DB_name>" {
@@ -279,8 +315,7 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
 database_observability.mysql "mysql_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
-  collect_interval  = "1m"
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 }
 
 loki.relabel "database_observability_mysql_example_db_1" {
@@ -318,8 +353,7 @@ prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
 database_observability.mysql "mysql_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
-  collect_interval  = "1m"
-  enable_collectors = ["query_sample"]
+  enable_collectors = ["query_samples"]
 }
 
 loki.relabel "database_observability_mysql_example_db_2" {
@@ -348,13 +382,7 @@ prometheus.scrape "database_observability_mysql_example_db_2" {
 
 1. Your Postgres DB should be at least version 16.
 
-2. Create a dedicated DB user and grant permissions.
-
-```sql
-CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
-GRANT pg_monitor TO 'db-o11y';
-GRANT pg_read_all_stats TO 'db-o11y';
-```
+2. Add the `pg_stat_statements` module to `shared_preload_libraries` in `postgresql.conf`. This requires a restart of the Postgres DB.
 
 3. Create the `pg_stat_statements` extension in every database you want to monitor.
 
@@ -362,7 +390,31 @@ GRANT pg_read_all_stats TO 'db-o11y';
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 ```
 
-4. Verify that the user has been properly created.
+4. Verify that the extension is enabled.
+
+```sql
+SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
+```
+
+5. Increase `track_activity_query_size` to `4096`. Verify that the change has been applied:
+
+```sql
+show track_activity_query_size;
+
+ track_activity_query_size
+---------------------------
+ 4kB
+```
+
+6. Create a dedicated DB user and grant permissions.
+
+```sql
+CREATE USER "db-o11y" WITH PASSWORD '<password>';
+GRANT pg_monitor TO "db-o11y";
+GRANT pg_read_all_stats TO "db-o11y";
+```
+
+7. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
@@ -373,7 +425,7 @@ SELECT * FROM pg_stat_statements LIMIT 1;
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
-2. Add the following configuration block to Alloy.
+2. Add the following configuration block to Alloy for each Postgres DB you'd like to monitor.
 - Replace `<your_DB_name>`
 - Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
 
@@ -387,7 +439,7 @@ local.file "postgres_secret_<your_DB_name>" {
 
 prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
-  enabled_collectors = ["database", "stat_statements"]
+  enabled_collectors = ["stat_statements"]
 
   autodiscovery {
     enabled = true
@@ -400,7 +452,24 @@ prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
 database_observability.postgres "postgres_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
-  collect_interval  = "1m"
+
+  // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
+  enable_collectors = ["query_samples", "query_details"]
+
+  // OPTIONAL: if `query_samples` collector is enabled, you can use
+  // the following setting to disable sql text redaction (by default
+  // query samples are redacted).
+  query_samples {
+    disable_query_redaction = true
+  }
+
+  // OPTIONAL: provide additional information specific to the Cloud Provider
+  // that hosts the database to enable certain infrastructure observability features.
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
 }
 
 loki.relabel "database_observability_postgres_<your_DB_name>" {

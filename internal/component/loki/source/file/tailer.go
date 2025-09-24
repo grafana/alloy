@@ -35,9 +35,10 @@ type tailer struct {
 	receiver  loki.LogsReceiver
 	positions positions.Positions
 
-	path      string
-	labelsStr string
-	labels    model.LabelSet
+	path               string
+	labelsStr          string
+	labels             model.LabelSet
+	legacyPositionUsed bool
 
 	tailFromEnd bool
 	pollOptions watch.PollingFileWatcherOptions
@@ -52,21 +53,24 @@ type tailer struct {
 	decoder *encoding.Decoder
 }
 
-func newTailer(metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, positions positions.Positions, path string,
-	labels model.LabelSet, encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, componentStopping func() bool) (*tailer, error) {
+func newTailer(
+	metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, positions positions.Positions, path string, labels model.LabelSet,
+	encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, legacyPositonUsed bool, componentStopping func() bool,
+) (*tailer, error) {
 
 	tailer := &tailer{
-		metrics:           metrics,
-		logger:            log.With(logger, "component", "tailer"),
-		receiver:          receiver,
-		positions:         positions,
-		path:              path,
-		labels:            labels,
-		labelsStr:         labels.String(),
-		running:           atomic.NewBool(false),
-		tailFromEnd:       tailFromEnd,
-		pollOptions:       pollOptions,
-		componentStopping: componentStopping,
+		metrics:            metrics,
+		logger:             log.With(logger, "component", "tailer"),
+		receiver:           receiver,
+		positions:          positions,
+		path:               path,
+		labels:             labels,
+		labelsStr:          labels.String(),
+		running:            atomic.NewBool(false),
+		tailFromEnd:        tailFromEnd,
+		legacyPositionUsed: legacyPositonUsed,
+		pollOptions:        pollOptions,
+		componentStopping:  componentStopping,
 	}
 
 	if encoding != "" {
@@ -181,7 +185,16 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 		return nil, fmt.Errorf("failed to get file position: %w", err)
 	}
 
-	// NOTE: The code assumes that if a position is available and that the file is bigger than the position, then
+	// If we translated legacy positions we should try to get position offset without labels
+	// when no other position was matched.
+	if pos == 0 && t.legacyPositionUsed {
+		pos, err = t.positions.Get(t.path, "{}")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get file position with empty labels: %w", err)
+		}
+	}
+
+	// NOTE: The code assumes that if a position is available and that the file is smaller than the position, then
 	// the tail should start from the position. This may not be always desired in situation where the file was rotated
 	// with a file that has the same name but different content and a bigger size that the previous one. This problem would
 	// mostly show up on Windows because on Unix systems, the readlines function is not exited on file rotation.

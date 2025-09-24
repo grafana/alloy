@@ -12,6 +12,12 @@ title: otelcol.receiver.opencensus
 
 # `otelcol.receiver.opencensus`
 
+{{< admonition type="warning" >}}
+The `otelcol.receiver.opencensus` component has been deprecated and will be removed in a future release.
+Use `otelcol.reciver.otlp` instead.
+
+{{< /admonition >}}
+
 `otelcol.receiver.opencensus` accepts telemetry data via gRPC or HTTP using the [OpenCensus](https://opencensus.io/) format and forwards it to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
@@ -40,7 +46,7 @@ otelcol.receiver.opencensus "<LABEL>" {
 You can use the following arguments with `otelcol.receiver.opencensus`:
 
 | Name                     | Type                       | Description                                                                  | Default           | Required |
-| ------------------------ | -------------------------- | ---------------------------------------------------------------------------- | ----------------- | -------- |
+|--------------------------|----------------------------|------------------------------------------------------------------------------|-------------------|----------|
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                   | no       |
 | `cors_allowed_origins`   | `list(string)`             | A list of allowed Cross-Origin Resource Sharing (CORS) origins.              |                   | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:55678"` | no       |
@@ -67,7 +73,7 @@ For details, refer to its [OpenApi specification](https://github.com/census-inst
 You can use the following blocks with `otelcol.receiver.opencensus`:
 
 | Block                                                    | Description                                                                | Required |
-| -------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                                       | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics]                         | Configures the metrics that this component generates to monitor its state. | no       |
 | [`keepalive`][keepalive]                                 | Configures keepalive settings for the configured server.                   | no       |
@@ -89,7 +95,7 @@ For example, `keepalive` > `enforcesment_policy` refers to an `enforcement_polic
 
 ### `output`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -111,7 +117,7 @@ The server closes connections from clients that violate the configured policy.
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                             | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------|---------|----------|
 | `min_time`              | `duration` | Minimum time clients should wait before sending a keepalive ping.       | `"5m"`  | no       |
 | `permit_without_stream` | `boolean`  | Allow clients to send keepalive pings when there are no active streams. | `false` | no       |
 
@@ -122,7 +128,7 @@ The `server_parameters` block controls keepalive and maximum age settings for gR
 The following arguments are supported:
 
 | Name                       | Type       | Description                                                                         | Default      | Required |
-| -------------------------- | ---------- | ----------------------------------------------------------------------------------- | ------------ | -------- |
+|----------------------------|------------|-------------------------------------------------------------------------------------|--------------|----------|
 | `max_connection_age_grace` | `duration` | Time to wait before forcibly closing connections.                                   | `"infinity"` | no       |
 | `max_connection_age`       | `duration` | Maximum age for non-idle connections.                                               | `"infinity"` | no       |
 | `max_connection_idle`      | `duration` | Maximum age for idle connections.                                                   | `"infinity"` | no       |

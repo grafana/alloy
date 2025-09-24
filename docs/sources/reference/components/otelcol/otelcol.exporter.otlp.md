@@ -38,7 +38,7 @@ otelcol.exporter.otlp "<LABEL>" {
 You can use the following argument with `otelcol.exporter.otlp`:
 
 | Name      | Type       | Description                                      | Default | Required |
-| --------- | ---------- | ------------------------------------------------ | ------- | -------- |
+|-----------|------------|--------------------------------------------------|---------|----------|
 | `timeout` | `duration` | Time to wait before marking a request as failed. | `"5s"`  | no       |
 
 ## Blocks
@@ -46,7 +46,7 @@ You can use the following argument with `otelcol.exporter.otlp`:
 You can use the following blocks with `otelcol.exporter.otlp`:
 
 | Block                                  | Description                                                                | Required |
-| -------------------------------------- | -------------------------------------------------------------------------- | -------- |
+|----------------------------------------|----------------------------------------------------------------------------|----------|
 | [`client`][client]                     | Configures the gRPC client to send telemetry data to.                      | yes      |
 | `client` > [`keepalive`][keepalive]    | Configures keepalive settings for the gRPC client.                         | no       |
 | `client` > [`tls`][tls]                | Configures TLS for the gRPC client.                                        | no       |
@@ -54,6 +54,7 @@ You can use the following blocks with `otelcol.exporter.otlp`:
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state. | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                            | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                | no       |
+| `sending_queue` > [`batch`][batch]    | Configures batching requests based on a timeout and a minimum number of items. | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
@@ -63,19 +64,20 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [tpm]: #tpm
 [keepalive]: #keepalive
 [sending_queue]: #sending_queue
+[batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
 ### `client`
 
-<span class="badge docs-labels__stage docs-labels__item">Required</span>
+{{< badge text="Required" >}}
 
 The `client` block configures the gRPC client used by the component.
 
 The following arguments are supported:
 
 | Name                | Type                       | Description                                                                      | Default         | Required |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------- | --------------- | -------- |
+|---------------------|----------------------------|----------------------------------------------------------------------------------|-----------------|----------|
 | `endpoint`          | `string`                   | `host:port` to send telemetry data to.                                           |                 | yes      |
 | `auth`              | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.     |                 | no       |
 | `authority`         | `string`                   | Overrides the default `:authority` header in gRPC requests from the gRPC client. |                 | no       |
@@ -117,7 +119,7 @@ The `keepalive` block configures keepalive settings for gRPC client connections.
 The following arguments are supported:
 
 | Name                    | Type       | Description                                                                               | Default | Required |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
+|-------------------------|------------|-------------------------------------------------------------------------------------------|---------|----------|
 | `ping_wait`             | `duration` | How often to ping the server after no activity.                                           |         | no       |
 | `ping_response_timeout` | `duration` | Time to wait before closing inactive connections if the server doesn't respond to a ping. |         | no       |
 | `ping_without_stream`   | `boolean`  | Send pings even if there is no active stream request.                                     |         | no       |
@@ -154,17 +156,23 @@ The `retry_on_failure` block configures how failed requests to the gRPC server a
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent
-to the gRPC server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+By default, the `batch` block is not used.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

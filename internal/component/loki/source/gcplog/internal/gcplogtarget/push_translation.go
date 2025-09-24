@@ -22,24 +22,26 @@ import (
 // pipeline stages
 const ReservedLabelTenantID = "__tenant_id__"
 
-// PushMessage is the POST body format sent by GCP PubSub push subscriptions.
+// PushMessageBody is the POST body format sent by GCP PubSub push subscriptions.
 // See https://cloud.google.com/pubsub/docs/push for details.
+type PushMessageBody struct {
+	Message      PushMessage `json:"message"`
+	Subscription string      `json:"subscription"`
+}
+
 type PushMessage struct {
-	Message struct {
-		Attributes       map[string]string `json:"attributes"`
-		Data             string            `json:"data"`
-		ID               string            `json:"message_id"`
-		PublishTimestamp string            `json:"publish_time"`
-	} `json:"message"`
-	Subscription string `json:"subscription"`
+	Attributes          map[string]string `json:"attributes"`
+	Data                string            `json:"data"`
+	MessageID           string            `json:"messageId"`
+	DeprecatedMessageID string            `json:"message_id"`
 }
 
 // Validate checks that the required fields of a PushMessage are set.
-func (pm PushMessage) Validate() error {
+func (pm PushMessageBody) Validate() error {
 	if pm.Message.Data == "" {
 		return fmt.Errorf("push message has no data")
 	}
-	if pm.Message.ID == "" {
+	if pm.ID() == "" {
 		return fmt.Errorf("push message has no ID")
 	}
 	if pm.Subscription == "" {
@@ -48,14 +50,21 @@ func (pm PushMessage) Validate() error {
 	return nil
 }
 
+func (pm PushMessageBody) ID() string {
+	if pm.Message.MessageID != "" {
+		return pm.Message.MessageID
+	}
+	return pm.Message.DeprecatedMessageID
+}
+
 // translate converts a GCP PushMessage into a loki.Entry. It parses the
 // push-specific labels and delegates the rest to parseGCPLogsEntry.
-func translate(m PushMessage, other model.LabelSet, useIncomingTimestamp bool, useFullLine bool, relabelConfigs []*relabel.Config, xScopeOrgID string) (loki.Entry, error) {
+func translate(m PushMessageBody, other model.LabelSet, useIncomingTimestamp bool, useFullLine bool, relabelConfigs []*relabel.Config, xScopeOrgID string) (loki.Entry, error) {
 	// Collect all push-specific labels. Every one of them is first configured
 	// as optional, and the user can relabel it if needed. The relabeling and
 	// internal drop is handled in parseGCPLogsEntry.
-	lbs := labels.NewBuilder(nil)
-	lbs.Set("__gcp_message_id", m.Message.ID)
+	lbs := labels.NewBuilder(labels.EmptyLabels())
+	lbs.Set("__gcp_message_id", m.ID())
 	lbs.Set("__gcp_subscription_name", m.Subscription)
 	for k, v := range m.Message.Attributes {
 		lbs.Set(fmt.Sprintf("__gcp_attributes_%s", convertToLokiCompatibleLabel(k)), v)

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,48 +19,23 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 )
 
 func TestDockerTarget(t *testing.T) {
-	h := func(w http.ResponseWriter, r *http.Request) {
-		switch path := r.URL.Path; {
-		case strings.HasSuffix(path, "/logs"):
-			var filePath string
-			if strings.Contains(r.URL.RawQuery, "since=0") {
-				filePath = "testdata/flog.log"
-			} else {
-				filePath = "testdata/flog_after_restart.log"
-			}
-			dat, err := os.ReadFile(filePath)
-			require.NoError(t, err)
-			_, err = w.Write(dat)
-			require.NoError(t, err)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			info := container.InspectResponse{
-				ContainerJSONBase: &container.ContainerJSONBase{},
-				Mounts:            []container.MountPoint{},
-				Config:            &container.Config{Tty: false},
-				NetworkSettings:   &container.NetworkSettings{},
-			}
-			err := json.NewEncoder(w).Encode(info)
-			require.NoError(t, err)
-		}
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(h))
-	defer ts.Close()
+	server := newDockerServer(t)
+	defer server.Close()
 
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	entryHandler := fake.NewClient(func() {})
-	client, err := client.NewClientWithOpts(client.WithHost(ts.URL))
+	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
@@ -99,6 +75,7 @@ func TestDockerTarget(t *testing.T) {
 
 	entryHandler.Clear()
 	// restart target to simulate container restart
+	tgt.Stop()
 	tgt.StartIfNotRunning()
 	expectedLinesAfterRestart := []string{
 		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
@@ -110,6 +87,94 @@ func TestDockerTarget(t *testing.T) {
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		assertExpectedLog(c, entryHandler, expectedLinesAfterRestart)
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines after restart were not found within the time limit.")
+}
+
+func TestStartStopStressTest(t *testing.T) {
+	server := newDockerServer(t)
+	defer server.Close()
+
+	logger := log.NewNopLogger()
+	entryHandler := fake.NewClient(func() {})
+
+	ps, err := positions.New(logger, positions.Config{
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: t.TempDir() + "/positions.yml",
+	})
+	require.NoError(t, err)
+
+	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	require.NoError(t, err)
+
+	tgt, err := NewTarget(
+		NewMetrics(prometheus.NewRegistry()),
+		logger,
+		entryHandler,
+		ps,
+		"flog",
+		model.LabelSet{"job": "docker"},
+		[]*relabel.Config{},
+		client,
+	)
+	require.NoError(t, err)
+
+	tgt.StartIfNotRunning()
+
+	// Stress test the concurrency of StartIfNotRunning and Stop
+	wg := sync.WaitGroup{}
+	for range 1000 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tgt.StartIfNotRunning()
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tgt.Stop()
+		}()
+	}
+	wg.Wait()
+}
+
+func newDockerServer(t *testing.T) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		ctx := r.Context()
+		var writeErr error
+		switch {
+		case strings.HasSuffix(path, "/logs"):
+			var filePath string
+			if strings.Contains(r.URL.RawQuery, "since=0") {
+				filePath = "testdata/flog.log"
+			} else {
+				filePath = "testdata/flog_after_restart.log"
+			}
+			dat, err := os.ReadFile(filePath)
+			require.NoError(t, err)
+			_, writeErr = w.Write(dat)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			info := container.InspectResponse{
+				ContainerJSONBase: &container.ContainerJSONBase{},
+				Mounts:            []container.MountPoint{},
+				Config:            &container.Config{Tty: false},
+				NetworkSettings:   &container.NetworkSettings{},
+			}
+			writeErr = json.NewEncoder(w).Encode(info)
+		}
+		if writeErr != nil {
+			select {
+			case <-ctx.Done():
+				// Context was done, the write error is likely client disconnect or server shutdown, ignore
+				return
+			default:
+				require.NoError(t, writeErr, "unexpected write error not caused by context being done")
+			}
+		}
+	}
+
+	return httptest.NewServer(http.HandlerFunc(h))
 }
 
 // assertExpectedLog will verify that all expectedLines were received, in any order, without duplicates.

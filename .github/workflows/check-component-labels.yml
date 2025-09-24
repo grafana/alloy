@@ -1,0 +1,22 @@
+name: Check github issue templates
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate-gh-issue-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Regenerate github issue templates
+        run: |
+          make generate-gh-issue-templates
+          if ! git diff --exit-code; then
+            echo "GitHub issue templates are not up to date. Please run 'make generate-gh-issue-templates' and commit changes!" >&2
+            exit 1
+          fi

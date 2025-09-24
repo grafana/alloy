@@ -4,6 +4,7 @@
 /.pkg
 /.cache
 /.vscode
+/.history
 /.eventcache
 vendor
 data-alloy/

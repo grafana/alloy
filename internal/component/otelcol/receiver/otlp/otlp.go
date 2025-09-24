@@ -57,22 +57,22 @@ type HTTPConfigArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *HTTPConfigArguments) Convert() (*otlpreceiver.HTTPConfig, error) {
+func (args *HTTPConfigArguments) Convert() (configoptional.Optional[otlpreceiver.HTTPConfig], error) {
 	if args == nil {
-		return nil, nil
+		return configoptional.None[otlpreceiver.HTTPConfig](), nil
 	}
 
 	httpServerArgs, err := args.HTTPServerArguments.Convert()
 	if err != nil {
-		return nil, err
+		return configoptional.None[otlpreceiver.HTTPConfig](), err
 	}
 
-	return &otlpreceiver.HTTPConfig{
-		ServerConfig:   *httpServerArgs,
+	return configoptional.Some(otlpreceiver.HTTPConfig{
+		ServerConfig:   *httpServerArgs.Get(),
 		TracesURLPath:  otlpreceiver.SanitizedURLPath(args.TracesURLPath),
 		MetricsURLPath: otlpreceiver.SanitizedURLPath(args.MetricsURLPath),
 		LogsURLPath:    otlpreceiver.SanitizedURLPath(args.LogsURLPath),
-	}, nil
+	}), nil
 }
 
 var _ receiver.Arguments = Arguments{}
@@ -98,8 +98,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	return &otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: convertOptional(grpcProtocolArgs),
-			HTTP: convertOptional(httpProtocolArgs),
+			GRPC: grpcProtocolArgs,
+			HTTP: httpProtocolArgs,
 		},
 	}, nil
 }
@@ -200,11 +200,4 @@ func (args *HTTPConfigArguments) SetToDefault() {
 // DebugMetricsConfig implements receiver.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
-}
-
-func convertOptional[T any](it *T) configoptional.Optional[T] {
-	if it == nil {
-		return configoptional.None[T]()
-	}
-	return configoptional.Some[T](*it)
 }
