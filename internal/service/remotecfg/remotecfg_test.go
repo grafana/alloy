@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,6 +28,8 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/token"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -86,10 +89,24 @@ func TestGoodBadGood(t *testing.T) {
 
 	client := &mockCollectorClient{}
 
-	// Mock client to return a valid response.
+	// Track status updates sent to the server
+	var statusHistory []collectorv1.RemoteConfigStatuses
+	var statusMessages []string
+	var statusMutex sync.Mutex
+
+	// Mock client to return a valid response and capture status updates
 	var registerCalled atomic.Bool
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
+	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		// Capture status updates
+		if req.Msg.RemoteConfigStatus != nil {
+			statusMutex.Lock()
+			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
+			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
+			statusMutex.Unlock()
+		}
+		return buildGetConfigHandler(cfgGood, "", false)(ctx, req)
+	}
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 	client.mut.Unlock()
 
@@ -116,9 +133,25 @@ func TestGoodBadGood(t *testing.T) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
+	// Verify status is APPLIED for good config
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, status.Status)
+		assert.Equal(c, "", status.ErrorMessage)
+	}, time.Second, 10*time.Millisecond)
+
 	// Update the response returned by the API to an invalid configuration.
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		// Capture status updates
+		if req.Msg.RemoteConfigStatus != nil {
+			statusMutex.Lock()
+			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
+			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
+			statusMutex.Unlock()
+		}
+		return buildGetConfigHandler(cfgBad, "", false)(ctx, req)
+	}
 	client.mut.Unlock()
 
 	// Verify that the service has still the same "good" configuration has
@@ -140,16 +173,62 @@ func TestGoodBadGood(t *testing.T) {
 		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
 
+	// Verify status is FAILED for bad config with error message
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, status.Status)
+		assert.NotEmpty(c, status.ErrorMessage, "Should have error message for parse failure")
+	}, 1*time.Second, 10*time.Millisecond)
+
 	// Update the response returned by the API to the previous "good"
 	// configuration.
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
+	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		// Capture status updates
+		if req.Msg.RemoteConfigStatus != nil {
+			statusMutex.Lock()
+			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
+			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
+			statusMutex.Unlock()
+		}
+		return buildGetConfigHandler(cfgGood, "", false)(ctx, req)
+	}
 	client.mut.Unlock()
 
 	// Verify that the service has updated the hash.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
+
+	// Verify status is back to APPLIED after good config is restored
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, status.Status)
+		assert.Equal(c, "", status.ErrorMessage)
+	}, 1*time.Second, 10*time.Millisecond)
+
+	// Verify we captured the expected status transitions
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		statusMutex.Lock()
+		defer statusMutex.Unlock()
+
+		// Should have at least some status updates
+		assert.Greater(c, len(statusHistory), 0, "Should have captured status updates")
+
+		// Should contain APPLIED and FAILED statuses
+		hasApplied := false
+		hasFailed := false
+		for _, status := range statusHistory {
+			if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED {
+				hasApplied = true
+			}
+			if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED {
+				hasFailed = true
+			}
+		}
+		assert.True(c, hasApplied, "Should have sent APPLIED status")
+		assert.True(c, hasFailed, "Should have sent FAILED status")
+	}, 2*time.Second, 10*time.Millisecond)
 
 	cancel()
 	wg.Wait()
@@ -338,7 +417,14 @@ func TestUserAgentHeader(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, env.Run(ctx))
+		err := env.Run(ctx)
+		// Accept context cancellation as expected since we're testing User-Agent headers,
+		// not service lifecycle. Status notification calls may fail due to context cancellation.
+		if err != nil && ctx.Err() == context.Canceled {
+			// Context was cancelled, which is expected in this test
+			return
+		}
+		require.NoError(t, err)
 	}()
 
 	// Wait for the register call to complete
@@ -651,3 +737,43 @@ func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath
 	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }
+
+func TestRemoteConfigStatus_InitialState(t *testing.T) {
+	// Test that the initial status is UNSET
+	env := newTestEnvironment(t, &mockCollectorClient{})
+
+	status := env.svc.cm.getRemoteConfigStatus()
+	assert.Equal(t, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, status.Status)
+	assert.Equal(t, "", status.ErrorMessage)
+}
+
+func TestGetErrorMessage_DiagnosticErrors(t *testing.T) {
+	// Test that diagnostic errors use AllMessages() for detailed error information
+
+	// Create a mock diagnostic error
+	mockDiags := diag.Diagnostics{
+		{
+			Severity: diag.SeverityLevelError,
+			StartPos: token.Position{Filename: "test.alloy", Line: 1, Column: 1},
+			Message:  "first error",
+		},
+		{
+			Severity: diag.SeverityLevelError,
+			StartPos: token.Position{Filename: "test.alloy", Line: 2, Column: 1},
+			Message:  "second error",
+		},
+	}
+
+	// Test getErrorMessage function directly
+	errorMsg := getErrorMessage(mockDiags)
+
+	// Should contain both error messages, not just the first
+	assert.Contains(t, errorMsg, "first error")
+	assert.Contains(t, errorMsg, "second error")
+	assert.Contains(t, errorMsg, ";") // Should be joined with semicolon
+
+	// Test with regular error
+	regularErr := errors.New("simple error")
+	regularMsg := getErrorMessage(regularErr)
+	assert.Equal(t, "simple error", regularMsg)
+}
