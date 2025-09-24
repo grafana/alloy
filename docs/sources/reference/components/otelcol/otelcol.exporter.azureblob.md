@@ -116,9 +116,26 @@ The following arguments are supported:
 | `serial_num_before_extension` | `boolean`           | Place serial before file extension.       | `false`                              | no       |
 | `params`                      | `map[string]string` | Additional template parameters.           |                                      | no       |
 
+### `append_blob`
+
+| Name        | Type      | Description                            | Default |
+| ----------- | --------- | -------------------------------------- | ------- |
+| `enabled`   | `boolean` | Enable append blob mode.               | `false` |
+| `separator` | `string`  | Separator used when appending content. | `"\n"`  |
+
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `encodings`
+
+Overrides `marshaler` via extension encodings per signal. Values should be OTel component IDs like `text_encoding` or `text_encoding/custom`.
+
+| Name      | Type     | Description                                 | Required |
+|-----------|----------|---------------------------------------------|----------|
+| `logs`    | `string` | Encoding extension component ID for logs.   | no       |
+| `metrics` | `string` | Encoding extension component ID for metrics.| no       |
+| `traces`  | `string` | Encoding extension component ID for traces. | no       |
 
 ### `marshaler`
 
@@ -133,32 +150,6 @@ Supported values for `type`:
 * `otlp_json`: The OpenTelemetry protocol format represented as JSON.
 * `otlp_proto`: The OpenTelemetry protocol format represented as Protocol Buffers.
 
-
-### `append_blob`
-
-| Name        | Type      | Description                            | Default |
-| ----------- | --------- | -------------------------------------- | ------- |
-| `enabled`   | `boolean` | Enable append blob mode.               | `false` |
-| `separator` | `string`  | Separator used when appending content. | `"\n"`  |
-
-### `encodings`
-
-Overrides `marshaler` via extension encodings per signal. Values should be OTel component IDs like `text_encoding` or `text_encoding/custom`.
-
-| Name      | Type     | Description                                 | Required |
-|-----------|----------|---------------------------------------------|----------|
-| `logs`    | `string` | Encoding extension component ID for logs.   | no       |
-| `metrics` | `string` | Encoding extension component ID for metrics.| no       |
-| `traces`  | `string` | Encoding extension component ID for traces. | no       |
-
-### `sending_queue`
-
-{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### `batch`
-
-{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
 ### `retry_on_failure`
 
 Configures retry backoff for failed requests.
@@ -171,6 +162,14 @@ Configures retry backoff for failed requests.
 | `multiplier`           | `float`    | Exponential backoff multiplier.          | `1.5`   |
 | `max_interval`         | `duration` | Maximum backoff interval.                | `30s`   |
 | `max_elapsed_time`     | `duration` | Maximum total retry time.                | `5m`    |
+
+### `sending_queue`
+
+{{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
