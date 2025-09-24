@@ -32,8 +32,7 @@ const selectPgStatActivity = `
 		s.application_name,
 		s.client_addr,
 		s.client_port,
-		s.backend_type,
-		s.backend_start,
+		s.backend_type,		
 		s.backend_xid,
 		s.backend_xmin,
 		s.xact_start,
@@ -54,8 +53,7 @@ const selectPgStatActivity = `
 			(
 				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND
 				(
-					s.state != 'idle' OR
-					(s.state = 'idle' AND s.state_change > $1)
+					s.state != 'idle' OR					
 				) AND
 				coalesce(TRIM(s.state), '') != ''
 			)
@@ -176,7 +174,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	scrapeTime := time.Now()
+
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -195,7 +193,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			&sample.ClientAddr,
 			&sample.ClientPort,
 			&sample.BackendType,
-			&sample.BackendStart,
 			&sample.BackendXID,
 			&sample.BackendXmin,
 			&sample.XactStart,
@@ -227,7 +224,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		stateDuration := calculateDuration(sample.StateChange, sample.Now)
 		queryDuration := calculateDuration(sample.QueryStart, sample.Now)
 		xactDuration := calculateDuration(sample.XactStart, sample.Now)
-		backendDuration := calculateDuration(sample.BackendStart, sample.Now)
 
 		clientAddr := ""
 		if sample.ClientAddr.Valid {
@@ -252,7 +248,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			sample.DatabaseName.String,
 			sample.PID,
 			leaderPID,
@@ -260,7 +256,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			sample.ApplicationName.String,
 			clientAddr,
 			sample.BackendType.String,
-			backendDuration,
 			sample.BackendXID.Int32,
 			sample.BackendXmin.Int32,
 			xactDuration,
@@ -285,8 +280,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 		if waitEvent != "" {
 			waitEventLabels := fmt.Sprintf(
-				`datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+				`datname="%s" user="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				sample.DatabaseName.String,
+				sample.Username.String,
 				sample.BackendType.String,
 				sample.State.String,
 				stateDuration,
@@ -311,9 +307,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
-
-	// Update last scrape time after successful scrape
-	c.lastScrape = scrapeTime
 
 	return nil
 }
