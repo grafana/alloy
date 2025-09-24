@@ -174,7 +174,6 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
