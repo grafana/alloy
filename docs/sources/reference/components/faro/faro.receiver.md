@@ -134,15 +134,14 @@ Configuring the `rate` argument determines how fast the bucket refills, and conf
 The `sourcemaps` block configures how to retrieve sourcemaps.
 Sourcemaps are then used to transform file and line information from minified code into the file and line information from the original source code.
 
-| Name                           | Type           | Description                                                                       | Default | Required |
-| ------------------------------ | -------------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `cache_cleanup_check_interval` | `duration`     | How often should cached sourcemaps be checked for cleanup                         | `"1h"`  | no       |
-| `cache_error_cleanup_interval` | `duration`     | Duration after which the download of source map that previously failed is retried | `"1h"`  | no       |
-| `cache_minimum_ttl`            | `duration`     | Duration after which source map is deleted from cache if not used                 | `inf`   | no       |
-| `download_from_origins`        | `list(string)` | Which origins to download sourcemaps from.                                        | `["*"]` | no       |
-| `download_timeout`             | `duration`     | Timeout when downloading sourcemaps.                                              | `"1s"`  | no       |
-| `download`                     | `bool`         | Whether to download sourcemaps.                                                   | `true`  | no       |
-
+| Name                           | Type           | Description                                                                        | Default | Required |
+| ------------------------------ | -------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `cache_cleanup_check_interval` | `duration`     | How often should cached sourcemaps be checked for cleanup.                         | `"1h"`  | no       |
+| `cache_error_cleanup_interval` | `duration`     | Duration after which the download of source map that previously failed is retried. | `"1h"`  | no       |
+| `cache_minimum_ttl`            | `duration`     | Duration after which source map is deleted from cache if not used.                 | `inf`   | no       |
+| `download_from_origins`        | `list(string)` | Which origins to download sourcemaps from.                                         | `["*"]` | no       |
+| `download_timeout`             | `duration`     | Timeout when downloading sourcemaps.                                               | `"1s"`  | no       |
+| `download`                     | `bool`         | Whether to download sourcemaps.                                                    | `true`  | no       |
 
 When exceptions are sent to the `faro.receiver` component, it can download sourcemaps from the web application.
 You can disable this behavior by setting the `download` argument to `false`.
