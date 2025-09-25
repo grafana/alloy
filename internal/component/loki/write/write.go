@@ -119,6 +119,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		// First we need to stop the sink, this is either wrapped clientManger or walWriter.
+		// Stopping the sink will not stop the inner handler
+		if c.sink != nil {
+			c.sink.Stop()
+		}
+
 		// when exiting Run, proceed to shut down first the writer component, and then
 		// the client manager, with the WAL and remote-write client inside
 		if c.walWriter != nil {
@@ -155,9 +161,14 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 	c.args = newArgs
 
+	if c.sink != nil {
+		c.sink.Stop()
+	}
+
 	if c.walWriter != nil {
 		c.walWriter.Stop()
 	}
+
 	if c.clientManger != nil {
 		// only drain on component shutdown
 		c.clientManger.Stop()
@@ -219,10 +230,10 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
-	if len(externalLabels) == 0 {
-		return handler
-	}
 	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
+		if len(externalLabels) == 0 {
+			return e
+		}
 		e.Labels = externalLabels.Merge(e.Labels)
 		return e
 	})
