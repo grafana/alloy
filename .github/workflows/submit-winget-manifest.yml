@@ -34,11 +34,11 @@ jobs:
       env:
         PACKAGE_ID: GrafanaLabs.Alloy
         PACKAGE_VERSION: ${{ github.event.release.tag_name }}
-        WINGET_TOKEN: ${{ fromJSON(steps.get-token.outputs.secrets).token }}
+        WINGET_CREATE_GITHUB_TOKEN: ${{ fromJSON(steps.get-token.outputs.secrets).token }}
       shell: pwsh
       run: |
+        wingetcreate token --store
         wingetcreate update ${env:PACKAGE_ID} `
           --urls "${env:GITHUB_SERVER_URL}/${env:GITHUB_REPOSITORY}/releases/download/${env:PACKAGE_VERSION}/alloy-installer-windows-amd64.exe" `
           --version ${env:PACKAGE_VERSION}.TrimStart("v") `
-          --submit `
-          --token ${env:WINGET_TOKEN}
+          --submit
