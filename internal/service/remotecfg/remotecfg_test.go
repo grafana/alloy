@@ -340,7 +340,7 @@ func TestUserAgentHeader(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		if err := env.Run(ctx); !errors.Is(err, context.Canceled) {
-			require.NoError(t, env.Run(ctx))
+			require.NoError(t, err)
 		}
 	}()
 
