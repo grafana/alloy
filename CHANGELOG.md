@@ -27,6 +27,8 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
+
 v1.11.0-rc.2
 -----------------
 
