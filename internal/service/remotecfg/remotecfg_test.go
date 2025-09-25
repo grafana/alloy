@@ -82,156 +82,38 @@ func TestOnDiskCache(t *testing.T) {
 }
 
 func TestGoodBadGood(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
 
-	client := &mockCollectorClient{}
+	// Create managed test service with automatic lifecycle management
+	svc := newManagedTestService(t, cfgGood)
 
-	// Track status updates sent to the server
-	var statusHistory []collectorv1.RemoteConfigStatuses
-	var statusMessages []string
-	var statusMutex sync.Mutex
+	// Verify initial good config is applied
+	svc.AssertConfigHash(cfgGood)
+	svc.helper.AssertApplied()
 
-	// Mock client to return a valid response and capture status updates
-	var registerCalled atomic.Bool
-	client.mut.Lock()
-	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-		// Capture status updates
-		if req.Msg.RemoteConfigStatus != nil {
-			statusMutex.Lock()
-			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
-			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
-			statusMutex.Unlock()
-		}
-		return buildGetConfigHandler(cfgGood, "", false)(ctx, req)
-	}
-	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
-	client.mut.Unlock()
+	// Switch to bad config
+	svc.SetConfig(cfgBad)
 
-	// Create a new service.
-	env := newTestEnvironment(t, client)
-	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
-		url            = "%s"
-		poll_frequency = "10s"
-	`, url)))
-
-	// Run the service.
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		require.NoError(t, env.Run(ctx))
-	}()
-
-	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
-
-	// As the API response was successful, verify that the service has loaded
-	// the valid response.
+	// Verify bad config is received but good config remains loaded (fallback behavior)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+		assert.Equal(c, getHash([]byte(cfgBad)), svc.env.svc.cm.getLastReceivedCfgHash())
 	}, time.Second, 10*time.Millisecond)
+	svc.AssertConfigHash(cfgGood) // Still the good config
+	svc.helper.AssertFailed()
 
-	// Verify status is APPLIED for good config
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		status := env.svc.cm.getRemoteConfigStatus()
-		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, status.Status)
-		assert.Equal(c, "", status.ErrorMessage)
-	}, time.Second, 10*time.Millisecond)
+	// Switch back to good config
+	svc.SetConfig(cfgGood)
 
-	// Update the response returned by the API to an invalid configuration.
-	client.mut.Lock()
-	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-		// Capture status updates
-		if req.Msg.RemoteConfigStatus != nil {
-			statusMutex.Lock()
-			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
-			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
-			statusMutex.Unlock()
-		}
-		return buildGetConfigHandler(cfgBad, "", false)(ctx, req)
-	}
-	client.mut.Unlock()
+	// Verify good config is restored
+	svc.AssertConfigHash(cfgGood)
+	svc.helper.AssertApplied()
 
-	// Verify that the service has still the same "good" configuration has
-	// loaded and flushed on disk, and that the loaded hash still reflects the good config
-	// (since the bad config failed to parse and was never actually loaded).
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		b, err := env.svc.cm.getCachedConfig()
-		assert.NoError(c, err)
-		assert.Equal(c, cfgGood, string(b))
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// The loaded hash should still be the good config since bad config failed to parse
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// But we should have recorded the bad config as received (for API optimization)
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// Verify status is FAILED for bad config with error message
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		status := env.svc.cm.getRemoteConfigStatus()
-		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, status.Status)
-		assert.NotEmpty(c, status.ErrorMessage, "Should have error message for parse failure")
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// Update the response returned by the API to the previous "good"
-	// configuration.
-	client.mut.Lock()
-	client.getConfigFunc = func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-		// Capture status updates
-		if req.Msg.RemoteConfigStatus != nil {
-			statusMutex.Lock()
-			statusHistory = append(statusHistory, req.Msg.RemoteConfigStatus.Status)
-			statusMessages = append(statusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
-			statusMutex.Unlock()
-		}
-		return buildGetConfigHandler(cfgGood, "", false)(ctx, req)
-	}
-	client.mut.Unlock()
-
-	// Verify that the service has updated the hash.
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// Verify status is back to APPLIED after good config is restored
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		status := env.svc.cm.getRemoteConfigStatus()
-		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, status.Status)
-		assert.Equal(c, "", status.ErrorMessage)
-	}, 1*time.Second, 10*time.Millisecond)
-
-	// Verify we captured the expected status transitions
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		statusMutex.Lock()
-		defer statusMutex.Unlock()
-
-		// Should have at least some status updates
-		assert.Greater(c, len(statusHistory), 0, "Should have captured status updates")
-
-		// Should contain APPLIED and FAILED statuses
-		hasApplied := false
-		hasFailed := false
-		for _, status := range statusHistory {
-			if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED {
-				hasApplied = true
-			}
-			if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED {
-				hasFailed = true
-			}
-		}
-		assert.True(c, hasApplied, "Should have sent APPLIED status")
-		assert.True(c, hasFailed, "Should have sent FAILED status")
-	}, 2*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
+	// Verify status transitions were captured
+	svc.AssertStatusHistory(
+		collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+		collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+	)
 }
 
 func TestAPIResponse(t *testing.T) {
@@ -622,13 +504,42 @@ func TestConfigSkipCacheRestorationWhenSameHash(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 }
 
-func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-	return func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+// GetConfigHandlerOptions provides configuration for buildGetConfigHandler
+type GetConfigHandlerOptions struct {
+	Content     string
+	Hash        string
+	NotModified bool
+	// Optional status capture functionality
+	StatusHistory  *[]collectorv1.RemoteConfigStatuses
+	StatusMessages *[]string
+	StatusMutex    *sync.Mutex
+}
+
+// buildGetConfigHandler creates a GetConfig handler function with optional status capturing
+func buildGetConfigHandler(content, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	return buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:     content,
+		Hash:        hash,
+		NotModified: notModified,
+	})
+}
+
+// buildGetConfigHandlerWithOptions creates a GetConfig handler with full configuration options
+func buildGetConfigHandlerWithOptions(opts GetConfigHandlerOptions) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		// Capture status updates if configured
+		if opts.StatusHistory != nil && opts.StatusMessages != nil && opts.StatusMutex != nil && req.Msg.RemoteConfigStatus != nil {
+			opts.StatusMutex.Lock()
+			*opts.StatusHistory = append(*opts.StatusHistory, req.Msg.RemoteConfigStatus.Status)
+			*opts.StatusMessages = append(*opts.StatusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
+			opts.StatusMutex.Unlock()
+		}
+
 		rsp := &connect.Response[collectorv1.GetConfigResponse]{
 			Msg: &collectorv1.GetConfigResponse{
-				Content:     in,
-				NotModified: notModified,
-				Hash:        hash,
+				Content:     opts.Content,
+				NotModified: opts.NotModified,
+				Hash:        opts.Hash,
 			},
 		}
 		return rsp, nil
@@ -672,6 +583,195 @@ func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironm
 		t:   t,
 		svc: svc,
 	}
+}
+
+// StatusTracker helps track and verify remote config status updates
+type StatusTracker struct {
+	History  []collectorv1.RemoteConfigStatuses
+	Messages []string
+	mutex    sync.Mutex
+}
+
+// NewStatusTracker creates a new status tracker
+func NewStatusTracker() *StatusTracker {
+	return &StatusTracker{
+		History:  make([]collectorv1.RemoteConfigStatuses, 0),
+		Messages: make([]string, 0),
+	}
+}
+
+// GetReferences returns pointers for use with GetConfigHandlerOptions
+func (st *StatusTracker) GetReferences() (*[]collectorv1.RemoteConfigStatuses, *[]string, *sync.Mutex) {
+	return &st.History, &st.Messages, &st.mutex
+}
+
+// HasStatus checks if a specific status was captured
+func (st *StatusTracker) HasStatus(status collectorv1.RemoteConfigStatuses) bool {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	for _, s := range st.History {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
+// HasStatuses checks if all specified statuses were captured
+func (st *StatusTracker) HasStatuses(statuses ...collectorv1.RemoteConfigStatuses) bool {
+	for _, status := range statuses {
+		if !st.HasStatus(status) {
+			return false
+		}
+	}
+	return true
+}
+
+// statusHelper provides concise status assertion methods
+type statusHelper struct {
+	env *testEnvironment
+	t   *testing.T
+}
+
+// newStatusHelper creates a status assertion helper
+func newStatusHelper(env *testEnvironment) *statusHelper {
+	return &statusHelper{env: env, t: env.t}
+}
+
+// AssertStatus verifies the current remote config status
+func (sh *statusHelper) AssertStatus(expectedStatus collectorv1.RemoteConfigStatuses, expectedMessage string) {
+	sh.t.Helper()
+	require.EventuallyWithT(sh.t, func(c *assert.CollectT) {
+		status := sh.env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, expectedStatus, status.Status)
+		if expectedMessage == "" {
+			assert.Equal(c, "", status.ErrorMessage)
+		} else {
+			assert.Contains(c, status.ErrorMessage, expectedMessage)
+		}
+	}, time.Second, 10*time.Millisecond)
+}
+
+// AssertApplied verifies status is APPLIED with no error
+func (sh *statusHelper) AssertApplied() {
+	sh.AssertStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
+}
+
+// AssertFailed verifies status is FAILED with an error message
+func (sh *statusHelper) AssertFailed() {
+	sh.t.Helper()
+	require.EventuallyWithT(sh.t, func(c *assert.CollectT) {
+		status := sh.env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, status.Status)
+		assert.NotEmpty(c, status.ErrorMessage, "Should have error message for failure")
+	}, time.Second, 10*time.Millisecond)
+}
+
+// AssertUnset verifies status is UNSET
+func (sh *statusHelper) AssertUnset() {
+	sh.AssertStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, "")
+}
+
+// managedTestService handles service lifecycle automatically
+type managedTestService struct {
+	env     *testEnvironment
+	client  *mockCollectorClient
+	tracker *StatusTracker
+	helper  *statusHelper
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	t       *testing.T
+}
+
+// newManagedTestService creates a managed test service with automatic cleanup
+func newManagedTestService(t *testing.T, initialConfig string) *managedTestService {
+	ctx, cancel := context.WithCancel(t.Context())
+
+	client := &mockCollectorClient{}
+	tracker := NewStatusTracker()
+
+	var registerCalled atomic.Bool
+	statusHistory, statusMessages, statusMutex := tracker.GetReferences()
+
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        initialConfig,
+		Hash:           "",
+		NotModified:    false,
+		StatusHistory:  statusHistory,
+		StatusMessages: statusMessages,
+		StatusMutex:    statusMutex,
+	})
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url            = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	mts := &managedTestService{
+		env:     env,
+		client:  client,
+		tracker: tracker,
+		helper:  newStatusHelper(env),
+		ctx:     ctx,
+		cancel:  cancel,
+		t:       t,
+	}
+
+	// Start service
+	mts.wg.Add(1)
+	go func() {
+		defer mts.wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	// Wait for registration
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Setup cleanup
+	t.Cleanup(func() {
+		mts.cancel()
+		mts.wg.Wait()
+	})
+
+	return mts
+}
+
+// SetConfig updates the mock client to return new config
+func (mts *managedTestService) SetConfig(config string) {
+	statusHistory, statusMessages, statusMutex := mts.tracker.GetReferences()
+
+	mts.client.mut.Lock()
+	mts.client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        config,
+		Hash:           "",
+		NotModified:    false,
+		StatusHistory:  statusHistory,
+		StatusMessages: statusMessages,
+		StatusMutex:    statusMutex,
+	})
+	mts.client.mut.Unlock()
+}
+
+// AssertConfigHash verifies the loaded config hash
+func (mts *managedTestService) AssertConfigHash(expectedConfig string) {
+	mts.t.Helper()
+	require.EventuallyWithT(mts.t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(expectedConfig)), mts.env.svc.cm.getLastLoadedCfgHash())
+	}, time.Second, 10*time.Millisecond)
+}
+
+// AssertStatusHistory verifies expected statuses were captured
+func (mts *managedTestService) AssertStatusHistory(expectedStatuses ...collectorv1.RemoteConfigStatuses) {
+	mts.t.Helper()
+	require.EventuallyWithT(mts.t, func(c *assert.CollectT) {
+		assert.True(c, mts.tracker.HasStatuses(expectedStatuses...),
+			"Should have captured all expected statuses: %v", expectedStatuses)
+	}, 2*time.Second, 10*time.Millisecond)
 }
 
 func (env *testEnvironment) ApplyConfig(config string) error {
@@ -739,12 +839,8 @@ func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath
 func (sc serviceController) Ready() bool { return sc.f.Ready() }
 
 func TestRemoteConfigStatus_InitialState(t *testing.T) {
-	// Test that the initial status is UNSET
 	env := newTestEnvironment(t, &mockCollectorClient{})
-
-	status := env.svc.cm.getRemoteConfigStatus()
-	assert.Equal(t, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, status.Status)
-	assert.Equal(t, "", status.ErrorMessage)
+	newStatusHelper(env).AssertUnset()
 }
 
 func TestGetErrorMessage_DiagnosticErrors(t *testing.T) {

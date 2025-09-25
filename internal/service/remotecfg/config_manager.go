@@ -205,13 +205,13 @@ func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetCo
 }
 
 // notifyStatusUpdate makes an immediate GetConfig call to notify the server of status changes.
-// This is used when we want to immediately report FAILED status without waiting for the next poll cycle.
+// This is used when we want to immediately report status changes without waiting for the next poll cycle.
 func (cm *configManager) notifyStatusUpdate(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) {
 	level.Debug(cm.logger).Log("msg", "making immediate GetConfig call to report status update")
 
 	// Make the API call but ignore the response and any errors
-	// We only care about sending our current status to the server
-	// and GetConfig will get called again on the polling frequency
+	// This is not a critical operation since the GetConfig call will
+	// be made again on the polling frequency
 	_, err := getAPIConfig()
 	if err != nil {
 		level.Error(cm.logger).Log("msg", "status notification call failed, will retry on next poll", "err", err)
@@ -239,7 +239,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		cm.metrics.totalFailures.Add(1)
 		cm.metrics.lastLoadSuccess.Set(0)
 
-		// Make immediate GetConfig call to notify server of failure
+		// Set remote config status and notify server of failure immediately
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
 		cm.notifyStatusUpdate(getAPIConfig)
 
@@ -276,6 +276,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// to reload the config in this case since it is already loaded.
 	if alreadyLoaded {
 		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
+		// Set status to APPLIED since the new remote config was previously loaded.
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 		cm.notifyStatusUpdate(getAPIConfig)
 		return nil
@@ -324,7 +325,8 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	cm.setLastLoadedCfgHash(newConfigHash)
 	cm.metrics.lastLoadSuccess.Set(1)
 
-	// Set status to APPLIED for successful remote config load
+	// Set status to APPLIED for successful remote config load. The server will be notified of this status change
+	// on the next poll cycle.
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 
 	level.Info(cm.logger).Log("msg", "successfully loaded remote configuration",
