@@ -23,13 +23,13 @@ import (
 )
 
 type crdManagerFactoryHungRun struct {
-	running         *atomic.Bool
-	contextCenceled *atomic.Bool
-	stopRun         chan struct{}
+	running          *atomic.Bool
+	contextCancelled *atomic.Bool
+	stopRun          chan struct{}
 }
 
 func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
-	return &crdManagerHungRun{m.running, m.contextCenceled, m.stopRun}
+	return &crdManagerHungRun{m.running, m.contextCancelled, m.stopRun}
 }
 
 type crdManagerHungRun struct {
@@ -92,7 +92,7 @@ func TestRunExit(t *testing.T) {
 	require.NoError(t, err)
 
 	stopRun := make(chan struct{})
-	factory := crdManagerFactoryHungRun{running: atomic.NewBool(false), contextCenceled: atomic.NewBool(false), stopRun: stopRun}
+	factory := crdManagerFactoryHungRun{running: atomic.NewBool(false), contextCancelled: atomic.NewBool(false), stopRun: stopRun}
 	c.crdManagerFactory = factory
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -115,7 +115,7 @@ func TestRunExit(t *testing.T) {
 	// Make sure context cancelation has propagated but we have not exited c.Run yet
 	// because CRD manager have not exited yet.
 	require.Eventually(t, func() bool {
-		return factory.contextCenceled.Load() && !runExited.Load()
+		return factory.contextCancelled.Load() && !runExited.Load()
 	}, 3*time.Second, 10*time.Millisecond)
 
 	// Stop CRD manager
