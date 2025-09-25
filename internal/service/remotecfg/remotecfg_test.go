@@ -82,70 +82,80 @@ func TestOnDiskCache(t *testing.T) {
 }
 
 func TestGoodBadGood(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
 
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
 	client := &mockCollectorClient{}
-	var registerCalled atomic.Bool
 
-	// Start with good config
+	// Mock client to return a valid response.
+	var registerCalled atomic.Bool
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 	client.mut.Unlock()
 
+	// Create a new service.
 	env := newTestEnvironment(t, client)
-	require.NoError(t, env.ApplyConfig(`
-		url = "https://example.com/"
+	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+		url            = "%s"
 		poll_frequency = "10s"
-	`))
+	`, url)))
 
+	// Run the service.
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
-	defer func() { cancel(); wg.Wait() }()
 
-	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
-	// Verify initial good config is loaded and cached
-	assertConfigHash(t, env, cfgGood)
+	// As the API response was successful, verify that the service has loaded
+	// the valid response.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		b, err := env.svc.cm.getCachedConfig()
-		assert.NoError(c, err)
-		assert.Equal(c, cfgGood, string(b))
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 
-	// Switch to bad config
+	// Update the response returned by the API to an invalid configuration.
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
 	client.mut.Unlock()
 
-	// Verify fallback behavior: bad config received but good config remains loaded
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
-	}, time.Second, 10*time.Millisecond)
-	assertConfigHash(t, env, cfgGood) // Still the good config (fallback worked)
-
-	// Verify cache still contains good config (restoration source)
+	// Verify that the service has still the same "good" configuration has
+	// loaded and flushed on disk, and that the loaded hash still reflects the good config
+	// (since the bad config failed to parse and was never actually loaded).
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		b, err := env.svc.cm.getCachedConfig()
 		assert.NoError(c, err)
 		assert.Equal(c, cfgGood, string(b))
-	}, time.Second, 10*time.Millisecond)
+	}, 1*time.Second, 10*time.Millisecond)
 
-	// Switch back to good config
+	// The loaded hash should still be the good config since bad config failed to parse
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+
+	// But we should have recorded the bad config as received (for API optimization)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+
+	// Update the response returned by the API to the previous "good"
+	// configuration.
 	client.mut.Lock()
 	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
 	client.mut.Unlock()
 
-	// Verify good config is restored
-	assertConfigHash(t, env, cfgGood)
+	// Verify that the service has updated the hash.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+	}, 1*time.Second, 10*time.Millisecond)
+
+	cancel()
+	wg.Wait()
 }
 
 func TestAPIResponse(t *testing.T) {
