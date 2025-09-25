@@ -89,19 +89,11 @@ func TestGoodBadGood(t *testing.T) {
 	defer cancel()
 
 	client := &mockCollectorClient{}
-	var statusHistory []collectorv1.RemoteConfigStatuses
-	var statusMessages []string
-	var statusMutex sync.Mutex
 	var registerCalled atomic.Bool
 
 	// Start with good config
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
-		Content:        cfgGood,
-		StatusHistory:  &statusHistory,
-		StatusMessages: &statusMessages,
-		StatusMutex:    &statusMutex,
-	})
+	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
 	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
 	client.mut.Unlock()
 
@@ -121,46 +113,39 @@ func TestGoodBadGood(t *testing.T) {
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
 
-	// Verify initial good config
+	// Verify initial good config is loaded and cached
 	assertConfigHash(t, env, cfgGood)
-	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		b, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(b))
+	}, time.Second, 10*time.Millisecond)
 
 	// Switch to bad config
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
-		Content:        cfgBad,
-		StatusHistory:  &statusHistory,
-		StatusMessages: &statusMessages,
-		StatusMutex:    &statusMutex,
-	})
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
 	client.mut.Unlock()
 
-	// Verify fallback behavior
+	// Verify fallback behavior: bad config received but good config remains loaded
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgBad)), env.svc.cm.getLastReceivedCfgHash())
 	}, time.Second, 10*time.Millisecond)
-	assertConfigHash(t, env, cfgGood) // Still good config
-	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, true)
+	assertConfigHash(t, env, cfgGood) // Still the good config (fallback worked)
+
+	// Verify cache still contains good config (restoration source)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		b, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(b))
+	}, time.Second, 10*time.Millisecond)
 
 	// Switch back to good config
 	client.mut.Lock()
-	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
-		Content:        cfgGood,
-		StatusHistory:  &statusHistory,
-		StatusMessages: &statusMessages,
-		StatusMutex:    &statusMutex,
-	})
+	client.getConfigFunc = buildGetConfigHandler(cfgGood, "", false)
 	client.mut.Unlock()
 
-	// Verify restoration
+	// Verify good config is restored
 	assertConfigHash(t, env, cfgGood)
-	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
-
-	// Verify we captured both statuses
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
-	}, 2*time.Second, 10*time.Millisecond)
 }
 
 func TestAPIResponse(t *testing.T) {
@@ -764,4 +749,194 @@ func TestGetErrorMessage_DiagnosticErrors(t *testing.T) {
 	regularErr := errors.New("simple error")
 	regularMsg := getErrorMessage(regularErr)
 	assert.Equal(t, "simple error", regularMsg)
+}
+
+func TestRemoteConfigStatusTransitions(t *testing.T) {
+	cfgGood := `loki.process "default" { forward_to = [] }`
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var statusHistory []collectorv1.RemoteConfigStatuses
+	var statusMessages []string
+	var statusMutex sync.Mutex
+	var registerCalled atomic.Bool
+
+	// Start with good config
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Verify initial status: UNSET → APPLIED
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
+
+	// Switch to bad config → FAILED
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgBad,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, true)
+
+	// Switch back to good config → APPLIED again
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
+
+	// Verify we captured the complete status transition: APPLIED → FAILED → APPLIED
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+	}, 2*time.Second, 10*time.Millisecond)
+}
+
+func TestRemoteConfigStatusErrorMessages(t *testing.T) {
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var registerCalled atomic.Bool
+
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Verify FAILED status with descriptive error message
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, status.Status)
+		assert.NotEmpty(c, status.ErrorMessage, "Should have error message for parse failure")
+		assert.Contains(c, status.ErrorMessage, "expected block label", "Error message should contain parse details")
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestRemoteConfigStatusNotifications(t *testing.T) {
+	cfgGood := `loki.process "default" { forward_to = [] }`
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var statusHistory []collectorv1.RemoteConfigStatuses
+	var statusMessages []string
+	var statusMutex sync.Mutex
+	var registerCalled atomic.Bool
+
+	// Track multiple status updates
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Let initial status be sent
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+	}, time.Second, 10*time.Millisecond)
+
+	// Switch to bad config and verify FAILED status is sent
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgBad,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+	}, time.Second, 10*time.Millisecond)
+
+	// Verify we have both statuses captured in notifications
+	statusMutex.Lock()
+	appliedCount := 0
+	failedCount := 0
+	for _, status := range statusHistory {
+		if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED {
+			appliedCount++
+		}
+		if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED {
+			failedCount++
+		}
+	}
+	statusMutex.Unlock()
+
+	assert.GreaterOrEqual(t, appliedCount, 1, "Should have sent at least one APPLIED status")
+	assert.GreaterOrEqual(t, failedCount, 1, "Should have sent at least one FAILED status")
 }
