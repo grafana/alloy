@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -338,7 +339,9 @@ func TestUserAgentHeader(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		require.NoError(t, env.Run(ctx))
+		if err := env.Run(ctx); !errors.Is(err, context.Canceled) {
+			require.NoError(t, err)
+		}
 	}()
 
 	// Wait for the register call to complete
