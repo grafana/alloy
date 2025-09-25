@@ -86,7 +86,8 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
-				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}),
+					"has_nullable_column",
+				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, true),
 			)
 
 		err = collector.Start(t.Context())
@@ -111,7 +112,7 @@ func TestSchemaTable(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" database="books_store" schema="public" table="authors"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}]}`))
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" database="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
 
@@ -184,7 +185,8 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
-				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}),
+					"has_nullable_column",
+				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.categories").RowsWillBeClosed().
@@ -207,7 +209,8 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
-				}).AddRow("categories_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}),
+					"has_nullable_column",
+				}).AddRow("categories_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false),
 			)
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("postgis.spatial_ref_sys").RowsWillBeClosed().
@@ -230,6 +233,7 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
+					"has_nullable_column",
 				}),
 			)
 
@@ -334,11 +338,12 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
-				}).AddRow("users_pkey", "btree", true, pq.StringArray{"id"}, nil).
-					AddRow("idx_users_email_unique", "btree", true, pq.StringArray{"email"}, nil).
-					AddRow("idx_users_name", "btree", false, pq.StringArray{"name"}, nil).
-					AddRow("idx_users_name_lower", "btree", false, nil, pq.StringArray{"lower(name::text)"}).
-					AddRow("idx_users_created_at", "btree", false, pq.StringArray{"created_at"}, nil),
+					"has_nullable_column",
+				}).AddRow("users_pkey", "btree", true, pq.StringArray{"id"}, nil, false).
+					AddRow("idx_users_email_unique", "btree", true, pq.StringArray{"email"}, nil, false).
+					AddRow("idx_users_name", "btree", false, pq.StringArray{"name"}, nil, false).
+					AddRow("idx_users_name_lower", "btree", false, nil, pq.StringArray{"lower(name::text)"}, true).
+					AddRow("idx_users_created_at", "btree", false, pq.StringArray{"created_at"}, nil, false),
 			)
 
 		err = collector.Start(t.Context())
@@ -478,6 +483,7 @@ func TestSchemaTable(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
+					"has_nullable_column",
 				}),
 			)
 
@@ -571,6 +577,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
+					"has_nullable_column",
 				}),
 			)
 
@@ -661,6 +668,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 					"unique",
 					"column_names",
 					"expressions",
+					"has_nullable_column",
 				}),
 			)
 
