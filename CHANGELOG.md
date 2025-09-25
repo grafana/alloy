@@ -27,11 +27,7 @@ Main (unreleased)
 
 ### Bugfixes
 
-- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
-
-- Fix painc in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
-
-v1.11.0-rc.2
+v1.11.0-rc.3
 -----------------
 
 ### Breaking changes
@@ -210,6 +206,10 @@ v1.11.0-rc.2
   This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
 
 - Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
+- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
+
+- Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
 v1.10.2
 -----------------
