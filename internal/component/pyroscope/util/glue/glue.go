@@ -11,6 +11,8 @@ type GenericComponent[ARGS any] interface {
 	Update(args ARGS) error
 }
 
+// GenericComponentGlue is a helper to allow writing alloy components without depending on component.Arguments package
+// as a tiny nice bonus, the Update method is type-safe and does not require casting interface{} to ARGS
 type GenericComponentGlue[ARGS any] struct {
 	Impl GenericComponent[ARGS]
 }
