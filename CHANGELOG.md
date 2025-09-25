@@ -190,6 +190,8 @@ v1.11.0-rc.2
 
 - Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
 
+- Fix painc in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
+
 v1.10.2
 -----------------
 
