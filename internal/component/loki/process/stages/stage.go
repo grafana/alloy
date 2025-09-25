@@ -46,6 +46,7 @@ const (
 	StageTypeTenant             = "tenant"
 	StageTypeTimestamp          = "timestamp"
 	StageTypeWindowsEvent       = "windowsevent"
+	StageTypeUserAgent          = "useragent"
 )
 
 // Add stages that are not GA. Stages that are not specified here are considered GA.
@@ -259,6 +260,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
 	case cfg.PatternConfig != nil:
 		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.UserAgentConfig != nil:
+		s, err = newUserAgentStage(logger, *cfg.UserAgentConfig)
 		if err != nil {
 			return nil, err
 		}
