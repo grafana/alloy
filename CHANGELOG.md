@@ -208,7 +208,7 @@ v1.11.0-rc.3
 
 - Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
 
-- Fix painc in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
+- Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
 v1.10.2
 -----------------
