@@ -397,7 +397,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 
 	indexesRS, err := c.dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query indexes", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query indexes", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer indexesRS.Close()
@@ -413,7 +413,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		}
 
 		// nullable if has nullable columns or has expressions
-		nullable := hasNullableColumn || len(expressions) > 0 // TODO: assume that indexes with any expressions are nullable
+		nullable := hasNullableColumn || len(expressions) > 0 // assume that indexes with any expressions are nullable, TODO: investigate nullability of expressions
 
 		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
 			Name:        indexName,
