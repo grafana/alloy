@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -82,6 +83,49 @@ const (
 		attr.attrelid = $1::regclass
 		AND attr.attnum > 0
 		AND NOT attr.attisdropped`
+
+	// selectIndexes retrieves column-based and expression-based indexes on a specified table
+	/*
+		Postgres indexes can contain:
+		1. Regular columns (pg_index.indkey[pos] != 0)
+		2. Expressions (pg_index.indkey[pos] = 0)
+		3. Mixed indexes with both columns and expressions
+		pg_index.indkey: array of column numbers, 0 means expression
+		generate_subscripts: creates positions 1,2,3... for each indkey element
+		pg_get_indexdef(indexrelid, pos+1, true): gets expression text
+		array_agg FILTERs: separate columns and expressions into different arrays
+		column_nullables: array of nullability for each column (for Go processing)
+		bool_or(NOT pg_attribute.attnotnull): true if ANY column is nullable
+	*/
+	selectIndexes = `
+	SELECT 
+		index_relations.relname as index_name,
+		pg_am.amname as index_type,
+		pg_index.indisunique as unique,
+		array_agg(
+			CASE WHEN pg_index.indkey[pos] != 0 
+			THEN pg_attribute.attname 
+			END ORDER BY pos
+		) FILTER (WHERE pg_index.indkey[pos] != 0) as column_names,
+		array_agg(
+			CASE WHEN pg_index.indkey[pos] = 0
+			THEN pg_get_indexdef(pg_index.indexrelid, pos + 1, true)
+			END ORDER BY pos
+		) FILTER (WHERE pg_index.indkey[pos] = 0) as expressions,
+		COALESCE(bool_or(NOT pg_attribute.attnotnull), false) as has_nullable_column
+	FROM pg_class table_relations
+	JOIN pg_index ON table_relations.oid = pg_index.indrelid 
+	JOIN pg_class index_relations ON index_relations.oid = pg_index.indexrelid
+	JOIN pg_am ON index_relations.relam = pg_am.oid 
+	JOIN generate_subscripts(pg_index.indkey, 1) AS pos ON true
+	LEFT JOIN pg_attribute ON table_relations.oid = pg_attribute.attrelid 
+		AND pg_attribute.attnum = pg_index.indkey[pos]
+		AND NOT pg_attribute.attisdropped
+	WHERE table_relations.relname = $2
+		AND table_relations.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)
+	GROUP BY index_relations.relname, pg_am.amname, pg_index.indisunique
+	ORDER BY index_name
+`
 )
 
 type tableInfo struct {
@@ -94,6 +138,7 @@ type tableInfo struct {
 
 type tableSpec struct {
 	Columns []columnSpec `json:"columns"`
+	Indexes []indexSpec  `json:"indexes,omitempty"`
 }
 
 type columnSpec struct {
@@ -103,6 +148,15 @@ type columnSpec struct {
 	AutoIncrement bool   `json:"auto_increment,omitempty"`
 	PrimaryKey    bool   `json:"primary_key,omitempty"`
 	DefaultValue  string `json:"default_value,omitempty"`
+}
+
+type indexSpec struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Columns     []string `json:"columns"`
+	Expressions []string `json:"expressions,omitempty"`
+	Unique      bool     `json:"unique"`
+	Nullable    bool     `json:"nullable"`
 }
 
 type SchemaDetailsArguments struct {
@@ -338,6 +392,41 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 
 	if err := colRS.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	indexesRS, err := c.dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query indexes", "database", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer indexesRS.Close()
+
+	for indexesRS.Next() {
+		var indexName, indexType string
+		var unique, hasNullableColumn bool
+		var columns, expressions pq.StringArray
+
+		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions, &hasNullableColumn); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan indexes", "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		// nullable if has nullable columns or has expressions
+		nullable := hasNullableColumn || len(expressions) > 0 // assume that indexes with any expressions are nullable, TODO: investigate nullability of expressions
+
+		tblSpec.Indexes = append(tblSpec.Indexes, indexSpec{
+			Name:        indexName,
+			Type:        indexType,
+			Unique:      unique,
+			Columns:     columns,
+			Expressions: expressions,
+			Nullable:    nullable,
+		})
+	}
+
+	if err := indexesRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error during iterating over indexes", "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
