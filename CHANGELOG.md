@@ -10,7 +10,7 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
-v1.11.0-rc.2
+v1.11.0-rc.3
 -----------------
 
 ### Breaking changes
@@ -189,6 +189,10 @@ v1.11.0-rc.2
 - Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
 
 - Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
+- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
+
+- Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
 v1.10.2
 -----------------
