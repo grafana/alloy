@@ -21,7 +21,7 @@ Main (unreleased)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
-- Remove SendSIGKILL=no from unit files and recommendations
+- Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
 
 ### Bugfixes
 
