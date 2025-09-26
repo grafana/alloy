@@ -26,6 +26,8 @@ Main (unreleased)
 
 - Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
 
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
 ### Bugfixes
 
 v1.11.0-rc.3
