@@ -324,7 +324,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`,
+				`datname="%s" schema="%s" table="%s" table_spec="%s"`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
