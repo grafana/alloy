@@ -92,7 +92,7 @@ jobs:
 
   sign_alloy_windows:
     name: Sign Alloy executables for Windows
-    if: github.ref_type == 'tag'
+    #if: github.ref_type == 'tag'
     runs-on: windows-2025
     environment:
       name: azure-trusted-signing
