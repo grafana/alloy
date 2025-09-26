@@ -73,7 +73,7 @@ jobs:
         VERSION: 'v1.2.3'
 
     - name: Publish dist
-      if: github.ref_type == 'tag'
+      #if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: dist
@@ -81,7 +81,7 @@ jobs:
         if-no-files-found: error
 
     - name: Publish unsigned Windows executables
-      if: github.ref_type == 'tag'
+      #if: github.ref_type == 'tag'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: windows-executables
