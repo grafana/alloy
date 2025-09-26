@@ -260,7 +260,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_SCHEMA_DETECTION,
-			fmt.Sprintf(`database="%s" schema="%s"`, dbName, schema),
+			fmt.Sprintf(`datname="%s" schema="%s"`, dbName, schema),
 		)
 	}
 
@@ -299,7 +299,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
-				fmt.Sprintf(`database="%s" schema="%s" table="%s"`, dbName, schema, tableName),
+				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schema, tableName),
 			)
 		}
 
@@ -324,7 +324,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			logging.LevelInfo,
 			OP_CREATE_STATEMENT,
 			fmt.Sprintf(
-				`database="%s" schema="%s" table="%s" table_spec="%s"`,
+				`datname="%s" schema="%s" table="%s" table_spec="%s"`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
