@@ -43,6 +43,9 @@ type Diagnostic struct {
 func (d Diagnostic) As(v interface{}) bool {
 	switch v := v.(type) {
 	case *Diagnostics:
+		if v == nil {
+			return false
+		}
 		*v = Diagnostics{d}
 		return true
 	}

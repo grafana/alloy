@@ -82,12 +82,12 @@ func TestDiagnostic_Error(t *testing.T) {
 		{
 			name:     "empty filename",
 			diag:     newTestDiagnostic(SeverityLevelError, "", 1, 1, "error message"),
-			expected: ":1:1: error message",
+			expected: "1:1: error message",
 		},
 		{
 			name:     "zero line/column",
 			diag:     newTestDiagnostic(SeverityLevelError, "test.alloy", 0, 0, "zero position"),
-			expected: "test.alloy:0:0: zero position",
+			expected: "test.alloy: zero position",
 		},
 	}
 
