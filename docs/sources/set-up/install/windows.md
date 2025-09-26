@@ -28,7 +28,7 @@ The installer places {{< param "PRODUCT_NAME" >}} in the default directory `%PRO
 To install {{< param "PRODUCT_NAME" >}} with WinGet, perform the following steps.
 
 1. Make sure that the [WinGet package manager](https://learn.microsoft.com/en-gb/windows/package-manager/winget/) is available.
-1. Run the following command in PowerShell to install {{< param "PRODUCT_NAME" >}}.
+1. Run the following command as Administrator in PowerShell.
 
    ```powershell
    winget install GrafanaLabs.Alloy
@@ -41,7 +41,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
 1. Download and extract `alloy-installer-windows-amd64.exe.zip` or download `alloy-installer-windows-amd64.exe`.
-1. Run the following command in PowerShell.
+1. Run the following command as Administrator in PowerShell.
 
    ```powershell
    <PATH_TO_INSTALLER> /S
@@ -75,18 +75,17 @@ The `/RUNTIMEPRIORITY` installation option sets this flag, and if {{< param "PRO
 
 {{< param "PRODUCT_NAME" >}} uses the Windows registry key `HKLM\Software\GrafanaLabs\Alloy` for service configuration.
 
-- `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
-- `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
+- `Arguments`: Type `REG_MULTI_SZ`. Each value represents a binary argument for the {{< param "PRODUCT_NAME" >}} binary.
+- `Environment`: Type `REG_MULTI_SZ`. Each value represents an environment value `KEY=VALUE` for the {{< param "PRODUCT_NAME" >}} binary.
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} on Windows.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 
 ### Standard graphical uninstall
 
-To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the following command in PowerShell.
+To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the following command as Administrator in PowerShell.
 
 ```powershell
 %PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe
@@ -94,7 +93,7 @@ To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the
 
 ### Uninstall with `winget`
 
-If to install {{< param "PRODUCT_NAME" >}} with `winget`, run the following command in PowerShell.
+To install {{< param "PRODUCT_NAME" >}} with `winget`, run the following command as Administrator in PowerShell.
 
 ```powershell
 winget uninstall GrafanaLabs.Alloy
@@ -102,7 +101,7 @@ winget uninstall GrafanaLabs.Alloy
 
 ### Silent uninstall
 
-To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command in PowerShell.
+To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as Administrator in PowerShell.
 
 ```powershell
 %PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe /S
