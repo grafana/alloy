@@ -25,6 +25,11 @@ func init() {
 	})
 }
 
+type cleanupRoutines struct {
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+}
+
 type Component struct {
 	log               log.Logger
 	handler           *handler
@@ -34,6 +39,9 @@ type Component struct {
 
 	argsMut sync.RWMutex
 	args    Arguments
+
+	cleanupMut sync.Mutex
+	cleanup    *cleanupRoutines
 
 	metrics *metricsExporter
 	logs    *logsExporter
@@ -93,6 +101,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if cancelCurrentActor != nil {
 			cancelCurrentActor()
 		}
+		c.stopCleanup()
 	}()
 
 	for {
@@ -140,19 +149,8 @@ func (c *Component) Update(args component.Arguments) error {
 	)
 	c.lazySourceMaps.SetInner(innerStore)
 
-	go func(s *sourceMapsStoreImpl) {
-		for {
-			time.Sleep(newArgs.SourceMaps.CacheCleanupCheckInterval)
-			s.CleanOldCacheEntries()
-		}
-	}(innerStore)
-
-	go func(s *sourceMapsStoreImpl) {
-		for {
-			time.Sleep(newArgs.SourceMaps.CacheErrorCleanupInterval)
-			s.CleanCachedErrors()
-		}
-	}(innerStore)
+	c.stopCleanup()
+	c.startCleanup(newArgs, innerStore)
 
 	c.logs.SetReceivers(newArgs.Output.Logs)
 	c.traces.SetConsumers(newArgs.Output.Traces)
@@ -246,4 +244,60 @@ func (vs *varSourceMapsStore) SetInner(inner sourceMapsStore) {
 	defer vs.mut.Unlock()
 
 	vs.inner = inner
+}
+
+func (c *Component) stopCleanup() {
+	c.cleanupMut.Lock()
+	defer c.cleanupMut.Unlock()
+	if c.cleanup != nil {
+		c.cleanup.cancel()  // signal goroutines to exit
+		c.cleanup.wg.Wait() // wait for them
+		c.cleanup = nil
+	}
+}
+
+func (c *Component) startCleanup(args Arguments, s *sourceMapsStoreImpl) {
+	c.cleanupMut.Lock()
+	defer c.cleanupMut.Unlock()
+
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	cr := &cleanupRoutines{cancel: cleanupCancel}
+
+	if d := args.SourceMaps.CacheCleanupCheckInterval; d > 0 {
+		cr.wg.Add(1)
+		go func(interval time.Duration) {
+			defer cr.wg.Done()
+			s.CleanOldCacheEntries()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					s.CleanOldCacheEntries()
+				}
+			}
+		}(d)
+	}
+
+	if d := args.SourceMaps.CacheErrorCleanupInterval; d > 0 {
+		cr.wg.Add(1)
+		go func(interval time.Duration) {
+			defer cr.wg.Done()
+			s.CleanCachedErrors()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					s.CleanCachedErrors()
+				}
+			}
+		}(d)
+	}
+
+	c.cleanup = cr
 }
