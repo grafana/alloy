@@ -628,10 +628,10 @@ func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironm
 }
 
 // hasStatusInHistory checks if a specific status was captured (simple helper function)
-func hasStatusInHistory(history []collectorv1.RemoteConfigStatuses, mutex *sync.Mutex, status collectorv1.RemoteConfigStatuses) bool {
+func hasStatusInHistory(history *[]collectorv1.RemoteConfigStatuses, mutex *sync.Mutex, status collectorv1.RemoteConfigStatuses) bool {
 	mutex.Lock()
 	defer mutex.Unlock()
-	for _, s := range history {
+	for _, s := range *history {
 		if s == status {
 			return true
 		}
@@ -650,14 +650,6 @@ func assertRemoteConfigStatus(t *testing.T, env *testEnvironment, expectedStatus
 		} else {
 			assert.Equal(c, "", status.ErrorMessage)
 		}
-	}, time.Second, 10*time.Millisecond)
-}
-
-// assertConfigHash verifies the loaded config hash (simple helper function)
-func assertConfigHash(t *testing.T, env *testEnvironment, expectedConfig string) {
-	t.Helper()
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Equal(c, getHash([]byte(expectedConfig)), env.svc.cm.getLastLoadedCfgHash())
 	}, time.Second, 10*time.Millisecond)
 }
 
@@ -830,8 +822,8 @@ func TestRemoteConfigStatusTransitions(t *testing.T) {
 
 	// Verify we captured the complete status transition: APPLIED → FAILED → APPLIED
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
 	}, 2*time.Second, 10*time.Millisecond)
 }
 
@@ -916,7 +908,7 @@ func TestRemoteConfigStatusNotifications(t *testing.T) {
 
 	// Let initial status be sent
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
 	}, time.Second, 10*time.Millisecond)
 
 	// Switch to bad config and verify FAILED status is sent
@@ -930,7 +922,7 @@ func TestRemoteConfigStatusNotifications(t *testing.T) {
 	client.mut.Unlock()
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.True(c, hasStatusInHistory(statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
 	}, time.Second, 10*time.Millisecond)
 
 	// Verify we have both statuses captured in notifications
