@@ -1194,8 +1194,6 @@ github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPF
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
-github.com/grafana/walqueue v0.0.0-20250916201216-152b1f10cca2 h1:6HRYKHfWwdIoBF5jvVAYnARFHJiKe+++j1Oxh6A1mNw=
-github.com/grafana/walqueue v0.0.0-20250916201216-152b1f10cca2/go.mod h1:LJm4P3SayTHSbHBYepsAf3WqlY/gwSYQyMs7OLLAi6A=
 github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304 h1:0Mllr6XQcAzwxGh/zHQbL/BtVGNRzRmIRBZRHqTiG3E=
 github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304/go.mod h1:RokiltsxYrF3qitnIdaFBGLz5UrCo7DZMMoJrrzHyPc=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
@@ -1770,6 +1768,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexport
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.134.0/go.mod h1:x9vD3qo0vtkNl7Bvxtwo4LyOPtsizSZuNbXK1pHrKRo=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.134.0 h1:lVff5+2fwzBLf4wnOonXTwBY4oN6hht2OYoW+R06RMA=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.134.0/go.mod h1:ElZcmWlUZ9Jl8vpsJRiYcCI2kcVHkEUdSqZbSnMu6Tg=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.134.0 h1:LR7GBN4SBKQPPcwui3XMVgU1d+VJrqU07pNvf8txtHU=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.134.0/go.mod h1:pFeJM8yYk+brSkyFxS5inaKlfVDCL9cbU1b3Jtzaahw=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.134.0 h1:TTqncvaDZISq+jqCG1V/4lKoGSIq/Nv9sW/HASwJQo0=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.134.0/go.mod h1:6f9ylFRHEqwTHCNbBTW4WWw3HI6Q5GeBRWq5b9nTQ5k=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.134.0 h1:iSpowIqU8wF+EgZSAmNANwnitx63K7no3rzZagkEw2Y=
@@ -1792,6 +1792,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokena
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.134.0/go.mod h1:NF7VV+vfnSyVotWgH43lq3oJnp4Oe4fDY3POPBWt1Dw=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.134.0 h1:LMTVY3+1lM1T0OvxeuxpH2TX/pXBSbReKjU3kf37YxY=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.134.0/go.mod h1:EeGcRmCclYghmsurA7W5mDmvDB9nRK7ThzgpbLfqMM0=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.134.0 h1:54kuw6U1Cf//N3u1O4Gl65yLCGIPeosSxe6XFNKNX5w=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.134.0/go.mod h1:DVSHP3A9Cro/rRtF/kphMUKupwy6pRcGnPHD9xduz1c=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.134.0 h1:7N3nnnLpSNVp4TU/H8pAaRoOAwThYEqpgIJET7LDjps=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.134.0/go.mod h1:2Fm98wBqfvQ2cKwtWrj8o300aWTNGyhTeIRE8T8EBnM=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.134.0 h1:EwYASIRndllOlBeIpk1GLFuodnFBAiOh75xeWk9ygRM=
