@@ -10,39 +10,40 @@ weight: 500
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
-You can install {{< param "PRODUCT_NAME" >}} on Windows as a standard graphical install, or as a silent install.
+You can install {{< param "PRODUCT_NAME" >}} on Windows as a standard graphical install, a WinGet install, or a silent install.
 
 ## Standard graphical install
 
 To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, perform the following steps.
 
-1. Navigate to the [latest release][latest] on GitHub.
-
+1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-
-1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
-
-1. Extract the downloaded file.
-
+1. Download and extract `alloy-installer-windows-amd64.exe.zip` or download `alloy-installer-windows-amd64.exe`.
 1. Double-click on `alloy-installer-windows-amd64.exe` to install {{< param "PRODUCT_NAME" >}}.
 
-{{< param "PRODUCT_NAME" >}} is installed into the default directory `%PROGRAMFILES%\GrafanaLabs\Alloy`.
+The installer places {{< param "PRODUCT_NAME" >}} in the default directory `%PROGRAMFILES%\GrafanaLabs\Alloy`.
+
+## WinGet install
+
+To install {{< param "PRODUCT_NAME" >}} with WinGet, perform the following steps.
+
+1. Make sure that the [WinGet package manager](https://learn.microsoft.com/en-gb/windows/package-manager/winget/) is available.
+1. Run the following command in PowerShell to install {{< param "PRODUCT_NAME" >}}.
+
+   ```powershell
+   winget install GrafanaLabs.Alloy
+   ```
 
 ## Silent install
 
 To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the following steps.
 
-1. Navigate to the [latest release][latest] on GitHub.
-
+1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
+1. Download and extract `alloy-installer-windows-amd64.exe.zip` or download `alloy-installer-windows-amd64.exe`.
+1. Run the following command in PowerShell.
 
-1. Download the file called `alloy-installer-windows-amd64.exe.zip`.
-
-1. Extract the downloaded file.
-
-1. Run the following command in PowerShell or Command Prompt:
-
-   ```cmd
+   ```powershell
    <PATH_TO_INSTALLER> /S
    ```
 
@@ -52,44 +53,67 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 ### Silent install options
 
-* `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.alloy`
-* `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
-* `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
-* `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
-* `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: `normal`
-* `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
-* `/USERNAME="<username>"` Set the fully qualified user that Windows will use to run the service. Default: `NT AUTHORITY\LocalSystem`
-* `/PASSWORD="<password>"` Set the password of the user that Windows will use to run the service. This is not required for standard Windows Service Accounts like LocalSystem. Default: ``
+- `/CONFIG=<path>` Path to the configuration file. Default: `$INSTDIR\config.alloy`
+- `/DISABLEREPORTING=<yes|no>` Disable [data collection][]. Default: `no`
+- `/DISABLEPROFILING=<yes|no>` Disable profiling endpoint. Default: `no`
+- `/ENVIRONMENT="KEY=VALUE\0KEY2=VALUE2"` Define environment variables for Windows Service. Default: ``
+- `/RUNTIMEPRIORITY="normal|below_normal|above_normal|high|idle|realtime"` Set the runtime priority of the {{< param "PRODUCT_NAME" >}} process. Default: `normal`
+- `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
+- `/USERNAME="<username>"` Set the fully qualified user that Windows uses to run the service. Default: `NT AUTHORITY\LocalSystem`
+- `/PASSWORD="<password>"` Set the password of the user that Windows uses to run the service. This isn't required for standard Windows Service Accounts like LocalSystem. Default: ``
 
 {{< admonition type="note" >}}
-The `--windows.priority` flag is in [Public preview][stability] and is not covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
-The `/RUNTIMEPRIORITY` installation option sets this flag, and if Alloy is not running with an appropriate stability level it will fail to start.
+The `--windows.priority` flag is in [public preview][stability] and isn't covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
+The `/RUNTIMEPRIORITY` installation option sets this flag, and if {{< param "PRODUCT_NAME" >}} isn't running with an appropriate stability level, it fails to start.
 
 [stability]: https://grafana.com/docs/release-life-cycle/
 [backward compatibility]: ../../../introduction/backward-compatibility/
+
 {{< /admonition >}}
 
-## Service Configuration
+## Service configuration
 
-{{< param "PRODUCT_NAME" >}} uses the Windows Registry `HKLM\Software\GrafanaLabs\Alloy` for service configuration.
+{{< param "PRODUCT_NAME" >}} uses the Windows registry key `HKLM\Software\GrafanaLabs\Alloy` for service configuration.
 
-* `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
-* `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
+- `Arguments` (Type `REG_MULTI_SZ`) Each value represents a binary argument for alloy binary.
+- `Environment` (Type `REG_MULTI_SZ`) Each value represents a environment value `KEY=VALUE` for alloy binary.
 
 ## Uninstall
 
-You can uninstall {{< param "PRODUCT_NAME" >}} with Windows Add or Remove Programs or `%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe`.
+You can uninstall {{< param "PRODUCT_NAME" >}} on Windows.
 Uninstalling {{< param "PRODUCT_NAME" >}} stops the service and removes it from disk.
 This includes any configuration files in the installation directory.
 
-{{< param "PRODUCT_NAME" >}} can also be silently uninstalled by running `uninstall.exe /S` as Administrator.
+### Standard graphical uninstall
+
+To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the following command in PowerShell.
+
+```powershell
+%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe
+```
+
+### Uninstall with `winget`
+
+If to install {{< param "PRODUCT_NAME" >}} with `winget`, run the following command in PowerShell.
+
+```powershell
+winget uninstall GrafanaLabs.Alloy
+```
+
+### Silent uninstall
+
+To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command in PowerShell.
+
+```powershell
+%PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe /S
+```
 
 ## Next steps
 
-* [Run {{< param "PRODUCT_NAME" >}}][Run]
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Run {{< param "PRODUCT_NAME" >}}][Run]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[latest]: https://github.com/grafana/alloy/releases/latest
+[releases]: https://github.com/grafana/alloy/releases
 [data collection]: ../../../data-collection/
 [Run]: ../../run/windows/
 [Configure]: ../../../configure/windows/
