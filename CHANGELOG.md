@@ -75,6 +75,7 @@ v1.11.0-rc.3
 
 ### Features
 
+- Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
 
