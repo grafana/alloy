@@ -195,8 +195,8 @@ jobs:
 
   publish_github_release:
     name: Publish GitHub release
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     if: github.ref_type == 'tag'
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
