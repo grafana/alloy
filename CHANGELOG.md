@@ -210,6 +210,8 @@ v1.11.0-rc.3
 
 - Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
+- (_Experimental_) Remove `backend_time` field from query samples, and add `user` field to wait events within `database_observability.postgres` `query_samples` collector.
+
 v1.10.2
 -----------------
 
