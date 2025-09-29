@@ -93,6 +93,7 @@ v1.11.0-rc.3
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_details` collector for postgres (@fridgepoet)
   - include `server_id` label on logs and metrics (@matthewnolf)
+  - add `user` field to wait events within `query_samples` collector.
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
@@ -211,8 +212,6 @@ v1.11.0-rc.3
 - Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
 
 - Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
-
-- (_Experimental_) Remove `backend_time` field from query samples, and add `user` field to wait events within `database_observability.postgres` `query_samples` collector.
 
 v1.10.2
 -----------------
