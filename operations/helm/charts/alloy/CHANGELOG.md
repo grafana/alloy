@@ -16,6 +16,8 @@ Unreleased
 
 - Remove readiness probe using curl when http server port is disabled. (@kalleep)
 
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
+
 1.2.1 (2025-08-07)
 ----------
 
