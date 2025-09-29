@@ -32,7 +32,8 @@ const selectPgStatActivity = `
 		s.application_name,
 		s.client_addr,
 		s.client_port,
-		s.backend_type,		
+		s.backend_type,
+		s.backend_start,
 		s.backend_xid,
 		s.backend_xmin,
 		s.xact_start,
@@ -47,18 +48,13 @@ const selectPgStatActivity = `
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		s.pid <> pg_backend_pid() AND
+		backend_type != 'client backend' OR
 		(
-			s.backend_type != 'client backend' OR
-			(
-				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND
-				(
-					s.state != 'idle' OR					
-				) AND
-				coalesce(TRIM(s.state), '') != ''
-			)
+			s.pid != pg_backend_pid() AND
+			coalesce(TRIM(s.query), '') != '' AND
+			s.query_id != 0 AND
+			s.state != 'idle'
 		)
-		AND query_id > 0
 `
 
 type QuerySamplesInfo struct {
@@ -101,11 +97,10 @@ type QuerySamples struct {
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 
-	logger     log.Logger
-	running    *atomic.Bool
-	ctx        context.Context
-	cancel     context.CancelFunc
-	lastScrape time.Time
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
@@ -174,7 +169,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
+	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
@@ -192,6 +187,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			&sample.ClientAddr,
 			&sample.ClientPort,
 			&sample.BackendType,
+			&sample.BackendStart,
 			&sample.BackendXID,
 			&sample.BackendXmin,
 			&sample.XactStart,
@@ -223,6 +219,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		stateDuration := calculateDuration(sample.StateChange, sample.Now)
 		queryDuration := calculateDuration(sample.QueryStart, sample.Now)
 		xactDuration := calculateDuration(sample.XactStart, sample.Now)
+		backendDuration := calculateDuration(sample.BackendStart, sample.Now)
 
 		clientAddr := ""
 		if sample.ClientAddr.Valid {
@@ -247,7 +244,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 		// Build query sample entry
 		sampleLabels := fmt.Sprintf(
-			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+			`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 			sample.DatabaseName.String,
 			sample.PID,
 			leaderPID,
@@ -255,6 +252,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			sample.ApplicationName.String,
 			clientAddr,
 			sample.BackendType.String,
+			backendDuration,
 			sample.BackendXID.Int32,
 			sample.BackendXmin.Int32,
 			xactDuration,
