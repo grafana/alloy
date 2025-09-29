@@ -93,7 +93,7 @@ v1.11.0-rc.3
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
   - add `schema_details` collector for postgres (@fridgepoet)
-  - include `server_id` label on logs and metrics (@matthewnolf)  
+  - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
 
