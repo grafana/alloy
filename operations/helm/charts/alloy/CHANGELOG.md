@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
 
 ### Enhancements
 
@@ -138,8 +141,6 @@ Unreleased
 - Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
 
 - Remove readiness probe using curl when http server port is disabled. (@kalleep)
-
-- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
 
 1.2.1 (2025-08-07)
 ----------
