@@ -150,7 +150,7 @@ jobs:
     # This step bypasses make so that Go does not rebuild the executables and lose the signed files from the previous job
     - name: Build unsigned Windows installer containing signed files
       run: |
-        RELEASE_BUILD=1 makensis -V4 -DVERSION=$(VERSION) -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
+        RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
         VERSION: ${{ github.ref_name }}
 
