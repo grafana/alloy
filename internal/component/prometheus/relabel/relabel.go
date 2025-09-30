@@ -112,10 +112,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	data, err := o.GetServiceData(labelstore.ServiceName)
-	ls := data.(labelstore.LabelStore)
 	if err != nil {
 		return nil, err
 	}
+	ls := data.(labelstore.LabelStore)
 	c := &Component{
 		opts:               o,
 		cache:              cache,
