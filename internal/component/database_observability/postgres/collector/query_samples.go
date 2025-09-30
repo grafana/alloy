@@ -55,7 +55,6 @@ const selectPgStatActivity = `
 			s.query_id != 0 AND
 			s.state != 'idle'
 		)
-		
 `
 
 type QuerySamplesInfo struct {
