@@ -30,7 +30,7 @@ Main (unreleased)
 
 ### Bugfixes
 
-v1.11.0-rc.3
+v1.11.0
 -----------------
 
 ### Breaking changes
