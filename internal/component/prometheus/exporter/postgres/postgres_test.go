@@ -11,7 +11,7 @@ import (
 )
 
 func TestAlloyConfigUnmarshal(t *testing.T) {
-	var exampleAlloyConfig = `
+	exampleAlloyConfig := `
 	data_source_names = ["postgresql://username:password@localhost:5432/database?sslmode=disable"]
 	disable_settings_metrics = true
 	disable_default_metrics = true
@@ -21,7 +21,7 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 		include_query = true
 		query_length = 200
 	}
-	
+
 	autodiscovery {
 		enabled = false
 		database_allowlist = ["include1"]
@@ -42,7 +42,7 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 		},
 		DisableDefaultMetrics:   true,
 		CustomQueriesConfigPath: "/tmp/queries.yaml",
-		StatStatementFlags: StatStatementFlags{
+		StatStatementFlags: &StatStatementFlags{
 			IncludeQuery: true,
 			QueryLength:  200,
 		},
@@ -52,13 +52,13 @@ func TestAlloyConfigUnmarshal(t *testing.T) {
 }
 
 func TestAlloyConfigConvert(t *testing.T) {
-	var exampleAlloyConfig = `
+	exampleAlloyConfig := `
 	data_source_names = ["postgresql://username:password@localhost:5432/database?sslmode=disable"]
 	disable_settings_metrics = true
 	disable_default_metrics = false
 	custom_queries_config_path = "/tmp/queries.yaml"
 	enabled_collectors = ["collector1", "collector2"]
-	
+
 	autodiscovery {
 		enabled = false
 		database_allowlist = ["include1"]
@@ -81,15 +81,13 @@ func TestAlloyConfigConvert(t *testing.T) {
 		QueryPath:              "/tmp/queries.yaml",
 		Instance:               "test-instance",
 		EnabledCollectors:      []string{"collector1", "collector2"},
-		StatStatementFlags: postgres_exporter.StatStatementFlags{
-			QueryLength: 120,
-		},
+		StatStatementFlags:     nil,
 	}
 	require.Equal(t, expected, *c)
 }
 
 func TestRiverConfigValidate(t *testing.T) {
-	var tc = []struct {
+	tc := []struct {
 		name        string
 		args        Arguments
 		expectedErr string
