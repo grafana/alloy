@@ -8,48 +8,42 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/config"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
 
 type crdManagerFactoryHungRun struct {
-	stopRun chan struct{}
-	onRun   chan struct{}
+	running         *atomic.Bool
+	contextCanceled *atomic.Bool
+	stopRun         chan struct{}
 }
 
-func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger,
-	_ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
-
-	return &crdManagerHungRun{
-		onRun:   m.onRun,
-		stopRun: m.stopRun,
-	}
+func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+	return &crdManagerHungRun{m.running, m.contextCanceled, m.stopRun}
 }
 
 type crdManagerHungRun struct {
-	stopRun chan struct{}
-	onRun   chan struct{}
+	running         *atomic.Bool
+	contextCenceled *atomic.Bool
+	stopRun         chan struct{}
 }
 
 func (c *crdManagerHungRun) Run(ctx context.Context) error {
-	// Notify that run has been called for tests to register the component is fully started
-	select {
-	case c.onRun <- struct{}{}:
-	default:
-	}
-
-	// Wait for the context to be done
+	c.running.Store(true)
 	<-ctx.Done()
+	c.contextCenceled.Store(true)
 	<-c.stopRun
+	c.running.Store(false)
 	return nil
 }
 
@@ -98,45 +92,37 @@ func TestRunExit(t *testing.T) {
 	require.NoError(t, err)
 
 	stopRun := make(chan struct{})
-	onRun := make(chan struct{})
-	c.crdManagerFactory = crdManagerFactoryHungRun{
-		stopRun: stopRun,
-		onRun:   onRun,
-	}
+	factory := crdManagerFactoryHungRun{running: atomic.NewBool(false), contextCanceled: atomic.NewBool(false), stopRun: stopRun}
+	c.crdManagerFactory = factory
 
-	// Run the component
-	ctx, cancelFunc := context.WithCancel(t.Context())
-	cmpRunExited := atomic.Bool{}
-	cmpRunExited.Store(false)
-
+	ctx, cancel := context.WithCancel(t.Context())
+	runExited := atomic.NewBool(false)
 	go func() {
+		// Run the component
 		err := c.Run(ctx)
 		require.NoError(t, err)
-		cmpRunExited.Store(true)
+		runExited.Store(true)
 	}()
-	// Wait until the Hung CRD Manager starts
-	// The test can be flaky without this.
-	select {
-	case <-onRun:
-	case <-time.After(3 * time.Second):
-		require.Fail(t, "Hung CRD Manager didn't start")
-	}
+
+	// Make sure CRD manager have been started.
+	require.Eventually(t, func() bool {
+		return factory.running.Load()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	// Stop the component.
-	// It shouldn't stop immediately, because the CRD Manager is hung.
-	cancelFunc()
-	time.Sleep(5 * time.Second)
-	if cmpRunExited.Load() {
-		require.Fail(t, "component.Run exited")
-	}
+	cancel()
 
-	// Make crdManager.Run exit
-	close(stopRun)
-	// clean up extra channel
-	close(onRun)
-
-	// Make sure component.Run exits
+	// Make sure context cancelation has propagated but we have not exited c.Run yet
+	// because CRD manager have not exited yet.
 	require.Eventually(t, func() bool {
-		return cmpRunExited.Load()
-	}, 5*time.Second, 100*time.Millisecond, "component.Run didn't exit")
+		return factory.contextCanceled.Load() && !runExited.Load()
+	}, 3*time.Second, 10*time.Millisecond)
+
+	// Stop CRD manager
+	close(stopRun)
+
+	// Evntually c.Run should have exited.
+	require.Eventually(t, func() bool {
+		return runExited.Load() && !factory.running.Load()
+	}, 3*time.Second, 10*time.Millisecond)
 }

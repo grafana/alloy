@@ -16,6 +16,7 @@ set -euxo pipefail
 export TARGET_CONTAINER=${1:-}
 PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
 export GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
+GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
 
 if [ "$GITHUB_REF_TYPE" = "tag" ]; then
   export GITHUB_TAG="$GITHUB_REF_NAME"
@@ -127,8 +128,33 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
+  alloy-devel-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS      \
+      --platform $BUILD_PLATFORMS          \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg VERSION="$VERSION"       \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG" \
+      -f Dockerfile                        \
+      .
+    ;;
+
+  alloy-devel-boringcrypto-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS                   \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
+      --build-arg RELEASE_BUILD=1                       \
+      --build-arg VERSION="$VERSION"                    \
+      --build-arg GOEXPERIMENT=boringcrypto             \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG-boringcrypto" \
+      -f Dockerfile                                     \
+      .
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto"
+    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto|alloy-devel-pr|alloy-devel-boringcrypto-pr"
     exit 1
     ;;
 esac

@@ -14,8 +14,10 @@ type Unmarshaler interface {
 	Unmarshal([]byte) error
 }
 
-const DefaultRetryInterval = 100 * time.Millisecond
-const DefaultTimeout = 90 * time.Second
+const (
+	DefaultRetryInterval = 100 * time.Millisecond
+	DefaultTimeout       = 90 * time.Second
+)
 
 func FetchDataFromURL(url string, target Unmarshaler) error {
 	resp, err := http.Get(url)
@@ -38,17 +40,10 @@ func FetchDataFromURL(url string, target Unmarshaler) error {
 
 // AssertStatefulTestEnv verifies the environment is properly configured if the test is supposed to be stateful
 func AssertStatefulTestEnv(t *testing.T) {
-	// Check if stateful is set
-	statefulEnv := os.Getenv(StatefulTestEnv)
-	if statefulEnv == "" {
-		return
-	}
-
-	isStateful, err := strconv.ParseBool(statefulEnv)
+	isStateful, err := isStatefulFromEnv()
 	if err != nil {
-		t.Fatalf("Invalid value for %s: %s", StatefulTestEnv, err)
+		t.Fatalf("Failed to get stateful test flag from environment: %s", err)
 	}
-
 	if !isStateful {
 		return
 	}
@@ -90,4 +85,39 @@ func startTimeFromEnv() (int64, error) {
 	}
 
 	return parsed, nil
+}
+
+func IsStatefulTest() bool {
+	isStateful, err := isStatefulFromEnv()
+	if err != nil {
+		return false
+	}
+	return isStateful
+}
+
+func isStatefulFromEnv() (bool, error) {
+	statefulEnv := os.Getenv(TestStatefulEnv)
+	if statefulEnv == "" {
+		return false, nil
+	}
+
+	isStateful, err := strconv.ParseBool(statefulEnv)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse %s value %s as a boolean: %s", TestStatefulEnv, statefulEnv, err)
+	}
+
+	return isStateful, nil
+}
+
+func TestTimeoutEnv(t *testing.T) time.Duration {
+	if toStr := os.Getenv(TestTimeout); toStr != "" {
+		if to, err := time.ParseDuration(toStr); err == nil {
+			return to
+		} else {
+			t.Logf("failed to parse %s value %s as a duration: %s, defaulting to %s", TestTimeout, toStr, err, DefaultTimeout)
+		}
+	} else {
+		t.Logf("%s not set, defaulting to %s", TestTimeout, DefaultTimeout)
+	}
+	return DefaultTimeout
 }

@@ -58,11 +58,6 @@ type Arguments struct {
 	// If set to 0, metrics are flushed on every received batch of traces.
 	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
-	// DatabaseNameAttribute is the attribute name used to identify the database name from span attributes.
-	// The default value is db.name
-	// Deprecated: [v0.124.0] Use database_name_attributes instead.
-	DatabaseNameAttribute string `alloy:"database_name_attribute,attr,optional"`
-
 	// DatabaseNameAttributes is the attribute name list of attributes need to match used to identify the database name from span attributes, the higher the front, the higher the priority.
 	// The default value is {"db.name"}.
 	DatabaseNameAttributes []string `alloy:"database_name_attributes,attr,optional"`
@@ -173,7 +168,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		CacheLoop:              args.CacheLoop,
 		StoreExpirationLoop:    args.StoreExpirationLoop,
 		MetricsFlushInterval:   &args.MetricsFlushInterval,
-		DatabaseNameAttribute:  args.DatabaseNameAttribute,
 		DatabaseNameAttributes: args.DatabaseNameAttributes,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.

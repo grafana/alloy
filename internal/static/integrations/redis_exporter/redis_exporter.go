@@ -82,6 +82,7 @@ func (c Config) GetExporterOptions() re.Options {
 		CheckKeys:                 c.CheckKeys,
 		CheckKeysBatchSize:        c.CheckKeyGroupsBatchSize,
 		CheckKeyGroups:            c.CheckKeyGroups,
+		MaxDistinctKeyGroups:      c.MaxDistinctKeyGroups,
 		CheckSingleKeys:           c.CheckSingleKeys,
 		CheckStreams:              c.CheckStreams,
 		CheckSingleStreams:        c.CheckSingleStreams,

@@ -715,7 +715,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 
@@ -839,7 +839,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 

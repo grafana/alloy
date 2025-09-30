@@ -29,7 +29,7 @@ import (
 var (
 	DefaultIdleTimeout      = 120 * time.Second
 	DefaultMaxMessageLength = 8192
-	DefaultProtocol         = protocolTCP
+	DefaultProtocol         = ProtocolTCP
 )
 
 // SyslogTarget listens to syslog messages.
@@ -72,14 +72,14 @@ func NewSyslogTarget(
 	}
 
 	switch t.transportProtocol() {
-	case protocolTCP:
+	case ProtocolTCP:
 		t.transport = NewSyslogTCPTransport(
 			config,
 			t.handleMessage,
 			t.handleMessageError,
 			logger,
 		)
-	case protocolUDP:
+	case ProtocolUDP:
 		t.transport = NewSyslogUDPTransport(
 			config,
 			t.handleMessage,
@@ -151,12 +151,12 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg syslog
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
 	if t.config.UseIncomingTimestamp && rfc5424Msg.Timestamp != nil {
@@ -208,12 +208,12 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg syslog
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
 	if t.config.UseIncomingTimestamp && rfc3164Msg.Timestamp != nil {

@@ -74,7 +74,19 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
+6. [OPTIONAL] Increase `performance_schema_max_sql_text_length` to `4096` if you want to collect the actual, unredacted sql text from queries samples (this requires setting `disable_query_redaction` to `true`, see later). Verify that the changes have been applied:
+
+```sql
+SHOW VARIABLES LIKE 'performance_schema_max_sql_text_length';
+
++----------------------------------------+-------+
+| Variable_name                          | Value |
++----------------------------------------+-------+
+| performance_schema_max_sql_text_length | 4096  |
++----------------------------------------+-------+
+```
+
+7. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
@@ -109,7 +121,7 @@ database_observability.mysql "mysql_<your_DB_name>" {
 }
 ```
 
-7. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
+8. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
@@ -384,7 +396,17 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
 ```
 
-5. Create a dedicated DB user and grant permissions.
+5. Increase `track_activity_query_size` to `4096`. Verify that the change has been applied:
+
+```sql
+show track_activity_query_size;
+
+ track_activity_query_size
+---------------------------
+ 4kB
+```
+
+6. Create a dedicated DB user and grant permissions.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -392,7 +414,7 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-6. Verify that the user has been properly created.
+7. Verify that the user has been properly created.
 
 ```sql
 -- run with the `db-o11y` user
@@ -403,7 +425,7 @@ SELECT * FROM pg_stat_statements LIMIT 1;
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
-2. Add the following configuration block to Alloy.
+2. Add the following configuration block to Alloy for each Postgres DB you'd like to monitor.
 - Replace `<your_DB_name>`
 - Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
 
@@ -417,7 +439,7 @@ local.file "postgres_secret_<your_DB_name>" {
 
 prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
-  enabled_collectors = ["database", "stat_statements"]
+  enabled_collectors = ["stat_statements"]
 
   autodiscovery {
     enabled = true
@@ -432,7 +454,7 @@ database_observability.postgres "postgres_<your_DB_name>" {
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
-  enable_collectors = ["query_samples"]
+  enable_collectors = ["query_samples", "query_details"]
 
   // OPTIONAL: if `query_samples` collector is enabled, you can use
   // the following setting to disable sql text redaction (by default
