@@ -30,6 +30,8 @@ Main (unreleased)
 
 - Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
 
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
+
 ### Bugfixes
 
 v1.11.0

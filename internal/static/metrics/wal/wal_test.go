@@ -606,6 +606,13 @@ func labelsForTest(lName string, seriesCount int) [][]labels.Label {
 	return s
 }
 
+func BenchmarkStripeSeriesSize(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		newStripeSeries(stripeSeriesSize)
+	}
+}
+
 type sample struct {
 	ts  int64
 	val float64
