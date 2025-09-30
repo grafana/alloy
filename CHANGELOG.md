@@ -57,6 +57,8 @@ v1.11.0
 
     [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
 
+- `scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`. This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled. If `scrape_native_histograms` is enabled, `scrape_protocols` will automatically be configured correctly for you to include `PrometheusProto`. If you configure it explicitly, Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
+
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
 - [`otelcol.processor.batch`] Two arguments have different default values. (@ptodev)
