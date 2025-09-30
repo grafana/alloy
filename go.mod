@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.24.6
+go 1.25
 
 require (
 	cloud.google.com/go/pubsub v1.50.0
@@ -288,9 +288,9 @@ require (
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/net v0.43.0
 	golang.org/x/oauth2 v0.30.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 	golang.org/x/sys v0.35.0
-	golang.org/x/text v0.28.0
+	golang.org/x/text v0.29.0
 	golang.org/x/time v0.12.0
 	golang.org/x/tools v0.36.0
 	google.golang.org/api v0.248.0
@@ -992,6 +992,14 @@ require (
 require (
 	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
 	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
+)
+
+require (
+	github.com/go-json-experiment/json v0.0.0-20250910080747-cc2cfa0554c3 // indirect
+	github.com/goccy/go-yaml v1.18.0 // indirect
+	github.com/kaptinlin/go-i18n v0.1.7 // indirect
+	github.com/kaptinlin/jsonschema v0.4.14 // indirect
+	github.com/kaptinlin/messageformat-go v0.4.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
