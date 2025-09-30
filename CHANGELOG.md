@@ -32,6 +32,8 @@ Main (unreleased)
 
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
 
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
 ### Bugfixes
 
 v1.11.0
