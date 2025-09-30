@@ -1,0 +1,61 @@
+arguments:
+  type: object
+  additionalProperties: false
+  description: "Configuration arguments for loki.enrich."
+  required:
+    - target_match_label
+    - targets
+    - forward_to
+  properties:
+    target_match_label:
+      description: >-
+        The label from discovered targets to match against, for example, "__inventory_consul_service".
+      type: string
+
+    forward_to:
+      description: >-
+        List of receivers to send enriched logs to.
+      type: array
+      alloy:
+        # TODO: How to validate capsules like this?
+        type_override: "[]loki.LogsReceiver"
+
+    targets:
+      description: >-
+        List of targets from a discovery component.
+      type: array
+      items:
+        # TODO: Double check if "object" is ok
+        # TODO: Specify 
+        type: object
+        # TODO: Add "properties" to list Prometheus labels that are required
+        additionalProperties:
+          type: string
+      alloy:
+        # TODO: Not sure how Fleet Management would validate this. It could just be a map.
+        type_override: "[]discovery.Target"
+
+    labels_to_copy:
+      description: >-
+        List of labels to copy from discovered targets to logs. If empty, all labels will be copied.
+      type: array
+      items:
+        type: string
+
+    logs_match_label:
+      description: >-
+        The label from incoming logs to match against discovered targets.
+      type: string
+
+exports:
+  type: object
+  additionalProperties: false
+  description: "Exports for loki.enrich."
+  required:
+    - receiver
+  properties:
+    receiver:
+      description: >-
+        A receiver that can be used to send logs to this component.
+      alloy:
+        type_override: "loki.LogsReceiver"
