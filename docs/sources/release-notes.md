@@ -34,6 +34,24 @@ Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
 
 See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
 
+### Breaking changes in `prometheus.scrape`
+
+`scrape_native_histograms` attribute for `prometheus.scrape` is now set to false previously default was true. This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms but it has to be enabled. If `scrape_native_histograms` is enabled without `scrape_protocols` set it will be configured correctly for you, otherwise Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
+
+In previous versions of alloy configuring `scrape_protocols` to start with `PrometheusProto` was enough to start scraping nativ histograms because `scrape_native_histogram` defaulted to true:
+```alloy
+prometheus.scrape "scrape" {
+  scrape_protocols = ["PrometheusProto"]
+}
+```
+
+Now it has to be enabled and `scrape_protocols` can be omitted:
+```alloy
+prometheus.scrape "scrape" {
+  scrape_native_histograms = true
+}
+```
+
 ### Breaking changes in `prometheus.exporter.windows`
 
 As the `windows_exporter` continues to be refactored upstream, there are various breaking changes in metrics.
