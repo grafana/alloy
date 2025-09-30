@@ -28,6 +28,8 @@ Main (unreleased)
 
 - Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
 
+- Enabled native frame demangling by default (@oleg-kozlyuk-grafana)
+
 ### Bugfixes
 
 v1.11.0
