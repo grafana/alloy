@@ -38,7 +38,7 @@ See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prom
 
 `scrape_native_histograms` attribute for `prometheus.scrape` is now set to false previously default was true. This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms but it has to be enabled. If `scrape_native_histograms` is enabled without `scrape_protocols` set it will be configured correctly for you, otherwise Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
 
-In previous versions of Alloy configuring `scrape_protocols` to start with `PrometheusProto` was enough to start scraping nativ histograms because `scrape_native_histogram` defaulted to true:
+In previous versions of Alloy configuring `scrape_protocols` to start with `PrometheusProto` was enough to start scraping native histograms because `scrape_native_histogram` defaulted to true:
 ```alloy
 prometheus.scrape "scrape" {
   scrape_protocols = ["PrometheusProto"]
