@@ -40,7 +40,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "active query without wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -68,7 +68,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "parallel query with leader PID",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -101,7 +101,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "query with wait event",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -125,13 +125,13 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
-				`level="info" datname="testdb" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" user="testuser" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
 			},
 		},
 		{
 			name: "insufficient privilege query - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -155,7 +155,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "null database name - no loki entries expected",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
@@ -179,7 +179,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		{
 			name: "query with redaction disabled",
 			setupMock: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(selectPgStatActivity).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
+				mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",

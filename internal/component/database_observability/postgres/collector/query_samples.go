@@ -48,19 +48,13 @@ const selectPgStatActivity = `
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		s.pid <> pg_backend_pid() AND
+		s.backend_type != 'client backend' OR
 		(
-			s.backend_type != 'client backend' OR
-			(
-				coalesce(TRIM(s.query), '') != '' AND s.query_start IS NOT NULL AND
-				(
-					s.state != 'idle' OR
-					(s.state = 'idle' AND s.state_change > $1)
-				) AND
-				coalesce(TRIM(s.state), '') != ''
-			)
+			s.pid != pg_backend_pid() AND
+			coalesce(TRIM(s.query), '') != '' AND
+			s.query_id != 0 AND
+			s.state != 'idle'
 		)
-		AND query_id > 0
 `
 
 type QuerySamplesInfo struct {
@@ -103,11 +97,10 @@ type QuerySamples struct {
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 
-	logger     log.Logger
-	running    *atomic.Bool
-	ctx        context.Context
-	cancel     context.CancelFunc
-	lastScrape time.Time
+	logger  log.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
@@ -176,8 +169,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	scrapeTime := time.Now()
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity, c.lastScrape)
+	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
@@ -285,8 +277,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 		if waitEvent != "" {
 			waitEventLabels := fmt.Sprintf(
-				`datname="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+				`datname="%s" user="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 				sample.DatabaseName.String,
+				sample.Username.String,
 				sample.BackendType.String,
 				sample.State.String,
 				stateDuration,
@@ -311,9 +304,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
-
-	// Update last scrape time after successful scrape
-	c.lastScrape = scrapeTime
 
 	return nil
 }
