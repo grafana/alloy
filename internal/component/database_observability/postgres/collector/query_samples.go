@@ -48,13 +48,14 @@ const selectPgStatActivity = `
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		backend_type != 'client backend' OR
+		s.backend_type != 'client backend' OR
 		(
 			s.pid != pg_backend_pid() AND
 			coalesce(TRIM(s.query), '') != '' AND
 			s.query_id != 0 AND
 			s.state != 'idle'
 		)
+		
 `
 
 type QuerySamplesInfo struct {
