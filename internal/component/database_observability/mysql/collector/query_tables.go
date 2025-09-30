@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
@@ -137,10 +138,12 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
+		hidden := strings.HasPrefix(sampleText, "/* collector=alloy */")
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s" hidden="%t"`, schema, parserErr == nil, digest, digestText, hidden),
 		)
 
 		for _, table := range tables {
