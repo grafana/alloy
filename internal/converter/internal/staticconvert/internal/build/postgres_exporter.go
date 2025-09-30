@@ -28,9 +28,5 @@ func toPostgresExporter(config *postgres_exporter.Config) *postgres.Arguments {
 			DatabaseAllowlist: config.IncludeDatabases,
 			DatabaseDenylist:  config.ExcludeDatabases,
 		},
-		StatStatementFlags: postgres.StatStatementFlags{
-			IncludeQuery: config.StatStatementIncludeQuery,
-			QueryLength:  config.StatStatementQueryLength,
-		},
 	}
 }

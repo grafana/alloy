@@ -91,17 +91,19 @@ func (a *Arguments) SetToDefault() {
 
 func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 	return &postgres_exporter.Config{
-		DataSourceNames:           a.convertDataSourceNames(),
-		DisableSettingsMetrics:    a.DisableSettingsMetrics,
-		AutodiscoverDatabases:     a.AutoDiscovery.Enabled,
-		ExcludeDatabases:          a.AutoDiscovery.DatabaseDenylist,
-		IncludeDatabases:          a.AutoDiscovery.DatabaseAllowlist,
-		DisableDefaultMetrics:     a.DisableDefaultMetrics,
-		QueryPath:                 a.CustomQueriesConfigPath,
-		Instance:                  instanceName,
-		EnabledCollectors:         a.EnabledCollectors,
-		StatStatementIncludeQuery: a.StatStatementFlags.IncludeQuery,
-		StatStatementQueryLength:  a.StatStatementFlags.QueryLength,
+		DataSourceNames:        a.convertDataSourceNames(),
+		DisableSettingsMetrics: a.DisableSettingsMetrics,
+		AutodiscoverDatabases:  a.AutoDiscovery.Enabled,
+		ExcludeDatabases:       a.AutoDiscovery.DatabaseDenylist,
+		IncludeDatabases:       a.AutoDiscovery.DatabaseAllowlist,
+		DisableDefaultMetrics:  a.DisableDefaultMetrics,
+		QueryPath:              a.CustomQueriesConfigPath,
+		Instance:               instanceName,
+		EnabledCollectors:      a.EnabledCollectors,
+		StatStatementFlags: postgres_exporter.StatStatementFlags{
+			IncludeQuery: a.StatStatementFlags.IncludeQuery,
+			QueryLength:  a.StatStatementFlags.QueryLength,
+		},
 	}
 }
 
