@@ -225,7 +225,7 @@ func NewDefaultArguments() Arguments {
 	return Arguments{
 		CollectInterval: 15 * time.Second,
 		SampleRate:      19,
-		Demangle:        "none",
+		Demangle:        "templates",
 		PythonEnabled:   true,
 		PerlEnabled:     true,
 		PHPEnabled:      true,
