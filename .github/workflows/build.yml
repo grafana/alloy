@@ -181,9 +181,9 @@ jobs:
               appId: process.env.ALLOYBOT_APP_ID,
               privateKey: process.env.ALLOYBOT_PRIVATE_KEY,
             });
-            const { data: app } = await app.octokit.apps.getAuthenticated();
-            core.setOutput('app-id', app.id);
-            core.setOutput('app-login', `${app.slug}[bot]`);
+            const { data: result } = await app.octokit.apps.getAuthenticated();
+            core.setOutput('app-id', result.id);
+            core.setOutput('app-login', `${result.slug}[bot]`);
 
       - name: Configure Git
         env:
