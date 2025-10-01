@@ -512,8 +512,8 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 }
 
 // buildWaitEventLabels constructs the labels string for OP_WAIT_EVENT
-func (c *QuerySamples) buildWaitEventLabels(state *SampleState, occ WaitEventOccurrence) string {
-	waitEventFullName := fmt.Sprintf("%s:%s", occ.WaitEventType, occ.WaitEvent)
+func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	queryText := state.LastRow.Query.String
 	if !c.disableQueryRedaction {
 		queryText = redact(queryText)
@@ -523,12 +523,12 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, occ WaitEventOcc
 		state.LastRow.DatabaseName.String,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		occ.LastState,
-		occ.LastWaitTime,
-		occ.WaitEventType,
-		occ.WaitEvent,
+		we.LastState,
+		we.LastWaitTime,
+		we.WaitEventType,
+		we.WaitEvent,
 		waitEventFullName,
-		occ.BlockedByPIDs,
+		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
@@ -546,7 +546,7 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 func normalizePIDs(pids pq.Int64Array) []int64 {
 	set := map[int64]struct{}{}
 	for _, pid := range pids {
-		set[int64(pid)] = struct{}{}
+		set[pid] = struct{}{}
 	}
 	out := make([]int64, 0, len(set))
 	for pid := range set {
