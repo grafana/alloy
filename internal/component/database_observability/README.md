@@ -406,9 +406,24 @@ show track_activity_query_size;
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
 GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
+GRANT pg_read_all_data TO "db-o11y"; /* see note */
 ```
 
-7. Verify that the user has been properly created.
+Please note: Regarding `GRANT pg_read_all_data TO "db-o11y"`, it is possible to restrict permissions, if necessary. Instead, grant the `db-o11y` user privileges access only to the objects (databases and schemas) for which you want information. For example, to restrict permissions only to specific schemas in a database named `payments`:
+
+```sql
+CREATE USER "db-o11y" WITH PASSWORD '<password>';
+GRANT pg_monitor TO "db-o11y";
+
+-- connect to the 'payments' database and grant access to specific schemas
+\c payments
+GRANT USAGE ON SCHEMA public TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "db-o11y";
+GRANT USAGE ON SCHEMA users TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA users TO "db-o11y";
+```
+
+7. Verify that the user has been properly created and has the correct privileges for the `pg_stat_statements` extension.
 
 ```sql
 -- run with the `db-o11y` user
