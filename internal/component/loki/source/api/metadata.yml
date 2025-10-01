@@ -1,0 +1,99 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.source.api."
+  required:
+    - forward_to
+  properties:
+    forward_to:
+      description: >-
+        List of receivers to send enriched logs to.
+      type: array
+      alloy:
+        type_override: "list(LogsReceiver)"
+
+    max_send_message_size:
+      description: >-
+        Maximum size of a request to the push API.	
+      type: integer
+      alloy:
+        default_override: "\"100MiB\""
+
+    labels:
+      description: >-
+        The labels to associate with each received logs record.
+      type: object
+      items:
+        # TODO: this should display as "map(string)" without a type_override
+        type: object
+        additionalProperties:
+          type: string
+      alloy:
+        type: attribute
+        type_override: "map(string)"
+        default_override: "{}"
+
+    relabel_rules:
+      description: >-
+        Relabeling rules to apply on log entries.
+      type: array
+      items:
+        type: object
+      alloy:
+        type_override: "RelabelRules"
+        default_override: "{}"
+
+    use_incoming_timestamp:
+      description: >-
+        Whether to use the timestamp received from request.	
+      type: boolean
+      alloy:
+        default_override: false
+
+    http:
+      description: >-
+        Configures the HTTP server that receives requests.
+      type: object
+      properties:
+        conn_limit:
+          description: >-
+            Maximum number of simultaneous HTTP connections. Defaults to no limit.
+          type: integer
+          default: 0
+
+        listen_address:
+          description: >-
+            Network address on which the server listens for new connections. Defaults to accepting all incoming connections.	
+          type: string
+          alloy:
+            # TODO: We shouldn't have to set this explicitly.
+            default_override: "\"\""
+
+        listen_port:
+          description: >-
+            Port number on which the server listens for new connections.	
+          type: integer
+          default: 8080
+
+        server_idle_timeout:
+          description: >-
+            Idle timeout for HTTP server.
+          type: string
+          default: "120s"
+          alloy:
+            type_override: "duration"
+
+        server_read_timeout:
+          description: >-
+            Read timeout for HTTP server.
+          type: string
+          default: "30s"
+          alloy:
+            type_override: "duration"
+
+        server_write_timeout:
+          description: >-
+            Write timeout for HTTP server.
+          type: string
+          default: "30s"
+          alloy:
+            type_override: "duration"

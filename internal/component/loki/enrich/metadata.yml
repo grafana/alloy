@@ -1,6 +1,5 @@
 arguments:
   type: object
-  additionalProperties: false
   description: "Configuration arguments for loki.enrich."
   required:
     - target_match_label
@@ -49,13 +48,11 @@ arguments:
 
 exports:
   type: object
-  additionalProperties: false
   description: "Exports for loki.enrich."
-  required:
-    - receiver
   properties:
     receiver:
       description: >-
         A receiver that can be used to send logs to this component.
+      type: object
       alloy:
         type_override: "loki.LogsReceiver"

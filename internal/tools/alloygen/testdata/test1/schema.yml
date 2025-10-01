@@ -1,0 +1,93 @@
+type: object
+description: "Configuration parameters for loki.source.api."
+required:
+  - forward_to
+properties:
+  forward_to:
+    description: >-
+      List of receivers to send enriched logs to.
+    type: array
+    alloy:
+      io: argument
+      type: attribute
+      # TODO: How to validate capsules like this?
+      type_override: "[]loki.LogsReceiver"
+
+  labels:
+    description: >-
+      The labels to associate with each received logs record.
+    type: object
+    items:
+      # TODO: this should display as "map(string)"
+      type: object
+      additionalProperties:
+        type: string
+    alloy:
+      io: argument
+      type: attribute
+
+  relabel_rules:
+    description: >-
+      Relabeling rules to apply on log entries.
+    type: array
+    items:
+      type: object
+    alloy:
+      io: argument
+      type: attribute
+      type_override: "RelabelRules"
+
+  use_incoming_timestamp:
+    description: >-
+      Whether to use the timestamp received from request.	
+    type: boolean
+    alloy:
+      io: argument
+      type: attribute
+
+  http:
+    description: >-
+      Configures the HTTP server that receives requests.
+    type: object
+    properties:
+      conn_limit:
+        description: >-
+          Maximum number of simultaneous HTTP connections. Defaults to no limit.
+        type: integer
+        default: 0
+
+      listen_address:
+        description: >-
+          Network address on which the server listens for new connections. Defaults to accepting all incoming connections.	
+        type: string
+
+      listen_port:
+        description: >-
+          Port number on which the server listens for new connections.	
+        type: integer
+        default: 8080
+
+      server_idle_timeout:
+        description: >-
+          Idle timeout for HTTP server.
+        type: string
+        default: "120s"
+        alloy:
+          type_override: "duration"
+
+      server_read_timeout:
+        description: >-
+          Read timeout for HTTP server.
+        type: string
+        default: "30s"
+        alloy:
+          type_override: "duration"
+
+      server_write_timeout:
+        description: >-
+          Write timeout for HTTP server.
+        type: string
+        default: "30s"
+        alloy:
+          type_override: "duration"
+
