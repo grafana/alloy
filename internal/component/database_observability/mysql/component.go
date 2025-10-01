@@ -330,11 +330,24 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
+	var cloudProviderInfo *database_observability.CloudProvider
+	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
+		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
+		}
+		cloudProviderInfo = &database_observability.CloudProvider{
+			AWS: &database_observability.AWSCloudProviderInfo{
+				ARN: arn,
+			},
+		}
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID, cloudProviderInfo)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -348,7 +361,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion); err != nil {
+	if err := c.startCollectors(serverUUID, engineVersion, parsedEngineVersion, cloudProviderInfo); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
@@ -383,26 +396,13 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version) error {
+func (c *Component) startCollectors(serverUUID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
 		level.Error(c.opts.Logger).Log("msg", errorString)
 		startErrors = append(startErrors, errorString)
-	}
-
-	var cloudProviderInfo *database_observability.CloudProvider
-	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
-		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
-		}
-		cloudProviderInfo = &database_observability.CloudProvider{
-			AWS: &database_observability.AWSCloudProviderInfo{
-				ARN: arn,
-			},
-		}
 	}
 
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverUUID)
