@@ -24,6 +24,8 @@ Main (unreleased)
 
 - Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
 
+- Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)

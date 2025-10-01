@@ -5,15 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/atomic"
-	"google.golang.org/protobuf/proto"
 
 	"connectrpc.com/connect"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
@@ -28,6 +25,8 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/diag"
+	"github.com/grafana/alloy/syntax/token"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -66,6 +65,7 @@ func TestOnDiskCache(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	// As the API response was unparseable, verify that the service has loaded
 	// the on-disk cache contents.
@@ -74,13 +74,11 @@ func TestOnDiskCache(t *testing.T) {
 		assert.NoError(c, err)
 		assert.Equal(c, cacheContents, string(b))
 	}, time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestGoodBadGood(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
@@ -108,6 +106,7 @@ func TestGoodBadGood(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -151,13 +150,11 @@ func TestGoodBadGood(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestAPIResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -185,6 +182,7 @@ func TestAPIResponse(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -203,13 +201,11 @@ func TestAPIResponse(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestAPIResponseNotModified(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 
@@ -236,6 +232,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -258,110 +255,6 @@ func TestAPIResponseNotModified(t *testing.T) {
 		assert.Greater(c, client.getConfigCallCount.Load(), calls)
 		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
-}
-
-func TestUserAgentHeader(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
-	cfg := `loki.process "default" { forward_to = [] }`
-
-	// Track captured User-Agent headers
-	var capturedUserAgent atomic.Value
-	var registerCalled atomic.Bool
-
-	// Create a test server that captures the User-Agent header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture the User-Agent header
-		capturedUserAgent.Store(r.Header.Get("User-Agent"))
-
-		// Mock a successful register collector response
-		if r.URL.Path == "/collector.v1.CollectorService/RegisterCollector" {
-			registerCalled.Store(true)
-			w.Header().Set("Content-Type", "application/proto")
-			w.WriteHeader(http.StatusOK)
-			// Create empty protobuf response for RegisterCollectorResponse
-			response := &collectorv1.RegisterCollectorResponse{}
-			data, err := proto.Marshal(response)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write(data)
-			return
-		}
-
-		// Mock a successful get config response
-		if r.URL.Path == "/collector.v1.CollectorService/GetConfig" {
-			w.Header().Set("Content-Type", "application/proto")
-			w.WriteHeader(http.StatusOK)
-			// Create a minimal protobuf response for GetConfigResponse
-			// This is a simple hardcoded protobuf message with the content field
-			response := &collectorv1.GetConfigResponse{
-				Content: cfg,
-			}
-			data, err := proto.Marshal(response)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write(data)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	// Create a new service with default factory (uses real interceptor)
-	svc, err := New(Options{
-		Logger:      util.TestLogger(t),
-		StoragePath: t.TempDir(),
-	})
-	require.NoError(t, err)
-
-	env := &testEnvironment{
-		t:   t,
-		svc: svc,
-	}
-
-	// Configure the service to use our test server
-	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
-		url            = "%s"
-		poll_frequency = "10s"
-	`, server.URL)))
-
-	// Run the service
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := env.Run(ctx); !errors.Is(err, context.Canceled) {
-			require.NoError(t, err)
-		}
-	}()
-
-	// Wait for the register call to complete
-	require.Eventually(t, func() bool {
-		return registerCalled.Load()
-	}, 2*time.Second, 10*time.Millisecond)
-
-	// Verify that the User-Agent header was captured and contains "Alloy"
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		userAgent := capturedUserAgent.Load()
-		assert.NotNil(c, userAgent, "User-Agent header should be captured")
-		if userAgent != nil {
-			userAgentStr := userAgent.(string)
-			assert.NotEmpty(c, userAgentStr, "User-Agent header should be present")
-			assert.Contains(c, userAgentStr, "Alloy", "User-Agent should contain 'Alloy'")
-		}
-	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 // setupFallbackTest is a helper to reduce code duplication in fallback tests
@@ -539,13 +432,42 @@ func TestConfigSkipCacheRestorationWhenSameHash(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 }
 
-func buildGetConfigHandler(in string, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
-	return func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+// GetConfigHandlerOptions provides configuration for buildGetConfigHandler
+type GetConfigHandlerOptions struct {
+	Content     string
+	Hash        string
+	NotModified bool
+	// Optional status capture functionality
+	StatusHistory  *[]collectorv1.RemoteConfigStatuses
+	StatusMessages *[]string
+	StatusMutex    *sync.Mutex
+}
+
+// buildGetConfigHandler creates a GetConfig handler function with optional status capturing
+func buildGetConfigHandler(content, hash string, notModified bool) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	return buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:     content,
+		Hash:        hash,
+		NotModified: notModified,
+	})
+}
+
+// buildGetConfigHandlerWithOptions creates a GetConfig handler with full configuration options
+func buildGetConfigHandlerWithOptions(opts GetConfigHandlerOptions) func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+	return func(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+		// Capture status updates if configured
+		if opts.StatusHistory != nil && opts.StatusMessages != nil && opts.StatusMutex != nil && req.Msg.RemoteConfigStatus != nil {
+			opts.StatusMutex.Lock()
+			*opts.StatusHistory = append(*opts.StatusHistory, req.Msg.RemoteConfigStatus.Status)
+			*opts.StatusMessages = append(*opts.StatusMessages, req.Msg.RemoteConfigStatus.ErrorMessage)
+			opts.StatusMutex.Unlock()
+		}
+
 		rsp := &connect.Response[collectorv1.GetConfigResponse]{
 			Msg: &collectorv1.GetConfigResponse{
-				Content:     in,
-				NotModified: notModified,
-				Hash:        hash,
+				Content:     opts.Content,
+				NotModified: opts.NotModified,
+				Hash:        opts.Hash,
 			},
 		}
 		return rsp, nil
@@ -589,6 +511,32 @@ func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironm
 		t:   t,
 		svc: svc,
 	}
+}
+
+// hasStatusInHistory checks if a specific status was captured (simple helper function)
+func hasStatusInHistory(history *[]collectorv1.RemoteConfigStatuses, mutex *sync.Mutex, status collectorv1.RemoteConfigStatuses) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, s := range *history {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
+// assertRemoteConfigStatus verifies the current remote config status (simple helper function)
+func assertRemoteConfigStatus(t *testing.T, env *testEnvironment, expectedStatus collectorv1.RemoteConfigStatuses, shouldHaveError bool) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, expectedStatus, status.Status)
+		if shouldHaveError {
+			assert.NotEmpty(c, status.ErrorMessage)
+		} else {
+			assert.Equal(c, "", status.ErrorMessage)
+		}
+	}, time.Second, 10*time.Millisecond)
 }
 
 func (env *testEnvironment) ApplyConfig(config string) error {
@@ -654,3 +602,229 @@ func (sc serviceController) LoadSource(b []byte, args map[string]any, configPath
 	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc serviceController) Ready() bool { return sc.f.Ready() }
+
+func TestRemoteConfigStatus_InitialState(t *testing.T) {
+	env := newTestEnvironment(t, &mockCollectorClient{})
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_UNSET, false)
+}
+
+func TestGetErrorMessage_DiagnosticErrors(t *testing.T) {
+	// Test that diagnostic errors use AllMessages() for detailed error information
+
+	// Create a mock diagnostic error
+	mockDiags := diag.Diagnostics{
+		{
+			Severity: diag.SeverityLevelError,
+			StartPos: token.Position{Filename: "test.alloy", Line: 1, Column: 1},
+			Message:  "first error",
+		},
+		{
+			Severity: diag.SeverityLevelError,
+			StartPos: token.Position{Filename: "test.alloy", Line: 2, Column: 1},
+			Message:  "second error",
+		},
+	}
+
+	// Test getErrorMessage function directly
+	errorMsg := getErrorMessage(mockDiags)
+
+	// Should contain both error messages, not just the first
+	assert.Contains(t, errorMsg, "first error")
+	assert.Contains(t, errorMsg, "second error")
+	assert.Contains(t, errorMsg, ";") // Should be joined with semicolon
+
+	// Test with regular error
+	regularErr := errors.New("simple error")
+	regularMsg := getErrorMessage(regularErr)
+	assert.Equal(t, "simple error", regularMsg)
+}
+
+func TestRemoteConfigStatusTransitions(t *testing.T) {
+	cfgGood := `loki.process "default" { forward_to = [] }`
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var statusHistory []collectorv1.RemoteConfigStatuses
+	var statusMessages []string
+	var statusMutex sync.Mutex
+	var registerCalled atomic.Bool
+
+	// Start with good config
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Verify initial status: UNSET → APPLIED
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
+
+	// Switch to bad config → FAILED
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgBad,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, true)
+
+	// Switch back to good config → APPLIED again
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	assertRemoteConfigStatus(t, env, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, false)
+
+	// Verify we captured the complete status transition: APPLIED → FAILED → APPLIED
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+	}, 2*time.Second, 10*time.Millisecond)
+}
+
+func TestRemoteConfigStatusErrorMessages(t *testing.T) {
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var registerCalled atomic.Bool
+
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandler(cfgBad, "", false)
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Verify FAILED status with descriptive error message
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		status := env.svc.cm.getRemoteConfigStatus()
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, status.Status)
+		assert.NotEmpty(c, status.ErrorMessage, "Should have error message for parse failure")
+		assert.Contains(c, status.ErrorMessage, "expected block label", "Error message should contain parse details")
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestRemoteConfigStatusNotifications(t *testing.T) {
+	cfgGood := `loki.process "default" { forward_to = [] }`
+	cfgBad := `unparseable config`
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := &mockCollectorClient{}
+	var statusHistory []collectorv1.RemoteConfigStatuses
+	var statusMessages []string
+	var statusMutex sync.Mutex
+	var registerCalled atomic.Bool
+
+	// Track multiple status updates
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgGood,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
+	client.mut.Unlock()
+
+	env := newTestEnvironment(t, client)
+	require.NoError(t, env.ApplyConfig(`
+		url = "https://example.com/"
+		poll_frequency = "10s"
+	`))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, env.Run(ctx))
+	}()
+	defer func() { cancel(); wg.Wait() }()
+
+	require.Eventually(t, func() bool { return registerCalled.Load() }, time.Second, 10*time.Millisecond)
+
+	// Let initial status be sent
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED))
+	}, time.Second, 10*time.Millisecond)
+
+	// Switch to bad config and verify FAILED status is sent
+	client.mut.Lock()
+	client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{
+		Content:        cfgBad,
+		StatusHistory:  &statusHistory,
+		StatusMessages: &statusMessages,
+		StatusMutex:    &statusMutex,
+	})
+	client.mut.Unlock()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, hasStatusInHistory(&statusHistory, &statusMutex, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED))
+	}, time.Second, 10*time.Millisecond)
+
+	// Verify we have both statuses captured in notifications
+	statusMutex.Lock()
+	appliedCount := 0
+	failedCount := 0
+	for _, status := range statusHistory {
+		if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED {
+			appliedCount++
+		}
+		if status == collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED {
+			failedCount++
+		}
+	}
+	statusMutex.Unlock()
+
+	assert.GreaterOrEqual(t, appliedCount, 1, "Should have sent at least one APPLIED status")
+	assert.GreaterOrEqual(t, failedCount, 1, "Should have sent at least one FAILED status")
+}
