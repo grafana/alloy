@@ -276,13 +276,16 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 
 	response, err := s.apiClient.GetConfig(s.getContext(), &connect.Request[collectorv1.GetConfigRequest]{
 		Msg: &collectorv1.GetConfigRequest{
-			Id:              s.args.ID,
-			LocalAttributes: s.attrs,
-			Hash:            s.cm.getRemoteHash(),
+			Id:                 s.args.ID,
+			LocalAttributes:    s.attrs,
+			Hash:               s.cm.getRemoteHash(),
+			RemoteConfigStatus: s.cm.getRemoteConfigStatusForRequest(),
 		},
 	})
 
 	if err != nil {
+		// Reset lastSentConfigStatus since the API request failed and status wasn't actually sent
+		s.cm.resetLastSentConfigStatus()
 		s.opts.Logger.Log("level", "error", "msg", "failed to get configuration from remote server", "id", s.args.ID, "err", err)
 		return nil, err
 	}
