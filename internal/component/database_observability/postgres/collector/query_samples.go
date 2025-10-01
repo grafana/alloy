@@ -23,6 +23,12 @@ const (
 	OP_WAIT_EVENT         = "wait_event"
 )
 
+// Explicit state constants for readability
+const (
+	stateActive = "active"
+	stateIdle   = "idle"
+)
+
 // SampleKey uniquely identifies a running sample (query execution instance)
 // while it is in a non-idle state.
 type SampleKey struct {
@@ -31,24 +37,12 @@ type SampleKey struct {
 	XID     int32
 }
 
-// WaitEventOccurrence tracks a continuous occurrence of the same wait event
-// with the same blocked_by_pids set.
-type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this occurrence
-	LastState     string
-	LastTimestamp time.Time
-}
-
 // SampleState holds the in-memory buffered state for a running sample.
 type SampleState struct {
-	LastRow        QuerySamplesInfo
-	LastSeenAt     time.Time
-	LastCpuTime    string // last cpu_time observed under CPU condition
-	WaitEvents     []WaitEventOccurrence
-	OpenOccurrence *int // index into WaitEvents slice; nil if none open
+	LastRow     QuerySamplesInfo
+	LastSeenAt  time.Time
+	LastCpuTime string // last cpu_time observed under CPU condition
+	tracker     WaitEventTracker
 }
 
 const selectPgStatActivity = `
@@ -202,9 +196,9 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	rows, err := c.queryPgStatActivity(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return err
 	}
 	defer rows.Close()
 
@@ -212,51 +206,25 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	idleKeys := map[SampleKey]struct{}{}
 
 	for rows.Next() {
-		sample := QuerySamplesInfo{}
-		err := rows.Scan(
-			&sample.Now,
-			&sample.DatabaseName,
-			&sample.PID,
-			&sample.LeaderPID,
-			&sample.Username,
-			&sample.ApplicationName,
-			&sample.ClientAddr,
-			&sample.ClientPort,
-			&sample.BackendType,
-			&sample.BackendStart,
-			&sample.BackendXID,
-			&sample.BackendXmin,
-			&sample.XactStart,
-			&sample.State,
-			&sample.StateChange,
-			&sample.WaitEventType,
-			&sample.WaitEvent,
-			&sample.BlockedByPIDs,
-			&sample.QueryStart,
-			&sample.QueryID,
-			&sample.Query,
-		)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", err)
+		sample, scanErr := c.scanRow(rows)
+		if scanErr != nil {
+			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
 
-		err = c.validateQuerySample(sample)
-		if err != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", err)
+		key, isIdle, procErr := c.processRow(sample)
+		if procErr != nil {
+			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
 
-		key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, XID: sample.BackendXID.Int32}
-		if sample.State.Valid && sample.State.String == "idle" {
-			// Update last snapshot and mark for finalization
-			c.upsertSampleIdle(key, sample)
+		if isIdle {
+			c.upsertIdleSample(key, sample)
 			idleKeys[key] = struct{}{}
 			continue
 		}
 
-		// Process active row (state != 'idle')
-		c.upsertSampleActive(key, sample)
+		c.upsertActiveSample(key, sample)
 		activeKeys[key] = struct{}{}
 	}
 
@@ -265,6 +233,62 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
+	c.finalizeSamples(activeKeys, idleKeys)
+	return nil
+}
+
+// queryPgStatActivity executes the query against pg_stat_activity
+func (c *QuerySamples) queryPgStatActivity(ctx context.Context) (*sql.Rows, error) {
+	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pg_stat_activity: %w", err)
+	}
+	return rows, nil
+}
+
+// scanRow reads a single row into QuerySamplesInfo
+func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
+	sample := QuerySamplesInfo{}
+	err := rows.Scan(
+		&sample.Now,
+		&sample.DatabaseName,
+		&sample.PID,
+		&sample.LeaderPID,
+		&sample.Username,
+		&sample.ApplicationName,
+		&sample.ClientAddr,
+		&sample.ClientPort,
+		&sample.BackendType,
+		&sample.BackendStart,
+		&sample.BackendXID,
+		&sample.BackendXmin,
+		&sample.XactStart,
+		&sample.State,
+		&sample.StateChange,
+		&sample.WaitEventType,
+		&sample.WaitEvent,
+		&sample.BlockedByPIDs,
+		&sample.QueryStart,
+		&sample.QueryID,
+		&sample.Query,
+	)
+	return sample, err
+}
+
+// processRow validates and classifies a row, returning its sample key and idle flag
+func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, error) {
+	if err := c.validateQuerySample(sample); err != nil {
+		return SampleKey{}, false, err
+	}
+	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, XID: sample.BackendXID.Int32}
+	if sample.State.Valid && sample.State.String == stateIdle {
+		return key, true, nil
+	}
+	return key, false, nil
+}
+
+// finalizeSamples emits samples that turned idle or disappeared
+func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct{}) {
 	// Finalize samples that turned idle in this scrape
 	for key := range idleKeys {
 		if state, ok := c.samples[key]; ok {
@@ -283,8 +307,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key, state)
 	}
-
-	return nil
 }
 
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
@@ -299,7 +321,97 @@ func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	return nil
 }
 
-// --- In-memory buffering helpers ---
+// --- Helper types and functions (lower priority for readability) ---
+
+// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
+type WaitEventIdentity struct {
+	eventType string
+	event     string
+	blockedBy []int64 // normalized
+}
+
+// Normalize ensures the blockedBy set is sorted unique
+func (w *WaitEventIdentity) Normalize() {
+	w.blockedBy = normalizePIDs(pq.Int64Array(w.blockedBy))
+}
+
+// Equal compares identity ignoring order/duplicates of blocked_by set
+func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
+	if w.eventType != other.eventType || w.event != other.event {
+		return false
+	}
+	return equalPIDSets(w.blockedBy, other.blockedBy)
+}
+
+// WaitEventTracker manages a sequence of wait-event occurrences for a sample
+type WaitEventTracker struct {
+	waitEvents []WaitEventOccurrence
+	openIdx    int // -1 means none open
+}
+
+// WaitEventOccurrence tracks a continuous occurrence of the same wait event
+// with the same blocked_by_pids set.
+type WaitEventOccurrence struct {
+	WaitEventType string
+	WaitEvent     string
+	BlockedByPIDs []int64 // normalized set (sorted, unique)
+	LastWaitTime  string  // last stateDuration seen for this wait event
+	LastState     string
+	LastTimestamp time.Time
+}
+
+func newWaitEventTracker() WaitEventTracker {
+	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
+}
+
+// Update ingests a new row and updates or opens/closes wait event occurrences accordingly
+func (t *WaitEventTracker) Update(sample QuerySamplesInfo, now time.Time) {
+	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
+		current := WaitEventIdentity{
+			eventType: sample.WaitEventType.String,
+			event:     sample.WaitEvent.String,
+			blockedBy: normalizePIDs(sample.BlockedByPIDs),
+		}
+		if t.openIdx >= 0 {
+			we := t.waitEvents[t.openIdx]
+			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
+			if existing.Equal(current) {
+				// continue same wait event; update last values
+				we.LastWaitTime = calculateDuration(sample.StateChange, now)
+				we.LastState = sample.State.String
+				we.LastTimestamp = now
+				t.waitEvents[t.openIdx] = we
+				return
+			}
+			// close current wait event
+			t.openIdx = -1
+		}
+
+		// start new wait event
+		newOcc := WaitEventOccurrence{
+			WaitEventType: current.eventType,
+			WaitEvent:     current.event,
+			BlockedByPIDs: current.blockedBy,
+			LastWaitTime:  calculateDuration(sample.StateChange, now),
+			LastState:     sample.State.String,
+			LastTimestamp: now,
+		}
+		t.waitEvents = append(t.waitEvents, newOcc)
+		t.openIdx = len(t.waitEvents) - 1
+		return
+	}
+
+	// No wait event on this row; close any open wait event
+	if t.openIdx >= 0 {
+		t.openIdx = -1
+	}
+}
+
+// CloseOpen closes any open wait event
+func (t *WaitEventTracker) CloseOpen() { t.openIdx = -1 }
+
+// WaitEvents returns the tracked wait events
+func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
 
 // normalizePIDs returns a sorted unique slice for stable set comparisons/printing.
 func normalizePIDs(pids pq.Int64Array) []int64 {
@@ -327,80 +439,68 @@ func equalPIDSets(a, b []int64) bool {
 	return true
 }
 
-func (c *QuerySamples) upsertSampleActive(key SampleKey, sample QuerySamplesInfo) {
+func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
 	// Upsert state
 	state, ok := c.samples[key]
 	if !ok {
-		state = &SampleState{}
+		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-
-	// CPU condition: no wait event and state == "active"
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == "active" {
-		state.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-
-	// Wait event occurrences
-	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
-		currentType := sample.WaitEventType.String
-		currentEvent := sample.WaitEvent.String
-		normalized := normalizePIDs(sample.BlockedByPIDs)
-
-		if state.OpenOccurrence != nil {
-			idx := *state.OpenOccurrence
-			occ := state.WaitEvents[idx]
-			if occ.WaitEventType == currentType && occ.WaitEvent == currentEvent && equalPIDSets(occ.BlockedByPIDs, normalized) {
-				// continue same occurrence; update last values
-				occ.LastWaitTime = calculateDuration(sample.StateChange, sample.Now)
-				occ.LastState = sample.State.String
-				occ.LastTimestamp = sample.Now
-				state.WaitEvents[idx] = occ
-				return
-			}
-			// close current occurrence
-			state.OpenOccurrence = nil
-		}
-
-		// start new occurrence
-		newOcc := WaitEventOccurrence{
-			WaitEventType: currentType,
-			WaitEvent:     currentEvent,
-			BlockedByPIDs: normalized,
-			LastWaitTime:  calculateDuration(sample.StateChange, sample.Now),
-			LastState:     sample.State.String,
-			LastTimestamp: sample.Now,
-		}
-		state.WaitEvents = append(state.WaitEvents, newOcc)
-		idx := len(state.WaitEvents) - 1
-		state.OpenOccurrence = &idx
-		return
-	}
-
-	// No wait event on this row; close any open occurrence
-	if state.OpenOccurrence != nil {
-		state.OpenOccurrence = nil
-	}
+	state.UpdateCpuTimeIfActive(sample)
+	state.tracker.Update(sample, sample.Now)
 }
 
-func (c *QuerySamples) upsertSampleIdle(key SampleKey, sample QuerySamplesInfo) {
+func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) {
 	state, ok := c.samples[key]
 	if !ok {
-		state = &SampleState{}
+		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-	// Close any open occurrence
-	if state.OpenOccurrence != nil {
-		state.OpenOccurrence = nil
-	}
+	// Close any open wait event
+	state.tracker.CloseOpen()
 }
 
 // emitAndDeleteSample builds final entries for a sample and removes it from memory.
 func (c *QuerySamples) emitAndDeleteSample(key SampleKey, state *SampleState) {
-	// Build OP_QUERY_SAMPLE labels using the last snapshot
+	// Build and emit OP_QUERY_SAMPLE
+	sampleLabels := c.buildQuerySampleLabels(state)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE,
+		sampleLabels,
+		state.LastSeenAt.UnixNano(),
+	)
+
+	// Emit OP_WAIT_EVENT entries for each wait event
+	for _, we := range state.tracker.WaitEvents() {
+		if we.WaitEventType == "" || we.WaitEvent == "" {
+			continue
+		}
+		waitEventLabels := c.buildWaitEventLabels(state, we)
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			OP_WAIT_EVENT,
+			waitEventLabels,
+			we.LastTimestamp.UnixNano(),
+		)
+	}
+
+	delete(c.samples, key)
+}
+
+// UpdateCpuTimeIfActive applies CPU sampling rule and stores last observed cpu_time
+func (s *SampleState) UpdateCpuTimeIfActive(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// buildQuerySampleLabels constructs the labels string for OP_QUERY_SAMPLE
+func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
@@ -422,7 +522,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey, state *SampleState) {
 		queryText = redact(queryText)
 	}
 
-	sampleLabels := fmt.Sprintf(
+	labels := fmt.Sprintf(
 		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
@@ -440,47 +540,31 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey, state *SampleState) {
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
-
-	// Append cpu_time if observed at least once during this sample
 	if state.LastCpuTime != "" {
-		sampleLabels = fmt.Sprintf(`%s cpu_time="%s"`, sampleLabels, state.LastCpuTime)
+		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
+	return labels
+}
 
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		state.LastSeenAt.UnixNano(),
+// buildWaitEventLabels constructs the labels string for OP_WAIT_EVENT
+func (c *QuerySamples) buildWaitEventLabels(state *SampleState, occ WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", occ.WaitEventType, occ.WaitEvent)
+	queryText := state.LastRow.Query.String
+	if !c.disableQueryRedaction {
+		queryText = redact(queryText)
+	}
+	return fmt.Sprintf(
+		`datname="%s" user="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		occ.LastState,
+		occ.LastWaitTime,
+		occ.WaitEventType,
+		occ.WaitEvent,
+		waitEventFullName,
+		occ.BlockedByPIDs,
+		state.LastRow.QueryID.Int64,
+		queryText,
 	)
-
-	// Emit OP_WAIT_EVENT entries for each occurrence
-	for _, occ := range state.WaitEvents {
-		if occ.WaitEventType == "" || occ.WaitEvent == "" {
-			continue
-		}
-		waitEventFullName := fmt.Sprintf("%s:%s", occ.WaitEventType, occ.WaitEvent)
-		waitEventLabels := fmt.Sprintf(
-			`datname="%s" user="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
-			state.LastRow.DatabaseName.String,
-			state.LastRow.Username.String,
-			state.LastRow.BackendType.String,
-			occ.LastState,
-			occ.LastWaitTime,
-			occ.WaitEventType,
-			occ.WaitEvent,
-			waitEventFullName,
-			occ.BlockedByPIDs,
-			state.LastRow.QueryID.Int64,
-			queryText,
-		)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			occ.LastTimestamp.UnixNano(),
-		)
-	}
-
-	delete(c.samples, key)
 }
