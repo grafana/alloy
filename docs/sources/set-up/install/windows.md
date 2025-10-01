@@ -58,7 +58,7 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
    ```
 
    ```powershell
-   <PATH>\alloy-installer-windows-amd64.exe /S
+   & <PATH>\alloy-installer-windows-amd64.exe /S
    ```
 
    {{< /code >}}
@@ -110,7 +110,7 @@ To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the
 ```
 
 ```powershell
-${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe
+& ${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe
 ```
 
 {{< /code >}}
@@ -142,7 +142,7 @@ To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as
 ```
 
 ```powershell
-${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe /S
+& ${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe /S
 ```
 
 {{< /code >}}
