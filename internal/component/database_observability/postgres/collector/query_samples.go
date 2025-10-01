@@ -23,27 +23,10 @@ const (
 	OP_WAIT_EVENT         = "wait_event"
 )
 
-// Explicit state constants for readability
 const (
 	stateActive = "active"
 	stateIdle   = "idle"
 )
-
-// SampleKey uniquely identifies a running sample (query execution instance)
-// while it is in a non-idle state.
-type SampleKey struct {
-	PID     int
-	QueryID int64
-	XID     int32
-}
-
-// SampleState holds the in-memory buffered state for a running sample.
-type SampleState struct {
-	LastRow     QuerySamplesInfo
-	LastSeenAt  time.Time
-	LastCpuTime string // last cpu_time observed under CPU condition
-	tracker     WaitEventTracker
-}
 
 const selectPgStatActivity = `
 	SELECT
@@ -129,6 +112,69 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 }
 
+// SampleKey uniquely identifies a running sample (query execution instance)
+// while it is in a non-idle state.
+type SampleKey struct {
+	PID     int
+	QueryID int64
+	XID     int32
+}
+
+// SampleState holds the in-memory buffered state for a running sample.
+type SampleState struct {
+	LastRow     QuerySamplesInfo
+	LastSeenAt  time.Time
+	LastCpuTime string // last cpu_time observed under CPU condition
+	tracker     WaitEventTracker
+}
+
+// WaitEventTracker manages a sequence of wait-event occurrences for a sample
+type WaitEventTracker struct {
+	waitEvents []WaitEventOccurrence
+	openIdx    int // -1 means none open
+}
+
+func newWaitEventTracker() WaitEventTracker {
+	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
+}
+
+// CloseOpen closes any open wait event
+func (t *WaitEventTracker) CloseOpen() { t.openIdx = -1 }
+
+// WaitEvents returns the tracked wait events
+func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
+
+// WaitEventOccurrence tracks a continuous occurrence of the same wait event
+// with the same blocked_by_pids set.
+type WaitEventOccurrence struct {
+	WaitEventType string
+	WaitEvent     string
+	BlockedByPIDs []int64 // normalized set (sorted, unique)
+	LastWaitTime  string  // last stateDuration seen for this wait event
+	LastState     string
+	LastTimestamp time.Time
+}
+
+// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
+type WaitEventIdentity struct {
+	eventType string
+	event     string
+	blockedBy []int64 // normalized
+}
+
+// Normalize ensures the blockedBy set is sorted unique
+func (w *WaitEventIdentity) Normalize() {
+	w.blockedBy = normalizePIDs(pq.Int64Array(w.blockedBy))
+}
+
+// Equal compares identity ignoring order/duplicates of blocked_by set
+func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
+	if w.eventType != other.eventType || w.event != other.event {
+		return false
+	}
+	return equalPIDSets(w.blockedBy, other.blockedBy)
+}
+
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
 		dbConnection:          args.DB,
@@ -185,14 +231,6 @@ func (c *QuerySamples) Stopped() bool {
 // Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
 	c.cancel()
-}
-
-// calculateDuration returns a formatted duration string between a nullable time and current time
-func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
-	if nullableTime.Valid {
-		return currentTime.Sub(nullableTime.Time).Round(time.Millisecond).String()
-	}
-	return ""
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
@@ -321,51 +359,22 @@ func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	return nil
 }
 
-// --- Helper types and functions (lower priority for readability) ---
-
-// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
-type WaitEventIdentity struct {
-	eventType string
-	event     string
-	blockedBy []int64 // normalized
-}
-
-// Normalize ensures the blockedBy set is sorted unique
-func (w *WaitEventIdentity) Normalize() {
-	w.blockedBy = normalizePIDs(pq.Int64Array(w.blockedBy))
-}
-
-// Equal compares identity ignoring order/duplicates of blocked_by set
-func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
-	if w.eventType != other.eventType || w.event != other.event {
-		return false
+// upsertActiveSample upserts the state for an active sample
+func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
+	// Upsert state
+	state, ok := c.samples[key]
+	if !ok {
+		state = &SampleState{tracker: newWaitEventTracker()}
+		c.samples[key] = state
 	}
-	return equalPIDSets(w.blockedBy, other.blockedBy)
+	state.LastRow = sample
+	state.LastSeenAt = sample.Now
+	state.updateCpuTimeIfActive(sample)
+	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
-// WaitEventTracker manages a sequence of wait-event occurrences for a sample
-type WaitEventTracker struct {
-	waitEvents []WaitEventOccurrence
-	openIdx    int // -1 means none open
-}
-
-// WaitEventOccurrence tracks a continuous occurrence of the same wait event
-// with the same blocked_by_pids set.
-type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastState     string
-	LastTimestamp time.Time
-}
-
-func newWaitEventTracker() WaitEventTracker {
-	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
-}
-
-// Update ingests a new row and updates or opens/closes wait event occurrences accordingly
-func (t *WaitEventTracker) Update(sample QuerySamplesInfo, now time.Time) {
+// upsertWaitEvent ingests a new row and updates or opens/closes wait event occurrences accordingly
+func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time) {
 	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
 		current := WaitEventIdentity{
 			eventType: sample.WaitEventType.String,
@@ -407,51 +416,7 @@ func (t *WaitEventTracker) Update(sample QuerySamplesInfo, now time.Time) {
 	}
 }
 
-// CloseOpen closes any open wait event
-func (t *WaitEventTracker) CloseOpen() { t.openIdx = -1 }
-
-// WaitEvents returns the tracked wait events
-func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
-
-// normalizePIDs returns a sorted unique slice for stable set comparisons/printing.
-func normalizePIDs(pids pq.Int64Array) []int64 {
-	set := map[int64]struct{}{}
-	for _, pid := range pids {
-		set[int64(pid)] = struct{}{}
-	}
-	out := make([]int64, 0, len(set))
-	for pid := range set {
-		out = append(out, pid)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	return out
-}
-
-func equalPIDSets(a, b []int64) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
-	// Upsert state
-	state, ok := c.samples[key]
-	if !ok {
-		state = &SampleState{tracker: newWaitEventTracker()}
-		c.samples[key] = state
-	}
-	state.LastRow = sample
-	state.LastSeenAt = sample.Now
-	state.UpdateCpuTimeIfActive(sample)
-	state.tracker.Update(sample, sample.Now)
-}
-
+// upsertIdleSample upserts the state for an idle sample
 func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) {
 	state, ok := c.samples[key]
 	if !ok {
@@ -492,8 +457,8 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey, state *SampleState) {
 	delete(c.samples, key)
 }
 
-// UpdateCpuTimeIfActive applies CPU sampling rule and stores last observed cpu_time
-func (s *SampleState) UpdateCpuTimeIfActive(sample QuerySamplesInfo) {
+// updateCpuTimeIfActive applies CPU sampling rule and stores last observed cpu_time
+func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
@@ -567,4 +532,38 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, occ WaitEventOcc
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
+}
+
+// calculateDuration returns a formatted duration string between a nullable time and current time
+func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
+	if nullableTime.Valid {
+		return currentTime.Sub(nullableTime.Time).Round(time.Millisecond).String()
+	}
+	return ""
+}
+
+// normalizePIDs returns a sorted unique slice for stable set comparisons/printing.
+func normalizePIDs(pids pq.Int64Array) []int64 {
+	set := map[int64]struct{}{}
+	for _, pid := range pids {
+		set[int64(pid)] = struct{}{}
+	}
+	out := make([]int64, 0, len(set))
+	for pid := range set {
+		out = append(out, pid)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+func equalPIDSets(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
