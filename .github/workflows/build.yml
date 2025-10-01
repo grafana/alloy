@@ -170,10 +170,18 @@ jobs:
       - name: Get GitHub App details
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         id: get-app
+        env:
+          ALLOYBOT_APP_ID: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          ALLOYBOT_PRIVATE_KEY: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
         with:
           github-token: ${{ steps.get-token.outputs.token }}
           script: |
-            const { data: app } = await github.rest.apps.getAuthenticated();
+            import { App } from 'octokit';
+            const app = new App({
+              appId: process.env.ALLOYBOT_APP_ID,
+              privateKey: process.env.ALLOYBOT_PRIVATE_KEY,
+            });
+            const { data: app } = await app.octokit.apps.getAuthenticated();
             core.setOutput('app-id', app.id);
             core.setOutput('app-login', `${app.slug}[bot]`);
 
