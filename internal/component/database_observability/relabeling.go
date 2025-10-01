@@ -3,13 +3,12 @@ package database_observability
 import "github.com/grafana/alloy/internal/component/common/relabel"
 
 func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
-	rs := make([]*relabel.Config, 1)
 	r := relabel.DefaultRelabelConfig // use default to avoid defining all fields
-
 	r.Replacement = serverID
 	r.TargetLabel = "server_id"
 	r.Action = relabel.Replace
-	rs[0] = &r
+
+	rs := []*relabel.Config{&r}
 
 	if cp != nil {
 		if cp.AWS != nil {
