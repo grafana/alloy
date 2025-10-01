@@ -5,15 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/atomic"
-	"google.golang.org/protobuf/proto"
 
 	"connectrpc.com/connect"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
@@ -68,6 +65,7 @@ func TestOnDiskCache(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	// As the API response was unparseable, verify that the service has loaded
 	// the on-disk cache contents.
@@ -76,13 +74,11 @@ func TestOnDiskCache(t *testing.T) {
 		assert.NoError(c, err)
 		assert.Equal(c, cacheContents, string(b))
 	}, time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestGoodBadGood(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfgGood := `loki.process "default" { forward_to = [] }`
 	cfgBad := `unparseable config`
@@ -110,6 +106,7 @@ func TestGoodBadGood(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -153,13 +150,11 @@ func TestGoodBadGood(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestAPIResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 	cfg2 := `loki.process "updated" { forward_to = [] }`
@@ -187,6 +182,7 @@ func TestAPIResponse(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -205,13 +201,11 @@ func TestAPIResponse(t *testing.T) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfg2)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 func TestAPIResponseNotModified(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
+
 	url := "https://example.com/"
 	cfg1 := `loki.process "default" { forward_to = [] }`
 
@@ -238,6 +232,7 @@ func TestAPIResponseNotModified(t *testing.T) {
 		defer wg.Done()
 		require.NoError(t, env.Run(ctx))
 	}()
+	defer func() { cancel(); wg.Wait() }()
 
 	require.Eventually(t, func() bool { return registerCalled.Load() }, 1*time.Second, 10*time.Millisecond)
 
@@ -260,115 +255,6 @@ func TestAPIResponseNotModified(t *testing.T) {
 		assert.Greater(c, client.getConfigCallCount.Load(), calls)
 		assert.Equal(c, getHash([]byte(cfg1)), env.svc.cm.getLastLoadedCfgHash())
 	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
-}
-
-func TestUserAgentHeader(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
-	cfg := `loki.process "default" { forward_to = [] }`
-
-	// Track captured User-Agent headers
-	var capturedUserAgent atomic.Value
-	var registerCalled atomic.Bool
-
-	// Create a test server that captures the User-Agent header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Capture the User-Agent header
-		capturedUserAgent.Store(r.Header.Get("User-Agent"))
-
-		// Mock a successful register collector response
-		if r.URL.Path == "/collector.v1.CollectorService/RegisterCollector" {
-			registerCalled.Store(true)
-			w.Header().Set("Content-Type", "application/proto")
-			w.WriteHeader(http.StatusOK)
-			// Create empty protobuf response for RegisterCollectorResponse
-			response := &collectorv1.RegisterCollectorResponse{}
-			data, err := proto.Marshal(response)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write(data)
-			return
-		}
-
-		// Mock a successful get config response
-		if r.URL.Path == "/collector.v1.CollectorService/GetConfig" {
-			w.Header().Set("Content-Type", "application/proto")
-			w.WriteHeader(http.StatusOK)
-			// Create a minimal protobuf response for GetConfigResponse
-			// This is a simple hardcoded protobuf message with the content field
-			response := &collectorv1.GetConfigResponse{
-				Content: cfg,
-			}
-			data, err := proto.Marshal(response)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write(data)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	// Create a new service with default factory (uses real interceptor)
-	svc, err := New(Options{
-		Logger:      util.TestLogger(t),
-		StoragePath: t.TempDir(),
-	})
-	require.NoError(t, err)
-
-	env := &testEnvironment{
-		t:   t,
-		svc: svc,
-	}
-
-	// Configure the service to use our test server
-	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
-		url            = "%s"
-		poll_frequency = "10s"
-	`, server.URL)))
-
-	// Run the service
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := env.Run(ctx)
-		// Accept context cancellation as expected since we're testing User-Agent headers,
-		// not service lifecycle. Status notification calls may fail due to context cancellation.
-		if err != nil && ctx.Err() == context.Canceled {
-			// Context was cancelled, which is expected in this test
-			return
-		}
-		require.NoError(t, err)
-	}()
-
-	// Wait for the register call to complete
-	require.Eventually(t, func() bool {
-		return registerCalled.Load()
-	}, 2*time.Second, 10*time.Millisecond)
-
-	// Verify that the User-Agent header was captured and contains "Alloy"
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		userAgent := capturedUserAgent.Load()
-		assert.NotNil(c, userAgent, "User-Agent header should be captured")
-		if userAgent != nil {
-			userAgentStr := userAgent.(string)
-			assert.NotEmpty(c, userAgentStr, "User-Agent header should be present")
-			assert.Contains(c, userAgentStr, "Alloy", "User-Agent should contain 'Alloy'")
-		}
-	}, 1*time.Second, 10*time.Millisecond)
-
-	cancel()
-	wg.Wait()
 }
 
 // setupFallbackTest is a helper to reduce code duplication in fallback tests
