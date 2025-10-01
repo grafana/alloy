@@ -457,8 +457,8 @@ func (cm *configManager) getRemoteConfigStatus() *collectorv1.RemoteConfigStatus
 	return cm.copyRemoteConfigStatus()
 }
 
-// getRemoteConfigStatusForRequest returns the remote config status only if it should be sent
-// (first call or status has changed since last sent).
+// getRemoteConfigStatusForRequest returns the remote config status if
+// lastSentConfigStatus is nil or if the status has changed.
 func (cm *configManager) getRemoteConfigStatusForRequest() *collectorv1.RemoteConfigStatus {
 	cm.mut.Lock()
 	defer cm.mut.Unlock()
