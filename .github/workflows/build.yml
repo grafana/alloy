@@ -176,12 +176,12 @@ jobs:
         with:
           github-token: ${{ steps.get-token.outputs.token }}
           script: |
-            const { App } = require('octokit');
+            const { App } = require('@octokit/app');
             const app = new App({
               appId: process.env.ALLOYBOT_APP_ID,
               privateKey: process.env.ALLOYBOT_PRIVATE_KEY,
             });
-            const { data: result } = await app.octokit.apps.getAuthenticated();
+            const { data: result } = await app.octokit.rest.apps.getAuthenticated();
             core.setOutput('app-id', result.id);
             core.setOutput('app-login', `${result.slug}[bot]`);
 
