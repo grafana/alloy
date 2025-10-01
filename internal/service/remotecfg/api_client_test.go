@@ -312,7 +312,7 @@ func TestAgentInterceptor_WrapUnary(t *testing.T) {
 	req := connect.NewRequest(&collectorv1.GetConfigRequest{})
 
 	// Call the wrapped function
-	_, err := wrappedFunc(context.Background(), req)
+	_, err := wrappedFunc(t.Context(), req)
 
 	require.NoError(t, err)
 	assert.Equal(t, interceptor.agent, capturedUserAgent)

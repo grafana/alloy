@@ -76,6 +76,9 @@ type configManager struct {
 
 	// remoteConfigStatus tracks the current status of the remote configuration
 	remoteConfigStatus *collectorv1.RemoteConfigStatus
+
+	// lastSentConfigStatus tracks the last status sent to the server to avoid redundant updates
+	lastSentConfigStatus *collectorv1.RemoteConfigStatus
 }
 
 func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, ctrl service.Controller, configPath string) *configManager {
@@ -451,6 +454,42 @@ func (cm *configManager) getRemoteConfigStatus() *collectorv1.RemoteConfigStatus
 	defer cm.mut.RUnlock()
 
 	// Return a copy to avoid race conditions
+	return cm.copyRemoteConfigStatus()
+}
+
+// getRemoteConfigStatusForRequest returns the remote config status only if it should be sent
+// (first call or status has changed since last sent).
+func (cm *configManager) getRemoteConfigStatusForRequest() *collectorv1.RemoteConfigStatus {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+
+	// Send status if we've never sent one before (first call) or if it has changed
+	if cm.lastSentConfigStatus == nil ||
+		cm.remoteConfigStatus.Status != cm.lastSentConfigStatus.Status ||
+		cm.remoteConfigStatus.ErrorMessage != cm.lastSentConfigStatus.ErrorMessage {
+
+		// Update the last sent status to current status
+		cm.lastSentConfigStatus = cm.copyRemoteConfigStatus()
+
+		// Return a copy of the current status
+		return cm.copyRemoteConfigStatus()
+	}
+
+	// Status hasn't changed, don't send it
+	return nil
+}
+
+// resetLastSentConfigStatus resets the lastSentConfigStatus to nil so the status will be sent on next request.
+// This should be called when an API request fails to ensure the status is retried.
+func (cm *configManager) resetLastSentConfigStatus() {
+	cm.mut.Lock()
+	defer cm.mut.Unlock()
+	cm.lastSentConfigStatus = nil
+}
+
+// copyRemoteConfigStatus creates a copy of the current remoteConfigStatus to avoid race conditions.
+// This method assumes the caller already holds the appropriate lock.
+func (cm *configManager) copyRemoteConfigStatus() *collectorv1.RemoteConfigStatus {
 	return &collectorv1.RemoteConfigStatus{
 		Status:       cm.remoteConfigStatus.Status,
 		ErrorMessage: cm.remoteConfigStatus.ErrorMessage,
