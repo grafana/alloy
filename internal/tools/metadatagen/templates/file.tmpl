@@ -1,0 +1,15 @@
+// Code generated DO NOT EDIT
+package {{ .Package }}
+
+{{- if .Imports }}
+
+import (
+{{- range $i := .Imports }}
+	"{{ $i }}"	
+{{- end}}
+)
+{{- end }}
+
+{{- range $s := .Structs }}
+{{ $s }}
+{{- end}}

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+for dir in $(find . -type f -name "metadata.yml" -exec dirname {} \; | sort -u); do
+	go run ./internal/tools/metadatagen $dir > $dir/types.go
+	gofmt -w $dir/types.go
+done

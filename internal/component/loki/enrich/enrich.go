@@ -47,7 +47,7 @@ type Arguments struct {
 }
 
 type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr,optional"`
+	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
 type Component struct {

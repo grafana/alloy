@@ -32,6 +32,7 @@ arguments:
           type: string
       alloy:
         # TODO: Not sure how Fleet Management would validate this. It could just be a map.
+        type_source: "github.com/grafana/alloy/internal/component/discovery"
         type_override: "[]discovery.Target"
 
     labels_to_copy:
@@ -55,4 +56,5 @@ exports:
         A receiver that can be used to send logs to this component.
       type: object
       alloy:
+        type_source: "github.com/grafana/alloy/internal/component/common/loki"
         type_override: "loki.LogsReceiver"
