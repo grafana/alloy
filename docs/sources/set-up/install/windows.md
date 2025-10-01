@@ -18,7 +18,7 @@ To do a standard graphical install of {{< param "PRODUCT_NAME" >}} on Windows, p
 
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-1. Download and extract `alloy-installer-windows-amd64.exe.zip` or download `alloy-installer-windows-amd64.exe`.
+1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`.
 1. Double-click on `alloy-installer-windows-amd64.exe` to install {{< param "PRODUCT_NAME" >}}.
 
 The installer places {{< param "PRODUCT_NAME" >}} in the default directory `%PROGRAMFILES%\GrafanaLabs\Alloy`.
@@ -27,12 +27,20 @@ The installer places {{< param "PRODUCT_NAME" >}} in the default directory `%PRO
 
 To install {{< param "PRODUCT_NAME" >}} with WinGet, perform the following steps.
 
-1. Make sure that the [WinGet package manager](https://learn.microsoft.com/en-gb/windows/package-manager/winget/) is available.
-1. Run the following command as Administrator in PowerShell.
+1. Make sure that the [WinGet package manager](https://learn.microsoft.com/windows/package-manager/winget/) is installed.
+1. Run the following command.
+
+   {{< code >}}
+
+   ```cmd
+   winget install GrafanaLabs.Alloy
+   ```
 
    ```powershell
    winget install GrafanaLabs.Alloy
    ```
+
+   {{< /code >}}
 
 ## Silent install
 
@@ -40,12 +48,20 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 
 1. Navigate to the [releases page][releases] on GitHub.
 1. Scroll down to the **Assets** section.
-1. Download and extract `alloy-installer-windows-amd64.exe.zip` or download `alloy-installer-windows-amd64.exe`.
-1. Run the following command as Administrator in PowerShell.
+1. Download `alloy-installer-windows-amd64.exe` or download and extract `alloy-installer-windows-amd64.exe.zip`..
+1. Run the following command as Administrator.
+
+   {{< code >}}
+
+   ```cmd
+   <PATH>\alloy-installer-windows-amd64.exe /S
+   ```
 
    ```powershell
-   <PATH_TO_INSTALLER> /S
+   <PATH>\alloy-installer-windows-amd64.exe /S
    ```
+
+   {{< /code >}}
 
    Replace the following:
 
@@ -85,27 +101,51 @@ This includes any configuration files in the installation directory.
 
 ### Standard graphical uninstall
 
-To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the following command as Administrator in PowerShell.
+To uninstall {{< param "PRODUCT_NAME" >}}, use Add or Remove Programs or run the following command as Administrator.
 
-```powershell
+{{< code >}}
+
+```cmd
 %PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe
 ```
 
-### Uninstall with `winget`
+```powershell
+${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe
+```
 
-To install {{< param "PRODUCT_NAME" >}} with `winget`, run the following command as Administrator in PowerShell.
+{{< /code >}}
+
+### Uninstall with WinGet
+
+To install {{< param "PRODUCT_NAME" >}} with WinGet, run the following command.
+
+{{< code >}}
+
+```cmd
+winget uninstall GrafanaLabs.Alloy
+```
 
 ```powershell
 winget uninstall GrafanaLabs.Alloy
 ```
 
+{{< /code >}}
+
 ### Silent uninstall
 
-To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as Administrator in PowerShell.
+To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as Administrator.
 
-```powershell
+{{< code >}}
+
+```cmd
 %PROGRAMFILES%\GrafanaLabs\Alloy\uninstall.exe /S
 ```
+
+```powershell
+${env:PROGRAMFILES}\GrafanaLabs\Alloy\uninstall.exe /S
+```
+
+{{< /code >}}
 
 ## Next steps
 
