@@ -65,8 +65,9 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string) {
 			assert.NotEmpty(c, trace.TraceID, "Trace should have a valid trace ID")
 			assert.NotEmpty(c, trace.RootServiceName, "Trace should have a root service name")
 
-			// For eBPF-based tracing, very short operations may result in zero duration
-			// due to timing precision. Accept zero duration but log it for visibility.
+			// TODO (erikbaranowski): Some more intrusive changes may be possible to handle this
+			// but this will unblock CI flakiness. Consider looping on the traces and finding
+			// one with a non-zero duration or finding a way that trace duration isn't rounded to 0.
 			assert.GreaterOrEqual(c, trace.DurationMs, 0.0, "Trace duration should be non-negative")
 			if trace.DurationMs == 0.0 {
 				t.Logf("Note: Trace has zero duration (TraceID: %s). This can occur with very fast eBPF-instrumented operations.", trace.TraceID)
