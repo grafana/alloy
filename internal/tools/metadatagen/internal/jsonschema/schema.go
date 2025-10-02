@@ -86,7 +86,6 @@ func (r *Type) UnmarshalJSON(data []byte) error {
 	var multiType []string
 	if err := json.Unmarshal(data, &multiType); err != nil {
 		return err
-		return nil
 	}
 
 	*r = Type(multiType)
