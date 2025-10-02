@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
 
+- Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
+
 ### Bugfixes
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
