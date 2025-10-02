@@ -4,6 +4,8 @@ arguments:
   required:
     - forward_to
   properties:
+    allOf:
+      - "$ref": "../../../../../internal/component/common/net/schema.yaml"
     forward_to:
       description: >-
         List of receivers to send enriched logs to.
@@ -49,51 +51,3 @@ arguments:
       alloy:
         default_override: false
 
-    http:
-      description: >-
-        Configures the HTTP server that receives requests.
-      type: object
-      properties:
-        conn_limit:
-          description: >-
-            Maximum number of simultaneous HTTP connections. Defaults to no limit.
-          type: integer
-          default: 0
-
-        listen_address:
-          description: >-
-            Network address on which the server listens for new connections. Defaults to accepting all incoming connections.	
-          type: string
-          alloy:
-            # TODO: We shouldn't have to set this explicitly.
-            default_override: "\"\""
-
-        listen_port:
-          description: >-
-            Port number on which the server listens for new connections.	
-          type: integer
-          default: 8080
-
-        server_idle_timeout:
-          description: >-
-            Idle timeout for HTTP server.
-          type: string
-          default: "120s"
-          alloy:
-            type_override: "duration"
-
-        server_read_timeout:
-          description: >-
-            Read timeout for HTTP server.
-          type: string
-          default: "30s"
-          alloy:
-            type_override: "duration"
-
-        server_write_timeout:
-          description: >-
-            Write timeout for HTTP server.
-          type: string
-          default: "30s"
-          alloy:
-            type_override: "duration"
