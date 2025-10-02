@@ -112,23 +112,22 @@ func TestComprehensive(t *testing.T) {
 		app := exports.Receiver.Appender(ctx)
 
 		// 1. Send a gauge metric
-		gaugeLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testGauge"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "foo", Value: "bar"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		gaugeLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: "testGauge"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "foo", Value: "bar"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		_, err := app.Append(0, gaugeLabels, ts, 100.0)
 		require.NoError(t, err)
 
-		exemplarLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testGauge"},
-			{Name: "trace_id", Value: "123456789abcdef0123456789abcdef0"},
-			{Name: "span_id", Value: "123456789abcdef0"},
-		}
+		exemplarLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: "testGauge"},
+			labels.Label{Name: "trace_id", Value: "123456789abcdef0123456789abcdef0"},
+			labels.Label{Name: "span_id", Value: "123456789abcdef0"},
+		)
 		exemplar := exemplar.Exemplar{
 			Value:  2,
 			Ts:     ts,
@@ -139,15 +138,14 @@ func TestComprehensive(t *testing.T) {
 		require.NoError(t, err)
 
 		// 2. Send a counter/sum metric (using _total suffix to indicate it's a counter)
-		counterLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testCounter_total"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "service", Value: "api"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		counterLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: "testCounter_total"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "service", Value: "api"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		_, err = app.Append(0, counterLabels, ts, 42.0)
 		require.NoError(t, err)
 
@@ -159,70 +157,65 @@ func TestComprehensive(t *testing.T) {
 		counts := []float64{1, 3, 5, 8, 10} // cumulative counts
 
 		for i, bucket := range buckets {
-			bucketLabels := labels.Labels{
-				{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
-				{Name: model.JobLabel, Value: "testJob"},
-				{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-				{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
-				{Name: "method", Value: "GET"},
-				{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-				{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-				{Name: "otel_scope_version", Value: "v0.24.0"},
-			}
+			bucketLabels := labels.New(
+				labels.Label{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+				labels.Label{Name: model.JobLabel, Value: "testJob"},
+				labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+				labels.Label{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
+				labels.Label{Name: "method", Value: "GET"},
+				labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+				labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+			)
 			_, err = app.Append(0, bucketLabels, ts, counts[i])
 			require.NoError(t, err)
 		}
 
 		// Histogram +Inf bucket
-		infBucketLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "le", Value: "+Inf"},
-			{Name: "method", Value: "GET"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		infBucketLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: histogramName + "_bucket"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "le", Value: "+Inf"},
+			labels.Label{Name: "method", Value: "GET"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		_, err = app.Append(0, infBucketLabels, ts, 10.0)
 		require.NoError(t, err)
 
 		// Histogram count
-		countLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: histogramName + "_count"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "method", Value: "GET"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		countLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: histogramName + "_count"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "method", Value: "GET"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		_, err = app.Append(0, countLabels, ts, 10.0)
 		require.NoError(t, err)
 
 		// Histogram sum
-		sumLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: histogramName + "_sum"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "method", Value: "GET"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		sumLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: histogramName + "_sum"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "method", Value: "GET"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		_, err = app.Append(0, sumLabels, ts, 23.5)
 		require.NoError(t, err)
 
 		// 4. Send a native exponential histogram
-		nativeHistLabels := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testNativeHistogram"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "endpoint", Value: "/api/v1"},
-			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
-			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
-			{Name: "otel_scope_version", Value: "v0.24.0"},
-		}
+		nativeHistLabels := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: "testNativeHistogram"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "endpoint", Value: "/api/v1"},
+			labels.Label{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			labels.Label{Name: "otel_scope_version", Value: "v0.24.0"},
+		)
 		h := tsdbutil.GenerateTestHistogram(42)
 		_, err = app.AppendHistogram(0, nativeHistLabels, ts, h, nil)
 		require.NoError(t, err)
@@ -325,12 +318,12 @@ func TestHistogram(t *testing.T) {
 	// Use the exported Appendable to send histogram metrics to the receiver in the
 	// background.
 	go func() {
-		l := labels.Labels{
-			{Name: model.MetricNameLabel, Value: "testHistogram"},
-			{Name: model.JobLabel, Value: "testJob"},
-			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			{Name: "foo", Value: "bar"},
-		}
+		l := labels.New(
+			labels.Label{Name: model.MetricNameLabel, Value: "testHistogram"},
+			labels.Label{Name: model.JobLabel, Value: "testJob"},
+			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			labels.Label{Name: "foo", Value: "bar"},
+		)
 		ts := time.Now().Unix()
 
 		// Create a native histogram using the test utility
@@ -378,6 +371,62 @@ func TestHistogram(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+// TestDuplicateLabelNamesError verifies that metrics with duplicate label names
+// are properly rejected with the expected error message. This essentially verifies that
+// labels.New() will ensure that labels are sorted
+func TestDuplicateLabelNamesError(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args prometheus.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	// Override our settings so metrics get forwarded to metricCh.
+	metricCh := make(chan pmetric.Metrics)
+	args.Output = makeMetricsOutput(metricCh)
+
+	go func() {
+		err := ctrl.Run(ctx, args)
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(prometheus.Exports)
+
+	lbls := labels.New(
+		labels.Label{Name: model.MetricNameLabel, Value: "test_metric"},
+		labels.Label{Name: model.JobLabel, Value: "testJob"},
+		labels.Label{Name: model.MetricNameLabel, Value: "duplicate_name"}, // Duplicate __name__
+		labels.Label{Name: "instance", Value: "localhost:8080"})
+
+	ctx = context.Background()
+	ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
+	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
+	app := exports.Receiver.Appender(ctx)
+
+	ts := time.Now().Unix()
+
+	_, err = app.Append(0, lbls, ts, 42.0)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid sample: non-unique label names:")
 }
 
 // makeMetricsOutput returns a ConsumerArguments which will forward metrics to

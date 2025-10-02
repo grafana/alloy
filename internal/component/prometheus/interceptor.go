@@ -210,7 +210,7 @@ func (a *interceptappender) AppendHistogram(
 	if ref == 0 {
 		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
 	}
-
+	// TODO histograms are not currently tracked for staleness causing them to be held forever
 	if a.interceptor.onAppendHistogram != nil {
 		return a.interceptor.onAppendHistogram(ref, l, t, h, fh, a.child)
 	}

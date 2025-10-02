@@ -239,19 +239,18 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {
-	var lbls labels.Labels
+	builder := labels.NewScratchBuilder(len(e.Labels))
 	for k, v := range e.Labels {
-		lbls = append(lbls, labels.Label{
-			Name:  string(k),
-			Value: string(v),
-		})
+		builder.Add(string(k), string(v))
 	}
+	builder.Sort()
+	lbls := builder.Labels()
 	lbls, _ = relabel.Process(lbls, c.rcs...)
 
-	relabeled := make(model.LabelSet, len(lbls))
-	for i := range lbls {
-		relabeled[model.LabelName(lbls[i].Name)] = model.LabelValue(lbls[i].Value)
-	}
+	relabeled := make(model.LabelSet, lbls.Len())
+	lbls.Range(func(lbl labels.Label) {
+		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
 	return relabeled
 }
 

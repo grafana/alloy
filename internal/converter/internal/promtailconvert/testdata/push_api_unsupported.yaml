@@ -8,6 +8,8 @@ scrape_configs:
         http_server_read_timeout: 10s
         http_server_write_timeout: 10s
         http_server_idle_timeout: 10s
+        http_tls_config:
+          cert_file: /var/cert
 
         grpc_listen_address: 127.0.0.1
         grpc_listen_port: 9095
@@ -18,16 +20,14 @@ scrape_configs:
         grpc_server_max_recv_msg_size: 1000
         grpc_server_max_send_msg_size: 1000
         grpc_server_max_concurrent_streams: 100
+        grpc_tls_config:
+          cert_file: /var/cert
 
         # unsupported fields
         http_listen_network: tcp4
         grpc_listen_network: tcp4
         tls_cipher_suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
         tls_min_version: tls12
-        http_tls_config:
-          cert_file: /var/cert
-        grpc_tls_config:
-          cert_file: /var/cert
         register_instrumentation: true
         graceful_shutdown_timeout: 10s
         grpc_server_keepalive_time: 10s

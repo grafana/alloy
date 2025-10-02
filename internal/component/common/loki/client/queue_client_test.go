@@ -147,10 +147,9 @@ func TestQueueClient(t *testing.T) {
 				mod := i % tc.numSeries
 				qc.StoreSeries([]record.RefSeries{
 					{
-						Labels: labels.Labels{{
-							Name:  "app",
-							Value: fmt.Sprintf("test-%d", mod),
-						}},
+						Labels: labels.New(
+							labels.Label{Name: "app", Value: fmt.Sprintf("test-%d", mod)},
+						),
 						Ref: chunks.HeadSeriesRef(mod),
 					},
 				}, 0)
@@ -293,11 +292,10 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 			seriesId := j % bc.numSeries
 			qc.StoreSeries([]record.RefSeries{
 				{
-					Labels: labels.Labels{{
-						Name: "app",
+					Labels: labels.New(
 						// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
-						Value: fmt.Sprintf("series-%d", seriesId),
-					}},
+						labels.Label{Name: "app", Value: fmt.Sprintf("series-%d", seriesId)},
+					),
 					Ref: chunks.HeadSeriesRef(seriesId),
 				},
 			}, 0)

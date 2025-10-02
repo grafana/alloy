@@ -293,15 +293,16 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 		if origin == support.TraceOriginOffCPU {
 			metric = discovery.MetricValueOffCPU
 		}
-		labelsWithMetric := make([]labels.Label, 0, len(ls)+1)
-		labelsWithMetric = append(labelsWithMetric, ls...)
-		labelsWithMetric = append(labelsWithMetric, labels.Label{
-			Name:  labels.MetricName,
-			Value: metric,
+
+		builder := labels.NewScratchBuilder(ls.Len() + 1)
+		ls.Range(func(l labels.Label) {
+			builder.Add(l.Name, l.Value)
 		})
+		builder.Add(labels.MetricName, metric)
+		builder.Sort()
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),
-			Labels: labelsWithMetric,
+			Labels: builder.Labels(),
 			Origin: origin,
 		})
 	}

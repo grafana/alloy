@@ -36,6 +36,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -56,6 +57,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -76,6 +78,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -97,6 +100,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -118,6 +122,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -138,6 +143,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -158,6 +164,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -178,6 +185,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -198,6 +206,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QueryDetailsCollector:  false,
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 }
