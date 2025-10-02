@@ -143,6 +143,13 @@ func genAlloyStruct(fileArgs *FileArgs, path string, name string, s *jsonschema.
 		args.Fields = append(args.Fields, tp)
 	}
 
+	slices.SortFunc(args.Fields, func(a StructField, b StructField) int {
+		if a.Name > b.Name {
+			return 0
+		}
+		return 1
+	})
+
 	b := strings.Builder{}
 	if err := stmpl.Execute(&b, args); err != nil {
 		return fmt.Errorf("failed to build %s: %w", name, err)

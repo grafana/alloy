@@ -113,6 +113,11 @@ func (s *Schema) IsArray() bool {
 	return len(s.Type) == 1 && s.Type[0] == "array"
 }
 
+func (s *Schema) AlloyType() string {
+
+	return "attr"
+}
+
 func (s *Schema) GoType() string {
 	if s.Alloy.TypeOverride != "" {
 		return s.Alloy.TypeOverride
