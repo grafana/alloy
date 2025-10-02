@@ -136,9 +136,9 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.134.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.135.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.136.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.130.0 // TODO: Upgrade this when we can use a new version of otlptranslator
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.134.0
@@ -235,7 +235,7 @@ require (
 	go.opentelemetry.io/collector/config/configopaque v1.42.0
 	go.opentelemetry.io/collector/config/configoptional v0.136.0
 	go.opentelemetry.io/collector/config/configretry v1.42.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.134.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.136.0
 	go.opentelemetry.io/collector/config/configtls v1.42.0
 	go.opentelemetry.io/collector/confmap v1.42.0
 	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.40.0
@@ -245,7 +245,7 @@ require (
 	go.opentelemetry.io/collector/consumer v1.42.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.136.0
 	go.opentelemetry.io/collector/exporter v1.42.0
-	go.opentelemetry.io/collector/exporter/debugexporter v0.134.0
+	go.opentelemetry.io/collector/exporter/debugexporter v0.135.0
 	go.opentelemetry.io/collector/exporter/exporterhelper v0.136.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.136.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.136.0
@@ -767,7 +767,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.134.0 // indirect; indirect)
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.134.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.134.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.136.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/datadog v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.134.0 // indirect
@@ -1005,7 +1005,6 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.1 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
@@ -1086,6 +1085,30 @@ exclude (
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace k8s.io/client-go => k8s.io/client-go v0.32.6
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace k8s.io/api => k8s.io/api v0.32.6
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.135.0
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace go.opentelemetry.io/collector/pdata => go.opentelemetry.io/collector/pdata v1.41.0
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace go.opentelemetry.io/collector/pdata/testdata => go.opentelemetry.io/collector/pdata/testdata v0.135.0
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.33.5
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
+
+// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
+replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 
 // Do not remove this until the bug breaking backwards compatibility is resolved & included in walqueue: https://github.com/deneonet/benc/issues/13
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
