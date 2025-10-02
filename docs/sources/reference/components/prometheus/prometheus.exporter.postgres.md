@@ -73,6 +73,8 @@ The following collectors are available for selection:
 * `statio_user_tables`
 * `wal`
 * `xlog_location`
+* `stat_progress_vacuum`
+* `buffercache_summary`
 
 {{< /column-list >}}
 
@@ -89,6 +91,8 @@ By default, the following collectors are enabled:
 * `stat_user_tables`
 * `statio_user_tables`
 * `wal`
+* `roles`
+* `stat_progress_vacuum`
 
 {{< /column-list >}}
 
