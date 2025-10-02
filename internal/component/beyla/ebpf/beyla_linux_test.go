@@ -730,7 +730,6 @@ func TestConvert_Attributes(t *testing.T) {
 				Exclude: []string{"db_statement"},
 			},
 		},
-		DropMetricsUnresolvedIPs: true,
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
