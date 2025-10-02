@@ -95,8 +95,10 @@ func (r *Type) UnmarshalJSON(data []byte) error {
 type SchemaMap map[string]*Schema
 
 type Alloy struct {
-	TypeOverride string `json:"type_override"`
-	TypeSource   string `json:"type_source"`
+	Type            string `yaml:"type"`
+	TypeOverride    string `json:"type_override"`
+	TypeSource      string `json:"type_source"`
+	DefaultOverride string `yaml:"default_override,omitempty"`
 }
 
 func (s *Schema) IsObject() bool {

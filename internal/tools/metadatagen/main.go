@@ -28,19 +28,13 @@ var ftmpl = template.Must(template.New("tmpl").Parse(string(fileTmpl)))
 func main() {
 	if len(os.Args) < 1 {
 		fmt.Println("Missing required path")
+		fmt.Fprint(os.Stderr, "Missing required path\n")
 		os.Exit(1)
 	}
 
-	path := os.Args[1]
-
-	if path == "" {
-		fmt.Println("Missing required path")
-		os.Exit(1)
-	}
-
-	out, err := genFromMetadata(path)
+	out, err := genFromMetadata(os.Args[0])
 	if err != nil {
-		fmt.Printf("failed to generate code: %s", err)
+		fmt.Fprintf(os.Stderr, "failed to generate code: %s\n", err)
 		os.Exit(1)
 	}
 
