@@ -27,29 +27,6 @@ func init() {
 	})
 }
 
-// Arguments configures the loki.enrich component.
-type Arguments struct {
-	// The targets to use for enrichment
-	Targets []discovery.Target `alloy:"targets,attr"`
-
-	// Which label from targets to use for matching (e.g. "hostname", "ip")
-	TargetMatchLabel string `alloy:"target_match_label,attr"`
-
-	// Which label from logs to match against (e.g. "hostname", "ip")
-	// If not specified, TargetMatchLabel will be used
-	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
-
-	// List of labels to copy from discovered targets to logs. If empty, all labels will be copied.
-	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
-
-	// Where to forward logs after enrichment
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
-}
-
-type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
-}
-
 type Component struct {
 	opts    component.Options
 	args    Arguments

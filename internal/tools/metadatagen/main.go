@@ -32,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	out, err := genFromMetadata(os.Args[0])
+	out, err := genFromMetadata(os.Args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate code: %s\n", err)
 		os.Exit(1)
