@@ -34,8 +34,8 @@ Main (unreleased)
 - Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
 
 - Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
-- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. (@cristiangreco)
-  - This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements.
+
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
 ### Bugfixes
 
