@@ -4,7 +4,7 @@ arguments:
   required:
     - forward_to
   allOf:
-    - "$ref": "../../../../../internal/component/common/net/schema.yml"
+    - "$ref": "./subschema/schema.yml"
   properties:
     forward_to:
       description: >-

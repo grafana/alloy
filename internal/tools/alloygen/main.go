@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"slices"
@@ -64,7 +65,7 @@ func NewCommand() (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use: "gen",
+		Use: "generate",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runOnce(args[0], args[1])
 		},
@@ -81,6 +82,9 @@ func NewCommand() (*cobra.Command, error) {
 }
 
 func runOnce(ymlPath string, outputPath string) error {
+	log.Printf("Processing YAML schema: %s", ymlPath)
+	log.Printf("Output directory: %s", outputPath)
+
 	// Check if the YAML file exists
 	if _, err := os.Stat(ymlPath); os.IsNotExist(err) {
 		return nil // File doesn't exist, return early
@@ -92,6 +96,17 @@ func runOnce(ymlPath string, outputPath string) error {
 	schema, err := metadata.FromPath(ymlPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse schema: %w", err)
+	}
+
+	ymlPathDir := filepath.Dir(ymlPath)
+
+	err = mergeSubschemas(ymlPathDir, schema.Arguments)
+	if err != nil {
+		return fmt.Errorf("failed to merge argument subschemas: %w", err)
+	}
+	err = mergeSubschemas(ymlPathDir, schema.Exports)
+	if err != nil {
+		return fmt.Errorf("failed to merge export subschemas: %w", err)
 	}
 
 	argumentsTables := generateArgumentsTables("__arguments", schema.Arguments)
@@ -111,6 +126,41 @@ func runOnce(ymlPath string, outputPath string) error {
 	writeMarkdownTables(markdownTables, outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to write markdown tables: %w", err)
+	}
+
+	return nil
+}
+
+func mergeSubschemas(ymlPathDir string, schema *metadata.Schema) error {
+	if schema == nil {
+		return nil
+	}
+
+	// Merge allOf properties
+	for _, prop := range schema.AllOf {
+		// TODO: Support refs which are not files
+		if prop.Ref != "" {
+			// Load the referenced schema
+			referencePath := filepath.Join(ymlPathDir, prop.Ref)
+			log.Printf("Processing YAML subschema: %s", referencePath)
+
+			parsedProp, err := metadata.FromPath2(referencePath)
+			if err != nil {
+				return fmt.Errorf("failed to parse schema file: %w", err)
+			}
+
+			// Add the properties from nested schema
+			err = mergeSubschemas(ymlPathDir, parsedProp)
+			if err != nil {
+				return err
+			}
+
+			// Add the properties from the referenced schema
+			for name, prop := range parsedProp.Definitions {
+				// TODO: Copy the prop?
+				schema.Properties[name] = prop
+			}
+		}
 	}
 
 	return nil

@@ -3,67 +3,81 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunWithRealSchemaFile(t *testing.T) {
 	// Test with the test1 schema which is based on the real loki.source.api schema
-	testDataSchemaPath := filepath.Join("testdata", "test1", "schema.yml")
-	outputDir := filepath.Join("testdata", "test1", "output")
+	testDataSchemaPath := filepath.Join("testdata", "test1", "metadata.yml")
 
-	// Check if the testdata schema file exists
-	if _, err := os.Stat(testDataSchemaPath); os.IsNotExist(err) {
-		t.Skip("Testdata schema file not found, skipping test")
-	}
-
-	// Clean up output directory before test
-	if err := os.RemoveAll(outputDir); err != nil && !os.IsNotExist(err) {
-		t.Fatalf("Failed to clean output directory: %v", err)
-	}
-
-	// Create output directory
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		t.Fatalf("Failed to create output directory: %v", err)
-	}
-
-	// Copy the schema file to the output directory so the run function can find it
-	schemaContent, err := os.ReadFile(testDataSchemaPath)
-	if err != nil {
-		t.Fatalf("Failed to read testdata schema: %v", err)
-	}
-
-	outputSchemaPath := filepath.Join(outputDir, "schema.yml")
-	if err := os.WriteFile(outputSchemaPath, schemaContent, 0644); err != nil {
-		t.Fatalf("Failed to write schema to output directory: %v", err)
-	}
+	// Create a temporary directory for test output
+	outputDir := t.TempDir()
+	t.Logf("Output directory: %s", outputDir)
 
 	// Run the function with the schema in the output directory
-	err = runOnce(outputSchemaPath)
-	if err != nil {
-		t.Errorf("Unexpected error with testdata schema: %v", err)
-		return
+	require.NoError(t, runOnce(testDataSchemaPath, outputDir))
+
+	// Compare the actual output with the expected output
+	expectedOutputDir := filepath.Join("testdata", "test1", "expected_output")
+	compareDirectories(t, expectedOutputDir, outputDir)
+}
+
+// compareDirectories compares all files in the expected directory with the actual directory
+func compareDirectories(t *testing.T, expectedDir, actualDir string) {
+	t.Helper()
+
+	// Read the expected directory
+	expectedFiles, err := os.ReadDir(expectedDir)
+	require.NoError(t, err, "Failed to read expected output directory")
+
+	// Ensure we have some expected files
+	require.NotEmpty(t, expectedFiles, "Expected output directory is empty")
+
+	// Read the actual directory
+	actualFiles, err := os.ReadDir(actualDir)
+	require.NoError(t, err, "Failed to read actual output directory")
+
+	// Create maps for easier comparison
+	expectedFileMap := make(map[string]bool)
+	actualFileMap := make(map[string]bool)
+
+	for _, file := range expectedFiles {
+		if !file.IsDir() {
+			expectedFileMap[file.Name()] = true
+		}
 	}
 
-	// Verify output file was created in the correct location
-	argumentsPath := filepath.Join(outputDir, "doc_gen", "arguments.md")
-	content, err := os.ReadFile(argumentsPath)
-	if err != nil {
-		t.Errorf("Failed to read generated arguments.md: %v", err)
-		return
+	for _, file := range actualFiles {
+		if !file.IsDir() {
+			actualFileMap[file.Name()] = true
+		}
 	}
 
-	// Basic validation - should contain table headers and some content
-	contentStr := string(content)
-	if !strings.Contains(contentStr, "| Name") {
-		t.Errorf("Generated content should contain table headers")
-	}
-	if !strings.Contains(contentStr, "forward_to") {
-		t.Errorf("Generated content should contain forward_to field from schema")
-	}
-	if !strings.Contains(contentStr, "[]loki.LogsReceiver") {
-		t.Errorf("Generated content should contain type override for forward_to")
+	// Check that all expected files exist in actual output
+	for expectedFile := range expectedFileMap {
+		require.True(t, actualFileMap[expectedFile], "Expected file %s not found in actual output", expectedFile)
+
+		// Compare file contents
+		expectedPath := filepath.Join(expectedDir, expectedFile)
+		actualPath := filepath.Join(actualDir, expectedFile)
+
+		expectedContent, err := os.ReadFile(expectedPath)
+		require.NoError(t, err, "Failed to read expected file %s", expectedFile)
+
+		actualContent, err := os.ReadFile(actualPath)
+		require.NoError(t, err, "Failed to read actual file %s", expectedFile)
+
+		require.Equal(t, string(expectedContent), string(actualContent),
+			"Content mismatch in file %s", expectedFile)
 	}
 
-	t.Logf("Generated content:\n%s", contentStr)
+	// Check that no unexpected files were generated
+	for actualFile := range actualFileMap {
+		require.True(t, expectedFileMap[actualFile],
+			"Unexpected file %s found in actual output", actualFile)
+	}
+
+	t.Logf("Successfully compared %d files", len(expectedFileMap))
 }

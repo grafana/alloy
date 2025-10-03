@@ -283,7 +283,7 @@ else
 			output_dir="docs/sources/shared/generated/components/$$component_name"; \
 			echo "Generating docs for component: $$component_name"; \
 			mkdir -p "$$output_dir"; \
-			go run ./internal/tools/alloygen/ "$$dir/metadata.yml" "$$output_dir"; \
+			go run ./internal/tools/alloygen/ generate "$$dir/metadata.yml" "$$output_dir"; \
 		fi; \
 	done
 endif
