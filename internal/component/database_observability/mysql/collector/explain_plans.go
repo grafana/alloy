@@ -43,7 +43,7 @@ const selectDigestsForExplainPlan = `
 	AND DIGEST IS NOT NULL
 	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
 
-const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
+const selectExplainPlanPrefix = `/* collector=alloy */ EXPLAIN FORMAT=JSON `
 
 func newExplainPlansOutput(logger log.Logger, dbVersion string, digest string, explainJson []byte, generatedAt string) (*database_observability.ExplainPlanOutput, error) {
 	output := &database_observability.ExplainPlanOutput{
@@ -661,7 +661,7 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	defer func() {
 		// Switch to performance_schema to avoid that when the connection
 		// is reused by some other collector, it uses the wrong schema.
-		_, _ = conn.ExecContext(ctx, "USE `performance_schema`")
+		_, _ = conn.ExecContext(ctx, "/* collector=alloy */ USE `performance_schema`")
 	}()
 
 	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
