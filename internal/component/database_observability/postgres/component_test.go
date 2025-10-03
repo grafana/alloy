@@ -33,9 +33,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
@@ -55,8 +55,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
@@ -76,8 +76,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
@@ -98,8 +98,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
@@ -119,14 +119,14 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("enable query_sample collector", func(t *testing.T) {
+	t.Run("enable query_samples collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -140,14 +140,14 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
+			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("enable schema table", func(t *testing.T) {
+	t.Run("enable schema_details collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -161,8 +161,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
@@ -184,12 +184,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("disable query_sample collector", func(t *testing.T) {
+	t.Run("disable query_samples collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -203,9 +203,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
+			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})

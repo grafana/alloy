@@ -299,9 +299,9 @@ func (c *Component) Update(args component.Arguments) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
-		collector.QueryDetailsCollector:  false,
-		collector.QuerySamplesCollector:  false,
-		collector.SchemaDetailsCollector: false,
+		collector.QueryDetailsCollector:  true,
+		collector.QuerySamplesCollector:  true,
+		collector.SchemaDetailsCollector: true,
 		collector.ExplainPlanCollector:   false,
 	}
 
