@@ -14,6 +14,7 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+  - metrics now include cloud provider labels when configured (@matthewnolf)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - `explain_plans` added the explain plan collector (@rgeyer)
