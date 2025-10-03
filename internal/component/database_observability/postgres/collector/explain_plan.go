@@ -10,6 +10,7 @@ import (
 	"math"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -27,18 +28,35 @@ const (
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
 )
 
-const selectQueriesForExplainPlan = `
+const selectQueriesForExplainPlanPre17 = `
 	SELECT
 		d.datname,
-		s.query_id,
+		s.queryid,
 		s.query,
-		s.query_start
-	FROM pg_stat_activity s
-		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
-	WHERE s.query_id is not null and s.query_start is not null and s.query_start > $1
+		s.calls,
+		NOW() AT TIME ZONE 'UTC' AS stats_since
+	FROM pg_stat_statements s
+		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
+	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
 `
 
-const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) `
+const selectQueriesCallResetTimePre17 = `
+	SELECT stats_reset FROM pg_stat_statements_info
+`
+
+const selectQueriesForExplainPlan17Plus = `
+	SELECT
+		d.datname,
+		s.queryid,
+		s.query,
+		s.calls,
+		s.stats_since
+	FROM pg_stat_statements s
+		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
+	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL	
+`
+
+const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
 var unrecoverablePostgresSQLErrors = []string{
 	"pq: permission denied for table",
@@ -195,14 +213,18 @@ type queryInfo struct {
 	queryText    string
 	failureCount int
 	uniqueKey    string
+	calls        int64
+	callsReset   time.Time
 }
 
-func newQueryInfo(datname, queryId, queryText string) *queryInfo {
+func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
 	return &queryInfo{
-		datname:   datname,
-		queryId:   queryId,
-		queryText: queryText,
-		uniqueKey: datname + queryId,
+		datname:    datname,
+		queryId:    queryId,
+		queryText:  queryText,
+		uniqueKey:  datname + queryId,
+		calls:      calls,
+		callsReset: callsReset,
 	}
 }
 
@@ -220,37 +242,37 @@ type ExplainPlanArguments struct {
 }
 
 type ExplainPlan struct {
-	dbConnection     *sql.DB
-	dbDSN            string
-	dbVersion        string
-	scrapeInterval   time.Duration
-	queryCache       map[string]*queryInfo
-	queryDenylist    map[string]*queryInfo
-	excludeSchemas   []string
-	perScrapeRatio   float64
-	currentBatchSize int
-	entryHandler     loki.EntryHandler
-	lastSeen         time.Time
-	logger           log.Logger
-	running          *atomic.Bool
-	ctx              context.Context
-	cancel           context.CancelFunc
+	dbConnection       *sql.DB
+	dbDSN              string
+	dbVersion          string
+	scrapeInterval     time.Duration
+	queryCache         map[string]*queryInfo
+	queryDenylist      map[string]*queryInfo
+	finishedQueryCache map[string]*queryInfo
+	excludeSchemas     []string
+	perScrapeRatio     float64
+	currentBatchSize   int
+	entryHandler       loki.EntryHandler
+	logger             log.Logger
+	running            *atomic.Bool
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	return &ExplainPlan{
-		dbConnection:   args.DB,
-		dbDSN:          args.DSN,
-		dbVersion:      args.DBVersion,
-		scrapeInterval: args.ScrapeInterval,
-		queryCache:     make(map[string]*queryInfo),
-		queryDenylist:  make(map[string]*queryInfo),
-		excludeSchemas: args.ExcludeSchemas,
-		perScrapeRatio: args.PerScrapeRatio,
-		entryHandler:   args.EntryHandler,
-		lastSeen:       args.InitialLookback,
-		logger:         log.With(args.Logger, "collector", ExplainPlanCollector),
-		running:        atomic.NewBool(false),
+		dbConnection:       args.DB,
+		dbDSN:              args.DSN,
+		dbVersion:          args.DBVersion,
+		scrapeInterval:     args.ScrapeInterval,
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeSchemas:     args.ExcludeSchemas,
+		perScrapeRatio:     args.PerScrapeRatio,
+		entryHandler:       args.EntryHandler,
+		logger:             log.With(args.Logger, "collector", ExplainPlanCollector),
+		running:            atomic.NewBool(false),
 	}, nil
 }
 
@@ -300,7 +322,29 @@ func (c *ExplainPlan) Stop() {
 }
 
 func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
-	rs, err := c.dbConnection.QueryContext(ctx, selectQueriesForExplainPlan, c.lastSeen)
+	var selectStatement string
+	var resetTS time.Time
+	if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
+		selectStatement = selectQueriesForExplainPlan17Plus
+	} else {
+		stat_reset, err := c.dbConnection.QueryContext(ctx, selectQueriesCallResetTimePre17)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to fetch stats reset time for explain plans", "err", err)
+			return err
+		}
+		defer stat_reset.Close()
+		if stat_reset.Next() {
+			var ls time.Time
+			if err := stat_reset.Scan(&ls); err != nil {
+				level.Error(c.logger).Log("msg", "failed to scan stats reset time for explain plans", "err", err)
+				return err
+			}
+			resetTS = ls
+		}
+		selectStatement = selectQueriesForExplainPlanPre17
+	}
+
+	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return err
@@ -309,8 +353,9 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 
 	for rs.Next() {
 		var datname, queryId, query string
+		var calls int64
 		var ls time.Time
-		if err := rs.Scan(&datname, &queryId, &query, &ls); err != nil {
+		if err := rs.Scan(&datname, &queryId, &query, &calls, &ls); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan query for explain plan", "err", err)
 			return err
 		}
@@ -322,12 +367,22 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 			continue
 		}
 
-		qi := newQueryInfo(datname, queryId, query)
-		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
-			c.queryCache[qi.uniqueKey] = qi
+		statsReset := resetTS
+		if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
+			statsReset = ls
 		}
-		if ls.After(c.lastSeen) {
-			c.lastSeen = ls
+		qi := newQueryInfo(datname, queryId, query, calls, statsReset)
+		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
+			if previous, ok := c.finishedQueryCache[qi.uniqueKey]; ok {
+				if calls == previous.calls {
+					continue
+				}
+				if calls > previous.calls && (statsReset.Equal(previous.callsReset) || statsReset.Before(previous.callsReset)) {
+					continue
+				}
+				delete(c.finishedQueryCache, qi.uniqueKey)
+			}
+			c.queryCache[qi.uniqueKey] = qi
 		}
 	}
 
@@ -356,6 +411,8 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 				qi.failureCount++
 				c.queryDenylist[qi.uniqueKey] = qi
 				level.Info(c.logger).Log("msg", "query denylisted", "query_id", qi.queryId)
+			} else {
+				c.finishedQueryCache[qi.uniqueKey] = qi
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
@@ -466,12 +523,43 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	}
 	defer conn.Close()
 
+	prepared_statement_name := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", prepared_statement_name, qi.queryText)); err != nil {
+		return nil, fmt.Errorf("failed to prepare explain plan: %w", err)
+	}
+
+	defer func() {
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", prepared_statement_name)); err != nil {
+			level.Error(c.logger).Log("msg", "failed to deallocate explain plan", "err", err)
+		}
+	}()
+
 	setSearchPathStatement := fmt.Sprintf("SET search_path TO %s, public", qi.datname)
 	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
 		return nil, fmt.Errorf("failed to set search path: %w", err)
 	}
 
-	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
+	if _, err := conn.ExecContext(ctx, "SET plan_cache_mode = force_generic_plan"); err != nil {
+		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)
+	}
+
+	paramCountRegex := regexp.MustCompile(`\$\d+`)
+	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
+
+	explainQuery := selectExplainPlanPrefix
+	explainQuery += prepared_statement_name
+	explainQuery += "("
+	for range paramCount {
+		explainQuery += "null,"
+	}
+	if paramCount > 0 {
+		explainQuery = explainQuery[:len(explainQuery)-1]
+	}
+	explainQuery += ")"
+
+	level.Debug(c.logger).Log("msg", "running explain plan", "query", explainQuery)
+
+	rsExplain := conn.QueryRowContext(ctx, explainQuery)
 	if err := rsExplain.Err(); err != nil {
 		return nil, fmt.Errorf("failed to run explain plan: %w", err)
 	}
