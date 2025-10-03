@@ -154,9 +154,6 @@ local.file "mysql_secret_<your_DB_name>" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_<your_DB_name>" {
@@ -308,9 +305,6 @@ local.file "mysql_secret_example_db_1" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_1" {
@@ -347,9 +341,6 @@ local.file "mysql_secret_example_db_2" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_2" {
