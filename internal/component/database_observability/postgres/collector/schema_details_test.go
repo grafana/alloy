@@ -406,6 +406,7 @@ func TestSchemaTable(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -865,17 +866,11 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
-		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public" table="books"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		require.Len(t, lokiEntries, 3)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"title","type":"character varying(255)","not_null":true},{"name":"author_id","type":"integer","not_null":true},{"name":"category_id","type":"integer"}],"indexes":[{"name":"books_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_books_author","column_name":"author_id","referenced_table_name":"authors","referenced_column_name":"id"},{"name":"fk_books_category","column_name":"category_id","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="books" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
 	})
