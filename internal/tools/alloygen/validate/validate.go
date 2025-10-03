@@ -65,7 +65,7 @@ func validateStruct(typ string, s *internal.Struct, schema *metadata.Schema) err
 			continue
 		}
 
-		if len(f.Tag) < 2 {
+		if len(f.Tag) < 1 {
 			return fmt.Errorf("malformat tag for field %s", f.Name)
 		}
 
