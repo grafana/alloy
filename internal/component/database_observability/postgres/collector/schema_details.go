@@ -126,6 +126,37 @@ const (
 	GROUP BY index_relations.relname, pg_am.amname, pg_index.indisunique
 	ORDER BY index_name
 `
+
+	// selectForeignKeys retrieves foreign key constraints for a specified table
+	/*
+		pg_constraint: stores constraint information
+		contype = 'f': foreign key constraints
+		conname: constraint name
+		confrelid: referenced table OID
+		conrelid: referencing table OID
+		conkey: array of referencing column numbers
+		confkey: array of referenced column numbers
+		attname: column name from pg_attribute
+		relname: table name from pg_class
+		nspname: schema name from pg_namespace
+	*/
+	selectForeignKeys = `
+	SELECT
+		con.conname as constraint_name,
+		att.attname as column_name,
+		ref_class.relname as referenced_table_name,
+		ref_att.attname as referenced_column_name
+	FROM pg_constraint con
+	JOIN pg_class table_class ON con.conrelid = table_class.oid
+	JOIN pg_namespace table_ns ON table_class.relnamespace = table_ns.oid
+	JOIN pg_class ref_class ON con.confrelid = ref_class.oid
+	JOIN pg_attribute att ON con.conrelid = att.attrelid AND att.attnum = ANY(con.conkey)
+	JOIN pg_attribute ref_att ON con.confrelid = ref_att.attrelid AND ref_att.attnum = ANY(con.confkey)
+	WHERE con.contype = 'f'
+		AND table_ns.nspname = $1
+		AND table_class.relname = $2
+	ORDER BY con.conname, att.attnum
+`
 )
 
 type tableInfo struct {
@@ -137,8 +168,9 @@ type tableInfo struct {
 }
 
 type tableSpec struct {
-	Columns []columnSpec `json:"columns"`
-	Indexes []indexSpec  `json:"indexes,omitempty"`
+	Columns     []columnSpec `json:"columns"`
+	Indexes     []indexSpec  `json:"indexes,omitempty"`
+	ForeignKeys []foreignKey `json:"foreign_keys,omitempty"`
 }
 
 type columnSpec struct {
@@ -157,6 +189,13 @@ type indexSpec struct {
 	Expressions []string `json:"expressions,omitempty"`
 	Unique      bool     `json:"unique"`
 	Nullable    bool     `json:"nullable"`
+}
+
+type foreignKey struct {
+	Name                 string `json:"name"`
+	ColumnName           string `json:"column_name"`
+	ReferencedTableName  string `json:"referenced_table_name"`
+	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
 type SchemaDetailsArguments struct {
@@ -180,7 +219,7 @@ type SchemaDetails struct {
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
-		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
+		collectInterval: 1 * time.Minute, // TODO: make it configurable again once caching is implemented
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
@@ -427,6 +466,33 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 
 	if err := indexesRS.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "error during iterating over indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+
+	fkRS, err := c.dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
+	}
+	defer fkRS.Close()
+
+	for fkRS.Next() {
+		var constraintName, columnName, referencedTableName, referencedColumnName string
+		if err := fkRS.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			return nil, err
+		}
+
+		tblSpec.ForeignKeys = append(tblSpec.ForeignKeys, foreignKey{
+			Name:                 constraintName,
+			ColumnName:           columnName,
+			ReferencedTableName:  referencedTableName,
+			ReferencedColumnName: referencedColumnName,
+		})
+	}
+
+	if err := fkRS.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
