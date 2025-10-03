@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
 for dir in $(find . -type f -name "metadata.yml" -exec dirname {} \; | sort -u); do
-	go run ./internal/tools/metadatagen $dir > $dir/types_gen.go
-	gofmt -w $dir/types_gen.go
+	echo $dir
+	go run ./internal/tools/alloygen validate $dir
 done

@@ -1,8 +1,0 @@
-type {{ .Name }} struct {
-{{- range $f := .Fields }}
-	{{- if $f.Description }}
-  	// {{ $f.Description }}
-	{{- end}}
-	{{ $f.Name }} {{ $f.Type }} {{ $f.Tag }}
-{{- end}}
-}

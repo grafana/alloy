@@ -314,8 +314,8 @@ else
 	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
 endif
 
-generate-from-metadata:
-	bash ./tools/generate-from-metadata	
+validate-metadata:
+	bash ./tools/validate-metadata
 
 #
 # Other targets

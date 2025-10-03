@@ -8,32 +8,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/alloy/internal/tools/alloygen/metadata"
+	"github.com/grafana/alloy/internal/tools/alloygen/validate"
 )
-
-type Metadata struct {
-	Arguments *Property `yaml:"arguments,omitempty"`
-	Exports   *Property `yaml:"exports,omitempty"`
-}
-
-// SchemaProperty represents a property in the YAML schema
-type Property struct {
-	Description          string               `yaml:"description"`
-	Type                 string               `yaml:"type"`
-	Items                *Property            `yaml:"items,omitempty"`
-	Required             []string             `yaml:"required,omitempty"`
-	Alloy                AlloyConfig          `yaml:"alloy,omitempty"`
-	Default              any                  `yaml:"default,omitempty"`
-	Properties           map[string]*Property `yaml:"properties,omitempty"`
-	AdditionalProperties *Property            `yaml:"additionalProperties"`
-}
-
-// AlloyConfig represents the alloy-specific configuration
-type AlloyConfig struct {
-	Type            string `yaml:"type"`
-	TypeOverride    string `yaml:"type_override,omitempty"`
-	DefaultOverride string `yaml:"default_override,omitempty"`
-}
 
 type ArgTableRow struct {
 	Name         string
@@ -80,10 +58,25 @@ func NewCommand() (*cobra.Command, error) {
 		Use:          "mdatagen",
 		Version:      "0.0.1",
 		SilenceUsage: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return runOnce(args[0], args[1])
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Usage()
 		},
 	}
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "gen",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runOnce(args[0], args[1])
+		},
+	})
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use: "validate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return validate.Run(args)
+		},
+	})
+
 	return rootCmd, nil
 }
 
@@ -96,7 +89,7 @@ func runOnce(ymlPath string, outputPath string) error {
 	}
 
 	// Parse the YAML schema
-	schema, err := parseSchema(ymlPath)
+	schema, err := metadata.FromPath(ymlPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse schema: %w", err)
 	}
@@ -145,23 +138,7 @@ func writeMarkdownTables(markdownTables map[string]string, outputPath string) er
 	return nil
 }
 
-// parseSchema reads and parses the YAML schema file
-func parseSchema(ymlPath string) (*Metadata, error) {
-	data, err := os.ReadFile(ymlPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var schema Metadata
-	err = yaml.Unmarshal(data, &schema)
-	if err != nil {
-		return nil, err
-	}
-
-	return &schema, nil
-}
-
-func generateBlocksTable(parentBlocks []string, schema *Property) BlocksTable {
+func generateBlocksTable(parentBlocks []string, schema *metadata.Schema) BlocksTable {
 	table := BlocksTable{
 		Rows: []BlocksTableRow{},
 	}
@@ -194,7 +171,7 @@ func generateBlocksTable(parentBlocks []string, schema *Property) BlocksTable {
 	return table
 }
 
-func generateExportsTable(schema *Property) ExportsTable {
+func generateExportsTable(schema *metadata.Schema) ExportsTable {
 	table := ExportsTable{
 		Rows: []ExportsTableRow{},
 	}
@@ -235,7 +212,7 @@ func markdownLink(name string) MarkdownLink {
 	}
 }
 
-func generateArgumentsTables(propName string, schema *Property) []ArgTable {
+func generateArgumentsTables(propName string, schema *metadata.Schema) []ArgTable {
 	var tables []ArgTable
 
 	curPropTable := ArgTable{
@@ -269,7 +246,7 @@ func generateArgumentsTables(propName string, schema *Property) []ArgTable {
 	return tables
 }
 
-func isBlock(prop *Property) bool {
+func isBlock(prop *metadata.Schema) bool {
 	if prop.Type != "object" {
 		return false
 	}
@@ -290,7 +267,7 @@ func printRequired(required bool) string {
 	return "no"
 }
 
-func toAlloyType(prop *Property) string {
+func toAlloyType(prop *metadata.Schema) string {
 	if prop.Alloy.TypeOverride != "" {
 		return prop.Alloy.TypeOverride
 	}
@@ -428,7 +405,7 @@ func generateBlocksTableMd(table BlocksTable) (string, error) {
 }
 
 // determineDefault determines the default value display for a property
-func determineDefault(prop *Property) string {
+func determineDefault(prop *metadata.Schema) string {
 	if prop.Alloy.DefaultOverride != "" {
 		return prop.Alloy.DefaultOverride
 	}
