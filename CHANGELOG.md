@@ -36,6 +36,8 @@ Main (unreleased)
 
 - Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
 
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
+
 ### Bugfixes
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)

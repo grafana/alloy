@@ -54,18 +54,20 @@ The following collectors are available for selection:
 
 {{< column-list >}}
 
-* `database`
+* `buffercache_summary`
 * `database_wraparound`
+* `database`
 * `locks`
 * `long_running_transactions`
 * `postmaster`
 * `process_idle`
-* `replication`
 * `replication_slot`
+* `replication`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
 * `stat_checkpointer` - Only supported in PostgreSQL 17 and later
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_statements`
 * `stat_user_tables`
 * `stat_wal_receiver`
@@ -82,10 +84,12 @@ By default, the following collectors are enabled:
 
 * `database`
 * `locks`
-* `replication`
 * `replication_slot`
+* `replication`
+* `roles`
 * `stat_bgwriter`
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_user_tables`
 * `statio_user_tables`
 * `wal`
