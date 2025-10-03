@@ -129,33 +129,34 @@ const (
 
 	// selectForeignKeys retrieves foreign key constraints for a specified table
 	/*
-		pg_constraint: stores constraint information
-		contype = 'f': foreign key constraints
-		conname: constraint name
-		confrelid: referenced table OID
-		conrelid: referencing table OID
-		conkey: array of referencing column numbers
-		confkey: array of referenced column numbers
-		attname: column name from pg_attribute
-		relname: table name from pg_class
-		nspname: schema name from pg_namespace
+		pg_constraint stores all constraints
+		join pg_class (table info) to get the source table
+		join to pg_namespace (schema info) for schema filtering
+		join to pg_class again (aliased) to get referenced table info
+		use generate_subscripts() to correlate multi-column foreign keys by position
+		pg_attribute joined twice to get column names for both source and referenced columns
 	*/
 	selectForeignKeys = `
 	SELECT
-		con.conname as constraint_name,
-		att.attname as column_name,
-		ref_class.relname as referenced_table_name,
-		ref_att.attname as referenced_column_name
-	FROM pg_constraint con
-	JOIN pg_class table_class ON con.conrelid = table_class.oid
-	JOIN pg_namespace table_ns ON table_class.relnamespace = table_ns.oid
-	JOIN pg_class ref_class ON con.confrelid = ref_class.oid
-	JOIN pg_attribute att ON con.conrelid = att.attrelid AND att.attnum = ANY(con.conkey)
-	JOIN pg_attribute ref_att ON con.confrelid = ref_att.attrelid AND ref_att.attnum = ANY(con.confkey)
-	WHERE con.contype = 'f'
-		AND table_ns.nspname = $1
-		AND table_class.relname = $2
-	ORDER BY con.conname, att.attnum
+		constraints.conname as constraint_name,
+		source_column.attname as column_name,
+		referenced_table.relname as referenced_table_name,
+		referenced_column.attname as referenced_column_name
+	FROM pg_constraint constraints
+	JOIN pg_class source_table ON constraints.conrelid = source_table.oid
+	JOIN pg_namespace schema ON source_table.relnamespace = schema.oid
+	JOIN pg_class referenced_table ON constraints.confrelid = referenced_table.oid
+	JOIN generate_subscripts(constraints.conkey, 1) AS position ON true
+	JOIN pg_attribute source_column ON constraints.conrelid = source_column.attrelid
+		AND source_column.attnum = constraints.conkey[position]
+		AND NOT source_column.attisdropped
+	JOIN pg_attribute referenced_column ON constraints.confrelid = referenced_column.attrelid
+		AND referenced_column.attnum = constraints.confkey[position]
+		AND NOT referenced_column.attisdropped
+	WHERE constraints.contype = 'f'
+		AND schema.nspname = $1
+		AND source_table.relname = $2
+	ORDER BY constraints.conname, position
 `
 )
 
@@ -219,7 +220,7 @@ type SchemaDetails struct {
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
-		collectInterval: 1 * time.Minute, // TODO: make it configurable again once caching is implemented
+		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
