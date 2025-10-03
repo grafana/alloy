@@ -4,8 +4,9 @@ arguments:
   required:
     - forward_to
   properties:
-    allOf:
-      - "$ref": "../../../../../internal/component/common/net/schema.yaml"
+    ## FIXME: This usage of allOf is invalid for jsonschema
+    # allOf:
+    #  - "$ref": "../../../../../internal/component/common/net/schema.yaml"
     forward_to:
       description: >-
         List of receivers to send enriched logs to.
