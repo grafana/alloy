@@ -5,6 +5,7 @@ package wal
 // minor changes for metric names.
 
 import (
+	"iter"
 	"sync"
 
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -288,6 +289,42 @@ func (s *stripeSeries) SetLatestExemplar(ref chunks.HeadSeriesRef, exemplar *exe
 		s.exemplars[i][ref] = exemplar
 	}
 	s.locks[i].Unlock()
+}
+
+func (s *stripeSeries) Iterate() iter.Seq[*memSeries] {
+	return func(yield func(series *memSeries) bool) {
+		stopIterating := false
+		for i := 0; i < s.size; i++ {
+			s.locks[i].RLock()
+
+			for _, series := range s.series[i] {
+				series.Lock()
+
+				j := int(s.hashLock(series.lset.Hash()))
+				if i != j {
+					s.locks[j].RLock()
+				}
+
+				if !yield(series) {
+					stopIterating = true
+				}
+
+				if i != j {
+					s.locks[j].RUnlock()
+				}
+				series.Unlock()
+
+				if stopIterating {
+					break
+				}
+			}
+
+			s.locks[i].RUnlock()
+			if stopIterating {
+				break
+			}
+		}
+	}
 }
 
 func (s *stripeSeries) iterator() *stripeSeriesIterator {

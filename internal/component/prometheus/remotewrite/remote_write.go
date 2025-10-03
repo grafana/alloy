@@ -82,7 +82,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	_ = os.RemoveAll(oldDataPath)
 
 	walLogger := log.With(o.Logger, "subcomponent", "wal")
-	walStorage, err := wal.NewStorage(walLogger, o.Registerer, o.DataPath)
+	walStorage, err := wal.NewStorage(walLogger, o.Registerer, o.DataPath, args.WALOptions.EnableSegmentTrackingAndNewCheckpointing)
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +93,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		),
 	)
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
-
 	walStorage.SetNotifier(remoteStore)
+	if args.WALOptions.EnableSegmentTrackingAndNewCheckpointing {
+		remoteStore.OnSegmentChange(func(currentSegment int) {
+			walStorage.OnSegmentChange(currentSegment)
+		})
+	}
 
 	service, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {

@@ -53,6 +53,8 @@ var (
 		TruncateFrequency: 2 * time.Hour,
 		MinKeepaliveTime:  5 * time.Minute,
 		MaxKeepaliveTime:  8 * time.Hour,
+		// TODO this should be false
+		EnableSegmentTrackingAndNewCheckpointing: true,
 	}
 
 	errTooManyAuth = errors.New("at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
@@ -212,9 +214,10 @@ func (o *MetadataOptions) toPrometheusType() config.MetadataConfig {
 
 // WALOptions configures behavior within the WAL.
 type WALOptions struct {
-	TruncateFrequency time.Duration `alloy:"truncate_frequency,attr,optional"`
-	MinKeepaliveTime  time.Duration `alloy:"min_keepalive_time,attr,optional"`
-	MaxKeepaliveTime  time.Duration `alloy:"max_keepalive_time,attr,optional"`
+	TruncateFrequency                        time.Duration `alloy:"truncate_frequency,attr,optional"`
+	MinKeepaliveTime                         time.Duration `alloy:"min_keepalive_time,attr,optional"`
+	MaxKeepaliveTime                         time.Duration `alloy:"max_keepalive_time,attr,optional"`
+	EnableSegmentTrackingAndNewCheckpointing bool          `alloy:"enable_segment_tracking_and_new_checkpointing,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -254,13 +257,15 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			Name:                 rw.Name,
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
-			ProtobufMessage:      config.RemoteWriteProtoMsg(rw.ProtobufMessage),
-			WriteRelabelConfigs:  alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
-			HTTPClientConfig:     *rw.HTTPClientConfig.Convert(),
-			QueueConfig:          rw.QueueOptions.toPrometheusType(),
-			MetadataConfig:       rw.MetadataOptions.toPrometheusType(),
-			SigV4Config:          rw.SigV4.toPrometheusType(),
-			AzureADConfig:        rw.AzureAD.toPrometheusType(),
+			//TODO this should be configurable
+			ReplayUnsentData:    true,
+			ProtobufMessage:     config.RemoteWriteProtoMsg(rw.ProtobufMessage),
+			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
+			HTTPClientConfig:    *rw.HTTPClientConfig.Convert(),
+			QueueConfig:         rw.QueueOptions.toPrometheusType(),
+			MetadataConfig:      rw.MetadataOptions.toPrometheusType(),
+			SigV4Config:         rw.SigV4.toPrometheusType(),
+			AzureADConfig:       rw.AzureAD.toPrometheusType(),
 		})
 	}
 

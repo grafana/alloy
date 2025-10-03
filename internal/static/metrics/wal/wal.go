@@ -148,7 +148,9 @@ type Storage struct {
 
 	metrics *storageMetrics
 
-	notifier wlog.WriteNotified
+	notifier                          wlog.WriteNotified
+	trackSegmentsWithNewCheckpointing bool
+	currentSegment                    atomic.Int64
 }
 
 // stripeSeriesSize is the number of stripes to use for series locking. A larger number allows for more concurrent writes without
@@ -159,7 +161,7 @@ type Storage struct {
 var stripeSeriesSize = 4096
 
 // NewStorage makes a new Storage.
-func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
+func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string, trackSegmentsWithNewCheckpointing bool) (*Storage, error) {
 	// Convert go-kit logger to slog logger
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
 
@@ -169,13 +171,14 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 	}
 
 	storage := &Storage{
-		path:    path,
-		wal:     w,
-		logger:  logger,
-		deleted: map[chunks.HeadSeriesRef]int{},
-		series:  newStripeSeries(stripeSeriesSize),
-		metrics: newStorageMetrics(registerer),
-		nextRef: atomic.NewUint64(0),
+		path:                              path,
+		wal:                               w,
+		logger:                            logger,
+		deleted:                           map[chunks.HeadSeriesRef]int{},
+		series:                            newStripeSeries(stripeSeriesSize),
+		metrics:                           newStorageMetrics(registerer),
+		nextRef:                           atomic.NewUint64(0),
+		trackSegmentsWithNewCheckpointing: trackSegmentsWithNewCheckpointing,
 	}
 
 	storage.bufPool.New = func() interface{} {
@@ -542,6 +545,44 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil // no segments yet.
 	}
 
+	defer func() {
+		level.Info(w.logger).Log("msg", "WAL checkpoint complete",
+			"first", first, "last", last, "duration", time.Since(start))
+	}()
+
+	if w.trackSegmentsWithNewCheckpointing {
+		// TODO see if we can find a way to allow this a little time if we are up to date cutting the new segment above
+		// will move the current segment almost immediately
+		currentSegment := int(w.currentSegment.Load())
+
+		// If we are currently reading segment 1, it cannot be included in the checkpoint
+		checkpointSegment := currentSegment - 1
+		if err := Checkpoint(w.logger, w.wal, checkpointSegment, w.series, w.deleted); err != nil {
+			return fmt.Errorf("create checkpoint: %w", err)
+		}
+
+		// This will truncate everything below current
+		if err := w.wal.Truncate(currentSegment); err != nil {
+			level.Warn(w.logger).Log("msg", "failed to truncate segments before current", "current_segment", w.currentSegment, "err", err)
+		}
+
+		for ref, segment := range w.deleted {
+			if segment < currentSegment {
+				delete(w.deleted, ref)
+				w.metrics.totalRemovedSeries.Inc()
+			}
+		}
+
+		if err := wlog.DeleteCheckpoints(w.wal.Dir(), checkpointSegment); err != nil {
+			// Leftover old checkpoints do not cause problems down the line beyond
+			// occupying disk space.
+			// They will just be ignored since a higher checkpoint exists.
+			level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
+		}
+
+		return nil
+	}
+
 	// The lower two thirds of segments should contain mostly obsolete samples.
 	// If we have less than two segments, it's not worth checkpointing yet.
 	last = first + (last-first)*2/3
@@ -588,9 +629,16 @@ func (w *Storage) Truncate(mint int64) error {
 		level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
 	}
 
-	level.Info(w.logger).Log("msg", "WAL checkpoint complete",
-		"first", first, "last", last, "duration", time.Since(start))
 	return nil
+}
+
+func (w *Storage) OnSegmentChange(currentSegment int) {
+	if !w.trackSegmentsWithNewCheckpointing {
+		return
+	}
+
+	level.Debug(w.logger).Log("msg", "WAL segment changed", "current_segment", currentSegment)
+	w.currentSegment.Store(int64(currentSegment))
 }
 
 // gc removes data before the minimum timestamp from the head.
