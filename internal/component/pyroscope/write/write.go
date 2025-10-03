@@ -16,13 +16,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -47,35 +43,7 @@ var (
 			},
 		}
 	}
-	_ component.Component = (*Component)(nil)
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "pyroscope.write",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   Exports{},
-		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			tracer := o.Tracer.Tracer("pyroscope.write")
-			args := c.(Arguments)
-			userAgent := useragent.Get()
-			uid := alloyseed.Get().UID
-
-			return New(
-				o.Logger,
-				tracer,
-				o.Registerer,
-				func(exports Exports) {
-					o.OnStateChange(exports)
-				},
-				userAgent,
-				uid,
-				args,
-			)
-		},
-	})
-}
 
 // Arguments represents the input state of the pyroscope.write
 // component.
@@ -180,8 +148,6 @@ func New(
 	}, nil
 }
 
-var _ component.Component = (*Component)(nil)
-
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
 	<-ctx.Done()
@@ -189,9 +155,9 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 // Update implements Component.
-func (c *Component) Update(newConfig component.Arguments) error {
-	c.cfg = newConfig.(Arguments)
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics, c.userAgent, c.uid)
+func (c *Component) Update(newConfig Arguments) error {
+	c.cfg = newConfig
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid)
 	if err != nil {
 		return err
 	}
