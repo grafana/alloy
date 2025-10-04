@@ -46,6 +46,7 @@ type StageConfig struct {
 	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
 	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
+	JsonFieldConfig              *JsonFieldConfig              `alloy:"json_field,block,optional"`
 }
 
 var rateLimiter *rate.Limiter
