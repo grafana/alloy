@@ -17,16 +17,31 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - `explain_plans` added the explain plan collector (@rgeyer)
+  - add `user` field to wait events within `query_samples` collector (@gaantunes)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+
+- Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
+
+- Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
 
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
+- Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
+
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
+
 ### Bugfixes
 
-v1.11.0-rc.2
+- Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
+
+v1.11.0
 -----------------
 
 ### Breaking changes
@@ -51,6 +66,8 @@ v1.11.0-rc.2
   - There are various renamed metrics and two removed collectors (`cs`, `logon`), see the [v1.11 release notes][1_11-release-notes] for more information.
 
     [1_11-release-notes]: https://grafana.com/docs/alloy/latest/release-notes/#v111
+
+- `scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`. This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled. If `scrape_native_histograms` is enabled, `scrape_protocols` will automatically be configured correctly for you to include `PrometheusProto`. If you configure it explicitly, Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
 
 - Add `otel_attrs_to_hec_metadata` configuration block to `otelcol.exporter.splunkhec` to match `otelcol.receiver.splunkhec`. (@cgetzen)
 
@@ -89,7 +106,7 @@ v1.11.0-rc.2
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
-  - add `schema_table` collector for postgres (@fridgepoet)
+  - add `schema_details` collector for postgres (@fridgepoet)
   - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
@@ -205,6 +222,10 @@ v1.11.0-rc.2
   This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
 
 - Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
+
+- Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
+
+- Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
 v1.10.2
 -----------------

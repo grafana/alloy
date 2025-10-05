@@ -154,14 +154,12 @@ local.file "mysql_secret_<your_DB_name>" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>.targets
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
   enable_collectors = ["query_samples"]
@@ -197,7 +195,7 @@ loki.relabel "database_observability_mysql_<your_DB_name>" {
 }
 
 discovery.relabel "database_observability_mysql_<your_DB_name>" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>.targets, database_observability.mysql.mysql_<your_DB_name>.targets)
+  targets = database_observability.mysql.mysql_<your_DB_name>.targets
 
   rule {
     target_label = "job"
@@ -307,14 +305,12 @@ local.file "mysql_secret_example_db_1" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1.targets
   enable_collectors = ["query_samples"]
 }
 
@@ -323,7 +319,7 @@ loki.relabel "database_observability_mysql_example_db_1" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_1" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1.targets, database_observability.mysql.mysql_example_db_1.targets)
+  targets = database_observability.mysql.mysql_example_db_1.targets
 
   rule {
     target_label = "job"
@@ -345,14 +341,12 @@ local.file "mysql_secret_example_db_2" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2.targets
   enable_collectors = ["query_samples"]
 }
 
@@ -361,7 +355,7 @@ loki.relabel "database_observability_mysql_example_db_2" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_2" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2.targets, database_observability.mysql.mysql_example_db_2.targets)
+  targets = database_observability.mysql.mysql_example_db_2.targets
 
   rule {
     target_label = "job"
@@ -452,6 +446,7 @@ prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
 database_observability.postgres "postgres_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
+  targets           = prometheus.exporter.postgres.integrations_postgres_exporter_<your_DB_name>.targets
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
   enable_collectors = ["query_samples", "query_details"]
