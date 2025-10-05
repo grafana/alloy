@@ -75,6 +75,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.template`][stage.template]                           | Configures a `template` processing stage.                      | no       |
 | [`stage.tenant`][stage.tenant]                               | Configures a `tenant` processing stage.                        | no       |
 | [`stage.timestamp`][stage.timestamp]                         | Configures a `timestamp` processing stage.                     | no       |
+| [`stage.useragent`][stage.useragent]                         | Configures a `useragent` processing stage.                     | no       |
 | [`stage.windowsevent`][stage.windowsevent]                   | Configures a `windowsevent` processing stage.                  | no       |
 
 You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
@@ -107,6 +108,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.template]: #stagetemplate
 [stage.tenant]: #stagetenant
 [stage.timestamp]: #stagetimestamp
+[stage.useragent]: #stageuseragent
 [stage.windowsevent]: #stagewindowsevent
 
 ### `stage.cri`
@@ -1843,6 +1845,79 @@ stage.timestamp {
     format = "2006-01-02T15:04:05,000-07:00"
 }
 ```
+
+### `stage.useragent`
+
+The `stage.useragent` inner block configures a processing stage that parses user-agent strings and extracts browser, operating system, and device information using the uap-core library.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                                                          | Default | Required |
+| ------------ | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
+| `source`     | `string` | Name from extracted data to parse as user-agent. If empty, uses the log message.    | `""`    | no       |
+| `regex_file` | `string` | Path to a custom regex file for user-agent parsing. If empty, uses default regexes. | `""`    | no       |
+
+The `source` field defines the source of data to parse as a user-agent string.
+When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
+
+The `regex_file` field allows you to specify a custom YAML file containing regex patterns for user-agent parsing.
+If not provided, the stage uses the default patterns from the uap-core library.
+
+The stage extracts the following fields into the shared map:
+
+- `useragent_browser`: The browser name (e.g., "Chrome", "Firefox", "Safari")
+- `useragent_browser_version`: The browser version (e.g., "91.0.4472")
+- `useragent_os`: The operating system name (e.g., "Windows", "Mac OS X", "iOS")
+- `useragent_os_version`: The operating system version (e.g., "10.15.7")
+- `useragent_device`: The device family (e.g., "iPhone", "iPad") - only if not "Other"
+- `useragent_device_brand`: The device brand (e.g., "Apple", "Samsung")
+- `useragent_device_model`: The device model (e.g., "iPhone", "Galaxy S21")
+
+#### Example usage
+
+```alloy
+stage.useragent {}
+```
+
+Given the following log line:
+
+```text
+Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1
+```
+
+The stage extracts the following key-value pairs:
+
+```text
+useragent_browser: Mobile Safari
+useragent_browser_version: 14.1.1
+useragent_os: iOS
+useragent_os_version: 14.6.
+useragent_device: iPhone
+useragent_device_brand: Apple
+useragent_device_model: iPhone
+```
+
+#### Example with source field
+
+```alloy
+stage.json {
+    expressions = { "user_agent" = "user_agent" }
+}
+
+stage.useragent {
+    source = "user_agent"
+}
+
+stage.labels {
+    values = {
+        browser = "useragent_browser",
+        os      = "useragent_os",
+        device  = "useragent_device",
+    }
+}
+```
+
+This pipeline first extracts the user-agent string from a JSON field, parses it to extract browser and device information, and then adds the extracted values as labels.
 
 ### `stage.windowsevent`
 
