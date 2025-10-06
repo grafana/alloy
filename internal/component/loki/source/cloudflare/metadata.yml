@@ -1,0 +1,87 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.source.cloudflare."
+  required:
+    - api_token
+    - zone_id
+    - forward_to
+  properties:
+    api_token:
+      description: >-
+        The API token to authenticate with.
+      type: string
+      alloy:
+        type_override: "secret"
+
+    zone_id:
+      description: >-
+        The Cloudflare zone ID to use.
+      type: string
+
+    forward_to:
+      description: >-
+        List of receivers to send log entries to.
+      type: array
+      alloy:
+        type_override: "list(LogsReceiver)"
+
+    additional_fields:
+      description: >-
+        The additional list of fields to supplement those provided via fields_type.
+      type: array
+      items:
+        type: string
+      alloy:
+        type_override: "list(string)"
+
+    fields_type:
+      description: >-
+        The set of fields to fetch for log entries.
+      type: string
+      alloy:
+        default_override: '"default"'
+
+    labels:
+      description: >-
+        The labels to associate with each received log entry.
+      type: object
+      items:
+        type: object
+        additionalProperties:
+          type: string
+      alloy:
+        type: attribute
+        type_override: "map(string)"
+        default_override: "{}"
+
+    pull_range:
+      description: >-
+        The timeframe to fetch for each pull request.
+      type: string
+      alloy:
+        type_override: "duration"
+        default_override: '"1m"'
+
+    relabel_rules:
+      description: >-
+        Relabeling rules to apply on log entries.
+      type: array
+      items:
+        type: object
+      alloy:
+        type_override: "RelabelRules"
+        default_override: "{}"
+
+    use_incoming_timestamp:
+      description: >-
+        Whether to use the timestamp received from the request.
+      type: boolean
+      alloy:
+        default_override: false
+
+    workers:
+      description: >-
+        The number of workers to use for parsing logs.
+      type: integer
+      alloy:
+        default_override: 3
