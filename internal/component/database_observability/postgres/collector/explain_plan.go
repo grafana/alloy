@@ -40,10 +40,6 @@ const selectQueriesForExplainPlanTemplate = `
 	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
 `
 
-const selectQueriesCallResetTimePre17 = `
-	SELECT stats_reset FROM pg_stat_statements_info
-`
-
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
 var unrecoverablePostgresSQLErrors = []string{
@@ -315,7 +311,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
 		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")
 	} else {
-		statReset, err := c.dbConnection.QueryContext(ctx, selectQueriesCallResetTimePre17)
+		statReset, err := c.dbConnection.QueryContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to fetch stats reset time for explain plans", "err", err)
 			return err
