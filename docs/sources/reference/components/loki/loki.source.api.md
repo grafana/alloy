@@ -79,7 +79,7 @@ The `tls` block configures TLS for the HTTP server.
 
 ## Exported fields
 
-`loki.source.api` doesn't export any fields.
+{{< docs/shared lookup="generated/components/loki/source/api/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

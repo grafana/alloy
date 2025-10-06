@@ -209,7 +209,7 @@ A sample log looks like this:
 
 ## Exported fields
 
-`loki.source.cloudflare` doesn't export any fields.
+{{< docs/shared lookup="generated/components/loki/source/cloudflare/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

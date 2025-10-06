@@ -85,7 +85,7 @@ If `"oauth"` is used, you must configure one of the [supported credential types]
 
 ## Exported fields
 
-`loki.source.azure_event_hubs` doesn't export any fields.
+`{{< docs/shared lookup="generated/components/loki/source/azure_event_hubs/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

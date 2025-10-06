@@ -119,7 +119,7 @@ The `tls` block configures TLS for the HTTP and gRPC servers.
 
 ## Exported fields
 
-`loki.source.awsfirehose` doesn't export any fields.
+{{< docs/shared lookup="generated/components/loki/source/aws_firehose/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 
