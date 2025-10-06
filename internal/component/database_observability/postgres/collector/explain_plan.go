@@ -506,13 +506,14 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	defer conn.Close()
 
 	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
+	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName)
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)); err != nil {
 		return nil, fmt.Errorf("failed to prepare explain plan: %w", err)
 	}
 
 	defer func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", preparedStatementName)); err != nil {
-			level.Error(c.logger).Log("msg", "failed to deallocate explain plan", "err", err)
+			level.Error(logger).Log("msg", "failed to deallocate explain plan", "err", err)
 		}
 	}()
 
@@ -534,9 +535,6 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	}
 
 	explainQuery := fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
-
-	level.Debug(c.logger).Log("msg", "running explain plan", "query", explainQuery)
-
 	rsExplain := conn.QueryRowContext(ctx, explainQuery)
 	if err := rsExplain.Err(); err != nil {
 		return nil, fmt.Errorf("failed to run explain plan: %w", err)
