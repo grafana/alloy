@@ -528,16 +528,12 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	paramCountRegex := regexp.MustCompile(`\$\d+`)
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
 
-	explainQuery := selectExplainPlanPrefix
-	explainQuery += preparedStatementName
-	explainQuery += "("
-	for range paramCount {
-		explainQuery += "null,"
-	}
+	nullParams := strings.Repeat("null,", paramCount)
 	if paramCount > 0 {
-		explainQuery = explainQuery[:len(explainQuery)-1]
+		nullParams = nullParams[:len(nullParams)-1]
 	}
-	explainQuery += ")"
+
+	explainQuery := fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
 
 	level.Debug(c.logger).Log("msg", "running explain plan", "query", explainQuery)
 
