@@ -132,7 +132,7 @@ const (
 		pg_constraint stores all constraints
 		join pg_class (table info) to get the source table
 		join to pg_namespace (schema info) for schema filtering
-		join to pg_class again (aliased) to get referenced table info
+		join to pg_class again to get referenced table
 		use generate_subscripts() to correlate multi-column foreign keys by position
 		pg_attribute joined twice to get column names for both source and referenced columns
 	*/
