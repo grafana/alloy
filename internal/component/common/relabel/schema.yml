@@ -1,0 +1,62 @@
+id: grafana/alloy/internal/component/common/relabel
+"$defs":
+  relabel_rule:
+    description: >-
+      A single relabeling rule to be applied on log entries.
+    type: object
+    properties:
+      source_labels:
+        description: >-
+          The source labels select values from existing labels. Their content is concatenated using the separator and matched against the regular expression.
+        type: array
+        items:
+          type: string
+        alloy:
+          type_override: "list(string)"
+
+      separator:
+        description: >-
+          Separator placed between concatenated source label values.
+        type: string
+        default: ";"
+
+      regex:
+        description: >-
+          A valid RE2 regular expression with support for parenthesized and named groups. Used to match the extracted value from the combination of the source_label and separator fields.
+        type: string
+        default: "(.*)"
+
+      target_label:
+        description: >-
+          Label to which the resulting value is written to. It is mandatory for replace, hashmod, lowercase, uppercase, keepequal, and dropequal actions.
+        type: string
+
+      replacement:
+        description: >-
+          Regular expression replacement value used for the replace action.
+        type: string
+        default: "$1"
+
+      action:
+        description: >-
+          The relabeling action to perform.
+        type: string
+        enum:
+          - "replace"
+          - "keep"
+          - "drop"
+          - "hashmod"
+          - "labelmap"
+          - "labeldrop"
+          - "labelkeep"
+          - "lowercase"
+          - "uppercase"
+          - "keepequal"
+          - "dropequal"
+        default: "replace"
+
+      modulus:
+        description: >-
+          Modulus to take of the hash of concatenated source label values.
+        type: integer
+        minimum: 1
