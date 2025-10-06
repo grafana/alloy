@@ -72,7 +72,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="500" xmin="400" xact_time="2m0s" state="active" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
 			},
 		},
 		{
@@ -110,8 +110,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" backend_time="%s" xid="0" xmin="0" xact_time="%s" state="active" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
-					time.Duration(0).String(),
+				fmt.Sprintf(`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" xid="0" xmin="0" xact_time="%s" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -154,8 +153,8 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_WAIT_EVENT},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="waiting" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
-				`level="info" datname="testdb" user="testuser" backend_type="client backend" state="waiting" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
 			},
 		},
 		{
@@ -261,7 +260,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="0" xmin="0" xact_time="2m0s" state="active" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
 			},
 		},
 	}
@@ -390,7 +389,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" backend_time="1h0m0s" xid="10" xmin="20" xact_time="2m0s" state="active" query_time="30s" queryid="999" query="SELECT * FROM t" engine="postgres" cpu_time="10s"`)
+			require.Contains(t, entries[0].Line, `datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" query="SELECT * FROM t" engine="postgres" cpu_time="10s"`)
 			expectedTimestamp := time.Unix(0, now.UnixNano())
 			require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
 		}, 5*time.Second, 50*time.Millisecond)
@@ -626,7 +625,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Contains(t, entries[0].Line, `leader_pid="400"`)
 			require.Contains(t, entries[0].Line, `backend_type="parallel worker"`)
-			require.Contains(t, entries[0].Line, `state="idle"`)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()

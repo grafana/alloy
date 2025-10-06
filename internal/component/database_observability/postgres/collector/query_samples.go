@@ -468,7 +468,6 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	backendDuration := calculateDuration(state.LastRow.BackendStart, state.LastRow.Now)
 	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
 	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
 
@@ -486,7 +485,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" backend_time="%s" xid="%d" xmin="%d" xact_time="%s" state="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -494,11 +493,9 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		state.LastRow.ApplicationName.String,
 		clientAddr,
 		state.LastRow.BackendType.String,
-		backendDuration,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		xactDuration,
-		state.LastRow.State.String,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
 		queryText,
@@ -512,16 +509,23 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 // buildWaitEventLabels constructs the labels string for OP_WAIT_EVENT
 func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
 	queryText := state.LastRow.Query.String
 	if !c.disableQueryRedaction {
 		queryText = redact(queryText)
 	}
 	return fmt.Sprintf(
-		`datname="%s" user="%s" backend_type="%s" state="%s" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		we.LastState,
+		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
 		we.WaitEventType,
 		we.WaitEvent,
