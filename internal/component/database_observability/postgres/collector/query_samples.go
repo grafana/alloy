@@ -541,7 +541,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 // calculateDuration returns a formatted duration string between a nullable time and current time
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
 	if nullableTime.Valid {
-		return currentTime.Sub(nullableTime.Time).Round(time.Millisecond).String()
+		return currentTime.Sub(nullableTime.Time).Round(time.Nanosecond).String()
 	}
 	return ""
 }
