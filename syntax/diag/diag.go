@@ -4,6 +4,7 @@ package diag
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/grafana/alloy/syntax/token"
 )
@@ -42,6 +43,9 @@ type Diagnostic struct {
 func (d Diagnostic) As(v interface{}) bool {
 	switch v := v.(type) {
 	case *Diagnostics:
+		if v == nil {
+			return false
+		}
 		*v = Diagnostics{d}
 		return true
 	}
@@ -97,4 +101,18 @@ func (ds Diagnostics) HasErrors() bool {
 		}
 	}
 	return false
+}
+
+// AllMessages returns a string containing all diagnostic messages,
+// providing more detail than the default Error() method which truncates.
+func (ds Diagnostics) AllMessages() string {
+	if len(ds) == 0 {
+		return "no errors"
+	}
+
+	var messages []string
+	for _, d := range ds {
+		messages = append(messages, d.Error())
+	}
+	return strings.Join(messages, "; ")
 }
