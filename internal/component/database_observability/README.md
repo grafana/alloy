@@ -16,7 +16,6 @@ GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'db-o11y'@'%';
 GRANT SELECT ON performance_schema.* TO 'db-o11y'@'%';
 ```
 
-
 3. Grant the `db-o11y` user additional privileges to access the objects (schemas, tables, views) for which you want to collect detailed information.
 
 For example, to limit permissions only to a schema named `payments`:
