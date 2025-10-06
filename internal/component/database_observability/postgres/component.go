@@ -84,6 +84,9 @@ type QueryTablesArguments struct {
 
 type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize       int           `alloy:"cache_size,attr,optional"`
+	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
@@ -96,6 +99,9 @@ var DefaultArguments = Arguments{
 	},
 	SchemaDetailsArguments: SchemaDetailsArguments{
 		CollectInterval: 1 * time.Minute,
+		CacheEnabled:    true,
+		CacheSize:       256,
+		CacheTTL:        10 * time.Minute,
 	},
 	ExplainPlanArguments: ExplainPlanArguments{
 		CollectInterval: 1 * time.Minute,
@@ -393,6 +399,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})

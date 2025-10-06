@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -35,9 +36,13 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -126,9 +131,13 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -285,9 +294,13 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -381,9 +394,13 @@ func TestSchemaTable(t *testing.T) {
 
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -431,9 +448,13 @@ func TestSchemaTable(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -526,9 +547,13 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -616,9 +641,13 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -695,5 +724,223 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+	})
+}
+
+func TestSchemaCaching(t *testing.T) {
+	t.Run("collector uses cache on second run", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"cache_test_db",
+				),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("test_table"),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+
+		err = collector.extractNames(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		firstRunEntries := lokiClient.Received()
+		require.Len(t, firstRunEntries, 3)
+
+		lokiClient.Clear()
+
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"cache_test_db",
+				),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("test_table"),
+			)
+
+		err = collector.extractNames(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		secondRunEntries := lokiClient.Received()
+		require.Len(t, secondRunEntries, 3)
+
+		for i := range firstRunEntries {
+			assert.Equal(t, firstRunEntries[i].Labels, secondRunEntries[i].Labels)
+			assert.Equal(t, firstRunEntries[i].Line, secondRunEntries[i].Line)
+		}
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiClient.Stop()
+	})
+
+	t.Run("collector bypasses cache when disabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    false,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"datname",
+					}).AddRow(
+						"no_cache_test_db",
+					),
+				)
+
+			mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"schema_name",
+					}).AddRow("public"),
+				)
+
+			mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"table_name",
+					}).AddRow("test_table"),
+				)
+
+			mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"column_name",
+						"column_type",
+						"not_nullable",
+						"column_default",
+						"identity_generation",
+						"is_primary_key",
+					}).AddRow("id", "integer", true, nil, "", true),
+				)
+
+			mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"index_name",
+						"index_type",
+						"unique",
+						"column_names",
+						"expressions",
+						"has_nullable_column",
+					}),
+				)
+		}
+
+		err = collector.extractNames(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		lokiClient.Clear()
+
+		err = collector.extractNames(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiClient.Stop()
 	})
 }
