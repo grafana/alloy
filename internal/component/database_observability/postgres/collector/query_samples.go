@@ -54,13 +54,11 @@ const selectPgStatActivity = `
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		s.backend_type != 'client backend' OR
-		(
-			s.pid != pg_backend_pid() AND
-			coalesce(TRIM(s.query), '') != '' AND
-			s.query_id != 0 AND
-			s.state != 'idle'
-		)
+		s.backend_type = 'client backend' AND
+		s.pid != pg_backend_pid() AND
+		coalesce(TRIM(s.query), '') != '' AND
+		s.query_id != 0 AND
+		s.state != 'idle'
 `
 
 type QuerySamplesInfo struct {
@@ -537,7 +535,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 // calculateDuration returns a formatted duration string between a nullable time and current time
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
 	if nullableTime.Valid {
-		return currentTime.Sub(nullableTime.Time).Round(time.Millisecond).String()
+		return currentTime.Sub(nullableTime.Time).String()
 	}
 	return ""
 }
