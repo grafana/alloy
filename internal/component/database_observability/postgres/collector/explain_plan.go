@@ -505,13 +505,13 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	}
 	defer conn.Close()
 
-	prepared_statement_name := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", prepared_statement_name, qi.queryText)); err != nil {
+	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)); err != nil {
 		return nil, fmt.Errorf("failed to prepare explain plan: %w", err)
 	}
 
 	defer func() {
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", prepared_statement_name)); err != nil {
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", preparedStatementName)); err != nil {
 			level.Error(c.logger).Log("msg", "failed to deallocate explain plan", "err", err)
 		}
 	}()
@@ -529,7 +529,7 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
 
 	explainQuery := selectExplainPlanPrefix
-	explainQuery += prepared_statement_name
+	explainQuery += preparedStatementName
 	explainQuery += "("
 	for range paramCount {
 		explainQuery += "null,"
