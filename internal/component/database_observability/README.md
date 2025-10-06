@@ -400,7 +400,7 @@ show track_activity_query_size;
  4kB
 ```
 
-6. Create a dedicated DB user and grant permissions.
+6. Create a dedicated DB user and grant permissions to monitor the DB.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -408,11 +408,34 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-7. Verify that the user has been properly created.
+7. Verify that the user has been properly created and has the correct privileges for the `pg_stat_statements` extension.
 
 ```sql
 -- run with the `db-o11y` user
 SELECT * FROM pg_stat_statements LIMIT 1;
+```
+
+8. Grant the `db-o11y` user additional privileges to access the objects (databases, schemas, tables, views) for which you want to collect detailed information.
+
+For example, connect to a `payments` database and grant access to specific schemas:
+
+```sql
+-- switch to the 'payments' database
+\c payments
+
+-- grant USAGE and SELECT permissions in the 'public' schema
+GRANT USAGE ON SCHEMA public TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "db-o11y";
+
+-- grant USAGE and SELECT permissions in the 'tests' schema
+GRANT USAGE ON SCHEMA tests TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA tests TO "db-o11y";
+```
+
+Alternatively, use the predefined role `pg_read_all_data` to grant `USAGE` and `SELECT` permissions to all objects at once:
+
+```sql
+GRANT pg_read_all_data TO "db-o11y";
 ```
 
 ### Running and configuring Alloy
