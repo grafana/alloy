@@ -1,12 +1,18 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"golang.org/x/tools/txtar"
 )
 
@@ -2273,4 +2279,414 @@ func TestReplaceDatabaseNameInDSN(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestNewExplainPlan(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	logger := log.NewNopLogger()
+	entryHandler := fake.NewClient(func() {})
+
+	args := ExplainPlanArguments{
+		DB:              db,
+		DSN:             "postgres://user:pass@localhost:5432/testdb",
+		ScrapeInterval:  time.Minute,
+		PerScrapeRatio:  0.1,
+		ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
+		EntryHandler:    entryHandler,
+		InitialLookback: time.Now().Add(-time.Hour),
+		DBVersion:       "14.1",
+		Logger:          logger,
+	}
+
+	explainPlan, err := NewExplainPlan(args)
+
+	require.NoError(t, err)
+	require.NotNil(t, explainPlan)
+	assert.Equal(t, db, explainPlan.dbConnection)
+	assert.Equal(t, args.DSN, explainPlan.dbDSN)
+	assert.Equal(t, args.DBVersion, explainPlan.dbVersion)
+	assert.Equal(t, args.ScrapeInterval, explainPlan.scrapeInterval)
+	assert.Equal(t, args.PerScrapeRatio, explainPlan.perScrapeRatio)
+	assert.Equal(t, args.ExcludeSchemas, explainPlan.excludeSchemas)
+	assert.Equal(t, entryHandler, explainPlan.entryHandler)
+	assert.NotNil(t, explainPlan.queryCache)
+	assert.NotNil(t, explainPlan.queryDenylist)
+	assert.NotNil(t, explainPlan.finishedQueryCache)
+	assert.NotNil(t, explainPlan.running)
+	assert.False(t, explainPlan.running.Load())
+}
+
+func TestExplainPlan_Name(t *testing.T) {
+	explainPlan := &ExplainPlan{}
+	assert.Equal(t, ExplainPlanCollector, explainPlan.Name())
+}
+
+func TestExplainPlan_Stopped(t *testing.T) {
+	explainPlan := &ExplainPlan{
+		running: atomic.NewBool(false),
+	}
+	assert.True(t, explainPlan.Stopped())
+
+	explainPlan.running.Store(true)
+	assert.False(t, explainPlan.Stopped())
+}
+
+func TestNewQueryInfo(t *testing.T) {
+	datname := "testdb"
+	queryId := "123456789"
+	queryText := "SELECT * FROM users WHERE id = $1"
+	calls := int64(100)
+	callsReset := time.Now()
+
+	qi := newQueryInfo(datname, queryId, queryText, calls, callsReset)
+
+	assert.Equal(t, datname, qi.datname)
+	assert.Equal(t, queryId, qi.queryId)
+	assert.Equal(t, queryText, qi.queryText)
+	assert.Equal(t, calls, qi.calls)
+	assert.Equal(t, callsReset, qi.callsReset)
+	assert.Equal(t, datname+queryId, qi.uniqueKey)
+	assert.Equal(t, 0, qi.failureCount)
+}
+
+func TestPlanNode_TotalCost(t *testing.T) {
+	tests := []struct {
+		name     string
+		planNode PlanNode
+		expected float64
+	}{
+		{
+			name: "single node with no children",
+			planNode: PlanNode{
+				TotalCost: 100.5,
+				Plans:     []PlanNode{},
+			},
+			expected: 100.5,
+		},
+		{
+			name: "node with children",
+			planNode: PlanNode{
+				TotalCost: 200.75,
+				Plans: []PlanNode{
+					{TotalCost: 50.25},
+					{TotalCost: 30.0},
+				},
+			},
+			expected: 120.5, // 200.75 - 50.25 - 30.0
+		},
+		{
+			name: "negative result becomes zero",
+			planNode: PlanNode{
+				TotalCost: 50.0,
+				Plans: []PlanNode{
+					{TotalCost: 60.0},
+				},
+			},
+			expected: 0.0, // 50.0 - 60.0 = -10.0, but clamped to 0
+		},
+		{
+			name: "rounding test",
+			planNode: PlanNode{
+				TotalCost: 100.123456,
+				Plans:     []PlanNode{},
+			},
+			expected: 100.12, // Rounded to 2 decimal places
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.planNode.totalCost()
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected, *result)
+		})
+	}
+}
+
+func TestPlanNode_ExplainPlanNodeOperation(t *testing.T) {
+	tests := []struct {
+		name     string
+		planNode PlanNode
+		expected database_observability.ExplainPlanOutputOperation
+	}{
+		{
+			name: "simple node type",
+			planNode: PlanNode{
+				NodeType: "Seq Scan",
+			},
+			expected: "Seq Scan",
+		},
+		{
+			name: "node with partial mode",
+			planNode: PlanNode{
+				NodeType:    "Aggregate",
+				PartialMode: "Partial",
+			},
+			expected: "Partial Aggregate",
+		},
+		{
+			name: "node with strategy - Sorted",
+			planNode: PlanNode{
+				NodeType: "Aggregate",
+				Strategy: "Sorted",
+			},
+			expected: "Group Aggregate",
+		},
+		{
+			name: "node with strategy - Plain (ignored)",
+			planNode: PlanNode{
+				NodeType: "Aggregate",
+				Strategy: "Plain",
+			},
+			expected: "Aggregate",
+		},
+		{
+			name: "node with custom strategy",
+			planNode: PlanNode{
+				NodeType: "Aggregate",
+				Strategy: "Hashed",
+			},
+			expected: "Hashed Aggregate",
+		},
+		{
+			name: "parallel aware node",
+			planNode: PlanNode{
+				NodeType:      "Seq Scan",
+				ParallelAware: true,
+			},
+			expected: "Parallel Seq Scan",
+		},
+		{
+			name: "complex combination",
+			planNode: PlanNode{
+				NodeType:      "Aggregate",
+				PartialMode:   "Finalize",
+				Strategy:      "Sorted",
+				ParallelAware: true,
+			},
+			expected: "Finalize Group Parallel Aggregate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.planNode.explainPlanNodeOperation()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestNewExplainPlanOutput(t *testing.T) {
+	dbVersion := "14.1"
+	queryId := "123456789"
+	generatedAt := time.Now().Format(time.RFC3339)
+
+	// Valid JSON input
+	explainJSON := []byte(`[{"Plan": {"Node Type": "Seq Scan", "Total Cost": 100.5, "Plan Rows": 1000, "Plan Width": 50}}]`)
+
+	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+
+	require.NoError(t, err)
+	require.NotNil(t, output)
+	assert.Equal(t, "PostgreSQL", output.Metadata.DatabaseEngine)
+	assert.Equal(t, dbVersion, output.Metadata.DatabaseVersion)
+	assert.Equal(t, queryId, output.Metadata.QueryIdentifier)
+	assert.Equal(t, generatedAt, output.Metadata.GeneratedAt)
+	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Seq Scan"), output.Plan.Operation)
+}
+
+func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
+	dbVersion := "14.1"
+	queryId := "123456789"
+	generatedAt := time.Now().Format(time.RFC3339)
+
+	// Invalid JSON input
+	explainJSON := []byte(`invalid json`)
+
+	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
+
+	require.Error(t, err)
+	assert.Nil(t, output)
+}
+
+func TestExplainPlan_PopulateQueryCache_Version17Plus(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	logger := log.NewNopLogger()
+
+	explainPlan := &ExplainPlan{
+		dbConnection:       db,
+		dbVersion:          "17.0",
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeSchemas:     []string{"information_schema"},
+		perScrapeRatio:     0.5,
+		logger:             logger,
+	}
+
+	// Mock the query for PostgreSQL 17+
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
+		AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()). // Should be excluded
+		AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
+
+	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+
+	ctx := context.Background()
+	err = explainPlan.populateQueryCache(ctx)
+
+	require.NoError(t, err)
+	assert.Len(t, explainPlan.queryCache, 2) // Should exclude information_schema
+	assert.Equal(t, 1, explainPlan.currentBatchSize) // 50% of 2 queries
+
+	// Verify specific queries are cached
+	assert.Contains(t, explainPlan.queryCache, "testdb123456")
+	assert.Contains(t, explainPlan.queryCache, "testdb2345678")
+	assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlan_PopulateQueryCache_VersionPre17(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	logger := log.NewNopLogger()
+
+	explainPlan := &ExplainPlan{
+		dbConnection:       db,
+		dbVersion:          "14.1",
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeSchemas:     []string{},
+		perScrapeRatio:     1.0,
+		logger:             logger,
+	}
+
+	resetTime := time.Now().Add(-time.Hour)
+
+	// Mock the stats reset query for pre-17
+	resetRows := sqlmock.NewRows([]string{"stats_reset"}).AddRow(resetTime)
+	mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").WillReturnRows(resetRows)
+
+	// Mock the main query for pre-17
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
+
+	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+
+	ctx := context.Background()
+	err = explainPlan.populateQueryCache(ctx)
+
+	require.NoError(t, err)
+	assert.Len(t, explainPlan.queryCache, 1)
+	assert.Equal(t, 1, explainPlan.currentBatchSize)
+
+	qi := explainPlan.queryCache["testdb123456"]
+	assert.Equal(t, resetTime, qi.callsReset)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlan_PopulateQueryCache_ErrorHandling(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	logger := log.NewNopLogger()
+
+	explainPlan := &ExplainPlan{
+		dbConnection: db,
+		dbVersion:    "14.1",
+		logger:       logger,
+	}
+
+	// Mock a database error
+	mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").
+		WillReturnError(fmt.Errorf("database connection failed"))
+
+	ctx := context.Background()
+	err = explainPlan.populateQueryCache(ctx)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "database connection failed")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
+	planNode := PlanNode{
+		NodeType:    "Hash Join",
+		TotalCost:   150.5,
+		PlanRows:    1000,
+		PlanWidth:   50,
+		JoinType:    "Inner",
+		Filter:      "users.id = orders.user_id",
+		Alias:       "u",
+		IndexName:   "idx_user_id",
+		GroupKey:    []string{"department"},
+		SortKey:     []string{"name", "created_at"},
+	}
+
+	result, err := planNode.ToExplainPlanOutputNode()
+
+	require.NoError(t, err)
+	assert.Equal(t, database_observability.ExplainPlanOutputOperation("Hash Join"), result.Operation)
+	assert.Equal(t, int64(1000), result.Details.EstimatedRows)
+	assert.NotNil(t, result.Details.EstimatedCost)
+	assert.Equal(t, 150.5, *result.Details.EstimatedCost)
+	assert.Equal(t, []string{"department"}, result.Details.GroupByKeys)
+	assert.Equal(t, []string{"name", "created_at"}, result.Details.SortKeys)
+	assert.NotNil(t, result.Details.JoinType)
+	assert.Equal(t, "Inner", *result.Details.JoinType)
+	assert.NotNil(t, result.Details.Condition)
+	// The redact function should obfuscate the condition, but let's just check it's not empty
+	assert.NotEmpty(t, *result.Details.Condition)
+	assert.NotNil(t, result.Details.Alias)
+	assert.Equal(t, "u", *result.Details.Alias)
+	assert.NotNil(t, result.Details.KeyUsed)
+	assert.Equal(t, "idx_user_id", *result.Details.KeyUsed)
+	assert.NotNil(t, result.Details.JoinAlgorithm)
+	assert.Equal(t, database_observability.ExplainPlanJoinAlgorithmHash, *result.Details.JoinAlgorithm)
+}
+
+func TestExplainPlan_FetchExplainPlans_EmptyCache(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	logger := log.NewNopLogger()
+
+	explainPlan := &ExplainPlan{
+		dbConnection:       db,
+		dbVersion:          "17.0",
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeSchemas:     []string{},
+		perScrapeRatio:     1.0,
+		logger:             logger,
+	}
+
+	// Mock the populateQueryCache call
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
+
+	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+
+	ctx := context.Background()
+	err = explainPlan.fetchExplainPlans(ctx)
+
+	// Should succeed but not process any queries since they require actual DB connections
+	require.NoError(t, err)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
