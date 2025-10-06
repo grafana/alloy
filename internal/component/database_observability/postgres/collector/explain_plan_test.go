@@ -2288,6 +2288,7 @@ func TestNewExplainPlan(t *testing.T) {
 
 	logger := log.NewNopLogger()
 	entryHandler := fake.NewClient(func() {})
+	defer entryHandler.Stop()
 
 	args := ExplainPlanArguments{
 		DB:              db,
@@ -2542,7 +2543,7 @@ func TestExplainPlan_PopulateQueryCache_Version17Plus(t *testing.T) {
 	err = explainPlan.populateQueryCache(ctx)
 
 	require.NoError(t, err)
-	assert.Len(t, explainPlan.queryCache, 2) // Should exclude information_schema
+	assert.Len(t, explainPlan.queryCache, 2)         // Should exclude information_schema
 	assert.Equal(t, 1, explainPlan.currentBatchSize) // 50% of 2 queries
 
 	// Verify specific queries are cached
@@ -2624,16 +2625,16 @@ func TestExplainPlan_PopulateQueryCache_ErrorHandling(t *testing.T) {
 
 func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
 	planNode := PlanNode{
-		NodeType:    "Hash Join",
-		TotalCost:   150.5,
-		PlanRows:    1000,
-		PlanWidth:   50,
-		JoinType:    "Inner",
-		Filter:      "users.id = orders.user_id",
-		Alias:       "u",
-		IndexName:   "idx_user_id",
-		GroupKey:    []string{"department"},
-		SortKey:     []string{"name", "created_at"},
+		NodeType:  "Hash Join",
+		TotalCost: 150.5,
+		PlanRows:  1000,
+		PlanWidth: 50,
+		JoinType:  "Inner",
+		Filter:    "users.id = orders.user_id",
+		Alias:     "u",
+		IndexName: "idx_user_id",
+		GroupKey:  []string{"department"},
+		SortKey:   []string{"name", "created_at"},
 	}
 
 	result, err := planNode.ToExplainPlanOutputNode()

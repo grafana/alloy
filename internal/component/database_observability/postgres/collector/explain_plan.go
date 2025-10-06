@@ -28,13 +28,13 @@ const (
 	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
 )
 
-const selectQueriesForExplainPlanPre17 = `
+const selectQueriesForExplainPlanTemplate = `
 	SELECT
 		d.datname,
 		s.queryid,
 		s.query,
 		s.calls,
-		NOW() AT TIME ZONE 'UTC' AS stats_since
+		%s
 	FROM pg_stat_statements s
 		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
@@ -42,18 +42,6 @@ const selectQueriesForExplainPlanPre17 = `
 
 const selectQueriesCallResetTimePre17 = `
 	SELECT stats_reset FROM pg_stat_statements_info
-`
-
-const selectQueriesForExplainPlan17Plus = `
-	SELECT
-		d.datname,
-		s.queryid,
-		s.query,
-		s.calls,
-		s.stats_since
-	FROM pg_stat_statements s
-		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
-	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL	
 `
 
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
@@ -325,23 +313,21 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
 	if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
-		selectStatement = selectQueriesForExplainPlan17Plus
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")
 	} else {
-		stat_reset, err := c.dbConnection.QueryContext(ctx, selectQueriesCallResetTimePre17)
+		statReset, err := c.dbConnection.QueryContext(ctx, selectQueriesCallResetTimePre17)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to fetch stats reset time for explain plans", "err", err)
 			return err
 		}
-		defer stat_reset.Close()
-		if stat_reset.Next() {
-			var ls time.Time
-			if err := stat_reset.Scan(&ls); err != nil {
+		defer statReset.Close()
+		if statReset.Next() {
+			if err := statReset.Scan(&resetTS); err != nil {
 				level.Error(c.logger).Log("msg", "failed to scan stats reset time for explain plans", "err", err)
 				return err
 			}
-			resetTS = ls
 		}
-		selectStatement = selectQueriesForExplainPlanPre17
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
