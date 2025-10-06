@@ -1,0 +1,111 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.source.azure_event_hubs."
+  required:
+    - fully_qualified_namespace
+    - event_hubs
+    - forward_to
+    - authentication
+  properties:
+    fully_qualified_namespace:
+      description: >-
+        Event hub namespace. Must refer to a full HOST:PORT that points to your event hub, such as NAMESPACE.servicebus.windows.net:9093.
+      type: string
+
+    event_hubs:
+      description: >-
+        Event Hubs to consume.
+      type: array
+      items:
+        type: string
+      alloy:
+        type_override: "list(string)"
+
+    forward_to:
+      description: >-
+        List of receivers to send log entries to.
+      type: array
+      alloy:
+        type_override: "list(LogsReceiver)"
+
+    group_id:
+      description: >-
+        The Kafka consumer group ID.
+      type: string
+      alloy:
+        default_override: '"loki.source.azure_event_hubs"'
+
+    use_incoming_timestamp:
+      description: >-
+        Whether to use the timestamp received from Azure Event Hub.
+      type: boolean
+      alloy:
+        default_override: false
+
+    disallow_custom_messages:
+      description: >-
+        Whether to ignore messages that don't match the schema for Azure resource logs.
+      type: boolean
+      alloy:
+        default_override: false
+
+    relabel_rules:
+      description: >-
+        Relabeling rules to apply on log entries.
+      type: array
+      items:
+        type: object
+      alloy:
+        type_override: "RelabelRules"
+        default_override: "{}"
+
+    labels:
+      description: >-
+        The labels to associate with each received event.
+      type: object
+      items:
+        type: object
+        additionalProperties:
+          type: string
+      alloy:
+        type: attribute
+        type_override: "map(string)"
+        default_override: "{}"
+
+    assignor:
+      description: >-
+        The consumer group rebalancing strategy to use.
+      type: string
+      alloy:
+        default_override: '"range"'
+
+    authentication:
+      description: >-
+        Authentication configuration with Azure Event Hub.
+      type: object
+      required:
+        - mechanism
+      properties:
+        mechanism:
+          description: >-
+            Authentication mechanism.
+          type: string
+          enum:
+            - "connection_string"
+            - "oauth"
+
+        connection_string:
+          description: >-
+            Event Hubs ConnectionString for authentication on Azure Cloud.
+          type: string
+          alloy:
+            type_override: "secret"
+
+        scopes:
+          description: >-
+            Access token scopes. Default is fully_qualified_namespace without port.
+          type: array
+          items:
+            type: string
+          alloy:
+            type_override: "list(string)"
