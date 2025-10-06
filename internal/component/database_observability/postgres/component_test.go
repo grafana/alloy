@@ -335,3 +335,21 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)
 }
+
+func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {
+	t.Parallel()
+
+	exampleDBO11yAlloyConfig := `
+	data_source_name = "postgres://db"
+	forward_to = []
+	schema_details {
+		collect_interval = "11s"
+	}
+`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
+}

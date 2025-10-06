@@ -160,8 +160,9 @@ type indexSpec struct {
 }
 
 type SchemaDetailsArguments struct {
-	DB           *sql.DB
-	EntryHandler loki.EntryHandler
+	DB              *sql.DB
+	CollectInterval time.Duration
+	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
 }
@@ -180,7 +181,7 @@ type SchemaDetails struct {
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
-		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
+		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
