@@ -2485,7 +2485,6 @@ func TestNewExplainPlanOutput(t *testing.T) {
 	queryId := "123456789"
 	generatedAt := time.Now().Format(time.RFC3339)
 
-	// Valid JSON input
 	explainJSON := []byte(`[{"Plan": {"Node Type": "Seq Scan", "Total Cost": 100.5, "Plan Rows": 1000, "Plan Width": 50}}]`)
 
 	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
@@ -2504,7 +2503,6 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 	queryId := "123456789"
 	generatedAt := time.Now().Format(time.RFC3339)
 
-	// Invalid JSON input
 	explainJSON := []byte(`invalid json`)
 
 	output, err := newExplainPlanOutput(dbVersion, queryId, explainJSON, generatedAt)
@@ -2513,114 +2511,110 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 	assert.Nil(t, output)
 }
 
-func TestExplainPlan_PopulateQueryCache_Version17Plus(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
-
+func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	logger := log.NewNopLogger()
 
-	explainPlan := &ExplainPlan{
-		dbConnection:       db,
-		dbVersion:          "17.0",
-		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
-		excludeSchemas:     []string{"information_schema"},
-		perScrapeRatio:     0.5,
-		logger:             logger,
-	}
+	t.Run("populate query cache for PostgreSQL 17+", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
 
-	// Mock the query for PostgreSQL 17+
-	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
-		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
-		AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()). // Should be excluded
-		AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
+		explainPlan := &ExplainPlan{
+			dbConnection:       db,
+			dbVersion:          "17.0",
+			queryCache:         make(map[string]*queryInfo),
+			queryDenylist:      make(map[string]*queryInfo),
+			finishedQueryCache: make(map[string]*queryInfo),
+			excludeSchemas:     []string{"information_schema"},
+			perScrapeRatio:     0.5,
+			logger:             logger,
+		}
 
-	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
+			AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()).
+			AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
 
-	ctx := context.Background()
-	err = explainPlan.populateQueryCache(ctx)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
 
-	require.NoError(t, err)
-	assert.Len(t, explainPlan.queryCache, 2)         // Should exclude information_schema
-	assert.Equal(t, 1, explainPlan.currentBatchSize) // 50% of 2 queries
+		ctx := context.Background()
+		err = explainPlan.populateQueryCache(ctx)
 
-	// Verify specific queries are cached
-	assert.Contains(t, explainPlan.queryCache, "testdb123456")
-	assert.Contains(t, explainPlan.queryCache, "testdb2345678")
-	assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
+		require.NoError(t, err)
+		assert.Len(t, explainPlan.queryCache, 2)
+		assert.Equal(t, 1, explainPlan.currentBatchSize)
 
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
+		assert.Contains(t, explainPlan.queryCache, "testdb123456")
+		assert.Contains(t, explainPlan.queryCache, "testdb2345678")
+		assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
 
-func TestExplainPlan_PopulateQueryCache_VersionPre17(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
 
-	logger := log.NewNopLogger()
+	t.Run("populate query cache for PostgreSQL < 17", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
 
-	explainPlan := &ExplainPlan{
-		dbConnection:       db,
-		dbVersion:          "14.1",
-		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
-		excludeSchemas:     []string{},
-		perScrapeRatio:     1.0,
-		logger:             logger,
-	}
+		explainPlan := &ExplainPlan{
+			dbConnection:       db,
+			dbVersion:          "14.1",
+			queryCache:         make(map[string]*queryInfo),
+			queryDenylist:      make(map[string]*queryInfo),
+			finishedQueryCache: make(map[string]*queryInfo),
+			excludeSchemas:     []string{},
+			perScrapeRatio:     1.0,
+			logger:             logger,
+		}
 
-	resetTime := time.Now().Add(-time.Hour)
+		resetTime := time.Now().Add(-time.Hour)
 
-	// Mock the stats reset query for pre-17
-	resetRows := sqlmock.NewRows([]string{"stats_reset"}).AddRow(resetTime)
-	mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").WillReturnRows(resetRows)
+		resetRows := sqlmock.NewRows([]string{"stats_reset"}).AddRow(resetTime)
+		mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").WillReturnRows(resetRows)
 
-	// Mock the main query for pre-17
-	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
-		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
+		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+		mock.ExpectQuery("SELECT.*FROM pg_stat_statements.*").WillReturnRows(rows)
+		// For some reason, this fails on the `.` character in the where clause "WHERE s.queryid...".
+		// So we're using a broader regex to match the query on the mock.
+		// mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")).WillReturnRows(rows)
 
-	ctx := context.Background()
-	err = explainPlan.populateQueryCache(ctx)
+		ctx := context.Background()
+		err = explainPlan.populateQueryCache(ctx)
 
-	require.NoError(t, err)
-	assert.Len(t, explainPlan.queryCache, 1)
-	assert.Equal(t, 1, explainPlan.currentBatchSize)
+		require.NoError(t, err)
+		assert.Len(t, explainPlan.queryCache, 1)
+		assert.Equal(t, 1, explainPlan.currentBatchSize)
 
-	qi := explainPlan.queryCache["testdb123456"]
-	assert.Equal(t, resetTime, qi.callsReset)
+		qi := explainPlan.queryCache["testdb123456"]
+		assert.Equal(t, resetTime, qi.callsReset)
 
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
 
-func TestExplainPlan_PopulateQueryCache_ErrorHandling(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
+	t.Run("returns error on database connection failure", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
 
-	logger := log.NewNopLogger()
+		explainPlan := &ExplainPlan{
+			dbConnection: db,
+			dbVersion:    "14.1",
+			logger:       logger,
+		}
 
-	explainPlan := &ExplainPlan{
-		dbConnection: db,
-		dbVersion:    "14.1",
-		logger:       logger,
-	}
+		mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").
+			WillReturnError(fmt.Errorf("database connection failed"))
 
-	// Mock a database error
-	mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").
-		WillReturnError(fmt.Errorf("database connection failed"))
+		ctx := context.Background()
+		err = explainPlan.populateQueryCache(ctx)
 
-	ctx := context.Background()
-	err = explainPlan.populateQueryCache(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "database connection failed")
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "database connection failed")
-
-	assert.NoError(t, mock.ExpectationsWereMet())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
 }
 
 func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
@@ -2681,13 +2675,14 @@ func TestExplainPlan_FetchExplainPlans_EmptyCache(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-	mock.ExpectQuery("SELECT.*FROM pg_stat_statements s.*").WillReturnRows(rows)
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
 
 	ctx := context.Background()
 	err = explainPlan.fetchExplainPlans(ctx)
 
 	// Should succeed but not process any queries since they require actual DB connections
 	require.NoError(t, err)
+	require.Equal(t, 1, len(explainPlan.finishedQueryCache))
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
