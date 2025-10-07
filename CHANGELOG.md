@@ -42,6 +42,8 @@ Main (unreleased)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
+
 v1.11.0
 -----------------
 
