@@ -1463,7 +1463,7 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
 
-For labels that are dynamic, see [`stage.labels`][stage.labels]
+For labels that are dynamic, refer to [`stage.labels`][stage.labels]
 
 The following arguments are supported:
 
