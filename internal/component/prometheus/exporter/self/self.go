@@ -21,6 +21,8 @@ func init() {
 }
 
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
+	// We don't warn if this exporter is used in a cluster as prometheus.exporter.self is not host-specific, but Alloy-specific and
+	// it's frequently used in a cluster with a non-clustered prometheus.scrape component.
 	a := args.(Arguments)
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for self exporter
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)

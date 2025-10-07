@@ -22,6 +22,7 @@ func init() {
 }
 
 func createIntegration(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
+	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for process exporter
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
