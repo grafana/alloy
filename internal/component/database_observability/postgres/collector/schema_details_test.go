@@ -37,10 +37,7 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -142,10 +139,7 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -335,10 +329,7 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -446,10 +437,7 @@ func TestSchemaTable(t *testing.T) {
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		})
@@ -500,10 +488,7 @@ func TestSchemaTable(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -609,10 +594,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -713,10 +695,7 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -817,9 +796,10 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -917,10 +897,10 @@ func TestSchemaCaching(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
+			CollectInterval: time.Millisecond,
 			CacheEnabled:    true,
 			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CacheTTL:        time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -971,6 +951,16 @@ func TestSchemaCaching(t *testing.T) {
 					"column_names",
 					"expressions",
 					"has_nullable_column",
+				}),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
 				}),
 			)
 
@@ -1041,10 +1031,10 @@ func TestSchemaCaching(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: 1 * time.Minute,
+			CollectInterval: time.Millisecond,
 			CacheEnabled:    false,
 			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			CacheTTL:        time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -1096,6 +1086,16 @@ func TestSchemaCaching(t *testing.T) {
 						"column_names",
 						"expressions",
 						"has_nullable_column",
+					}),
+				)
+
+			mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"constraint_name",
+						"column_name",
+						"referenced_table_name",
+						"referenced_column_name",
 					}),
 				)
 		}
