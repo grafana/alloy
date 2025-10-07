@@ -27,11 +27,13 @@ The `include` and `exclude` arguments are preferred going forward.
 {{< admonition type="note" >}}
 Take care when using the `prometheus.exporter.windows` component with [clustering](../../../../get-started/clustering/) enabled.
 
-The default `instance` label set by this exporter is the hostname of the machine running Alloy. Alloy clustering uses consistent
-hashing to distribute targets across the instances. This approach requires the discovered targets to be the same and have the same
-labels across all cluster instances. When using `prometheus.exporter.windows` within a [cluster](../../../../get-started/clustering/)
-of Alloy instances, it is recommended to use a dedicated `prometheus.scrape` component that is used to
-scrape `prometheus.exporter.windows` and does not have clustering enabled.
+The default `instance` label set by this exporter is the hostname of the machine running {{< param "PRODUCT_NAME" >}}.
+{{< param "PRODUCT_NAME" >}} clustering uses consistent hashing to distribute targets across the instances.
+This approach requires the discovered targets to be the same and have the same labels across all cluster instances.
+
+When you use `prometheus.exporter.windows` within a [cluster](../../../../get-started/clustering/)
+of {{< param "PRODUCT_NAME" >}} instances, use a dedicated `prometheus.scrape` component that's used to scrape
+`prometheus.exporter.windows` and doesn't have clustering enabled.
 {{< /admonition >}}
 
 ## Usage
