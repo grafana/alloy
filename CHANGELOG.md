@@ -14,6 +14,8 @@ v1.11.1
 
 - Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
 
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
+
 v1.11.0
 -----------------
 
