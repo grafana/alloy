@@ -894,19 +894,20 @@ func TestSchemaCaching(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
-
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    true,
 			CacheSize:       256,
-			CacheTTL:        time.Millisecond,
+			CacheTTL:        10 * time.Minute,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		// first run mock declarations
+		// selectDatabaseName, selectSchemaNames, selectTableNames always called
 		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -915,14 +916,12 @@ func TestSchemaCaching(t *testing.T) {
 					"cache_test_db",
 				),
 			)
-
 		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
 				}).AddRow("public"),
 			)
-
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -930,6 +929,7 @@ func TestSchemaCaching(t *testing.T) {
 				}).AddRow("test_table"),
 			)
 
+		// selectColumnNames, selectIndexes, selectForeignKeys called only first run
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -941,7 +941,6 @@ func TestSchemaCaching(t *testing.T) {
 					"is_primary_key",
 				}).AddRow("id", "integer", true, nil, "", true),
 			)
-
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -953,7 +952,6 @@ func TestSchemaCaching(t *testing.T) {
 					"has_nullable_column",
 				}),
 			)
-
 		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -964,18 +962,16 @@ func TestSchemaCaching(t *testing.T) {
 				}),
 			)
 
-		err = collector.extractNames(context.Background())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
-		}, 2*time.Second, 100*time.Millisecond)
-
+		// first run invocation
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
 		firstRunEntries := lokiClient.Received()
 		require.Len(t, firstRunEntries, 3)
 
 		lokiClient.Clear()
 
+		// second run mock declarations
+		// selectDatabaseName, selectSchemaNames, selectTableNames always called
 		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -984,38 +980,34 @@ func TestSchemaCaching(t *testing.T) {
 					"cache_test_db",
 				),
 			)
-
 		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
 				}).AddRow("public"),
 			)
-
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
 				}).AddRow("test_table"),
 			)
+		// Here, note that selectColumnNames, selectIndexes, selectForeignKeys mocks are not declared: they should not be called due to caching
 
-		err = collector.extractNames(context.Background())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
-		}, 2*time.Second, 100*time.Millisecond)
-
+		// second run invocation
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
 		secondRunEntries := lokiClient.Received()
 		require.Len(t, secondRunEntries, 3)
 
+		// assert that first and second run results are identical
 		for i := range firstRunEntries {
 			assert.Equal(t, firstRunEntries[i].Labels, secondRunEntries[i].Labels)
 			assert.Equal(t, firstRunEntries[i].Line, secondRunEntries[i].Line)
 		}
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are not called
+		require.NoError(t, mock.ExpectationsWereMet())
 
 		lokiClient.Stop()
 	})
@@ -1033,14 +1025,13 @@ func TestSchemaCaching(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    false,
-			CacheSize:       256,
-			CacheTTL:        time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		// declare mocks for two runs
 		for i := 0; i < 2; i++ {
 			mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
@@ -1100,24 +1091,21 @@ func TestSchemaCaching(t *testing.T) {
 				)
 		}
 
-		err = collector.extractNames(context.Background())
-		require.NoError(t, err)
-
+		// first run
+		require.NoError(t, collector.extractNames(context.Background()))
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
-
 		lokiClient.Clear()
 
-		err = collector.extractNames(context.Background())
-		require.NoError(t, err)
-
+		// second run
+		require.NoError(t, collector.extractNames(context.Background()))
 		require.Eventually(t, func() bool {
 			return len(lokiClient.Received()) == 3
 		}, 2*time.Second, 100*time.Millisecond)
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are called twice
+		require.NoError(t, mock.ExpectationsWereMet())
 
 		lokiClient.Stop()
 	})
