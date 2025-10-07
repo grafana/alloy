@@ -179,6 +179,7 @@ type SchemaDetails struct {
 
 	// Cache of table definitions. Entries are removed after a configurable TTL.
 	// Key is a string of the form "database.schema.table".
+	// TODO: (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed
 	cache *expirable.LRU[string, *tableInfo]
 
 	logger  log.Logger
