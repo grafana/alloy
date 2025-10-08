@@ -14,6 +14,8 @@ title: prometheus.exporter.cadvisor
 
 The `prometheus.exporter.cadvisor` component collects container metrics using [cAdvisor](https://github.com/google/cadvisor).
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy
