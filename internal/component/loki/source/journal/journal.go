@@ -44,7 +44,6 @@ type Component struct {
 	o              component.Options
 	handler        chan loki.Entry
 	positions      positions.Positions
-	receivers      []loki.LogsReceiver
 	targetsUpdated chan struct{}
 	args           Arguments
 	healthErr      error
@@ -77,7 +76,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		o:              o,
 		handler:        make(chan loki.Entry),
 		positions:      positionsFile,
-		receivers:      args.Receivers,
 		targetsUpdated: make(chan struct{}, 1),
 		args:           args,
 	}
@@ -115,7 +113,7 @@ func (c *Component) Run(ctx context.Context) error {
 				Labels: entry.Labels,
 				Entry:  entry.Entry,
 			}
-			for _, r := range c.receivers {
+			for _, r := range c.args.Receivers {
 				r.Chan() <- lokiEntry
 			}
 			c.mut.RUnlock()
@@ -129,7 +127,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	c.args = newArgs
-	c.receivers = newArgs.Receivers
 	select {
 	case c.targetsUpdated <- struct{}{}:
 	default: // Update notification already sent
@@ -160,8 +157,8 @@ func (c *Component) startDrainingRoutine() func() {
 	readCtx, cancel := context.WithCancel(context.Background())
 	c.mut.RLock()
 	defer c.mut.RUnlock()
-	receiversCopy := make([]loki.LogsReceiver, len(c.receivers))
-	copy(receiversCopy, c.receivers)
+	receiversCopy := make([]loki.LogsReceiver, len(c.args.Receivers))
+	copy(receiversCopy, c.args.Receivers)
 	go func() {
 		for {
 			select {
