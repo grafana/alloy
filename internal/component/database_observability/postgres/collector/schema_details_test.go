@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
-func TestSchemaTable(t *testing.T) {
+func Test_Postgres_SchemaDetails(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
@@ -580,7 +580,7 @@ func TestSchemaTable(t *testing.T) {
 	})
 }
 
-func Test_collector_detects_auto_increment_column(t *testing.T) {
+func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("collector detects auto increment column", func(t *testing.T) {
@@ -885,8 +885,8 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 	})
 }
 
-func TestSchemaCaching(t *testing.T) {
-	t.Run("collector uses cache on second run", func(t *testing.T) {
+func Test_Postgres_SchemaDetails_caching(t *testing.T) {
+	t.Run("uses cache on second run when caching is enabled", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1012,7 +1012,7 @@ func TestSchemaCaching(t *testing.T) {
 		lokiClient.Stop()
 	})
 
-	t.Run("collector bypasses cache when disabled", func(t *testing.T) {
+	t.Run("bypasses cache when caching is disabled", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
