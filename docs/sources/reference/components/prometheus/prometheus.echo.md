@@ -41,9 +41,9 @@ The `prometheus.echo` component doesn't support any blocks. You can configure th
 
 The following fields are exported and can be referenced by other components:
 
-| Name       | Type                    | Description                              |
-| ---------- | ----------------------- | ---------------------------------------- |
-| `receiver` | `prometheus.Appendable` | A value that other components can use to send metrics to. |
+| Name       | Type              | Description                                               |
+| ---------- | ----------------- | --------------------------------------------------------- |
+| `receiver` | `MetricsReceiver` | A value that other components can use to send metrics to. |
 
 ## Component health
 
