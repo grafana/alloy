@@ -112,15 +112,16 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 }
 
-// SampleKey uniquely identifies a running sample (query execution instance)
-// while it is in a non-idle state.
+// SampleKey uses (PID, QueryID, XID) so concurrent executions of the same
+// query across backends/transactions are uniquely tracked between scrapes.
 type SampleKey struct {
 	PID     int
 	QueryID int64
 	XID     int32
 }
 
-// SampleState holds the in-memory buffered state for a running sample.
+// SampleState buffers state across scrapes and is emitted once the query
+// turns idle or disappears, avoiding partial/duplicate emissions.
 type SampleState struct {
 	LastRow     QuerySamplesInfo
 	LastSeenAt  time.Time
@@ -128,7 +129,8 @@ type SampleState struct {
 	tracker     WaitEventTracker
 }
 
-// WaitEventTracker manages a sequence of wait-event occurrences for a sample
+// WaitEventTracker coalesces consecutive identical wait events
+// to reduce log volume while preserving timing.
 type WaitEventTracker struct {
 	waitEvents []WaitEventOccurrence
 	openIdx    int // -1 means none open
@@ -138,10 +140,7 @@ func newWaitEventTracker() WaitEventTracker {
 	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
 }
 
-// CloseOpen closes any open wait event
-func (t *WaitEventTracker) CloseOpen() { t.openIdx = -1 }
-
-// WaitEvents returns the tracked wait events
+func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
 func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
@@ -162,12 +161,6 @@ type WaitEventIdentity struct {
 	blockedBy []int64 // normalized
 }
 
-// Normalize ensures the blockedBy set is sorted unique
-func (w *WaitEventIdentity) Normalize() {
-	w.blockedBy = normalizePIDs(pq.Int64Array(w.blockedBy))
-}
-
-// Equal compares identity ignoring order/duplicates of blocked_by set
 func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 	if w.eventType != other.eventType || w.event != other.event {
 		return false
@@ -276,7 +269,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	return nil
 }
 
-// scanRow reads a single row into QuerySamplesInfo
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	sample := QuerySamplesInfo{}
 	err := rows.Scan(
@@ -305,7 +297,6 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	return sample, err
 }
 
-// processRow validates and classifies a row, returning its sample key and idle flag
 func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, error) {
 	if err := c.validateQuerySample(sample); err != nil {
 		return SampleKey{}, false, err
@@ -317,21 +308,17 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, err
 	return key, false, nil
 }
 
-// finalizeSamples emits samples that turned idle or disappeared
 func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct{}) {
-	// Finalize samples that turned idle in this scrape
 	for key := range idleKeys {
 		if _, ok := c.samples[key]; ok {
 			c.emitAndDeleteSample(key)
 		}
 	}
 
-	// Finalize samples that have disappeared (not seen as active this scrape)
 	for key := range c.samples {
 		if _, stillActive := activeKeys[key]; stillActive {
 			continue
 		}
-		// Skip ones already finalized due to idle
 		if _, wasIdle := idleKeys[key]; wasIdle {
 			continue
 		}
@@ -351,9 +338,7 @@ func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	return nil
 }
 
-// upsertActiveSample upserts the state for an active sample
 func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
-	// Upsert state
 	state, ok := c.samples[key]
 	if !ok {
 		state = &SampleState{tracker: newWaitEventTracker()}
@@ -365,7 +350,6 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
-// upsertWaitEvent ingests a new row and updates or opens/closes wait event occurrences accordingly
 func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time) {
 	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
 		current := WaitEventIdentity{
@@ -377,18 +361,15 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			we := t.waitEvents[t.openIdx]
 			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
 			if existing.Equal(current) {
-				// continue same wait event; update last values
 				we.LastWaitTime = calculateDuration(sample.StateChange, now)
 				we.LastState = sample.State.String
 				we.LastTimestamp = now
 				t.waitEvents[t.openIdx] = we
 				return
 			}
-			// close current wait event
 			t.openIdx = -1
 		}
 
-		// start new wait event
 		newOcc := WaitEventOccurrence{
 			WaitEventType: current.eventType,
 			WaitEvent:     current.event,
@@ -402,13 +383,11 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 		return
 	}
 
-	// No wait event on this row; close any open wait event
 	if t.openIdx >= 0 {
 		t.openIdx = -1
 	}
 }
 
-// upsertIdleSample upserts the state for an idle sample
 func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) {
 	state, ok := c.samples[key]
 	if !ok {
@@ -417,17 +396,14 @@ func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) 
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-	// Close any open wait event
 	state.tracker.CloseOpen()
 }
 
-// emitAndDeleteSample builds final entries for a sample and removes it from memory.
 func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	state, ok := c.samples[key]
 	if !ok {
 		return
 	}
-	// Build and emit OP_QUERY_SAMPLE
 	sampleLabels := c.buildQuerySampleLabels(state)
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
@@ -436,7 +412,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		state.LastSeenAt.UnixNano(),
 	)
 
-	// Emit OP_WAIT_EVENT entries for each wait event
 	for _, we := range state.tracker.WaitEvents() {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
@@ -453,14 +428,12 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
-// updateCpuTimeIfActive applies CPU sampling rule and stores last observed cpu_time
 func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
 }
 
-// buildQuerySampleLabels constructs the labels string for OP_QUERY_SAMPLE
 func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -504,7 +477,6 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 	return labels
 }
 
-// buildWaitEventLabels constructs the labels string for OP_WAIT_EVENT
 func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
@@ -534,7 +506,6 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	)
 }
 
-// calculateDuration returns a formatted duration string between a nullable time and current time
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
 	if !nullableTime.Valid {
 		return ""
@@ -542,7 +513,6 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 	return currentTime.Sub(nullableTime.Time).Round(time.Nanosecond).String()
 }
 
-// normalizePIDs returns a sorted unique slice for stable set comparisons/printing.
 func normalizePIDs(pids pq.Int64Array) []int64 {
 	seen := make(map[int64]struct{}, len(pids))
 	out := make([]int64, 0, len(pids))
