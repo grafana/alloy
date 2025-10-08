@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.echo/
-aliases:
-  - ../prometheus.echo/ # /docs/alloy/latest/reference/components/prometheus.echo/
 description: Learn about prometheus.echo
 labels:
   stage: general-availability
