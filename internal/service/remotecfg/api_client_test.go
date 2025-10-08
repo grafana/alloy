@@ -11,6 +11,7 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
@@ -279,4 +280,41 @@ func TestAPIClient_Integration(t *testing.T) {
 
 	// Verify it's the apiClient wrapper
 	assert.IsType(t, &apiClient{}, client)
+}
+
+// TestAgentInterceptor_UserAgent tests that the agentInterceptor correctly sets User-Agent headers
+func TestAgentInterceptor_UserAgent(t *testing.T) {
+	interceptor := newAgentInterceptor()
+
+	// Verify the interceptor has the correct user agent
+	expectedUserAgent := useragent.Get()
+	assert.Equal(t, expectedUserAgent, interceptor.agent)
+	assert.Contains(t, interceptor.agent, "Alloy", "User-Agent should contain 'Alloy'")
+}
+
+// TestAgentInterceptor_WrapUnary tests that the agentInterceptor adds User-Agent to unary requests
+func TestAgentInterceptor_WrapUnary(t *testing.T) {
+	interceptor := newAgentInterceptor()
+
+	// Track if the User-Agent header was set
+	var capturedUserAgent string
+
+	// Mock the next function to capture the request headers
+	mockNext := func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		capturedUserAgent = req.Header().Get("User-Agent")
+		return nil, nil
+	}
+
+	// Wrap the mock function
+	wrappedFunc := interceptor.WrapUnary(mockNext)
+
+	// Create a mock request
+	req := connect.NewRequest(&collectorv1.GetConfigRequest{})
+
+	// Call the wrapped function
+	_, err := wrappedFunc(t.Context(), req)
+
+	require.NoError(t, err)
+	assert.Equal(t, interceptor.agent, capturedUserAgent)
+	assert.Contains(t, capturedUserAgent, "Alloy", "User-Agent should contain 'Alloy'")
 }

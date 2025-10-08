@@ -37,9 +37,9 @@ The following collectors are configurable:
 
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
-| `query_details`  | Collect queries information.                                          | no                 |
-| `query_samples`  | Collect query samples and wait events information.                    | no                 |
-| `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | no                 |
+| `query_details`  | Collect queries information.                                          | yes                |
+| `query_samples`  | Collect query samples and wait events information.                    | yes                |
+| `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
 | `explain_plans`  | Collect query explain plans.                                          | no                 |
 
 ## Blocks
