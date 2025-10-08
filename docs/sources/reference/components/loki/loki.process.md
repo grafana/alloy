@@ -582,6 +582,8 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map and set new labels on incoming log entries.
 
+For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+
 The following arguments are supported:
 
 | Name     | Type          | Description                             | Default | Required |
@@ -1460,6 +1462,8 @@ stage.sampling {
 ### `stage.static_labels`
 
 The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
+
+For labels that are dynamic, refer to [`stage.labels`][stage.labels]
 
 The following arguments are supported:
 
