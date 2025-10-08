@@ -24,8 +24,8 @@ prometheus.echo "<LABEL>" {
 
 You can use the following arguments with `prometheus.echo`:
 
-| Name     | Type     | Description                                                      | Default | Required |
-| -------- | -------- | ---------------------------------------------------------------- | ------- | -------- |
+| Name     | Type     | Description                                                     | Default | Required |
+| -------- | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `format` | `string` | The output format for metrics. Must be `text` or `openmetrics`. | `text`  | no       |
 
 The `format` argument controls how metrics are encoded when written to stdout:
