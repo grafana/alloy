@@ -84,10 +84,10 @@ In this example:
 
 When you run this configuration, you'll see the metrics being written to stdout, which is useful to:
 
-* Debugging metric collection issues
-* Verifying metric labels and values
-* Testing metric transformations
-* Understanding the structure of metrics in your pipeline
+* Debug metric collection issues
+* Verify metric labels and values
+* Test metric transformations
+* Understand the structure of metrics in your pipeline
 
 ### Example with OpenMetrics format
 
