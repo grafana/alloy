@@ -11,21 +11,6 @@ extend type Query {
 }
 
 type Component {
-  "Arguments of the component."
-  arguments: String!
-
-  "Connection status of the component."
-  connectionStatus: String!
-
-  "Debug information of the component."
-  debugInfo: String!
-
-  "All endpoints known by this component."
-  endpoints: [Endpoint!]!
-
-  "Exports of the component."
-  exports: String!
-
   "Health status of the component."
   health: Health!
 
