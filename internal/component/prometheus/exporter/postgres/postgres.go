@@ -37,10 +37,7 @@ var DefaultArguments = Arguments{
 	},
 	DisableDefaultMetrics:   false,
 	CustomQueriesConfigPath: "",
-	StatStatementFlags: StatStatementFlags{
-		IncludeQuery: false,
-		QueryLength:  120,
-	},
+	StatStatementFlags:      nil,
 }
 
 // Arguments configures the prometheus.exporter.postgres component
@@ -57,8 +54,8 @@ type Arguments struct {
 	EnabledCollectors       []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Blocks
-	AutoDiscovery      AutoDiscovery      `alloy:"autodiscovery,block,optional"`
-	StatStatementFlags StatStatementFlags `alloy:"stat_statements,block,optional"`
+	AutoDiscovery      AutoDiscovery       `alloy:"autodiscovery,block,optional"`
+	StatStatementFlags *StatStatementFlags `alloy:"stat_statements,block,optional"`
 }
 
 func (a *Arguments) Validate() error {
@@ -91,17 +88,26 @@ func (a *Arguments) SetToDefault() {
 
 func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 	return &postgres_exporter.Config{
-		DataSourceNames:           a.convertDataSourceNames(),
-		DisableSettingsMetrics:    a.DisableSettingsMetrics,
-		AutodiscoverDatabases:     a.AutoDiscovery.Enabled,
-		ExcludeDatabases:          a.AutoDiscovery.DatabaseDenylist,
-		IncludeDatabases:          a.AutoDiscovery.DatabaseAllowlist,
-		DisableDefaultMetrics:     a.DisableDefaultMetrics,
-		QueryPath:                 a.CustomQueriesConfigPath,
-		Instance:                  instanceName,
-		EnabledCollectors:         a.EnabledCollectors,
-		StatStatementIncludeQuery: a.StatStatementFlags.IncludeQuery,
-		StatStatementQueryLength:  a.StatStatementFlags.QueryLength,
+		DataSourceNames:        a.convertDataSourceNames(),
+		DisableSettingsMetrics: a.DisableSettingsMetrics,
+		AutodiscoverDatabases:  a.AutoDiscovery.Enabled,
+		ExcludeDatabases:       a.AutoDiscovery.DatabaseDenylist,
+		IncludeDatabases:       a.AutoDiscovery.DatabaseAllowlist,
+		DisableDefaultMetrics:  a.DisableDefaultMetrics,
+		QueryPath:              a.CustomQueriesConfigPath,
+		Instance:               instanceName,
+		EnabledCollectors:      a.EnabledCollectors,
+		StatStatementFlags:     a.StatStatementFlags.Convert(),
+	}
+}
+
+func (s *StatStatementFlags) Convert() *postgres_exporter.StatStatementFlags {
+	if s == nil {
+		return nil
+	}
+	return &postgres_exporter.StatStatementFlags{
+		IncludeQuery: s.IncludeQuery,
+		QueryLength:  s.QueryLength,
 	}
 }
 
