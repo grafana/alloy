@@ -4,10 +4,11 @@ package dnsmasq_exporter
 import (
 	"github.com/go-kit/log"
 	"github.com/google/dnsmasq_exporter/collector"
+	"github.com/miekg/dns"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/miekg/dns"
 )
 
 // DefaultConfig is the default config for dnsmasq_exporter.
@@ -35,7 +36,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the address of the dnsmasq server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.DnsmasqAddress, nil
 }
 

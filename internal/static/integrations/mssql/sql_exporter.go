@@ -13,11 +13,12 @@ import (
 
 	"github.com/burningalchemist/sql_exporter"
 	"github.com/burningalchemist/sql_exporter/config"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/common/model"
 )
 
 // DefaultConfig is the default config for the mssql integration
@@ -67,7 +68,7 @@ func (c Config) validate() error {
 }
 
 // Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	url, err := url.Parse(string(c.ConnectionString))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse connection string URL: %w", err)
