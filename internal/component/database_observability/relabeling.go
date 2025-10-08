@@ -2,7 +2,7 @@ package database_observability
 
 import "github.com/grafana/alloy/internal/component/common/relabel"
 
-func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
+func GetRelabelingRules(serverID string, cp *CloudProvider, dsn string) []*relabel.Config {
 	r := relabel.DefaultRelabelConfig // use default to avoid defining all fields
 	r.Replacement = serverID
 	r.TargetLabel = "server_id"
@@ -10,7 +10,8 @@ func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 
 	rs := []*relabel.Config{&r}
 
-	if cp != nil {
+	populatedCloudProvider, err := PopulateCloudProvider(cp, dsn)
+	if err == nil {
 		if cp.AWS != nil {
 			providerName := relabel.DefaultRelabelConfig
 			providerName.Replacement = "aws"
@@ -18,12 +19,12 @@ func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 			providerName.Action = relabel.Replace
 
 			providerRegion := relabel.DefaultRelabelConfig
-			providerRegion.Replacement = cp.AWS.ARN.Region
+			providerRegion.Replacement = populatedCloudProvider.AWS.ARN.Region
 			providerRegion.TargetLabel = "provider_region"
 			providerRegion.Action = relabel.Replace
 
 			providerAccount := relabel.DefaultRelabelConfig
-			providerAccount.Replacement = cp.AWS.ARN.AccountID
+			providerAccount.Replacement = populatedCloudProvider.AWS.ARN.AccountID
 			providerAccount.TargetLabel = "provider_account"
 			providerAccount.Action = relabel.Replace
 

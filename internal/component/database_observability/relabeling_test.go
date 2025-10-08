@@ -10,7 +10,7 @@ import (
 
 func Test_GetRelabelingRules(t *testing.T) {
 	t.Run("return relabeling rules", func(t *testing.T) {
-		rr := GetRelabelingRules("some-server-id", nil)
+		rr := GetRelabelingRules("some-server-id", nil, "some-dsn")
 
 		require.Equal(t, 1, len(rr))
 		require.Equal(t, "some-server-id", rr[0].Replacement)
@@ -26,7 +26,7 @@ func Test_GetRelabelingRules(t *testing.T) {
 					AccountID: "some-account",
 				},
 			},
-		})
+		}, "some-dsn")
 
 		require.Equal(t, 4, len(rr))
 		require.Equal(t, "some-server-id", rr[0].Replacement)

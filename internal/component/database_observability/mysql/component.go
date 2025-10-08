@@ -347,7 +347,7 @@ func (c *Component) Update(args component.Arguments) error {
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID, cloudProviderInfo)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(serverUUID, cloudProviderInfo, string(c.args.DataSourceName))...) {
 			targets = append(targets, builder.Target())
 		}
 	}

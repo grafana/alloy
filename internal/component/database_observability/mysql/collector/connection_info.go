@@ -2,11 +2,8 @@ package collector
 
 import (
 	"context"
-	"net"
-	"regexp"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -14,11 +11,6 @@ import (
 )
 
 const ConnectionInfoName = "connection_info"
-
-var (
-	rdsRegex   = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
-	azureRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.mysql\.database\.azure\.com`)
-)
 
 type ConnectionInfoArguments struct {
 	DSN           string
@@ -69,41 +61,24 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		engine               = "mysql"
 	)
 
-	if c.CloudProvider != nil {
-		if c.CloudProvider.AWS != nil {
-			providerName = "aws"
-			providerAccount = c.CloudProvider.AWS.ARN.AccountID
-			providerRegion = c.CloudProvider.AWS.ARN.Region
-
-			// We only support RDS database for now. Resource types and ARN formats are documented at: https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonrds.html#amazonrds-resources-for-iam-policies
-			if resource := c.CloudProvider.AWS.ARN.Resource; strings.HasPrefix(resource, "db:") {
-				dbInstanceIdentifier = strings.TrimPrefix(resource, "db:")
-			}
-		}
-	} else {
-		cfg, err := mysql.ParseDSN(c.DSN)
-		if err != nil {
-			return err
-		}
-
-		host, _, err := net.SplitHostPort(cfg.Addr)
-		if err == nil && host != "" {
-			if strings.HasSuffix(host, "rds.amazonaws.com") {
-				providerName = "aws"
-				matches := rdsRegex.FindStringSubmatch(host)
-				if len(matches) > 3 {
-					dbInstanceIdentifier = matches[1]
-					providerRegion = matches[3]
-				}
-			} else if strings.HasSuffix(host, "mysql.database.azure.com") {
-				providerName = "azure"
-				matches := azureRegex.FindStringSubmatch(host)
-				if len(matches) > 1 {
-					dbInstanceIdentifier = matches[1]
-				}
-			}
-		}
+	csp, err := database_observability.PopulateCloudProvider(c.CloudProvider, c.DSN)
+	if err != nil {
+		return err
 	}
+
+	if csp != nil && csp.AWS != nil {
+		providerName = "aws"
+		providerAccount = csp.AWS.ARN.AccountID
+		providerRegion = csp.AWS.ARN.Region
+		// We only support RDS database for now. Resource types and ARN formats are documented at: https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonrds.html#amazonrds-resources-for-iam-policies
+		if resource := csp.AWS.ARN.Resource; strings.HasPrefix(resource, "db:") {
+			dbInstanceIdentifier = strings.TrimPrefix(resource, "db:")
+		}
+	} else if csp != nil && csp.Azure != nil {
+		providerName = "azure"
+		dbInstanceIdentifier = csp.Azure.Resource
+	}
+
 	c.running.Store(true)
 
 	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
