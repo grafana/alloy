@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64)
+//go:build unix
 
 package reporter
 
@@ -114,6 +114,8 @@ type functionsKey struct {
 type locationsKey struct {
 	mappingId uint64
 	addr      libpf.AddressOrLineno
+	name      libpf.String
+	line      libpf.SourceLineno
 }
 type mappingKey struct {
 	Start libpf.Address
@@ -206,10 +208,12 @@ func (p *ProfileBuilder) AddValue(v int64, sample *profile.Sample) {
 	sample.Value[0] += v * p.Profile.Period
 }
 
-func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno) (*profile.Location, bool) {
+func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno, name libpf.String, line libpf.SourceLineno) (*profile.Location, bool) {
 	key := locationsKey{
 		mappingId: m.ID,
 		addr:      addr,
+		name:      name,
+		line:      line,
 	}
 	loc, ok := p.locations[key]
 	if ok {

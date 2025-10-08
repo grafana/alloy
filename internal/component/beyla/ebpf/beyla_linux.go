@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/caarlos0/env/v9"
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/components"
 	beylaCfg "github.com/grafana/beyla/v2/pkg/config"
@@ -30,8 +31,6 @@ import (
 	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -41,6 +40,7 @@ import (
 )
 
 func init() {
+	beyla.OverrideOBIGlobalConfig()
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
 		Stability: featuregate.StabilityGenerallyAvailable,
@@ -238,31 +238,21 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 }
 
 func convertExportModes(modes []string) (services.ExportModes, error) {
-	var ret services.ExportModes
+	if modes == nil {
+		return services.ExportModeUnset, nil
+	}
+
+	ret := services.NewExportModes()
 
 	for _, m := range modes {
-		if m != "metrics" && m != "traces" {
+		switch m {
+		case "metrics":
+			ret.AllowMetrics()
+		case "traces":
+			ret.AllowTraces()
+		default:
 			return ret, fmt.Errorf("invalid export mode: '%s'", m)
 		}
-	}
-
-	// FIXME: there's no public API to construct ExportModes other than from a
-	// YAML blob. Once that gets fixed upstream, get rid of this intermediate
-	// YAML serialisation
-	out, err := yaml.Marshal(modes)
-
-	if err != nil {
-		return ret, err
-	}
-
-	var node yaml.Node
-
-	if err := yaml.Unmarshal(out, &node); err != nil {
-		return ret, err
-	}
-
-	if err := ret.UnmarshalYAML(node.Content[0]); err != nil {
-		return ret, err
 	}
 
 	return ret, nil
@@ -591,6 +581,31 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	return c, nil
 }
 
+func (c *Component) loadConfig() (*beyla.Config, error) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	cfg, err := c.args.Convert()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert arguments: %w", err)
+	}
+
+	if err := env.Parse(cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse env: %w", err)
+	}
+
+	if cfg.Discovery.SurveyEnabled() {
+		cfg.Discovery.OverrideDefaultExcludeForSurvey()
+	}
+
+	c.reg = prometheus.NewRegistry()
+	c.reportHealthy()
+
+	cfg.Prometheus.Registry = c.reg
+
+	return cfg, nil
+}
+
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	// Add deprecation warnings at the start of Run
@@ -636,18 +651,12 @@ func (c *Component) Run(ctx context.Context) error {
 			newCtx, cancelFunc := context.WithCancel(ctx)
 			cancel = cancelFunc
 
-			c.mut.Lock()
-			cfg, err := c.args.Convert()
+			cfg, err := c.loadConfig()
 			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to convert arguments", "err", err)
+				level.Error(c.opts.Logger).Log("msg", "failed to load config", "err", err)
 				c.reportUnhealthy(err)
-				c.mut.Unlock()
 				continue
 			}
-			c.reg = prometheus.NewRegistry()
-			c.reportHealthy()
-			cfg.Prometheus.Registry = c.reg
-			c.mut.Unlock()
 
 			g, launchCtx := errgroup.WithContext(newCtx)
 			cancelG = g
