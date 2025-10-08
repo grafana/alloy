@@ -73,8 +73,6 @@ You can use the following blocks with `database_observability.postgres`:
 
 ### `schema_details`
 
-### `schema_details`
-
 | Name               | Type       | Description                                                           | Default | Required |
 |--------------------|------------|-----------------------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
