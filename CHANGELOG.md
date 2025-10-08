@@ -43,6 +43,8 @@ Main (unreleased)
 
 - Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
 
+- Fix potential deadlock in `loki.source.journal` when stopping the component. (@thampiotr)
+
 v1.11.0
 -----------------
 
