@@ -82,7 +82,7 @@ In this example:
 1. The `prometheus.scrape` component scrapes those metrics.
 1. The `prometheus.echo` component receives the scraped metrics and writes them to stdout in Prometheus text format.
 
-When you run this configuration, you'll see the metrics being written to Alloy's stdout, which is useful for:
+When you run this configuration, you'll see the metrics being written to stdout, which is useful to:
 
 * Debugging metric collection issues
 * Verifying metric labels and values
