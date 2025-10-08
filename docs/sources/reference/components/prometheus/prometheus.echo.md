@@ -114,7 +114,6 @@ This example outputs metrics using the OpenMetrics format instead of the traditi
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 
-
 ## Has exports
 
 - [Prometheus `MetricsReceiver`](../../../compatibility/#prometheus-metricsreceiver-consumers)
