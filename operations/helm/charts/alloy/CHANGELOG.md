@@ -10,7 +10,12 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.3.0 (2025-09-30)
+----------
+
 ### Bug fixes
+
+- Update to Grafana Alloy v1.11.0. (@kalleep)
 
 - Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
 

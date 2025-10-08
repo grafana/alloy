@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
+  with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
+  set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
+
 ### Features
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
@@ -24,13 +31,25 @@ Main (unreleased)
 
 - Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
 
+- Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
 - Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
 
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
+
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
+
 ### Bugfixes
+
+- Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
+
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
 
 v1.11.0
 -----------------

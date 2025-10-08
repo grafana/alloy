@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	consul_api "github.com/hashicorp/consul/api"
+	"github.com/prometheus/consul_exporter/pkg/exporter"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	consul_api "github.com/hashicorp/consul/api"
-	"github.com/prometheus/consul_exporter/pkg/exporter"
 )
 
 // DefaultConfig holds the default settings for the consul_exporter integration.
@@ -55,7 +56,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the hostname:port of the Consul server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.Server)
 	if err != nil {
 		return "", fmt.Errorf("could not parse url: %w", err)
