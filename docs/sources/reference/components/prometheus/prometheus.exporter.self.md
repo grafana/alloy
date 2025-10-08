@@ -14,17 +14,7 @@ title: prometheus.exporter.self
 
 The `prometheus.exporter.self` component collects and exposes metrics about {{< param "PRODUCT_NAME" >}} itself.
 
-{{< admonition type="note" >}}
-Take care when using the `prometheus.exporter.self` component with [clustering](../../../../get-started/clustering/) enabled.
-
-The default `instance` label set by this exporter is the hostname of the machine running {{< param "PRODUCT_NAME" >}}.
-{{< param "PRODUCT_NAME" >}} clustering uses consistent hashing to distribute targets across the instances.
-This approach requires the discovered targets to be the same and have the same labels across all cluster instances.
-
-When you use `prometheus.exporter.self` within a [cluster](../../../../get-started/clustering/)
-of {{< param "PRODUCT_NAME" >}} instances, use a dedicated `prometheus.scrape` component that's used to scrape
-`prometheus.exporter.self` and doesn't have clustering enabled.
-{{< /admonition >}}
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 

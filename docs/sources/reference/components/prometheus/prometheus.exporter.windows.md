@@ -24,17 +24,7 @@ The `include` and `exclude` arguments are preferred going forward.
 
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
 
-{{< admonition type="note" >}}
-Take care when using the `prometheus.exporter.windows` component with [clustering](../../../../get-started/clustering/) enabled.
-
-The default `instance` label set by this exporter is the hostname of the machine running {{< param "PRODUCT_NAME" >}}.
-{{< param "PRODUCT_NAME" >}} clustering uses consistent hashing to distribute targets across the instances.
-This approach requires the discovered targets to be the same and have the same labels across all cluster instances.
-
-When you use `prometheus.exporter.windows` within a [cluster](../../../../get-started/clustering/)
-of {{< param "PRODUCT_NAME" >}} instances, use a dedicated `prometheus.scrape` component that's used to scrape
-`prometheus.exporter.windows` and doesn't have clustering enabled.
-{{< /admonition >}}
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
