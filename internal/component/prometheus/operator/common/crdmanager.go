@@ -364,8 +364,7 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 	var informer cache.Informer
 	var err error
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
-	done, _ := timeoutCtx.Deadline()
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)\
 	defer cancel()
 	backoff := backoff.New(
 		timeoutCtx,
@@ -378,7 +377,7 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 	for backoff.Ongoing() {
 		// Retry to get the informer in case of a timeout.
 		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
-		if err == nil || time.Now().After(done) {
+		if err == nil || backoff.Err() != nil { // backoff.Err will contain the context timeout error if it has passed
 			break
 		}
 		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", backoff.NextDelay(), "err", err)
