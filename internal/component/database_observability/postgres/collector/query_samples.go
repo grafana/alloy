@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/go-kit/log"
@@ -234,10 +234,11 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.queryPgStatActivity(ctx)
+	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
+
 	defer rows.Close()
 
 	activeKeys := map[SampleKey]struct{}{}
@@ -273,15 +274,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	c.finalizeSamples(activeKeys, idleKeys)
 	return nil
-}
-
-// queryPgStatActivity executes the query against pg_stat_activity
-func (c *QuerySamples) queryPgStatActivity(ctx context.Context) (*sql.Rows, error) {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query pg_stat_activity: %w", err)
-	}
-	return rows, nil
 }
 
 // scanRow reads a single row into QuerySamplesInfo
@@ -329,13 +321,13 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, err
 func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct{}) {
 	// Finalize samples that turned idle in this scrape
 	for key := range idleKeys {
-		if state, ok := c.samples[key]; ok {
-			c.emitAndDeleteSample(key, state)
+		if _, ok := c.samples[key]; ok {
+			c.emitAndDeleteSample(key)
 		}
 	}
 
 	// Finalize samples that have disappeared (not seen as active this scrape)
-	for key, state := range c.samples {
+	for key := range c.samples {
 		if _, stillActive := activeKeys[key]; stillActive {
 			continue
 		}
@@ -343,7 +335,7 @@ func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct
 		if _, wasIdle := idleKeys[key]; wasIdle {
 			continue
 		}
-		c.emitAndDeleteSample(key, state)
+		c.emitAndDeleteSample(key)
 	}
 }
 
@@ -430,7 +422,11 @@ func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) 
 }
 
 // emitAndDeleteSample builds final entries for a sample and removes it from memory.
-func (c *QuerySamples) emitAndDeleteSample(key SampleKey, state *SampleState) {
+func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
+	state, ok := c.samples[key]
+	if !ok {
+		return
+	}
 	// Build and emit OP_QUERY_SAMPLE
 	sampleLabels := c.buildQuerySampleLabels(state)
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
@@ -540,23 +536,24 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 
 // calculateDuration returns a formatted duration string between a nullable time and current time
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
-	if nullableTime.Valid {
-		return currentTime.Sub(nullableTime.Time).Round(time.Nanosecond).String()
+	if !nullableTime.Valid {
+		return ""
 	}
-	return ""
+	return currentTime.Sub(nullableTime.Time).Round(time.Nanosecond).String()
 }
 
 // normalizePIDs returns a sorted unique slice for stable set comparisons/printing.
 func normalizePIDs(pids pq.Int64Array) []int64 {
-	set := map[int64]struct{}{}
+	seen := make(map[int64]struct{}, len(pids))
+	out := make([]int64, 0, len(pids))
 	for _, pid := range pids {
-		set[pid] = struct{}{}
-	}
-	out := make([]int64, 0, len(set))
-	for pid := range set {
+		if _, ok := seen[pid]; ok {
+			continue
+		}
+		seen[pid] = struct{}{}
 		out = append(out, pid)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }
 
