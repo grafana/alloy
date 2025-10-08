@@ -128,8 +128,6 @@ The `stat_statements` block configures the selection of both the query ID and th
 This configuration takes effect only when the `stat_statements` collector is enabled.
 
 The following arguments are supported:
-
-The following aeguments are supported:
 | Name            | Type     | Description                                         | Default | Required |
 | --------------- | -------- | --------------------------------------------------- | ------- | -------- |
 | `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
