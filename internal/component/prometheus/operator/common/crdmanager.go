@@ -375,15 +375,12 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 			MaxRetries: 0, // Will retry until InformerSyncTimeout is reached
 		},
 	)
-	for backoff.Ongoing() {
+	for {
 		// Retry to get the informer in case of a timeout.
 		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
-		if err == nil || backoff.Err() != nil { // backoff.Err will contain the context timeout error if it has passed
-			break
-		}
 		nextDelay := backoff.NextDelay()
-		if time.Now().Add(nextDelay).After(deadline) {
-			// If the next backoff will exceed the overall timeout, break early to avoid waiting unnecessarily.
+		// exit loop on success, timeout, max retries reached, or if next backoff exceeds timeout
+		if err == nil || !backoff.Ongoing() || time.Now().Add(nextDelay).After(deadline) {
 			break
 		}
 		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", nextDelay, "err", err)
