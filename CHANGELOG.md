@@ -48,7 +48,7 @@ Main (unreleased)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
-v1.11.0
+v1.11.1
 -----------------
 
 - Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
