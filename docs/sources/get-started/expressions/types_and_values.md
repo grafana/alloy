@@ -214,6 +214,17 @@ prometheus.scrape "default" {
 }
 ```
 
+## Next steps
+
+Apply your understanding of types and values:
+
+- [Operators][] to learn how different operators work with specific value types
+- [Function calls][] to use standard library functions that work with these types
+- [Reference component exports][] to understand how component exports use these types
+
 [component reference]: ../../../../reference/components/
 [valid]: ../../syntax#identifiers
 [nonsensitive]: ../../../../reference/stdlib/convert/
+[Operators]: ./operators/
+[Function calls]: ./function_calls/
+[Reference component exports]: ./referencing_exports/

@@ -34,7 +34,7 @@ that can span multiple lines
 
 ## Identifiers
 
-An identifier in {{< param "PRODUCT_NAME" >}} syntax is valid if it contains one or more UTF-8 letters (A through Z, upper- or lowercase), digits, or underscores.
+An identifier in {{< param "PRODUCT_NAME" >}} syntax is valid if it contains one or more UTF-8 letters from A through Z, upper- or lowercase, digits, or underscores.
 It can't start with a digit.
 
 Valid identifiers:
@@ -45,9 +45,9 @@ Valid identifiers:
 
 Invalid identifiers:
 
-- `123component` (starts with digit)
-- `my-component` (contains hyphen)
-- `my component` (contains space)
+- `123component` - starts with digit
+- `my-component` - contains hyphen
+- `my component` - contains space
 
 ## Attributes and Blocks
 
@@ -127,7 +127,7 @@ local.file "token" {
 ```
 
 The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable using an expression.
-The `is_secret` attribute is set to `true`, marking the file content as sensitive.
+The configuration sets the `is_secret` attribute to `true`, marking the file content as sensitive.
 
 ## Terminators
 
@@ -158,7 +158,18 @@ The formatter:
 - Ensures consistent line endings
 - Validates syntax
 
+## Next steps
+
+To continue learning about {{< param "PRODUCT_NAME" >}} configuration syntax:
+
+- Learn about [expressions][expression] to create dynamic configurations and computations
+- Explore [components][] to understand how to configure data collection and processing
+- Read the [configuration language reference][reference] for comprehensive syntax documentation
+- Use the [`alloy fmt` command][fmt] to automatically format your configuration files
+
 [identifier]: #identifiers
 [expression]: ../expressions/
 [type]: ../expressions/types_and_values/
 [fmt]: ../../reference/cli/fmt/
+[components]: ../components/
+[reference]: ../../reference/config-language/

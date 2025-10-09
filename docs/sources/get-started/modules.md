@@ -33,15 +33,15 @@ You import modules into a _namespace_.
 This exposes the top-level custom components of the imported module to the importing module.
 The label of the import block specifies the namespace of an import.
 
-For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`.
+For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module appear as `my_module.CUSTOM_COMPONENT_NAME`.
 Namespaces for imports must be unique within a given importing module.
 
-If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace is hidden from the importing module.
+If an import namespace matches the name of a built-in component namespace, such as `prometheus`, the built-in namespace becomes hidden from the importing module.
 Only components defined in the imported module are available.
 
 {{< admonition type="warning" >}}
-If you use a label for an `import` or `declare` block that matches an existing component, the component is shadowed and becomes unavailable in your configuration.
-For example, if you use the label `import.file "mimir"`, you can't use existing components starting with `mimir`, such as `mimir.rules.kubernetes`, because the label refers to the imported module.
+If you use a label for an `import` or `declare` block that matches a component, the component becomes shadowed and unavailable in your configuration.
+For example, if you use the label `import.file "mimir"`, you can't use components starting with `mimir`, such as `mimir.rules.kubernetes`, because the label refers to the imported module.
 {{< /admonition >}}
 
 ## Example
@@ -118,9 +118,22 @@ This includes:
 - The main {{< param "PRODUCT_NAME" >}} configuration files
 - Modules fetched from remote locations, such as Git repositories or HTTP servers
 
+## Next steps
+
+To learn more about using modules with {{< param "PRODUCT_NAME" >}}:
+
+- Learn how to create [custom components][] to build reusable configuration modules
+- Review the [import configuration blocks][imports] reference for different module import methods
+- Explore [component configuration][components] to understand how components work within modules
+- Check the [run command reference][run] for module configuration and execution options
+- Review [security best practices][security] for safely using modules from remote sources
+
 [custom components]: ../components/custom-components/
 [run]: ../../reference/cli/run/
 [import.file]: ../../reference/config-blocks/import.file/
 [import.git]: ../../reference/config-blocks/import.git/
 [import.http]: ../../reference/config-blocks/import.http/
 [import.string]: ../../reference/config-blocks/import.string/
+[imports]: ../../reference/config-blocks/
+[components]: ../components/
+[security]: ../../set-up/secure/

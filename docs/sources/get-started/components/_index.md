@@ -114,3 +114,15 @@ prometheus.scrape "default" {
   forward_to = [prometheus.remote_write.prod.receiver]
 }
 ```
+
+## Next steps
+
+Learn more about working with components:
+
+- [Configure components][] to understand component arguments, exports, and configuration blocks
+- [Component controller][] to learn how {{< param "PRODUCT_NAME" >}} manages components at runtime
+- [Expressions][] to write dynamic expressions that reference component exports
+
+[Configure components]: ./configure-components/
+[Component controller]: ./component-controller/
+[Expressions]: ../expressions/

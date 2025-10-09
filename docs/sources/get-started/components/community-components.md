@@ -21,5 +21,16 @@ To use these community components, pass the `--feature.community-components.enab
 **Community components** without a maintainer may be disabled or removed if they block or prevent the development of {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
+## Next steps
+
+Learn more about components:
+
+- [Component reference][] to find available components
+- [Configure components][] to learn how to use components in your configuration
+- [Choose a component][] for guidance on selecting the right component for your needs
+
 [Components]: ../components/
 [backward-compatibility]: ../../introduction/backward-compatibility/
+[Component reference]: ../../../reference/components/
+[Configure components]: ./configure-components/
+[Choose a component]: ../../../collect/choose-component/

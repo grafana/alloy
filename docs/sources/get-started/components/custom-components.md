@@ -9,7 +9,7 @@ weight: 70
 
 # Custom components
 
-_Custom components_ are a way to create new components from a pipeline of built-in and other custom components.
+_Custom components_ are a way to create components from a pipeline of built-in and other custom components.
 
 A custom component includes:
 
@@ -19,7 +19,7 @@ A custom component includes:
 
 ## Create custom components
 
-Use [the `declare` configuration block][declare] to create a new custom component.
+Use [the `declare` configuration block][declare] to create a custom component.
 The block's label specifies the custom component's name.
 
 You can use the following configuration blocks inside a `declare` block:
@@ -53,7 +53,17 @@ add "example" {
 // add.example.sum == 32
 ```
 
+## Next steps
+
+Learn more about custom components and related topics:
+
+- [Configuration blocks reference][] to understand `declare`, `argument`, and `export` blocks in detail
+- [Modules][] to share custom components across multiple configuration files
+- [Configure components][] to learn how to use custom components in your pipelines
+
 [declare]: ../../reference/config-blocks/declare/
 [argument]: ../../reference/config-blocks/argument/
 [export]: ../../reference/config-blocks/export/
 [Modules]: ../modules/
+[Configuration blocks reference]: ../../../reference/config-blocks/
+[Configure components]: ./configure-components/

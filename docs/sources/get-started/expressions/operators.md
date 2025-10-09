@@ -112,4 +112,15 @@ If you use the `[ ]` operator to access a non-existent object member, the result
 
 If you use the `.` operator to access a non-existent named member of an object, an error occurs.
 
+## Next steps
+
+Learn how to apply operators in expressions:
+
+- [Types and values][] to understand what data types work with different operators
+- [Function calls][] to use operators in function arguments and calculations  
+- [Reference component exports][] to build expressions that connect components
+
+[Types and values]: ./types_and_values/
+[Function calls]: ./function_calls/
+[Reference component exports]: ./referencing_exports/
 [PEMDAS]: https://en.wikipedia.org/wiki/Order_of_operations

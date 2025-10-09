@@ -56,7 +56,7 @@ Each component has a name, which describes its responsibility, and a user-specif
 Most user interactions with components center around two basic concepts, _arguments_ and _exports_.
 
 - _Arguments_ are settings that modify a component's behavior.
-  They can include attributes or nested unlabeled blocks, some of which are required and others optional.
+  They can include attributes or nested unlabeled blocks, some of which you must provide and others that are optional.
   Optional arguments that aren't set use their default values.
 
 - _Exports_ are zero or more output values that other components can refer to.
@@ -67,7 +67,7 @@ The `local.file.targets` component exposes the file `content` as a string in its
 
 The `filename` attribute is a _required_ argument.
 You can also define several _optional_ arguments, such as `detector`, `poll_frequency`, and `is_secret`.
-These arguments configure how and how often the file is polled and whether its contents are sensitive.
+These arguments configure how and how often {{< param "PRODUCT_NAME" >}} polls the file and whether its contents are sensitive.
 
 ```alloy
 local.file "targets" {
@@ -91,7 +91,7 @@ To wire components together, use the exports of one as the arguments to another 
 References can only appear in components.
 
 For example, here's a component that scrapes Prometheus metrics.
-The `targets` field is populated with two scrape targets, a constant target `localhost:9001` and an expression that ties the target to the value of `local.file.targets.content`.
+The `targets` field contains two scrape targets, a constant target `localhost:9001` and an expression that ties the target to the value of `local.file.targets.content`.
 
 ```alloy
 prometheus.scrape "default" {
@@ -108,14 +108,14 @@ prometheus.scrape "default" {
 ```
 
 Each time the file contents change, the `local.file` component updates its exports.
-The new value is sent to the `prometheus.scrape` targets field.
+The component sends the updated value to the `prometheus.scrape` targets field.
 
 Each argument and exported field has an underlying [type][].
 {{< param "PRODUCT_NAME" >}} checks the expression type before assigning a value to an attribute.
 Refer to the documentation of each [component][components] for more information about wiring components together.
 
-In the previous example, the contents of the `local.file.targets.content` expression are evaluated to a concrete value.
-The value is type-checked and substituted into `prometheus.scrape.default`, where you can configure it.
+In the previous example, {{< param "PRODUCT_NAME" >}} evaluates the contents of the `local.file.targets.content` expression to a concrete value.
+The system type-checks the value and substitutes it into `prometheus.scrape.default`, where you can configure it.
 
 ## Pipelines
 
@@ -126,11 +126,11 @@ log_level = "debug"
 ```
 
 You use _expressions_ to compute an argument's value dynamically at runtime.
-Expressions can retrieve environment variable values (`log_level = sys.env("LOG_LEVEL")`) or reference an exported field of another component (`log_level = local.file.log_level.content`).
+Expressions can retrieve environment variable values like `log_level = sys.env("LOG_LEVEL")` or reference an exported field of another component like `log_level = local.file.log_level.content`.
 
-A dependent relationship is created when a component's argument references an exported field of another component.
+A component creates a dependent relationship when its argument references an exported field of another component.
 The component's arguments depend on the other component's exports.
-The input of the component is re-evaluated whenever the referenced component's exports are updated.
+{{< param "PRODUCT_NAME" >}} re-evaluates the component's input whenever the referenced component updates its exports.
 
 The flow of data through these references forms a _pipeline_.
 
@@ -138,7 +138,7 @@ An example pipeline might look like this:
 
 1. A `local.file` component watches a file containing an API key.
 1. A `prometheus.remote_write` component receives metrics and forwards them to an external database using the API key from the `local.file` for authentication.
-1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where metrics can be collected.
+1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where you can collect metrics.
 1. A `prometheus.scrape` component references the exports of the previous component and sends collected metrics to the `prometheus.remote_write` component.
 
 {{< figure src="/media/docs/alloy/diagram-concepts-example-pipeline.png" width="600" alt="Example of a pipeline" >}}
@@ -216,19 +216,19 @@ prometheus.remote_write "local_prom" {
 ```
 
 This pipeline has two components: `local.file` and `prometheus.remote_write`.
-The `local.file` component is configured with a single argument, `filename`, which is set by calling the [sys.env][] standard library function to retrieve the value of the `HOME` environment variable and concatenating it with the string `"file.txt"`.
+The `local.file` component uses a single argument, `filename`, which calls the [sys.env][] standard library function to retrieve the value of the `HOME` environment variable and concatenates it with the string `"file.txt"`.
 The `local.file` component has a single export, `content`, which contains the contents of the file.
 
-The `prometheus.remote_write` component is configured with an `endpoint` block, containing the `url` attribute and a `basic_auth` block.
-The `url` attribute is set to the URL of the Prometheus remote write endpoint.
-The `basic_auth` block contains the `username` and `password` attributes, which are set to the string `"admin"` and the `content` export of the `local.file` component, respectively.
-The `content` export is referenced by using the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component (the component's type + its label) and `content` is the name of the export.
+The `prometheus.remote_write` component uses an `endpoint` block, containing the `url` attribute and a `basic_auth` block.
+The `url` attribute specifies the URL of the Prometheus remote write endpoint.
+The `basic_auth` block contains the `username` and `password` attributes, which specify the string `"admin"` and the `content` export of the `local.file` component, respectively.
+The `content` export uses the syntax `local.file.example.content`, where `local.file.example` is the fully qualified name of the component—the component's type plus its label—and `content` is the name of the export.
 
 {{< figure src="/media/docs/alloy/diagram-example-basic-alloy.png" width="600" alt="Example pipeline with local.file and prometheus.remote_write components" >}}
 
 {{< admonition type="note" >}}
-The `local.file` component's label is set to `"example"`, so the fully qualified name of the component is `local.file.example`.
-The `prometheus.remote_write` component's label is set to `"local_prom"`, so the fully qualified name of the component is `prometheus.remote_write.local_prom`.
+The `local.file` component's label uses `"example"`, so the fully qualified name of the component is `local.file.example`.
+The `prometheus.remote_write` component's label uses `"local_prom"`, so the fully qualified name of the component is `prometheus.remote_write.local_prom`.
 {{< /admonition >}}
 
 ## Component rules
@@ -254,7 +254,17 @@ local.file "b" {
 }
 ```
 
+## Next steps
+
+Learn more about working with components:
+
+- [Component controller][] to understand how {{< param "PRODUCT_NAME" >}} manages components at runtime
+- [Component reference][components] to explore all available components and their arguments and exports
+- [Expressions][] to write dynamic configuration using component references and functions
+
 [components]: ../../reference/components/
 [controller]: ./component-controller/
 [type]: ../expressions/types_and_values/
 [sys.env]: ../../reference/stdlib/sys/
+[Component controller]: ./component-controller/
+[Expressions]: ../expressions/

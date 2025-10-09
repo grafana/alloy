@@ -237,4 +237,20 @@ You can use the following tools to write {{< param "PRODUCT_NAME" >}} configurat
 
 [fmt]: ../../reference/cli/fmt/
 
+## Next steps
+
+To continue learning about {{< param "PRODUCT_NAME" >}} configuration:
+
+- Learn about [components][] to understand the building blocks of {{< param "PRODUCT_NAME" >}} pipelines
+- Explore [expressions][] to create dynamic configurations that respond to runtime conditions
+- Review [configuration syntax][] for detailed syntax reference and advanced features
+- Try the [tutorials][] to build complete data collection pipelines
+- Check the [component reference][] for available components and their configuration options
+
+[components]: ./components/
+[expressions]: ./expressions/
+[configuration syntax]: ./configuration-syntax/
+[tutorials]: ../tutorials/
+[component reference]: ../reference/components/
+
 {{< section >}}

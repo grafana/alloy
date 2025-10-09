@@ -52,7 +52,7 @@ Target auto-distribution lets you dynamically scale the number of {{< param "PRO
 It also provides resiliency because one of the node peers automatically picks up targets if a node leaves.
 
 {{< param "PRODUCT_NAME" >}} uses a local consistent hashing algorithm to distribute targets.
-On average, this algorithm redistributes only ~1/N of the targets.
+On average, this algorithm redistributes only approximately 1/N of the targets.
 
 Refer to the component reference documentation to check if a component supports clustering, such as:
 
@@ -74,13 +74,13 @@ This approach ensures more consistent resource utilization across your deploymen
 ### Use `--cluster.wait-for-size`, but with caution
 
 When using clustering in a deployment where a single instance can't handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
-However, leave a significant safety margin when configuring this value by setting it significantly smaller than your typical expected operational number of instances.
+However, leave a significant safety margin when you configure this value by setting it significantly smaller than your typical expected operational number of instances.
 When this condition isn't met, the instances stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
 
 For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, ensure that the `--cluster.wait-for-size` flag is set to a value well below what your HPA and PDB minimums allow.
 This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like Pod termination or rolling updates.
 
-It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. The appropriate timeout duration should be based on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when timeout passes the cluster may be too small to handle traffic and run into further issues.
+It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when the timeout passes ,the cluster may be too small to handle traffic and can run into further issues.
 
 ### Don't enable clustering if you don't need it
 
@@ -95,6 +95,16 @@ In such cases, enabling clustering only adds unnecessary complexity and resource
 You can monitor your cluster status using the {{< param "PRODUCT_NAME" >}} UI [clustering page][].
 Refer to [Debug clustering issues][debugging] for additional troubleshooting information.
 
+## Next steps
+
+To learn more about clustering with {{< param "PRODUCT_NAME" >}}:
+
+- Configure clustering using the [`alloy run` command reference][run] to set up cluster flags
+- Explore clustering-enabled components in the [component reference][components] like `prometheus.scrape` and `pyroscope.scrape`
+- Monitor cluster health using the [clustering troubleshooting guide][debugging]
+- Learn about [high availability deployment patterns][deploy] for production environments
+- Review [scaling best practices][monitor] for large-scale monitoring deployments
+
 [run]: ../../reference/cli/run/#clustering
 [prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering
 [pyroscope.scrape]: ../../reference/components/pyroscope/pyroscope.scrape/#clustering
@@ -102,3 +112,6 @@ Refer to [Debug clustering issues][debugging] for additional troubleshooting inf
 [prometheus.operator.servicemonitors]: ../../reference/components/prometheus/prometheus.operator.servicemonitors/#clustering
 [clustering page]: ../../troubleshoot/debug/#clustering-page
 [debugging]: ../../troubleshoot/debug/#debug-clustering-issues
+[components]: ../../reference/components/
+[deploy]: ../../set-up/deploy/
+[monitor]: ../../monitor/
