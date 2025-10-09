@@ -7,8 +7,16 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
+v1.11.1
 -----------------
+
+### Bugfixes
+
+- Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
+
+- Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
+
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
 
 v1.11.0
 -----------------
