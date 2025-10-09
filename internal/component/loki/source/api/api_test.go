@@ -442,8 +442,6 @@ func newTestLokiClientTLS(t *testing.T, args Arguments, opts component.Options) 
 			},
 		},
 		0,
-		0,
-		false,
 		opts.Logger,
 	)
 	require.NoError(t, err)
@@ -558,8 +556,6 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 			Timeout: 5 * time.Second,
 		},
 		0,
-		0,
-		false,
 		opts.Logger,
 	)
 	require.NoError(t, err)

@@ -171,21 +171,19 @@ type queueClient struct {
 	seriesLock    sync.RWMutex
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
-	quit                chan struct{}
-	markerHandler       MarkerHandler
+	ctx           context.Context
+	cancel        context.CancelFunc
+	maxStreams    int
+	quit          chan struct{}
+	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -206,11 +204,9 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes
@@ -299,19 +295,6 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 
 func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
-
-	// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-	if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-		if !c.maxLineSizeTruncate {
-			c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-			c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-			return
-		}
-
-		c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-		c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-		e.Line = e.Line[:c.maxLineSize]
-	}
 
 	// TODO: can I make this locking more fine grained?
 	c.batchesMtx.Lock()

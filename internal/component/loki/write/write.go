@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -211,9 +210,7 @@ func (c *Component) Update(args component.Arguments) error {
 		notifier = c.walWriter
 	}
 
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, limit.Config{
-		MaxStreams: newArgs.MaxStreams,
-	}, c.opts.Registerer, walCfg, notifier, cfgs...)
+	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, newArgs.MaxStreams, c.opts.Registerer, walCfg, notifier, cfgs...)
 	if err != nil {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}

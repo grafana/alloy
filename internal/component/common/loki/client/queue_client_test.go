@@ -133,7 +133,7 @@ func TestQueueClient(t *testing.T) {
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, nilMarkerHandler{})
+			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, nilMarkerHandler{})
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -276,7 +276,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, mhFactory(b))
+	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -370,7 +370,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, 0, 0, false, logger)
+	qc, err := New(m, cfg, 0, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

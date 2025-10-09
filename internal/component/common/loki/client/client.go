@@ -148,19 +148,17 @@ type client struct {
 	wg   sync.WaitGroup
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	maxStreams int
 }
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
+func New(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, maxStreams, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (*client, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -171,16 +169,14 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:              log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:                 cfg,
-		entries:             make(chan loki.Entry),
-		metrics:             metrics,
-		name:                GetClientName(cfg),
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		logger:     log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:        cfg,
+		entries:    make(chan loki.Entry),
+		metrics:    metrics,
+		name:       GetClientName(cfg),
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 	if cfg.Name != "" {
 		c.name = cfg.Name
@@ -249,20 +245,6 @@ func (c *client) run() {
 			}
 
 			e, tenantID := c.processEntry(e)
-
-			// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-			if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-				if !c.maxLineSizeTruncate {
-					c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-					c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-					break
-				}
-
-				c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-				c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-				e.Line = e.Line[:c.maxLineSize]
-			}
-
 			batch, ok := batches[tenantID]
 
 			// If the batch doesn't exist yet, we create a new one with the entry
