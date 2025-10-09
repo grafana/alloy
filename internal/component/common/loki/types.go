@@ -46,7 +46,6 @@ type logsReceiver struct {
 func (l *logsReceiver) Send(ctx context.Context, entry Entry) error {
 	select {
 	case <-ctx.Done():
-		// TODO: should we never return an error
 		return ctx.Err()
 	case l.entries <- entry:
 		return nil
@@ -58,7 +57,7 @@ func (l *logsReceiver) Recv(ctx context.Context) (Entry, error) {
 	case entry := <-l.entries:
 		return entry, nil
 	case <-ctx.Done():
-		return Entry{}, nil
+		return Entry{}, ctx.Err()
 	}
 }
 

@@ -51,8 +51,8 @@ func (a *Arguments) SetToDefault() {
 // Component is the main type for the `loki.source.awsfirehose` component.
 type Component struct {
 	// mut controls concurrent access to fanout
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
 
 	// destination is the main destination where the TargetServer writes received log entries to
 	destination loki.LogsReceiver
@@ -74,7 +74,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:           o,
 		destination:    loki.NewLogsReceiver(),
-		fanout:         args.ForwardTo,
+		receivers:      args.ForwardTo,
 		serverMetrics:  util.NewUncheckedCollector(nil),
 		handlerMetrics: internal.NewMetrics(o.Registerer),
 
@@ -99,16 +99,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		entry, err := c.destination.Recv(ctx)
+		// NOTE: the only error we can get currently is if context is canceled
+		// but that can change in the future.
+		if err != nil {
 			return nil
-		case entry := <-c.destination.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: currently we can only get an error if context is canceled
+			// but that can change in the future.
+			if err := receiver.Send(ctx, entry); err != nil {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -119,7 +126,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	var newRelabels []*relabel.Config = nil
 	// first condition to consider if the handler needs to be updated is if the UseIncomingTimestamp field

@@ -94,9 +94,9 @@ type Component struct {
 	opts    component.Options
 	metrics *cft.Metrics
 
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	target *cft.Target
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
+	target    *cft.Target
 
 	posFile positions.Positions
 	handler loki.LogsReceiver
@@ -119,11 +119,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:    o,
-		metrics: cft.NewMetrics(o.Registerer),
-		handler: loki.NewLogsReceiver(),
-		fanout:  args.ForwardTo,
-		posFile: positionsFile,
+		opts:      o,
+		metrics:   cft.NewMetrics(o.Registerer),
+		handler:   loki.NewLogsReceiver(),
+		receivers: args.ForwardTo,
+		posFile:   positionsFile,
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -144,16 +144,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		entry, err := c.handler.Recv(ctx)
+		// NOTE: the only error we can get currently is if context is canceled
+		// but that can change in the future.
+		if err != nil {
 			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: currently we can only get an error if context is canceled
+			// but that can change in the future.
+			if err := receiver.Send(ctx, entry); err != nil {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -163,7 +170,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	if c.target != nil {
 		c.target.Stop()

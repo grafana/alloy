@@ -91,16 +91,15 @@ func (c *Component) Run(ctx context.Context) (err error) {
 		select {
 		case entry := <-c.entriesChan:
 			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				select {
-				case receiver.Chan() <- entry:
-				case <-ctx.Done():
-					return
+			for _, receiver := range c.receivers {
+				// NOTE: currently we can only get an error if context is canceled
+				// but that can change in the future.
+				if err := receiver.Send(ctx, entry); err != nil {
+					c.receiversMut.RUnlock()
+					return nil
 				}
 			}
+			c.receiversMut.RUnlock()
 		case <-ctx.Done():
 			return
 		}
