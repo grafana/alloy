@@ -171,13 +171,11 @@ type queueClient struct {
 	seriesLock    sync.RWMutex
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
-	quit                chan struct{}
-	markerHandler       MarkerHandler
+	ctx           context.Context
+	cancel        context.CancelFunc
+	maxStreams    int
+	quit          chan struct{}
+	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
