@@ -9,10 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 // finalEntryTimeout is how long NewEntryMutatorHandler will wait before giving
@@ -50,7 +49,7 @@ func NewLogsReceiverWithChannel(c chan Entry) LogsReceiver {
 // Entry is a log entry with labels.
 type Entry struct {
 	Labels model.LabelSet
-	logproto.Entry
+	push.Entry
 }
 
 // Clone returns a copy of the entry so that it can be safely fanned out.

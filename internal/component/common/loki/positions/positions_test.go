@@ -14,8 +14,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 func tempFilename(t *testing.T) string {
@@ -278,7 +276,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(util_log.Logger, Config{
+	p, err := New(log.NewNopLogger(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 		ReadOnly:      true,
@@ -322,7 +320,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(util_log.Logger, Config{
+	p, err := New(log.NewNopLogger(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 	})

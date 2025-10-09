@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func BuildLokiEntryWithTimestamp(level logging.Level, op, line string, timestamp int64) loki.Entry {
@@ -16,7 +16,7 @@ func BuildLokiEntryWithTimestamp(level logging.Level, op, line string, timestamp
 		Labels: model.LabelSet{
 			"op": model.LabelValue(op),
 		},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Unix(0, timestamp),
 			Line:      fmt.Sprintf(`level="%s" %s`, level, line),
 		},

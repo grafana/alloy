@@ -15,9 +15,9 @@ import (
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -342,7 +342,7 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
 	t.handler.Chan() <- loki.Entry{
 		Labels: lbls,
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Line:      msg,
 			Timestamp: ts,
 		},

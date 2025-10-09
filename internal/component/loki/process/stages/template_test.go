@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var testTemplateYaml = `
@@ -60,7 +59,7 @@ var testTemplateLogLineWithMissingKey = `
 `
 
 func TestPipeline_Template(t *testing.T) {
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +353,7 @@ func TestTemplateStage_Process(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newTemplateStage(util_log.Logger, test.config)
+			st, err := newTemplateStage(log.NewNopLogger(), test.config)
 			if err != nil {
 				t.Fatal(err)
 			}

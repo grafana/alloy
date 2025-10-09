@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 )
@@ -126,8 +126,8 @@ func TestAddLabelsMiddleware(t *testing.T) {
 	}
 }
 
-func testEntry() logproto.Entry {
-	return logproto.Entry{
+func testEntry() push.Entry {
+	return push.Entry{
 		Timestamp: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 		Line:      "test log line",
 	}

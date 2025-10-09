@@ -12,7 +12,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	corev1 "k8s.io/api/core/v1"
@@ -281,7 +281,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 			entry := loki.Entry{
 				Labels: t.lset.Clone(),
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: entryTimestamp,
 					Line:      entryLine,
 				},

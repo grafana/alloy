@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
@@ -19,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/loki/pkg/push"
 )
 
 type exporter interface {
@@ -180,7 +180,7 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 
 	ent := loki.Entry{
 		Labels: exp.labelSet(kv),
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      string(line),
 		},

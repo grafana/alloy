@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -89,7 +89,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("log"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `timestamp="2021-09-30 10:46:17.68 +0000 UTC" kind=log message="React Router Future Flag Warning" level=info traceID=a363d4f4417aa83158c437febd2d8838 spanID=42876ecc4c1feafa browser_mobile=false`,
 				},
 			},
@@ -127,7 +127,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("exception"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `timestamp="2021-09-30 10:46:17.68 +0000 UTC" kind=exception type=Error value="Cannot read property 'find' of undefined" stacktrace="Error: Cannot read property 'find' of undefined\n  at ? (http://fe:3002/static/js/vendors~main.chunk.js:8639:42)\n  at dispatchAction (http://fe:3002/static/js/vendors~main.chunk.js:268095:9)" hash=2735541995122471342 browser_mobile=false`,
 				},
 			},
@@ -158,7 +158,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("measurement"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `timestamp="2021-09-30 10:46:17.68 +0000 UTC" kind=measurement type=sum ttfb=14.000000 ttfcp=22.120000 ttfp=20.120000 traceID=a363d4f4417aa83158c437febd2d8838 spanID=42876ecc4c1feafa context_host=localhost value_ttfb=14 value_ttfcp=22.12 value_ttfp=20.12 browser_mobile=false`,
 				},
 			},
@@ -185,7 +185,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("event"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `timestamp="2021-09-30 10:46:17.68 +0000 UTC" kind=event event_name=click_login_button event_domain=frontend event_data_button_name=login traceID=a363d4f4417aa83158c437febd2d8838 spanID=42876ecc4c1feafa browser_mobile=false`,
 				},
 			},
@@ -211,7 +211,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("log"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `{"browser_mobile":"false","kind":"log","level":"info","message":"React Router Future Flag Warning","spanID":"42876ecc4c1feafa","timestamp":"2021-09-30 10:46:17.68 +0000 UTC","traceID":"a363d4f4417aa83158c437febd2d8838"}`,
 				},
 			},
@@ -249,7 +249,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("exception"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `{"browser_mobile":"false","hash":"2735541995122471342","kind":"exception","stacktrace":"Error: Cannot read property 'find' of undefined\n  at ? (http://fe:3002/static/js/vendors~main.chunk.js:8639:42)\n  at dispatchAction (http://fe:3002/static/js/vendors~main.chunk.js:268095:9)","timestamp":"2021-09-30 10:46:17.68 +0000 UTC","type":"Error","value":"Cannot read property 'find' of undefined"}`,
 				},
 			},
@@ -280,7 +280,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("measurement"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `{"browser_mobile":"false","context_host":"localhost","kind":"measurement","spanID":"42876ecc4c1feafa","timestamp":"2021-09-30 10:46:17.68 +0000 UTC","traceID":"a363d4f4417aa83158c437febd2d8838","ttfb":"14.000000","ttfcp":"22.120000","ttfp":"20.120000","type":"sum","value_ttfb":14,"value_ttfcp":22.12,"value_ttfp":20.12}`,
 				},
 			},
@@ -307,7 +307,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("event"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `{"browser_mobile":"false","event_data_button_name":"login","event_domain":"frontend","event_name":"click_login_button","kind":"event","spanID":"42876ecc4c1feafa","timestamp":"2021-09-30 10:46:17.68 +0000 UTC","traceID":"a363d4f4417aa83158c437febd2d8838"}`,
 				},
 			},

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,7 +108,7 @@ func TestEventLogMessage_simple(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{
@@ -268,7 +268,7 @@ func TestEventLogMessage_Real(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{testData.sourcekey: testData.msgdata}, nil, testData.msgdata, time.Now()))[0]
@@ -324,7 +324,7 @@ func TestEventLogMessage_invalid(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{testData.sourcekey: testData.msgdata}, nil, testData.msgdata, time.Now()))[0]
@@ -336,7 +336,7 @@ func TestEventLogMessage_invalid(t *testing.T) {
 func TestEventLogMessage_invalidString(t *testing.T) {
 	t.Parallel()
 
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testEvtLogMsgYamlDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testEvtLogMsgYamlDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	assert.NoError(t, err, "Expected pipeline creation to not result in error")
 	out := processEntries(pl,
 		newEntry(map[string]interface{}{"message": nil}, nil, "", time.Now()))

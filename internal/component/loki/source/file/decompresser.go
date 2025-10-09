@@ -20,7 +20,6 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
@@ -30,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -291,7 +291,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
 			// as configured in Run().
 			Labels: make(model.LabelSet, len(d.labels)+1),
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      finalText,
 			},
