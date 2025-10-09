@@ -695,14 +695,17 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                    | Default          | Required |
-| ------------- | -------- | ---------------------------------------------- | ---------------- | -------- |
-| `min_length`  | `int`    | Minimum length of digits to consider           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                   | `""`             | no       |
+| Name          | Type     | Description                                                    | Default          | Required |
+| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
+| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
+
+If you want the luhn algorithm to identify numbers with delimiters (e.g. `4032-0325-1354-8443`) you can configure the `delimiters` field with the expected delimiters.
 
 The following example log line contains an approved credit card number.
 
