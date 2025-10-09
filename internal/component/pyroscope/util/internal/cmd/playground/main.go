@@ -14,10 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
 	"github.com/grafana/alloy/internal/component/pyroscope/java"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
+	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 var (
@@ -39,20 +38,7 @@ func parseConfig() *config {
 }
 
 func newWrite() pyroscope.Appendable {
-	var receiver pyroscope.Appendable
-	e := write.GetDefaultEndpointOptions()
-	e.URL = "http://localhost:4040"
-	_, err := write.New(
-		log.With(l, "component", "write"),
-		noop.Tracer{},
-		reg,
-		func(exports write.Exports) {
-			receiver = exports.Receiver
-		},
-		"playground",
-		"",
-		write.Arguments{Endpoints: []*write.EndpointOptions{&e}},
-	)
+	receiver, err := testutil.CreateWriteComponent(l, reg, "http://localhost:4040")
 	if err != nil {
 		_ = l.Log("msg", "error creating write component", "err", err)
 		os.Exit(1)
