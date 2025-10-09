@@ -18,6 +18,8 @@ v1.11.1
 
 - Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
 
+- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
+
 v1.11.0
 -----------------
 
