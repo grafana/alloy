@@ -22,6 +22,10 @@ const (
 	OP_WAIT_EVENT         = "wait_event"
 )
 
+const (
+	exporterAppNameExclusion = " AND (s.application_name IS NULL OR s.application_name <> 'grafana_db011y')"
+)
+
 const selectPgStatActivity = `
 	SELECT
 		clock_timestamp() as now,
@@ -84,18 +88,20 @@ type QuerySamplesInfo struct {
 }
 
 type QuerySamplesArguments struct {
-	DB                    *sql.DB
-	CollectInterval       time.Duration
-	EntryHandler          loki.EntryHandler
-	Logger                log.Logger
-	DisableQueryRedaction bool
+	DB                     *sql.DB
+	CollectInterval        time.Duration
+	EntryHandler           loki.EntryHandler
+	Logger                 log.Logger
+	DisableQueryRedaction  bool
+	ExcludeExporterQueries bool
 }
 
 type QuerySamples struct {
-	dbConnection          *sql.DB
-	collectInterval       time.Duration
-	entryHandler          loki.EntryHandler
-	disableQueryRedaction bool
+	dbConnection           *sql.DB
+	collectInterval        time.Duration
+	entryHandler           loki.EntryHandler
+	disableQueryRedaction  bool
+	excludeExporterQueries bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -105,12 +111,13 @@ type QuerySamples struct {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
+		dbConnection:           args.DB,
+		collectInterval:        args.CollectInterval,
+		entryHandler:           args.EntryHandler,
+		disableQueryRedaction:  args.DisableQueryRedaction,
+		excludeExporterQueries: args.ExcludeExporterQueries,
+		logger:                 log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                &atomic.Bool{},
 	}, nil
 }
 
@@ -169,7 +176,11 @@ func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string 
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	query := selectPgStatActivity
+	if c.excludeExporterQueries {
+		query += exporterAppNameExclusion
+	}
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}

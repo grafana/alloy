@@ -75,6 +75,8 @@ type Arguments struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	// When true, exclude exporter sessions' queries from pg_stat_activity sampling based on application_name
+	ExcludeExporterQueries bool `alloy:"exclude_exporter_queries,attr,optional"`
 }
 
 type QueryTablesArguments struct {
@@ -83,8 +85,9 @@ type QueryTablesArguments struct {
 
 var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
-		CollectInterval:       15 * time.Second,
-		DisableQueryRedaction: false,
+		CollectInterval:        15 * time.Second,
+		DisableQueryRedaction:  false,
+		ExcludeExporterQueries: true,
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
@@ -239,7 +242,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = args.(Arguments)
 
-	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
+	augmentedDSN := AugmentPostgresDSN(string(c.args.DataSourceName), AppName)
+	dbConnection, err := c.openSQL("postgres", augmentedDSN)
 	if err != nil {
 		c.reportError("failed to open database connection", err)
 		return nil
@@ -351,11 +355,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
+			DB:                     c.dbConnection,
+			CollectInterval:        c.args.QuerySampleArguments.CollectInterval,
+			EntryHandler:           entryHandler,
+			Logger:                 c.opts.Logger,
+			DisableQueryRedaction:  c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeExporterQueries: c.args.QuerySampleArguments.ExcludeExporterQueries,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)

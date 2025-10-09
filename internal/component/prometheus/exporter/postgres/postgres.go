@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
+	dbo11y "github.com/grafana/alloy/internal/component/database_observability/postgres"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -96,7 +97,8 @@ func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 func (a *Arguments) convertDataSourceNames() []config_util.Secret {
 	dataSourceNames := make([]config_util.Secret, len(a.DataSourceNames))
 	for i, dataSourceName := range a.DataSourceNames {
-		dataSourceNames[i] = config_util.Secret(dataSourceName)
+		augmented := dbo11y.AugmentPostgresDSN(string(dataSourceName), dbo11y.AppName)
+		dataSourceNames[i] = config_util.Secret(augmented)
 	}
 	return dataSourceNames
 }
