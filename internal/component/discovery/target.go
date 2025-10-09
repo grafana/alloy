@@ -68,10 +68,10 @@ func NewTargetFromSpecificAndBaseLabelSet(own, group commonlabels.LabelSet) Targ
 // NewTargetFromModelLabels creates a target from model Labels.
 // NOTE: this is not optimised and should be avoided on a hot path.
 func NewTargetFromModelLabels(labels modellabels.Labels) Target {
-	l := make(commonlabels.LabelSet, len(labels))
-	for _, label := range labels {
+	l := make(commonlabels.LabelSet, labels.Len())
+	labels.Range(func(label modellabels.Label) {
 		l[commonlabels.LabelName(label.Name)] = commonlabels.LabelValue(label.Value)
-	}
+	})
 	return NewTargetFromLabelSet(l)
 }
 
@@ -86,17 +86,13 @@ func NewTargetFromMap(m map[string]string) Target {
 // PromLabels converts this target into prometheus/prometheus/model/labels.Labels. It is not efficient and should be
 // avoided on a hot path.
 func (t Target) PromLabels() modellabels.Labels {
-	// This method allocates less than Builder or ScratchBuilder, as proven by benchmarks.
-	lb := make([]modellabels.Label, 0, t.Len())
+	builder := modellabels.NewScratchBuilder(t.Len())
 	t.ForEachLabel(func(key string, value string) bool {
-		lb = append(lb, modellabels.Label{
-			Name:  key,
-			Value: value,
-		})
+		builder.Add(key, value)
 		return true
 	})
-	slices.SortFunc(lb, func(a, b modellabels.Label) int { return strings.Compare(a.Name, b.Name) })
-	return lb
+	builder.Sort()
+	return builder.Labels()
 }
 
 func (t Target) NonReservedLabelSet() commonlabels.LabelSet {

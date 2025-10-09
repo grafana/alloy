@@ -19,6 +19,8 @@ For more information on collectors, refer to the [`collectors-list`](#collectors
 
 You can specify multiple `prometheus.exporter.unix` components by giving them different labels.
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy

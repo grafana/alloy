@@ -155,13 +155,13 @@ func (s *Service) GetOrAddLink(componentID string, localRefID uint64, lbls label
 
 // GetOrAddGlobalRefID is used to create a global refid for a labelset
 func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
 	// Guard against bad input.
-	if l == nil {
+	if l.IsEmpty() {
 		return 0
 	}
+
+	s.mut.Lock()
+	defer s.mut.Unlock()
 
 	labelHash := l.Hash()
 	globalID, found := s.labelsHashToGlobal[labelHash]
