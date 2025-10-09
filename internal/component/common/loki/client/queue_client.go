@@ -181,11 +181,11 @@ type queueClient struct {
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -206,11 +206,9 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes

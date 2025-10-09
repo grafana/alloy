@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
@@ -120,7 +119,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 			}
 			markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(clientName))
 
-			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, limits.MaxStreams, limits.MaxLineSize.Val(), limits.MaxLineSizeTruncate, logger, markerHandler)
+			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, maxStreams, logger, markerHandler)
 			if err != nil {
 				return nil, fmt.Errorf("error starting queue client: %w", err)
 			}
@@ -141,7 +140,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 				client:  queue,
 			})
 		} else {
-			client, err := New(metrics, cfg, limits.MaxStreams, logger)
+			client, err := New(metrics, cfg, maxStreams, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error starting client: %w", err)
 			}
