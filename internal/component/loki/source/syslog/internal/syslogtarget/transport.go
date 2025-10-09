@@ -331,7 +331,11 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	}, t.maxMessageLength())
 
 	if err != nil {
-		level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		if err == io.EOF {
+			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		} else {
+			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		}
 	}
 }
 
