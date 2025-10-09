@@ -32,6 +32,8 @@ Main (unreleased)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
 
+- Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)

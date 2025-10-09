@@ -44,6 +44,7 @@ type StageConfig struct {
 	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"`
 	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
 	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
+	TruncateConfig               *TruncateConfig               `alloy:"truncate,block,optional"`
 	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }

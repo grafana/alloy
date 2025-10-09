@@ -75,6 +75,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.template`][stage.template]                           | Configures a `template` processing stage.                      | no       |
 | [`stage.tenant`][stage.tenant]                               | Configures a `tenant` processing stage.                        | no       |
 | [`stage.timestamp`][stage.timestamp]                         | Configures a `timestamp` processing stage.                     | no       |
+| [`stage.truncate`][stage.truncate]                           | Configures a `truncate` processing stage.                      | no       |
 | [`stage.windowsevent`][stage.windowsevent]                   | Configures a `windowsevent` processing stage.                  | no       |
 
 You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
@@ -106,6 +107,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.structured_metadata_drop]: #stagestructured_metadata_drop
 [stage.template]: #stagetemplate
 [stage.tenant]: #stagetenant
+[stage.truncate]: #stagetruncate
 [stage.timestamp]: #stagetimestamp
 [stage.windowsevent]: #stagewindowsevent
 
@@ -1848,6 +1850,49 @@ stage.timestamp {
 }
 ```
 
+### `stage.truncate`
+
+The `stage.truncate` inner block configures a processing stage that will truncate log entries, labels, or structured_metadata that exceed configured limits.
+
+The following arguments are supported:
+
+| Name                        | Type     | Description                                                      | Default | Required |
+|-----------------------------|----------|------------------------------------------------------------------|---------|----------|
+| `line_limit`                | `string` | Maximum length of a log line before truncating.                  | `""`    | no       |
+| `label_limit`               | `string` | Maximum length of a label value before truncating.               | `""`    | no       |
+| `structured_metadata_limit` | `string` | Maximum length of a structured metadata value before truncating. | `""`    | no       |
+| `suffix`                    | `string` | Suffix to append to truncate fields.                             | ``      | no       |
+
+A `truncate` stage must have at least one `limit` field configured.
+Each of the `limit` fields should be expressed in logical units (e.g. `"1KiB"`)
+The stage will check the length of the log line, label values, or structured metadata values against the configured limit and truncate if it exceeds the limit
+If a `suffix` is provided, the limit will be reduced by the length of the `suffix`, and the `suffix` will be appended to the truncated field.
+
+Whenever a line, label value, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
+The `field` label will either be `line`, `label`, or `structured_metadata`.
+
+#### Example
+
+```alloy
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+  stage.truncate {
+    entry_limit = "12B"
+    label_limit = "8B"
+    suffix = "..."
+  }
+}
+```
+
+Given the following input entry, the stage will truncate the entry `"I'm a log message!"` into `"I'm a log..."`, and the value of the `"label2"` label `"hello world"` into `"hello..."`.
+As there is no `structured_metadata_limit` configured, the structured_metadata will not be evaluated for truncation.
+
+```text
+entry: "I'm a log message!"
+labels: { "label1": "hi", "label2": "hello world" }
+structured_metadata: { "metadata1": "here is some metadata", "metadata2": "and here is some more"}
+```
+
 ### `stage.windowsevent`
 
 The `windowsevent` stage extracts data from the message string in the Windows Event Log.
@@ -1952,6 +1997,7 @@ The following fields are exported and can be referenced by other components:
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_truncated_fields_total` (counter): Number of lines, label values, and structured_metadata values dropped as part of a `truncate` stage.
 
 ## Example
 

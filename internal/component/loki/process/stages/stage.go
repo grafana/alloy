@@ -46,6 +46,7 @@ const (
 	StageTypeTemplate               = "template"
 	StageTypeTenant                 = "tenant"
 	StageTypeTimestamp              = "timestamp"
+	StageTypeTruncate               = "truncate"
 	StageTypeWindowsEvent           = "windowsevent"
 )
 
@@ -265,6 +266,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
 	case cfg.PatternConfig != nil:
 		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.TruncateConfig != nil:
+		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
 		if err != nil {
 			return nil, err
 		}
