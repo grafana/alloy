@@ -51,7 +51,7 @@ Main (unreleased)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
-v1.11.1
+v1.11.2
 -----------------
 
 ### Bugfixes
