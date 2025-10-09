@@ -126,6 +126,17 @@ If `enabled` is set to `true` and no allowlist or denylist is specified, the exp
 
 If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` has any effect.
 
+### `stat_statements`
+
+The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
+This configuration takes effect only when the `stat_statements` collector is enabled.
+
+The following arguments are supported:
+| Name            | Type     | Description                                         | Default | Required |
+| --------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
+| `query_length`  | `number` | Maximum length of the statement query text.         | `120`   | no       |
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
