@@ -14,6 +14,9 @@ type Arguments struct {
 
 	TmpDir          string          `alloy:"tmp_dir,attr,optional"`
 	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
+
+	// undocumented
+	Dist string `alloy:"dist,attr,optional"`
 }
 
 type ProfilingConfig struct {
@@ -29,7 +32,7 @@ type ProfilingConfig struct {
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
-	*rc = defaultArguments()
+	*rc = DefaultArguments()
 	type config Arguments
 	return f((*config)(rc))
 }
@@ -43,7 +46,7 @@ func (arg *Arguments) Validate() error {
 	}
 }
 
-func defaultArguments() Arguments {
+func DefaultArguments() Arguments {
 	return Arguments{
 		TmpDir: "/tmp",
 		ProfilingConfig: ProfilingConfig{
