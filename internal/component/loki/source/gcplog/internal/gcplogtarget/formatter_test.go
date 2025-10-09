@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func TestFormat(t *testing.T) {
 					"severity":             "INFO",
 					"region":               "europe-west1",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: mustTime(t, "2020-12-22T15:01:23.045123456Z"),
 					Line:      withAllFields,
 				},
@@ -92,7 +92,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: mustTime(t, "2020-12-22T15:01:23.045123456Z"),
 					Line:      withAllFields,
 				},
@@ -110,7 +110,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      withAllFields,
 				},
@@ -129,7 +129,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      withTextPayload,
 				},
@@ -147,7 +147,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      logTextPayload,
 				},

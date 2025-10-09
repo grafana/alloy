@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func Test_enableOrDisableCollectors(t *testing.T) {
@@ -296,7 +296,7 @@ func Test_addLokiLabels(t *testing.T) {
 		go func() {
 			ts := time.Now().UnixNano()
 			entryHandler.Chan() <- loki.Entry{
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      "some-message",
 				},

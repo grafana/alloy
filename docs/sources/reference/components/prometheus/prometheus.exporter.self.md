@@ -14,6 +14,8 @@ title: prometheus.exporter.self
 
 The `prometheus.exporter.self` component collects and exposes metrics about {{< param "PRODUCT_NAME" >}} itself.
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy

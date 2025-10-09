@@ -6,13 +6,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/log/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {
@@ -113,7 +113,7 @@ func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
 	c.cacheMutex.Unlock()
 }
 
-func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) error {
+func (c *Component) processLog(entry *push.Entry, labels model.LabelSet) error {
 	// Determine which label to use for matching
 	matchLabel := c.args.LogsMatchLabel
 	if matchLabel == "" {
@@ -156,7 +156,7 @@ func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) err
 	return c.forwardLog(entry, newLabels)
 }
 
-func (c *Component) forwardLog(entry *logproto.Entry, labels model.LabelSet) error {
+func (c *Component) forwardLog(entry *push.Entry, labels model.LabelSet) error {
 	c.mut.RLock()
 	fanout := c.args.ForwardTo
 	c.mut.RUnlock()

@@ -73,7 +73,7 @@ Use `send_batch_max_size` to limit the amount of data contained in a single batc
   Every batch contains up to the `send_batch_max_size` number of spans, log records, or metric data points.
   The excess spans, log records, or metric data points aren't lost - instead, they're added to the next batch.
 
-For example, assume you set `send_batch_size` to the default `8192` and there are 8,000 batched spans.
+For example, assume you set `send_batch_size` to `8192` and there are 8,000 batched spans.
 If the batch processor receives 8,000 more spans at once, its behavior depends on how you configure `send_batch_max_size`:
 
 * If you set `send_batch_max_size` to `0`, the total batch size would be 16,000 spans which are then flushed as a single batch.

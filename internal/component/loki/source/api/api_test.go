@@ -21,7 +21,7 @@ import (
 	"github.com/phayes/freeport"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 	promCfg "github.com/prometheus/common/config"
@@ -113,7 +113,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	select {
 	case lokiClient.Chan() <- loki.Entry{
 		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  logproto.Entry{Timestamp: now, Line: "hello world!"},
+		Entry:  push.Entry{Timestamp: now, Line: "hello world!"},
 	}:
 	case <-ctx.Done():
 		t.Fatalf("timed out while sending test entries via loki client")
@@ -160,7 +160,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	select {
 	case lokiClient.Chan() <- loki.Entry{
 		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  logproto.Entry{Timestamp: now, Line: "hello world!"},
+		Entry:  push.Entry{Timestamp: now, Line: "hello world!"},
 	}:
 	case <-ctx.Done():
 		t.Fatalf("timed out while sending test entries via loki client")
@@ -190,7 +190,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	select {
 	case lokiClient.Chan() <- loki.Entry{
 		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  logproto.Entry{Timestamp: now, Line: "hello brave new world!"},
+		Entry:  push.Entry{Timestamp: now, Line: "hello brave new world!"},
 	}:
 	case <-ctx.Done():
 		t.Fatalf("timed out while sending test entries via loki client")
@@ -243,7 +243,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	for i := 0; i < messagesCount; i++ {
 		entry := loki.Entry{
 			Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-			Entry:  logproto.Entry{Line: fmt.Sprintf("test message #%d", i)},
+			Entry:  push.Entry{Line: fmt.Sprintf("test message #%d", i)},
 		}
 		select {
 		case lokiClient.Chan() <- entry:
@@ -397,7 +397,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	select {
 	case lokiClient.Chan() <- loki.Entry{
 		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  logproto.Entry{Timestamp: now, Line: "hello world over TLS!"},
+		Entry:  push.Entry{Timestamp: now, Line: "hello world over TLS!"},
 	}:
 	case <-ctx.Done():
 		t.Fatalf("timed out while sending test entries via TLS loki client")
@@ -442,8 +442,6 @@ func newTestLokiClientTLS(t *testing.T, args Arguments, opts component.Options) 
 			},
 		},
 		0,
-		0,
-		false,
 		opts.Logger,
 	)
 	require.NoError(t, err)
@@ -558,8 +556,6 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 			Timeout: 5 * time.Second,
 		},
 		0,
-		0,
-		false,
 		opts.Logger,
 	)
 	require.NoError(t, err)
