@@ -1871,6 +1871,8 @@ If a `suffix` is provided, the limit will be reduced by the length of the `suffi
 Whenever a line, label value, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
 The `field` label will either be `line`, `label`, or `structured_metadata`.
 
+If anything has been truncated, the extracted fields for the entry will now contain a `"truncated"` field containing a comma delimited list of field types that have been truncated.
+
 #### Example
 
 ```alloy
@@ -1891,6 +1893,14 @@ As there is no `structured_metadata_limit` configured, the structured_metadata w
 entry: "I'm a log message!"
 labels: { "label1": "hi", "label2": "hello world" }
 structured_metadata: { "metadata1": "here is some metadata", "metadata2": "and here is some more"}
+```
+
+The extracted fields map for the entry will now contain the `"truncated"` field,
+which can be used to add a label (in a `stage.labels`) or structured_metadata (in a `stage.structured_metadata`) to the entry
+so that the logs can be identified as truncated after processing.
+
+```text
+truncated: label,line
 ```
 
 ### `stage.windowsevent`

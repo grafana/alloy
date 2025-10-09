@@ -3,6 +3,9 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
@@ -101,9 +104,11 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 	go func() {
 		defer close(out)
 		for e := range in {
+			truncated := map[string]any{}
 			if m.cfg.LineLimit > 0 && len(e.Line) > int(m.cfg.effectiveLineLimit) {
 				e.Line = e.Line[:m.cfg.effectiveLineLimit] + m.cfg.Suffix
 				m.truncatedCount.WithLabelValues(truncateLineField).Inc()
+				truncated[truncateLineField] = true
 
 				if Debug {
 					level.Debug(m.logger).Log("msg", "line has been truncated", "limit", m.cfg.effectiveLineLimit, "truncated_line", e.Line)
@@ -114,6 +119,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 					if len(v) > int(m.cfg.effectiveLabelLimit) {
 						e.Labels[k] = v[:m.cfg.effectiveLabelLimit] + model.LabelValue(m.cfg.Suffix)
 						m.truncatedCount.WithLabelValues(truncateLabelField).Inc()
+						truncated[truncateLabelField] = true
 
 						if Debug {
 							level.Debug(m.logger).Log("msg", "label has been truncated", "limit", m.cfg.effectiveLabelLimit, "truncated_label", e.Labels[k])
@@ -127,12 +133,16 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 						v.Value = v.Value[:m.cfg.effectiveStructuredMetadataLimit] + m.cfg.Suffix
 						e.StructuredMetadata[i] = v
 						m.truncatedCount.WithLabelValues(truncateStructuredMetadataField).Inc()
+						truncated[truncateStructuredMetadataField] = true
 
 						if Debug {
 							level.Debug(m.logger).Log("msg", "structured_metadata has been truncated", "limit", m.cfg.effectiveStructuredMetadataLimit, "truncated_structured_metadata", v.Value)
 						}
 					}
 				}
+			}
+			if len(truncated) > 0 {
+				e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
 			}
 			out <- e
 		}

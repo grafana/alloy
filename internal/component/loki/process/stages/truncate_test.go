@@ -100,16 +100,25 @@ func Test_TruncateStage_Process(t *testing.T) {
 			out := processEntries(m, entry)
 			if tt.expectedEntry != nil {
 				require.Equal(t, *tt.expectedEntry, out[0].Line)
+
+				require.Contains(t, out[0].Extracted, "truncated")
+				require.Contains(t, out[0].Extracted["truncated"], "line")
 			} else {
 				require.Equal(t, tt.entry, out[0].Line)
 			}
 			if tt.expectedLabels != nil {
 				assertLabels(t, *tt.expectedLabels, out[0].Labels)
+
+				require.Contains(t, out[0].Extracted, "truncated")
+				require.Contains(t, out[0].Extracted["truncated"], "label")
 			} else {
 				assertLabels(t, tt.labels, out[0].Labels)
 			}
 			if tt.expectedStructuredMetadata != nil {
 				require.Equal(t, *tt.expectedStructuredMetadata, out[0].StructuredMetadata)
+
+				require.Contains(t, out[0].Extracted, "truncated")
+				require.Contains(t, out[0].Extracted["truncated"], "structured_metadata")
 			} else {
 				require.Equal(t, tt.structured_metadata, out[0].StructuredMetadata)
 			}
