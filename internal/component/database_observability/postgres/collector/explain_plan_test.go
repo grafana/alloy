@@ -10,7 +10,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/stretchr/testify/assert"
@@ -2613,7 +2612,6 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
-
 	})
 
 	t.Run("call count tracking", func(t *testing.T) {
@@ -2692,7 +2690,6 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			assert.Len(t, explainPlan.queryCache, 0)
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
-
 	})
 
 	t.Run("returns error on database connection failure", func(t *testing.T) {
@@ -2793,7 +2790,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	})
 
 	t.Run("query validation", func(t *testing.T) {
-		lokiClient := loki_fake.NewClient(func() {})
+		lokiClient := fake.NewClient(func() {})
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
