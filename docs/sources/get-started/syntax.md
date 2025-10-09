@@ -3,11 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/syntax/
 aliases:
   - ./configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
 description: Learn about the Alloy configuration language syntax
-title: Syntax
+title: Alloy syntax
+menuTitle: Syntax
 weight: 20
 ---
 
-# Syntax
+# {{% param "PRODUCT_NAME" %}} syntax
 
 The {{< param "PRODUCT_NAME" >}} syntax helps you create readable and maintainable configurations.
 It has two main elements: _Attributes_ and _Blocks_.
