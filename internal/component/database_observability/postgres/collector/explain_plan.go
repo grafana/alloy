@@ -397,11 +397,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		}
 
 		redactedByteExplainPlanJSON := redact(string(byteExplainPlanJSON))
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to redact explain plan json", "err", err)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
 
 		level.Debug(logger).Log("msg", "db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
 
