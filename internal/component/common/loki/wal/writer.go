@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -271,7 +271,7 @@ func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error 
 	// Append the entry to an already existing stream (if any)
 	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, wal.RefEntries{
 		Ref: chunks.HeadSeriesRef(fp),
-		Entries: []logproto.Entry{
+		Entries: []push.Entry{
 			entry.Entry,
 		},
 	})

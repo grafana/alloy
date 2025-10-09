@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // GCPLogEntry that will be written to the pubsub topic according to the following spec.
@@ -125,7 +125,7 @@ func parseGCPLogsEntry(data []byte, other model.LabelSet, otherInternal labels.L
 
 	return loki.Entry{
 		Labels: lbls,
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      line,
 		},

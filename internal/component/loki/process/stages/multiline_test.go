@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -138,7 +137,7 @@ func simpleEntry(line, label string) Entry {
 		Extracted: map[string]interface{}{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": model.LabelValue(label)},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -162,7 +161,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 		Extracted: map[string]interface{}{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": "one"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "START line 1",
 				StructuredMetadata: push.LabelsAdapter{
@@ -179,7 +178,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 		Extracted: map[string]interface{}{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": "one"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "START line 2",
 				StructuredMetadata: push.LabelsAdapter{

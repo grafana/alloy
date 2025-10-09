@@ -12,7 +12,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -159,7 +159,7 @@ func TestManager_WALEnabled(t *testing.T) {
 	for i := 0; i < totalLines; i++ {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},
@@ -214,7 +214,7 @@ func TestManager_WALDisabled(t *testing.T) {
 	for i := 0; i < totalLines; i++ {
 		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},
@@ -283,7 +283,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	for i := range totalLines {
 		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},

@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // ErrEmptyStructuredMetadataDropStageConfig error returned if the config is empty.
@@ -41,7 +41,7 @@ func (*structuredMetadataDropStage) Cleanup() {
 func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
 		for _, value := range s.config.Values {
-			e.StructuredMetadata = slices.DeleteFunc(e.StructuredMetadata, func(l logproto.LabelAdapter) bool {
+			e.StructuredMetadata = slices.DeleteFunc(e.StructuredMetadata, func(l push.LabelAdapter) bool {
 				return l.Name == value
 			})
 		}
