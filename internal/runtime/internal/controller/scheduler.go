@@ -15,10 +15,6 @@ var (
 	// TaskShutdownWarningTimeout is the duration after which a warning is logged
 	// when a task is taking too long to shut down.
 	TaskShutdownWarningTimeout = time.Minute
-
-	// TaskShutdownDeadline is the maximum duration to wait for a task to shut down
-	// before giving up and logging an error.
-	TaskShutdownDeadline = 10 * time.Minute
 )
 
 // RunnableNode is any BlockNode which can also be run.
@@ -29,10 +25,11 @@ type RunnableNode interface {
 
 // Scheduler runs components.
 type Scheduler struct {
-	ctx     context.Context
-	cancel  context.CancelFunc
-	running sync.WaitGroup
-	logger  log.Logger
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	running              sync.WaitGroup
+	logger               log.Logger
+	taskShutdownDeadline time.Duration
 
 	tasksMut sync.Mutex
 	tasks    map[string]*task
@@ -42,12 +39,13 @@ type Scheduler struct {
 // components which are running.
 //
 // Call Close to stop the Scheduler and all running components.
-func NewScheduler(logger log.Logger) *Scheduler {
+func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		ctx:    ctx,
-		cancel: cancel,
-		logger: logger,
+		ctx:                  ctx,
+		cancel:               cancel,
+		logger:               logger,
+		taskShutdownDeadline: taskShutdownDeadline,
 
 		tasks: make(map[string]*task),
 	}
@@ -114,7 +112,8 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 				defer s.tasksMut.Unlock()
 				delete(s.tasks, nodeID)
 			},
-			logger: log.With(s.logger, "taskID", nodeID),
+			logger:               log.With(s.logger, "taskID", nodeID),
+			taskShutdownDeadline: s.taskShutdownDeadline,
 		}
 
 		s.running.Add(1)
@@ -146,10 +145,11 @@ type task struct {
 }
 
 type taskOptions struct {
-	context  context.Context
-	runnable RunnableNode
-	onDone   func(error)
-	logger   log.Logger
+	context              context.Context
+	runnable             RunnableNode
+	onDone               func(error)
+	logger               log.Logger
+	taskShutdownDeadline time.Duration
 }
 
 // newTask creates and starts a new task.
@@ -176,7 +176,12 @@ func newTask(opts taskOptions) *task {
 func (t *task) Stop() {
 	t.cancel()
 
-	deadlineCtx, deadlineCancel := context.WithTimeout(context.Background(), TaskShutdownDeadline)
+	deadlineDuration := t.opts.taskShutdownDeadline
+	if deadlineDuration == 0 {
+		deadlineDuration = time.Hour * 24 * 365 * 100 // infinite timeout ~= 100 years
+	}
+
+	deadlineCtx, deadlineCancel := context.WithTimeout(context.Background(), deadlineDuration)
 	defer deadlineCancel()
 
 	for {

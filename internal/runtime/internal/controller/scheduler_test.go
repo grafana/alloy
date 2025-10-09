@@ -32,7 +32,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler(logger)
+		sched := controller.NewScheduler(logger, 1*time.Minute)
 		sched.Synchronize([]controller.RunnableNode{
 			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
 			fakeRunnable{ID: "component-b", Component: mockComponent{RunFunc: runFunc}},
@@ -54,7 +54,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler(logger)
+		sched := controller.NewScheduler(logger, 1*time.Minute)
 
 		for i := 0; i < 10; i++ {
 			// If a new runnable is created, runFunc will panic since the WaitGroup
@@ -80,7 +80,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			return nil
 		}
 
-		sched := controller.NewScheduler(logger)
+		sched := controller.NewScheduler(logger, 1*time.Minute)
 
 		sched.Synchronize([]controller.RunnableNode{
 			fakeRunnable{ID: "component-a", Component: mockComponent{RunFunc: runFunc}},
@@ -120,12 +120,9 @@ func (mc mockComponent) Update(newConfig component.Arguments) error { return mc.
 func TestScheduler_TaskTimeoutLogging(t *testing.T) {
 	// Temporarily modify timeout values for testing
 	originalWarningTimeout := controller.TaskShutdownWarningTimeout
-	originalDeadline := controller.TaskShutdownDeadline
 	controller.TaskShutdownWarningTimeout = 50 * time.Millisecond
-	controller.TaskShutdownDeadline = 150 * time.Millisecond
 	defer func() {
 		controller.TaskShutdownWarningTimeout = originalWarningTimeout
-		controller.TaskShutdownDeadline = originalDeadline
 	}()
 
 	// Create a buffer to capture log output
@@ -144,7 +141,7 @@ func TestScheduler_TaskTimeoutLogging(t *testing.T) {
 		return nil
 	}
 
-	sched := controller.NewScheduler(logger)
+	sched := controller.NewScheduler(logger, 150*time.Millisecond)
 
 	// Start a component
 	err := sched.Synchronize([]controller.RunnableNode{
