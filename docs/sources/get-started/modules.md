@@ -7,7 +7,7 @@ title: Use modules to organize your configuration
 weight: 90
 ---
 
-# Modules
+# Use modules to organize your configuration
 
 A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration that combines all other concepts.
 It contains a mix of configuration blocks, instantiated components, and custom component definitions.
@@ -17,20 +17,22 @@ You can [import modules](#import-modules) to reuse [custom components][] defined
 
 ## Import modules
 
-You can _import_ a module to use its custom components in other modules, called _importing modules_.
+You can _import_ a module to use its custom components in other modules.
 Import modules from multiple locations using one of the `import` configuration blocks:
 
-- [`import.file`][import.file]: Imports a module from a file on disk.
-- [`import.git`][import.git]: Imports a module from a file in a Git repository.
-- [`import.http`][import.http]: Imports a module from an HTTP request response.
-- [`import.string`][import.string]: Imports a module from a string.
+- [`import.file`][import.file]: Imports a module from a file on disk
+- [`import.git`][import.git]: Imports a module from a file in a Git repository
+- [`import.http`][import.http]: Imports a module from an HTTP request response
+- [`import.string`][import.string]: Imports a module from a string
 
 {{< admonition type="warning" >}}
 You can't import a module that contains top-level blocks other than `declare` or `import`.
 {{< /admonition >}}
 
-Modules are imported into a _namespace_, exposing the top-level custom components of the imported module to the importing module.
+Modules are imported into a _namespace_.
+This exposes the top-level custom components of the imported module to the importing module.
 The label of the import block specifies the namespace of an import.
+
 For example, if a configuration contains a block called `import.file "my_module"`, then custom components defined by that module are exposed as `my_module.CUSTOM_COMPONENT_NAME`.
 Namespaces for imports must be unique within a given importing module.
 
@@ -79,7 +81,7 @@ declare "log_filter" {
 }
 ```
 
-You can save this module to a file called `helpers.alloy` and import it:
+Save this module to a file called `helpers.alloy` and import it:
 
 ```alloy
 // Import our helpers.alloy module, exposing its custom components as
@@ -111,9 +113,12 @@ loki.write "default" {
 
 Since modules can load arbitrary configurations from potentially remote sources, carefully consider the security of your solution.
 The best practice is to ensure attackers can't modify the {{< param "PRODUCT_NAME" >}} configuration.
-This includes the main {{< param "PRODUCT_NAME" >}} configuration files and modules fetched from remote locations, such as Git repositories or HTTP servers.
+This includes:
 
-[custom components]: ../custom_components/
+- The main {{< param "PRODUCT_NAME" >}} configuration files
+- Modules fetched from remote locations, such as Git repositories or HTTP servers
+
+[custom components]: ../components/custom-components/
 [run]: ../../reference/cli/run/
 [import.file]: ../../reference/config-blocks/import.file/
 [import.git]: ../../reference/config-blocks/import.git/

@@ -10,7 +10,7 @@ weight: 50
 # Declare and configure components
 
 Components are the defining feature of {{< param "PRODUCT_NAME" >}}.
-They're small, reusable pieces of business logic that perform a single task, such as retrieving secrets or collecting Prometheus metrics.
+They're reusable pieces of business logic that perform a single task, such as retrieving secrets or collecting Prometheus metrics.
 You can wire them together to form programmable pipelines of telemetry data.
 
 The [_component controller_][controller] schedules components, reports their health and debug status, re-evaluates their arguments, and provides their exports.
@@ -46,7 +46,7 @@ For example, you can reference a `local.file` component labeled `foo` as `local.
 The combination of a component's name and label must be unique within the configuration file.
 This naming approach allows you to define multiple instances of a component, as long as each instance has a unique label.
 
-## Configuring components
+## Configure components
 
 You create [components][] by defining a top-level block.
 Each component is identified by its name, which describes its responsibility, and a user-specified _label_.
@@ -256,5 +256,5 @@ local.file "b" {
 
 [components]: ../../reference/components/
 [controller]: ./component-controller/
-[type]: ./expressions/types_and_values/
+[type]: ../expressions/types_and_values/
 [sys.env]: ../../reference/stdlib/sys/

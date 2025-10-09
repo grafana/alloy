@@ -14,8 +14,8 @@ Each component performs a single task, such as retrieving secrets or collecting 
 
 Components consist of the following:
 
-- **Arguments:** Settings that configure a component.
-- **Exports:** Named values that a component makes available to other components.
+- **Arguments:** Settings that configure a component
+- **Exports:** Named values that a component makes available to other components
 
 Each component has a name that describes its responsibility.
 For example, the `local.file` component retrieves the contents of files on disk.
@@ -40,7 +40,7 @@ This naming approach allows you to define multiple instances of a component, as 
 
 ## Pipelines
 
-Most arguments for a component in a configuration file are constant values, such as setting a `log_level` attribute to `"debug"`.
+Most arguments for a component in a configuration file are constant values, such as setting a `log_level` attribute to `"debug"`:
 
 ```alloy
 log_level = "debug"
@@ -57,10 +57,10 @@ The flow of data through these references forms a _pipeline_.
 
 An example pipeline might look like this:
 
-1. A `local.file` component watches a file containing an API key.
-1. A `prometheus.remote_write` component receives metrics and forwards them to an external database using the API key from the `local.file` for authentication.
-1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where metrics can be collected.
-1. A `prometheus.scrape` component references the exports of the previous component and sends collected metrics to the `prometheus.remote_write` component.
+1. A `local.file` component watches a file containing an API key
+1. A `prometheus.remote_write` component receives metrics and forwards them to an external database using the API key from the `local.file` for authentication
+1. A `discovery.kubernetes` component discovers and exports Kubernetes Pods where metrics can be collected
+1. A `prometheus.scrape` component references the exports of the previous component and sends collected metrics to the `prometheus.remote_write` component
 
 {{< figure src="/media/docs/alloy/diagram-concepts-example-pipeline.png" width="600" alt="Example of a pipeline" >}}
 

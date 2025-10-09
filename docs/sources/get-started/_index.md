@@ -11,13 +11,51 @@ weight: 10
 
 # Get started with {{% param "FULL_PRODUCT_NAME" %}} configuration
 
-{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components using the {{< param "PRODUCT_NAME" >}} configuration syntax.
-{{< param "PRODUCT_NAME" >}} collects, transforms, and delivers telemetry data.
-Each configuration component performs a specific task or defines data flow and component connections.
+{{< param "FULL_PRODUCT_NAME" >}} uses a configuration language to connect and manage components.
+Components are building blocks that collect, transform, and send your data.
+Each component performs a specific task, such as reading files, collecting metrics, or sending data to external systems.
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-The following example demonstrates the basic concepts and how an {{< param "PRODUCT_NAME" >}} configuration forms a pipeline.
+## Basic concepts
+
+Before exploring complex pipelines, let's start with a basic example.
+This configuration sets up logging for {{< param "PRODUCT_NAME" >}}:
+
+```alloy
+logging {
+    level  = "info"
+    format = "json"
+}
+```
+
+This example shows:
+
+- **Block**: `logging` is a configuration block that sets up logging behavior.
+- **Attributes**: `level` and `format` are settings that configure the logging block.
+- **Values**: `"info"` and `"json"` are the values assigned to the attributes.
+
+## Connect components
+
+You can connect components to create data pipelines.
+This example reads a configuration file and uses its content:
+
+```alloy
+local.file "config" {
+    filename = "/etc/app/settings.txt"
+}
+
+logging {
+    level = local.file.config.content
+}
+```
+
+Here, the `logging` block uses data from the `local.file` component.
+The expression `local.file.config.content` references the file's content.
+
+## Complete pipeline example
+
+The following example demonstrates how an {{< param "PRODUCT_NAME" >}} configuration forms a complete pipeline.
 
 ```alloy
 // Collection: mount a local directory with a certain path spec
@@ -60,12 +98,19 @@ loki.write "local_loki" {
 }
 ```
 
-The {{< param "PRODUCT_NAME" >}} syntax reduces configuration errors by making files easier to read and write.
-It uses blocks, attributes, and expressions.
-You can copy and paste blocks from the documentation to get started quickly.
+This pipeline shows how components work together:
 
-The {{< param "PRODUCT_NAME" >}} syntax is declarative, so the order of components, blocks, and attributes doesn't matter.
-The relationships between components determine the pipeline's operation sequence.
+1. **Collection**: `local.file_match` finds log files to read.
+2. **Processing**: `loki.source.file` reads the files and forwards logs to the next component.
+3. **Transformation**: `loki.process` extracts data from log messages and adds labels.
+4. **Output**: `loki.write` sends the processed logs to a Loki server.
+
+The {{< param "PRODUCT_NAME" >}} syntax makes configurations easier to read and write.
+It uses blocks, attributes, and expressions that you can copy from the documentation to get started quickly.
+
+The {{< param "PRODUCT_NAME" >}} syntax is declarative.
+This means the order of components, blocks, and attributes doesn't matter.
+The relationships between components determine how the pipeline operates.
 
 ## Configuration files
 
@@ -74,13 +119,13 @@ Refer to each {{< param "PRODUCT_NAME" >}} file as a "configuration file" or an 
 
 {{< param "PRODUCT_NAME" >}} configuration files must be UTF-8 encoded and support Unicode characters.
 They can use Unix-style line endings (LF) or Windows-style line endings (CRLF).
-Code formatters may replace all line endings with Unix-style ones.
+Code formatting tools may replace all line endings with Unix-style ones.
 
 ## Blocks
 
-Use _Blocks_ to configure components and groups of attributes.
+Blocks group related settings and configure components.
 Each block can include attributes or nested blocks.
-Blocks represent steps in the pipeline.
+Blocks represent steps in your data pipeline.
 
 ```alloy
 prometheus.remote_write "default" {
@@ -90,19 +135,19 @@ prometheus.remote_write "default" {
 }
 ```
 
-The preceding example contains two blocks:
+This example contains two blocks:
 
 - `prometheus.remote_write "default"`: A labeled block that creates a `prometheus.remote_write` component.
-  The label is the string `"default"`.
-- `endpoint`: An unlabeled block inside the component that configures an endpoint for sending metrics.
-  This block sets the `url` attribute to specify the endpoint.
+  The label is `"default"`.
+- `endpoint`: An unlabeled block inside the component that configures where to send metrics.
+  This block sets the `url` attribute to specify the endpoint address.
 
 ## Attributes
 
-Use _Attributes_ to configure individual settings.
+Attributes configure individual settings within blocks.
 Attributes follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 
-The following example sets the `log_level` attribute to `"debug"`.
+This example sets the `log_level` attribute to `"debug"`:
 
 ```alloy
 log_level = "debug"
@@ -110,36 +155,45 @@ log_level = "debug"
 
 ## Expressions
 
-Use expressions to compute attribute values.
-Simple expressions include constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
-The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, such as:
+Expressions compute values for attributes.
+You can use constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
+The {{< param "PRODUCT_NAME" >}} syntax also supports complex expressions:
 
-- Referencing component exports: `local.file.password_file.content`
+- Reference component exports: `local.file.password_file.content`
 - Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
 - Equality checks: `local.file.file_a.content == local.file.file_b.content`
-- Calling functions from the standard library: `sys.env("HOME")` retrieves the `HOME` environment variable.
+- Function calls: `sys.env("HOME")` retrieves the `HOME` environment variable
 
 You can use expressions for any attribute in a component definition.
 
 ### Reference component exports
 
-The most common expression references a component's exports, such as `local.file.password_file.content`.
-You form a reference by combining the component's name (for example, `local.file`), label (for example, `password_file`), and export name (for example, `content`), separated by periods.
+The most common expression references a component's exports.
+For example: `local.file.password_file.content`.
+
+To create a reference, combine three parts with periods:
+
+- Component name: `local.file`
+- Label: `password_file`
+- Export name: `content`
+- Result: `local.file.password_file.content`
 
 ## Configuration syntax design goals
 
-{{< param "PRODUCT_NAME" >}} is:
+{{< param "PRODUCT_NAME" >}} is designed to be:
 
-- _Fast_: The configuration language is fast and the controller evaluates changes quickly.
-- _Simple_: The configuration language is straightforward to read and write, reducing the learning curve.
-- _Easy to debug_: The configuration language provides detailed error information.
+- **Fast**: The configuration language is fast and the controller evaluates changes quickly.
+- **Readable**: The configuration language is straightforward to read and write, reducing the learning curve.
+- **Easy to debug**: The configuration language provides detailed error information.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
-- Blocks group related settings and typically represent component creation.
+Key elements:
+
+- **Blocks** group related settings and typically represent component creation.
   Blocks have a name consisting of identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
-- Attributes appear within blocks and assign values to names.
-- Expressions represent values, either literally or by referencing and combining other values.
+- **Attributes** appear within blocks and assign values to names.
+- **Expressions** represent values, either literally or by referencing and combining other values.
   You use expressions to compute attribute values.
 
 ## Tooling

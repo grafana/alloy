@@ -9,10 +9,13 @@ weight: 20
 
 # Configuration language syntax
 
-The {{< param "PRODUCT_NAME" >}} syntax is easy to read and write.
+The {{< param "PRODUCT_NAME" >}} syntax is designed to be readable and concise.
 It has two main elements: _Attributes_ and _Blocks_.
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax is a _declarative_ language for creating programmable pipelines.
+The {{< param "PRODUCT_NAME" >}} configuration syntax is a _declarative_ language.
+This means you describe what you want, not how to do it.
+{{< param "PRODUCT_NAME" >}} figures out the steps to create your data pipelines.
+
 The order of blocks and attributes in the {{< param "PRODUCT_NAME" >}} configuration file doesn't matter.
 The language evaluates all dependencies between elements to determine their relationships.
 
@@ -50,11 +53,11 @@ Invalid identifiers:
 
 ### Attributes
 
-Use _Attributes_ to configure individual settings.
+Attributes configure individual settings.
 Attributes follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
-They can appear as top-level elements or nested within blocks.
+You can place them as top-level elements or nested within blocks.
 
-The following example sets the `log_level` attribute to `"debug"`.
+This example sets the `log_level` attribute to `"debug"`:
 
 ```alloy
 log_level = "debug"
@@ -62,15 +65,18 @@ log_level = "debug"
 
 The `ATTRIBUTE_NAME` must be a valid {{< param "PRODUCT_NAME" >}} [identifier][].
 
-The `ATTRIBUTE_VALUE` can be a constant value of a valid {{< param "PRODUCT_NAME" >}} [type][], such as a string, boolean, or number.
-It can also be an [_expression_][expression] to compute complex values.
+The `ATTRIBUTE_VALUE` can be:
+
+- A constant value of a valid {{< param "PRODUCT_NAME" >}} [type][], such as a string, boolean, or number
+- An [_expression_][expression] to compute complex values
 
 ### Blocks
 
-Use _Blocks_ to configure the behavior of {{< param "PRODUCT_NAME" >}} and its components by grouping attributes or nested blocks with curly braces.
+Blocks configure the behavior of {{< param "PRODUCT_NAME" >}} and its components.
+They group attributes or nested blocks using curly braces.
 Blocks have a _name_, an optional _label_, and a body containing arguments and nested unlabeled blocks.
 
-Some blocks can be defined multiple times.
+You can define some blocks multiple times.
 
 #### Examples
 
@@ -103,13 +109,15 @@ BLOCK_NAME "BLOCK_LABEL" {
 
 #### Block naming rules
 
-The `BLOCK_NAME` must be a valid component name or a special block for configuring global settings in {{< param "PRODUCT_NAME" >}}.
-If required, the `BLOCK_LABEL` must be a valid {{< param "PRODUCT_NAME" >}} [identifier][] wrapped in double quotes.
-Use the label to distinguish between multiple top-level blocks with the same name.
+The `BLOCK_NAME` must be either:
 
-The following snippet defines a block named `local.file` with the label "token."
-The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable using an expression.
-The `is_secret` attribute is set to `true`, marking the file content as sensitive.
+- A valid component name
+- A special block for configuring global settings in {{< param "PRODUCT_NAME" >}}
+
+If required, the `BLOCK_LABEL` must be a valid {{< param "PRODUCT_NAME" >}} [identifier][] wrapped in double quotes.
+Labels help distinguish between multiple top-level blocks with the same name.
+
+This snippet defines a block named `local.file` with the label "token":
 
 ```alloy
 local.file "token" {
@@ -118,11 +126,15 @@ local.file "token" {
 }
 ```
 
+The block's body sets `filename` to the content of the `TOKEN_FILE_PATH` environment variable using an expression.
+The `is_secret` attribute is set to `true`, marking the file content as sensitive.
+
 ## Terminators
 
-All block and attribute definitions end with a newline, which {{< param "PRODUCT_NAME" >}} calls a _terminator_.
+All block and attribute definitions end with a newline.
+{{< param "PRODUCT_NAME" >}} calls this a _terminator_.
 A newline acts as a terminator when it follows any expression, `]`, `)`, or `}`.
-{{< param "PRODUCT_NAME" >}} ignores other newlines, so you can add as many as you want.
+{{< param "PRODUCT_NAME" >}} ignores other newlines, so you can add as many as you want for readability.
 
 ```alloy
 // This is valid - newlines are ignored
@@ -147,6 +159,6 @@ The formatter:
 - Validates syntax
 
 [identifier]: #identifiers
-[expression]: ./expressions/
-[type]: ./expressions/types_and_values/
+[expression]: ../expressions/
+[type]: ../expressions/types_and_values/
 [fmt]: ../../reference/cli/fmt/
