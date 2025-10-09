@@ -3,11 +3,11 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/modules/
 aliases:
   - ../concepts/modules/ # /docs/alloy/latest/concepts/modules/
 description: Learn about modules
-title: Use modules to organize your configuration
+title: Modules
 weight: 90
 ---
 
-# Use modules to organize your configuration
+# Modules
 
 A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration that combines all other concepts.
 It contains a mix of configuration blocks, instantiated components, and custom component definitions.

@@ -3,11 +3,11 @@ canonical: https://Grafana.com/docs/alloy/latest/get-started/expressions/
 aliases:
   - ./configuration-syntax/expressions/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/
 description: Learn about expressions and functions in Alloy
-title: Expressions and functions
+title: Expressions
 weight: 30
 ---
 
-# Expressions and functions
+# Expressions
 
 Expressions compute values you can assign to component attributes in an {{< param "PRODUCT_NAME" >}} configuration.
 You can use them to make your configuration dynamic and connect different components together.

@@ -3,11 +3,11 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/referen
 aliases:
   - ./configuration-syntax/expressions/referencing_exports/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/referencing_exports/
 description: Learn about referencing component exports
-title: Reference component exports
+title: Component exports
 weight: 20
 ---
 
-# Reference component exports
+# Component exports
 
 Referencing exports allows {{< param "PRODUCT_NAME" >}} to configure and connect components dynamically using expressions.
 Components are more effective when they depend on other components' exports, creating data flow relationships.

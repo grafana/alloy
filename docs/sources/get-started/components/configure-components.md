@@ -3,11 +3,11 @@ canonical: https://Grafana.com/docs/alloy/latest/get-started/components/configur
 aliases:
   - ./configuration-syntax/components/ # /docs/alloy/latest/get-started/configuration-syntax/components/
 description: Learn how to declare and configure components
-title: Declare and configure components
+title: Configure components
 weight: 50
 ---
 
-# Declare and configure components
+# Configure components
 
 Components are the defining feature of {{< param "PRODUCT_NAME" >}}.
 They're reusable pieces of business logic that perform a single task, such as retrieving secrets or collecting Prometheus metrics.
