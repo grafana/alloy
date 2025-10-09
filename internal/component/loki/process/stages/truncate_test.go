@@ -32,7 +32,27 @@ func Test_TruncateStage_Process(t *testing.T) {
 		incrementedCount           *map[string]float64
 	}{
 		{
+			name: "passthrough when under limits",
+			config: &TruncateConfig{
+				LineLimit: 1000,
+				Suffix:    "...",
+			},
+			labels:              map[string]string{},
+			structured_metadata: push.LabelsAdapter{},
+			entry:               "12345678901",
+		},
+		{
 			name: "Longer line should truncate",
+			config: &TruncateConfig{
+				LineLimit: 10,
+			},
+			labels:              map[string]string{},
+			structured_metadata: push.LabelsAdapter{},
+			entry:               "123456789012",
+			expectedEntry:       ptr("1234567890"),
+			incrementedCount:    ptr(map[string]float64{"line": 1}),
+		}, {
+			name: "Longer line should truncate with suffix",
 			config: &TruncateConfig{
 				LineLimit: 10,
 				Suffix:    "...",
