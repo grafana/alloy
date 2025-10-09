@@ -1,10 +1,12 @@
 package controller_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -114,3 +116,57 @@ var _ component.Component = (*mockComponent)(nil)
 
 func (mc mockComponent) Run(ctx context.Context) error              { return mc.RunFunc(ctx) }
 func (mc mockComponent) Update(newConfig component.Arguments) error { return mc.UpdateFunc(newConfig) }
+
+func TestScheduler_TaskTimeoutLogging(t *testing.T) {
+	// Temporarily modify timeout values for testing
+	originalWarningTimeout := controller.TaskShutdownWarningTimeout
+	originalDeadline := controller.TaskShutdownDeadline
+	controller.TaskShutdownWarningTimeout = 50 * time.Millisecond
+	controller.TaskShutdownDeadline = 150 * time.Millisecond
+	defer func() {
+		controller.TaskShutdownWarningTimeout = originalWarningTimeout
+		controller.TaskShutdownDeadline = originalDeadline
+	}()
+
+	// Create a buffer to capture log output
+	var logBuffer bytes.Buffer
+	logger := log.NewLogfmtLogger(&logBuffer)
+
+	var started sync.WaitGroup
+	started.Add(1)
+
+	// Create a component that will block and not respond to context cancellation
+	runFunc := func(ctx context.Context) error {
+		started.Done()
+		// Block indefinitely, ignoring context cancellation
+		// Use a long sleep to simulate a component that doesn't respond to cancellation
+		time.Sleep(1 * time.Second)
+		return nil
+	}
+
+	sched := controller.NewScheduler(logger)
+
+	// Start a component
+	err := sched.Synchronize([]controller.RunnableNode{
+		fakeRunnable{ID: "blocking-component", Component: mockComponent{RunFunc: runFunc}},
+	})
+	require.NoError(t, err)
+	started.Wait()
+
+	// Remove the component, which should trigger the timeout behavior. This will block until the component exits.
+	err = sched.Synchronize([]controller.RunnableNode{})
+	require.NoError(t, err)
+
+	logOutput := logBuffer.String()
+	t.Logf("actual log output:\n%s", logOutput)
+
+	// Should contain warning message
+	require.Contains(t, logOutput, "task shutdown is taking longer than expected")
+	require.Contains(t, logOutput, "level=warn")
+
+	// Should contain error message
+	require.Contains(t, logOutput, "task shutdown deadline exceeded")
+	require.Contains(t, logOutput, "level=error")
+
+	require.NoError(t, sched.Close())
+}

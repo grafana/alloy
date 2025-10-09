@@ -4,10 +4,21 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+)
+
+var (
+	// TaskShutdownWarningTimeout is the duration after which a warning is logged
+	// when a task is taking too long to shut down.
+	TaskShutdownWarningTimeout = time.Minute
+
+	// TaskShutdownDeadline is the maximum duration to wait for a task to shut down
+	// before giving up and logging an error.
+	TaskShutdownDeadline = 10 * time.Minute
 )
 
 // RunnableNode is any BlockNode which can also be run.
@@ -52,7 +63,6 @@ func NewScheduler(logger log.Logger) *Scheduler {
 // call to Synchronize.
 func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 	s.tasksMut.Lock()
-	defer s.tasksMut.Unlock()
 
 	if s.ctx.Err() != nil {
 		return fmt.Errorf("Scheduler is closed")
@@ -89,9 +99,9 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 		)
 
 		opts := taskOptions{
-			Context:  s.ctx,
-			Runnable: newRunnable,
-			OnDone: func(err error) {
+			context:  s.ctx,
+			runnable: newRunnable,
+			onDone: func(err error) {
 				defer s.running.Done()
 
 				if err != nil {
@@ -104,12 +114,15 @@ func (s *Scheduler) Synchronize(rr []RunnableNode) error {
 				defer s.tasksMut.Unlock()
 				delete(s.tasks, nodeID)
 			},
+			logger: log.With(s.logger, "taskID", nodeID),
 		}
 
 		s.running.Add(1)
 		s.tasks[nodeID] = newTask(opts)
 	}
 
+	// Unlock the tasks mutex so that Stop calls can complete.
+	s.tasksMut.Unlock()
 	// Wait for all stopping runnables to exit.
 	stopping.Wait()
 	return nil
@@ -125,36 +138,58 @@ func (s *Scheduler) Close() error {
 
 // task is a scheduled runnable.
 type task struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	exited chan struct{}
+	ctx      context.Context
+	cancel   context.CancelFunc
+	exited   chan struct{}
+	opts     taskOptions
+	doneOnce sync.Once
 }
 
 type taskOptions struct {
-	Context  context.Context
-	Runnable RunnableNode
-	OnDone   func(error)
+	context  context.Context
+	runnable RunnableNode
+	onDone   func(error)
+	logger   log.Logger
 }
 
 // newTask creates and starts a new task.
 func newTask(opts taskOptions) *task {
-	ctx, cancel := context.WithCancel(opts.Context)
+	ctx, cancel := context.WithCancel(opts.context)
 
 	t := &task{
 		ctx:    ctx,
 		cancel: cancel,
 		exited: make(chan struct{}),
+		opts:   opts,
 	}
 
 	go func() {
-		err := opts.Runnable.Run(t.ctx)
+		err := opts.runnable.Run(t.ctx)
 		close(t.exited)
-		opts.OnDone(err)
+		t.doneOnce.Do(func() {
+			t.opts.onDone(err)
+		})
 	}()
 	return t
 }
 
 func (t *task) Stop() {
 	t.cancel()
-	<-t.exited
+
+	deadlineCtx, deadlineCancel := context.WithTimeout(context.Background(), TaskShutdownDeadline)
+	defer deadlineCancel()
+
+	for {
+		select {
+		case <-t.exited:
+			return // Task exited normally.
+		case <-time.After(TaskShutdownWarningTimeout):
+			level.Warn(t.opts.logger).Log("msg", "task shutdown is taking longer than expected")
+		case <-deadlineCtx.Done():
+			t.doneOnce.Do(func() {
+				t.opts.onDone(fmt.Errorf("task shutdown deadline exceeded"))
+			})
+			return // Task took too long to exit, don't wait.
+		}
+	}
 }
