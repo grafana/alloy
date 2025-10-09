@@ -3,8 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/modules/
 aliases:
   - ../concepts/modules/ # /docs/alloy/latest/concepts/modules/
 description: Learn about modules
-title: Modules
-weight: 400
+title: Use modules to organize your configuration
+weight: 90
 ---
 
 # Modules
@@ -20,10 +20,10 @@ You can [import modules](#import-modules) to reuse [custom components][] defined
 You can _import_ a module to use its custom components in other modules, called _importing modules_.
 Import modules from multiple locations using one of the `import` configuration blocks:
 
-* [`import.file`][import.file]: Imports a module from a file on disk.
-* [`import.git`][import.git]: Imports a module from a file in a Git repository.
-* [`import.http`][import.http]: Imports a module from an HTTP request response.
-* [`import.string`][import.string]: Imports a module from a string.
+- [`import.file`][import.file]: Imports a module from a file on disk.
+- [`import.git`][import.git]: Imports a module from a file in a Git repository.
+- [`import.http`][import.http]: Imports a module from an HTTP request response.
+- [`import.string`][import.string]: Imports a module from a string.
 
 {{< admonition type="warning" >}}
 You can't import a module that contains top-level blocks other than `declare` or `import`.

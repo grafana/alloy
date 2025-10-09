@@ -1,10 +1,10 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/function_calls/
+canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/function_calls/
 aliases:
-  - ../../../concepts/configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/function_calls/
+  - ./configuration-syntax/expressions/function_calls/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/function_calls/
 description: Learn about function calls
 title: Function calls
-weight: 400
+weight: 40
 ---
 
 # Function calls
@@ -28,4 +28,4 @@ sys.env("HOME")
 encoding.from_json(local.file.cfg.content)["namespace"]
 ```
 
-[standard library]:../../../../reference/stdlib/
+[standard library]: ../../../../reference/stdlib/

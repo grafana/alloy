@@ -1,10 +1,10 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/component_controller/
+canonical: https://Grafana.com/docs/alloy/latest/get-started/components/component-controller/
 aliases:
-  - ../concepts/component_controller/ # /docs/alloy/latest/concepts/component_controller/
+  - ./component_controller/ # /docs/alloy/latest/get-started/component_controller/
 description: Learn about the component controller
-title: Component controller
-weight: 200
+title: Manage components dynamically
+weight: 60
 ---
 
 # Component controller
@@ -13,10 +13,10 @@ The _component controller_ is the core part of {{< param "PRODUCT_NAME" >}} that
 
 The component controller:
 
-* Reads and validates the configuration file.
-* Manages the lifecycle of defined components.
-* Evaluates the arguments used to configure components.
-* Reports the health of defined components.
+- Reads and validates the configuration file.
+- Manages the lifecycle of defined components.
+- Evaluates the arguments used to configure components.
+- Reports the health of defined components.
 
 ## Component graph
 

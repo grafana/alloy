@@ -1,13 +1,13 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/syntax/
+canonical: https://grafana.com/docs/alloy/latest/get-started/syntax/
 aliases:
-  - ../../concepts/configuration-syntax/syntax/ # /docs/alloy/latest/concepts/configuration-syntax/syntax/
-description: Learn about the Alloy syntax
-title: Syntax
-weight: 999
+  - ./configuration-syntax/syntax/ # /docs/alloy/latest/get-started/configuration-syntax/syntax/
+description: Learn about the Alloy configuration language syntax
+title: Configuration language syntax
+weight: 20
 ---
 
-# Syntax
+# Configuration language syntax
 
 The {{< param "PRODUCT_NAME" >}} syntax is easy to read and write.
 It has two main elements: _Attributes_ and _Blocks_.
@@ -20,10 +20,31 @@ The language evaluates all dependencies between elements to determine their rela
 
 {{< param "PRODUCT_NAME" >}} configuration files support single-line `//` comments and block `/* */` comments.
 
+```alloy
+// This is a single-line comment
+
+/*
+This is a block comment
+that can span multiple lines
+*/
+```
+
 ## Identifiers
 
 An identifier in {{< param "PRODUCT_NAME" >}} syntax is valid if it contains one or more UTF-8 letters (A through Z, upper- or lowercase), digits, or underscores.
 It can't start with a digit.
+
+Valid identifiers:
+
+- `my_component`
+- `Component123`
+- `_private`
+
+Invalid identifiers:
+
+- `123component` (starts with digit)
+- `my-component` (contains hyphen)
+- `my component` (contains space)
 
 ## Attributes and Blocks
 
@@ -103,6 +124,29 @@ All block and attribute definitions end with a newline, which {{< param "PRODUCT
 A newline acts as a terminator when it follows any expression, `]`, `)`, or `}`.
 {{< param "PRODUCT_NAME" >}} ignores other newlines, so you can add as many as you want.
 
+```alloy
+// This is valid - newlines are ignored
+local.file "example" {
+  filename = "/path/to/file"
+
+
+  is_secret = true
+}
+```
+
+## Formatting
+
+{{< param "PRODUCT_NAME" >}} provides a built-in formatter to ensure consistent code style.
+Use the [`alloy fmt` command][fmt] to format your configuration files.
+
+The formatter:
+
+- Standardizes indentation
+- Removes unnecessary whitespace
+- Ensures consistent line endings
+- Validates syntax
+
 [identifier]: #identifiers
-[expression]: ../expressions/
-[type]: ../expressions/types_and_values/
+[expression]: ./expressions/
+[type]: ./expressions/types_and_values/
+[fmt]: ../../reference/cli/fmt/

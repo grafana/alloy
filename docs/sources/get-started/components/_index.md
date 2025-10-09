@@ -1,10 +1,10 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/components/
+canonical: https://Grafana.com/docs/alloy/latest/get-started/components/
 aliases:
-  - ../concepts/components/ # /docs/alloy/latest/concepts/components/
+  - ./components/ # /docs/alloy/latest/get-started/components/
 description: Learn about components
 title: Components
-weight: 100
+weight: 40
 ---
 
 # Components
@@ -14,8 +14,8 @@ Each component performs a single task, such as retrieving secrets or collecting 
 
 Components consist of the following:
 
-* **Arguments:** Settings that configure a component.
-* **Exports:** Named values that a component makes available to other components.
+- **Arguments:** Settings that configure a component.
+- **Exports:** Named values that a component makes available to other components.
 
 Each component has a name that describes its responsibility.
 For example, the `local.file` component retrieves the contents of files on disk.

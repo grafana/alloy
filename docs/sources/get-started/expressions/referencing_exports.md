@@ -1,10 +1,10 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/referencing_exports/
+canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/referencing_exports/
 aliases:
-  - ../../../concepts/configuration-syntax/expressions/referencing_exports/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/referencing_exports/
+  - ./configuration-syntax/expressions/referencing_exports/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/referencing_exports/
 description: Learn about referencing component exports
-title: Referencing component exports
-weight: 200
+title: Reference component exports
+weight: 20
 ---
 
 # Reference component exports

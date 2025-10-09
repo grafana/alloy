@@ -1,13 +1,13 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/get-started/configuration-syntax/expressions/
+canonical: https://Grafana.com/docs/alloy/latest/get-started/expressions/
 aliases:
-  - ../../concepts/configuration-syntax/expressions/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/
-description: Learn about expressions
-title: Expressions
-weight: 400
+  - ./configuration-syntax/expressions/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/
+description: Learn about expressions and functions in Alloy
+title: Expressions and functions
+weight: 30
 ---
 
-# Expressions
+# Expressions and functions
 
 Expressions represent or compute values you can assign to attributes in a configuration.
 

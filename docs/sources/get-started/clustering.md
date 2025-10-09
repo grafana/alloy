@@ -3,9 +3,8 @@ canonical: https://grafana.com/docs/alloy/latest/get-started/clustering/
 aliases:
   - ../concepts/clustering/ # /docs/alloy/latest/concepts/clustering/
 description: Learn about Grafana Alloy clustering concepts
-menuTitle: Clustering
 title: Clustering
-weight: 500
+weight: 100
 ---
 
 # Clustering
@@ -66,7 +65,7 @@ When your environment has a mix of very large and average-sized targets, avoid r
 
 When using clustering in a deployment where a single instance cannot handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic. However, leave a significant safety margin when configuring this value by setting it significantly smaller than your typical expected operational number of instances. When this condition is not met, the instances will completely stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
 
-For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, ensure that the `--cluster.wait-for-size` flag is set to a value well below what your HPA and PDB minimums allow. This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like pod termination or rolling updates. 
+For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, ensure that the `--cluster.wait-for-size` flag is set to a value well below what your HPA and PDB minimums allow. This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like pod termination or rolling updates.
 
 We recommend to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. The appropriate timeout duration should be based on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when timeout passes the cluster may be too small to handle traffic and run into further issues.
 
