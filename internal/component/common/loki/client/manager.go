@@ -87,7 +87,7 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager
-func NewManager(metrics *Metrics, logger log.Logger, limits limit.Config, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
+func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
 	var fake struct{}
 
 	walWatcherMetrics := wal.NewWatcherMetrics(reg)
@@ -141,7 +141,7 @@ func NewManager(metrics *Metrics, logger log.Logger, limits limit.Config, reg pr
 				client:  queue,
 			})
 		} else {
-			client, err := New(metrics, cfg, limits.MaxStreams, limits.MaxLineSize.Val(), limits.MaxLineSizeTruncate, logger)
+			client, err := New(metrics, cfg, limits.MaxStreams, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error starting client: %w", err)
 			}

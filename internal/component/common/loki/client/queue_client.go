@@ -300,19 +300,6 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
 
-	// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-	if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-		if !c.maxLineSizeTruncate {
-			c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-			c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-			return
-		}
-
-		c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-		c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-		e.Line = e.Line[:c.maxLineSize]
-	}
-
 	// TODO: can I make this locking more fine grained?
 	c.batchesMtx.Lock()
 

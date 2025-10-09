@@ -370,7 +370,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, 0, 0, false, logger)
+	qc, err := New(m, cfg, 0, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
