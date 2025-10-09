@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/grafana/tail"
 	"github.com/grafana/tail/watch"
@@ -329,7 +329,7 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
 			// as configured in initRun().
 			Labels: make(model.LabelSet, len(t.labels)+1),
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: line.Time,
 				Line:      text,
 			},

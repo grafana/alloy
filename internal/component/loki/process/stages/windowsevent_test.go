@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
@@ -113,7 +113,7 @@ func TestWindowsEvent(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{
@@ -181,7 +181,7 @@ func TestWindowsEventArgs(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]interface{}{
@@ -230,6 +230,6 @@ func TestWindowsEventValidate(t *testing.T) {
 }
 
 func TestWindowsEventStabilityLevel(t *testing.T) {
-	_, err := NewPipeline(util_log.Logger, loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityPublicPreview)
+	_, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), nil, prometheus.DefaultRegisterer, featuregate.StabilityPublicPreview)
 	require.ErrorContains(t, err, `invalid stage config stage "windowsevent" is at stability level "experimental", which is below the minimum allowed stability level "public-preview". Use --stability.level command-line flag to enable "experimental" features`)
 }

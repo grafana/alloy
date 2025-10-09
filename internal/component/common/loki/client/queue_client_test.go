@@ -10,8 +10,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -156,7 +156,7 @@ func TestQueueClient(t *testing.T) {
 
 				_ = qc.AppendEntries(wal.RefEntries{
 					Ref: chunks.HeadSeriesRef(mod),
-					Entries: []logproto.Entry{{
+					Entries: []push.Entry{{
 						Timestamp: time.Now(),
 						Line:      l,
 					}},
@@ -302,7 +302,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 			_ = qc.AppendEntries(wal.RefEntries{
 				Ref: chunks.HeadSeriesRef(seriesId),
-				Entries: []logproto.Entry{{
+				Entries: []push.Entry{{
 					Timestamp: time.Now(),
 					Line:      l,
 				}},
@@ -389,7 +389,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      l,
 				},

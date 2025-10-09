@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var testDecolorizePipeline = `
@@ -41,7 +41,7 @@ func TestPipeline_Decolorize(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatal(err)
 			}

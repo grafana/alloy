@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/user"
+	lokipush "github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -225,7 +225,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		for _, entry := range stream.Entries {
 			e := loki.Entry{
 				Labels: filtered.Clone(),
-				Entry: logproto.Entry{
+				Entry: lokipush.Entry{
 					Line:               entry.Line,
 					StructuredMetadata: entry.StructuredMetadata,
 					Parsed:             entry.Parsed,
@@ -272,7 +272,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		}
 		entries <- loki.Entry{
 			Labels: addLabels,
-			Entry: logproto.Entry{
+			Entry: lokipush.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
