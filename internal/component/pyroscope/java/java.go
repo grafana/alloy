@@ -50,11 +50,13 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, a Arguments) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid asprof dist: %w", err)
 		}
+		_ = logger.Log("msg", "using extracted asprof dist", "dist", a.Dist)
 	} else {
 		dist, err = asprof.ExtractDistribution(asprof.EmbeddedArchive, a.TmpDir, asprof.EmbeddedArchive.DistName())
 		if err != nil {
 			return nil, fmt.Errorf("extract asprof: %w", err)
 		}
+		_ = logger.Log("msg", "using embedded asprof dist")
 	}
 	forwardTo := pyroscope.NewFanout(a.ForwardTo, id, reg)
 	c := &Component{
