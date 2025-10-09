@@ -74,6 +74,8 @@ type Component struct {
 	maxCacheSize int
 
 	debugDataPublisher livedebugging.DebugDataPublisher
+
+	builder labels.ScratchBuilder
 }
 
 var (
@@ -99,6 +101,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+		builder:            labels.NewScratchBuilder(0),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -239,12 +242,12 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {
-	builder := labels.NewScratchBuilder(len(e.Labels))
+	c.builder.Reset()
 	for k, v := range e.Labels {
-		builder.Add(string(k), string(v))
+		c.builder.Add(string(k), string(v))
 	}
-	builder.Sort()
-	lbls := builder.Labels()
+	c.builder.Sort()
+	lbls := c.builder.Labels()
 	lbls, _ = relabel.Process(lbls, c.rcs...)
 
 	relabeled := make(model.LabelSet, lbls.Len())
