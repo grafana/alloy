@@ -1,5 +1,5 @@
 ---
-canonical: https://Grafana.com/docs/alloy/latest/get-started/components/community-components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/components/community-components/
 aliases:
   - ./community_components/ # /docs/alloy/latest/get-started/community_components/
 description: Learn about community components

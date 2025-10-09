@@ -1,5 +1,5 @@
 ---
-canonical: https://Grafana.com/docs/alloy/latest/get-started/
+canonical: https://grafana.com/docs/alloy/latest/get-started/
 aliases:
   - ./configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
   - ./configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/

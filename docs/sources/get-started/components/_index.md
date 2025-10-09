@@ -1,5 +1,5 @@
 ---
-canonical: https://Grafana.com/docs/alloy/latest/get-started/components/
+canonical: https://grafana.com/docs/alloy/latest/get-started/components/
 aliases:
   - ./components/ # /docs/alloy/latest/get-started/components/
 description: Learn about components

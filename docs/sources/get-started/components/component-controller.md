@@ -1,5 +1,5 @@
 ---
-canonical: https://Grafana.com/docs/alloy/latest/get-started/components/component-controller/
+canonical: https://grafana.com/docs/alloy/latest/get-started/components/component-controller/
 aliases:
   - ./component_controller/ # /docs/alloy/latest/get-started/component_controller/
 description: Learn about the component controller
