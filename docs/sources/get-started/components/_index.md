@@ -12,15 +12,15 @@ weight: 40
 _Components_ are the building blocks of {{< param "PRODUCT_NAME" >}}.
 Each component performs a single task, such as retrieving secrets or collecting Prometheus metrics.
 
-Components consist of the following:
+Components have two main parts:
 
 - **Arguments:** Settings that configure a component
 - **Exports:** Named values that a component makes available to other components
 
-Each component has a name that describes its responsibility.
+Each component has a name that describes what it does.
 For example, the `local.file` component retrieves the contents of files on disk.
 
-You define components in the configuration file by specifying the component's name with a user-defined label, followed by arguments to configure the component.
+You define components in your configuration file by specifying the component's name with a user-defined label, followed by arguments to configure the component.
 
 ```alloy
 discovery.kubernetes "pods" {
@@ -35,7 +35,7 @@ discovery.kubernetes "nodes" {
 You reference components by combining their name with their label.
 For example, you can reference a `local.file` component labeled `foo` as `local.file.foo`.
 
-The combination of a component's name and label must be unique within the configuration file.
+The combination of a component's name and label must be unique within your configuration file.
 This naming approach allows you to define multiple instances of a component, as long as each instance has a unique label.
 
 ## Pipelines

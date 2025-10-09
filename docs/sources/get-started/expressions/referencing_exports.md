@@ -41,7 +41,7 @@ prometheus.remote_write "onprem" {
 }
 ```
 
-In the preceding example, you created a simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
+In the preceding example, you created a basic pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
 
 {{< figure src="/media/docs/alloy/diagram-referencing-exports.png" alt="Example of a pipeline" >}}
 

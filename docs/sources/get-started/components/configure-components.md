@@ -49,7 +49,7 @@ This naming approach allows you to define multiple instances of a component, as 
 ## Configure components
 
 You create [components][] by defining a top-level block.
-Each component is identified by its name, which describes its responsibility, and a user-specified _label_.
+Each component has a name, which describes its responsibility, and a user-specified _label_.
 
 ## Arguments and exports
 
@@ -196,7 +196,7 @@ prometheus.scrape "default" {
 
 ## Practical example: Your first pipeline
 
-Let's create a simple pipeline that collects metrics from the host and sends them to Prometheus:
+This example creates a pipeline that collects metrics from the host and sends them to Prometheus:
 
 ```alloy
 local.file "example" {

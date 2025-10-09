@@ -11,7 +11,7 @@ weight: 90
 
 A _Module_ is a unit of {{< param "PRODUCT_NAME" >}} configuration that combines all other concepts.
 It contains a mix of configuration blocks, instantiated components, and custom component definitions.
-The module you pass as an argument to [the `run` command][run] is called the _main configuration_.
+You pass the module as an argument to [the `run` command][run]. This module becomes the _main configuration_.
 
 You can [import modules](#import-modules) to reuse [custom components][] defined by that module.
 
@@ -29,7 +29,7 @@ Import modules from multiple locations using one of the `import` configuration b
 You can't import a module that contains top-level blocks other than `declare` or `import`.
 {{< /admonition >}}
 
-Modules are imported into a _namespace_.
+You import modules into a _namespace_.
 This exposes the top-level custom components of the imported module to the importing module.
 The label of the import block specifies the namespace of an import.
 

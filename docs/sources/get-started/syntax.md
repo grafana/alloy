@@ -9,14 +9,14 @@ weight: 20
 
 # Configuration language syntax
 
-The {{< param "PRODUCT_NAME" >}} syntax is designed to be readable and concise.
+The {{< param "PRODUCT_NAME" >}} syntax helps you create readable and maintainable configurations.
 It has two main elements: _Attributes_ and _Blocks_.
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax is a _declarative_ language.
+{{< param "PRODUCT_NAME" >}} uses a _declarative_ language.
 This means you describe what you want, not how to do it.
 {{< param "PRODUCT_NAME" >}} figures out the steps to create your data pipelines.
 
-The order of blocks and attributes in the {{< param "PRODUCT_NAME" >}} configuration file doesn't matter.
+The order of blocks and attributes in your configuration file doesn't matter.
 The language evaluates all dependencies between elements to determine their relationships.
 
 ## Comments
@@ -54,7 +54,7 @@ Invalid identifiers:
 ### Attributes
 
 Attributes configure individual settings.
-Attributes follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
+They follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 You can place them as top-level elements or nested within blocks.
 
 This example sets the `log_level` attribute to `"debug"`:
@@ -72,11 +72,11 @@ The `ATTRIBUTE_VALUE` can be:
 
 ### Blocks
 
-Blocks configure the behavior of {{< param "PRODUCT_NAME" >}} and its components.
+Blocks configure {{< param "PRODUCT_NAME" >}} and its components.
 They group attributes or nested blocks using curly braces.
 Blocks have a _name_, an optional _label_, and a body containing arguments and nested unlabeled blocks.
 
-You can define some blocks multiple times.
+Some blocks can appear multiple times in your configuration.
 
 #### Examples
 

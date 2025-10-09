@@ -52,7 +52,7 @@ Target auto-distribution lets you dynamically scale the number of {{< param "PRO
 It also provides resiliency because one of the node peers automatically picks up targets if a node leaves.
 
 {{< param "PRODUCT_NAME" >}} uses a local consistent hashing algorithm to distribute targets.
-On average, only ~1/N of the targets are redistributed.
+On average, this algorithm redistributes only ~1/N of the targets.
 
 Refer to the component reference documentation to check if a component supports clustering, such as:
 
@@ -73,21 +73,21 @@ This approach ensures more consistent resource utilization across your deploymen
 
 ### Use `--cluster.wait-for-size`, but with caution
 
-When using clustering in a deployment where a single instance cannot handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
+When using clustering in a deployment where a single instance can't handle the entire load, it's recommended to use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
 However, leave a significant safety margin when configuring this value by setting it significantly smaller than your typical expected operational number of instances.
-When this condition is not met, the instances stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
+When this condition isn't met, the instances stop processing traffic in cluster-enabled components so it's important to leave room for any unexpected events.
 
 For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, ensure that the `--cluster.wait-for-size` flag is set to a value well below what your HPA and PDB minimums allow.
 This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like Pod termination or rolling updates.
 
-We recommend to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. The appropriate timeout duration should be based on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when timeout passes the cluster may be too small to handle traffic and run into further issues.
+It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration. The appropriate timeout duration should be based on how quickly you expect your orchestration or incident response team to provision required number of instances. Be aware that when timeout passes the cluster may be too small to handle traffic and run into further issues.
 
-### Do not enable clustering when you don't need it
+### Don't enable clustering if you don't need it
 
 While clustering scales to very large numbers of instances, it introduces additional overhead in the form of logs, metrics, potential alerts, and processing requirements.
 If you're not using components that specifically support and benefit from clustering, it's best to not enable clustering at all.
 A particularly common mistake is enabling clustering on logs collecting DaemonSets.
-Collecting logs from mounted node's Pod logs does not benefit from having clustering enabled since each instance typically collects logs only from its own node.
+Collecting logs from mounted node's Pod logs doesn't benefit from having clustering enabled since each instance typically collects logs only from its own node.
 In such cases, enabling clustering only adds unnecessary complexity and resource usage without providing functional benefits.
 
 ## Cluster monitoring and troubleshooting

@@ -17,9 +17,11 @@ Each component performs a specific task, such as reading files, collecting metri
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
+Before exploring complex pipelines, start with basic concepts.
+Understanding these building blocks helps you create effective configurations.
+
 ## Basic concepts
 
-Before exploring complex pipelines, let's start with a basic example.
 This configuration sets up logging for {{< param "PRODUCT_NAME" >}}:
 
 ```alloy
@@ -29,15 +31,15 @@ logging {
 }
 ```
 
-This example shows:
+This example shows the basic elements:
 
-- **Block**: `logging` is a configuration block that sets up logging behavior.
-- **Attributes**: `level` and `format` are settings that configure the logging block.
-- **Values**: `"info"` and `"json"` are the values assigned to the attributes.
+- **Block**: `logging` configures logging behavior
+- **Attributes**: `level` and `format` are settings within the block
+- **Values**: `"info"` and `"json"` are the assigned values
 
 ## Connect components
 
-You can connect components to create data pipelines.
+Components can work together to create data pipelines.
 This example reads a configuration file and uses its content:
 
 ```alloy
@@ -53,9 +55,37 @@ logging {
 Here, the `logging` block uses data from the `local.file` component.
 The expression `local.file.config.content` references the file's content.
 
+## Build your first pipeline
+
+Now you can combine multiple components to build a data pipeline.
+This example shows how to collect and forward log data:
+
+```alloy
+// Read log files from a directory
+loki.source.file "app_logs" {
+    targets = [{"__path__" = "/var/log/app/*.log"}]
+    forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+// Send logs to Grafana Cloud
+loki.write "grafana_cloud" {
+    endpoint {
+        url = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
+    }
+}
+```
+
+This pipeline has two steps:
+
+1. `loki.source.file` reads log files from a directory
+1. `loki.write` sends the logs to Grafana Cloud
+
+The `forward_to` attribute connects the components together.
+
 ## Complete pipeline example
 
-The following example demonstrates how an {{< param "PRODUCT_NAME" >}} configuration forms a complete pipeline.
+For more complex use cases, you can build longer pipelines that transform data.
+This example demonstrates a complete log processing pipeline:
 
 ```alloy
 // Collection: mount a local directory with a certain path spec
@@ -100,13 +130,15 @@ loki.write "local_loki" {
 
 This pipeline shows how components work together:
 
-1. **Collection**: `local.file_match` finds log files to read.
-2. **Processing**: `loki.source.file` reads the files and forwards logs to the next component.
-3. **Transformation**: `loki.process` extracts data from log messages and adds labels.
-4. **Output**: `loki.write` sends the processed logs to a Loki server.
+1. **Collection**: `local.file_match` finds log files to read
+1. **Processing**: `loki.source.file` reads the files and forwards logs to the next component
+1. **Transformation**: `loki.process` extracts data from log messages and adds labels
+1. **Output**: `loki.write` sends the processed logs to a Loki server
+
+## Why use {{< param "PRODUCT_NAME" >}}?
 
 The {{< param "PRODUCT_NAME" >}} syntax makes configurations easier to read and write.
-It uses blocks, attributes, and expressions that you can copy from the documentation to get started quickly.
+It uses blocks, attributes, and expressions that you can copy from the documentation.
 
 The {{< param "PRODUCT_NAME" >}} syntax is declarative.
 This means the order of components, blocks, and attributes doesn't matter.
@@ -125,7 +157,6 @@ Code formatting tools may replace all line endings with Unix-style ones.
 
 Blocks group related settings and configure components.
 Each block can include attributes or nested blocks.
-Blocks represent steps in your data pipeline.
 
 ```alloy
 prometheus.remote_write "default" {
@@ -137,15 +168,13 @@ prometheus.remote_write "default" {
 
 This example contains two blocks:
 
-- `prometheus.remote_write "default"`: A labeled block that creates a `prometheus.remote_write` component.
-  The label is `"default"`.
-- `endpoint`: An unlabeled block inside the component that configures where to send metrics.
-  This block sets the `url` attribute to specify the endpoint address.
+- `prometheus.remote_write "default"`: Creates a `prometheus.remote_write` component with the label `"default"`
+- `endpoint`: Configures where to send metrics and sets the `url` attribute
 
 ## Attributes
 
 Attributes configure individual settings within blocks.
-Attributes follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
+They follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 
 This example sets the `log_level` attribute to `"debug"`:
 
@@ -157,7 +186,8 @@ log_level = "debug"
 
 Expressions compute values for attributes.
 You can use constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
-The {{< param "PRODUCT_NAME" >}} syntax also supports complex expressions:
+
+{{< param "PRODUCT_NAME" >}} also supports complex expressions:
 
 - Reference component exports: `local.file.password_file.content`
 - Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
@@ -180,11 +210,11 @@ To create a reference, combine three parts with periods:
 
 ## Configuration syntax design goals
 
-{{< param "PRODUCT_NAME" >}} is designed to be:
+{{< param "PRODUCT_NAME" >}} has these design goals:
 
-- **Fast**: The configuration language is fast and the controller evaluates changes quickly.
-- **Readable**: The configuration language is straightforward to read and write, reducing the learning curve.
-- **Easy to debug**: The configuration language provides detailed error information.
+- **Fast**: The configuration language is fast and the controller evaluates changes quickly
+- **Readable**: The configuration language is straightforward to read and write, reducing the learning curve
+- **Easy to debug**: The configuration language provides detailed error information
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
