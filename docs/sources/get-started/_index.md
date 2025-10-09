@@ -3,13 +3,13 @@ canonical: https://Grafana.com/docs/alloy/latest/get-started/
 aliases:
   - ./configuration-syntax/ # /docs/alloy/latest/get-started/configuration-syntax/
   - ./configuration-syntax/files/ # /docs/alloy/latest/get-started/configuration-syntax/files/
-description: Get started with Grafana Alloy configuration
-title: Get started with Grafana Alloy configuration
+description: Get started with Grafana Alloy
+title: Get started with Grafana Alloy
 menuTitle: Get started
 weight: 10
 ---
 
-# Get started with {{% param "FULL_PRODUCT_NAME" %}} configuration
+# Get started with {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} uses a configuration language to connect and manage components.
 Components are building blocks that collect, transform, and send your data.
