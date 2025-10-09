@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
 
@@ -26,14 +25,8 @@ const finalEntryTimeout = 5 * time.Second
 // communication.
 type LogsReceiver interface {
 	Chan() chan Entry
-}
-
-type logsReceiver struct {
-	entries chan Entry
-}
-
-func (l *logsReceiver) Chan() chan Entry {
-	return l.entries
+	Send(context.Context, Entry) error
+	Recv(context.Context) (Entry, error)
 }
 
 func NewLogsReceiver() LogsReceiver {
@@ -44,6 +37,33 @@ func NewLogsReceiverWithChannel(c chan Entry) LogsReceiver {
 	return &logsReceiver{
 		entries: c,
 	}
+}
+
+type logsReceiver struct {
+	entries chan Entry
+}
+
+func (l *logsReceiver) Send(ctx context.Context, entry Entry) error {
+	select {
+	case <-ctx.Done():
+		// TODO: should we never return an error
+		return ctx.Err()
+	case l.entries <- entry:
+		return nil
+	}
+}
+
+func (l *logsReceiver) Recv(ctx context.Context) (Entry, error) {
+	select {
+	case entry := <-l.entries:
+		return entry, nil
+	case <-ctx.Done():
+		return Entry{}, nil
+	}
+}
+
+func (l *logsReceiver) Chan() chan Entry {
+	return l.entries
 }
 
 // Entry is a log entry with labels.
@@ -58,12 +78,6 @@ func (e *Entry) Clone() Entry {
 		Labels: e.Labels.Clone(),
 		Entry:  e.Entry,
 	}
-}
-
-// InstrumentedEntryHandler ...
-type InstrumentedEntryHandler interface {
-	EntryHandler
-	UnregisterLatencyMetric(prometheus.Labels)
 }
 
 // EntryHandler is something that can "handle" entries via a channel.
