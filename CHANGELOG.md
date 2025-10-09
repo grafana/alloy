@@ -7,8 +7,12 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-Main (unreleased)
+v1.11.1
 -----------------
+
+### Bugfixes
+
+- Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
 
 v1.11.0
 -----------------
