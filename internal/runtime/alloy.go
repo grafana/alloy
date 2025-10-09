@@ -114,6 +114,9 @@ type Options struct {
 
 	// EnableCommunityComps enables the use of community components.
 	EnableCommunityComps bool
+
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // Runtime is the Alloy system.
@@ -137,10 +140,11 @@ type Runtime struct {
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
 func New(o Options) *Runtime {
 	return newController(controllerOptions{
-		Options:        o,
-		ModuleRegistry: newModuleRegistry(),
-		IsModule:       false, // We are creating a new root controller.
-		WorkerPool:     worker.NewDefaultWorkerPool(),
+		Options:              o,
+		ModuleRegistry:       newModuleRegistry(),
+		IsModule:             false, // We are creating a new root controller.
+		WorkerPool:           worker.NewDefaultWorkerPool(),
+		TaskShutdownDeadline: o.TaskShutdownDeadline,
 	})
 }
 
@@ -154,6 +158,8 @@ type controllerOptions struct {
 	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // newController creates a new, unstarted Alloy controller with a specific
@@ -186,7 +192,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(log),
+		sched:       controller.NewScheduler(log, o.TaskShutdownDeadline),
 
 		modules: o.ModuleRegistry,
 
