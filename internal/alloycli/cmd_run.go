@@ -429,7 +429,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(l).Log("msg", "failed to start reporter", "err", err)
 			}
 		}()
