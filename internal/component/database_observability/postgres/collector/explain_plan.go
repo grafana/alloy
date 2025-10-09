@@ -212,6 +212,17 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 	}
 }
 
+type DatabaseConnectionFactory interface {
+	NewDBConnection(dsn string) (*sql.DB, error)
+}
+
+type databaseConnectionFactory struct {
+}
+
+func (d *databaseConnectionFactory) NewDBConnection(dsn string) (*sql.DB, error) {
+	return sql.Open("postgres", dsn)
+}
+
 type ExplainPlanArguments struct {
 	DB              *sql.DB
 	DSN             string
@@ -226,37 +237,39 @@ type ExplainPlanArguments struct {
 }
 
 type ExplainPlan struct {
-	dbConnection       *sql.DB
-	dbDSN              string
-	dbVersion          string
-	scrapeInterval     time.Duration
-	queryCache         map[string]*queryInfo
-	queryDenylist      map[string]*queryInfo
-	finishedQueryCache map[string]*queryInfo
-	excludeSchemas     []string
-	perScrapeRatio     float64
-	currentBatchSize   int
-	entryHandler       loki.EntryHandler
-	logger             log.Logger
-	running            *atomic.Bool
-	ctx                context.Context
-	cancel             context.CancelFunc
+	dbConnection        *sql.DB
+	dbDSN               string
+	dbVersion           string
+	dbConnectionFactory DatabaseConnectionFactory
+	scrapeInterval      time.Duration
+	queryCache          map[string]*queryInfo
+	queryDenylist       map[string]*queryInfo
+	finishedQueryCache  map[string]*queryInfo
+	excludeSchemas      []string
+	perScrapeRatio      float64
+	currentBatchSize    int
+	entryHandler        loki.EntryHandler
+	logger              log.Logger
+	running             *atomic.Bool
+	ctx                 context.Context
+	cancel              context.CancelFunc
 }
 
 func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 	return &ExplainPlan{
-		dbConnection:       args.DB,
-		dbDSN:              args.DSN,
-		dbVersion:          args.DBVersion,
-		scrapeInterval:     args.ScrapeInterval,
-		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
-		excludeSchemas:     args.ExcludeSchemas,
-		perScrapeRatio:     args.PerScrapeRatio,
-		entryHandler:       args.EntryHandler,
-		logger:             log.With(args.Logger, "collector", ExplainPlanCollector),
-		running:            atomic.NewBool(false),
+		dbConnection:        args.DB,
+		dbDSN:               args.DSN,
+		dbVersion:           args.DBVersion,
+		dbConnectionFactory: &databaseConnectionFactory{},
+		scrapeInterval:      args.ScrapeInterval,
+		queryCache:          make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]*queryInfo),
+		finishedQueryCache:  make(map[string]*queryInfo),
+		excludeSchemas:      args.ExcludeSchemas,
+		perScrapeRatio:      args.PerScrapeRatio,
+		entryHandler:        args.EntryHandler,
+		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
+		running:             atomic.NewBool(false),
 	}, nil
 }
 
@@ -359,7 +372,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 				if calls == previous.calls {
 					continue
 				}
-				if calls > previous.calls && (statsReset.Equal(previous.callsReset) || statsReset.Before(previous.callsReset)) {
+				if calls < previous.calls && (statsReset.Equal(previous.callsReset) || statsReset.Before(previous.callsReset)) {
 					continue
 				}
 				delete(c.finishedQueryCache, qi.uniqueKey)
@@ -499,7 +512,7 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace database name in DSN: %w", err)
 	}
-	conn, err := sql.Open("postgres", querySpecificDSN)
+	conn, err := c.dbConnectionFactory.NewDBConnection(querySpecificDSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}

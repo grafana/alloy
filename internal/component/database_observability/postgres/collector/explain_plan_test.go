@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -9,7 +10,9 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -37,6 +40,26 @@ func validatePlan(t *testing.T, expect, actual database_observability.ExplainPla
 			validatePlan(t, expect.Children[i], actual.Children[i])
 		}
 	})
+}
+
+type mockDbConnectionFactory struct {
+	Mock               *sqlmock.Sqlmock
+	InstantiationCount int
+	db                 *sql.DB
+}
+
+func (m *mockDbConnectionFactory) NewDBConnection(dsn string) (*sql.DB, error) {
+	if m.db == nil {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			return nil, err
+		}
+		m.db = db
+		m.Mock = &mock
+	}
+
+	m.InstantiationCount++
+	return m.db, nil
 }
 
 func TestExplainPlanOutput(t *testing.T) {
@@ -2514,83 +2537,162 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	logger := log.NewNopLogger()
 
-	t.Run("populate query cache for PostgreSQL 17+", func(t *testing.T) {
-		db, mock, err := sqlmock.New()
-		require.NoError(t, err)
-		defer db.Close()
+	t.Run("populate query cache", func(t *testing.T) {
+		t.Run("PostgreSQL < 17", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
 
-		explainPlan := &ExplainPlan{
-			dbConnection:       db,
-			dbVersion:          "17.0",
-			queryCache:         make(map[string]*queryInfo),
-			queryDenylist:      make(map[string]*queryInfo),
-			finishedQueryCache: make(map[string]*queryInfo),
-			excludeSchemas:     []string{"information_schema"},
-			perScrapeRatio:     0.5,
-			logger:             logger,
-		}
+			explainPlan := &ExplainPlan{
+				dbConnection:       db,
+				dbVersion:          "14.1",
+				queryCache:         make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]*queryInfo),
+				finishedQueryCache: make(map[string]*queryInfo),
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             logger,
+			}
 
-		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
-			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
-			AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()).
-			AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
+			resetTime := time.Now().Add(-time.Hour)
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
+			resetRows := sqlmock.NewRows([]string{"stats_reset"}).AddRow(resetTime)
+			mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").WillReturnRows(resetRows)
 
-		ctx := context.Background()
-		err = explainPlan.populateQueryCache(ctx)
+			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		require.NoError(t, err)
-		assert.Len(t, explainPlan.queryCache, 2)
-		assert.Equal(t, 1, explainPlan.currentBatchSize)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")).WillReturnRows(rows)
 
-		assert.Contains(t, explainPlan.queryCache, "testdb123456")
-		assert.Contains(t, explainPlan.queryCache, "testdb2345678")
-		assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
+			ctx := context.Background()
+			err = explainPlan.populateQueryCache(ctx)
 
-		assert.NoError(t, mock.ExpectationsWereMet())
+			require.NoError(t, err)
+			assert.Len(t, explainPlan.queryCache, 1)
+			assert.Equal(t, 1, explainPlan.currentBatchSize)
+
+			qi := explainPlan.queryCache["testdb123456"]
+			assert.Equal(t, resetTime, qi.callsReset)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("Postgres 17+", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			explainPlan := &ExplainPlan{
+				dbConnection:       db,
+				dbVersion:          "17.0",
+				queryCache:         make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]*queryInfo),
+				finishedQueryCache: make(map[string]*queryInfo),
+				excludeSchemas:     []string{"information_schema"},
+				perScrapeRatio:     0.5,
+				logger:             logger,
+			}
+
+			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
+				AddRow("information_schema", "789012", "SELECT * FROM tables", int64(5), time.Now()).
+				AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
+
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
+
+			ctx := context.Background()
+			err = explainPlan.populateQueryCache(ctx)
+
+			require.NoError(t, err)
+			assert.Len(t, explainPlan.queryCache, 2)
+			assert.Equal(t, 1, explainPlan.currentBatchSize)
+
+			assert.Contains(t, explainPlan.queryCache, "testdb123456")
+			assert.Contains(t, explainPlan.queryCache, "testdb2345678")
+			assert.NotContains(t, explainPlan.queryCache, "information_schema789012")
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
 	})
 
-	t.Run("populate query cache for PostgreSQL < 17", func(t *testing.T) {
-		db, mock, err := sqlmock.New()
-		require.NoError(t, err)
-		defer db.Close()
+	t.Run("call count tracking", func(t *testing.T) {
+		t.Run("skips unchanged call count", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
 
-		explainPlan := &ExplainPlan{
-			dbConnection:       db,
-			dbVersion:          "14.1",
-			queryCache:         make(map[string]*queryInfo),
-			queryDenylist:      make(map[string]*queryInfo),
-			finishedQueryCache: make(map[string]*queryInfo),
-			excludeSchemas:     []string{},
-			perScrapeRatio:     1.0,
-			logger:             logger,
-		}
+			explainPlan := &ExplainPlan{
+				dbConnection: db,
+				dbVersion:    "17.0",
+				logger:       logger,
+				queryCache:   make(map[string]*queryInfo),
+				finishedQueryCache: map[string]*queryInfo{
+					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				},
+			}
 
-		resetTime := time.Now().Add(-time.Hour)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
-		resetRows := sqlmock.NewRows([]string{"stats_reset"}).AddRow(resetTime)
-		mock.ExpectQuery("SELECT stats_reset FROM pg_stat_statements_info").WillReturnRows(resetRows)
+			explainPlan.populateQueryCache(t.Context())
 
-		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
-			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
+			assert.Len(t, explainPlan.queryCache, 0)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
 
-		mock.ExpectQuery("SELECT.*FROM pg_stat_statements.*").WillReturnRows(rows)
-		// For some reason, this fails on the `.` character in the where clause "WHERE s.queryid...".
-		// So we're using a broader regex to match the query on the mock.
-		// mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")).WillReturnRows(rows)
+		t.Run("adds on reset call count and stats_since", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
 
-		ctx := context.Background()
-		err = explainPlan.populateQueryCache(ctx)
+			explainPlan := &ExplainPlan{
+				dbConnection: db,
+				dbVersion:    "17.0",
+				logger:       logger,
+				queryCache:   make(map[string]*queryInfo),
+				finishedQueryCache: map[string]*queryInfo{
+					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now().Add(-time.Hour)),
+				},
+			}
 
-		require.NoError(t, err)
-		assert.Len(t, explainPlan.queryCache, 1)
-		assert.Equal(t, 1, explainPlan.currentBatchSize)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
-		qi := explainPlan.queryCache["testdb123456"]
-		assert.Equal(t, resetTime, qi.callsReset)
+			explainPlan.populateQueryCache(t.Context())
 
-		assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Len(t, explainPlan.queryCache, 1)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("skips on reset call count and unchanged stats_since", func(t *testing.T) {
+			// Corner case, but here for completeness.
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			explainPlan := &ExplainPlan{
+				dbConnection: db,
+				dbVersion:    "17.0",
+				logger:       logger,
+				queryCache:   make(map[string]*queryInfo),
+				finishedQueryCache: map[string]*queryInfo{
+					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				},
+			}
+
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).
+				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
+
+			explainPlan.populateQueryCache(t.Context())
+
+			assert.Len(t, explainPlan.queryCache, 0)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
 	})
 
 	t.Run("returns error on database connection failure", func(t *testing.T) {
@@ -2653,36 +2755,193 @@ func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
 	assert.Equal(t, database_observability.ExplainPlanJoinAlgorithmHash, *result.Details.JoinAlgorithm)
 }
 
-func TestExplainPlan_FetchExplainPlans_EmptyCache(t *testing.T) {
-	db, mock, err := sqlmock.New()
+func TestExplainPlanFetchExplainPlans(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
 
 	logger := log.NewNopLogger()
 
 	explainPlan := &ExplainPlan{
-		dbConnection:       db,
-		dbVersion:          "17.0",
-		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
-		excludeSchemas:     []string{},
-		perScrapeRatio:     1.0,
-		logger:             logger,
+		dbConnection:        db,
+		dbConnectionFactory: &databaseConnectionFactory{},
+		dbDSN:               "postgres://user:pass@host:1234/database",
+		dbVersion:           "17.0",
+		queryCache:          make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]*queryInfo),
+		finishedQueryCache:  make(map[string]*queryInfo),
+		excludeSchemas:      []string{},
+		perScrapeRatio:      1.0,
+		logger:              logger,
 	}
 
-	// Mock the populateQueryCache call
-	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
-		AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
+	t.Run("populates query cache when empty", func(t *testing.T) {
+		// Mock the populateQueryCache call
+		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-	mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")).WillReturnRows(rows)
 
-	ctx := context.Background()
-	err = explainPlan.fetchExplainPlans(ctx)
+		ctx := context.Background()
+		err = explainPlan.fetchExplainPlans(ctx)
 
-	// Should succeed but not process any queries since they require actual DB connections
-	require.NoError(t, err)
-	require.Equal(t, 1, len(explainPlan.finishedQueryCache))
+		// Should succeed but not process any queries since they require actual DB connections
+		require.NoError(t, err)
+		require.Equal(t, 1, len(explainPlan.finishedQueryCache))
 
-	assert.NoError(t, mock.ExpectationsWereMet())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("query validation", func(t *testing.T) {
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+
+		logBuffer := syncbuffer.Buffer{}
+
+		t.Run("skips truncated queries", func(t *testing.T) {
+			logBuffer.Reset()
+			explainPlan = &ExplainPlan{
+				dbConnection:        db,
+				dbConnectionFactory: &databaseConnectionFactory{},
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbVersion:           "17.0",
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						queryId:    "123456",
+						queryText:  "SELECT * FROM users WHERE ...",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+			}
+
+			assert.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+
+			lokiEntries := lokiClient.Received()
+			require.Equal(t, 0, len(lokiEntries))
+
+			require.Contains(t, logBuffer.String(), "skipping truncated query")
+			require.NotContains(t, logBuffer.String(), "error")
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("skips non-select queries", func(t *testing.T) {
+			lokiClient.Clear()
+			logBuffer.Reset()
+			explainPlan = &ExplainPlan{
+				dbConnection:        db,
+				dbConnectionFactory: &databaseConnectionFactory{},
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbVersion:           "17.0",
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						queryId:    "123456",
+						queryText:  "update some_table set col = 1 where id = 1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123457": {
+						queryId:    "123457",
+						queryText:  "delete from some_table",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123458": {
+						queryId:    "123458",
+						queryText:  "insert into some_table (col) values (1)",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   3,
+			}
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+
+			require.NoError(t, err)
+
+			lokiEntries := lokiClient.Received()
+			require.Equal(t, 0, len(lokiEntries))
+
+			require.NotContains(t, logBuffer.String(), "error")
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+
+		t.Run("passes queries beginning in select", func(t *testing.T) {
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlan{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory,
+				dbVersion:           "17.0",
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table where id = $1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeSchemas:     []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonFile := archive.Files[0]
+			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
+			jsonData := jsonFile.Data
+
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Equal(t, 1, dbConnFactory.InstantiationCount)
+
+			require.Eventually(
+				t,
+				func() bool {
+					return len(lokiClient.Received()) == 1
+				},
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+
+			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+	})
 }
