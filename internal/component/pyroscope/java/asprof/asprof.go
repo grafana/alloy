@@ -42,13 +42,13 @@ type Archive struct {
 	format int
 }
 
-func (a *Archive) SHA1() string {
+func (a *Archive) sha1() string {
 	sum := sha1.Sum(a.data)
 	return hex.EncodeToString(sum[:])
 }
 
 func (a *Archive) DistName() string {
-	return fmt.Sprintf("alloy-asprof-%s", a.SHA1())
+	return fmt.Sprintf("alloy-asprof-%s", a.sha1())
 }
 
 const (
