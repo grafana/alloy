@@ -13,20 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-// Not all these are tested but are here to make sure the different types marshal without error
-var testTruncateAlloy = `
-stage.json {
-		expressions = { "app" = "", "msg" = "" }
-}
-
-stage.truncate {
-		line_limit      = "10B"
-		label_limit     = "10B"
-		structured_metadata_limit = "10B"
-		suffix         = "..."
-}
-`
-
 func Test_TruncateStage_Process(t *testing.T) {
 	// Enable debug logging
 	cfg := &dskit.Config{}
@@ -136,7 +122,6 @@ func Test_TruncateStage_Process(t *testing.T) {
 					}
 				}
 			}
-
 		})
 	}
 }
