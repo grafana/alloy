@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
 
+- Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
+
 v1.11.0
 -----------------
 
