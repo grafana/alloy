@@ -40,7 +40,6 @@ func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l log.Logg
 		require.NoError(t, err)
 	})
 
-	// Get the endpoint
 	mappedPort, err := c.MappedPort(ctx, nat.Port("8080/tcp"))
 	require.NoError(t, err)
 
