@@ -8,7 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/syslog"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 func (s *ScrapeConfigBuilder) AppendSyslogConfig() {

@@ -11,8 +11,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/loki/tail/watch"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"

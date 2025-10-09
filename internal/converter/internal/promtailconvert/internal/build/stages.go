@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+	promtailstages "github.com/grafana/alloy/internal/loki/logentry/stages"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
 	promtailmetric "github.com/grafana/loki/v3/clients/pkg/logentry/metric"
-	promtailstages "github.com/grafana/loki/v3/clients/pkg/logentry/stages"
-	"github.com/grafana/loki/v3/pkg/util/flagext"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"

@@ -23,9 +23,9 @@ import (
 	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/useragent"
 
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
+	"github.com/grafana/alloy/internal/loki/ingester/wal"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
 )
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.

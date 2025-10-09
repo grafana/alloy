@@ -14,7 +14,7 @@ import (
 
 	uberAtomic "go.uber.org/atomic"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
+	"github.com/grafana/alloy/internal/loki/promtail/targets/windows/win_eventlog"
 	"github.com/natefinch/atomic"
 )
 

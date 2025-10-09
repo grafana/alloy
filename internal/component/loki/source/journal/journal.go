@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -82,15 +82,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	err = c.Update(args)
 	return c, err
 }
-
-// Run starts the component.
-func (c *Component) Run(ctx context.Context) error {
-	defer func() {
-		// Start draining routine to prevent potential deadlock if target attempts to send during Stop().
-		cancel := c.startDrainingRoutine()
-		defer cancel()
-
-		// Stop existing target
 		c.mut.RLock()
 		defer c.mut.RUnlock()
 		if c.t != nil {

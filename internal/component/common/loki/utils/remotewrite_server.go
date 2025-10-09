@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/util"
 )
 
 // RemoteWriteRequest wraps the received logs remote write request that is received.

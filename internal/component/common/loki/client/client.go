@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"

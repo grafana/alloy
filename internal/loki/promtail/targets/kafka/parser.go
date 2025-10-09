@@ -1,0 +1,25 @@
+package kafka
+
+import (
+	"github.com/IBM/sarama"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/alloy/internal/loki/promtail/api"
+	"github.com/grafana/loki/pkg/push"
+)
+
+// messageParser implements MessageParser. It doesn't modify the content of the original `message.Value`.
+type messageParser struct{}
+
+func (n messageParser) Parse(message *sarama.ConsumerMessage, labels model.LabelSet, _ []*relabel.Config, useIncomingTimestamp bool) ([]api.Entry, error) {
+	return []api.Entry{
+		{
+			Labels: labels,
+			Entry: push.Entry{
+				Timestamp: timestamp(useIncomingTimestamp, message.Timestamp),
+				Line:      string(message.Value),
+			},
+		},
+	}, nil
+}

@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/build"
 
 	// Register Prometheus SD components
-	_ "github.com/grafana/loki/v3/clients/pkg/promtail/discovery/consulagent"
+	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
 	_ "github.com/prometheus/prometheus/discovery/install"
 
 	// Register integrations
