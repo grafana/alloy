@@ -160,7 +160,11 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.handler.Chan():
 			c.receiversMut.RLock()
 			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
+				select {
+				case <-ctx.Done():
+					return nil
+				case receiver.Chan() <- entry:
+				}
 			}
 			c.receiversMut.RUnlock()
 		case <-c.updateReaders:
@@ -178,7 +182,11 @@ func (c *Component) Run(ctx context.Context) error {
 					select {
 					case entry := <-c.handler.Chan():
 						for _, receiver := range c.receivers {
-							receiver.Chan() <- entry
+							select {
+							case <-readCtx.Done():
+								return
+							case receiver.Chan() <- entry:
+							}
 						}
 					case <-readCtx.Done():
 						return
