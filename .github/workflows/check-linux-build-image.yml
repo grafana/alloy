@@ -3,8 +3,8 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - 'tools/build-image/*'
-      - '.github/workflows/check-linux-build-image.yml'
+      - "tools/build-image/*"
+      - ".github/workflows/check-linux-build-image.yml"
 
 permissions:
   contents: read
@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         build:
-          - runtime: golang:1.24.6-alpine3.22
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.24.6-bookworm
+          - runtime: golang:1.25.1-alpine3.22
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.25.1-bookworm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,11 +25,11 @@ jobs:
 
       - name: Remove unnecessary files
         run: |
-            rm -rf /usr/share/dotnet
-            rm -rf "$AGENT_TOOLSDIRECTORY"
-            rm -rf /opt/ghc
-            rm -rf "/usr/local/share/boost"
-            rm -rf /opt/hostedtoolcache
+          rm -rf /usr/share/dotnet
+          rm -rf "$AGENT_TOOLSDIRECTORY"
+          rm -rf /opt/ghc
+          rm -rf "/usr/local/share/boost"
+          rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
