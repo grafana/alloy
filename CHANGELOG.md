@@ -7,7 +7,7 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
-v1.11.1
+v1.11.2
 -----------------
 
 ### Bugfixes
@@ -17,6 +17,10 @@ v1.11.1
 - Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
 
 - Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
+
+- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
+
+- Fix potential deadlocks in `loki.source.file` and `loki.source.journal` when component is shutting down. (@kalleep, @thampiotr)
 
 v1.11.0
 -----------------
