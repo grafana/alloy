@@ -54,12 +54,18 @@ const selectPgStatActivity = `
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
-		s.backend_type != 'client backend' OR
+		s.pid != pg_backend_pid() AND
 		(
-			s.pid != pg_backend_pid() AND
-			coalesce(TRIM(s.query), '') != '' AND
-			s.query_id != 0 AND
-			s.state != 'idle'
+			(
+				s.backend_type != 'client backend' AND 
+				s.state != 'idle'
+			) OR
+			(
+				s.pid != pg_backend_pid() AND
+				coalesce(TRIM(s.query), '') != '' AND
+				s.query_id != 0 AND
+				s.state != 'idle'
+			)
 		)
 `
 
@@ -112,13 +118,12 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 }
 
-// SampleKey uses (PID, QueryID, XID, XactStartNs) so concurrent executions of the same
+// SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
 // query across backends/transactions are uniquely tracked between scrapes.
 type SampleKey struct {
-	PID         int
-	QueryID     int64
-	XID         int32
-	XactStartNs int64
+	PID          int
+	QueryID      int64
+	QueryStartNs int64
 }
 
 // SampleState buffers state across scrapes and is emitted once the query
@@ -251,8 +256,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		key = c.tryMigrateKey(key)
-
 		if isIdle {
 			c.upsertIdleSample(key, sample)
 			idleKeys[key] = struct{}{}
@@ -304,29 +307,14 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, err
 	if err := c.validateQuerySample(sample); err != nil {
 		return SampleKey{}, false, err
 	}
-	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, XID: sample.BackendXID.Int32}
-	if sample.XactStart.Valid {
-		key.XactStartNs = sample.XactStart.Time.UnixNano()
+	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, QueryStartNs: 0}
+	if sample.QueryStart.Valid {
+		key.QueryStartNs = sample.QueryStart.Time.UnixNano()
 	}
 	if sample.State.Valid && sample.State.String == stateIdle {
 		return key, true, nil
 	}
 	return key, false, nil
-}
-
-// tryMigrateKey migrates an existing sample keyed by (PID,QueryID,XID=0,XactStart)
-// to the new key (PID,QueryID,XID>0) once a real XID becomes available. This avoids
-// emitting a partial sample for the pre-XID phase of the same execution.
-func (c *QuerySamples) tryMigrateKey(key SampleKey) SampleKey {
-	if key.XID == 0 {
-		return key
-	}
-	zeroKey := SampleKey{PID: key.PID, QueryID: key.QueryID, XID: 0, XactStartNs: key.XactStartNs}
-	if state, ok := c.samples[zeroKey]; ok {
-		c.samples[key] = state
-		delete(c.samples, zeroKey)
-	}
-	return key
 }
 
 func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct{}) {
