@@ -27,8 +27,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/testutils"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/targets/testutils"
 )
 
 type mockJournalReader struct {

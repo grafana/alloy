@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/tail/watch"
+	"github.com/grafana/alloy/internal/loki/tail/watch"
 	"github.com/prometheus/common/model"
 
 	"go.uber.org/atomic"
