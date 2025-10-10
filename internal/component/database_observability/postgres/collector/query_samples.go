@@ -57,9 +57,7 @@ const selectPgStatActivity = `
 		s.pid != pg_backend_pid() AND
 		s.state != 'idle' AND
 		(
-			(
-				s.backend_type != 'client backend' AND 				
-			) OR
+			s.backend_type != 'client backend' OR
 			(
 				s.pid != pg_backend_pid() AND
 				coalesce(TRIM(s.query), '') != '' AND
