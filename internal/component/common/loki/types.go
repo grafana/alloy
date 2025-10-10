@@ -25,7 +25,11 @@ const finalEntryTimeout = 5 * time.Second
 // communication.
 type LogsReceiver interface {
 	Chan() chan Entry
+	// Send will try to send entry to the reciver.
+	// If context is canceled Send will unblock and return false.
 	Send(context.Context, Entry) bool
+	// Recv will try to receive entry.
+	// If context is canceled Recv will unblock, return empty entry and false.
 	Recv(context.Context) (Entry, bool)
 }
 
