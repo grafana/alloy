@@ -25,7 +25,6 @@ const (
 
 const (
 	stateActive = "active"
-	stateIdle   = "idle"
 )
 
 const selectPgStatActivity = `
@@ -238,7 +237,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	defer rows.Close()
 
 	activeKeys := map[SampleKey]struct{}{}
-	idleKeys := map[SampleKey]struct{}{}
 
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
@@ -247,15 +245,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		key, isIdle, procErr := c.processRow(sample)
+		key, procErr := c.processRow(sample)
 		if procErr != nil {
 			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
-			continue
-		}
-
-		if isIdle {
-			c.upsertIdleSample(key, sample)
-			idleKeys[key] = struct{}{}
 			continue
 		}
 
@@ -268,7 +260,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	c.finalizeSamples(activeKeys, idleKeys)
+	// finalize samples that are no longer active
+	for key := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive {
+			continue
+		}
+		c.emitAndDeleteSample(key)
+	}
 	return nil
 }
 
@@ -300,36 +298,15 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	return sample, err
 }
 
-func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, error) {
+func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 	if err := c.validateQuerySample(sample); err != nil {
-		return SampleKey{}, false, err
+		return SampleKey{}, err
 	}
 	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, QueryStartNs: 0}
 	if sample.QueryStart.Valid {
 		key.QueryStartNs = sample.QueryStart.Time.UnixNano()
 	}
-	if sample.State.Valid && sample.State.String == stateIdle {
-		return key, true, nil
-	}
-	return key, false, nil
-}
-
-func (c *QuerySamples) finalizeSamples(activeKeys, idleKeys map[SampleKey]struct{}) {
-	for key := range idleKeys {
-		if _, ok := c.samples[key]; ok {
-			c.emitAndDeleteSample(key)
-		}
-	}
-
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
-			continue
-		}
-		if _, wasIdle := idleKeys[key]; wasIdle {
-			continue
-		}
-		c.emitAndDeleteSample(key)
-	}
+	return key, nil
 }
 
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
@@ -392,17 +369,6 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 	if t.openIdx >= 0 {
 		t.openIdx = -1
 	}
-}
-
-func (c *QuerySamples) upsertIdleSample(key SampleKey, sample QuerySamplesInfo) {
-	state, ok := c.samples[key]
-	if !ok {
-		state = &SampleState{tracker: newWaitEventTracker()}
-		c.samples[key] = state
-	}
-	state.LastRow = sample
-	state.LastSeenAt = sample.Now
-	state.tracker.CloseOpen()
 }
 
 func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
