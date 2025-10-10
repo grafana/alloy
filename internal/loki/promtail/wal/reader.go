@@ -34,7 +34,6 @@ func ReadWAL(dir string) ([]api.Entry, error) {
 		// first read series
 		for _, series := range walRec.Series {
 			if _, ok := seenSeries[uint64(series.Ref)]; !ok {
-
 				seenSeries[uint64(series.Ref)] = util.MapToModelLabelSet(series.Labels.Map())
 			}
 		}
