@@ -401,8 +401,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	// Removed: identity no longer depends on XID
-
 	t.Run("wait-event merges across scrapes with normalized PID set", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -419,7 +417,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-
 		// Scrape 1: wait event with unordered/dup PIDs
 		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
