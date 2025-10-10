@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{B7DD6F7E-DEF8-4E67-B5B7-07EF123DB6F0}") = "Alloy", "wix\Alloy.wixproj", "{5432F92A-6E6F-426E-80A9-9B82E6304198}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|ARM64 = Release|ARM64
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Debug|ARM64.ActiveCfg = Debug|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Debug|x64.ActiveCfg = Debug|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Debug|x64.Build.0 = Debug|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Debug|x86.ActiveCfg = Debug|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Debug|x86.Build.0 = Debug|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Release|ARM64.ActiveCfg = Release|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Release|x64.ActiveCfg = Release|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Release|x64.Build.0 = Release|x64
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Release|x86.ActiveCfg = Release|x86
+		{5432F92A-6E6F-426E-80A9-9B82E6304198}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A5867E3F-F84A-4A30-8FF2-5ACC4E982E7C}
+	EndGlobalSection
+EndGlobal
