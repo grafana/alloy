@@ -35,8 +35,23 @@ type Component struct {
 	target    *target.Target
 	o         component.Options
 	metrics   *target.Metrics
-	handler   *handler
+	handler   loki.LogsReceiver
 	receivers []loki.LogsReceiver
+}
+
+// New creates a new gelf component.
+func New(o component.Options, args Arguments) (*Component, error) {
+	metrics := target.NewMetrics(o.Registerer)
+	c := &Component{
+		o:       o,
+		metrics: metrics,
+		handler: loki.NewLogsReceiver(),
+	}
+	// Call to Update() to start readers and set receivers once at the start.
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // Run starts the component.
@@ -44,24 +59,33 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.target.Stop()
 	}()
+
 	for {
-		select {
-		case <-ctx.Done():
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
-		case entry := <-c.handler.c:
-			c.mut.RLock()
-			lokiEntry := loki.Entry{
-				Labels: entry.Labels,
-				Entry:  entry.Entry,
-			}
-			if lokiEntry.Labels["job"] == "" {
-				lokiEntry.Labels["job"] = model.LabelValue(c.o.ID)
-			}
-			for _, r := range c.receivers {
-				r.Chan() <- lokiEntry
-			}
-			c.mut.RUnlock()
 		}
+
+		lokiEntry := loki.Entry{
+			Labels: entry.Labels,
+			Entry:  entry.Entry,
+		}
+		if lokiEntry.Labels["job"] == "" {
+			lokiEntry.Labels["job"] = model.LabelValue(c.o.ID)
+		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, lokiEntry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -117,21 +141,6 @@ func convertConfig(a Arguments) *scrapeconfig.GelfTargetConfig {
 		Labels:               nil,
 		UseIncomingTimestamp: a.UseIncomingTimestamp,
 	}
-}
-
-// New creates a new gelf component.
-func New(o component.Options, args Arguments) (*Component, error) {
-	metrics := target.NewMetrics(o.Registerer)
-	c := &Component{
-		o:       o,
-		metrics: metrics,
-		handler: &handler{c: make(chan loki.Entry)},
-	}
-	// Call to Update() to start readers and set receivers once at the start.
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 type handler struct {

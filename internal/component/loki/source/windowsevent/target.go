@@ -19,7 +19,7 @@ import (
 
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
@@ -29,7 +29,7 @@ import (
 
 type Target struct {
 	subscription  win_eventlog.EvtHandle
-	handler       api.EntryHandler
+	handler       loki.LogsReceiver
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
 	relabelConfig []*relabel.Config
 	logger        log.Logger
@@ -46,7 +46,7 @@ type Target struct {
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
 func NewTarget(
 	logger log.Logger,
-	handler api.EntryHandler,
+	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
 	bookmarkSyncPeriod time.Duration,
@@ -170,11 +170,11 @@ func (t *Target) saveBookmarkPosition() {
 }
 
 // renderEntries renders Loki entries from windows event logs
-func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
-	res := make([]api.Entry, 0, len(events))
+func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
+	res := make([]loki.Entry, 0, len(events))
 	lbs := labels.NewBuilder(nil)
 	for _, event := range events {
-		entry := api.Entry{
+		entry := loki.Entry{
 			Labels: make(model.LabelSet),
 		}
 
@@ -255,7 +255,6 @@ func (t *Target) Details() interface{} {
 func (t *Target) Stop() error {
 	close(t.done)
 	t.wg.Wait()
-	t.handler.Stop()
 	t.saveBookmarkPosition()
 	return t.err
 }

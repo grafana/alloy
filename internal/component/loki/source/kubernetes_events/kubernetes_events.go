@@ -165,18 +165,23 @@ func (c *Component) Run(ctx context.Context) error {
 	// Runner to forward received logs.
 	rg.Add(func() error {
 		for {
-			select {
-			case <-ctx.Done():
+			// NOTE: if we failed to receive entry that means that context was
+			// canceled and we should exit component.
+			entry, ok := c.handler.Recv(ctx)
+			if !ok {
 				return nil
-			case entry := <-c.handler.Chan():
-				c.receiversMut.RLock()
-				receivers := c.receivers
-				c.receiversMut.RUnlock()
+			}
 
-				for _, receiver := range receivers {
-					receiver.Chan() <- entry
+			c.receiversMut.RLock()
+			for _, receiver := range c.receivers {
+				// NOTE: if we did not send the entry that mean that context was
+				// canceled and we should exit component.
+				if ok := receiver.Send(ctx, entry); !ok {
+					c.receiversMut.RUnlock()
+					return nil
 				}
 			}
+			c.receiversMut.RUnlock()
 		}
 	}, func(_ error) {
 		cancel()

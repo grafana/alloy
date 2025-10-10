@@ -53,10 +53,10 @@ type Component struct {
 	metrics       *ht.Metrics              // Metrics about Heroku entries.
 	serverMetrics *util.UncheckedCollector // Metircs about the HTTP server managed by the component.
 
-	mut    sync.RWMutex
-	args   Arguments
-	fanout []loki.LogsReceiver
-	target *ht.HerokuTarget
+	mut       sync.RWMutex
+	args      Arguments
+	receivers []loki.LogsReceiver
+	target    *ht.HerokuTarget
 
 	handler loki.LogsReceiver
 }
@@ -68,7 +68,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:       ht.NewMetrics(o.Registerer),
 		mut:           sync.RWMutex{},
 		args:          Arguments{},
-		fanout:        args.ForwardTo,
+		receivers:     args.ForwardTo,
 		target:        nil,
 		handler:       loki.NewLogsReceiver(),
 		serverMetrics: util.NewUncheckedCollector(nil),
@@ -100,16 +100,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -119,7 +126,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	var rcs []*relabel.Config
 	if len(newArgs.RelabelRules) > 0 {

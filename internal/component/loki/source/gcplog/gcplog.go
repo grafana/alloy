@@ -59,9 +59,9 @@ type Component struct {
 	metrics       *gt.Metrics
 	serverMetrics *util.UncheckedCollector
 
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	target gt.Target
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
+	target    gt.Target
 
 	handler loki.LogsReceiver
 }
@@ -72,7 +72,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:          o,
 		metrics:       gt.NewMetrics(o.Registerer),
 		handler:       loki.NewLogsReceiver(),
-		fanout:        args.ForwardTo,
+		receivers:     args.ForwardTo,
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
@@ -99,16 +99,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -118,7 +125,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	var rcs []*relabel.Config
 	if len(newArgs.RelabelRules) > 0 {

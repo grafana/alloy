@@ -39,7 +39,7 @@ type Component struct {
 	mut       sync.RWMutex
 	args      Arguments
 	target    *Target
-	handle    *handler
+	handle    loki.LogsReceiver
 	receivers []loki.LogsReceiver
 }
 
@@ -57,11 +57,10 @@ func (h *handler) Stop() {
 
 // New creates a new loki.source.windowsevent component.
 func New(o component.Options, args Arguments) (*Component, error) {
-
 	c := &Component{
 		opts:      o,
 		receivers: args.ForwardTo,
-		handle:    &handler{handler: make(chan api.Entry)},
+		handle:    loki.NewLogsReceiver(),
 		args:      args,
 	}
 
@@ -81,6 +80,25 @@ func (c *Component) Run(ctx context.Context) error {
 			_ = c.target.Stop()
 		}
 	}()
+	for {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
+			return nil
+		}
+
+		c.receiversMut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.receiversMut.RUnlock()
+				return nil
+			}
+		}
+		c.receiversMut.RUnlock()
+	}
 	for {
 		select {
 		case <-ctx.Done():

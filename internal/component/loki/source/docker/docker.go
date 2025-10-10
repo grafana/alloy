@@ -167,23 +167,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		entry, err := c.handler.Recv(ctx)
-		// NOTE: the only error we can get currently is if context is canceled
-		// but that can change in the future.
-		if err != nil {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
 		}
 
-		c.mut.RLock()
+		c.receiversMut.RLock()
 		for _, receiver := range c.receivers {
-			// NOTE: currently we can only get an error if context is canceled
-			// but that can change in the future.
-			if err := receiver.Send(ctx, entry); err != nil {
-				c.mut.RUnlock()
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.receiversMut.RUnlock()
 				return nil
 			}
 		}
-		c.mut.RUnlock()
+		c.receiversMut.RUnlock()
 	}
 }
 

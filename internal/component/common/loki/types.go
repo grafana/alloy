@@ -25,8 +25,8 @@ const finalEntryTimeout = 5 * time.Second
 // communication.
 type LogsReceiver interface {
 	Chan() chan Entry
-	Send(context.Context, Entry) error
-	Recv(context.Context) (Entry, error)
+	Send(context.Context, Entry) bool
+	Recv(context.Context) (Entry, bool)
 }
 
 func NewLogsReceiver() LogsReceiver {
@@ -43,21 +43,21 @@ type logsReceiver struct {
 	entries chan Entry
 }
 
-func (l *logsReceiver) Send(ctx context.Context, entry Entry) error {
+func (l *logsReceiver) Send(ctx context.Context, entry Entry) bool {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return false
 	case l.entries <- entry:
-		return nil
+		return true
 	}
 }
 
-func (l *logsReceiver) Recv(ctx context.Context) (Entry, error) {
+func (l *logsReceiver) Recv(ctx context.Context) (Entry, bool) {
 	select {
-	case entry := <-l.entries:
-		return entry, nil
 	case <-ctx.Done():
-		return Entry{}, ctx.Err()
+		return Entry{}, false
+	case entry := <-l.entries:
+		return entry, true
 	}
 }
 

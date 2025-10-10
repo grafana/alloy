@@ -99,18 +99,18 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		entry, err := c.destination.Recv(ctx)
-		// NOTE: the only error we can get currently is if context is canceled
-		// but that can change in the future.
-		if err != nil {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.destination.Recv(ctx)
+		if !ok {
 			return nil
 		}
 
 		c.mut.RLock()
 		for _, receiver := range c.receivers {
-			// NOTE: currently we can only get an error if context is canceled
-			// but that can change in the future.
-			if err := receiver.Send(ctx, entry); err != nil {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
 				c.mut.RUnlock()
 				return nil
 			}
