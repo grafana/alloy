@@ -2,6 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/
 aliases:
   - ./configuration-syntax/expressions/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/
+  - ./concepts/configuration-syntax/expressions/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/
 description: Learn about expressions and functions in Alloy
 title: Expressions
 weight: 30

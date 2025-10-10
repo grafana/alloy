@@ -2,6 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/get-started/expressions/referencing_exports/
 aliases:
   - ./configuration-syntax/expressions/referencing_exports/ # /docs/alloy/latest/get-started/configuration-syntax/expressions/referencing_exports/
+  - ./concepts/configuration-syntax/expressions/referencing_exports/ # /docs/alloy/latest/concepts/configuration-syntax/expressions/referencing_exports/
 description: Learn about referencing component exports
 title: Component exports
 weight: 20
