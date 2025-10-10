@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Allow setting trafficDistribution in the service spec. (@nosammai)
 
 1.3.0 (2025-09-30)
 ----------
