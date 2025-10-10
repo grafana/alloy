@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -200,8 +201,13 @@ type foreignKey struct {
 }
 
 type SchemaDetailsArguments struct {
-	DB           *sql.DB
-	EntryHandler loki.EntryHandler
+	DB              *sql.DB
+	CollectInterval time.Duration
+	EntryHandler    loki.EntryHandler
+
+	CacheEnabled bool
+	CacheSize    int
+	CacheTTL     time.Duration
 
 	Logger log.Logger
 }
@@ -210,6 +216,11 @@ type SchemaDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+
+	// Cache of table definitions. Entries are removed after a configurable TTL.
+	// Key is a string of the form "database.schema.table".
+	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
+	cache *expirable.LRU[string, *tableInfo]
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -220,10 +231,14 @@ type SchemaDetails struct {
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:    args.DB,
-		collectInterval: 10 * time.Minute, // TODO: make it configurable again once caching is implemented
+		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
+	}
+
+	if args.CacheEnabled {
+		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -354,10 +369,25 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	}
 
 	for _, table := range tables {
-		table, err = c.fetchTableDefinitions(ctx, table)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "err", err)
-			continue
+		cacheKey := fmt.Sprintf("%s.%s.%s", table.database, table.schema, table.tableName)
+
+		cacheHit := false
+		if c.cache != nil {
+			if cached, ok := c.cache.Get(cacheKey); ok {
+				table = cached
+				cacheHit = true
+			}
+		}
+
+		if !cacheHit {
+			table, err = c.fetchTableDefinitions(ctx, table)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "err", err)
+				continue
+			}
+			if c.cache != nil {
+				c.cache.Add(cacheKey, table)
+			}
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(

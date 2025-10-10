@@ -73,7 +73,13 @@ You can use the following blocks with `database_observability.postgres`:
 
 ### `schema_details`
 
-This collector has no config options.
+| Name               | Type       | Description                                                           | Default | Required |
+|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
+| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
+| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
+| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+
 
 ### `explain_plans`
 
