@@ -96,6 +96,7 @@ func (c *Component) Run(ctx context.Context) error {
 				case <-drainCtx.Done():
 					return
 				case _ = <-c.handler: // Ignore the remaining entries
+				}
 			}
 		}()
 
