@@ -304,7 +304,10 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, bool, err
 	if err := c.validateQuerySample(sample); err != nil {
 		return SampleKey{}, false, err
 	}
-	key := newSampleKey(sample)
+	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, XID: sample.BackendXID.Int32}
+	if sample.XactStart.Valid {
+		key.XactStartNs = sample.XactStart.Time.UnixNano()
+	}
 	if sample.State.Valid && sample.State.String == stateIdle {
 		return key, true, nil
 	}
@@ -322,15 +325,6 @@ func (c *QuerySamples) tryMigrateKey(key SampleKey) SampleKey {
 	if state, ok := c.samples[zeroKey]; ok {
 		c.samples[key] = state
 		delete(c.samples, zeroKey)
-	}
-	return key
-}
-
-// newSampleKey constructs a stable 4-tuple key for an execution instance.
-func newSampleKey(sample QuerySamplesInfo) SampleKey {
-	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, XID: sample.BackendXID.Int32}
-	if sample.XactStart.Valid {
-		key.XactStartNs = sample.XactStart.Time.UnixNano()
 	}
 	return key
 }
