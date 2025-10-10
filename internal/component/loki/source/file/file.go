@@ -143,68 +143,115 @@ func (c *Component) Run(ctx context.Context) error {
 			reader: t.reader,
 		}
 	})
+
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go c.drain(ctx)
+
 		c.tasksMut.RLock()
 		c.stopping.Store(true)
 		runner.Stop()
 		c.posFile.Stop()
-		close(c.handler.Chan())
 		c.tasksMut.RUnlock()
 	}()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.consume(ctx)
+	}()
+
+	go func() {
+		defer wg.Done()
+		c.watchTasks(ctx, runner)
+	}()
+
+	wg.Wait()
+	return nil
+}
+
+func (c *Component) consume(ctx context.Context) {
+	for {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should return.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
+			return
+		}
+
+		c.receiversMut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should return.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.receiversMut.RUnlock()
+				return
+			}
+		}
+		c.receiversMut.RUnlock()
+	}
+}
+
+func (c *Component) drain(ctx context.Context) {
+	c.receiversMut.RLock()
+	receiversCopy := make([]loki.LogsReceiver, len(c.receivers))
+	for _, r := range c.receivers {
+		receiversCopy = append(receiversCopy, loki.NewMaybeDeadLogsReciver(
+			loki.NewTimoutLogsReciver(r, 1*time.Second),
+		))
+	}
+	copy(receiversCopy, c.receivers)
+	c.receiversMut.RUnlock()
+
+	for {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should return.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
+			return
+		}
+
+		c.receiversMut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled or receiver is dead.
+			// It's fine to continue here without exiting because next call to
+			// c.handler.Recv(ctx) will exit the loop.
+			_ = receiver.Send(ctx, entry)
+		}
+		c.receiversMut.RUnlock()
+	}
+
+}
+
+func (c *Component) watchTasks(ctx context.Context, r *runner.Runner[*runnerTask]) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
-			}
-			c.receiversMut.RUnlock()
+			return
 		case <-c.updateReaders:
-			// It's important to have the same lock order in Update and Run to avoid
-			// deadlocks.
 			c.tasksMut.Lock()
-			c.receiversMut.RLock()
-
-			// When we are updating tasks we need to continue to read from handler.Chan().
-			// This is done to avoid a race condition where stopping a reader is
-			// flushing its data, but nothing is reading from handler.Chan().
-			readCtx, cancel := context.WithCancel(ctx)
-			go func() {
-				for {
-					select {
-					case entry := <-c.handler.Chan():
-						for _, receiver := range c.receivers {
-							receiver.Chan() <- entry
-						}
-					case <-readCtx.Done():
-						return
-					}
-				}
-			}()
-
 			var tasks []*runnerTask
 			level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
 			for _, entry := range c.tasks {
 				tasks = append(tasks, &entry)
 			}
-			err := runner.ApplyTasks(ctx, tasks)
-
-			// We cancel readCtx because we are done updating tasks and the main loop will continue to
-			// read from it.
-			cancel()
-			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
-			c.receiversMut.RUnlock()
+			err := r.ApplyTasks(ctx, tasks)
 			c.tasksMut.Unlock()
 
+			// TODO: not sure we should stop here.
 			if err != nil && err != context.Canceled {
-				return err
+				return
 			}
+
+			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(r.Workers()))
 		}
 	}
+
 }
 
 // Update implements component.Component.

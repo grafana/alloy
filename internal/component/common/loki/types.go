@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 )
 
 // finalEntryTimeout is how long NewEntryMutatorHandler will wait before giving
@@ -24,13 +25,14 @@ const finalEntryTimeout = 5 * time.Second
 // LogsReceiver is an interface providing `chan Entry` which is used for component
 // communication.
 type LogsReceiver interface {
-	Chan() chan Entry
 	// Send will try to send entry to the reciver.
 	// If context is canceled Send will unblock and return false.
 	Send(context.Context, Entry) bool
 	// Recv will try to receive entry.
 	// If context is canceled Recv will unblock, return empty entry and false.
 	Recv(context.Context) (Entry, bool)
+
+	Chan() chan Entry
 }
 
 func NewLogsReceiver() LogsReceiver {
@@ -67,6 +69,70 @@ func (l *logsReceiver) Recv(ctx context.Context) (Entry, bool) {
 
 func (l *logsReceiver) Chan() chan Entry {
 	return l.entries
+}
+
+// NewTimoutLogsReciver returns a log receiver that will timout Send call after configured duration.
+func NewTimoutLogsReciver(receiver LogsReceiver, timeout time.Duration) LogsReceiver {
+	return &timeoutReciver{
+		timeout:  timeout,
+		receiver: receiver,
+	}
+}
+
+type timeoutReciver struct {
+	timeout  time.Duration
+	receiver LogsReceiver
+}
+
+func (t *timeoutReciver) Recv(ctx context.Context) (Entry, bool) {
+	return t.receiver.Recv(ctx)
+}
+
+func (t *timeoutReciver) Send(ctx context.Context, entry Entry) bool {
+	ctx, cancel := context.WithTimeout(ctx, t.timeout)
+	defer cancel()
+	return t.receiver.Send(ctx, entry)
+}
+
+func (t *timeoutReciver) Chan() chan Entry {
+	return t.receiver.Chan()
+}
+
+// NewMaybeDeadLogsReciver returns a log receiver that will mark it self as dead when Send fails.
+// All subsequent calls to Send will always return false.
+func NewMaybeDeadLogsReciver(receiver LogsReceiver) LogsReceiver {
+	return &maybeDeadReciver{
+		dead:     atomic.NewBool(false),
+		receiver: receiver,
+	}
+}
+
+type maybeDeadReciver struct {
+	dead     *atomic.Bool
+	receiver LogsReceiver
+}
+
+func (m *maybeDeadReciver) Recv(context.Context) (Entry, bool) {
+	if m.dead.Load() {
+		return Entry{}, false
+	}
+	return m.receiver.Recv(context.Background())
+}
+
+func (m *maybeDeadReciver) Send(ctx context.Context, entry Entry) bool {
+	if m.dead.Load() {
+		return false
+	}
+
+	ok := m.receiver.Send(ctx, entry)
+	if !ok {
+		m.dead.Store(true)
+	}
+	return ok
+}
+
+func (m *maybeDeadReciver) Chan() chan Entry {
+	return m.receiver.Chan()
 }
 
 // Entry is a log entry with labels.
