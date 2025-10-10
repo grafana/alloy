@@ -166,6 +166,12 @@ Replace the following values:
 You can get pods logs through the log files on each node. In this guide, you get the logs through the Kubernetes API because it doesn't require system privileges for {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+When deploying {{< param "PRODUCT_NAME" >}} as a daemonset, ensure that you have [configured discovery][discovery.kubernetes.daemonset] appropriately to only collect logs from the same node.
+
+[discovery.kubernetes.daemonset]: ../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node
+{{< /admonition >}}
+
 You need the following components:
 
 * [`discovery.kubernetes`][discovery.kubernetes]: Discover pods information and list them for components to use.
