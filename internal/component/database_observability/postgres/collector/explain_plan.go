@@ -47,6 +47,9 @@ var unrecoverablePostgresSQLErrors = []string{
 	"pq: pg_hba.conf rejects connection for host",
 }
 
+var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
+var paramCountRegex = regexp.MustCompile(`\$\d+`)
+
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`
 }
@@ -493,7 +496,6 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 // using regex to ensure only the database name portion is replaced, not other occurrences
 func (c *ExplainPlan) replaceDatabaseNameInDSN(dsn, newDatabaseName string) (string, error) {
 	// Use the same regex pattern as in NewExplainPlan to find the database name
-	dsnParseRegex := regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
 	matches := dsnParseRegex.FindStringSubmatch(dsn)
 
 	if len(matches) < 4 {
@@ -540,7 +542,6 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)
 	}
 
-	paramCountRegex := regexp.MustCompile(`\$\d+`)
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
 
 	nullParams := strings.Repeat("null,", paramCount)
