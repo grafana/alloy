@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/grafana/alloy/internal/loki/promtail/api"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"

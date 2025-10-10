@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	prom_discover "github.com/prometheus/prometheus/discovery"
 )

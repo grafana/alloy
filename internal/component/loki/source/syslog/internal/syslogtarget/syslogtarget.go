@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-kit/log"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/loki/promtail/targets/target"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"

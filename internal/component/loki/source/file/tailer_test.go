@@ -10,6 +10,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/loki/tail/watch"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
