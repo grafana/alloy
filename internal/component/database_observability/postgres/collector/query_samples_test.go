@@ -275,6 +275,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 
 			logBuffer := syncbuffer.Buffer{}
 			lokiClient := loki_fake.NewClient(func() {})
+			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
 				DB:                    db,

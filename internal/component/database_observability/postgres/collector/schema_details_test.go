@@ -34,6 +34,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -136,6 +137,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -326,6 +328,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -433,6 +436,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
@@ -485,6 +489,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -591,6 +596,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -692,6 +698,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
