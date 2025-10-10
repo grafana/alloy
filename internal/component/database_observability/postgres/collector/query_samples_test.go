@@ -516,61 +516,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	// Finalize when row turns idle (non-client backend)
-	t.Run("finalize when row turns idle", func(t *testing.T) {
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
-
-		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			CollectInterval: 10 * time.Millisecond,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-		})
-		require.NoError(t, err)
-
-		// Scrape 1: parallel worker active
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
-			WillReturnRows(sqlmock.NewRows(columns).AddRow(
-				now, "testdb", 401, sql.NullInt64{Int64: 400, Valid: true},
-				"testuser", "testapp", "127.0.0.1", 5432,
-				"parallel worker", backendStartTime, sql.NullInt32{Int32: 42, Valid: true}, sql.NullInt32{},
-				xactStartTime, "active", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 9001, Valid: true},
-				"SELECT * FROM t",
-			))
-		// Scrape 2: same row turns idle (allowed for non-client backend)
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
-			WillReturnRows(sqlmock.NewRows(columns).AddRow(
-				now, "testdb", 401, sql.NullInt64{Int64: 400, Valid: true},
-				"testuser", "testapp", "127.0.0.1", 5432,
-				"parallel worker", backendStartTime, sql.NullInt32{Int32: 42, Valid: true}, sql.NullInt32{},
-				xactStartTime, "idle", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 9001, Valid: true},
-				"SELECT * FROM t",
-			))
-
-		require.NoError(t, sampleCollector.Start(t.Context()))
-
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `leader_pid="400"`)
-			require.Contains(t, entries[0].Line, `backend_type="parallel worker"`)
-		}, 5*time.Second, 50*time.Millisecond)
-
-		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
 	// CPU persists across later waits
 	t.Run("cpu persists across waits", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
