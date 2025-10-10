@@ -8,6 +8,7 @@ package consulagent
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -19,7 +20,6 @@ import (
 
 	consul "github.com/hashicorp/consul/api"
 	conntrack "github.com/mwitkow/go-conntrack"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -272,7 +272,7 @@ func (d *Discovery) getDatacenter() error {
 
 	dc, ok := info["Config"]["Datacenter"].(string)
 	if !ok {
-		err := errors.Errorf("invalid value '%v' for Config.Datacenter", info["Config"]["Datacenter"])
+		err := fmt.Errorf("invalid value '%v' for Config.Datacenter", info["Config"]["Datacenter"])
 		d.logger.Error("Error retrieving datacenter name", "err", err)
 		return err
 	}

@@ -73,7 +73,6 @@ func TestRoundToMilliseconds(t *testing.T) {
 }
 
 func TestModelLabelSetToMap(t *testing.T) {
-
 	tests := []struct {
 		name string
 		m    model.LabelSet

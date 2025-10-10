@@ -111,7 +111,6 @@ func (w *wrapper) logSingle(record *wal.Record) error {
 		if err := w.wal.Log(*buf); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
