@@ -142,14 +142,3 @@ func convertConfig(a Arguments) *scrapeconfig.GelfTargetConfig {
 		UseIncomingTimestamp: a.UseIncomingTimestamp,
 	}
 }
-
-type handler struct {
-	c chan loki.Entry
-}
-
-func (h *handler) Chan() chan<- loki.Entry {
-	return h.c
-}
-func (handler) Stop() {
-	// noop.
-}
