@@ -53,6 +53,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Remove entry labels in `loki.write` that start with `__` used for metadata.  @matt-gp
+
 v1.11.2
 -----------------
 
