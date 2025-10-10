@@ -10,6 +10,15 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.3.1 (2025-10-08)
+----------
+
+### Other changes
+
+- Update values to use commonLabels
+
+------------------
+
 1.3.0 (2025-09-30)
 ----------
 

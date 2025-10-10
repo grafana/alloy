@@ -121,6 +121,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.podDisruptionBudget.maxUnavailable | string | `nil` | Maximum number of pods that can be unavailable during a disruption. Note: Only one of minAvailable or maxUnavailable should be set. |
 | controller.podDisruptionBudget.minAvailable | string | `nil` | Minimum number of pods that must be available during a disruption. Note: Only one of minAvailable or maxUnavailable should be set. |
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
+| controller.commonLabels | object | `{}` | Add additional label to all resources. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
 | controller.terminationGracePeriodSeconds | string | `nil` | Termination grace period in seconds for the Grafana Alloy pods. The default value used by Kubernetes if unspecifed is 30 seconds. |

@@ -201,6 +201,9 @@ controller:
   # -- Extra labels to add to the controller.
   extraLabels: {}
 
+  # -- Add additional label to all resources
+  commonLabels: {}
+
   # -- Annotations to add to controller.
   extraAnnotations: {}
 
