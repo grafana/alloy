@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -228,10 +229,22 @@ func (c *Component) Update(args component.Arguments) error {
 
 func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
 	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
-		if len(externalLabels) == 0 {
-			return e
+		// Filter out labels starting with "__" but preserve external labels
+		filteredLabels := make(model.LabelSet)
+		for k, v := range e.Labels {
+			labelName := string(k)
+			if !strings.HasPrefix(labelName, "__") {
+				filteredLabels[k] = v
+			}
 		}
-		e.Labels = externalLabels.Merge(e.Labels)
+
+		// Apply external labels (these should be preserved even if they start with "__")
+		// Entry labels take precedence over external labels (preserving existing behavior)
+		if len(externalLabels) > 0 {
+			filteredLabels = externalLabels.Merge(filteredLabels)
+		}
+
+		e.Labels = filteredLabels
 		return e
 	})
 }

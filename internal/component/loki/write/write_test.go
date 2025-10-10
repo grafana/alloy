@@ -408,3 +408,176 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		}, time.Minute, time.Second, "haven't seen expected number of lines")
 	}
 }
+
+func TestNewEntryHandler(t *testing.T) {
+	testCases := []struct {
+		name           string
+		externalLabels model.LabelSet
+		entryLabels    model.LabelSet
+		expectedLabels model.LabelSet
+	}{
+		{
+			name:           "filter meta labels without external labels",
+			externalLabels: nil,
+			entryLabels: model.LabelSet{
+				"normal_label":   "value1",
+				"__meta_label":   "value2",
+				"__another_meta": "value3",
+				"regular_label":  "value4",
+			},
+			expectedLabels: model.LabelSet{
+				"normal_label":  "value1",
+				"regular_label": "value4",
+			},
+		},
+		{
+			name: "preserve external labels including meta labels",
+			externalLabels: model.LabelSet{
+				"__external_meta": "external_value",
+				"external_label":  "external_normal",
+			},
+			entryLabels: model.LabelSet{
+				"normal_label":  "value1",
+				"__meta_label":  "value2", // should be filtered
+				"regular_label": "value4",
+			},
+			expectedLabels: model.LabelSet{
+				"__external_meta": "external_value",  // external meta label preserved
+				"external_label":  "external_normal", // external normal label preserved
+				"normal_label":    "value1",          // entry normal label preserved
+				"regular_label":   "value4",          // entry normal label preserved
+			},
+		},
+		{
+			name: "entry labels override external labels",
+			externalLabels: model.LabelSet{
+				"common_label": "external_value",
+			},
+			entryLabels: model.LabelSet{
+				"common_label": "entry_value", // should override external
+				"entry_only":   "value1",
+			},
+			expectedLabels: model.LabelSet{
+				"common_label": "entry_value", // entry takes precedence
+				"entry_only":   "value1",
+			},
+		},
+		{
+			name:           "empty labels",
+			externalLabels: nil,
+			entryLabels:    model.LabelSet{},
+			expectedLabels: model.LabelSet{},
+		},
+		{
+			name:           "only meta labels",
+			externalLabels: nil,
+			entryLabels: model.LabelSet{
+				"__meta_only":    "value1",
+				"__another_meta": "value2",
+			},
+			expectedLabels: model.LabelSet{},
+		},
+		{
+			name: "external meta labels with no entry labels",
+			externalLabels: model.LabelSet{
+				"__external_meta": "external_value",
+				"external_normal": "normal_value",
+			},
+			entryLabels: model.LabelSet{},
+			expectedLabels: model.LabelSet{
+				"__external_meta": "external_value",
+				"external_normal": "normal_value",
+			},
+		},
+		{
+			name: "mixed scenario with overrides and filtering",
+			externalLabels: model.LabelSet{
+				"__external_meta": "external_value",
+				"shared_label":    "external_shared",
+			},
+			entryLabels: model.LabelSet{
+				"normal_label":   "normal_value",
+				"__meta_label":   "meta_value",   // should be filtered
+				"shared_label":   "entry_shared", // should override external
+				"another_normal": "another_value",
+			},
+			expectedLabels: model.LabelSet{
+				"__external_meta": "external_value", // external meta preserved
+				"shared_label":    "entry_shared",   // entry takes precedence (original behavior)
+				"normal_label":    "normal_value",   // entry normal preserved
+				"another_normal":  "another_value",  // entry normal preserved
+			},
+		},
+		{
+			name:           "labels starting with single underscore should be preserved",
+			externalLabels: nil,
+			entryLabels: model.LabelSet{
+				"_single_underscore":  "value1",
+				"__double_underscore": "value2", // should be filtered
+				"normal_label":        "value3",
+			},
+			expectedLabels: model.LabelSet{
+				"_single_underscore": "value1",
+				"normal_label":       "value3",
+			},
+		},
+		{
+			name: "external labels with empty values",
+			externalLabels: model.LabelSet{
+				"empty_external":  "",
+				"normal_external": "external_value",
+			},
+			entryLabels: model.LabelSet{
+				"entry_label": "entry_value",
+			},
+			expectedLabels: model.LabelSet{
+				"empty_external":  "",
+				"normal_external": "external_value",
+				"entry_label":     "entry_value",
+			},
+		},
+		{
+			name: "only external labels",
+			externalLabels: model.LabelSet{
+				"external_only":   "external_value",
+				"__external_meta": "meta_value",
+			},
+			entryLabels: nil,
+			expectedLabels: model.LabelSet{
+				"external_only":   "external_value",
+				"__external_meta": "meta_value",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a channel to capture the entry
+			captureChannel := make(chan loki.Entry, 1)
+			mockHandler := loki.NewEntryHandler(captureChannel, func() {})
+
+			handler := newEntryHandler(mockHandler, tc.externalLabels)
+
+			testEntry := loki.Entry{
+				Labels: tc.entryLabels,
+				Entry: logproto.Entry{
+					Timestamp: time.Now(),
+					Line:      "test log line",
+				},
+			}
+
+			go func() {
+				handler.Chan() <- testEntry
+			}()
+
+			select {
+			case capturedEntry := <-captureChannel:
+				require.Equal(t, tc.expectedLabels, capturedEntry.Labels)
+			case <-time.After(time.Second):
+				t.Fatalf("timeout waiting for entry in test case: %s", tc.name)
+			}
+
+			handler.Stop()
+		})
+	}
+}
