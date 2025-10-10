@@ -15,7 +15,6 @@ Unreleased
 
 - Update to Grafana Alloy v1.11.2. (@kalleep)
 
-
 1.3.0 (2025-09-30)
 ----------
 
