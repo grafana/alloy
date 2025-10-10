@@ -86,15 +86,24 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// Start draining routine to prevent potential deadlock if target attempts to send during Stop().
-		cancel := c.startDrainingRoutine()
-		defer cancel()
+		level.Info(c.o.Logger).Log("msg", "loki.source.journal component shutting down")
+		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
+		drainCtx, cancelDrain := context.WithCancel(context.Background())
+		defer cancelDrain()
+		go func() {
+			for {
+				select {
+				case <-drainCtx.Done():
+					return
+				case _ = <-c.handler: // Ignore the remaining entries
+				}
+			}
+		}()
 
 		// Stop existing target
 		c.mut.RLock()
 		defer c.mut.RUnlock()
 		if c.t != nil {
-			level.Info(c.o.Logger).Log("msg", "loki.source.journal component shutting down, stopping journal target")
 			err := c.t.Stop()
 			if err != nil {
 				level.Warn(c.o.Logger).Log("msg", "error stopping journal target", "err", err)
@@ -104,7 +113,7 @@ func (c *Component) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-c.targetsUpdated:
-			c.reloadTargets()
+			c.reloadTargets(ctx)
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.handler:
@@ -114,7 +123,11 @@ func (c *Component) Run(ctx context.Context) error {
 				Entry:  entry.Entry,
 			}
 			for _, r := range c.args.Receivers {
-				r.Chan() <- lokiEntry
+				select {
+				case <-ctx.Done():
+					return nil
+				case r.Chan() <- lokiEntry:
+				}
 			}
 			c.mut.RUnlock()
 		}
@@ -153,8 +166,8 @@ func (c *Component) CurrentHealth() component.Health {
 	}
 }
 
-func (c *Component) startDrainingRoutine() func() {
-	readCtx, cancel := context.WithCancel(context.Background())
+func (c *Component) startDrainingRoutine(parentCtx context.Context) func() {
+	readCtx, cancel := context.WithCancel(parentCtx)
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	receiversCopy := make([]loki.LogsReceiver, len(c.args.Receivers))
@@ -178,9 +191,9 @@ func (c *Component) startDrainingRoutine() func() {
 	return cancel
 }
 
-func (c *Component) reloadTargets() {
+func (c *Component) reloadTargets(parentCtx context.Context) {
 	// Start draining routine to prevent potential deadlock if target attempts to send during Stop().
-	cancel := c.startDrainingRoutine()
+	cancel := c.startDrainingRoutine(parentCtx)
 
 	// Grab current state
 	c.mut.RLock()

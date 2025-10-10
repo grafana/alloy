@@ -33,6 +33,8 @@ Main (unreleased)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
 
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
@@ -49,11 +51,9 @@ Main (unreleased)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
-- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
-
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
-v1.11.1
+v1.11.2
 -----------------
 
 ### Bugfixes
@@ -64,6 +64,9 @@ v1.11.1
 
 - Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
 
+- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
+
+- Fix potential deadlocks in `loki.source.file` and `loki.source.journal` when component is shutting down. (@kalleep, @thampiotr)
 
 v1.11.0
 -----------------
