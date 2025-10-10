@@ -2774,7 +2774,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 
 	explainPlan := &ExplainPlan{
 		dbConnection:        db,
-		dbConnectionFactory: &databaseConnectionFactory{},
+		dbConnectionFactory: defaultDbConnectionFactory,
 		dbDSN:               "postgres://user:pass@host:1234/database",
 		dbVersion:           post17ver,
 		queryCache:          make(map[string]*queryInfo),
@@ -2812,7 +2812,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			logBuffer.Reset()
 			explainPlan = &ExplainPlan{
 				dbConnection:        db,
-				dbConnectionFactory: &databaseConnectionFactory{},
+				dbConnectionFactory: defaultDbConnectionFactory,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
@@ -2846,7 +2846,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			logBuffer.Reset()
 			explainPlan = &ExplainPlan{
 				dbConnection:        db,
-				dbConnectionFactory: &databaseConnectionFactory{},
+				dbConnectionFactory: defaultDbConnectionFactory,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
@@ -2899,7 +2899,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			explainPlan = &ExplainPlan{
 				dbConnection:        db,
 				dbDSN:               "postgres://user:pass@host:1234/database",
-				dbConnectionFactory: dbConnFactory,
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
 					"testdb123456": {

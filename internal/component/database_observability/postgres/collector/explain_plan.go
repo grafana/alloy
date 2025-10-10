@@ -50,6 +50,10 @@ var unrecoverablePostgresSQLErrors = []string{
 var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
 
+var defaultDbConnectionFactory = func(dsn string) (*sql.DB, error) {
+	return sql.Open("postgres", dsn)
+}
+
 type PgSQLExplainplan struct {
 	Plan PlanNode `json:"Plan"`
 }
@@ -215,16 +219,7 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 	}
 }
 
-type DatabaseConnectionFactory interface {
-	NewDBConnection(dsn string) (*sql.DB, error)
-}
-
-type databaseConnectionFactory struct {
-}
-
-func (d *databaseConnectionFactory) NewDBConnection(dsn string) (*sql.DB, error) {
-	return sql.Open("postgres", dsn)
-}
+type databaseConnectionFactory func(dsn string) (*sql.DB, error)
 
 type ExplainPlanArguments struct {
 	DB              *sql.DB
@@ -243,7 +238,7 @@ type ExplainPlan struct {
 	dbConnection        *sql.DB
 	dbDSN               string
 	dbVersion           semver.Version
-	dbConnectionFactory DatabaseConnectionFactory
+	dbConnectionFactory databaseConnectionFactory
 	scrapeInterval      time.Duration
 	queryCache          map[string]*queryInfo
 	queryDenylist       map[string]*queryInfo
@@ -263,7 +258,7 @@ func NewExplainPlan(args ExplainPlanArguments) (*ExplainPlan, error) {
 		dbConnection:        args.DB,
 		dbDSN:               args.DSN,
 		dbVersion:           args.DBVersion,
-		dbConnectionFactory: &databaseConnectionFactory{},
+		dbConnectionFactory: defaultDbConnectionFactory,
 		scrapeInterval:      args.ScrapeInterval,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
@@ -515,7 +510,7 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to replace database name in DSN: %w", err)
 	}
-	conn, err := c.dbConnectionFactory.NewDBConnection(querySpecificDSN)
+	conn, err := c.dbConnectionFactory(querySpecificDSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
