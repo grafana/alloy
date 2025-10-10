@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -45,7 +45,7 @@ func TestBookmarkUpdate(t *testing.T) {
 		ExcludeUserData:      false,
 		Labels:               utils.ToLabelSet(map[string]string{"job": "windows"}),
 	}
-	handle := &handler{handler: make(chan api.Entry)}
+	handle := loki.NewLogsReceiver()
 	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)
 	require.NoError(t, err)
 
@@ -54,7 +54,7 @@ func TestBookmarkUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	select {
-	case e := <-handle.handler:
+	case e := <-handle.Chan():
 		require.Equal(t, model.LabelValue("windows"), e.Labels["job"])
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "failed waiting for event")
