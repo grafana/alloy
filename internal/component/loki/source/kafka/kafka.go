@@ -91,9 +91,9 @@ func (a *Arguments) SetToDefault() {
 type Component struct {
 	opts component.Options
 
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	target *kt.TargetSyncer
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
+	target    *kt.TargetSyncer
 
 	handler loki.LogsReceiver
 }
@@ -101,11 +101,11 @@ type Component struct {
 // New creates a new loki.source.kafka component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:    o,
-		mut:     sync.RWMutex{},
-		fanout:  args.ForwardTo,
-		target:  nil,
-		handler: loki.NewLogsReceiver(),
+		opts:      o,
+		mut:       sync.RWMutex{},
+		receivers: args.ForwardTo,
+		target:    nil,
+		handler:   loki.NewLogsReceiver(),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -132,16 +132,23 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -151,7 +158,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	if c.target != nil {
 		err := c.target.Stop()

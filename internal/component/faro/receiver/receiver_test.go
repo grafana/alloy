@@ -149,6 +149,7 @@ type fakeLogsReceiver struct {
 	entriesMut sync.RWMutex
 	wg         sync.WaitGroup
 	entries    []loki.Entry
+	loki.LogsReceiver
 }
 
 var _ loki.LogsReceiver = (*fakeLogsReceiver)(nil)

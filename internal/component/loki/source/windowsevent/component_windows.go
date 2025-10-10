@@ -39,7 +39,7 @@ type Component struct {
 	mut       sync.RWMutex
 	args      Arguments
 	target    *Target
-	handle    *handler
+	handler   loki.LogsReceiver
 	receivers []loki.LogsReceiver
 }
 
@@ -57,11 +57,10 @@ func (h *handler) Stop() {
 
 // New creates a new loki.source.windowsevent component.
 func New(o component.Options, args Arguments) (*Component, error) {
-
 	c := &Component{
 		opts:      o,
 		receivers: args.ForwardTo,
-		handle:    &handler{handler: make(chan api.Entry)},
+		handler:   loki.NewLogsReceiver(),
 		args:      args,
 	}
 
@@ -81,23 +80,26 @@ func (c *Component) Run(ctx context.Context) error {
 			_ = c.target.Stop()
 		}
 	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handle.handler:
-			c.mut.RLock()
-			lokiEntry := loki.Entry{
-				Labels: entry.Labels,
-				Entry:  entry.Entry,
-			}
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- lokiEntry
-			}
-			c.mut.RUnlock()
-		}
-	}
 
+	for {
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
+			return nil
+		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
+	}
 }
 
 // Update implements component.Component.
@@ -119,7 +121,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Same as the loki.source.file sync position period
 	bookmarkSyncPeriod := 10 * time.Second
-	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs), bookmarkSyncPeriod)
+	winTarget, err := NewTarget(c.opts.Logger, c.handler, nil, convertConfig(newArgs), bookmarkSyncPeriod)
 	if err != nil {
 		return err
 	}

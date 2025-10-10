@@ -77,10 +77,10 @@ func (a *Arguments) Validate() error {
 // New creates a new loki.source.azure_event_hubs component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		mut:     sync.RWMutex{},
-		opts:    o,
-		handler: loki.NewLogsReceiver(),
-		fanout:  args.ForwardTo,
+		mut:       sync.RWMutex{},
+		opts:      o,
+		handler:   loki.NewLogsReceiver(),
+		receivers: args.ForwardTo,
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -93,11 +93,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Component implements the loki.source.azure_event_hubs component.
 type Component struct {
-	opts    component.Options
-	mut     sync.RWMutex
-	fanout  []loki.LogsReceiver
-	handler loki.LogsReceiver
-	target  *kt.TargetSyncer
+	opts      component.Options
+	mut       sync.RWMutex
+	receivers []loki.LogsReceiver
+	handler   loki.LogsReceiver
+	target    *kt.TargetSyncer
 }
 
 // Run implements component.Component.
@@ -105,24 +105,31 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.azure_event_hubs component shutting down, stopping the targets")
 		c.mut.RLock()
-		err := c.target.Stop()
-		if err != nil {
+		// FIXME: drain target?
+		if err := c.target.Stop(); err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error while stopping azure_event_hubs target", "err", err)
 		}
 		c.mut.RUnlock()
 	}()
 
 	for {
-		select {
-		case <-ctx.Done():
+		// NOTE: if we failed to receive entry that means that context was
+		// canceled and we should exit component.
+		entry, ok := c.handler.Recv(ctx)
+		if !ok {
 			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
 		}
+
+		c.mut.RLock()
+		for _, receiver := range c.receivers {
+			// NOTE: if we did not send the entry that mean that context was
+			// canceled and we should exit component.
+			if ok := receiver.Send(ctx, entry); !ok {
+				c.mut.RUnlock()
+				return nil
+			}
+		}
+		c.mut.RUnlock()
 	}
 }
 
@@ -137,7 +144,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.receivers = newArgs.ForwardTo
 
 	cfg, err := newArgs.Convert()
 	if err != nil {

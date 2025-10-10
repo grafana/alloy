@@ -166,8 +166,25 @@ func (c *Component) Run(ctx context.Context) error {
 	var g run.Group
 
 	g.Add(func() error {
-		c.runHandler(ctx)
-		return nil
+		for {
+			// NOTE: if we failed to receive entry that means that context was
+			// canceled and we should exit component.
+			entry, ok := c.handler.Recv(ctx)
+			if !ok {
+				return nil
+			}
+
+			c.receiversMut.RLock()
+			for _, receiver := range c.receivers {
+				// NOTE: if we did not send the entry that mean that context was
+				// canceled and we should exit component.
+				if ok := receiver.Send(ctx, entry); !ok {
+					c.receiversMut.RUnlock()
+					return nil
+				}
+			}
+			c.receiversMut.RUnlock()
+		}
 	}, func(_ error) {
 		cancel()
 	})
@@ -183,23 +200,6 @@ func (c *Component) Run(ctx context.Context) error {
 	})
 
 	return g.Run()
-}
-
-func (c *Component) runHandler(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				receiver.Chan() <- entry
-			}
-		}
-	}
 }
 
 // Update implements component.Component.

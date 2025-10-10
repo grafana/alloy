@@ -110,6 +110,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
+
 	select {
 	case lokiClient.Chan() <- loki.Entry{
 		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
