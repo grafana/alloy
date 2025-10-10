@@ -154,7 +154,7 @@ func (c *Component) Run(ctx context.Context) error {
 				select {
 				case <-drainCtx.Done():
 					return
-				case _ = <-c.handler.Chan(): // Ignore the remaining entries
+				case <-c.handler.Chan(): // Ignore the remaining entries
 				}
 			}
 		}()
