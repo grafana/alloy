@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -2312,6 +2313,9 @@ func TestNewExplainPlan(t *testing.T) {
 	entryHandler := fake.NewClient(func() {})
 	defer entryHandler.Stop()
 
+	pre17ver, err := semver.ParseTolerant("14.1")
+	require.NoError(t, err)
+
 	args := ExplainPlanArguments{
 		DB:              db,
 		DSN:             "postgres://user:pass@localhost:5432/testdb",
@@ -2320,7 +2324,7 @@ func TestNewExplainPlan(t *testing.T) {
 		ExcludeSchemas:  []string{"information_schema", "pg_catalog"},
 		EntryHandler:    entryHandler,
 		InitialLookback: time.Now().Add(-time.Hour),
-		DBVersion:       "14.1",
+		DBVersion:       pre17ver,
 		Logger:          logger,
 	}
 
@@ -2536,6 +2540,12 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	logger := log.NewNopLogger()
 
+	pre17ver, err := semver.ParseTolerant("14.1")
+	require.NoError(t, err)
+
+	post17ver, err := semver.ParseTolerant("17.0")
+	require.NoError(t, err)
+
 	t.Run("populate query cache", func(t *testing.T) {
 		t.Run("PostgreSQL < 17", func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -2544,7 +2554,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			explainPlan := &ExplainPlan{
 				dbConnection:       db,
-				dbVersion:          "14.1",
+				dbVersion:          pre17ver,
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
@@ -2583,7 +2593,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			explainPlan := &ExplainPlan{
 				dbConnection:       db,
-				dbVersion:          "17.0",
+				dbVersion:          post17ver,
 				queryCache:         make(map[string]*queryInfo),
 				queryDenylist:      make(map[string]*queryInfo),
 				finishedQueryCache: make(map[string]*queryInfo),
@@ -2622,7 +2632,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			explainPlan := &ExplainPlan{
 				dbConnection: db,
-				dbVersion:    "17.0",
+				dbVersion:    post17ver,
 				logger:       logger,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
@@ -2647,7 +2657,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			explainPlan := &ExplainPlan{
 				dbConnection: db,
-				dbVersion:    "17.0",
+				dbVersion:    post17ver,
 				logger:       logger,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
@@ -2673,7 +2683,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 			explainPlan := &ExplainPlan{
 				dbConnection: db,
-				dbVersion:    "17.0",
+				dbVersion:    post17ver,
 				logger:       logger,
 				queryCache:   make(map[string]*queryInfo),
 				finishedQueryCache: map[string]*queryInfo{
@@ -2699,7 +2709,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 
 		explainPlan := &ExplainPlan{
 			dbConnection: db,
-			dbVersion:    "14.1",
+			dbVersion:    pre17ver,
 			logger:       logger,
 		}
 
@@ -2759,11 +2769,14 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
+	post17ver, err := semver.ParseTolerant("17.0")
+	require.NoError(t, err)
+
 	explainPlan := &ExplainPlan{
 		dbConnection:        db,
 		dbConnectionFactory: &databaseConnectionFactory{},
 		dbDSN:               "postgres://user:pass@host:1234/database",
-		dbVersion:           "17.0",
+		dbVersion:           post17ver,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
@@ -2801,7 +2814,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnection:        db,
 				dbConnectionFactory: &databaseConnectionFactory{},
 				dbDSN:               "postgres://user:pass@host:1234/database",
-				dbVersion:           "17.0",
+				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
 					"testdb123456": {
 						queryId:    "123456",
@@ -2835,7 +2848,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnection:        db,
 				dbConnectionFactory: &databaseConnectionFactory{},
 				dbDSN:               "postgres://user:pass@host:1234/database",
-				dbVersion:           "17.0",
+				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
 					"testdb123456": {
 						queryId:    "123456",
@@ -2887,7 +2900,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnection:        db,
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbConnectionFactory: dbConnFactory,
-				dbVersion:           "17.0",
+				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
 					"testdb123456": {
 						datname:    "testdb",

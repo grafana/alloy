@@ -10,11 +10,11 @@ import (
 	"math"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -231,7 +231,7 @@ type ExplainPlanArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 	InitialLookback time.Time
-	DBVersion       string
+	DBVersion       semver.Version
 
 	Logger log.Logger
 }
@@ -239,7 +239,7 @@ type ExplainPlanArguments struct {
 type ExplainPlan struct {
 	dbConnection        *sql.DB
 	dbDSN               string
-	dbVersion           string
+	dbVersion           semver.Version
 	dbConnectionFactory DatabaseConnectionFactory
 	scrapeInterval      time.Duration
 	queryCache          map[string]*queryInfo
@@ -321,7 +321,8 @@ func (c *ExplainPlan) Stop() {
 func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
-	if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
+	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
+	if version17Plus {
 		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")
 	} else {
 		statReset, err := c.dbConnection.QueryContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
@@ -363,7 +364,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 		}
 
 		statsReset := resetTS
-		if f, err := strconv.ParseFloat(c.dbVersion, 64); err == nil && f >= 17.0 {
+		if version17Plus {
 			statsReset = ls
 		}
 		qi := newQueryInfo(datname, queryId, query, calls, statsReset)
@@ -453,7 +454,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		level.Debug(logger).Log("msg", "db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
 
 		generatedAt := time.Now().Format(time.RFC3339)
-		explainPlanOutput, genErr := newExplainPlanOutput(c.dbVersion, qi.queryId, byteExplainPlanJSON, generatedAt)
+		explainPlanOutput, genErr := newExplainPlanOutput(c.dbVersion.String(), qi.queryId, byteExplainPlanJSON, generatedAt)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
