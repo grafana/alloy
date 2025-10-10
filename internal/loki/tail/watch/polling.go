@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/loki/tail/util"
@@ -19,6 +20,7 @@ type PollingFileWatcher struct {
 	Filename string
 	Size     int64
 	Options  PollingFileWatcherOptions
+	mtx      sync.RWMutex // protects File and Size fields
 }
 
 // PollingFileWatcherOptions customizes a PollingFileWatcher.
@@ -76,7 +78,6 @@ func (fw *PollingFileWatcher) BlockUntilExists(t *tomb.Tomb) error {
 			return tomb.ErrDying
 		}
 	}
-	panic("unreachable")
 }
 
 func (fw *PollingFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChanges, error) {
@@ -91,12 +92,16 @@ func (fw *PollingFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChange
 	// XXX: use tomb.Tomb to cleanly manage these goroutines. replace
 	// the fatal (below) with tomb's Kill.
 
+	fw.mtx.Lock()
 	fw.Size = pos
+	fw.mtx.Unlock()
 
 	bo := newPollBackoff(fw.Options)
 
 	go func() {
+		fw.mtx.RLock()
 		prevSize := fw.Size
+		fw.mtx.RUnlock()
 		for {
 			select {
 			case <-t.Dying():
@@ -105,7 +110,10 @@ func (fw *PollingFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChange
 			}
 
 			time.Sleep(bo.WaitTime())
-			deletePending, err := IsDeletePending(fw.File)
+			fw.mtx.RLock()
+			file := fw.File
+			fw.mtx.RUnlock()
+			deletePending, err := IsDeletePending(file)
 
 			// DeletePending is a windows state where the file has been queued
 			// for delete but won't actually get deleted until all handles are
@@ -140,21 +148,25 @@ func (fw *PollingFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChange
 			}
 
 			// File got truncated?
+			fw.mtx.Lock()
 			fw.Size = fi.Size()
-			if prevSize > 0 && prevSize > fw.Size {
+			currentSize := fw.Size
+			fw.mtx.Unlock()
+
+			if prevSize > 0 && prevSize > currentSize {
 				changes.NotifyTruncated()
-				prevSize = fw.Size
+				prevSize = currentSize
 				bo.Reset()
 				continue
 			}
 			// File got bigger?
-			if prevSize > 0 && prevSize < fw.Size {
+			if prevSize > 0 && prevSize < currentSize {
 				changes.NotifyModified()
-				prevSize = fw.Size
+				prevSize = currentSize
 				bo.Reset()
 				continue
 			}
-			prevSize = fw.Size
+			prevSize = currentSize
 
 			// File was appended to (changed)?
 			modTime := fi.ModTime()
@@ -174,13 +186,17 @@ func (fw *PollingFileWatcher) ChangeEvents(t *tomb.Tomb, pos int64) (*FileChange
 }
 
 func (fw *PollingFileWatcher) SetFile(f *os.File) {
+	fw.mtx.Lock()
 	fw.File = f
+	fw.mtx.Unlock()
 }
 
 func (fw *PollingFileWatcher) closeFile() {
+	fw.mtx.Lock()
 	if fw.File != nil {
 		_ = fw.File.Close() // Best effort close
 	}
+	fw.mtx.Unlock()
 }
 
 type pollBackoff struct {

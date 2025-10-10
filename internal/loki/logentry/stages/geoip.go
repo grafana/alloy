@@ -21,18 +21,6 @@ const (
 	SUBDIVISIONCODE
 )
 
-var fields = map[GeoIPFields]string{
-	CITYNAME:        "geoip_city_name",
-	COUNTRYNAME:     "geoip_country_name",
-	CONTINENTNAME:   "geoip_continent_name",
-	CONTINENTCODE:   "geoip_continent_code",
-	LOCATION:        "geoip_location",
-	POSTALCODE:      "geoip_postal_code",
-	TIMEZONE:        "geoip_timezone",
-	SUBDIVISIONNAME: "geoip_subdivision_name",
-	SUBDIVISIONCODE: "geoip_subdivision_code",
-}
-
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
 	DB     string  `mapstructure:"db"`

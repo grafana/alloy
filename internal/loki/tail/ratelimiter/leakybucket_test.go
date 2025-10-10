@@ -41,7 +41,6 @@ func TestPour(t *testing.T) {
 	if !bucket.Pour(1) {
 		t.Error("Expected true")
 	}
-
 }
 
 func TestTimeSinceLastUpdate(t *testing.T) {

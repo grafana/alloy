@@ -214,7 +214,6 @@ func (tail *Tail) closeFile() {
 }
 
 func (tail *Tail) reopen(truncated bool) error {
-
 	// There are cases where the file is reopened so quickly it's still the same file
 	// which causes the poller to hang on an open file handle to a file no longer being written to
 	// and which eventually gets deleted.  Save the current file handle info to make sure we only
@@ -449,7 +448,6 @@ func (tail *Tail) waitForChanges() (bool, error) {
 	case <-tail.Dying():
 		return false, ErrStop
 	}
-	panic("unreachable")
 }
 
 func (tail *Tail) finishDelete() error {

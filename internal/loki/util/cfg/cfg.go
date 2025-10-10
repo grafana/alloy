@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
+	"github.com/pkg/errors" //nolint:depguard
 )
 
 // Source is a generic configuration source. This function may do whatever is

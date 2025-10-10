@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors"
+	"github.com/pkg/errors" //nolint:depguard
 )
 
 // Defaults registers flags to the flagSet using dst as the flagext.Registerer
@@ -42,6 +42,7 @@ func dFlags(fs *flag.FlagSet, args []string) Source {
 	}
 }
 
+//nolint:errcheck
 func categorizedUsage(fs *flag.FlagSet) func() {
 	categories := make(map[string][]string)
 	return func() {
