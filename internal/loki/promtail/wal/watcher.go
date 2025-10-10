@@ -1,6 +1,7 @@
 package wal
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
@@ -192,7 +192,7 @@ func (w *Watcher) watch(segmentNum int) error {
 			}
 
 			// io.EOF error are non-fatal since we are tailing the wal
-			if errors.Cause(err) != io.EOF {
+			if errors.Is(err, io.EOF) {
 				return err
 			}
 
@@ -205,7 +205,6 @@ func (w *Watcher) watch(segmentNum int) error {
 			w.metrics.segmentRead.WithLabelValues(w.id, "timer").Inc()
 			if debug {
 				level.Debug(w.logger).Log("msg", "Segment read triggered by backup timer", "segment", segmentNum)
-
 			}
 		case <-w.readNotify:
 			w.metrics.segmentRead.WithLabelValues(w.id, "notification").Inc()
@@ -218,7 +217,7 @@ func (w *Watcher) watch(segmentNum int) error {
 		}
 
 		// io.EOF error are non-fatal since we are tailing the wal
-		if errors.Cause(err) != io.EOF {
+		if errors.Is(err, io.EOF) {
 			return err
 		}
 
@@ -243,10 +242,10 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 		// keep true if data was read at least once
 		readData = readData || read
 		if err != nil {
-			return readData, errors.Wrapf(err, "error decoding record")
+			return readData, fmt.Errorf("error decoding record: %w", err)
 		}
 	}
-	return readData, errors.Wrapf(r.Err(), "segment %d: %v", segmentNum, r.Err())
+	return readData, fmt.Errorf("segment %d: %v", segmentNum, r.Err())
 }
 
 // decodeAndDispatch first decodes a WAL record. Upon reading either Series or Entries from the WAL record, call the
@@ -284,10 +283,11 @@ func (w *Watcher) Stop() {
 }
 
 // firstAndLast finds the first and last segment number for a WAL directory.
+//
+//nolint:unparam
 func (w *Watcher) firstAndLast() (int, int, error) {
 	refs, err := readSegmentNumbers(w.walDir)
 	if err != nil {
-
 		return -1, -1, err
 	}
 

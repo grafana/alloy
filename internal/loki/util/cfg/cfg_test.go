@@ -68,7 +68,7 @@ tls:
 
 func TestDefaultUnmarshal(t *testing.T) {
 	testContext := func(yamlString string, args []string) TestConfigWrapper {
-		file, err := os.CreateTemp("", "config.yaml")
+		file, err := os.CreateTemp(t.TempDir(), "config.yaml")
 		defer func() {
 			os.Remove(file.Name())
 		}()

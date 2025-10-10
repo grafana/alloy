@@ -6,7 +6,11 @@ package windows
 import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/grafana/alloy/internal/loki/logentry/stages"
+	"github.com/grafana/alloy/internal/loki/promtail/api"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/loki/promtail/targets/target"
 )
 
@@ -16,36 +20,34 @@ type TargetManager struct {
 	targets map[string]*Target
 }
 
-// TODO(paulin): Fix the tests?
+// NewTargetManager creates a new Windows managers.
+func NewTargetManager(
+	reg prometheus.Registerer,
+	logger log.Logger,
+	client api.EntryHandler,
+	scrapeConfigs []scrapeconfig.Config,
+) (*TargetManager, error) {
+	tm := &TargetManager{
+		logger:  logger,
+		targets: make(map[string]*Target),
+	}
 
-// // NewTargetManager creates a new Windows managers.
-// func NewTargetManager(
-// 	reg prometheus.Registerer,
-// 	logger log.Logger,
-// 	client api.EntryHandler,
-// 	scrapeConfigs []scrapeconfig.Config,
-// ) (*TargetManager, error) {
-// 	tm := &TargetManager{
-// 		logger:  logger,
-// 		targets: make(map[string]*Target),
-// 	}
+	for _, cfg := range scrapeConfigs {
+		pipeline, err := stages.NewPipeline(log.With(logger, "component", "windows_pipeline"), cfg.PipelineStages, &cfg.JobName, reg)
+		if err != nil {
+			return nil, err
+		}
 
-// 	for _, cfg := range scrapeConfigs {
-// 		pipeline, err := stages.NewPipeline(log.With(logger, "component", "windows_pipeline"), cfg.PipelineStages, &cfg.JobName, reg)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+		t, err := New(logger, pipeline.Wrap(client), cfg.RelabelConfigs, cfg.WindowsConfig)
+		if err != nil {
+			return nil, err
+		}
 
-// 		t, err := New(logger, pipeline.Wrap(client), cfg.RelabelConfigs, cfg.WindowsConfig)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+		tm.targets[cfg.JobName] = t
+	}
 
-// 		tm.targets[cfg.JobName] = t
-// 	}
-
-// 	return tm, nil
-// }
+	return tm, nil
+}
 
 // Ready returns true if at least one Windows target is also ready.
 func (tm *TargetManager) Ready() bool {

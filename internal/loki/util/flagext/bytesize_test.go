@@ -72,7 +72,6 @@ func Test_ByteSize(t *testing.T) {
 				require.Nil(t, err)
 				require.Equal(t, tc.out, bs.Get().(int))
 			}
-
 		})
 	}
 }

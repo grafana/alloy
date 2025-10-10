@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/drone/envsubst"
-	"github.com/pkg/errors"
+	"github.com/pkg/errors" //nolint:depguard
 	"gopkg.in/yaml.v2"
 )
 
@@ -95,7 +95,7 @@ func ConfigFileLoader(args []string, name string, strict bool) Source {
 			usage()
 			os.Exit(2)
 		} else if err != nil {
-			fmt.Fprintln(freshFlags.Output(), "Run with -help to get list of available parameters")
+			fmt.Fprintln(freshFlags.Output(), "Run with -help to get list of available parameters") //nolint:errcheck
 			os.Exit(2)
 		}
 

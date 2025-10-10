@@ -12,7 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/loki/tail/util"
 
-	"gopkg.in/fsnotify/fsnotify.v1"
+	"github.com/fsnotify/fsnotify"
 )
 
 type InotifyTracker struct {
