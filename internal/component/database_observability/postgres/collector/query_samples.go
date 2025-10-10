@@ -450,13 +450,8 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		}
 	}
 
-	queryText := state.LastRow.Query.String
-	if !c.disableQueryRedaction {
-		queryText = redact(queryText)
-	}
-
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -470,10 +465,13 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		xactDuration,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
-		queryText,
 	)
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction {
+		queryText := state.LastRow.Query.String
+		labels = fmt.Sprintf(`%s query_text="%s"`, labels, queryText) // no need to redact
 	}
 	return labels
 }
