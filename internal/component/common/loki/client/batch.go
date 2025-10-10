@@ -66,7 +66,7 @@ func (b *batch) add(entry loki.Entry) error {
 	b.totalBytes += entrySize(entry.Entry)
 
 	// Append the entry to an already existing stream (if any)
-	labels := labelsMapToString(entry.Labels, ReservedLabelTenantID)
+	labels := labelsMapToString(entry.Labels)
 	if stream, ok := b.streams[labels]; ok {
 		stream.Entries = append(stream.Entries, entry.Entry)
 		return nil
@@ -90,7 +90,7 @@ func (b *batch) addFromWAL(lbs model.LabelSet, entry push.Entry, segmentNum int)
 	b.totalBytes += len(entry.Line)
 
 	// Append the entry to an already existing stream (if any)
-	labels := labelsMapToString(lbs, ReservedLabelTenantID)
+	labels := labelsMapToString(lbs)
 	if stream, ok := b.streams[labels]; ok {
 		stream.Entries = append(stream.Entries, entry)
 		b.countForSegment(segmentNum)
@@ -112,14 +112,15 @@ func (b *batch) addFromWAL(lbs model.LabelSet, entry push.Entry, segmentNum int)
 	return nil
 }
 
-// labelsMapToString encodes an entry's label set as a string, ignoring the without label.
-func labelsMapToString(ls model.LabelSet, without model.LabelName) string {
+// labelsMapToString encodes an entry's label set as a string, ignoring internal labels
+func labelsMapToString(ls model.LabelSet) string {
 	var b strings.Builder
 	totalSize := 2
 	lstrs := make([]model.LabelName, 0, len(ls))
 
 	for l, v := range ls {
-		if l == without {
+		// skip internal labels
+		if strings.HasPrefix(string(l), "__") {
 			continue
 		}
 

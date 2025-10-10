@@ -74,6 +74,8 @@ Main (unreleased)
 
 - Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
+- Fix `loki.write` no longer includes internal labels `__`.  (@matt-gp)
+
 v1.11.3
 -----------------
 

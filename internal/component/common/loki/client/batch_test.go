@@ -180,7 +180,48 @@ func BenchmarkLabelsMapToString(b *testing.B) {
 	var r string
 	for i := 0; i < b.N; i++ {
 		// store in r prevent the compiler eliminating the function call.
-		r = labelsMapToString(labelSet, ReservedLabelTenantID)
+		r = labelsMapToString(labelSet)
 	}
 	result = r
+}
+
+func TestLabelsMapToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    model.LabelSet
+		expected string
+	}{
+		{
+			name:     "empty label set",
+			input:    model.LabelSet{},
+			expected: "{}",
+		},
+		{
+			name:     "single label",
+			input:    model.LabelSet{"app": "my-app"},
+			expected: `{app="my-app"}`,
+		},
+		{
+			name:     "multiple labels",
+			input:    model.LabelSet{"app": "my-app", "env": "prod"},
+			expected: `{app="my-app", env="prod"}`,
+		},
+		{
+			name:     "labels with reserved labels",
+			input:    model.LabelSet{"app": "my-app", "__meta_label_abc": "meta-abc", "__meta_label_def": "meta-def", "abc": "123"},
+			expected: `{abc="123", app="my-app"}`,
+		},
+		{
+			name:     "only reserved labels",
+			input:    model.LabelSet{"__meta_label_abc": "meta-abc", "__meta_label_def": "meta-def"},
+			expected: "{}",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := labelsMapToString(tc.input)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
 }
