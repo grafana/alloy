@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Test performs an end-to-end test of the component.
@@ -34,7 +34,7 @@ func Test(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("log"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `timestamp="2021-01-01 00:00:00 +0000 UTC" kind=log message="hello, world" level=info context_env=dev traceID=0 spanID=0 browser_mobile=false`,
 				},
 			},
@@ -47,7 +47,7 @@ func Test(t *testing.T) {
 					"foo":  model.LabelValue("bar"),
 					"kind": model.LabelValue("log"),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Line: `{"browser_mobile":"false","context_env":"dev","kind":"log","level":"info","message":"hello, world","spanID":"0","timestamp":"2021-01-01 00:00:00 +0000 UTC","traceID":"0"}`,
 				},
 			},
@@ -172,7 +172,7 @@ func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
 			lr.entriesMut.Lock()
 			lr.entries = append(lr.entries, loki.Entry{
 				Labels: ent.Labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp:          time.Time{}, // Use consistent time for testing.
 					Line:               ent.Line,
 					StructuredMetadata: ent.StructuredMetadata,

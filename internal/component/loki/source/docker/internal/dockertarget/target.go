@@ -18,7 +18,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -27,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -183,7 +183,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		t.handler.Chan() <- loki.Entry{
 			Labels: logStreamLset,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      line,
 			},
@@ -304,7 +304,7 @@ func (t *Target) Details() map[string]string {
 
 func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
@@ -312,12 +312,12 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
 }

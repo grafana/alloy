@@ -661,14 +661,14 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 
 // Convert Otel Exemplar to Prometheus Exemplar.
 func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Time) exemplar.Exemplar {
-	exemplarLabels := make(labels.Labels, 0)
+	exemplarLabels := labels.NewScratchBuilder(0)
 
 	if traceID := otelExemplar.TraceID(); !traceID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "trace_id", Value: hex.EncodeToString(traceID[:])})
+		exemplarLabels.Add("trace_id", hex.EncodeToString(traceID[:]))
 	}
 
 	if spanID := otelExemplar.SpanID(); !spanID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "span_id", Value: hex.EncodeToString(spanID[:])})
+		exemplarLabels.Add("span_id", hex.EncodeToString(spanID[:]))
 	}
 
 	var value float64
@@ -679,9 +679,10 @@ func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Ti
 		value = float64(otelExemplar.IntValue())
 	}
 
+	exemplarLabels.Sort()
 	return exemplar.Exemplar{
 		Value:  value,
-		Labels: exemplarLabels,
+		Labels: exemplarLabels.Labels(),
 		Ts:     timestamp.FromTime(ts),
 	}
 }

@@ -333,21 +333,21 @@ func getOrCreateMetric(mf *dto.MetricFamily, l labels.Labels) *dto.Metric {
 // The quantile label is dropped for summaries, and the le label is dropped for
 // histograms.
 func toLabelPairs(mt dto.MetricType, ls labels.Labels) []*dto.LabelPair {
-	res := make([]*dto.LabelPair, 0, len(ls))
-	for _, l := range ls {
+	res := make([]*dto.LabelPair, 0, ls.Len())
+	ls.Range(func(l labels.Label) {
 		if l.Name == model.MetricNameLabel {
-			continue
+			return
 		} else if l.Name == model.QuantileLabel && mt == dto.MetricType_SUMMARY {
-			continue
+			return
 		} else if l.Name == model.BucketLabel && mt == dto.MetricType_HISTOGRAM {
-			continue
+			return
 		}
 
 		res = append(res, &dto.LabelPair{
 			Name:  ptr.To(l.Name),
 			Value: ptr.To(l.Value),
 		})
-	}
+	})
 
 	sort.Slice(res, func(i, j int) bool {
 		switch {

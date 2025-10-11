@@ -1,6 +1,6 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/loki-server-http/
-description: Shared content, loki server http
+canonical: https://grafana.com/docs/alloy/latest/shared/reference/components/server-http/
+description: Shared content, server http
 headless: true
 ---
 

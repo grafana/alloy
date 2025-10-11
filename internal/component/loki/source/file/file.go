@@ -145,6 +145,20 @@ func (c *Component) Run(ctx context.Context) error {
 	})
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
+
+		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
+		drainCtx, cancelDrain := context.WithCancel(context.Background())
+		defer cancelDrain()
+		go func() {
+			for {
+				select {
+				case <-drainCtx.Done():
+					return
+				case <-c.handler.Chan(): // Ignore the remaining entries
+				}
+			}
+		}()
+
 		c.tasksMut.RLock()
 		c.stopping.Store(true)
 		runner.Stop()
@@ -160,7 +174,11 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.handler.Chan():
 			c.receiversMut.RLock()
 			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
+				select {
+				case <-ctx.Done():
+					return nil
+				case receiver.Chan() <- entry:
+				}
 			}
 			c.receiversMut.RUnlock()
 		case <-c.updateReaders:
@@ -178,7 +196,11 @@ func (c *Component) Run(ctx context.Context) error {
 					select {
 					case entry := <-c.handler.Chan():
 						for _, receiver := range c.receivers {
-							receiver.Chan() <- entry
+							select {
+							case <-readCtx.Done():
+								return
+							case receiver.Chan() <- entry:
+							}
 						}
 					case <-readCtx.Done():
 						return

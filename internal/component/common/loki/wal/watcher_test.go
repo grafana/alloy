@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -101,7 +101,7 @@ var cases = map[string]watcherTest{
 		for _, line := range lines {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -136,7 +136,7 @@ var cases = map[string]watcherTest{
 		for _, line := range lines {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -174,7 +174,7 @@ var cases = map[string]watcherTest{
 		for _, line := range lines {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -198,7 +198,7 @@ var cases = map[string]watcherTest{
 		for _, line := range linesAfter {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -230,7 +230,7 @@ var cases = map[string]watcherTest{
 		// write something to first segment
 		res.writeEntry(loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "this shouldn't be read",
 			},
@@ -246,7 +246,7 @@ var cases = map[string]watcherTest{
 		for _, line := range linesAfter {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -275,7 +275,7 @@ var cases = map[string]watcherTest{
 		writeAndWaitForWatcherToCatchUp := func(line string, expectedReadEntries int) {
 			res.writeEntry(loki.Entry{
 				Labels: testLabels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -434,7 +434,7 @@ func TestWatcher_Replay(t *testing.T) {
 		// First, write to segment 0. This will be the last "marked" segment
 		err = ew.WriteEntry(loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
@@ -449,7 +449,7 @@ func TestWatcher_Replay(t *testing.T) {
 		for _, line := range segment1Lines {
 			err = ew.WriteEntry(loki.Entry{
 				Labels: labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -465,7 +465,7 @@ func TestWatcher_Replay(t *testing.T) {
 		for _, line := range segment2Lines {
 			err = ew.WriteEntry(loki.Entry{
 				Labels: labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -516,7 +516,7 @@ func TestWatcher_Replay(t *testing.T) {
 		// First, write to segment 0. This will be the last "marked" segment
 		err = ew.WriteEntry(loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
@@ -531,7 +531,7 @@ func TestWatcher_Replay(t *testing.T) {
 		for _, line := range segment1Lines {
 			err = ew.WriteEntry(loki.Entry{
 				Labels: labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -553,7 +553,7 @@ func TestWatcher_Replay(t *testing.T) {
 		for _, line := range segment2Lines {
 			err = ew.WriteEntry(loki.Entry{
 				Labels: labels,
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
@@ -655,7 +655,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
@@ -707,7 +707,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
@@ -760,7 +760,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 				// First, write to segment 0. This will be the last "marked" segment
 				err := ew.WriteEntry(loki.Entry{
 					Labels: labels,
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},

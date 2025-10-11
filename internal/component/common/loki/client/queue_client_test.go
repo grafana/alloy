@@ -10,8 +10,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -133,7 +133,7 @@ func TestQueueClient(t *testing.T) {
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, nilMarkerHandler{})
+			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, nilMarkerHandler{})
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -147,17 +147,16 @@ func TestQueueClient(t *testing.T) {
 				mod := i % tc.numSeries
 				qc.StoreSeries([]record.RefSeries{
 					{
-						Labels: labels.Labels{{
-							Name:  "app",
-							Value: fmt.Sprintf("test-%d", mod),
-						}},
+						Labels: labels.New(
+							labels.Label{Name: "app", Value: fmt.Sprintf("test-%d", mod)},
+						),
 						Ref: chunks.HeadSeriesRef(mod),
 					},
 				}, 0)
 
 				_ = qc.AppendEntries(wal.RefEntries{
 					Ref: chunks.HeadSeriesRef(mod),
-					Entries: []logproto.Entry{{
+					Entries: []push.Entry{{
 						Timestamp: time.Now(),
 						Line:      l,
 					}},
@@ -277,7 +276,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, mhFactory(b))
+	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -293,18 +292,17 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 			seriesId := j % bc.numSeries
 			qc.StoreSeries([]record.RefSeries{
 				{
-					Labels: labels.Labels{{
-						Name: "app",
+					Labels: labels.New(
 						// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
-						Value: fmt.Sprintf("series-%d", seriesId),
-					}},
+						labels.Label{Name: "app", Value: fmt.Sprintf("series-%d", seriesId)},
+					),
 					Ref: chunks.HeadSeriesRef(seriesId),
 				},
 			}, 0)
 
 			_ = qc.AppendEntries(wal.RefEntries{
 				Ref: chunks.HeadSeriesRef(seriesId),
-				Entries: []logproto.Entry{{
+				Entries: []push.Entry{{
 					Timestamp: time.Now(),
 					Line:      l,
 				}},
@@ -372,7 +370,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, 0, 0, false, logger)
+	qc, err := New(m, cfg, 0, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -391,7 +389,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      l,
 				},

@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -35,8 +33,7 @@ import (
 const localhost = "127.0.0.1"
 
 func TestLokiPushTarget(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -66,7 +63,7 @@ regex = "dropme"
 		BatchSize: 100 * 1024,
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, 0, false, logger)
+	pc, err := client.New(m, ccfg, 0, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -78,7 +75,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 				StructuredMetadata: push.LabelsAdapter{
@@ -123,8 +120,7 @@ regex = "dropme"
 }
 
 func TestLokiPushTargetForRedirect(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -154,7 +150,7 @@ regex = "dropme"
 		BatchSize: 100 * 1024,
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, 0, false, logger)
+	pc, err := client.New(m, ccfg, 0, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -166,7 +162,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 			},
@@ -198,8 +194,7 @@ regex = "dropme"
 }
 
 func TestLokiPushTargetWithXScopeOrgIDHeader(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	pt, port, eh := createPushServer(t, logger)
 
 	pt.SetLabels(model.LabelSet{
@@ -232,7 +227,7 @@ regex = "dropme"
 		},
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, 0, false, logger)
+	pc, err := client.New(m, ccfg, 0, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -244,7 +239,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 				StructuredMetadata: push.LabelsAdapter{
@@ -290,8 +285,7 @@ regex = "dropme"
 }
 
 func TestPlaintextPushTarget(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()
@@ -360,8 +354,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 }
 
 func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()
@@ -439,9 +432,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 }
 
 func TestReady(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
-
+	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 	eh := fake.NewClient(func() {})
 	defer eh.Stop()

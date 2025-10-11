@@ -127,7 +127,7 @@ func (c *Config) Name() string {
 	return "cloudwatch_exporter"
 }
 
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return getHash(c)
 }
 

@@ -54,18 +54,20 @@ The following collectors are available for selection:
 
 {{< column-list >}}
 
-* `database`
+* `buffercache_summary`
 * `database_wraparound`
+* `database`
 * `locks`
 * `long_running_transactions`
 * `postmaster`
 * `process_idle`
-* `replication`
 * `replication_slot`
+* `replication`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
 * `stat_checkpointer` - Only supported in PostgreSQL 17 and later
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_statements`
 * `stat_user_tables`
 * `stat_wal_receiver`
@@ -82,10 +84,12 @@ By default, the following collectors are enabled:
 
 * `database`
 * `locks`
-* `replication`
 * `replication_slot`
+* `replication`
+* `roles`
 * `stat_bgwriter`
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_user_tables`
 * `statio_user_tables`
 * `wal`
@@ -121,6 +125,17 @@ The following arguments are supported:
 If `enabled` is set to `true` and no allowlist or denylist is specified, the exporter scrapes from all databases.
 
 If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` has any effect.
+
+### `stat_statements`
+
+The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
+This configuration takes effect only when the `stat_statements` collector is enabled.
+
+The following arguments are supported:
+| Name            | Type     | Description                                         | Default | Required |
+| --------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
+| `query_length`  | `number` | Maximum length of the statement query text.         | `120`   | no       |
 
 ## Exported fields
 

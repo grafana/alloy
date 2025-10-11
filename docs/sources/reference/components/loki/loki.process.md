@@ -45,36 +45,37 @@ You can use the following argument with `loki.process`:
 
 You can use the following blocks with `loki.process`:
 
-| Block                                                    | Description                                                    | Required |
-| -------------------------------------------------------- | -------------------------------------------------------------- | -------- |
-| [`stage.cri`][stage.cri]                                 | Configures a pre-defined CRI-format pipeline.                  | no       |
-| [`stage.decolorize`][stage.decolorize]                   | Strips ANSI color codes from log lines.                        | no       |
-| [`stage.docker`][stage.docker]                           | Configures a pre-defined Docker log format pipeline.           | no       |
-| [`stage.drop`][stage.drop]                               | Configures a `drop` processing stage.                          | no       |
-| [`stage.eventlogmessage`][stage.eventlogmessage]         | Extracts data from the Message field in the Windows Event Log. | no       |
-| [`stage.geoip`][stage.geoip]                             | Configures a `geoip` processing stage.                         | no       |
-| [`stage.json`][stage.json]                               | Configures a JSON processing stage.                            | no       |
-| [`stage.label_drop`][stage.label_drop]                   | Configures a `label_drop` processing stage.                    | no       |
-| [`stage.label_keep`][stage.label_keep]                   | Configures a `label_keep` processing stage.                    | no       |
-| [`stage.labels`][stage.labels]                           | Configures a `labels` processing stage.                        | no       |
-| [`stage.limit`][stage.limit]                             | Configures a `limit` processing stage.                         | no       |
-| [`stage.logfmt`][stage.logfmt]                           | Configures a `logfmt` processing stage.                        | no       |
-| [`stage.luhn`][stage.luhn]                               | Configures a `luhn` processing stage.                          | no       |
-| [`stage.match`][stage.match]                             | Configures a `match` processing stage.                         | no       |
-| [`stage.metrics`][stage.metrics]                         | Configures a `metrics` stage.                                  | no       |
-| [`stage.multiline`][stage.multiline]                     | Configures a `multiline` processing stage.                     | no       |
-| [`stage.output`][stage.output]                           | Configures an `output` processing stage.                       | no       |
-| [`stage.pack`][stage.pack]                               | Configures a `pack` processing stage.                          | no       |
-| [`stage.pattern`][stage.pattern]                         | Configures a `pattern` processing stage.                       | no       |
-| [`stage.regex`][stage.regex]                             | Configures a `regex` processing stage.                         | no       |
-| [`stage.replace`][stage.replace]                         | Configures a `replace` processing stage.                       | no       |
-| [`stage.sampling`][stage.sampling]                       | Configures a `sampling` processing stage.                      | no       |
-| [`stage.static_labels`][stage.static_labels]             | Configures a `static_labels` processing stage.                 | no       |
-| [`stage.structured_metadata`][stage.structured_metadata] | Configures a structured metadata processing stage.             | no       |
-| [`stage.template`][stage.template]                       | Configures a `template` processing stage.                      | no       |
-| [`stage.tenant`][stage.tenant]                           | Configures a `tenant` processing stage.                        | no       |
-| [`stage.timestamp`][stage.timestamp]                     | Configures a `timestamp` processing stage.                     | no       |
-| [`stage.windowsevent`][stage.windowsevent]               | Configures a `windowsevent` processing stage.                  | no       |
+| Block                                                        | Description                                                    | Required |
+| ------------------------------------------------------------ | -------------------------------------------------------------- | -------- |
+| [`stage.cri`][stage.cri]                                     | Configures a pre-defined CRI-format pipeline.                  | no       |
+| [`stage.decolorize`][stage.decolorize]                       | Strips ANSI color codes from log lines.                        | no       |
+| [`stage.docker`][stage.docker]                               | Configures a pre-defined Docker log format pipeline.           | no       |
+| [`stage.drop`][stage.drop]                                   | Configures a `drop` processing stage.                          | no       |
+| [`stage.eventlogmessage`][stage.eventlogmessage]             | Extracts data from the Message field in the Windows Event Log. | no       |
+| [`stage.geoip`][stage.geoip]                                 | Configures a `geoip` processing stage.                         | no       |
+| [`stage.json`][stage.json]                                   | Configures a JSON processing stage.                            | no       |
+| [`stage.label_drop`][stage.label_drop]                       | Configures a `label_drop` processing stage.                    | no       |
+| [`stage.label_keep`][stage.label_keep]                       | Configures a `label_keep` processing stage.                    | no       |
+| [`stage.labels`][stage.labels]                               | Configures a `labels` processing stage.                        | no       |
+| [`stage.limit`][stage.limit]                                 | Configures a `limit` processing stage.                         | no       |
+| [`stage.logfmt`][stage.logfmt]                               | Configures a `logfmt` processing stage.                        | no       |
+| [`stage.luhn`][stage.luhn]                                   | Configures a `luhn` processing stage.                          | no       |
+| [`stage.match`][stage.match]                                 | Configures a `match` processing stage.                         | no       |
+| [`stage.metrics`][stage.metrics]                             | Configures a `metrics` stage.                                  | no       |
+| [`stage.multiline`][stage.multiline]                         | Configures a `multiline` processing stage.                     | no       |
+| [`stage.output`][stage.output]                               | Configures an `output` processing stage.                       | no       |
+| [`stage.pack`][stage.pack]                                   | Configures a `pack` processing stage.                          | no       |
+| [`stage.pattern`][stage.pattern]                             | Configures a `pattern` processing stage.                       | no       |
+| [`stage.regex`][stage.regex]                                 | Configures a `regex` processing stage.                         | no       |
+| [`stage.replace`][stage.replace]                             | Configures a `replace` processing stage.                       | no       |
+| [`stage.sampling`][stage.sampling]                           | Configures a `sampling` processing stage.                      | no       |
+| [`stage.static_labels`][stage.static_labels]                 | Configures a `static_labels` processing stage.                 | no       |
+| [`stage.structured_metadata`][stage.structured_metadata]     | Configures a structured metadata processing stage.             | no       |
+| [`stage.structured_metadata_drop`][structured_metadata_drop] | Configures a `structured_metadata_drop` processing stage.      | no       |
+| [`stage.template`][stage.template]                           | Configures a `template` processing stage.                      | no       |
+| [`stage.tenant`][stage.tenant]                               | Configures a `tenant` processing stage.                        | no       |
+| [`stage.timestamp`][stage.timestamp]                         | Configures a `timestamp` processing stage.                     | no       |
+| [`stage.windowsevent`][stage.windowsevent]                   | Configures a `windowsevent` processing stage.                  | no       |
 
 You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
@@ -102,6 +103,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.sampling]: #stagesampling
 [stage.static_labels]: #stagestatic_labels
 [stage.structured_metadata]: #stagestructured_metadata
+[stage.structured_metadata_drop]: #stagestructured_metadata_drop
 [stage.template]: #stagetemplate
 [stage.tenant]: #stagetenant
 [stage.timestamp]: #stagetimestamp
@@ -579,6 +581,8 @@ stage.label_keep {
 ### `stage.labels`
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map and set new labels on incoming log entries.
+
+For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
 
 The following arguments are supported:
 
@@ -1459,6 +1463,8 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
 
+For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+
 The following arguments are supported:
 
 | Name     | Type          | Description                                    | Default | Required |
@@ -1493,6 +1499,22 @@ stage.structured_metadata {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
     }
+}
+```
+
+### `structured_metadata_drop`
+
+The `structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entires.
+
+The following arguments are supported:
+
+| Name     | Type           | Description                                               | Default | Required |
+| -------- | -------------- | --------------------------------------------------------- | ------- | -------- |
+| `values` | `list(string)` | Configures a `structured_metadata_drop` processing stage. | `[]`    |          |
+
+```alloy
+stage.structured_metadata_drop {
+    values = [ "kubernetes_node_name", "kubernetes_namespace" ]
 }
 ```
 

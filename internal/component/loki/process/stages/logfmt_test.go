@@ -4,10 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
-
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
@@ -63,7 +62,7 @@ func TestLogfmt(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(util_log.Logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err)
 			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
 			assert.Equal(t, testData.expectedExtract, out.Extracted)

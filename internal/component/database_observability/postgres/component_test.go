@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func Test_enableOrDisableCollectors(t *testing.T) {
@@ -33,9 +33,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -54,8 +55,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -74,8 +76,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -95,8 +98,9 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -115,13 +119,14 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("enable query_sample collector", func(t *testing.T) {
+	t.Run("enable query_samples collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -135,13 +140,14 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
+			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("enable schema table", func(t *testing.T) {
+	t.Run("enable schema_details collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -155,9 +161,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
-			collector.QuerySamplesCollector:  false,
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
@@ -177,11 +184,12 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		assert.Equal(t, map[string]bool{
 			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  true,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 
-	t.Run("disable query_sample collector", func(t *testing.T) {
+	t.Run("disable query_samples collector", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
@@ -195,9 +203,10 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		actualCollectors := enableOrDisableCollectors(args)
 
 		assert.Equal(t, map[string]bool{
-			collector.QueryDetailsCollector:  false,
+			collector.QueryDetailsCollector:  true,
 			collector.QuerySamplesCollector:  false,
-			collector.SchemaDetailsCollector: false,
+			collector.SchemaDetailsCollector: true,
+			collector.ExplainPlanCollector:   false,
 		}, actualCollectors)
 	})
 }
@@ -287,7 +296,7 @@ func Test_addLokiLabels(t *testing.T) {
 		go func() {
 			ts := time.Now().UnixNano()
 			entryHandler.Chan() <- loki.Entry{
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      "some-message",
 				},
@@ -325,4 +334,61 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)
+}
+
+func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {
+	t.Parallel()
+
+	exampleDBO11yAlloyConfig := `
+	data_source_name = "postgres://db"
+	forward_to = []
+	schema_details {
+		collect_interval = "11s"
+	}
+`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
+}
+
+func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *testing.T) {
+	t.Run("default cache configuration", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
+		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
+		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
+	})
+
+	t.Run("custom cache configuration", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		schema_details {
+			collect_interval = "30s"
+			cache_enabled = false
+			cache_size = 512
+			cache_ttl = "5m"
+		}
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.Equal(t, 30*time.Second, args.SchemaDetailsArguments.CollectInterval)
+		assert.False(t, args.SchemaDetailsArguments.CacheEnabled)
+		assert.Equal(t, 512, args.SchemaDetailsArguments.CacheSize)
+		assert.Equal(t, 5*time.Minute, args.SchemaDetailsArguments.CacheTTL)
+	})
 }

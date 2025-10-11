@@ -83,7 +83,7 @@ func (t *baseTransport) maxMessageLength() int {
 }
 
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
 		lb.Set(string(k), string(v))
 	}
@@ -331,7 +331,11 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	}, t.maxMessageLength())
 
 	if err != nil {
-		level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		if err == io.EOF {
+			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		} else {
+			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		}
 	}
 }
 

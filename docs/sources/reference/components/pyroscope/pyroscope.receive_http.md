@@ -44,28 +44,29 @@ You can use the following argument with `pyroscope.receive_http`:
 
 ## Blocks
 
-You can use the following block with `pyroscope.receive_http`:
+You can use the following blocks with `pyroscope.receive_http`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
 
 ### `http`
 
-The `http` block configures the HTTP server.
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
+[tls]: #tls
 
-| Name                   | Type       | Description                                                                                                  | Default  | Required |
-| ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------------ | -------- | -------- |
-| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 16384.                                          | `16384`  | no       |
-| `listen_address`       | `string`   | Network address on which the server listens for connections. Defaults to accepting all incoming connections. | `""`     | no       |
-| `listen_port`          | `int`      | Port number on which the server listens for connections.                                                     | `8080`   | no       |
-| `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                            | `"120s"` | no       |
-| `server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                            | `"30s"`  | no       |
-| `server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                           | `"30s"`  | no       |
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

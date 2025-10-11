@@ -97,7 +97,7 @@ func AssertMetricsAvailable(t *testing.T, metrics []string, histogramMetrics []s
 
 		missingMetrics = findMissingMetrics(expectedMetrics, actualMetrics)
 
-		assert.Emptyf(c, missingMetrics, "Expected to receive %v metrics, but did not find %v in received metrics %v", expectedMetrics, missingMetrics, maps.Keys(actualMetrics))
+		assert.Emptyf(c, missingMetrics, "Did not find %v in received metrics %v", missingMetrics, maps.Keys(actualMetrics))
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 }
 

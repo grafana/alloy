@@ -13,6 +13,7 @@ services:
       test: [ "CMD", "curl", "-f", "http://localhost:3000/healthz" ]
       interval: 1s
       start_interval: 0s
+      start_period: 10s
       timeout: 10s
       retries: 5
     env_file:
@@ -27,7 +28,7 @@ services:
       grafana:
         condition: service_healthy
     volumes:
-      - ../operations/alloy-mixin:/etc/alloy-mixin
+      - ../../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
     command: jb install
 
@@ -41,7 +42,7 @@ services:
     environment:
       - GRAFANA_URL=http://grafana:3000
     volumes:
-      - ../operations/alloy-mixin:/etc/alloy-mixin
+      - ../../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
     command: grr apply grizzly/dashboards.jsonnet
 

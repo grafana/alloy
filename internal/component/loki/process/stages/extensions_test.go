@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var (
@@ -69,7 +69,7 @@ func TestNewDocker(t *testing.T) {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
-			p, err := NewDocker(util_log.Logger, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewDocker(log.NewNopLogger(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create Docker parser: %s", err)
 			}
@@ -193,7 +193,7 @@ func TestCRI_tags(t *testing.T) {
 				MaxPartialLineSize:         tt.maxPartialLineSize,
 				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
 			}
-			p, err := NewCRI(util_log.Logger, cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			got := make([]string, 0)
@@ -276,7 +276,7 @@ func TestNewCri(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			cfg := DefaultCRIConfig
-			p, err := NewCRI(util_log.Logger, cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(log.NewNopLogger(), cfg, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create CRI parser: %s", err)
 			}

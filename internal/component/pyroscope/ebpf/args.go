@@ -28,6 +28,7 @@ type Arguments struct {
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
+	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
 }
 
 type DeprecatedArguments struct {

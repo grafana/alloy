@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -17,13 +16,9 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/backoff"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -48,35 +43,7 @@ var (
 			},
 		}
 	}
-	_ component.Component = (*Component)(nil)
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "pyroscope.write",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   Exports{},
-		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
-			tracer := o.Tracer.Tracer("pyroscope.write")
-			args := c.(Arguments)
-			userAgent := useragent.Get()
-			uid := alloyseed.Get().UID
-
-			return New(
-				o.Logger,
-				tracer,
-				o.Registerer,
-				func(exports Exports) {
-					o.OnStateChange(exports)
-				},
-				userAgent,
-				uid,
-				args,
-			)
-		},
-	})
-}
 
 // Arguments represents the input state of the pyroscope.write
 // component.
@@ -181,8 +148,6 @@ func New(
 	}, nil
 }
 
-var _ component.Component = (*Component)(nil)
-
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
 	<-ctx.Done()
@@ -190,9 +155,9 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 // Update implements Component.
-func (c *Component) Update(newConfig component.Arguments) error {
-	c.cfg = newConfig.(Arguments)
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig.(Arguments), c.metrics, c.userAgent, c.uid)
+func (c *Component) Update(newConfig Arguments) error {
+	c.cfg = newConfig
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid)
 	if err != nil {
 		return err
 	}
@@ -393,30 +358,30 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
 	var (
-		protoLabels  = make([]*typesv1.LabelPair, 0, len(lbs)+len(f.config.ExternalLabels))
+		protoLabels  = make([]*typesv1.LabelPair, 0, lbs.Len()+len(f.config.ExternalLabels))
 		protoSamples = make([]*pushv1.RawSample, 0, len(samples))
-		lbsBuilder   = labels.NewBuilder(nil)
+		lbsBuilder   = labels.NewBuilder(labels.EmptyLabels())
 	)
 
-	for _, label := range lbs {
+	lbs.Range(func(label labels.Label) {
 		// filter reserved labels, with exceptions for __name__ and __delta__.
 		if strings.HasPrefix(label.Name, model.ReservedLabelPrefix) &&
 			label.Name != labels.MetricName &&
 			label.Name != pyroscope.LabelNameDelta {
 
-			continue
+			return
 		}
 		lbsBuilder.Set(label.Name, label.Value)
-	}
+	})
 	for name, value := range f.config.ExternalLabels {
 		lbsBuilder.Set(name, value)
 	}
-	for _, l := range lbsBuilder.Labels() {
+	lbsBuilder.Labels().Range(func(l labels.Label) {
 		protoLabels = append(protoLabels, &typesv1.LabelPair{
 			Name:  l.Name,
 			Value: l.Value,
 		})
-	}
+	})
 	for _, sample := range samples {
 		protoSamples = append(protoSamples, &pushv1.RawSample{
 			ID:         sample.ID,
@@ -661,31 +626,37 @@ func validateLabels(lbls labels.Labels) error {
 		return labelset.ErrServiceNameIsRequired
 	}
 
-	sort.Sort(lbls)
-
 	lastLabelName := ""
-	for _, l := range lbls {
+	var err error = nil
+	lbls.Range(func(l labels.Label) {
+		if err != nil {
+			return // short-circuit so we return the first encountered error
+		}
+
 		if cmp := strings.Compare(lastLabelName, l.Name); cmp == 0 {
-			return fmt.Errorf("duplicate label name: %s", l.Name)
+			err = fmt.Errorf("duplicate label name: %s", l.Name)
+			return
 		}
 
 		// Validate label value
 		if !model.LabelValue(l.Value).IsValid() {
-			return fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+			err = fmt.Errorf("invalid label value for %s: %s", l.Name, l.Value)
+			return
 		}
 
 		// Skip label name validation for pyroscope reserved labels
 		if l.Name != pyroscope.LabelName {
 			// Validate label name
-			if err := labelset.ValidateLabelName(l.Name); err != nil {
-				return fmt.Errorf("invalid label name: %w", err)
+			if err = labelset.ValidateLabelName(l.Name); err != nil {
+				err = fmt.Errorf("invalid label name: %w", err)
+				return
 			}
 		}
 
 		lastLabelName = l.Name
-	}
+	})
 
-	return nil
+	return err
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {
