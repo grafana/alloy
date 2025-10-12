@@ -1852,26 +1852,27 @@ The `stage.useragent` inner block configures a processing stage that parses user
 
 The following arguments are supported:
 
-| Name         | Type     | Description                                                                          | Default | Required |
-| ------------ | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `source`     | `string` | Name from extracted data to parse as user-agent. If empty, uses the log message.    | `""`    | no       |
-| `regex_file` | `string` | Path to a custom regex file for user-agent parsing. If empty, uses default regexes. | `""`    | no       |
+| Name         | Type     | Description                                                                                             | Default | Required |
+| ------------ | -------- | ------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `source`     | `string` | Name from extracted data to parse as user-agent. If empty, uses the log message.                       | `""`    | no       |
+| `regex_file` | `string` | Path to a custom YAML file containing regular expression patterns. If empty, uses default expressions. | `""`    | no       |
 
 The `source` field defines the source of data to parse as a user-agent string.
-When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
+When `source` is missing or empty, the stage parses the log line itself.
+It can also be used to parse a previously extracted value.
 
-The `regex_file` field allows you to specify a custom YAML file containing regex patterns for user-agent parsing.
+The `regex_file` field allows you to specify a custom YAML file containing regular expression patterns for user-agent parsing.
 If not provided, the stage uses the default patterns from the uap-core library.
 
 The stage extracts the following fields into the shared map:
 
-- `useragent_browser`: The browser name (e.g., "Chrome", "Firefox", "Safari")
-- `useragent_browser_version`: The browser version (e.g., "91.0.4472")
-- `useragent_os`: The operating system name (e.g., "Windows", "Mac OS X", "iOS")
-- `useragent_os_version`: The operating system version (e.g., "10.15.7")
-- `useragent_device`: The device family (e.g., "iPhone", "iPad") - only if not "Other"
-- `useragent_device_brand`: The device brand (e.g., "Apple", "Samsung")
-- `useragent_device_model`: The device model (e.g., "iPhone", "Galaxy S21")
+- `useragent_browser`: The browser name. For example, "Chrome", "Firefox", "Safari".
+- `useragent_browser_version`: The browser version. For example, "91.0.4472".
+- `useragent_os`: The operating system name. For example, "Windows", "Mac OS X", "iOS".
+- `useragent_os_version`: The operating system version. For example, "10.15.7".
+- `useragent_device`: The device family. For example, "iPhone", "iPad".
+- `useragent_device_brand`: The device brand. For example, "Apple", "Samsung".
+- `useragent_device_model`: The device model. For example, "iPhone", "Galaxy S21".
 
 #### Example usage
 
@@ -1891,7 +1892,7 @@ The stage extracts the following key-value pairs:
 useragent_browser: Mobile Safari
 useragent_browser_version: 14.1.1
 useragent_os: iOS
-useragent_os_version: 14.6.
+useragent_os_version: 14.6
 useragent_device: iPhone
 useragent_device_brand: Apple
 useragent_device_model: iPhone
