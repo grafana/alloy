@@ -115,6 +115,7 @@ require (
 	github.com/oklog/run v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.74.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.134.0

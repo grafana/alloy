@@ -33,7 +33,9 @@ Main (unreleased)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
 
-- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano)
+
+- (_Experimental_) Add `otelcol.connector.count` community component to count spans, span events, metrics, data points, and log records. (@yann-soubeyrand)
 
 ### Enhancements
 
