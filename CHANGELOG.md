@@ -1,5 +1,12 @@
 # Changelog
 
+Main (unreleased)
+-----------------
+
+### Features
+
+- (_Experimental_) A new `otelcol.receiver.github` component which collects data from Github. (@matt-gp) 
+
 v1.12.0
 -----------------
 
