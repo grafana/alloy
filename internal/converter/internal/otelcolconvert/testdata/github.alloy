@@ -1,0 +1,83 @@
+otelcol.auth.bearer "default" {
+	token = "ghp_1234567890abcdefghijklmnopqrstuvwxyz12"
+}
+
+otelcol.receiver.github "default" {
+	initial_delay       = "1s"
+	collection_interval = "1m0s"
+
+	scraper {
+		github_org   = "grafana"
+		endpoint     = "https://api.github.com"
+		search_query = "org:grafana"
+
+		auth {
+			authenticator = otelcol.auth.bearer.default.handler
+		}
+
+		metrics {
+			vcs.change.count {
+				enabled = false
+			}
+
+			vcs.change.duration {
+				enabled = false
+			}
+
+			vcs.change.time_to_approval {
+				enabled = false
+			}
+
+			vcs.change.time_to_merge {
+				enabled = false
+			}
+
+			vcs.ref.count {
+				enabled = false
+			}
+
+			vcs.ref.lines_delta {
+				enabled = false
+			}
+
+			vcs.ref.revisions_delta {
+				enabled = false
+			}
+
+			vcs.ref.time {
+				enabled = false
+			}
+
+			vcs.repository.count {
+				enabled = false
+			}
+
+			vcs.contributor.count {
+				enabled = true
+			}
+		}
+	}
+
+	webhook {
+		endpoint         = "0.0.0.0:8080"
+		path             = "/webhook-events"
+		health_path      = "/webhook-health"
+		secret           = "webhook-secret"
+		required_headers = {
+			"X-Custom-Header" = "custom-value",
+		}
+		service_name        = "github-webhook"
+		include_span_events = true
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

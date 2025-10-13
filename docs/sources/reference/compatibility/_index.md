@@ -398,6 +398,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
 - [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
 - [otelcol.receiver.fluentforward](../components/otelcol/otelcol.receiver.fluentforward)
+- [otelcol.receiver.github](../components/otelcol/otelcol.receiver.github)
 - [otelcol.receiver.googlecloudpubsub](../components/otelcol/otelcol.receiver.googlecloudpubsub)
 - [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)

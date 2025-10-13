@@ -2,80 +2,40 @@ package github
 
 import (
 	"errors"
-	"time"
-	"unsafe"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver"
-
-	"go.opentelemetry.io/collector/scraper/scraperhelper"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 )
 
-type GithubConfig struct {
-	InitialDelay       time.Duration            `alloy:"initial_delay,attr,optional"`
-	CollectionInterval time.Duration            `alloy:"collection_interval,attr,optional"`
-	Scrapers           map[string]ScraperConfig `alloy:"scraper,block"`
-}
-
-func (args GithubConfig) Convert() githubreceiver.Config {
-	convertedScrapers := make(map[string]interface{}, len(args.Scrapers))
-	for name, scraper := range args.Scrapers {
-		convertedScrapers[name] = scraper.Convert()
-	}
-
-	config := githubreceiver.Config{
-		ControllerConfig: scraperhelper.ControllerConfig{
-			InitialDelay:       args.InitialDelay,
-			CollectionInterval: args.CollectionInterval,
-		},
-	}
-
-	*(*map[string]interface{})(unsafe.Pointer(&config.Scrapers)) = convertedScrapers
-
-	return config
-}
-
-func (args *GithubConfig) SetToDefault() {
-	if args.InitialDelay == 0 {
-		args.InitialDelay = 0
-	}
-	if args.CollectionInterval == 0 {
-		args.CollectionInterval = 60 * time.Second
-	}
-
-	for _, scraper := range args.Scrapers {
-		scraper.SetToDefault()
-	}
-}
-
-func (args GithubConfig) Validate() error {
-	for _, scraper := range args.Scrapers {
-		if err := scraper.Validate(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
+// scraper
 type ScraperConfig struct {
-	GithubOrg   string        `alloy:"github_org,attr"`
-	SearchQuery string        `alloy:"search_query,attr"`
-	Endpoint    string        `alloy:"endpoint,attr,optional"`
-	Auth        AuthConfig    `alloy:"auth,block"`
-	Metrics     MetricsConfig `alloy:"metrics,block,optional"`
+	GithubOrg            string        `alloy:"github_org,attr"`
+	Endpoint             string        `alloy:"endpoint,attr,optional"`
+	SearchQuery          string        `alloy:"search_query,attr,optional"`
+	ConcurrencyLimit     int           `alloy:"concurrency_limit,attr,optional"`
+	MergedPRLookbackDays int           `alloy:"merged_pr_lookback_days,attr,optional"`
+	Auth                 AuthConfig    `alloy:"auth,block"`
+	Metrics              MetricsConfig `alloy:"metrics,block,optional"`
 }
 
-func (sc ScraperConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"github_org":   sc.GithubOrg,
-		"search_query": sc.SearchQuery,
-		"endpoint":     sc.Endpoint,
-		"auth":         sc.Auth.Convert(),
-		"metrics":      sc.Metrics.Convert(),
+func (sc ScraperConfig) Convert() (map[string]interface{}, error) {
+	authConfig, err := sc.Auth.Convert()
+	if err != nil {
+		return nil, err
 	}
+
+	return map[string]interface{}{
+		"github_org":              sc.GithubOrg,
+		"endpoint":                sc.Endpoint,
+		"search_query":            sc.SearchQuery,
+		"concurrency_limit":       sc.ConcurrencyLimit,
+		"merged_pr_lookback_days": sc.MergedPRLookbackDays,
+		"auth":                    authConfig,
+		"metrics":                 sc.Metrics.Convert(),
+	}, nil
 }
 
 func (sc *ScraperConfig) SetToDefault() {
+
 	if sc.Metrics == (MetricsConfig{}) {
 		sc.Metrics.SetToDefault()
 	}
@@ -89,13 +49,22 @@ func (sc *ScraperConfig) Validate() error {
 }
 
 type AuthConfig struct {
-	Authenticator string `alloy:"authenticator,attr"`
+	Authenticator *auth.Handler `alloy:"authenticator,attr"`
 }
 
-func (ac AuthConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"authenticator": ac.Authenticator,
+func (ac AuthConfig) Convert() (map[string]interface{}, error) {
+	if ac.Authenticator == nil {
+		return nil, nil
 	}
+
+	ext, err := ac.Authenticator.GetExtension(auth.Client)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"authenticator": ext.ID.String(),
+	}, nil
 }
 
 type MetricConfig struct {
@@ -156,5 +125,42 @@ func (mc *MetricsConfig) SetToDefault() {
 		VCSRefTime:              MetricConfig{Enabled: true},
 		VCSRepositoryCount:      MetricConfig{Enabled: true},
 		VCSContributorCount:     MetricConfig{Enabled: false},
+	}
+}
+
+// Webhook
+type WebhookConfig struct {
+	Endpoint          string            `alloy:"endpoint,attr,optional"`
+	Path              string            `alloy:"path,attr,optional"`
+	HealthPath        string            `alloy:"health_path,attr,optional"`
+	Secret            string            `alloy:"secret,attr,optional"`
+	RequiredHeaders   map[string]string `alloy:"required_headers,attr,optional"`
+	ServiceName       string            `alloy:"service_name,attr,optional"`
+	IncludeSpanEvents bool              `alloy:"include_span_events,attr,optional"`
+}
+
+func (wc WebhookConfig) Convert() map[string]interface{} {
+	return map[string]interface{}{
+		"endpoint":            wc.Endpoint,
+		"path":                wc.Path,
+		"health_path":         wc.HealthPath,
+		"secret":              wc.Secret,
+		"required_headers":    wc.RequiredHeaders,
+		"service_name":        wc.ServiceName,
+		"include_span_events": wc.IncludeSpanEvents,
+	}
+}
+
+func (wc *WebhookConfig) SetToDefault() {
+	if wc.Endpoint == "" {
+		wc.Endpoint = "localhost:8080"
+	}
+
+	if wc.Path == "" {
+		wc.Path = "/events"
+	}
+
+	if wc.HealthPath == "" {
+		wc.HealthPath = "/health"
 	}
 }
