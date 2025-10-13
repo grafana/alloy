@@ -128,3 +128,53 @@ func TestNodeFilterConfigDefaults(t *testing.T) {
 	require.False(t, args.NodeFilter.Enabled)
 	require.Empty(t, args.NodeFilter.NodeName)
 }
+
+func TestPreserveDiscoveredLabelsConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         string
+		expectedError  string
+		expectedResult bool
+	}{
+		{
+			name: "preserve_discovered_labels disabled by default",
+			config: `
+				forward_to = []
+			`,
+			expectedResult: false,
+		},
+		{
+			name: "preserve_discovered_labels enabled explicitly",
+			config: `
+				forward_to = []
+				preserve_discovered_labels = true
+			`,
+			expectedResult: true,
+		},
+		{
+			name: "preserve_discovered_labels disabled explicitly",
+			config: `
+				forward_to = []
+				preserve_discovered_labels = false
+			`,
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.config), &args)
+
+			if tt.expectedError != "" {
+				require.ErrorContains(t, err, tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedResult, args.PreserveDiscoveredLabels)
+		})
+	}
+}
+
+
