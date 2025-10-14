@@ -5,7 +5,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configauth"
@@ -226,7 +226,7 @@ func TestConfigConversion(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
-			var args splunkhec.Arguments
+			var args config.SplunkHecArguments
 			err := syntax.Unmarshal([]byte(tt.alloyCfg), &args)
 			if err != nil {
 				t.Fatal(err)

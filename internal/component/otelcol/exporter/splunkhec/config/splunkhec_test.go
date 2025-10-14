@@ -1,9 +1,9 @@
-package splunkhec_config_test
+package config_test
 
 import (
 	"testing"
 
-	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func TestUnmarshalSplunkHecClientArguments(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkHecClientArguments
+			var sl config.SplunkHecClientArguments
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
@@ -115,7 +115,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkConf
+			var sl config.SplunkConf
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
@@ -208,7 +208,7 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkHecArguments
+			var sl config.SplunkHecArguments
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
