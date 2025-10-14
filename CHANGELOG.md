@@ -49,6 +49,8 @@ Main (unreleased)
 
 ### Bugfixes
 
+- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
+
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)

@@ -274,7 +274,10 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			if !entryTimestamp.After(lastReadTime) {
+			// Skip only if the timestamp is strictly before lastReadTime.
+			// This allows multiple log lines with the same timestamp to be processed,
+			// which is common in Windows containers that log rapidly.
+			if entryTimestamp.Before(lastReadTime) {
 				continue
 			}
 			lastReadTime = entryTimestamp
