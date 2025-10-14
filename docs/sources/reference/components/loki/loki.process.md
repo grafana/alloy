@@ -697,10 +697,10 @@ The following arguments are supported:
 
 | Name          | Type     | Description                                                    | Default          | Required |
 | ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
 | `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
 | `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
 | `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
-| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
