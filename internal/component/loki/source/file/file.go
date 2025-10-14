@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/tail/watch"
+	"github.com/oklog/run"
 	"github.com/prometheus/common/model"
 
 	"go.uber.org/atomic"
@@ -143,6 +145,7 @@ func (c *Component) Run(ctx context.Context) error {
 			reader: t.reader,
 		}
 	})
+
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
 
@@ -167,66 +170,53 @@ func (c *Component) Run(ctx context.Context) error {
 		c.tasksMut.RUnlock()
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			for _, receiver := range c.receivers {
-				select {
-				case <-ctx.Done():
-					return nil
-				case receiver.Chan() <- entry:
-				}
-			}
-			c.receiversMut.RUnlock()
-		case <-c.updateReaders:
-			// It's important to have the same lock order in Update and Run to avoid
-			// deadlocks.
-			c.tasksMut.Lock()
-			c.receiversMut.RLock()
+	var rg run.Group
 
-			// When we are updating tasks we need to continue to read from handler.Chan().
-			// This is done to avoid a race condition where stopping a reader is
-			// flushing its data, but nothing is reading from handler.Chan().
-			readCtx, cancel := context.WithCancel(ctx)
-			go func() {
-				for {
+	rg.Add(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case entry := <-c.handler.Chan():
+				c.receiversMut.RLock()
+				for _, receiver := range c.receivers {
 					select {
-					case entry := <-c.handler.Chan():
-						for _, receiver := range c.receivers {
-							select {
-							case <-readCtx.Done():
-								return
-							case receiver.Chan() <- entry:
-							}
-						}
-					case <-readCtx.Done():
-						return
+					case <-ctx.Done():
+						return nil
+					case receiver.Chan() <- entry:
 					}
 				}
-			}()
-
-			var tasks []*runnerTask
-			level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
-			for _, entry := range c.tasks {
-				tasks = append(tasks, &entry)
-			}
-			err := runner.ApplyTasks(ctx, tasks)
-
-			// We cancel readCtx because we are done updating tasks and the main loop will continue to
-			// read from it.
-			cancel()
-			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
-			c.receiversMut.RUnlock()
-			c.tasksMut.Unlock()
-
-			if err != nil && err != context.Canceled {
-				return err
+				c.receiversMut.RUnlock()
 			}
 		}
-	}
+	}, func(err error) {})
+
+	rg.Add(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-c.updateReaders:
+				level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
+
+				c.tasksMut.RLock()
+				var tasks []*runnerTask
+				for _, entry := range c.tasks {
+					tasks = append(tasks, &entry)
+				}
+				c.tasksMut.RUnlock()
+
+				if err := runner.ApplyTasks(ctx, tasks); err != nil && !errors.Is(err, context.Canceled) {
+					level.Error(c.opts.Logger).Log("msg", "failed to apply tasks", "err", err)
+				} else {
+					level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
+				}
+			}
+
+		}
+	}, func(err error) {})
+
+	return rg.Run()
 }
 
 // Update implements component.Component.
@@ -248,7 +238,6 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		c.receiversMut.RUnlock()
 	}
-
 	c.tasks = make(map[positions.Entry]runnerTask)
 	if len(newArgs.Targets) == 0 {
 		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
