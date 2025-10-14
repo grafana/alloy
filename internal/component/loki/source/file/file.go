@@ -210,7 +210,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 				if err := runner.ApplyTasks(ctx, tasks); err != nil && !errors.Is(err, context.Canceled) {
 					level.Error(c.opts.Logger).Log("msg", "failed to apply tasks", "err", err)
-				} else {
+				} else if err == nil {
 					level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 				}
 			}
