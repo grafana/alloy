@@ -1887,7 +1887,7 @@ loki.process "default" {
 ```
 
 Given the following input entry, the stage truncates the entry `"I'm a log message!"` into `"I'm a log..."`, and the value of the `"label2"` label `"hello world"` into `"hello..."`.
-As there is no `structured_metadata_limit` configured, the structured_metadata will not be evaluated for truncation.
+As there is no `structured_metadata_limit` configured, the structured metadata isn't evaluated for truncation.
 
 ```text
 entry: "I'm a log message!"
