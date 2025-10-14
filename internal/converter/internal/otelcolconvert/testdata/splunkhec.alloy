@@ -23,6 +23,13 @@ otelcol.exporter.splunkhec "default" {
 		idle_conn_timeout       = "10s"
 	}
 
+	hec_metadata_to_otel_attrs {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
+	}
+
 	splunk {
 		token              = "[REDACTED]"
 		source             = "otel"
