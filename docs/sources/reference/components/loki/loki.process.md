@@ -1865,7 +1865,7 @@ The following arguments are supported:
 
 A `truncate` stage must have at least one `limit` field configured.
 Each of the `limit` fields should be expressed in logical units, for example `"1KiB"`.
-The stage will check the length of the log line, label values, or structured metadata values against the configured limit and truncate if it exceeds the limit
+The stage checks the length of the log line, label values, or structured metadata values against the configured limit and truncate if it exceeds the limit.
 If a `suffix` is provided, the limit will be reduced by the length of the `suffix`, and the `suffix` will be appended to the truncated field.
 
 Whenever a line, label value, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
