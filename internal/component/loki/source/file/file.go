@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/tail/watch"
-	"github.com/oklog/run"
 	"github.com/prometheus/common/model"
 
 	"go.uber.org/atomic"
@@ -170,32 +169,35 @@ func (c *Component) Run(ctx context.Context) error {
 		c.tasksMut.RUnlock()
 	}()
 
-	var rg run.Group
-
-	rg.Add(func() error {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
-				return nil
+				return
 			case entry := <-c.handler.Chan():
 				c.receiversMut.RLock()
 				for _, receiver := range c.receivers {
 					select {
 					case <-ctx.Done():
-						return nil
+						return
 					case receiver.Chan() <- entry:
 					}
 				}
 				c.receiversMut.RUnlock()
 			}
 		}
-	}, func(err error) {})
+	}()
 
-	rg.Add(func() error {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
-				return nil
+				return
 			case <-c.updateReaders:
 				level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
 
@@ -212,11 +214,11 @@ func (c *Component) Run(ctx context.Context) error {
 					level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 				}
 			}
-
 		}
-	}, func(err error) {})
+	}()
 
-	return rg.Run()
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
