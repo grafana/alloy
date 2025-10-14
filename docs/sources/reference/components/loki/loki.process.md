@@ -1852,7 +1852,7 @@ stage.timestamp {
 
 ### `stage.truncate`
 
-The `stage.truncate` inner block configures a processing stage that will truncate log entries, labels, or structured_metadata that exceed configured limits.
+The `stage.truncate` inner block configures a processing stage that truncates log entries, labels, or structured metadata that exceed configured limits.
 
 The following arguments are supported:
 
