@@ -297,7 +297,7 @@ func (args *SplunkConf) Validate() error {
 
 // Convert converts args into the upstream type
 func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
-	config := splunkhecexporter.Config{
+	config := &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
 		BackOffConfig:           *args.RetrySettings.Convert(),
 		DeprecatedBatcher:       args.Splunk.DeprecatedBatcher.Convert(),
