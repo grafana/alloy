@@ -1895,9 +1895,8 @@ labels: { "label1": "hi", "label2": "hello world" }
 structured_metadata: { "metadata1": "here is some metadata", "metadata2": "and here is some more"}
 ```
 
-The extracted fields map for the entry will now contain the `"truncated"` field,
-which can be used to add a label (in a `stage.labels`) or structured_metadata (in a `stage.structured_metadata`) to the entry
-so that the logs can be identified as truncated after processing.
+The extracted fields map for the entry contain the `"truncated"` field.
+You can use this map to add a label in `stage.labels` or structured metadata in `stage.structured_metadata` to the entry so you can identify the logs as truncated after processing.
 
 ```text
 truncated: label,line
