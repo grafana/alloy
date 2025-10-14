@@ -48,7 +48,7 @@ exporters:
       extra_attributes:
         dataset_name: SplunkCloudBeaverStack
         custom_key: custom_value
-    hec_metadata_to_otel_attrs:
+    otel_attrs_to_hec_metadata:
       source: "mysource"
       sourcetype: "mysourcetype"
       index: "myindex"

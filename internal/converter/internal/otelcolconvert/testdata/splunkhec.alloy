@@ -23,7 +23,7 @@ otelcol.exporter.splunkhec "default" {
 		idle_conn_timeout       = "10s"
 	}
 
-	hec_metadata_to_otel_attrs {
+	otel_attrs_to_hec_metadata {
 		source     = "mysource"
 		sourcetype = "mysourcetype"
 		index      = "myindex"
