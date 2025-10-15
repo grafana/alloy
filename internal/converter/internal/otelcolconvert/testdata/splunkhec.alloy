@@ -23,13 +23,6 @@ otelcol.exporter.splunkhec "default" {
 		idle_conn_timeout       = "10s"
 	}
 
-	otel_attrs_to_hec_metadata {
-		source     = "mysource"
-		sourcetype = "mysourcetype"
-		index      = "myindex"
-		host       = "myhost"
-	}
-
 	splunk {
 		token              = "[REDACTED]"
 		source             = "otel"
@@ -58,5 +51,12 @@ otelcol.exporter.splunkhec "default" {
 				dataset_name = "SplunkCloudBeaverStack",
 			}
 		}
+	}
+
+	otel_attrs_to_hec_metadata {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
 	}
 }
