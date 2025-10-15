@@ -297,7 +297,7 @@ func (args *SplunkConf) Validate() error {
 
 // Convert converts args into the upstream type
 func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
-	config := &splunkhecexporter.Config{
+	cfg := &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
 		BackOffConfig:           *args.RetrySettings.Convert(),
 		DeprecatedBatcher:       args.Splunk.DeprecatedBatcher.Convert(),
@@ -327,17 +327,17 @@ func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.QueueSettings = *q
+	cfg.QueueSettings = *q
 
-	config.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
-	config.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
-	config.OtelAttrsToHec.Index = args.OtelAttrsToHec.Index
-	config.OtelAttrsToHec.Host = args.OtelAttrsToHec.Host
+	cfg.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
+	cfg.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
+	cfg.OtelAttrsToHec.Index = args.OtelAttrsToHec.Index
+	cfg.OtelAttrsToHec.Host = args.OtelAttrsToHec.Host
 
-	return config, nil
+	return cfg, nil
 }
 
-func (args SplunkHecArguments) SetToDefault() {
+func (args *SplunkHecArguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 	args.SplunkHecClientArguments.SetToDefault()
 	args.QueueSettings.SetToDefault()
