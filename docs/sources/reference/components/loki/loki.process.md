@@ -705,7 +705,7 @@ The following arguments are supported:
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
 
-If you want the luhn algorithm to identify numbers with delimiters (e.g. `4032-0325-1354-8443`) you can configure the `delimiters` field with the expected delimiters.
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
 
 The following example log line contains an approved credit card number.
 
