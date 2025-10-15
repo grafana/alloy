@@ -20,6 +20,7 @@ import (
 	kubetypes "k8s.io/apimachinery/pkg/types"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -262,9 +263,14 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	level.Info(t.log).Log("msg", "opened log stream", "start time", lastReadTime)
 
+	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
+}
+
+// processLogStream reads log lines from a reader and processes them.
+// It returns when the context is done, the stream ends, or an error occurs.
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
-
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -274,7 +280,10 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			if !entryTimestamp.After(lastReadTime) {
+			// Skip only if the timestamp is strictly before lastReadTime.
+			// This allows multiple log lines with the same timestamp to be processed,
+			// which is common in Windows containers that log rapidly.
+			if entryTimestamp.Before(lastReadTime) {
 				continue
 			}
 			lastReadTime = entryTimestamp
