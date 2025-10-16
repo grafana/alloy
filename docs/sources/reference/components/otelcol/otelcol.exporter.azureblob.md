@@ -5,10 +5,15 @@ labels:
   stage: experimental
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: otelcol.exporter.azureblob
 ---
 
 # `otelcol.exporter.azureblob`
+
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -40,7 +45,7 @@ otelcol.exporter.azureblob "<LABEL>" {
 
 ## Arguments
 
-This component doesn't support any top-level arguments.
+The `otelcol.exporter.azureblob` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
