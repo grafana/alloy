@@ -126,13 +126,9 @@ func (c *Component) Run(ctx context.Context) error {
 			})
 
 		case <-c.watchDog.C:
-			// Only export if targets are different
+			// Update state in each interval
 			expand(func(paths []discovery.Target) {
-				if !equalTargets(c.previousTargets, paths) {
-					c.previousTargets = make([]discovery.Target, len(paths))
-					copy(c.previousTargets, paths)
-					c.opts.OnStateChange(discovery.Exports{Targets: paths})
-				}
+				c.opts.OnStateChange(discovery.Exports{Targets: paths})
 			})
 		case <-ctx.Done():
 			return nil
@@ -151,16 +147,4 @@ func (c *Component) getWatchedFiles() []discovery.Target {
 		paths = append(paths, newPaths...)
 	}
 	return paths
-}
-
-func equalTargets(a, b []discovery.Target) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if !a[i].EqualsTarget(&b[i]) {
-			return false
-		}
-	}
-	return true
 }
