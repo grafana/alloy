@@ -13,9 +13,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/go-gelf/v2/gelf"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -151,7 +151,7 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 	}
 	t.handler.Chan() <- loki.Entry{
 		Labels: filtered,
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: timestamp,
 			Line:      t.encodeBuff.String(),
 		},

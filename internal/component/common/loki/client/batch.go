@@ -12,7 +12,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
@@ -32,7 +32,7 @@ type SentDataMarkerHandler interface {
 // and entries in a single batch request. In case of multi-tenant Promtail, log
 // streams for each tenant are stored in a dedicated batch.
 type batch struct {
-	streams map[string]*logproto.Stream
+	streams map[string]*push.Stream
 	// totalBytes holds the total amounts of bytes, across the log lines in this batch.
 	totalBytes int
 	createdAt  time.Time
@@ -45,7 +45,7 @@ type batch struct {
 
 func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 	b := &batch{
-		streams:        map[string]*logproto.Stream{},
+		streams:        map[string]*push.Stream{},
 		totalBytes:     0,
 		createdAt:      time.Now(),
 		maxStreams:     maxStreams,
@@ -77,16 +77,16 @@ func (b *batch) add(entry loki.Entry) error {
 		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
 	}
 	// Add the entry as a new stream
-	b.streams[labels] = &logproto.Stream{
+	b.streams[labels] = &push.Stream{
 		Labels:  labels,
-		Entries: []logproto.Entry{entry.Entry},
+		Entries: []push.Entry{entry.Entry},
 	}
 	return nil
 }
 
 // addFromWAL adds an entry to the batch, tracking that the data being added comes from segment segmentNum read from the
 // WAL.
-func (b *batch) addFromWAL(lbs model.LabelSet, entry logproto.Entry, segmentNum int) error {
+func (b *batch) addFromWAL(lbs model.LabelSet, entry push.Entry, segmentNum int) error {
 	b.totalBytes += len(entry.Line)
 
 	// Append the entry to an already existing stream (if any)
@@ -103,9 +103,9 @@ func (b *batch) addFromWAL(lbs model.LabelSet, entry logproto.Entry, segmentNum 
 	}
 
 	// Add the entry as a new stream
-	b.streams[labels] = &logproto.Stream{
+	b.streams[labels] = &push.Stream{
 		Labels:  labels,
-		Entries: []logproto.Entry{entry},
+		Entries: []push.Entry{entry},
 	}
 	b.countForSegment(segmentNum)
 
@@ -152,7 +152,7 @@ func (b *batch) sizeBytes() int {
 
 // sizeBytesAfter returns the size of the batch after the input entry
 // will be added to the batch itself
-func (b *batch) sizeBytesAfter(entry logproto.Entry) int {
+func (b *batch) sizeBytesAfter(entry push.Entry) int {
 	return b.totalBytes + entrySize(entry)
 }
 
@@ -174,9 +174,9 @@ func (b *batch) encode() ([]byte, int, error) {
 }
 
 // creates push request and returns it, together with number of entries
-func (b *batch) createPushRequest() (*logproto.PushRequest, int) {
-	req := logproto.PushRequest{
-		Streams: make([]logproto.Stream, 0, len(b.streams)),
+func (b *batch) createPushRequest() (*push.PushRequest, int) {
+	req := push.PushRequest{
+		Streams: make([]push.Stream, 0, len(b.streams)),
 	}
 
 	entriesCount := 0
@@ -204,7 +204,7 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler) {
 	}
 }
 
-func entrySize(entry logproto.Entry) int {
+func entrySize(entry push.Entry) int {
 	structuredMetadataSize := 0
 	for _, label := range entry.StructuredMetadata {
 		structuredMetadataSize += label.Size()

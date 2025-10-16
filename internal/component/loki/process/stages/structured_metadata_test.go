@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/pkg/push"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var pipelineStagesStructuredMetadataFromLogfmt = `
@@ -140,7 +140,7 @@ func Test_StructuredMetadataStage(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			pl, err := NewPipeline(util_log.Logger, loadConfig(test.pipelineStagesYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			result := processEntries(pl, newEntry(nil, nil, test.logLine, time.Now()))[0]

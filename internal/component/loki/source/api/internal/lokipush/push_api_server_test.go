@@ -17,7 +17,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -76,7 +75,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 				StructuredMetadata: push.LabelsAdapter{
@@ -163,7 +162,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 			},
@@ -240,7 +239,7 @@ regex = "dropme"
 	for i := 0; i < 100; i++ {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Unix(int64(i), 0),
 				Line:      "line" + strconv.Itoa(i),
 				StructuredMetadata: push.LabelsAdapter{
