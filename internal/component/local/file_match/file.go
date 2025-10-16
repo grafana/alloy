@@ -118,6 +118,13 @@ func (c *Component) Run(ctx context.Context) error {
 	defer c.watchDog.Stop()
 	for {
 		select {
+		case <-c.triggerChan:
+			// We got new targets so we should export them directly.
+			expand(func(paths []discovery.Target) {
+				c.watchDog.Reset(c.args.SyncPeriod)
+				c.opts.OnStateChange(discovery.Exports{Targets: paths})
+			})
+
 		case <-c.watchDog.C:
 			// Only export if targets are different
 			expand(func(paths []discovery.Target) {
@@ -126,12 +133,6 @@ func (c *Component) Run(ctx context.Context) error {
 					copy(c.previousTargets, paths)
 					c.opts.OnStateChange(discovery.Exports{Targets: paths})
 				}
-			})
-		case <-c.triggerChan:
-			// We got new targets so we should export them directly.
-			expand(func(paths []discovery.Target) {
-				c.watchDog.Reset(c.args.SyncPeriod)
-				c.opts.OnStateChange(discovery.Exports{Targets: paths})
 			})
 		case <-ctx.Done():
 			return nil
