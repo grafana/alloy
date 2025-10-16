@@ -47,12 +47,13 @@ type Component struct {
 // New creates a new local.file_match component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:           o,
-		mut:            sync.Mutex{},
-		args:           args,
-		watches:        make([]watch, 0),
-		watchDog:       time.NewTicker(args.SyncPeriod),
-		targetsChanged: make(chan struct{}, 1), // Buffered channel to avoid blocking
+		opts:     o,
+		mut:      sync.Mutex{},
+		args:     args,
+		watches:  make([]watch, 0),
+		watchDog: time.NewTicker(args.SyncPeriod),
+		// Buffered channel to avoid blocking
+		targetsChanged: make(chan struct{}, 1),
 	}
 
 	if err := c.Update(args); err != nil {
