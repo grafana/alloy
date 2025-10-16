@@ -37,24 +37,22 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts component.Options
 
-	mut             sync.Mutex
-	args            Arguments
-	watches         []watch
-	watchDog        *time.Ticker
-	previousTargets []discovery.Target
-	triggerChan     chan struct{}
+	mut            sync.Mutex
+	args           Arguments
+	watches        []watch
+	watchDog       *time.Ticker
+	targetsChanged chan struct{}
 }
 
 // New creates a new local.file_match component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:            o,
-		mut:             sync.Mutex{},
-		args:            args,
-		watches:         make([]watch, 0),
-		watchDog:        time.NewTicker(args.SyncPeriod),
-		previousTargets: make([]discovery.Target, 0),
-		triggerChan:     make(chan struct{}, 1), // Buffered channel to avoid blocking
+		opts:           o,
+		mut:            sync.Mutex{},
+		args:           args,
+		watches:        make([]watch, 0),
+		watchDog:       time.NewTicker(args.SyncPeriod),
+		targetsChanged: make(chan struct{}, 1), // Buffered channel to avoid blocking
 	}
 
 	if err := c.Update(args); err != nil {
@@ -98,7 +96,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Always trigger immediate check when Update is called
 	select {
-	case c.triggerChan <- struct{}{}:
+	case c.targetsChanged <- struct{}{}:
 	default:
 	}
 
@@ -107,29 +105,24 @@ func (c *Component) Update(args component.Arguments) error {
 
 // Run satisfies the component interface.
 func (c *Component) Run(ctx context.Context) error {
-	expand := func(export func(paths []discovery.Target)) {
-		c.mut.Lock()
-		defer c.mut.Unlock()
-
-		paths := c.getWatchedFiles()
-		export(paths)
-	}
-
 	defer c.watchDog.Stop()
 	for {
 		select {
-		case <-c.triggerChan:
-			// We got new targets so we should export them directly.
-			expand(func(paths []discovery.Target) {
-				c.watchDog.Reset(c.args.SyncPeriod)
-				c.opts.OnStateChange(discovery.Exports{Targets: paths})
-			})
-
+		case <-c.targetsChanged:
+			// When we get a signal that we have new targets we will get all watched files and
+			// reset the timer.
+			c.mut.Lock()
+			c.watchDog.Reset(c.args.SyncPeriod)
+			targets := c.getWatchedFiles()
+			c.mut.Unlock()
+			c.opts.OnStateChange(discovery.Exports{Targets: targets})
 		case <-c.watchDog.C:
-			// Update state in each interval
-			expand(func(paths []discovery.Target) {
-				c.opts.OnStateChange(discovery.Exports{Targets: paths})
-			})
+			// If we have not received a signal that we have new targets watch job will periodically
+			// get all files that we should watch.
+			c.mut.Lock()
+			targets := c.getWatchedFiles()
+			c.mut.Unlock()
+			c.opts.OnStateChange(discovery.Exports{Targets: targets})
 		case <-ctx.Done():
 			return nil
 		}
