@@ -208,9 +208,11 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 				c.tasksMut.RUnlock()
 
-				if err := runner.ApplyTasks(ctx, tasks); err != nil && !errors.Is(err, context.Canceled) {
-					level.Error(c.opts.Logger).Log("msg", "failed to apply tasks", "err", err)
-				} else if err == nil {
+				if err := runner.ApplyTasks(ctx, tasks); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						level.Error(c.opts.Logger).Log("msg", "failed to apply tasks", "err", err)
+					}
+				} else {
 					level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 				}
 			}
