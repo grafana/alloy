@@ -37,20 +37,24 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts component.Options
 
-	mut      sync.RWMutex
-	args     Arguments
-	watches  []watch
-	watchDog *time.Ticker
+	mut             sync.Mutex
+	args            Arguments
+	watches         []watch
+	watchDog        *time.Ticker
+	previousTargets []discovery.Target
+	triggerChan     chan struct{}
 }
 
 // New creates a new local.file_match component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:     o,
-		mut:      sync.RWMutex{},
-		args:     args,
-		watches:  make([]watch, 0),
-		watchDog: time.NewTicker(args.SyncPeriod),
+		opts:            o,
+		mut:             sync.Mutex{},
+		args:            args,
+		watches:         make([]watch, 0),
+		watchDog:        time.NewTicker(args.SyncPeriod),
+		previousTargets: make([]discovery.Target, 0),
+		triggerChan:     make(chan struct{}, 1), // Buffered channel to avoid blocking
 	}
 
 	if err := c.Update(args); err != nil {
@@ -73,11 +77,16 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	newArgs := args.(Arguments)
+
 	// Check to see if our ticker timer needs to be reset.
-	if args.(Arguments).SyncPeriod != c.args.SyncPeriod {
-		c.watchDog.Reset(c.args.SyncPeriod)
+	if newArgs.SyncPeriod != c.args.SyncPeriod {
+		c.watchDog.Reset(newArgs.SyncPeriod)
 	}
-	c.args = args.(Arguments)
+
+	c.args = newArgs
+
+	// Rebuild watches
 	c.watches = c.watches[:0]
 	for _, v := range c.args.PathTargets {
 		c.watches = append(c.watches, watch{
@@ -87,27 +96,43 @@ func (c *Component) Update(args component.Arguments) error {
 		})
 	}
 
+	// Always trigger immediate check when Update is called
+	select {
+	case c.triggerChan <- struct{}{}:
+	default:
+	}
+
 	return nil
 }
 
 // Run satisfies the component interface.
 func (c *Component) Run(ctx context.Context) error {
-	update := func() {
+	expand := func(export func(paths []discovery.Target)) {
 		c.mut.Lock()
 		defer c.mut.Unlock()
 
 		paths := c.getWatchedFiles()
-		// The component node checks to see if exports have actually changed.
-		c.opts.OnStateChange(discovery.Exports{Targets: paths})
+		export(paths)
 	}
-	// Trigger initial check
-	update()
+
 	defer c.watchDog.Stop()
 	for {
 		select {
 		case <-c.watchDog.C:
-			// This triggers a check for any new paths, along with pushing new targets.
-			update()
+			// Only export if targets are different
+			expand(func(paths []discovery.Target) {
+				if !equalTargets(c.previousTargets, paths) {
+					c.previousTargets = make([]discovery.Target, len(paths))
+					copy(c.previousTargets, paths)
+					c.opts.OnStateChange(discovery.Exports{Targets: paths})
+				}
+			})
+		case <-c.triggerChan:
+			// We got new targets so we should export them directly.
+			expand(func(paths []discovery.Target) {
+				c.watchDog.Reset(c.args.SyncPeriod)
+				c.opts.OnStateChange(discovery.Exports{Targets: paths})
+			})
 		case <-ctx.Done():
 			return nil
 		}
@@ -125,4 +150,16 @@ func (c *Component) getWatchedFiles() []discovery.Target {
 		paths = append(paths, newPaths...)
 	}
 	return paths
+}
+
+func equalTargets(a, b []discovery.Target) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equals(b[i]) {
+			return false
+		}
+	}
+	return true
 }
