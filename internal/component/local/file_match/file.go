@@ -158,7 +158,7 @@ func equalTargets(a, b []discovery.Target) bool {
 		return false
 	}
 	for i := range a {
-		if !a[i].Equals(b[i]) {
+		if !a[i].EqualsTarget(&b[i]) {
 			return false
 		}
 	}
