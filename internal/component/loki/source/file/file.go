@@ -258,7 +258,20 @@ func (c *Component) Update(args component.Arguments) error {
 			continue
 		}
 
-		c.reportSize(path)
+		fi, err := os.Stat(path)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		if fi.IsDir() {
+			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 
 		reader, err := c.createReader(readerOptions{
 			path:                path,
@@ -333,19 +346,6 @@ type readerOptions struct {
 // For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
 // a compressed file, then a decompressor will be created instead.
 func (c *Component) createReader(opts readerOptions) (reader, error) {
-	fi, err := os.Stat(opts.path)
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", opts.path)
-		c.metrics.totalBytes.DeleteLabelValues(opts.path)
-		return nil, fmt.Errorf("failed to stat path %s", opts.path)
-	}
-
-	if fi.IsDir() {
-		level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", opts.path)
-		c.metrics.totalBytes.DeleteLabelValues(opts.path)
-		return nil, fmt.Errorf("failed to tail file, it was a directory %s", opts.path)
-	}
-
 	var reader reader
 	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
@@ -394,14 +394,6 @@ func (c *Component) createReader(opts readerOptions) (reader, error) {
 
 func (c *Component) IsStopping() bool {
 	return c.stopping.Load()
-}
-
-func (c *Component) reportSize(path string) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return
-	}
-	c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 }
 
 func receiversChanged(prev, next []loki.LogsReceiver) bool {
