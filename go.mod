@@ -156,11 +156,11 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.136.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.134.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.136.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.134.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.136.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.136.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.134.0
@@ -764,7 +764,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.134.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.134.0 // indirect; indirect)
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.136.0 // indirect; indirect)
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.136.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.136.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.136.0 // indirect
