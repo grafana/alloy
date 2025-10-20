@@ -170,7 +170,7 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags="slicelabels,packaging"  ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test
