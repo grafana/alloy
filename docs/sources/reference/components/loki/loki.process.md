@@ -1509,14 +1509,16 @@ stage.static_labels {
 ### `stage.structured_metadata`
 
 The `stage.structured_metadata` inner block configures a stage that can read data from the extracted values map and add them to log entries as structured metadata.
+If any labels are added to structured metadata, they are removed from the label map.
 
 The following arguments are supported:
 
-| Name     | Type          | Description                                                                 | Default | Required |
-| -------- | ------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry. | `{}`    | no       |
+| Name     | Type          | Description                                                                                 | Default | Required |
+| -------- | ------------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
+| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry.                 | `{}`    | no       |
+| `regex`  | `string`      | Specifies a regular expression, matching extracted values are added to structured metadata. | `""`    | no       |
 
-In a `structured_metadata` stage, the map's keys define the label to set and the values are how to look them up.
+In a `structured_metadata` stage, the `values` map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
 
 ```alloy
@@ -1525,6 +1527,7 @@ stage.structured_metadata {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
     }
+    regex = "label_.*"   // Adds all extracted values starting with 'label_' to structured metadata.
 }
 ```
 
