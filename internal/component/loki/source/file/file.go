@@ -242,10 +242,14 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		c.receiversMut.RUnlock()
 	}
+
 	c.tasks = make(map[positions.Entry]runnerTask)
-	if len(newArgs.Targets) == 0 {
-		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
-	}
+
+	// There are cases where we have several targets with the same path + public labels
+	// but the path no longe exist so we cannot create a task for it. So we need to track
+	// what we have checked seperatly from the task map to prevent performing checks that
+	// will fail multiple times.
+	checked := make(map[positions.Entry]struct{})
 
 	for _, target := range newArgs.Targets {
 		path, _ := target.Get(pathLabel)
@@ -253,10 +257,12 @@ func (c *Component) Update(args component.Arguments) error {
 		labels := target.NonReservedLabelSet()
 
 		// Deduplicate targets which have the same public label set.
-		readersKey := positions.Entry{Path: path, Labels: labels.String()}
-		if _, exist := c.tasks[readersKey]; exist {
+		key := positions.Entry{Path: path, Labels: labels.String()}
+		if _, exists := checked[key]; exists {
 			continue
 		}
+
+		checked[key] = struct{}{}
 
 		fi, err := os.Stat(path)
 		if err != nil {
@@ -286,13 +292,17 @@ func (c *Component) Update(args component.Arguments) error {
 			continue
 		}
 
-		c.tasks[readersKey] = runnerTask{
+		c.tasks[key] = runnerTask{
 			reader: reader,
 			path:   path,
 			labels: labels.String(),
 			// TODO: Could fastFingerPrint work?
 			readerHash: uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
 		}
+	}
+
+	if len(newArgs.Targets) == 0 {
+		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
 	}
 
 	select {
