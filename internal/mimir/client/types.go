@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"gopkg.in/yaml.v3"
 )
@@ -49,7 +50,8 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 				Alert:  yaml.Node{Value: r.Alert},
 			}
 
-			for _, node := range r.Validate(ruleNode) {
+			// Use UTF8Validation for Mimir which supports UTF-8 metric/label names
+			for _, node := range r.Validate(ruleNode, model.UTF8Validation) {
 				var ruleName string
 				if r.Alert != "" {
 					ruleName = r.Alert
