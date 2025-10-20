@@ -356,7 +356,6 @@ require (
 	github.com/DataDog/datadog-agent/comp/core/flare/types v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
 	github.com/DataDog/datadog-agent/comp/core/hostname/hostnameinterface v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
 	github.com/DataDog/datadog-agent/comp/core/log/def v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
-	github.com/DataDog/datadog-agent/comp/core/secrets v0.69.3 // indirect
 	github.com/DataDog/datadog-agent/comp/core/status v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
 	github.com/DataDog/datadog-agent/comp/core/tagger/origindetection v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
 	github.com/DataDog/datadog-agent/comp/core/telemetry v0.71.0-devel.0.20250902202452-61c2536752eb // indirect
@@ -438,11 +437,6 @@ require (
 	github.com/DataDog/go-tuf v1.1.1-0.5.2 // indirect
 	github.com/DataDog/gohai v0.0.0-20230524154621-4316413895ee // indirect
 	github.com/DataDog/mmh3 v0.0.0-20210722141835-012dc69a9e49 // indirect
-	github.com/DataDog/opentelemetry-mapping-go/pkg/inframetadata v0.29.1 // indirect
-	github.com/DataDog/opentelemetry-mapping-go/pkg/otlp/attributes v0.31.0 // indirect
-	github.com/DataDog/opentelemetry-mapping-go/pkg/otlp/logs v0.30.0 // indirect
-	github.com/DataDog/opentelemetry-mapping-go/pkg/otlp/metrics v0.32.1-0.20250821132738-c5054d91ff21 // indirect
-	github.com/DataDog/opentelemetry-mapping-go/pkg/quantile v0.31.0 // indirect
 	github.com/DataDog/sketches-go v1.4.7 // indirect
 	github.com/DataDog/viper v1.14.1-0.20250612143030-1b15c8822ed4 // indirect
 	github.com/DataDog/zstd v1.5.7 // indirect
@@ -508,10 +502,8 @@ require (
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/bits-and-blooms/bloom/v3 v3.7.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
-	github.com/briandowns/spinner v1.23.0 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500 // indirect
 	github.com/caarlos0/env/v9 v9.0.0
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
@@ -852,7 +844,6 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/stormcat24/protodep v0.1.8 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.480 // indirect
@@ -979,13 +970,11 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 	k8s.io/apiextensions-apiserver v0.33.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
 
 require (
