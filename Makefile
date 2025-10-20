@@ -115,6 +115,10 @@ PROPAGATE_VARS := \
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
+# IMPORTANT: slicelabels tag is required for Prometheus v3.7.1 compatibility
+# It enables backward-compatible labels.Labels slice implementation
+# See go.mod for details
+GO_TAGS      ?= slicelabels
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)

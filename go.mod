@@ -136,7 +136,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka v0.134.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.134.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.136.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.134.0
@@ -223,7 +223,7 @@ require (
 	github.com/xdg-go/scram v1.1.2
 	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2 // indirect
 	github.com/zeebo/xxh3 v1.0.2
-	go.opentelemetry.io/collector/client v1.40.0
+	go.opentelemetry.io/collector/client v1.42.0
 	go.opentelemetry.io/collector/component v1.42.0
 	go.opentelemetry.io/collector/component/componentstatus v0.136.0
 	go.opentelemetry.io/collector/component/componenttest v0.136.0
@@ -233,9 +233,9 @@ require (
 	go.opentelemetry.io/collector/config/confighttp v0.134.0
 	go.opentelemetry.io/collector/config/confignet v1.40.0
 	go.opentelemetry.io/collector/config/configopaque v1.40.0
-	go.opentelemetry.io/collector/config/configoptional v0.134.0
-	go.opentelemetry.io/collector/config/configretry v1.40.0
-	go.opentelemetry.io/collector/config/configtelemetry v0.134.0
+	go.opentelemetry.io/collector/config/configoptional v0.136.0
+	go.opentelemetry.io/collector/config/configretry v1.42.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.136.0
 	go.opentelemetry.io/collector/config/configtls v1.40.0
 	go.opentelemetry.io/collector/confmap v1.42.0
 	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.40.0
@@ -244,15 +244,15 @@ require (
 	go.opentelemetry.io/collector/connector/connectortest v0.134.0
 	go.opentelemetry.io/collector/consumer v1.42.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.136.0
-	go.opentelemetry.io/collector/exporter v0.134.0
-	go.opentelemetry.io/collector/exporter/debugexporter v0.134.0
-	go.opentelemetry.io/collector/exporter/exporterhelper v0.134.0
+	go.opentelemetry.io/collector/exporter v1.42.0
+	go.opentelemetry.io/collector/exporter/debugexporter v0.136.0
+	go.opentelemetry.io/collector/exporter/exporterhelper v0.136.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.134.0
 	go.opentelemetry.io/collector/exporter/otlphttpexporter v0.134.0
-	go.opentelemetry.io/collector/extension v1.40.0
+	go.opentelemetry.io/collector/extension v1.42.0
 	go.opentelemetry.io/collector/extension/extensionauth v1.40.0
-	go.opentelemetry.io/collector/extension/extensiontest v0.134.0
-	go.opentelemetry.io/collector/extension/xextension v0.134.0
+	go.opentelemetry.io/collector/extension/extensiontest v0.136.0
+	go.opentelemetry.io/collector/extension/xextension v0.136.0
 	go.opentelemetry.io/collector/featuregate v1.42.0
 	go.opentelemetry.io/collector/otelcol v0.134.0
 	go.opentelemetry.io/collector/pdata v1.42.0
@@ -260,10 +260,10 @@ require (
 	go.opentelemetry.io/collector/processor v1.42.0
 	go.opentelemetry.io/collector/processor/batchprocessor v0.134.0
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.134.0
-	go.opentelemetry.io/collector/receiver v1.40.0
+	go.opentelemetry.io/collector/receiver v1.42.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.134.0
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.134.0
-	go.opentelemetry.io/collector/receiver/receivertest v0.134.0
+	go.opentelemetry.io/collector/receiver/receivertest v0.136.0
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.134.0
 	go.opentelemetry.io/collector/service v0.134.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.45.0
@@ -768,7 +768,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.134.0 // indirect; indirect)
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.134.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.134.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.136.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/datadog v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/exp/metrics v0.136.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.134.0 // indirect
@@ -908,12 +908,12 @@ require (
 	go.opentelemetry.io/collector v0.134.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.134.0 // indirect
 	go.opentelemetry.io/collector/connector/xconnector v0.134.0 // indirect
-	go.opentelemetry.io/collector/consumer/consumererror v0.134.0 // indirect
-	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.134.0 // indirect
+	go.opentelemetry.io/collector/consumer/consumererror v0.136.0 // indirect
+	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.136.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.136.0 // indirect
-	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.134.0 // indirect
-	go.opentelemetry.io/collector/exporter/exportertest v0.134.0 // indirect
-	go.opentelemetry.io/collector/exporter/xexporter v0.134.0 // indirect
+	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.136.0 // indirect
+	go.opentelemetry.io/collector/exporter/exportertest v0.136.0 // indirect
+	go.opentelemetry.io/collector/exporter/xexporter v0.136.0 // indirect
 	go.opentelemetry.io/collector/extension/extensioncapabilities v0.134.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.134.0 // indirect
 	go.opentelemetry.io/collector/filter v0.134.0 // indirect
@@ -923,13 +923,13 @@ require (
 	go.opentelemetry.io/collector/internal/telemetry v0.136.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.136.0 // indirect
 	go.opentelemetry.io/collector/pdata/testdata v0.136.0 // indirect
-	go.opentelemetry.io/collector/pdata/xpdata v0.134.0 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.134.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.136.0 // indirect
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.136.0 // indirect
 	go.opentelemetry.io/collector/processor/processorhelper v0.134.0 // indirect
 	go.opentelemetry.io/collector/processor/processorhelper/xprocessorhelper v0.134.0 // indirect
 	go.opentelemetry.io/collector/processor/processortest v0.136.0 // indirect
 	go.opentelemetry.io/collector/processor/xprocessor v0.136.0 // indirect
-	go.opentelemetry.io/collector/receiver/xreceiver v0.134.0 // indirect
+	go.opentelemetry.io/collector/receiver/xreceiver v0.136.0 // indirect
 	go.opentelemetry.io/collector/scraper v0.134.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 // indirect
 	go.opentelemetry.io/collector/service/hostcapabilities v0.134.0 // indirect
@@ -1022,6 +1022,9 @@ replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
 // for example, via this implementation: https://github.com/grafana/prometheus/pull/34
+// NOTE: Prometheus v3.7.1 changed labels.Labels from []Label to struct.
+// To maintain compatibility with Loki and walqueue, we MUST build with -tags=slicelabels
+// which enables the backward-compatible slice implementation.
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20251020143145-59659a23710a // staleness_disabling_v3.7.1 branch
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
@@ -1080,8 +1083,8 @@ replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrum
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c
 
 // TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-// Pin k8s.io dependencies to v0.33.0 which supports structured-merge-diff/v6 (needed by Prometheus v3.7.1)
-// while still providing networking/v1alpha1. v0.34+ removed networking/v1alpha1.
+// Use k8s v0.33.0 which supports structured-merge-diff/v6 (needed by Prometheus v3.7.1)
+// and still provides networking/v1alpha1 (removed in v0.34+)
 replace (
 	k8s.io/api => k8s.io/api v0.33.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.33.0
