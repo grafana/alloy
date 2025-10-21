@@ -1077,8 +1077,22 @@ replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrum
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c
 
+// Pin pdata to v1.40.0 to maintain compatibility with pdata/pprofile v0.134.0
+// pdata v1.42.0 has incompatible internal proto structures that break pprofile v0.134.0
+replace go.opentelemetry.io/collector/pdata => go.opentelemetry.io/collector/pdata v1.40.0
+
 // Pin pdata/pprofile to v0.134.0 to avoid build issues with v0.136.0
 replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.134.0
+
+// Pin pdata/testdata to v0.134.0 to maintain compatibility with pprofile v0.134.0
+replace go.opentelemetry.io/collector/pdata/testdata => go.opentelemetry.io/collector/pdata/testdata v0.134.0
+
+// Pin slim proto packages to v0.0.1 to maintain compatibility with pdata/pprofile v0.134.0
+// These packages contain the AttributeUnit type that pprofile v0.134.0 depends on
+replace (
+	go.opentelemetry.io/proto/slim/otlp/collector/profiles/v1development => go.opentelemetry.io/proto/slim/otlp/collector/profiles/v1development v0.0.1
+	go.opentelemetry.io/proto/slim/otlp/profiles/v1development => go.opentelemetry.io/proto/slim/otlp/profiles/v1development v0.0.1
+)
 
 // TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
 replace k8s.io/client-go => k8s.io/client-go v0.32.6
