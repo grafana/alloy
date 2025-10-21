@@ -57,8 +57,7 @@ const selectPgStatActivity = `
 		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
-			(
-				s.pid != pg_backend_pid() AND
+			(				
 				coalesce(TRIM(s.query), '') != '' AND
 				s.query_id != 0
 			)
@@ -120,6 +119,14 @@ type SampleKey struct {
 	PID          int
 	QueryID      int64
 	QueryStartNs int64
+}
+
+func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
+	key := SampleKey{PID: pid, QueryID: queryID, QueryStartNs: 0}
+	if queryStart.Valid {
+		key.QueryStartNs = queryStart.Time.UnixNano()
+	}
+	return key
 }
 
 // SampleState buffers state across scrapes and is emitted once the query
@@ -302,10 +309,7 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 	if err := c.validateQuerySample(sample); err != nil {
 		return SampleKey{}, err
 	}
-	key := SampleKey{PID: sample.PID, QueryID: sample.QueryID.Int64, QueryStartNs: 0}
-	if sample.QueryStart.Valid {
-		key.QueryStartNs = sample.QueryStart.Time.UnixNano()
-	}
+	key := newSampleKey(sample.PID, sample.QueryID.Int64, sample.QueryStart)
 	return key, nil
 }
 
