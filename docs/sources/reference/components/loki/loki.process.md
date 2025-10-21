@@ -1509,7 +1509,7 @@ stage.static_labels {
 ### `stage.structured_metadata`
 
 The `stage.structured_metadata` inner block configures a stage that can read data from the extracted values map and add them to log entries as structured metadata.
-If any labels are added to structured metadata, they are removed from the label map.
+If you add labels to structured metadata, the labels are removed from the label map.
 
 The following arguments are supported:
 
@@ -1518,7 +1518,7 @@ The following arguments are supported:
 | `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry.                 | `{}`    | no       |
 | `regex`  | `string`      | Specifies a regular expression, matching extracted values are added to structured metadata. | `""`    | no       |
 
-In a `structured_metadata` stage, the `values` map's keys define the label to set and the values are how to look them up.
+In a `structured_metadata` stage, the keys for the `values` map define the labels to set and the values define how to look them up.
 If the value is empty, it's inferred to be the same as the key.
 
 ```alloy
