@@ -2580,8 +2580,8 @@ go.opentelemetry.io/collector/otelcol/otelcoltest v0.134.0 h1:aY07CpiawHto2MmxC4
 go.opentelemetry.io/collector/otelcol/otelcoltest v0.134.0/go.mod h1:6LZ4BpEOI3AzDHpsuSt73v3dtv5FKLSv1SyK3r5AMPY=
 go.opentelemetry.io/collector/pdata v1.42.0 h1:XEzisp/SNfKDcY4aRU6qrHeLzGypRUdYHjbBqkDFOO4=
 go.opentelemetry.io/collector/pdata v1.42.0/go.mod h1:nnOmgf+RI/D5xYWgFPZ5nKuhf2E0Qy9Nx/mxoTvIq3k=
-go.opentelemetry.io/collector/pdata/pprofile v0.136.0 h1:ysyWnVnEzAwUH+MAhEuu7X0y/YnTtjEY1gC7aj05QzA=
-go.opentelemetry.io/collector/pdata/pprofile v0.136.0/go.mod h1:vAvrFj+xpwlSH85QFYGKYQ4xc0Lym5pWNRh1hMUH3TY=
+go.opentelemetry.io/collector/pdata/pprofile v0.134.0 h1:ES6hS+bsv/RznAl5nxzM868+OlFpSNbVhe+6IyvpT40=
+go.opentelemetry.io/collector/pdata/pprofile v0.134.0/go.mod h1:DRkZ9OsgGN3CkSDYG6cjz2R3H5ItLjxQw0c0TwXDqa4=
 go.opentelemetry.io/collector/pdata/testdata v0.136.0 h1:amivoDBK7ALqhwwCkSOYqfT95t1+o/TS6MHycseNs80=
 go.opentelemetry.io/collector/pdata/testdata v0.136.0/go.mod h1:KlNRkMO7MZdbGjNJGFS0+yc2gpuraJg6F6gkuqaqA8Y=
 go.opentelemetry.io/collector/pdata/xpdata v0.134.0 h1:yh6HOAorrNvV36CK0/hs0CK+IoOx7IVPrtXapayY5dY=
