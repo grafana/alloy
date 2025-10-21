@@ -47,6 +47,9 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
+- Introduced a new `stage.json_field` component that enables modifying JSON-formatted
+log lines by updating or deleting specific fields. (@achrefbensaad)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)

@@ -76,6 +76,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.tenant`][stage.tenant]                               | Configures a `tenant` processing stage.                        | no       |
 | [`stage.timestamp`][stage.timestamp]                         | Configures a `timestamp` processing stage.                     | no       |
 | [`stage.windowsevent`][stage.windowsevent]                   | Configures a `windowsevent` processing stage.                  | no       |
+| [`stage.json_field`][stage.json_field]                       | Configures a `json_field` processing stage.                    | no       |
 
 You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
@@ -108,6 +109,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.tenant]: #stagetenant
 [stage.timestamp]: #stagetimestamp
 [stage.windowsevent]: #stagewindowsevent
+[stage.json_field]: #json_field
 
 ### `stage.cri`
 
@@ -1931,6 +1933,73 @@ The `windowsevent` stage parses the value of `message` from the extracted data a
 * `Privileges`:            "SeAssignPrimaryTokenPrivilege,SeTcbPrivilege,SeSecurityPrivilege",
 
 Finally the `labels` stage uses the extracted values `Description`, `Subject_SecurityID` and `Subject_ReadOperation` to add them as labels of the log entry before forwarding it to a `loki.write` component.
+
+### `stage.json_field`
+
+The `stage.json_field` block configures a stage that modifies JSON-formatted log entries by updating or deleting fields.
+
+This stage operates directly on the log line contents. If the log line cannot be parsed as valid JSON, behavior is controlled by the drop_malformed setting.
+
+The modified JSON replaces the original log line after processing.
+
+The following arguments are supported:
+
+| Name                  | Type          | Description                                           | Default   | Required |
+| --------------------- | ------------- | ----------------------------------------------------- | --------- | -------- |
+| `drop_malformed`      |  `bool`       | Drop lines whose input can’t be parsed as valid JSON. | `false`   | no       |
+| `operations`          | `list(object)`| List of JSON field operations to apply in order.      |           | yes      |
+
+Each operation object supports the following attributes:
+
+| Name                  | Type          | Description                                                         | Default   | Required |
+| --------------------- | ------------- | ------------------------------------------------------------------- | --------- | -------- |
+| `operation`           | `string`      | Type of operation to perform. Supported values: `update`, `delete`. |           | yes      |
+| `field`               | `string`      | JSON key to modify or delete.                                       |           | yes      |
+| `source`              | `string`      | 	Source of the data to parse as JSON.                              |           | no       |
+
+{{< admonition type="note" >}}
+-   **`update`**
+    -   Updates the target field using the value from `source`.
+    -   If the target field does not exist, it is **created**.
+    -   The `source` value is always taken from the extracted values of `stage.json`.
+-   **`delete`**
+    -   Removes the target field from the JSON if it exists.
+-   Operations are applied **in order**, and the resulting JSON replaces the original log line.  
+{{< /admonition >}}
+
+The `stage.json_field` stage does not include a direct rename operation. However, you can rename fields by combining it with the `stage.json` stage.
+This can done in three steps:
+-   **Extract** the source field with `stage.json`.
+-   **Delete** the old field with `stage.json_field`.
+-   **Update** (create) the new field using the extracted value.
+
+The following example shows and example of renaming a field in a given log line.
+
+```alloy
+{"log":"log message\n","extra":"{\"user\":\"alloy\"}"}
+
+loki.process "username" {
+  stage.json {
+      expressions = {output = "log"}
+  }
+
+  stage.json_field {
+      operations = [
+        {
+            operation = "delete",
+            field     = "log",
+        },
+        {
+            operation = "update",
+            field     = "message",
+            source    = "output",
+        },
+    ]
+  }
+}
+
+{"message":"log message\n","extra":"{\"user\":\"alloy\"}"}
+```
 
 ## Exported fields
 
