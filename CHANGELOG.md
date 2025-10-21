@@ -49,6 +49,8 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- `local.file_match` will now trigger it's sync job when the component is updated with new targets. (@kalleep)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
