@@ -45,6 +45,9 @@ There are a number of environment variables that aren't recommended for use, as 
 Refer to the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter#environment-variables) for a full list of environment variables.
 {{< /admonition >}}
 
+
+The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) to run with a collection timeout of 10 seconds.
+
 By default, the same set of metrics is enabled as in the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
 If `custom_queries_config_path` is set, additional metrics defined in the given configuration file will be exposed.
 If `disable_default_metrics` is set to `true`, only the metrics defined in the `custom_queries_config_path` file will be exposed.
@@ -132,10 +135,13 @@ The `stat_statements` block configures the selection of both the query ID and th
 This configuration takes effect only when the `stat_statements` collector is enabled.
 
 The following arguments are supported:
-| Name            | Type     | Description                                         | Default | Required |
-| --------------- | -------- | --------------------------------------------------- | ------- | -------- |
-| `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
-| `query_length`  | `number` | Maximum length of the statement query text.         | `120`   | no       |
+| Name                | Type           | Description                                         | Default | Required |
+| ------------------- | -------------- | --------------------------------------------------- | ------- | -------- |
+| `exclude_databases` | `list(string)` | Comma-separated list of database names to exclude.  | `[]`    | no       |
+| `exclude_users`     | `list(string)` | Comma-separated list of user names to exclude.      | `[]`    | no       |
+| `include_query`     | `bool`         | Enable the selection of query ID and SQL statement. | `false` | no       |
+| `limit`             | `number`       | Maximum number of statements to fetch.              | `100`   | no       |
+| `query_length`      | `number`       | Maximum length of the statement query text.         | `120`   | no       |
 
 ## Exported fields
 
