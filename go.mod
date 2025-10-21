@@ -63,7 +63,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.11
 	github.com/grafana/alloy/syntax v0.1.0
-	github.com/grafana/beyla/v2 v2.7.2
+	github.com/grafana/beyla/v2 v2.7.4
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761
 	github.com/grafana/ckit v0.0.0-20250514165824-dd4adf36ad34
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
@@ -295,7 +295,7 @@ require (
 	golang.org/x/tools v0.36.0
 	google.golang.org/api v0.248.0
 	google.golang.org/grpc v1.75.1
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
