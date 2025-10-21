@@ -730,6 +730,9 @@ func TestConvert_Attributes(t *testing.T) {
 				Exclude: []string{"db_statement"},
 			},
 		},
+		RenameUnresolvedHosts:         "unresolved",
+		RenameUnresolvedHostsOutgoing: "outgoing",
+		RenameUnresolvedHostsIncoming: "incoming",
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
