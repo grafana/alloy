@@ -22,6 +22,8 @@ v1.11.3
 
 - Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
 
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
 v1.11.2
 -----------------
 
