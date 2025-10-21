@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	loki_util "github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -137,9 +136,9 @@ func TestWriteToSingleEndpoint(t *testing.T) {
 
 func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	// Set up the server that will receive the log entry, and expose it on ch.
-	ch := make(chan logproto.PushRequest)
+	ch := make(chan push.PushRequest)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
+		var pushReq push.PushRequest
 		err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -177,7 +176,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	// Send two log entries to the component's receiver
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},
@@ -219,14 +218,14 @@ func TestEntrySentToTwoWriteComponents(t *testing.T) {
 }
 
 func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
-	ch1, ch2 := make(chan logproto.PushRequest), make(chan logproto.PushRequest)
+	ch1, ch2 := make(chan push.PushRequest), make(chan push.PushRequest)
 	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
+		var pushReq push.PushRequest
 		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch1 <- pushReq
 	}))
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
+		var pushReq push.PushRequest
 		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch2 <- pushReq
 	}))
@@ -340,7 +339,7 @@ func BenchmarkLokiWrite(b *testing.B) {
 func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *Arguments)) {
 	// Set up the server that will receive the log entry, and expose it on ch.
 	var seenLines atomic.Int64
-	ch := make(chan logproto.PushRequest)
+	ch := make(chan push.PushRequest)
 
 	// just count seenLines for each entry received
 	go func() {
@@ -354,7 +353,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 	}()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
+		var pushReq push.PushRequest
 		err := loki_util.ParseProtoReader(b.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -396,7 +395,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		for j := 0; j < tc.linesCount; j++ {
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%tc.seriesCount))},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      "very important log",
 				},

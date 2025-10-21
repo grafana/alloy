@@ -73,7 +73,13 @@ You can use the following blocks with `database_observability.postgres`:
 
 ### `schema_details`
 
-This collector has no config options.
+| Name               | Type       | Description                                                           | Default | Required |
+|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
+| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
+| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
+| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+
 
 ### `explain_plans`
 
@@ -81,7 +87,6 @@ This collector has no config options.
 |--------------------------------|----------------|------------------------------------------------------|---------|----------|
 | `collect_interval`             | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
-| `initial_lookback`             | `duration`     | The amount of time to look back for explain plans.   | `24h`   | no       |
 | `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
 ## Example

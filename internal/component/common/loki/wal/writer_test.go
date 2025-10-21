@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
@@ -44,7 +44,7 @@ func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -109,7 +109,7 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -190,7 +190,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	for _, line := range lines {
 		writer.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -308,7 +308,7 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 			Labels: model.LabelSet{
 				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
 			},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("some line being written %d", i),
 			},

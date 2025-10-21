@@ -13,19 +13,24 @@
 ```sql
 CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
 GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'db-o11y'@'%';
-GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%'; /* see note */
+GRANT SELECT ON performance_schema.* TO 'db-o11y'@'%';
 ```
 
-Please note: Regarding `GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%'`, it is possible to restrict permissions, if necessary. Instead, grant the `db-o11y` user privileges access only to the objects (schemas) for which you want information. For example, to restrict permissions only to a schema named `payments`:
+3. Grant the `db-o11y` user additional privileges to access the objects (schemas, tables, views) for which you want to collect detailed information.
+
+For example, to limit permissions only to a schema named `payments`:
 
 ```sql
-CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
-GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'db-o11y'@'%';
-GRANT SELECT ON performance_schema.* TO 'db-o11y'@'%';   /* required */
-GRANT SELECT, SHOW VIEW ON payments.* TO 'db-o11y'@'%';  /* limit grant to the `payments` schema */
+GRANT SELECT, SHOW VIEW ON payments.* TO 'db-o11y'@'%';
 ```
 
-3. Verify that the user has been properly created.
+Alternatively, grant access to all available schemas:
+
+```sql
+GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%';
+```
+
+4. Verify that the user has been properly created.
 
 ```sql
 SHOW GRANTS FOR 'db-o11y'@'%';
@@ -38,7 +43,7 @@ SHOW GRANTS FOR 'db-o11y'@'%';
 +-------------------------------------------------------------------+
 ```
 
-4. Enable Performance Schema. To enable it explicitly, start the server with the `performance_schema` variable set to an appropriate value. Verify that Performance Schema has been enabled:
+5. Enable Performance Schema. To enable it explicitly, start the server with the `performance_schema` variable set to an appropriate value. Verify that Performance Schema has been enabled:
 
 ```sql
 SHOW VARIABLES LIKE 'performance_schema';
@@ -50,7 +55,7 @@ SHOW VARIABLES LIKE 'performance_schema';
 +--------------------+-------+
 ```
 
-5. Increase `max_digest_length` and `performance_schema_max_digest_length` to `4096`. Verify that the changes have been applied:
+6. Increase `max_digest_length` and `performance_schema_max_digest_length` to `4096`. Verify that the changes have been applied:
 
 ```sql
 SHOW VARIABLES LIKE 'max_digest_length';
@@ -74,7 +79,7 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. [OPTIONAL] Increase `performance_schema_max_sql_text_length` to `4096` if you want to collect the actual, unredacted sql text from queries samples (this requires setting `disable_query_redaction` to `true`, see later). Verify that the changes have been applied:
+7. [OPTIONAL] Increase `performance_schema_max_sql_text_length` to `4096` if you want to collect the actual, unredacted sql text from queries samples (this requires setting `disable_query_redaction` to `true`, see later). Verify that the changes have been applied:
 
 ```sql
 SHOW VARIABLES LIKE 'performance_schema_max_sql_text_length';
@@ -86,7 +91,7 @@ SHOW VARIABLES LIKE 'performance_schema_max_sql_text_length';
 +----------------------------------------+-------+
 ```
 
-7. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
+8. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
@@ -121,7 +126,7 @@ database_observability.mysql "mysql_<your_DB_name>" {
 }
 ```
 
-8. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
+9. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
@@ -400,7 +405,7 @@ show track_activity_query_size;
  4kB
 ```
 
-6. Create a dedicated DB user and grant permissions.
+6. Create a dedicated DB user and grant permissions to monitor the DB.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -408,11 +413,34 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-7. Verify that the user has been properly created.
+7. Verify that the user has been properly created and has the correct privileges for the `pg_stat_statements` extension.
 
 ```sql
 -- run with the `db-o11y` user
 SELECT * FROM pg_stat_statements LIMIT 1;
+```
+
+8. Grant the `db-o11y` user additional privileges to access the objects (databases, schemas, tables, views) for which you want to collect detailed information.
+
+For example, connect to a `payments` database and grant access to specific schemas:
+
+```sql
+-- switch to the 'payments' database
+\c payments
+
+-- grant USAGE and SELECT permissions in the 'public' schema
+GRANT USAGE ON SCHEMA public TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "db-o11y";
+
+-- grant USAGE and SELECT permissions in the 'tests' schema
+GRANT USAGE ON SCHEMA tests TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA tests TO "db-o11y";
+```
+
+Alternatively, use the predefined role `pg_read_all_data` to grant `USAGE` and `SELECT` permissions to all objects at once:
+
+```sql
+GRANT pg_read_all_data TO "db-o11y";
 ```
 
 ### Running and configuring Alloy

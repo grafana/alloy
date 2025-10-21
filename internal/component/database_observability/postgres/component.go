@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -66,8 +67,9 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
-	QuerySampleArguments QuerySampleArguments `alloy:"query_samples,block,optional"`
-	QueryTablesArguments QueryTablesArguments `alloy:"query_details,block,optional"`
+	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
+	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 
 	ExplainPlanArguments ExplainPlanArguments `alloy:"explain_plans,block,optional"`
 }
@@ -81,6 +83,13 @@ type QueryTablesArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type SchemaDetailsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize       int           `alloy:"cache_size,attr,optional"`
+	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
@@ -89,17 +98,21 @@ var DefaultArguments = Arguments{
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
 	},
+	SchemaDetailsArguments: SchemaDetailsArguments{
+		CollectInterval: 1 * time.Minute,
+		CacheEnabled:    true,
+		CacheSize:       256,
+		CacheTTL:        10 * time.Minute,
+	},
 	ExplainPlanArguments: ExplainPlanArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
-		InitialLookback: 24 * time.Hour,
 	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 }
 
@@ -383,9 +396,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:           c.dbConnection,
-			EntryHandler: entryHandler,
-			Logger:       c.opts.Logger,
+			DB:              c.dbConnection,
+			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -397,15 +414,18 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	}
 
 	if collectors[collector.ExplainPlanCollector] {
+		engineSemver, err := semver.ParseTolerant(engineVersion)
+		if err != nil {
+			logStartError(collector.ExplainPlanCollector, "parse version", err)
+		}
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
-			Logger:          c.opts.Logger,
-			DBVersion:       engineVersion,
-			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
+			DB:             c.dbConnection,
+			DSN:            string(c.args.DataSourceName),
+			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
+			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
+			Logger:         c.opts.Logger,
+			DBVersion:      engineSemver,
+			EntryHandler:   entryHandler,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)

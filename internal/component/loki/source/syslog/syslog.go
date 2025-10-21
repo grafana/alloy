@@ -137,11 +137,9 @@ func (c *Component) startDrainingRoutine() func() {
 			case <-readCtx.Done():
 				return
 			case entry := <-c.handler.Chan():
-				c.mut.RLock()
 				for _, receiver := range fanoutCopy {
 					receiver.Chan() <- entry
 				}
-				c.mut.RUnlock()
 			}
 		}
 	}()
@@ -152,20 +150,23 @@ func (c *Component) reloadTargets() {
 	// Start draining routine to prevent potential deadlock if targets attempt to send during Stop().
 	cancel := c.startDrainingRoutine()
 
-	// Stop all targets
+	// Grab current state
 	c.mut.RLock()
 	var rcs []*relabel.Config
 	if len(c.args.RelabelRules) > 0 {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
 	}
+	targetsToStop := make([]*st.SyslogTarget, len(c.targets))
+	copy(targetsToStop, c.targets)
+	c.mut.RUnlock()
 
-	for _, l := range c.targets {
+	// Stop existing targets
+	for _, l := range targetsToStop {
 		err := l.Stop()
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
 		}
 	}
-	c.mut.RUnlock()
 
 	// Stop draining routine
 	cancel()
