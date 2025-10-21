@@ -247,7 +247,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// There are cases where we have several targets with the same path + public labels
 	// but the path no longer exist so we cannot create a task for it. So we need to track
-	// what we have checked seperatly from the task map to prevent performing checks that
+	// what we have checked separately from the task map to prevent performing checks that
 	// will fail multiple times.
 	checked := make(map[positions.Entry]struct{})
 
