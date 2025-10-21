@@ -49,7 +49,6 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
-- `local.file_match` will now trigger it's sync job when the component is updated with new targets. (@kalleep)
 
 ### Bugfixes
 
@@ -64,6 +63,8 @@ Main (unreleased)
 - Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
 v1.11.2
 -----------------
