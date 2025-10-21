@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +12,7 @@ import (
 func parsePrometheusRuleGroups(t *testing.T, buf []byte) []rulefmt.RuleGroup {
 	t.Helper()
 
-	groups, errs := rulefmt.Parse(buf, true)
+	groups, errs := rulefmt.Parse(buf, true, model.LegacyValidation)
 	require.Empty(t, errs)
 
 	return groups.Groups

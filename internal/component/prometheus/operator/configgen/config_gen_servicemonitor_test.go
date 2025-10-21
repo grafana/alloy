@@ -27,8 +27,10 @@ import (
 )
 
 func TestGenerateServiceMonitorConfig(t *testing.T) {
-	var falseVal = false
-	var proxyURL = "https://proxy:8080"
+	var (
+		falsePtr = ptr.To(false)
+		proxyURL = "https://proxy:8080"
+	)
 	suite := []struct {
 		name                   string
 		m                      *promopv1.ServiceMonitor
@@ -78,15 +80,19 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: ${1}
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:                "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:        true,
-				ScrapeInterval:         model.Duration(time.Minute),
-				ScrapeTimeout:          model.Duration(10 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
-				EnableCompression:      true,
-				MetricsPath:            "/metrics",
-				Scheme:                 "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       "underscores",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -101,9 +107,6 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -153,15 +156,19 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: http_metrics
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:                "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:        true,
-				ScrapeInterval:         model.Duration(time.Minute),
-				ScrapeTimeout:          model.Duration(10 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
-				EnableCompression:      true,
-				MetricsPath:            "/metrics",
-				Scheme:                 "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       "underscores",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -176,9 +183,6 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -228,15 +232,19 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: "4242"
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:                "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:        true,
-				ScrapeInterval:         model.Duration(time.Minute),
-				ScrapeTimeout:          model.Duration(10 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
-				EnableCompression:      true,
-				MetricsPath:            "/metrics",
-				Scheme:                 "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       "underscores",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -251,9 +259,6 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -303,15 +308,19 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: "4242"
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:                "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:        true,
-				ScrapeInterval:         model.Duration(time.Minute),
-				ScrapeTimeout:          model.Duration(10 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
-				EnableCompression:      true,
-				MetricsPath:            "/metrics",
-				Scheme:                 "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       "underscores",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -326,9 +335,6 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -376,17 +382,17 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.Endpoint{
 				Port:            "metrics",
-				EnableHttp2:     &falseVal,
+				EnableHttp2:     falsePtr,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: &falseVal,
+				FollowRedirects: falsePtr,
 				ProxyURL:        &proxyURL,
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
-				HonorTimestamps: &falseVal,
-				FilterRunning:   &falseVal,
+				HonorTimestamps: falsePtr,
+				FilterRunning:   falsePtr,
 				TLSConfig: &promopv1.TLSConfig{
 					SafeTLSConfig: promopv1.SafeTLSConfig{
 						ServerName:         stringPtr("foo.com"),
@@ -485,7 +491,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:            "/foo",
 				Scheme:                 "https",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
-					FollowRedirects: falseVal,
+					FollowRedirects: false,
 					EnableHTTP2:     false,
 					TLSConfig: commonConfig.TLSConfig{
 						ServerName:         "foo.com",
@@ -510,7 +516,8 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       "underscores",
 			},
@@ -568,15 +575,19 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  target_label: bar
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:                "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:        true,
-				ScrapeInterval:         model.Duration(time.Minute),
-				ScrapeTimeout:          model.Duration(10 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
-				EnableCompression:      true,
-				MetricsPath:            "/metrics",
-				Scheme:                 "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       "underscores",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -590,9 +601,6 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}
