@@ -114,14 +114,14 @@ func (c *Component) Run(ctx context.Context) error {
 			// reset the timer.
 			c.mut.Lock()
 			c.watchDog.Reset(c.args.SyncPeriod)
-			targets := c.getWatchedFiles(true)
+			targets := c.getWatchedFiles()
 			c.mut.Unlock()
 			c.opts.OnStateChange(discovery.Exports{Targets: targets})
 		case <-c.watchDog.C:
 			// If we have not received a signal that we have new targets watch job will periodically
 			// get all files that we should watch.
 			c.mut.Lock()
-			targets := c.getWatchedFiles(false)
+			targets := c.getWatchedFiles()
 			c.mut.Unlock()
 			c.opts.OnStateChange(discovery.Exports{Targets: targets})
 		case <-ctx.Done():
@@ -130,7 +130,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
-func (c *Component) getWatchedFiles(targetsUpdated bool) []discovery.Target {
+func (c *Component) getWatchedFiles() []discovery.Target {
 	paths := make([]discovery.Target, 0)
 	// See if there is anything new we need to check.
 	for _, w := range c.watches {
@@ -142,4 +142,3 @@ func (c *Component) getWatchedFiles(targetsUpdated bool) []discovery.Target {
 	}
 	return paths
 }
-
