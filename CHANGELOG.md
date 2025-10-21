@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
 v1.11.2
 -----------------
 
