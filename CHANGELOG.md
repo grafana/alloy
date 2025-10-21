@@ -59,6 +59,8 @@ Main (unreleased)
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
 v1.11.2
 -----------------
 
