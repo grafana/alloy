@@ -10,6 +10,12 @@ internal API changes are not present.
 v1.11.3
 -----------------
 
+### Enhancements
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+### Bugfixes
+
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
