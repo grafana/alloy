@@ -55,23 +55,16 @@ func (cg *ConfigGenerator) generateStaticScrapeConfigConfig(m *promopv1alpha1.Sc
 	for k, v := range sc.Labels {
 		labels[model.LabelName(k)] = model.LabelValue(v)
 	}
-	discoveryCfg := discovery.StaticConfig{
+	config := discovery.StaticConfig{
 		&targetgroup.Group{
 			Targets: targets,
 			Labels:  labels,
 			Source:  cfg.JobName,
 		},
 	}
-	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, discoveryCfg)
+	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, config)
 	cfg.RelabelConfigs = relabels.configs
 	cfg.MetricRelabelConfigs = metricRelabels.configs
-	if m.Spec.ScrapeProtocols != nil {
-		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
-		if err != nil {
-			return nil, err
-		}
-		cfg.ScrapeProtocols = protocols
-	}
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }
 

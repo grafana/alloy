@@ -201,7 +201,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "interval, timeout, scrape protocols set",
+			name: "interval & timeout",
 			m: &promopv1.Probe{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testprobe1",
@@ -220,9 +220,6 @@ func TestGenerateProbeConfig(t *testing.T) {
 					Interval:      promopv1.Duration("30s"),
 					ScrapeTimeout: promopv1.Duration("15s"),
 					Module:        "http_2xx",
-					ScrapeProtocols: []promopv1.ScrapeProtocol{
-						promopv1.ScrapeProtocol(config.PrometheusProto),
-					},
 					Targets: promopv1.ProbeTargets{
 						StaticConfig: &promopv1.ProbeTargetStaticConfig{
 							Targets: []string{
@@ -266,7 +263,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 				HonorTimestamps:        true,
 				ScrapeInterval:         model.Duration(30 * time.Second),
 				ScrapeTimeout:          model.Duration(15 * time.Second),
-				ScrapeProtocols:        []config.ScrapeProtocol{config.PrometheusProto},
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
 				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
 				EnableCompression:      true,
 				MetricsPath:            "/probe",

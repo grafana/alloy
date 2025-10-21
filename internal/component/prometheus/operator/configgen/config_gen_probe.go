@@ -32,13 +32,6 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	if m.Spec.ScrapeTimeout != "" {
 		cfg.ScrapeTimeout, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
 	}
-	if m.Spec.ScrapeProtocols != nil {
-		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
-		if err != nil {
-			return nil, err
-		}
-		cfg.ScrapeProtocols = protocols
-	}
 	if m.Spec.ProberSpec.Scheme != "" {
 		cfg.Scheme = m.Spec.ProberSpec.Scheme
 	}

@@ -47,13 +47,6 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 			return nil, fmt.Errorf("parsing timeout from podMonitor: %w", err)
 		}
 	}
-	if m.Spec.ScrapeProtocols != nil {
-		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
-		if err != nil {
-			return nil, err
-		}
-		cfg.ScrapeProtocols = protocols
-	}
 	if ep.Path != "" {
 		cfg.MetricsPath = ep.Path
 	}
