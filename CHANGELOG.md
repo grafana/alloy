@@ -56,6 +56,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
 v1.11.2
 -----------------
 
