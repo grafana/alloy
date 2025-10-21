@@ -54,13 +54,14 @@ func TestAddingLocalMapping(t *testing.T) {
 	})
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
-	shouldBeSameGlobalID := mapping.GetOrAddLink("1", 1, l)
-	require.True(t, globalID == shouldBeSameGlobalID)
+	mapping.AddLocalLink("1", globalID, 1)
+	mapping.GetLocalRefID("1", globalID)
+	require.Equal(t, uint64(1), mapping.GetLocalRefID("1", globalID))
 	require.Len(t, mapping.labelsHashToGlobal, 1)
 	require.Len(t, mapping.mappings, 1)
 	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[shouldBeSameGlobalID] == 1)
-	require.True(t, mapping.mappings["1"].localToGlobal[1] == shouldBeSameGlobalID)
+	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == 1)
+	require.True(t, mapping.mappings["1"].localToGlobal[1] == globalID)
 }
 
 func TestAddingLocalMappings(t *testing.T) {
@@ -72,23 +73,24 @@ func TestAddingLocalMappings(t *testing.T) {
 	})
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
-	shouldBeSameGlobalID := mapping.GetOrAddLink("1", 1, l)
-	shouldBeSameGlobalID2 := mapping.GetOrAddLink("2", 1, l)
-	require.True(t, globalID == shouldBeSameGlobalID)
-	require.True(t, globalID == shouldBeSameGlobalID2)
+	localRefID := uint64(1)
+	mapping.AddLocalLink("1", globalID, localRefID)
+	mapping.AddLocalLink("2", globalID, localRefID)
+	require.Equal(t, localRefID, mapping.GetLocalRefID("1", globalID))
+	require.Equal(t, localRefID, mapping.GetLocalRefID("2", globalID))
 	require.Len(t, mapping.labelsHashToGlobal, 1)
 	require.Len(t, mapping.mappings, 2)
 
 	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[shouldBeSameGlobalID] == 1)
-	require.True(t, mapping.mappings["1"].localToGlobal[1] == shouldBeSameGlobalID)
+	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == localRefID)
+	require.True(t, mapping.mappings["1"].localToGlobal[localRefID] == globalID)
 
 	require.True(t, mapping.mappings["2"].RemoteWriteID == "2")
-	require.True(t, mapping.mappings["2"].globalToLocal[shouldBeSameGlobalID2] == 1)
-	require.True(t, mapping.mappings["2"].localToGlobal[1] == shouldBeSameGlobalID2)
+	require.True(t, mapping.mappings["2"].globalToLocal[globalID] == localRefID)
+	require.True(t, mapping.mappings["2"].localToGlobal[localRefID] == globalID)
 }
 
-func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
+func TestReplaceLocalMappings(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
 	l := labels.Labels{}
 	l = append(l, labels.Label{
@@ -96,19 +98,45 @@ func TestAddingLocalMappingsWithoutCreatingGlobalUpfront(t *testing.T) {
 		Value: "test",
 	})
 
-	shouldBeSameGlobalID := mapping.GetOrAddLink("1", 1, l)
-	shouldBeSameGlobalID2 := mapping.GetOrAddLink("2", 1, l)
-	require.True(t, shouldBeSameGlobalID2 == shouldBeSameGlobalID)
+	globalID := mapping.GetOrAddGlobalRefID(l)
+	localRefID := uint64(1)
+	mapping.AddLocalLink("1", globalID, localRefID)
+	mapping.AddLocalLink("2", globalID, localRefID)
+	require.Equal(t, localRefID, mapping.GetLocalRefID("1", globalID))
+	require.Equal(t, localRefID, mapping.GetLocalRefID("2", globalID))
+
+	localRefID = uint64(2)
+	mapping.ReplaceLocalLink("1", globalID, 1, localRefID)
+	mapping.ReplaceLocalLink("2", globalID, 1, localRefID)
 	require.Len(t, mapping.labelsHashToGlobal, 1)
 	require.Len(t, mapping.mappings, 2)
 
 	require.True(t, mapping.mappings["1"].RemoteWriteID == "1")
-	require.True(t, mapping.mappings["1"].globalToLocal[shouldBeSameGlobalID] == 1)
-	require.True(t, mapping.mappings["1"].localToGlobal[1] == shouldBeSameGlobalID)
+	require.True(t, mapping.mappings["1"].globalToLocal[globalID] == localRefID)
+	require.Len(t, mapping.mappings["1"].localToGlobal, 1)
+	require.True(t, mapping.mappings["1"].localToGlobal[localRefID] == globalID)
 
 	require.True(t, mapping.mappings["2"].RemoteWriteID == "2")
-	require.True(t, mapping.mappings["2"].globalToLocal[shouldBeSameGlobalID2] == 1)
-	require.True(t, mapping.mappings["2"].localToGlobal[1] == shouldBeSameGlobalID2)
+	require.True(t, mapping.mappings["2"].globalToLocal[globalID] == localRefID)
+	require.Len(t, mapping.mappings["2"].localToGlobal, 1)
+	require.True(t, mapping.mappings["2"].localToGlobal[localRefID] == globalID)
+}
+
+func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
+	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
+	l := labels.Labels{}
+	l = append(l, labels.Label{
+		Name:  "__name__",
+		Value: "test",
+	})
+
+	globalID := mapping.GetOrAddGlobalRefID(l)
+	localRefID := uint64(2)
+	mapping.ReplaceLocalLink("1", globalID, 1, localRefID)
+	mapping.ReplaceLocalLink("2", globalID, 1, localRefID)
+
+	require.Equal(t, localRefID, mapping.GetLocalRefID("1", globalID))
+	require.Equal(t, localRefID, mapping.GetLocalRefID("2", globalID))
 }
 
 func TestStaleness(t *testing.T) {
@@ -123,9 +151,10 @@ func TestStaleness(t *testing.T) {
 		Name:  "__name__",
 		Value: "test2",
 	})
-
-	global1 := mapping.GetOrAddLink("1", 1, l)
-	_ = mapping.GetOrAddLink("2", 1, l2)
+	global1 := mapping.GetOrAddGlobalRefID(l)
+	global2 := mapping.GetOrAddGlobalRefID(l2)
+	mapping.AddLocalLink("1", global1, 1)
+	mapping.AddLocalLink("2", global2, 1)
 	mapping.TrackStaleness([]StalenessTracker{
 		{
 			GlobalRefID: global1,
@@ -150,7 +179,8 @@ func TestRemovingStaleness(t *testing.T) {
 		Value: "test",
 	})
 
-	global1 := mapping.GetOrAddLink("1", 1, l)
+	global1 := mapping.GetOrAddGlobalRefID(l)
+	mapping.AddLocalLink("1", global1, 1)
 	mapping.TrackStaleness([]StalenessTracker{
 		{
 			GlobalRefID: global1,

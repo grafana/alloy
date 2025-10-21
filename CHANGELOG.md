@@ -59,6 +59,8 @@ Main (unreleased)
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
+- Attempt to fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
 v1.11.2
 -----------------
 
