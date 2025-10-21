@@ -463,7 +463,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 		if convType == model.MetricTypeCounter {
 			for i := 0; i < dp.Exemplars().Len(); i++ {
 				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", metricName, "err", err)
+					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
 				}
 			}
 		}
