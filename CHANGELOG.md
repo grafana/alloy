@@ -17,13 +17,6 @@ Main (unreleased)
   with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
-### Breaking changes
-
-- `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
-  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
-  with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
-  set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
-
 ### Features
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
@@ -54,45 +47,15 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-<<<<<<< HEAD
-- Update Beyla component to 2.7.2. (@grcevski)
-=======
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
->>>>>>> main
+
+- Update Beyla component to 2.7.4. (@grcevski)
 
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
-
-- Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
-
-- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
-
-v1.11.2
------------------
-
-### Bugfixes
-
-- Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
-
-- Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
-
-- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
-
-- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
-
-- Fix potential deadlocks in `loki.source.file` and `loki.source.journal` when component is shutting down. (@kalleep, @thampiotr)
-  - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
-- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
-
-- Schedule new path targets faster in `loki.source.file`. (@kalleep)
-
-- Update Beyla component to 2.7.4. (@grcevski)
-
-- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
-
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
