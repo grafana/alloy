@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -38,14 +39,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -141,14 +146,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -332,14 +341,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -441,14 +454,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -493,14 +510,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -600,14 +621,18 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -702,14 +727,18 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -804,14 +833,18 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -903,19 +936,23 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/cache_test_db",
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    true,
 			CacheSize:       256,
 			CacheTTL:        10 * time.Minute,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
 		// first run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -979,7 +1016,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// second run mock declarations
 		// selectDatabaseName, selectSchemaNames, selectTableNames always called
-		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"datname",
@@ -1030,17 +1067,21 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/no_cache_test_db",
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    false,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
 		// declare mocks for two runs
 		for i := 0; i < 2; i++ {
-			mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
 						"datname",
