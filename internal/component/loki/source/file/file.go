@@ -417,4 +417,3 @@ func receiversChanged(prev, next []loki.LogsReceiver) bool {
 	}
 	return false
 }
-
