@@ -92,7 +92,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			log.With(o.Logger, "subcomponent", "rw"),
 		),
 	)
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
+	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
