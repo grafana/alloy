@@ -93,7 +93,7 @@ func setupTestWAL(t *testing.T) string {
 	require.NoError(t, nextSegment(w))
 
 	// Checkpoint the previous segment.
-	_, err = wlog.Checkpoint(l, w, 0, 1, func(_ chunks.HeadSeriesRef, _ int) bool { return true }, 0)
+	_, err = wlog.Checkpoint(l, w, 0, 1, func(_ chunks.HeadSeriesRef) bool { return true }, 0)
 	require.NoError(t, err)
 	require.NoError(t, nextSegment(w))
 

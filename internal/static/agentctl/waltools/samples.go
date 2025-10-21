@@ -75,7 +75,7 @@ func FindSamples(walDir string, selectorStr string) ([]*SampleStats, error) {
 }
 
 func collectSeries(r *wlog.Reader, selector labels.Selector, labelsByRef map[chunks.HeadSeriesRef]labels.Labels) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, nil)
 
 	for r.Next() {
 		rec := r.Record()
@@ -98,7 +98,7 @@ func collectSeries(r *wlog.Reader, selector labels.Selector, labelsByRef map[chu
 }
 
 func collectSamples(r *wlog.Reader, labelsByRef map[chunks.HeadSeriesRef]labels.Labels, minTS, maxTS, sampleCount map[chunks.HeadSeriesRef]int64) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, nil)
 
 	for r.Next() {
 		rec := r.Record()

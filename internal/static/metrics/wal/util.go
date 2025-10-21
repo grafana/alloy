@@ -65,7 +65,7 @@ func (r walReplayer) Replay(dir string) error {
 }
 
 func (r walReplayer) replayWAL(reader *wlog.Reader) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, nil)
 
 	for reader.Next() {
 		rec := reader.Record()

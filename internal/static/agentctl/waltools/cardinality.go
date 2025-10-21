@@ -39,7 +39,7 @@ func FindCardinality(walDir string, job string, instance string) ([]Cardinality,
 }
 
 func collectCardinality(r *wlog.Reader, job, instance string, cardinality map[string]int) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, nil)
 
 	for r.Next() {
 		rec := r.Record()
