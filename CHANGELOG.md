@@ -49,6 +49,8 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- Support delimiters in `stage.luhn`. (@dehaansa)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
@@ -60,6 +62,10 @@ Main (unreleased)
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
 - Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+- Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
 - Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
 
