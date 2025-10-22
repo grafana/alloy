@@ -58,7 +58,7 @@ func (f *targetsFactory) Targets(recv loki.LogsReceiver, pos positions.Positions
 
 		f.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 
-		target, err := newTarget(recv, f.opts.Logger, f.metrics, pos, labels, isStopping, targetsOptions{
+		target, err := newTarget(recv, f.opts.Logger, f.metrics, pos, isStopping, targetsOptions{
 			path:                path,
 			labels:              labels,
 			encoding:            newArgs.Encoding,
@@ -93,7 +93,7 @@ type targetsOptions struct {
 	legacyPositionUsed  bool
 }
 
-func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positions.Positions, labels model.LabelSet, isStopping func() bool, opts targetsOptions) (source.Target, error) {
+func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positions.Positions, isStopping func() bool, opts targetsOptions) (source.Target, error) {
 	if opts.decompressionConfig.Enabled {
 		return newDecompressorTarget(
 			m,
