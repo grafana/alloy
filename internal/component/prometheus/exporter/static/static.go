@@ -29,7 +29,7 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), opts.ID)
 }
