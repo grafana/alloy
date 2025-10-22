@@ -10,11 +10,9 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
@@ -45,8 +43,8 @@ func (tmc testMetadataStore) LengthMetadata() int {
 // TestComprehensive performs a comprehensive integration test which runs the
 // otelcol.receiver.prometheus component and ensures that it can receive and
 // forward different types of metrics: native histograms, classic histograms,
-// gauges, and sum/counter metrics, verifying each gets converted to the
-// appropriate OTLP metric type.
+// mixed histograms (both classic and native), gauges, and sum/counter metrics,
+// verifying each gets converted to the appropriate OTLP metric type.
 func TestComprehensive(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -101,6 +99,11 @@ func TestComprehensive(t *testing.T) {
 				MetricFamily: "testNativeHistogram",
 				Type:         model.MetricTypeHistogram,
 				Help:         "A test native histogram metric",
+			},
+			"testMixedHistogram": scrape.MetricMetadata{
+				MetricFamily: "testMixedHistogram",
+				Type:         model.MetricTypeHistogram,
+				Help:         "A test mixed histogram metric with both classic and native buckets",
 			},
 		})
 		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
@@ -220,6 +223,89 @@ func TestComprehensive(t *testing.T) {
 		_, err = app.AppendHistogram(0, nativeHistLabels, ts, h, nil)
 		require.NoError(t, err)
 
+		// 5. Send a mixed histogram (both classic buckets and native histogram data)
+		mixedHistogramName := "testMixedHistogram"
+
+		// First, send classic histogram buckets
+		mixedBuckets := []float64{0.25, 2.5, 25.0}
+		mixedCounts := []float64{5, 15, 25} // cumulative counts
+
+		for i, bucket := range mixedBuckets {
+			bucketLabels := labels.Labels{
+				{Name: model.MetricNameLabel, Value: mixedHistogramName + "_bucket"},
+				{Name: model.JobLabel, Value: "testJob"},
+				{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+				{Name: "le", Value: strconv.FormatFloat(bucket, 'f', -1, 64)},
+				{Name: "region", Value: "us-west"},
+				{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+				{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+				{Name: "otel_scope_version", Value: "v0.24.0"},
+			}
+			_, err = app.Append(0, bucketLabels, ts, mixedCounts[i])
+			require.NoError(t, err)
+		}
+
+		// Mixed histogram +Inf bucket
+		mixedInfBucketLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: mixedHistogramName + "_bucket"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "le", Value: "+Inf"},
+			{Name: "region", Value: "us-west"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, mixedInfBucketLabels, ts, 30.0)
+		require.NoError(t, err)
+
+		// Mixed histogram count
+		mixedCountLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: mixedHistogramName + "_count"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "region", Value: "us-west"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, mixedCountLabels, ts, 30.0)
+		require.NoError(t, err)
+
+		// Mixed histogram sum
+		mixedSumLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: mixedHistogramName + "_sum"},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "region", Value: "us-west"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+		_, err = app.Append(0, mixedSumLabels, ts, 125.5)
+		require.NoError(t, err)
+
+		// Then, send native exponential histogram data for the same metric
+		mixedNativeHistLabels := labels.Labels{
+			{Name: model.MetricNameLabel, Value: mixedHistogramName},
+			{Name: model.JobLabel, Value: "testJob"},
+			{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
+			{Name: "region", Value: "us-west"},
+			{Name: model.MetricNameLabel, Value: "otel_scope_info"},
+			{Name: "otel_scope_name", Value: "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp"},
+			{Name: "otel_scope_version", Value: "v0.24.0"},
+		}
+
+		// Create a native histogram with the same count and sum as the classic histogram
+		mixedNativeHist := tsdbutil.GenerateTestHistogram(123)
+		mixedNativeHist.Count = 30
+		mixedNativeHist.Sum = 125.5
+		mixedNativeHist.ZeroCount = 1
+		mixedNativeHist.Schema = 2
+
+		_, err = app.AppendHistogram(0, mixedNativeHistLabels, ts, mixedNativeHist, nil)
+		require.NoError(t, err)
+
 		require.NoError(t, app.Commit())
 	}()
 
@@ -228,8 +314,8 @@ func TestComprehensive(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for metrics")
 	case m := <-metricCh:
-		// Should have 4 metrics: gauge, counter, classic histogram, native histogram
-		require.Equal(t, 4, m.MetricCount())
+		// Should have 6 metrics: gauge, counter, classic histogram, native histogram, and mixed histogram (2 representations)
+		require.Equal(t, 6, m.MetricCount())
 
 		require.Equal(t, "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Name())
 		require.Equal(t, "v0.24.0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Version())
@@ -283,93 +369,55 @@ func TestComprehensive(t *testing.T) {
 		require.Greater(t, expHistDP.Count(), uint64(0))
 		require.True(t, expHistDP.HasSum())
 		require.NotEqual(t, int32(0), expHistDP.Scale()) // Should have a valid scale
-	}
-}
 
-func TestHistogram(t *testing.T) {
-	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
-
-	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
-	require.NoError(t, err)
-
-	cfg := `
-		output {
-			// no-op: will be overridden by test code.
+		// 5. Verify mixed histogram - should have both classic and exponential representations
+		// Group metrics by type to verify we have both representations of the mixed histogram
+		metricsByType := make(map[pmetric.MetricType][]pmetric.Metric)
+		for i := 0; i < m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Len(); i++ {
+			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(i)
+			metricsByType[metric.Type()] = append(metricsByType[metric.Type()], metric)
 		}
-	`
-	var args prometheus.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-	// Override our settings so metrics get forwarded to metricCh.
-	metricCh := make(chan pmetric.Metrics)
-	args.Output = makeMetricsOutput(metricCh)
+		// Find mixed histogram metrics by name among each type
+		var mixedClassicHist, mixedNativeHist pmetric.Metric
+		var foundMixedClassic, foundMixedNative bool
 
-	go func() {
-		err := ctrl.Run(ctx, args)
-		require.NoError(t, err)
-	}()
-
-	require.NoError(t, ctrl.WaitRunning(time.Second))
-	require.NoError(t, ctrl.WaitExports(time.Second))
-
-	exports := ctrl.Exports().(prometheus.Exports)
-
-	// Use the exported Appendable to send histogram metrics to the receiver in the
-	// background.
-	go func() {
-		l := labels.New(
-			labels.Label{Name: model.MetricNameLabel, Value: "testHistogram"},
-			labels.Label{Name: model.JobLabel, Value: "testJob"},
-			labels.Label{Name: model.InstanceLabel, Value: "otelcol.receiver.prometheus"},
-			labels.Label{Name: "foo", Value: "bar"},
-		)
-		ts := time.Now().Unix()
-
-		// Create a native histogram using the test utility
-		hist := tsdbutil.GenerateTestHistogram(1)
-		hist.CounterResetHint = histogram.NotCounterReset
-		fh := tsdbutil.GenerateTestFloatHistogram(1)
-		fh.CounterResetHint = histogram.NotCounterReset
-
-		ctx := t.Context()
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, alloyprometheus.NoopMetadataStore{})
-		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-			labels.EmptyLabels(),
-			&config.DefaultScrapeConfig,
-			model.LabelSet{},
-			model.LabelSet{},
-		))
-		app := exports.Receiver.Appender(ctx)
-		_, err := app.AppendHistogram(0, l, ts, hist, fh)
-		require.NoError(t, err)
-		require.NoError(t, app.Commit())
-	}()
-
-	// Wait for our client to get the histogram metric.
-	select {
-	case <-time.After(time.Second):
-		require.FailNow(t, "failed waiting for histogram metrics")
-	case m := <-metricCh:
-		require.Equal(t, 1, m.MetricCount())
-		require.Equal(t, "testHistogram", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Name())
-
-		metricType := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Type().String()
-		if assert.Equal(t, "ExponentialHistogram", metricType) {
-			hist := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).ExponentialHistogram()
-			require.Equal(t, 1, hist.DataPoints().Len())
-
-			dp := hist.DataPoints().At(0)
-			require.Equal(t, uint64(21), dp.Count())
-			require.Equal(t, 36.8, dp.Sum())
-			require.Equal(t, uint64(3), dp.ZeroCount())
-		} else {
-			// If it's not an exponential histogram, print some info for debugging.
-			metric := m.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0)
-			t.Logf("Metric name: %s", metric.Name())
-			t.Logf("Metric type: %s", metric.Type().String())
-			t.Fail()
+		for _, metric := range metricsByType[pmetric.MetricTypeHistogram] {
+			if metric.Name() == "testMixedHistogram" {
+				mixedClassicHist = metric
+				foundMixedClassic = true
+				break
+			}
 		}
+
+		for _, metric := range metricsByType[pmetric.MetricTypeExponentialHistogram] {
+			if metric.Name() == "testMixedHistogram" {
+				mixedNativeHist = metric
+				foundMixedNative = true
+				break
+			}
+		}
+
+		require.True(t, foundMixedClassic, "should have received a classic histogram representation of testMixedHistogram")
+		require.True(t, foundMixedNative, "should have received a native exponential histogram representation of testMixedHistogram")
+
+		// Verify mixed classic histogram properties
+		require.Equal(t, pmetric.MetricTypeHistogram, mixedClassicHist.Type())
+		require.Equal(t, 1, mixedClassicHist.Histogram().DataPoints().Len())
+		mixedClassicDP := mixedClassicHist.Histogram().DataPoints().At(0)
+		require.Equal(t, uint64(30), mixedClassicDP.Count())
+		require.Equal(t, 125.5, mixedClassicDP.Sum())
+		require.Greater(t, mixedClassicDP.BucketCounts().Len(), 0, "should have bucket counts")
+		require.Equal(t, "A test mixed histogram metric with both classic and native buckets", mixedClassicHist.Description())
+
+		// Verify mixed exponential histogram properties
+		require.Equal(t, pmetric.MetricTypeExponentialHistogram, mixedNativeHist.Type())
+		require.Equal(t, 1, mixedNativeHist.ExponentialHistogram().DataPoints().Len())
+		mixedNativeDP := mixedNativeHist.ExponentialHistogram().DataPoints().At(0)
+		require.Equal(t, uint64(30), mixedNativeDP.Count())
+		require.Equal(t, 125.5, mixedNativeDP.Sum())
+		require.NotEqual(t, int32(0), mixedNativeDP.Scale(), "should have a valid scale")
+		require.Equal(t, "A test mixed histogram metric with both classic and native buckets", mixedNativeHist.Description())
 	}
 }
 

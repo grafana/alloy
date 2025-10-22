@@ -327,6 +327,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// NOTE: This is not Update()-able.
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 		AppendMetadata:                  args.HonorMetadata,
+		// otelcol.receiver.prometheus gets metadata from context
+		PassMetadataInContext: args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -656,7 +658,23 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interceptor {
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	return prometheus.NewInterceptor(c.appendable, ls,
+		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+			level.Info(c.opts.Logger).Log("msg", "appending metadata", "metric_name", l.Get(labels.MetricName), "labels", l.String(), "metadata_desc", m.Help, "metadata_type", m.Type)
+
+			_, nextErr := next.UpdateMetadata(globalRef, l, m)
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
+				},
+			))
+			return globalRef, nextErr
+		}),
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+			level.Info(c.opts.Logger).Log("msg", "appending metric", "metric_name", l.Get(labels.MetricName), "labels", l.String(), "timestamp", t, "value", v)
+
 			_, nextErr := next.Append(globalRef, l, t, v)
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
@@ -669,6 +687,8 @@ func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interce
 			return globalRef, nextErr
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			level.Info(c.opts.Logger).Log("msg", "appending histogram", "metric_name", l.Get(labels.MetricName), "labels", l.String(), "timestamp", t)
+
 			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
@@ -684,18 +704,6 @@ func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interce
 						data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
 					}
 					return data
-				},
-			))
-			return globalRef, nextErr
-		}),
-		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.UpdateMetadata(globalRef, l, m)
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
 				},
 			))
 			return globalRef, nextErr
