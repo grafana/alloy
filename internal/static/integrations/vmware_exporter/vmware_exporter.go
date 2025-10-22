@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/vmware_exporter/vsphere"
 	config_util "github.com/prometheus/common/config"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/static/integrations"
 )
 
 func init() {
@@ -50,7 +51,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns a string that identifies the instance of the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	u, err := url.Parse(c.VSphereURL)
 	if err != nil {
 		return "", err

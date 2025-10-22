@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -161,7 +161,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		case OriginDirectPUT:
 			h.sender.Send(req.Context(), loki.Entry{
 				Labels: h.postProcessLabels(commonLabels.Labels()),
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: ts,
 					Line:      string(decodedRecord),
 				},
@@ -282,7 +282,7 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: timestamp,
 				Line:      event.Message,
 			},

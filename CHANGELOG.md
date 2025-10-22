@@ -10,6 +10,13 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Breaking changes
+
+- `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
+  with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
+  set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
+
 ### Features
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
@@ -18,12 +25,15 @@ Main (unreleased)
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - `explain_plans` added the explain plan collector (@rgeyer)
   - add `user` field to wait events within `query_samples` collector (@gaantunes)
+  - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
 - Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 
 ### Enhancements
 
@@ -37,11 +47,36 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
 - Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
 
 ### Bugfixes
 
+- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
+
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
+
+- Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+v1.11.2
+-----------------
+
+### Bugfixes
+
+- Fix potential deadlock in `loki.source.journal` when stopping or reloading the component. (@thampiotr)
+
+- Honor sync timeout when waiting for network availability for prometheus.operator.* components. (@dehaansa)
+
+- Fix `prometheus.exporter.cloudwatch` to not always emit debug logs but respect debug property. (@kalleep)
+
+- Fix an issue where component shutdown could block indefinitely by adding a warning log message and a deadline of 10 minutes. The deadline can be configured with the `--feature.component-shutdown-deadline` flag if the default is not suitable. (@thampiotr)
+
+- Fix potential deadlocks in `loki.source.file` and `loki.source.journal` when component is shutting down. (@kalleep, @thampiotr)
 
 v1.11.0
 -----------------

@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -20,7 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
-func TestSchemaTable(t *testing.T) {
+func Test_Postgres_SchemaDetails(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
@@ -33,11 +34,13 @@ func TestSchemaTable(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -90,6 +93,16 @@ func TestSchemaTable(t *testing.T) {
 				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, true),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "authors").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -124,11 +137,13 @@ func TestSchemaTable(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -189,6 +204,16 @@ func TestSchemaTable(t *testing.T) {
 				}).AddRow("authors_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "authors").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.categories").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -213,6 +238,16 @@ func TestSchemaTable(t *testing.T) {
 				}).AddRow("categories_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "categories").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		mock.ExpectQuery(selectColumnNames).WithArgs("postgis.spatial_ref_sys").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -234,6 +269,16 @@ func TestSchemaTable(t *testing.T) {
 					"column_names",
 					"expressions",
 					"has_nullable_column",
+				}),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("postgis", "spatial_ref_sys").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
 				}),
 			)
 
@@ -283,11 +328,13 @@ func TestSchemaTable(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -346,6 +393,16 @@ func TestSchemaTable(t *testing.T) {
 					AddRow("idx_users_created_at", "btree", false, pq.StringArray{"created_at"}, nil, false),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -356,6 +413,7 @@ func TestSchemaTable(t *testing.T) {
 		collector.Stop()
 		lokiClient.Stop()
 
+		// Run this after Stop() to avoid race conditions
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 
@@ -378,12 +436,14 @@ func TestSchemaTable(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -429,11 +489,13 @@ func TestSchemaTable(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -487,6 +549,16 @@ func TestSchemaTable(t *testing.T) {
 				}),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -513,7 +585,7 @@ func TestSchemaTable(t *testing.T) {
 	})
 }
 
-func Test_collector_detects_auto_increment_column(t *testing.T) {
+func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("collector detects auto increment column", func(t *testing.T) {
@@ -524,11 +596,13 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -581,6 +655,16 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 				}),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -614,11 +698,13 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:           db,
-			EntryHandler: lokiClient,
-			Logger:       log.NewLogfmtLogger(os.Stderr),
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -672,6 +758,16 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 				}),
 			)
 
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "products").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
@@ -695,5 +791,329 @@ func Test_collector_detects_auto_increment_column(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+	})
+
+	t.Run("collector detects foreign keys", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"books_store",
+				),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("books"),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.books").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, "", "", true).
+					AddRow("title", "character varying(255)", true, "", "", false).
+					AddRow("author_id", "integer", true, "", "", false).
+					AddRow("category_id", "integer", false, "", "", false),
+			)
+
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "books").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}).AddRow("books_pkey", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "books").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}).AddRow("fk_books_author", "author_id", "authors", "id").
+					AddRow("fk_books_category", "category_id", "categories", "id"),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 3)
+		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"title","type":"character varying(255)","not_null":true},{"name":"author_id","type":"integer","not_null":true},{"name":"category_id","type":"integer"}],"indexes":[{"name":"books_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_books_author","column_name":"author_id","referenced_table_name":"authors","referenced_column_name":"id"},{"name":"fk_books_category","column_name":"category_id","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="books" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+	})
+}
+
+func Test_Postgres_SchemaDetails_caching(t *testing.T) {
+	t.Run("uses cache on second run when caching is enabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		// first run mock declarations
+		// selectDatabaseName, selectSchemaNames, selectTableNames always called
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"cache_test_db",
+				),
+			)
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("test_table"),
+			)
+
+		// selectColumnNames, selectIndexes, selectForeignKeys called only first run
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		// first run invocation
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
+		firstRunEntries := lokiClient.Received()
+		require.Len(t, firstRunEntries, 3)
+
+		lokiClient.Clear()
+
+		// second run mock declarations
+		// selectDatabaseName, selectSchemaNames, selectTableNames always called
+		mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow(
+					"cache_test_db",
+				),
+			)
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("test_table"),
+			)
+		// Here, note that selectColumnNames, selectIndexes, selectForeignKeys mocks are not declared: they should not be called due to caching
+
+		// second run invocation
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
+		secondRunEntries := lokiClient.Received()
+		require.Len(t, secondRunEntries, 3)
+
+		// assert that first and second run results are identical
+		for i := range firstRunEntries {
+			assert.Equal(t, firstRunEntries[i].Labels, secondRunEntries[i].Labels)
+			assert.Equal(t, firstRunEntries[i].Line, secondRunEntries[i].Line)
+		}
+
+		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are not called
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiClient.Stop()
+	})
+
+	t.Run("bypasses cache when caching is disabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			CacheEnabled:    false,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		// declare mocks for two runs
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(selectDatabaseName).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"datname",
+					}).AddRow(
+						"no_cache_test_db",
+					),
+				)
+
+			mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"schema_name",
+					}).AddRow("public"),
+				)
+
+			mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"table_name",
+					}).AddRow("test_table"),
+				)
+
+			mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"column_name",
+						"column_type",
+						"not_nullable",
+						"column_default",
+						"identity_generation",
+						"is_primary_key",
+					}).AddRow("id", "integer", true, nil, "", true),
+				)
+
+			mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"index_name",
+						"index_type",
+						"unique",
+						"column_names",
+						"expressions",
+						"has_nullable_column",
+					}),
+				)
+
+			mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"constraint_name",
+						"column_name",
+						"referenced_table_name",
+						"referenced_column_name",
+					}),
+				)
+		}
+
+		// first run
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+		lokiClient.Clear()
+
+		// second run
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 2*time.Second, 100*time.Millisecond)
+
+		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are called twice
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiClient.Stop()
 	})
 }
