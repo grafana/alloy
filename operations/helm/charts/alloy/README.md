@@ -160,6 +160,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | networkPolicy.policyTypes[0] | string | `"Ingress"` |  |
 | networkPolicy.policyTypes[1] | string | `"Egress"` |  |
 | rbac.create | bool | `true` | Whether to create RBAC resources for Alloy. |
+| rbac.extraRules | list | `[]` | Optional additional rules to Alloy ClusterRole |
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
@@ -259,6 +260,14 @@ the Grafana Alloy containers to use. The default permission set allows
 components like [discovery.kubernetes][] to work properly.
 
 [discovery.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
+
+### rbac.extraRules
+
+`rbac.extraRules` enabled specifying additional rules for alloy ClusterRole.
+
+Some providers require additional rules to be able to scrape the metrics of the
+api endpoints (e.g. EKS). This configuration option enables configuring special
+rules for such cases.
 
 ### controller.autoscaling
 

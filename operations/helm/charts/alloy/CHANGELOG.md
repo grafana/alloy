@@ -99,6 +99,8 @@ Unreleased
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
 - Add support for configuring minReadySeconds in Helm chart. (@PabloPie)
 
+- Add ability to specify extra rules for alloy ClusterRole. (@nejec)
+
 1.0.0 (2025-04-09)
 ----------
 
