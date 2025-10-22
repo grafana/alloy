@@ -165,7 +165,7 @@ func (c *walStatsCalculator) Calculate() (WALStats, error) {
 }
 
 func (c *walStatsCalculator) readWAL(r *wlog.Reader) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, nil)
 
 	for r.Next() {
 		rec := r.Record()
