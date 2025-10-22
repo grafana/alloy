@@ -48,7 +48,6 @@ spec:
             - containerPort: 12345
               name: http-metrics
             - containerPort: 12347
-              hostPort: 12347
               name: faro
               protocol: TCP
           readinessProbe:

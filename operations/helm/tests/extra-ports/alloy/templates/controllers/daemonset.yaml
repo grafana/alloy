@@ -48,7 +48,6 @@ spec:
             - containerPort: 12345
               name: http-metrics
             - containerPort: 14268
-              hostPort: 14268
               name: jaeger-thrift
               protocol: TCP
           readinessProbe:
