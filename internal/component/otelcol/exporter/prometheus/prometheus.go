@@ -87,7 +87,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls, prometheus.NoopMetadataStore{})
+	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls)
 
 	converter := convert.New(o.Logger, fanout, convertArgumentsToConvertOptions(c))
 

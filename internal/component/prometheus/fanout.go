@@ -32,7 +32,6 @@ type Fanout struct {
 	writeLatency   prometheus.Histogram
 	samplesCounter prometheus.Counter
 	ls             labelstore.LabelStore
-	metadataStore  UpdateableMetadataStore
 
 	// lastSeriesCount stores the number of series that were sent through the last appender. It helps to estimate how
 	// much memory to allocate for the staleness trackers.
@@ -40,7 +39,7 @@ type Fanout struct {
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore, ms UpdateableMetadataStore) *Fanout {
+func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "prometheus_fanout_latency",
 		Help:    "Write latency for sending to direct and indirect components",
@@ -60,7 +59,6 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 		writeLatency:   wl,
 		samplesCounter: s,
 		ls:             ls,
-		metadataStore:  ms,
 	}
 }
 
@@ -92,7 +90,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
 	if !ok || s == nil {
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, f.metadataStore)
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
 	}
 
 	app := &appender{
@@ -217,12 +215,6 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 	}
 	if ref == 0 {
 		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
-	}
-
-	// Store metadata in our local store
-	familyName := l.Get(model.MetricNameLabel)
-	if familyName != "" {
-		a.fanout.metadataStore.UpdateMetadata(familyName, m)
 	}
 
 	var multiErr error
