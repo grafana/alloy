@@ -14,7 +14,7 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
-## v1.11 (unreleased)
+## v1.11
 
 ### Breaking changes due to major version upgrade of Prometheus
 
