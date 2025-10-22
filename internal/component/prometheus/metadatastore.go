@@ -19,6 +19,7 @@ type MetadataStore struct {
 	metadata map[string]scrape.MetricMetadata
 }
 
+// TODO: Remove this?
 // NewMetadataStore creates a new MetadataStore.
 func NewMetadataStore() *MetadataStore {
 	return &MetadataStore{
