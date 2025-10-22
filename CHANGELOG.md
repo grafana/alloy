@@ -7,6 +7,11 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+v1.11.3
+-----------------
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+
 v1.11.2
 -----------------
 
