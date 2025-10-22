@@ -205,8 +205,11 @@ suffix length cannot be greater than or equal to structured_metadata_limit`),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateTruncateConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
-				t.Errorf("validateTruncateConfig() error = %v, wantErr = %v", err, tt.wantErr)
+			err := validateTruncateConfig(tt.config)
+			if tt.wantErr != nil {
+				require.EqualError(t, err, tt.wantErr.Error())
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
