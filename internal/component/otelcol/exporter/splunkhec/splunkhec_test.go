@@ -2,10 +2,11 @@ package splunkhec_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configauth"
@@ -68,11 +69,11 @@ func TestConfigConversion(t *testing.T) {
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
-			InitialInterval:     5000000000,
+			InitialInterval:     15 * time.Second,
 			RandomizationFactor: 0.5,
 			Multiplier:          1.5,
-			MaxInterval:         30000000000,
-			MaxElapsedTime:      300000000000,
+			MaxInterval:         60 * time.Second,
+			MaxElapsedTime:      10 * time.Minute,
 		},
 		LogDataEnabled:          true,
 		ProfilingDataEnabled:    true,
@@ -99,6 +100,11 @@ func TestConfigConversion(t *testing.T) {
 			ExtraAttributes:      map[string]string(nil),
 		},
 	}
+
+	expectedCustomise.OtelAttrsToHec.Source = "source"
+	expectedCustomise.OtelAttrsToHec.SourceType = "sourcetype"
+	expectedCustomise.OtelAttrsToHec.Index = "index"
+	expectedCustomise.OtelAttrsToHec.Host = "host"
 
 	expectedMinimal := &splunkhecexporter.Config{
 		ClientConfig: confighttp.ClientConfig{
@@ -144,11 +150,11 @@ func TestConfigConversion(t *testing.T) {
 		},
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
-			InitialInterval:     5000000000,
+			InitialInterval:     5 * time.Second,
 			RandomizationFactor: 0.5,
 			Multiplier:          1.5,
-			MaxInterval:         30000000000,
-			MaxElapsedTime:      300000000000,
+			MaxInterval:         30 * time.Second,
+			MaxElapsedTime:      5 * time.Minute,
 		},
 		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
 			Enabled:      false,
@@ -174,7 +180,9 @@ func TestConfigConversion(t *testing.T) {
 			Enabled:              false,
 			OverrideMetricsNames: map[string]string(nil),
 			ExtraAttributes:      map[string]string(nil),
-		}}
+		},
+		OtelAttrsToHec: splunkhecexporter.NewFactory().CreateDefaultConfig().(*splunkhecexporter.Config).OtelAttrsToHec,
+	}
 
 	tests := []struct {
 		testName string
@@ -206,6 +214,17 @@ func TestConfigConversion(t *testing.T) {
 						sizer = "items"
 					}
 				}
+				retry_on_failure {
+					initial_interval = "15s"
+					max_interval = "60s"
+					max_elapsed_time = "10m"
+				}
+				otel_attrs_to_hec_metadata {
+					source = "source"
+					sourcetype = "sourcetype"
+					index = "index"
+					host = "host"
+				}
 			`,
 			expected: &expectedCustomise,
 		},
@@ -226,7 +245,7 @@ func TestConfigConversion(t *testing.T) {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
-			var args splunkhec.Arguments
+			var args config.SplunkHecArguments
 			err := syntax.Unmarshal([]byte(tt.alloyCfg), &args)
 			if err != nil {
 				t.Fatal(err)
