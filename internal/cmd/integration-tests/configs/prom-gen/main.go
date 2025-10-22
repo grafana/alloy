@@ -55,6 +55,7 @@ func main() {
 	go handleGaugeInput(setupGauge(labels))
 	go handleHistogramInput(setupHistogram(labels))
 	go handleHistogramInput(setupNativeHistogram(labels))
+	go handleHistogramInput(setupMixedHistogram(labels))
 	go handleSummary(setupSummary(labels))
 	stopChan := make(chan struct{})
 	<-stopChan
@@ -106,6 +107,7 @@ func setupGauge(labels map[string]string) prometheus.Gauge {
 		prometheus.GaugeOpts{
 			Namespace:   "golang",
 			Name:        "gauge",
+			Help:        "The gauge description string",
 			ConstLabels: labels,
 		})
 	registry.MustRegister(gauge)
@@ -127,6 +129,7 @@ func setupNativeHistogram(labels map[string]string) prometheus.Histogram {
 		prometheus.HistogramOpts{
 			Namespace:                       "golang",
 			Name:                            "native_histogram",
+			Help:                            "The native_histogram description string",
 			ConstLabels:                     labels,
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
@@ -136,11 +139,28 @@ func setupNativeHistogram(labels map[string]string) prometheus.Histogram {
 	return nativeHistogram
 }
 
+func setupMixedHistogram(labels map[string]string) prometheus.Histogram {
+	mixedHistogram := prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace:                       "golang",
+			Name:                            "mixed_histogram",
+			Help:                            "The mixed_histogram description string",
+			ConstLabels:                     labels,
+			Buckets:                         []float64{1, 10, 100, 1000},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
+		})
+	registry.MustRegister(mixedHistogram)
+	return mixedHistogram
+}
+
 func setupHistogram(labels map[string]string) prometheus.Histogram {
 	histogram := prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace:   "golang",
 			Name:        "histogram",
+			Help:        "The histogram description string",
 			ConstLabels: labels,
 			Buckets:     []float64{1, 10, 100, 1000},
 		})
@@ -163,6 +183,7 @@ func setupCounter(labels map[string]string) prometheus.Counter {
 		prometheus.CounterOpts{
 			Namespace:   "golang",
 			Name:        "counter",
+			Help:        "The counter description string",
 			ConstLabels: labels,
 		})
 	registry.MustRegister(counter)
@@ -183,6 +204,7 @@ func setupSummary(labels map[string]string) prometheus.Summary {
 		prometheus.SummaryOpts{
 			Namespace:   "golang",
 			Name:        "summary",
+			Help:        "The summary description string",
 			ConstLabels: labels,
 			Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		})

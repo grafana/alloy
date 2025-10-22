@@ -76,20 +76,24 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 
-	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
-	// code from the prometheusreceiver which expects the Appender context to
-	// contain both a scrape target and a metadata store, and fails the
-	// conversion if they are missing. We should find a way around this as both
-	// Targets and Metadata will be handled in a different way in Alloy.
-	// TODO(@ptodev): Can we instead use the more recent translator package:
-	// https://github.com/prometheus/otlptranslator
-	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-		labels.EmptyLabels(),
-		&config.DefaultScrapeConfig,
-		model.LabelSet{},
-		model.LabelSet{},
-	))
-	ctx = scrape.ContextWithMetricMetadataStore(ctx, f.metadataStore)
+	// We should only change the context if
+	// it already doesn't have a target or metadata store.
+	// It will have these if the scrape loop was started
+	// with the PassMetadataInContext option set to true.
+	t, ok := scrape.TargetFromContext(ctx)
+	if !ok || t == nil {
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+	}
+
+	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
+	if !ok || s == nil {
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, f.metadataStore)
+	}
 
 	app := &appender{
 		children:          make([]storage.Appender, 0),
