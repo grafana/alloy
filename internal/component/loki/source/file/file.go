@@ -67,14 +67,10 @@ func (o OnPositionsFileError) MarshalText() ([]byte, error) {
 }
 
 func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
-	s := string(text)
+	s := OnPositionsFileError(text)
 	switch s {
-	case "skip":
-		*o = OnPositionsFileErrorSkip
-	case "restart_from_end":
-		*o = OnPositionsFileErrorRestartEnd
-	case "restart_from_start":
-		*o = OnPositionsFileErrorRestartStart
+	case OnPositionsFileErrorSkip, OnPositionsFileErrorRestartEnd, OnPositionsFileErrorRestartStart:
+		*o = s
 	default:
 		return fmt.Errorf("unknown OnPositionsFileError value: %s", s)
 	}
