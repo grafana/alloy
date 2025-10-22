@@ -226,13 +226,9 @@ container. The list of available arguments is documented on [alloy run][].
 
 `alloy.extraPorts` allows for configuring specific open ports.
 
-<<<<<<< HEAD
 The detained specification of ports for pods and services can be found at the
 [Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports) and
 [Kubernetes Service documents](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/#ServiceSpec)
-=======
-Detailed specification of ports can be found at the [Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports).
->>>>>>> upstream/main
 
 Port numbers specified must be 0 < x < 65535.
 
