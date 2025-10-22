@@ -21,65 +21,100 @@ func Test_TruncateStage_Process(t *testing.T) {
 
 	tests := []struct {
 		name                       string
-		config                     *TruncateConfig
-		labels                     map[string]string
-		structured_metadata        push.LabelsAdapter
+		config                     []*RuleConfig
 		t                          time.Time
 		entry                      string
 		expectedEntry              *string
+		labels                     map[string]string
 		expectedLabels             *map[string]string
+		structured_metadata        push.LabelsAdapter
 		expectedStructuredMetadata *push.LabelsAdapter
+		extracted                  map[string]any
+		expectedExtracted          *map[string]any
 		incrementedCount           *map[string]float64
 	}{
 		{
 			name: "passthrough when under limits",
-			config: &TruncateConfig{
-				LineLimit: 1000,
-				Suffix:    "...",
+			config: []*RuleConfig{
+				{
+					Limit:  1000,
+					Suffix: "...",
+				},
 			},
 			labels:              map[string]string{},
 			structured_metadata: push.LabelsAdapter{},
+			extracted:           map[string]any{},
 			entry:               "12345678901",
 		},
 		{
 			name: "Longer line should truncate",
-			config: &TruncateConfig{
-				LineLimit: 10,
+			config: []*RuleConfig{
+				{
+					Limit: 10,
+				},
 			},
 			labels:              map[string]string{},
 			structured_metadata: push.LabelsAdapter{},
 			entry:               "123456789012",
 			expectedEntry:       ptr("1234567890"),
+			expectedExtracted:   ptr(map[string]any{"truncated": "line"}),
 			incrementedCount:    ptr(map[string]float64{"line": 1}),
 		}, {
 			name: "Longer line should truncate with suffix",
-			config: &TruncateConfig{
-				LineLimit: 10,
-				Suffix:    "...",
+			config: []*RuleConfig{
+				{
+					Limit:  10,
+					Suffix: "...",
+				},
 			},
 			labels:              map[string]string{},
 			structured_metadata: push.LabelsAdapter{},
 			entry:               "12345678901",
 			expectedEntry:       ptr("1234567..."),
+			expectedExtracted:   ptr(map[string]any{"truncated": "line"}),
 			incrementedCount:    ptr(map[string]float64{"line": 1}),
 		},
 		{
 			name: "Longer labels should truncate",
-			config: &TruncateConfig{
-				LabelLimit: 15,
-				Suffix:     "[truncated]",
+			config: []*RuleConfig{
+				{
+					Limit:      15,
+					SourceType: TruncateSourceLabel,
+					Suffix:     "[truncated]",
+				},
 			},
 			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
 			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.[truncated]", "env": "prod"}),
 			structured_metadata: push.LabelsAdapter{},
 			entry:               "12345678901",
+			expectedExtracted:   ptr(map[string]any{"truncated": "label"}),
 			incrementedCount:    ptr(map[string]float64{"label": 2}),
 		},
 		{
+			name: "Only specified sources should truncate in labels",
+			config: []*RuleConfig{
+				{
+					Limit:      15,
+					SourceType: TruncateSourceLabel,
+					Suffix:     "[truncated]",
+					Sources:    []string{"app"},
+				},
+			},
+			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
+			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}),
+			structured_metadata: push.LabelsAdapter{},
+			entry:               "12345678901",
+			expectedExtracted:   ptr(map[string]any{"truncated": "label"}),
+			incrementedCount:    ptr(map[string]float64{"label": 1}),
+		},
+		{
 			name: "Longer structured_metadata should truncate",
-			config: &TruncateConfig{
-				StructuredMetadataLimit: 15,
-				Suffix:                  "<trunc>",
+			config: []*RuleConfig{
+				{
+					Limit:      15,
+					SourceType: TruncateSourceStructuredMetadata,
+					Suffix:     "<trunc>",
+				},
 			},
 			labels:              map[string]string{"app": "my-very-long-app-name", "env": "prod"},
 			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "short"}},
@@ -87,21 +122,84 @@ func Test_TruncateStage_Process(t *testing.T) {
 				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
 				push.LabelAdapter{Name: "meta2", Value: "short"},
 			}),
-			entry:            "12345678901",
-			incrementedCount: ptr(map[string]float64{"structured_metadata": 1}),
+			entry:             "12345678901",
+			expectedExtracted: ptr(map[string]any{"truncated": "structured_metadata"}),
+			incrementedCount:  ptr(map[string]float64{"structured_metadata": 1}),
+		},
+		{
+			name: "Only specified structured_metadata should truncate",
+			config: []*RuleConfig{
+				{
+					Limit:      15,
+					SourceType: TruncateSourceStructuredMetadata,
+					Suffix:     "<trunc>",
+					Sources:    []string{"meta1"},
+				},
+			},
+			labels:              map[string]string{"app": "my-very-long-app-name", "env": "prod"},
+			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "another long value"}},
+			expectedStructuredMetadata: ptr(push.LabelsAdapter{
+				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
+				push.LabelAdapter{Name: "meta2", Value: "another long value"},
+			}),
+			entry:             "12345678901",
+			expectedExtracted: ptr(map[string]any{"truncated": "structured_metadata"}),
+			incrementedCount:  ptr(map[string]float64{"structured_metadata": 1}),
+		},
+		{
+			name: "Multiple rules applied together",
+			config: []*RuleConfig{
+				{
+					Limit: 10,
+				},
+				{
+					Limit:      15,
+					SourceType: TruncateSourceLabel,
+					Suffix:     "[truncated]",
+					Sources:    []string{"app"},
+				},
+				{
+					Limit:      15,
+					SourceType: TruncateSourceStructuredMetadata,
+					Suffix:     "<trunc>",
+				},
+				{
+					Limit:      8,
+					SourceType: TruncateSourceExtractedMap,
+					Sources:    []string{"field2"},
+				},
+			},
+			entry:               "12345678901234",
+			expectedEntry:       ptr("1234567890"),
+			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
+			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}),
+			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "another long value"}},
+			expectedStructuredMetadata: ptr(push.LabelsAdapter{
+				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
+				push.LabelAdapter{Name: "meta2", Value: "another <trunc>"},
+			}),
+			extracted: map[string]any{"field1": "this is kind of long", "field2": "this-is-a-very-long-field-value"},
+			expectedExtracted: &map[string]any{
+				"field1": "this is kind of long", "field2": "this-is-", "truncated": "extracted,label,line,structured_metadata",
+			},
+			incrementedCount: ptr(map[string]float64{"structured_metadata": 2, "line": 1, "label": 1, "extracted": 1}),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateTruncateConfig(tt.config)
+			cfg := &TruncateConfig{Rules: tt.config}
+			err := validateTruncateConfig(cfg)
 			if err != nil {
 				t.Error(err)
 			}
 			logger := util.TestAlloyLogger(t)
 			registry := prometheus.NewRegistry()
-			m, err := newTruncateStage(logger, *tt.config, registry)
+			m, err := newTruncateStage(logger, *cfg, registry)
 			require.NoError(t, err)
 			entry := newEntry(map[string]interface{}{}, toLabelSet(tt.labels), tt.entry, tt.t)
+			if tt.extracted != nil {
+				entry.Extracted = tt.extracted
+			}
 			entry.StructuredMetadata = tt.structured_metadata
 			out := processEntries(m, entry)
 			if tt.expectedEntry != nil {
@@ -129,6 +227,12 @@ func Test_TruncateStage_Process(t *testing.T) {
 				require.Equal(t, tt.structured_metadata, out[0].StructuredMetadata)
 			}
 
+			if tt.expectedExtracted != nil {
+				require.Equal(t, *tt.expectedExtracted, out[0].Extracted)
+			} else {
+				require.Equal(t, tt.extracted, out[0].Extracted)
+			}
+
 			if tt.incrementedCount != nil {
 				mfs, _ := registry.Gather()
 				require.Len(t, mfs, 1)
@@ -153,54 +257,88 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "ErrEmpty",
-			config:  &TruncateConfig{},
-			wantErr: errors.New(errTruncateStageEmptyConfig),
+			name: "Error no rules",
+			config: &TruncateConfig{
+				Rules: []*RuleConfig{},
+			},
+			wantErr: errors.New(errAtLeastOneRule),
 		},
 		{
-			name: "No error for line limit only",
+			name: "Error limit must be positive",
 			config: &TruncateConfig{
-				LineLimit: 10,
-				Suffix:    "...",
+				Rules: []*RuleConfig{{
+					Limit: 0,
+				}},
+			},
+			wantErr: errors.New(errLimitMustBeGreaterThanZero),
+		},
+		{
+			name: "Error sources cannot be set for line",
+			config: &TruncateConfig{
+				Rules: []*RuleConfig{{
+					Limit:   10,
+					Sources: []string{"app"},
+				}},
+			},
+			wantErr: errors.New(errSourcesForLine),
+		},
+		{
+			name: "No error for intrinsic line limit",
+			config: &TruncateConfig{
+				Rules: []*RuleConfig{{
+					Limit:  10,
+					Suffix: "...",
+				}},
 			},
 			wantErr: nil,
 		},
 		{
-			name: "No error for label limit only",
+			name: "No error for label limit",
 			config: &TruncateConfig{
-				LabelLimit: 10,
-				Suffix:     "...",
+				Rules: []*RuleConfig{{
+					Limit:      10,
+					SourceType: TruncateSourceLabel,
+					Suffix:     "...",
+				}},
 			},
 			wantErr: nil,
 		},
 		{
-			name: "No error for structured_metadata limit only",
+			name: "No error for structured_metadata limit",
 			config: &TruncateConfig{
-				StructuredMetadataLimit: 10,
-				Suffix:                  "...",
+				Rules: []*RuleConfig{{
+					Limit:      10,
+					SourceType: TruncateSourceStructuredMetadata,
+					Suffix:     "...",
+				}},
 			},
 			wantErr: nil,
 		},
 		{
-			name: "No error for all limits set",
+			name: "No error for specific label limit",
 			config: &TruncateConfig{
-				LineLimit:               10,
-				LabelLimit:              5,
-				StructuredMetadataLimit: 10,
-				Suffix:                  "...",
+				Rules: []*RuleConfig{
+					{
+						Limit:      10,
+						SourceType: TruncateSourceLabel,
+						Sources:    []string{"app"},
+						Suffix:     "...",
+					},
+				},
 			},
 			wantErr: nil,
 		},
 		{
 			name: "Suffix too long",
 			config: &TruncateConfig{
-				LineLimit:               10,
-				LabelLimit:              50,
-				StructuredMetadataLimit: 10,
-				Suffix:                  "12345678901",
+				Rules: []*RuleConfig{
+					{
+						Limit:  10,
+						Suffix: "12345678901",
+					},
+				},
 			},
-			wantErr: errors.New(`suffix length cannot be greater than or equal to line_limit
-suffix length cannot be greater than or equal to structured_metadata_limit`),
+			wantErr: errors.New(`suffix length cannot be greater than or equal to limit`),
 		},
 	}
 	for _, tt := range tests {
