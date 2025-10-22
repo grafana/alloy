@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	ErrTruncateStageEmptyConfig = "truncate stage config must contain at least one of `entry_limit`, `label_limit`, or `structured_metadata_limit`"
+	errTruncateStageEmptyConfig = "truncate stage config must contain at least one of `entry_limit`, `label_limit`, or `structured_metadata_limit`"
 )
 
 var (
@@ -42,7 +42,7 @@ func validateTruncateConfig(cfg *TruncateConfig) error {
 	if cfg == nil ||
 		(cfg.LineLimit == 0 && cfg.LabelLimit == 0 && cfg.StructuredMetadataLimit == 0) {
 
-		return errors.New(ErrTruncateStageEmptyConfig)
+		return errors.New(errTruncateStageEmptyConfig)
 	}
 
 	cfg.effectiveLineLimit = cfg.LineLimit
