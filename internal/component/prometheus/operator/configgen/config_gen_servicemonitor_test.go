@@ -365,6 +365,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 							},
 						},
 					},
+					ScrapeProtocols: []promopv1.ScrapeProtocol{
+						promopv1.ScrapeProtocol(config.PrometheusProto),
+					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
 					SampleLimit:           ptr.To(uint64(101)),
 					TargetLimit:           ptr.To(uint64(102)),
@@ -479,7 +482,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				},
 				ScrapeInterval:         model.Duration(12 * time.Minute),
 				ScrapeTimeout:          model.Duration(17 * time.Second),
-				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeProtocols:        []config.ScrapeProtocol{config.PrometheusProto},
 				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
 				EnableCompression:      true,
 				MetricsPath:            "/foo",
