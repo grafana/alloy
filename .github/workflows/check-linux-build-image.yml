@@ -3,8 +3,8 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - "tools/build-image/*"
-      - ".github/workflows/check-linux-build-image.yml"
+      - 'tools/build-image/*'
+      - '.github/workflows/check-linux-build-image.yml'
 
 permissions:
   contents: read
