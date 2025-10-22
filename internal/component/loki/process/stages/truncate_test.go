@@ -155,7 +155,7 @@ func Test_ValidateTruncateConfig(t *testing.T) {
 		{
 			name:    "ErrEmpty",
 			config:  &TruncateConfig{},
-			wantErr: errors.New(ErrTruncateStageEmptyConfig),
+			wantErr: errors.New(errTruncateStageEmptyConfig),
 		},
 		{
 			name: "No error for line limit only",
