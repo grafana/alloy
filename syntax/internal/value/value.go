@@ -284,6 +284,15 @@ func (v Value) TryConvertToObject() (map[string]Value, bool) {
 	return nil, false
 }
 
+func (v Value) NamedCapsule() (string, bool) {
+	if named, ok := reflect.TypeAssert[NamedCapsule](v.rv); ok {
+		if name := named.CapsuleName(); name != "" {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 // makeValue converts a reflect value into a Value, dereferencing any pointers or
 // interface{} values.
 func makeValue(v reflect.Value) Value {

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
 
@@ -29,6 +28,7 @@ type LogsReceiver interface {
 }
 
 type logsReceiver struct {
+	name    string
 	entries chan Entry
 }
 
@@ -46,6 +46,25 @@ func NewLogsReceiverWithChannel(c chan Entry) LogsReceiver {
 	}
 }
 
+// NewLogsReciverFor should be used for receivers that are exported by components.
+func NewLogsReciverFor(componentId string) LogsReceiver {
+	return &namedReceiver{
+		inner: NewLogsReceiver(),
+		name:  componentId + ".receiver",
+	}
+}
+
+type namedReceiver struct {
+	inner LogsReceiver
+	name  string
+}
+
+func (r *namedReceiver) Chan() chan Entry {
+	return r.inner.Chan()
+}
+func (namedReceiver) AlloyCapsule()          {}
+func (r *namedReceiver) CapsuleName() string { return r.name }
+
 // Entry is a log entry with labels.
 type Entry struct {
 	Labels model.LabelSet
@@ -58,12 +77,6 @@ func (e *Entry) Clone() Entry {
 		Labels: e.Labels.Clone(),
 		Entry:  e.Entry,
 	}
-}
-
-// InstrumentedEntryHandler ...
-type InstrumentedEntryHandler interface {
-	EntryHandler
-	UnregisterLatencyMetric(prometheus.Labels)
 }
 
 // EntryHandler is something that can "handle" entries via a channel.

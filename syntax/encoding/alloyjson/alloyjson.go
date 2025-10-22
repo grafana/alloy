@@ -291,6 +291,11 @@ func buildJSONValue(v value.Value) jsonValue {
 		if newVal, ok := v.TryConvertToObject(); ok {
 			return tokenizeObject(value.Encode(newVal))
 		}
+
+		if name, ok := v.NamedCapsule(); ok {
+			return jsonValue{Type: "capsule", Value: name}
+		}
+
 		// Otherwise, describe the value
 		return jsonValue{Type: "capsule", Value: v.Describe()}
 

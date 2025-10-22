@@ -66,7 +66,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts:         opts,
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
-		receiver:     loki.NewLogsReceiver(),
+		receiver:     loki.NewLogsReciverFor(opts.ID),
 	}
 
 	// Initialize the cache with provided targets

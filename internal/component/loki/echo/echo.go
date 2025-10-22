@@ -57,7 +57,7 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:     o,
-		receiver: loki.NewLogsReceiver(),
+		receiver: loki.NewLogsReciverFor(o.ID),
 	}
 
 	// Call to Update() once at the start.
