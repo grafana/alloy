@@ -12,6 +12,8 @@ v1.11.3
 
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
+- Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
 v1.11.2
 -----------------
 
