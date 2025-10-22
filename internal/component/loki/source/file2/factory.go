@@ -1,53 +1,33 @@
-package file
+package file2
 
 import (
-	"context"
-	"fmt"
 	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/common/model"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/loki/source"
-	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/tail/watch"
+	"github.com/prometheus/common/model"
 )
 
-func build(opts component.Options, cargs component.Arguments) (component.Component, error) {
-	args := cargs.(Arguments)
+var _ source.TargetsFactory = (*targetsFactory)(nil)
 
-	newPositionsPath := filepath.Join(opts.DataPath, "positions.yml")
-	// Check to see if we can convert the legacy positions file to the new format.
-	if args.LegacyPositionsFile != "" {
-		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, opts.Logger)
-	}
-	return source.New(opts, args, &factory{opts: opts, metrics: newMetrics(opts.Registerer)})
-}
-
-var _ source.TargetsFactory = (*factory)(nil)
-
-type factory struct {
+type targetsFactory struct {
 	opts    component.Options
 	metrics *metrics
 }
 
-// New implements source.TargetsFactory.
-func (f *factory) New(recv loki.LogsReceiver, pos positions.Positions, args component.Arguments) []source.Target {
+func (f *targetsFactory) Targets(recv loki.LogsReceiver, pos positions.Positions, isStopping func() bool, args component.Arguments) []source.Target {
 	newArgs := args.(Arguments)
 
 	var targets []source.Target
 
 	// There are cases where we have several targets with the same path + public labels
-	// but the path no longer exist so we cannot create a task for it. So we need to track
-	// what we have checked separately from the task map to prevent performing checks that
-	// will fail multiple times.
+	// So we need to track what we have checked so we don't create multiple targets or tries
+	// to create a target for a file that don't exists several times.
 	checked := make(map[positions.Entry]struct{})
 
 	for _, target := range newArgs.Targets {
@@ -78,7 +58,7 @@ func (f *factory) New(recv loki.LogsReceiver, pos positions.Positions, args comp
 
 		f.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 
-		target, err := newTarget(recv, f.opts.Logger, f.metrics, pos, labels, targetsOptions{
+		target, err := newTarget(recv, f.opts.Logger, f.metrics, pos, labels, isStopping, targetsOptions{
 			path:                path,
 			labels:              labels,
 			encoding:            newArgs.Encoding,
@@ -89,7 +69,7 @@ func (f *factory) New(recv loki.LogsReceiver, pos positions.Positions, args comp
 		})
 
 		if err != nil {
-			// FIXME: Log
+			level.Error(f.opts.Logger).Log("msg", "failed to create file target", "error", err, "filename", path)
 			continue
 		}
 
@@ -113,11 +93,9 @@ type targetsOptions struct {
 	legacyPositionUsed  bool
 }
 
-func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positions.Positions, labels model.LabelSet, opts targetsOptions) (source.Target, error) {
-	hash := uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(opts.path)}).Fingerprint())
-	// FIXME clean this up.
+func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positions.Positions, labels model.LabelSet, isStopping func() bool, opts targetsOptions) (source.Target, error) {
 	if opts.decompressionConfig.Enabled {
-		decompressor, err := newDecompressor(
+		return newDecompressorTarget(
 			m,
 			logger,
 			revc,
@@ -126,18 +104,14 @@ func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positi
 			opts.labels,
 			opts.encoding,
 			opts.decompressionConfig,
-			func() bool { return false },
+			isStopping,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create decompressor %s", err)
-		}
-		return &target{reader: decompressor, hash: hash}, nil
 	} else {
 		pollOptions := watch.PollingFileWatcherOptions{
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		}
-		tailer, err := newTailer(
+		return newTailerTarget(
 			m,
 			logger,
 			revc,
@@ -148,53 +122,7 @@ func newTarget(revc loki.LogsReceiver, logger log.Logger, m *metrics, pos positi
 			pollOptions,
 			opts.tailFromEnd,
 			opts.legacyPositionUsed,
-			func() bool { return false },
+			isStopping,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create tailer %s", err)
-		}
-		return &target{reader: tailer, hash: hash}, nil
-	}
-}
-
-// FIXME: This is just glue for now, what I really should do is to implement Target for tailer and decompessor
-type target struct {
-	hash   uint64
-	reader reader
-}
-
-// Equals implements source.Target.
-func (t *target) Equals(other runner.Task) bool {
-	otherTask := other.(*target)
-
-	if t == otherTask {
-		return true
-	}
-
-	return t.hash == otherTask.hash
-}
-
-// Hash implements source.Target.
-func (t *target) Hash() uint64 {
-	return t.hash
-}
-
-// Run implements source.Target.
-func (t *target) Run(ctx context.Context) {
-	backoff := backoff.New(
-		ctx,
-		backoff.Config{
-			MinBackoff: 1 * time.Second,
-			MaxBackoff: 10 * time.Second,
-			MaxRetries: 0,
-		},
-	)
-
-	for {
-		t.reader.Run(ctx)
-		backoff.Wait()
-		if !backoff.Ongoing() {
-			break
-		}
 	}
 }

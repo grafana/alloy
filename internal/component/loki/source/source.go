@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
@@ -23,13 +25,13 @@ type Arguments interface {
 }
 
 type TargetsFactory interface {
-	New(revc loki.LogsReceiver, pos positions.Positions, args component.Arguments) []Target
+	Targets(revc loki.LogsReceiver, pos positions.Positions, isStopping func() bool, args component.Arguments) []Target
 }
 
 // FIXME: DebugInfo
 type Target interface {
-	runner.Task
 	Run(context.Context)
+	runner.Task
 }
 
 func New(opts component.Options, args Arguments, factory TargetsFactory) (component.Component, error) {
@@ -83,6 +85,8 @@ type Component struct {
 	pos positions.Positions
 
 	factory TargetsFactory
+
+	stopping atomic.Bool
 }
 
 // Run implements component.Component.
@@ -92,6 +96,7 @@ func (c *Component) Run(ctx context.Context) error {
 	})
 
 	defer func() {
+		c.stopping.Store(true)
 		// We stop position file first because we are draning into nothing
 		// so we don't want to update position for these entries.
 		c.pos.Stop()
@@ -125,7 +130,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.targetsMut.Lock()
-	c.targets = c.factory.New(c.recv, c.pos, args)
+	c.targets = c.factory.Targets(c.recv, c.pos, func() bool { return c.stopping.Load() }, args)
 	c.targetsMut.Unlock()
 
 	select {

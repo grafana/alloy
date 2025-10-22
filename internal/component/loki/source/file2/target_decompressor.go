@@ -1,4 +1,4 @@
-package file
+package file2
 
 import (
 	"bufio"
@@ -24,43 +24,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source"
+	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/push"
 )
 
-func supportedCompressedFormats() map[string]struct{} {
-	return map[string]struct{}{
-		"gz":  {},
-		"z":   {},
-		"bz2": {},
-		// TODO: add support for zip.
-	}
-}
-
-type decompressor struct {
-	metrics   *metrics
-	logger    log.Logger
-	receiver  loki.LogsReceiver
-	positions positions.Positions
-
-	path      string
-	labels    model.LabelSet
-	labelsStr string
-
-	posAndSizeMtx sync.RWMutex
-
-	running *atomic.Bool
-
-	decoder *encoding.Decoder
-
-	position int64
-	size     int64
-	cfg      DecompressionConfig
-
-	componentStopping func() bool
-}
-
-func newDecompressor(
+func newDecompressorTarget(
 	metrics *metrics,
 	logger log.Logger,
 	receiver loki.LogsReceiver,
@@ -70,7 +40,7 @@ func newDecompressor(
 	encodingFormat string,
 	cfg DecompressionConfig,
 	componentStopping func() bool,
-) (*decompressor, error) {
+) (*decompressorTarget, error) {
 
 	labelsStr := labels.String()
 
@@ -91,7 +61,7 @@ func newDecompressor(
 		decoder = encoder.NewDecoder()
 	}
 
-	decompressor := &decompressor{
+	decompressor := &decompressorTarget{
 		metrics:           metrics,
 		logger:            logger,
 		receiver:          receiver,
@@ -99,6 +69,7 @@ func newDecompressor(
 		path:              path,
 		labels:            labels,
 		labelsStr:         labelsStr,
+		hash:              uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
 		running:           atomic.NewBool(false),
 		position:          pos,
 		decoder:           decoder,
@@ -109,44 +80,33 @@ func newDecompressor(
 	return decompressor, nil
 }
 
-// mountReader instantiate a reader ready to be used by the decompressor.
-//
-// The reader implementation is selected based on the given CompressionFormat.
-// If the actual file format is incorrect, the reading of the header may fail and return an error - depending on the
-// implementation of the underlying compression library. In any case, when a file is corrupted, the subsequent reading
-// of lines will fail.
-func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
-	var decompressLib string
+var _ source.Target = (*decompressorTarget)(nil)
 
-	switch format.String() {
-	case "gz":
-		decompressLib = "compress/gzip"
-		reader, err = gzip.NewReader(f)
-	case "z":
-		decompressLib = "compress/zlib"
-		reader, err = zlib.NewReader(f)
-	case "bz2":
-		decompressLib = "bzip2"
-		reader = bzip2.NewReader(f)
-	}
+type decompressorTarget struct {
+	metrics   *metrics
+	logger    log.Logger
+	receiver  loki.LogsReceiver
+	positions positions.Positions
 
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
+	path      string
+	labels    model.LabelSet
+	labelsStr string
+	hash      uint64
 
-	if reader == nil {
-		supportedFormatsList := strings.Builder{}
-		for format := range supportedCompressedFormats() {
-			supportedFormatsList.WriteString(format)
-		}
-		return nil, fmt.Errorf("file %q has unsupported format, it has to be one of %q", f.Name(), supportedFormatsList.String())
-	}
+	posAndSizeMtx sync.RWMutex
 
-	level.Debug(logger).Log("msg", fmt.Sprintf("using %q to decompress file %q", decompressLib, f.Name()))
-	return reader, nil
+	running *atomic.Bool
+
+	decoder *encoding.Decoder
+
+	position int64
+	size     int64
+	cfg      DecompressionConfig
+
+	componentStopping func() bool
 }
 
-func (d *decompressor) Run(ctx context.Context) {
+func (d *decompressorTarget) Run(ctx context.Context) {
 	// Check if context was canceled between two calls to Run.
 	select {
 	case <-ctx.Done():
@@ -154,8 +114,8 @@ func (d *decompressor) Run(ctx context.Context) {
 	default:
 	}
 
-	labelsMiddleware := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
-	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
+	labels := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
+	handler := loki.AddLabelsMiddleware(labels).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
 	defer handler.Stop()
 
 	d.metrics.filesActive.Add(1.)
@@ -175,7 +135,23 @@ func (d *decompressor) Run(ctx context.Context) {
 	d.stop(done)
 }
 
-func (d *decompressor) updatePosition(posquit chan struct{}) {
+// Equals implements source.Target.
+func (d *decompressorTarget) Equals(other runner.Task) bool {
+	otherTask := other.(*decompressorTarget)
+
+	if d == otherTask {
+		return true
+	}
+
+	return d.hash == otherTask.hash
+}
+
+// Hash implements source.Target.
+func (d *decompressorTarget) Hash() uint64 {
+	return d.hash
+}
+
+func (d *decompressorTarget) updatePosition(posquit chan struct{}) {
 	positionSyncPeriod := d.positions.SyncPeriod()
 	positionWait := time.NewTicker(positionSyncPeriod)
 	defer func() {
@@ -203,7 +179,7 @@ func (d *decompressor) updatePosition(posquit chan struct{}) {
 // over its chunks, separated by '\n'.
 // During each iteration, the parsed and decoded log line is then sent to the API with the current timestamp.
 // done channel is closed when readlines exits.
-func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) {
+func (d *decompressorTarget) readLines(handler loki.EntryHandler, done chan struct{}) {
 	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.path)
 
 	if d.cfg.InitialDelay > 0 {
@@ -300,7 +276,7 @@ func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) 
 	}
 }
 
-func (d *decompressor) markPositionAndSize() error {
+func (d *decompressorTarget) markPositionAndSize() error {
 	// Lock this update because it can be called in two different goroutines
 	d.posAndSizeMtx.RLock()
 	defer d.posAndSizeMtx.RUnlock()
@@ -312,7 +288,7 @@ func (d *decompressor) markPositionAndSize() error {
 	return nil
 }
 
-func (d *decompressor) stop(done chan struct{}) {
+func (d *decompressorTarget) stop(done chan struct{}) {
 	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
 	<-done
 
@@ -330,11 +306,11 @@ func (d *decompressor) stop(done chan struct{}) {
 	}
 }
 
-func (d *decompressor) IsRunning() bool {
+func (d *decompressorTarget) IsRunning() bool {
 	return d.running.Load()
 }
 
-func (d *decompressor) convertToUTF8(text string) (string, error) {
+func (d *decompressorTarget) convertToUTF8(text string) (string, error) {
 	res, _, err := transform.String(d.decoder, text)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode text to UTF8: %w", err)
@@ -344,10 +320,47 @@ func (d *decompressor) convertToUTF8(text string) (string, error) {
 }
 
 // cleanupMetrics removes all metrics exported by this reader
-func (d *decompressor) cleanupMetrics() {
+func (d *decompressorTarget) cleanupMetrics() {
 	// When we stop tailing the file, un-export metrics related to the file.
 	d.metrics.filesActive.Add(-1.)
 	d.metrics.readLines.DeleteLabelValues(d.path)
 	d.metrics.readBytes.DeleteLabelValues(d.path)
 	d.metrics.totalBytes.DeleteLabelValues(d.path)
+}
+
+// mountReader instantiate a reader ready to be used by the decompressor.
+//
+// The reader implementation is selected based on the given CompressionFormat.
+// If the actual file format is incorrect, the reading of the header may fail and return an error - depending on the
+// implementation of the underlying compression library. In any case, when a file is corrupted, the subsequent reading
+// of lines will fail.
+func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reader io.Reader, err error) {
+	var decompressLib string
+
+	switch format.String() {
+	case "gz":
+		decompressLib = "compress/gzip"
+		reader, err = gzip.NewReader(f)
+	case "z":
+		decompressLib = "compress/zlib"
+		reader, err = zlib.NewReader(f)
+	case "bz2":
+		decompressLib = "bzip2"
+		reader = bzip2.NewReader(f)
+	}
+
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	if reader == nil {
+		supportedFormatsList := strings.Builder{}
+		for format := range supportedCompressedFormats() {
+			supportedFormatsList.WriteString(format)
+		}
+		return nil, fmt.Errorf("file %q has unsupported format, it has to be one of %q", f.Name(), supportedFormatsList.String())
+	}
+
+	level.Debug(logger).Log("msg", fmt.Sprintf("using %q to decompress file %q", decompressLib, f.Name()))
+	return reader, nil
 }

@@ -34,13 +34,6 @@ func init() {
 			return New(opts, args.(Arguments))
 		},
 	})
-
-	component.Register(component.Registration{
-		Name:      "loki.source.file2",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Build:     build,
-	})
 }
 
 const (
