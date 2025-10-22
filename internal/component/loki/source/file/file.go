@@ -34,6 +34,13 @@ func init() {
 			return New(opts, args.(Arguments))
 		},
 	})
+
+	component.Register(component.Registration{
+		Name:      "loki.source.file2",
+		Stability: featuregate.StabilityGenerallyAvailable,
+		Args:      Arguments{},
+		Build:     build,
+	})
 }
 
 const (
@@ -51,6 +58,11 @@ type Arguments struct {
 	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
 	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
+}
+
+// Receivers implements source.Arguments.
+func (a Arguments) Receivers() []loki.LogsReceiver {
+	return a.ForwardTo
 }
 
 type FileWatch struct {
