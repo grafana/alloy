@@ -65,6 +65,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Fix prometheus.exporter.process ignoring the `remove_empty_groups` argument. (@mhamzahkhan)
+
 v1.11.3
 -----------------
 
