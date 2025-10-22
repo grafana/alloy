@@ -49,6 +49,8 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- Update percona/mongodb_exporter dependency for `prometheus.exporter.mongodb`. (@dehaansa)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
