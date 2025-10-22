@@ -1879,7 +1879,7 @@ If anything has been truncated, the extracted map for the entry contains a `"tru
 loki.process "default" {
   forward_to = [loki.write.default.receiver]
   stage.truncate {
-    entry_limit = "12B"
+    line_limit = "12B"
     label_limit = "8B"
     suffix = "..."
   }
