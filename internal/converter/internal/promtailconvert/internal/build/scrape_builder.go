@@ -73,11 +73,12 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 	forwardTo := s.getOrNewProcessStageReceivers()
 
 	args := lokisourcefile.Arguments{
-		ForwardTo:           forwardTo,
-		Encoding:            s.cfg.Encoding,
-		DecompressionConfig: convertDecompressionConfig(s.cfg.DecompressionCfg),
-		FileWatch:           convertFileWatchConfig(watchConfig),
-		LegacyPositionsFile: positionsCfg.PositionsFile,
+		ForwardTo:            forwardTo,
+		Encoding:             s.cfg.Encoding,
+		DecompressionConfig:  convertDecompressionConfig(s.cfg.DecompressionCfg),
+		FileWatch:            convertFileWatchConfig(watchConfig),
+		LegacyPositionsFile:  positionsCfg.PositionsFile,
+		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartStart,
 	}
 	overrideHook := func(val interface{}) interface{} {
 		if _, ok := val.([]discovery.Target); ok {
