@@ -85,7 +85,6 @@ func newDecompressor(
 
 	pos, err := positions.Get(path, labelsStr)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to get file position", "file", path, "error", err)
 		switch onPositionsFileError {
 		case OnPositionsFileErrorSkip:
 			return nil, fmt.Errorf("failed to get file position: %w", err)
@@ -95,9 +94,9 @@ func newDecompressor(
 		case OnPositionsFileErrorRestartStart:
 			pos = 0
 			positions.Put(path, labelsStr, pos)
-			level.Info(logger).Log("msg", "reset position to start of file after positions error")
+			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
 		default:
-			level.Debug(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", onPositionsFileError)
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", onPositionsFileError)
 			return nil, fmt.Errorf("failed to get file position: %w", err)
 		}
 	}
