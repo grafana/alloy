@@ -153,6 +153,8 @@ v1.11.0
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
+- Add support for ScrapeConfig with `ec2SdConfigs` in `prometheus.operator.scrapeconfigs`. (@thomas-gouveia)
+  
 ### Enhancements
 
 - Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
