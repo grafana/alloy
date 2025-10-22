@@ -49,6 +49,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 	}
 
 	histogramsToNHCB := scrapeConfig.ConvertClassicHistogramsToNHCB != nil && *scrapeConfig.ConvertClassicHistogramsToNHCB
+	scrapeClassicHistograms := scrapeConfig.AlwaysScrapeClassicHistograms != nil && *scrapeConfig.AlwaysScrapeClassicHistograms
 	fallbackProtocol := string(scrapeConfig.ScrapeFallbackProtocol)
 	if fallbackProtocol == "" {
 		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
@@ -66,7 +67,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		HonorTimestamps:                scrapeConfig.HonorTimestamps,
 		TrackTimestampsStaleness:       scrapeConfig.TrackTimestampsStaleness,
 		Params:                         scrapeConfig.Params,
-		ScrapeClassicHistograms:        *scrapeConfig.AlwaysScrapeClassicHistograms,
+		ScrapeClassicHistograms:        scrapeClassicHistograms,
 		ScrapeNativeHistograms:         false, // this is controlled by a Prometheus feature, not the config file
 		ScrapeInterval:                 time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:                  time.Duration(scrapeConfig.ScrapeTimeout),
