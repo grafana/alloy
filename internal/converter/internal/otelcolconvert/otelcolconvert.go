@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	_ "github.com/grafana/alloy/internal/component/all" // Register all components
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert/envprovider"
