@@ -25,11 +25,11 @@ jobs:
 
       - name: Remove unnecessary files
         run: |
-          rm -rf /usr/share/dotnet
-          rm -rf "$AGENT_TOOLSDIRECTORY"
-          rm -rf /opt/ghc
-          rm -rf "/usr/local/share/boost"
-          rm -rf /opt/hostedtoolcache
+            rm -rf /usr/share/dotnet
+            rm -rf "$AGENT_TOOLSDIRECTORY"
+            rm -rf /opt/ghc
+            rm -rf "/usr/local/share/boost"
+            rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
