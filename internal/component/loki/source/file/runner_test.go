@@ -50,6 +50,7 @@ func TestRunnerTailer(t *testing.T) {
 		},
 		false,
 		false,
+		OnPositionsFileErrorSkip,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -92,6 +93,7 @@ func TestRunnerDecompressor(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
+		OnPositionsFileErrorSkip,
 		func() bool { return true },
 	)
 	require.NoError(t, err)

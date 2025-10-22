@@ -44,13 +44,41 @@ const (
 // Arguments holds values which are used to configure the loki.source.file
 // component.
 type Arguments struct {
-	Targets             []discovery.Target  `alloy:"targets,attr"`
-	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Encoding            string              `alloy:"encoding,attr,optional"`
-	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
-	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
-	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
-	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
+	Targets              []discovery.Target   `alloy:"targets,attr"`
+	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	Encoding             string               `alloy:"encoding,attr,optional"`
+	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
+	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
+	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
+	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
+	OnPositionsFileError OnPositionsFileError `alloy:"on_positions_file_error,attr,optional"`
+}
+
+type OnPositionsFileError string
+
+const (
+	OnPositionsFileErrorSkip         OnPositionsFileError = "skip"
+	OnPositionsFileErrorRestartEnd   OnPositionsFileError = "restart_from_end"
+	OnPositionsFileErrorRestartStart OnPositionsFileError = "restart_from_start"
+)
+
+func (o OnPositionsFileError) MarshalText() ([]byte, error) {
+	return []byte(string(o)), nil
+}
+
+func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
+	s := string(text)
+	switch s {
+	case "skip":
+		*o = OnPositionsFileErrorSkip
+	case "restart_from_end":
+		*o = OnPositionsFileErrorRestartEnd
+	case "restart_from_start":
+		*o = OnPositionsFileErrorRestartStart
+	default:
+		return fmt.Errorf("unknown OnPositionsFileError value: %s", s)
+	}
+	return nil
 }
 
 type FileWatch struct {
@@ -63,6 +91,7 @@ var DefaultArguments = Arguments{
 		MinPollFrequency: 250 * time.Millisecond,
 		MaxPollFrequency: 250 * time.Millisecond,
 	},
+	OnPositionsFileError: OnPositionsFileErrorSkip,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -280,13 +309,15 @@ func (c *Component) Update(args component.Arguments) error {
 		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 
 		reader, err := c.createReader(readerOptions{
-			path:                path,
-			labels:              labels,
-			encoding:            newArgs.Encoding,
-			decompressionConfig: newArgs.DecompressionConfig,
-			fileWatch:           newArgs.FileWatch,
-			tailFromEnd:         newArgs.TailFromEnd,
-			legacyPositionUsed:  newArgs.LegacyPositionsFile != "",
+			path:                 path,
+			labels:               labels,
+			encoding:             newArgs.Encoding,
+			decompressionConfig:  newArgs.DecompressionConfig,
+			fileWatch:            newArgs.FileWatch,
+			tailFromEnd:          newArgs.TailFromEnd,
+			onPositionsFileError: newArgs.OnPositionsFileError,
+
+			legacyPositionUsed: newArgs.LegacyPositionsFile != "",
 		})
 		if err != nil {
 			continue
@@ -344,13 +375,14 @@ type targetInfo struct {
 }
 
 type readerOptions struct {
-	path                string
-	labels              model.LabelSet
-	encoding            string
-	decompressionConfig DecompressionConfig
-	fileWatch           FileWatch
-	tailFromEnd         bool
-	legacyPositionUsed  bool
+	path                 string
+	labels               model.LabelSet
+	encoding             string
+	decompressionConfig  DecompressionConfig
+	fileWatch            FileWatch
+	tailFromEnd          bool
+	onPositionsFileError OnPositionsFileError
+	legacyPositionUsed   bool
 }
 
 // For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
@@ -367,6 +399,7 @@ func (c *Component) createReader(opts readerOptions) (reader, error) {
 			opts.labels,
 			opts.encoding,
 			opts.decompressionConfig,
+			opts.onPositionsFileError,
 			c.IsStopping,
 		)
 		if err != nil {
@@ -390,6 +423,7 @@ func (c *Component) createReader(opts readerOptions) (reader, error) {
 			pollOptions,
 			opts.tailFromEnd,
 			opts.legacyPositionUsed,
+			opts.onPositionsFileError,
 			c.IsStopping,
 		)
 		if err != nil {

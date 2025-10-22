@@ -40,8 +40,9 @@ type tailer struct {
 	labels             model.LabelSet
 	legacyPositionUsed bool
 
-	tailFromEnd bool
-	pollOptions watch.PollingFileWatcherOptions
+	tailFromEnd          bool
+	onPositionsFileError OnPositionsFileError
+	pollOptions          watch.PollingFileWatcherOptions
 
 	posAndSizeMtx sync.Mutex
 
@@ -55,22 +56,23 @@ type tailer struct {
 
 func newTailer(
 	metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, positions positions.Positions, path string, labels model.LabelSet,
-	encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, legacyPositonUsed bool, componentStopping func() bool,
+	encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, legacyPositionUsed bool, onPositionsFileError OnPositionsFileError, componentStopping func() bool,
 ) (*tailer, error) {
 
 	tailer := &tailer{
-		metrics:            metrics,
-		logger:             log.With(logger, "component", "tailer"),
-		receiver:           receiver,
-		positions:          positions,
-		path:               path,
-		labels:             labels,
-		labelsStr:          labels.String(),
-		running:            atomic.NewBool(false),
-		tailFromEnd:        tailFromEnd,
-		legacyPositionUsed: legacyPositonUsed,
-		pollOptions:        pollOptions,
-		componentStopping:  componentStopping,
+		metrics:              metrics,
+		logger:               log.With(logger, "component", "tailer"),
+		receiver:             receiver,
+		positions:            positions,
+		path:                 path,
+		labels:               labels,
+		labelsStr:            labels.String(),
+		running:              atomic.NewBool(false),
+		tailFromEnd:          tailFromEnd,
+		onPositionsFileError: onPositionsFileError,
+		legacyPositionUsed:   legacyPositionUsed,
+		pollOptions:          pollOptions,
+		componentStopping:    componentStopping,
 	}
 
 	if encoding != "" {
@@ -182,7 +184,25 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 
 	pos, err := t.positions.Get(t.path, t.labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file position: %w", err)
+		level.Error(t.logger).Log("msg", "failed to get file position", "file", t.path, "error", err)
+		switch t.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			pos, err = getLastLinePosition(t.path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get last line position after positions error: %w", err)
+			}
+			t.positions.Put(t.path, t.labelsStr, pos)
+			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line after positions error")
+		case OnPositionsFileErrorRestartStart:
+			pos = 0
+			t.positions.Put(t.path, t.labelsStr, pos)
+			level.Info(t.logger).Log("msg", "reset position to start of file after positions error")
+		default:
+			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", t.onPositionsFileError)
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		}
 	}
 
 	// If we translated legacy positions we should try to get position offset without labels

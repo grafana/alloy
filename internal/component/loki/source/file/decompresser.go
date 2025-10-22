@@ -53,6 +53,8 @@ type decompressor struct {
 
 	posAndSizeMtx sync.RWMutex
 
+	onPositionsFileError OnPositionsFileError
+
 	running *atomic.Bool
 
 	decoder *encoding.Decoder
@@ -73,6 +75,7 @@ func newDecompressor(
 	labels model.LabelSet,
 	encodingFormat string,
 	cfg DecompressionConfig,
+	onPositionsFileError OnPositionsFileError,
 	componentStopping func() bool,
 ) (*decompressor, error) {
 
@@ -82,7 +85,21 @@ func newDecompressor(
 
 	pos, err := positions.Get(path, labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get positions: %w", err)
+		level.Error(logger).Log("msg", "failed to get file position", "file", path, "error", err)
+		switch onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `skip`")
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartStart:
+			pos = 0
+			positions.Put(path, labelsStr, pos)
+			level.Info(logger).Log("msg", "reset position to start of file after positions error")
+		default:
+			level.Debug(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", onPositionsFileError)
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		}
 	}
 
 	var decoder *encoding.Decoder
@@ -96,18 +113,19 @@ func newDecompressor(
 	}
 
 	decompressor := &decompressor{
-		metrics:           metrics,
-		logger:            logger,
-		receiver:          receiver,
-		positions:         positions,
-		path:              path,
-		labels:            labels,
-		labelsStr:         labelsStr,
-		running:           atomic.NewBool(false),
-		position:          pos,
-		decoder:           decoder,
-		cfg:               cfg,
-		componentStopping: componentStopping,
+		metrics:              metrics,
+		logger:               logger,
+		receiver:             receiver,
+		positions:            positions,
+		path:                 path,
+		labels:               labels,
+		labelsStr:            labelsStr,
+		running:              atomic.NewBool(false),
+		position:             pos,
+		decoder:              decoder,
+		cfg:                  cfg,
+		onPositionsFileError: onPositionsFileError,
+		componentStopping:    componentStopping,
 	}
 
 	return decompressor, nil

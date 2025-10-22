@@ -245,6 +245,7 @@ func (p *positions) Get(path, labels string) (int64, error) {
 	if !ok {
 		return 0, nil
 	}
+
 	return strconv.ParseInt(pos, 10, 64)
 }
 
