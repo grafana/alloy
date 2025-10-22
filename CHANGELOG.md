@@ -61,6 +61,12 @@ Main (unreleased)
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+- Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+
 v1.11.2
 -----------------
 
