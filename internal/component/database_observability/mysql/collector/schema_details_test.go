@@ -32,6 +32,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -101,7 +102,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -176,6 +177,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -245,7 +247,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -323,6 +325,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -399,7 +402,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -490,6 +493,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -559,7 +563,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -637,6 +641,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -713,7 +718,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -806,6 +811,7 @@ func TestSchemaDetails(t *testing.T) {
 		// that writes to cache (but we don't explicitly assert it in this test)
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    true,
@@ -876,7 +882,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -953,6 +959,7 @@ func TestSchemaDetails(t *testing.T) {
 		// first loop, table info will be written to cache
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    true,
@@ -1016,7 +1023,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -1120,6 +1127,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -1187,7 +1195,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
@@ -1256,6 +1264,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -1305,6 +1314,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -1373,6 +1383,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
 			CacheEnabled:    false,
@@ -1432,7 +1443,7 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, selectIndexExpression)).WithArgs("some_schema", "some_table").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"index_name",
