@@ -55,7 +55,7 @@ func validateTruncateConfig(cfg *TruncateConfig) error {
 			errs = errors.Join(errs, errors.New("suffix length cannot be greater than or equal to line_limit"))
 		}
 		if len(cfg.Suffix) >= int(cfg.LabelLimit) && cfg.LabelLimit > 0 {
-			errs = errors.Join(errs, fmt.Errorf("suffix length %d cannot be greater than or equal to label_limit %d", len(cfg.Suffix), cfg.LabelLimit))
+			errs = errors.Join(errs, errors.New("suffix length cannot be greater than or equal to label_limit"))
 		}
 		if len(cfg.Suffix) >= int(cfg.StructuredMetadataLimit) && cfg.StructuredMetadataLimit > 0 {
 			errs = errors.Join(errs, errors.New("suffix length cannot be greater than or equal to structured_metadata_limit"))
