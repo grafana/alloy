@@ -123,7 +123,7 @@ func TestTailer(t *testing.T) {
 		},
 		false,
 		false,
-		OnPositionsFileErrorSkip,
+		OnPositionsFileErrorRestartStart,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		},
 		false,
 		false,
-		OnPositionsFileErrorSkip,
+		OnPositionsFileErrorRestartStart,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -286,7 +286,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		},
 		false,
 		false,
-		OnPositionsFileErrorSkip,
+		OnPositionsFileErrorRestartStart,
 		func() bool { return true },
 	)
 	require.NoError(t, err)

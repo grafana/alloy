@@ -91,7 +91,7 @@ var DefaultArguments = Arguments{
 		MinPollFrequency: 250 * time.Millisecond,
 		MaxPollFrequency: 250 * time.Millisecond,
 	},
-	OnPositionsFileError: OnPositionsFileErrorSkip,
+	OnPositionsFileError: OnPositionsFileErrorRestartStart,
 }
 
 // SetToDefault implements syntax.Defaulter.
