@@ -53,11 +53,6 @@ type Arguments struct {
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
 }
 
-// Receivers implements source.Arguments.
-func (a Arguments) Receivers() []loki.LogsReceiver {
-	return a.ForwardTo
-}
-
 type FileWatch struct {
 	MinPollFrequency time.Duration `alloy:"min_poll_frequency,attr,optional"`
 	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
