@@ -5,15 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Configuration errors.
@@ -189,9 +190,10 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		Extracted: extracted,
 		Entry: loki.Entry{
 			Labels: s.startLineEntry.Entry.Labels.Clone(),
-			Entry: logproto.Entry{
-				Timestamp: s.startLineEntry.Entry.Entry.Timestamp,
-				Line:      s.buffer.String(),
+			Entry: push.Entry{
+				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
+				Line:               s.buffer.String(),
+				StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
 			},
 		},
 	}

@@ -5,13 +5,14 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/prometheus/prometheus/model/relabel"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -44,18 +45,19 @@ type Component struct {
 	fanout  []loki.LogsReceiver
 	targets []*st.SyslogTarget
 
-	handler loki.LogsReceiver
+	targetsUpdated chan struct{}
+	handler        loki.LogsReceiver
 }
 
 // New creates a new loki.source.syslog component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:    o,
-		metrics: st.NewMetrics(o.Registerer),
-		handler: loki.NewLogsReceiver(),
-		fanout:  args.ForwardTo,
-
-		targets: []*st.SyslogTarget{},
+		opts:           o,
+		metrics:        st.NewMetrics(o.Registerer),
+		handler:        loki.NewLogsReceiver(),
+		fanout:         args.ForwardTo,
+		targetsUpdated: make(chan struct{}, 1),
+		targets:        []*st.SyslogTarget{},
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -69,6 +71,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		// Start draining routine to prevent potential deadlock if targets attempt to send during Stop().
+		cancel := c.startDrainingRoutine()
+		defer cancel()
+
+		// Stop all targets
+		c.mut.RLock()
+		defer c.mut.RUnlock()
 		level.Info(c.opts.Logger).Log("msg", "loki.source.syslog component shutting down, stopping listeners")
 		for _, l := range c.targets {
 			err := l.Stop()
@@ -80,6 +89,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 	for {
 		select {
+		case <-c.targetsUpdated:
+			c.reloadTargets()
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.handler.Chan():
@@ -98,46 +109,94 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	prevArgs := c.args
 	c.fanout = newArgs.ForwardTo
 
-	var rcs []*relabel.Config
-	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
-		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-	}
+	c.args = newArgs
 
-	if listenersChanged(c.args.SyslogListeners, newArgs.SyslogListeners) || relabelRulesChanged(c.args.RelabelRules, newArgs.RelabelRules) {
-		for _, l := range c.targets {
-			err := l.Stop()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
-			}
+	if listenersChanged(prevArgs.SyslogListeners, newArgs.SyslogListeners) || relabelRulesChanged(prevArgs.RelabelRules, newArgs.RelabelRules) {
+		// trigger targets update
+		select {
+		case c.targetsUpdated <- struct{}{}:
+		default:
 		}
-		c.targets = make([]*st.SyslogTarget, 0)
-		entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-
-		for _, cfg := range newArgs.SyslogListeners {
-			promtailCfg, cfgErr := cfg.Convert()
-			if cfgErr != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to convert syslog listener config", "err", cfgErr)
-				continue
-			}
-
-			t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, promtailCfg)
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
-				continue
-			}
-			c.targets = append(c.targets, t)
-		}
-
-		c.args = newArgs
 	}
 
 	return nil
 }
 
+func (c *Component) startDrainingRoutine() func() {
+	readCtx, cancel := context.WithCancel(context.Background())
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	fanoutCopy := make([]loki.LogsReceiver, len(c.fanout))
+	copy(fanoutCopy, c.fanout)
+	go func() {
+		for {
+			select {
+			case <-readCtx.Done():
+				return
+			case entry := <-c.handler.Chan():
+				for _, receiver := range fanoutCopy {
+					receiver.Chan() <- entry
+				}
+			}
+		}
+	}()
+	return cancel
+}
+
+func (c *Component) reloadTargets() {
+	// Start draining routine to prevent potential deadlock if targets attempt to send during Stop().
+	cancel := c.startDrainingRoutine()
+
+	// Grab current state
+	c.mut.RLock()
+	var rcs []*relabel.Config
+	if len(c.args.RelabelRules) > 0 {
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+	}
+	targetsToStop := make([]*st.SyslogTarget, len(c.targets))
+	copy(targetsToStop, c.targets)
+	c.mut.RUnlock()
+
+	// Stop existing targets
+	for _, l := range targetsToStop {
+		err := l.Stop()
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
+		}
+	}
+
+	// Stop draining routine
+	cancel()
+
+	// Create new targets
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.targets = make([]*st.SyslogTarget, 0)
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+
+	for _, cfg := range c.args.SyslogListeners {
+		promtailCfg, cfgErr := cfg.Convert()
+		if cfgErr != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to convert syslog listener config", "err", cfgErr)
+			continue
+		}
+
+		t, err := st.NewSyslogTarget(c.metrics, c.opts.Logger, entryHandler, rcs, promtailCfg)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
+			continue
+		}
+		c.targets = append(c.targets, t)
+	}
+}
+
 // DebugInfo returns information about the status of listeners.
 func (c *Component) DebugInfo() interface{} {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	var res readerDebugInfo
 
 	for _, t := range c.targets {

@@ -2,9 +2,12 @@ package runtime
 
 import (
 	"context"
-	"os"
+	"io"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -12,8 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 const loggingConfig = `
@@ -127,14 +128,14 @@ func TestModule(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
 			mc := newModuleController(testModuleControllerOptions(t)).(*moduleController)
 			// modules do not clean up their own worker pool as we normally use a shared one from the root controller
-			defer mc.o.WorkerPool.Stop()
+			defer mc.o.WorkerPool.Stop(5 * time.Second)
 
 			tm := &testModule{
 				content: tc.argumentModuleContent + tc.exportModuleContent,
 				args:    tc.args,
 				opts:    component.Options{ModuleController: mc},
 			}
-			ctx, cnc := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cnc()
 			err := tm.Run(ctx)
 			if tc.expectedErrorContains == "" {
@@ -153,7 +154,7 @@ func TestModule(t *testing.T) {
 func TestArgsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
-	defer cleanUpController(f)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("argument \"arg\"{}"))
 	require.NoError(t, err)
 	err = f.LoadSource(fl, nil, "")
@@ -163,7 +164,7 @@ func TestArgsNotInModules(t *testing.T) {
 func TestExportsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	f := New(testOptions(t))
-	defer cleanUpController(f)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
 	require.NoError(t, err)
 	err = f.LoadSource(fl, nil, "")
@@ -179,8 +180,7 @@ func TestExportsWhenNotUsed(t *testing.T) {
 	require.NoError(t, err)
 	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cnc := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cnc()
 	f.Run(ctx)
 	exps := f.loader.Components()[0].Exports().(TestExports)
@@ -193,14 +193,13 @@ func TestExportsWhenNotUsed(t *testing.T) {
 func TestIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	go func() {
 		m1err := mod1.Run(ctx)
 		require.NoError(t, m1err)
@@ -228,14 +227,13 @@ func TestIDList(t *testing.T) {
 func TestDuplicateIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	defer cncl()
 	go func() {
 		m1err := mod1.Run(ctx)
@@ -254,7 +252,7 @@ func TestDuplicateIDList(t *testing.T) {
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	services := []service.Service{

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func TestExtension(t *testing.T) {
@@ -53,7 +54,7 @@ func newTestEnvironment(t *testing.T, onCreated func()) *testEnvironment {
 					_ context.Context,
 					_ otelextension.Settings,
 					_ otelcomponent.Config,
-				) (otelcomponent.Component, error) {
+				) (otelextension.Extension, error) {
 
 					onCreated()
 					return nil, nil
@@ -83,15 +84,19 @@ type fakeExtensionArgs struct {
 
 var _ extension.Arguments = fakeExtensionArgs{}
 
-func (fa fakeExtensionArgs) Convert() (otelcomponent.Config, error) {
+func (fakeExtensionArgs) ExportsHandler() bool {
+	return false
+}
+
+func (fa fakeExtensionArgs) Convert(_ component.Options) (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeExtensionArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
-func (fa fakeExtensionArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeExtensionArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

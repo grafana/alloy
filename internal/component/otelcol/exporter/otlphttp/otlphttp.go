@@ -4,6 +4,7 @@ package otlphttp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -13,7 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +26,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := otlphttpexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -70,9 +71,18 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	httpClientArgs := *(*otelcol.HTTPClientArguments)(&args.Client)
+	convertedClientArgs, err := httpClientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlphttpexporter.Config{
-		ClientConfig:    *(*otelcol.HTTPClientArguments)(&args.Client).Convert(),
-		QueueConfig:     *args.Queue.Convert(),
+		ClientConfig:    *convertedClientArgs,
+		QueueConfig:     *q,
 		RetryConfig:     *args.Retry.Convert(),
 		TracesEndpoint:  args.TracesEndpoint,
 		MetricsEndpoint: args.MetricsEndpoint,
@@ -82,12 +92,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return (*otelcol.HTTPClientArguments)(&args.Client).Extensions()
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	ext := (*otelcol.HTTPClientArguments)(&args.Client).Extensions()
+	maps.Copy(ext, args.Queue.Extensions())
+	return ext
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -122,8 +134,8 @@ func (args *HTTPClientArguments) SetToDefault() {
 	maxIdleConns := DefaultMaxIdleConns
 	idleConnTimeout := DefaultIdleConnTimeout
 	*args = HTTPClientArguments{
-		MaxIdleConns:    &maxIdleConns,
-		IdleConnTimeout: &idleConnTimeout,
+		MaxIdleConns:    maxIdleConns,
+		IdleConnTimeout: idleConnTimeout,
 
 		Timeout:          30 * time.Second,
 		Headers:          map[string]string{},

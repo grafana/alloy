@@ -1,0 +1,112 @@
+otelcol.receiver.googlecloudpubsub "default" {
+	project               = "otel-project"
+	user_agent            = "alloy"
+	insecure              = true
+	subscription          = "projects/otel-project/subscriptions/otlp-logs"
+	encoding              = "otlp_proto_trace"
+	compression           = "gzip"
+	ignore_encoding_error = true
+	timeout               = "10s"
+
+	output {
+		metrics = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
+		logs    = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
+		traces  = [otelcol.exporter.googlecloud.default.input, otelcol.exporter.googlecloudpubsub.default.input]
+	}
+}
+
+otelcol.exporter.googlecloud "default" {
+	sending_queue {
+		num_consumers = 123
+		queue_size    = 1234
+	}
+	project                   = "my-project-id"
+	destination_project_quota = true
+	user_agent                = "my-user-agent"
+
+	impersonate {
+		target_principal = "my-principal@example.com"
+		subject          = "my-jwt-sub"
+		delegates        = ["foo@example.com", "bar@example.com"]
+	}
+
+	metric {
+		prefix                               = "workload.example.com"
+		endpoint                             = "monitoring.example.com:443"
+		compression                          = "gzip"
+		grpc_pool_size                       = 6
+		use_insecure                         = true
+		known_domains                        = ["known.example.com"]
+		skip_create_descriptor               = true
+		instrumentation_library_labels       = false
+		create_service_timeseries            = true
+		create_metric_descriptor_buffer_size = 57
+		service_resource_labels              = false
+		resource_filters                     = [{
+			prefix = "my-prefix",
+			regex  = "my-regex",
+		}]
+		cumulative_normalization = false
+		sum_of_squared_deviation = true
+
+		experimental_wal {
+			directory   = "/path/to/dir"
+			max_backoff = "2h0m0s"
+		}
+	}
+
+	trace {
+		endpoint           = "cloudtrace.example.com:443"
+		grpc_pool_size     = 7
+		use_insecure       = true
+		attribute_mappings = [{
+			key         = "my-key",
+			replacement = "my-replacement",
+		}]
+	}
+
+	log {
+		endpoint         = "logging.example.com:443"
+		compression      = "gzip"
+		grpc_pool_size   = 8
+		use_insecure     = true
+		default_log_name = "my-exported-log"
+		resource_filters = [{
+			prefix = "prefix-2",
+			regex  = "regex-2",
+		}]
+	}
+}
+
+otelcol.exporter.googlecloudpubsub "default" {
+	sending_queue {
+		num_consumers = 57
+		queue_size    = 567
+	}
+
+	retry_on_failure {
+		initial_interval     = "10s"
+		randomization_factor = 0
+		multiplier           = 2
+		max_interval         = "1m0s"
+		max_elapsed_time     = "10m0s"
+	}
+	project     = "my-project-id"
+	user_agent  = "my-user-agent"
+	topic       = "projects/foo-bar/topics/custom-topic"
+	compression = "gzip"
+
+	watermark {
+		behavior      = "earliest"
+		allowed_drift = "10s"
+	}
+	endpoint = "https://www.googleapis.com/"
+	insecure = true
+
+	ordering {
+		enabled                   = true
+		from_resource_attribute   = "attr"
+		remove_resource_attribute = true
+	}
+	timeout = "15s"
+}

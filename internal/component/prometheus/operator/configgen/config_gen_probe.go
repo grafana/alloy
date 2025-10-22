@@ -32,6 +32,13 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	if m.Spec.ScrapeTimeout != "" {
 		cfg.ScrapeTimeout, _ = model.ParseDuration(string(m.Spec.ScrapeTimeout))
 	}
+	if m.Spec.ScrapeProtocols != nil {
+		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
+		if err != nil {
+			return nil, err
+		}
+		cfg.ScrapeProtocols = protocols
+	}
 	if m.Spec.ProberSpec.Scheme != "" {
 		cfg.Scheme = m.Spec.ProberSpec.Scheme
 	}
@@ -47,11 +54,11 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		cfg.Params.Set("module", m.Spec.Module)
 	}
 
-	cfg.SampleLimit = uint(m.Spec.SampleLimit)
-	cfg.TargetLimit = uint(m.Spec.TargetLimit)
-	cfg.LabelLimit = uint(m.Spec.LabelLimit)
-	cfg.LabelNameLengthLimit = uint(m.Spec.LabelNameLengthLimit)
-	cfg.LabelValueLengthLimit = uint(m.Spec.LabelValueLengthLimit)
+	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
+	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
+	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
+	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
+	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
 
 	relabels := cg.initRelabelings()
 	if m.Spec.JobName != "" {
@@ -197,7 +204,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	}
 	cfg.RelabelConfigs = relabels.configs
 	if m.Spec.TLSConfig != nil {
-		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(m.Spec.TLSConfig.SafeTLSConfig, m.Namespace); err != nil {
+		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {
 			return nil, err
 		}
 	}

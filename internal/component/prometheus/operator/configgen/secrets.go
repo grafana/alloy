@@ -79,5 +79,5 @@ func (s *secretManager) SecretOrConfigMapValue(namespace string, socm promopv1.S
 	} else if socm.ConfigMap != nil {
 		return s.GetConfigMapValue(namespace, *socm.ConfigMap)
 	}
-	return "", fmt.Errorf("Neither Secret or ConfigMap are specified") // should not be possible
+	return "", fmt.Errorf("neither Secret or ConfigMap are specified") // should not be possible
 }

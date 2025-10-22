@@ -24,6 +24,7 @@ type HTTPClientConfig struct {
 	TLSConfig       TLSConfig         `alloy:"tls_config,block,optional"`
 	FollowRedirects bool              `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool              `alloy:"enable_http2,attr,optional"`
+	HTTPHeaders     *Headers          `alloy:",squash"`
 }
 
 // SetToDefault implements the syntax.Defaulter
@@ -72,6 +73,10 @@ func (h *HTTPClientConfig) Validate() error {
 		h.BearerTokenFile = ""
 	}
 
+	if err := h.HTTPHeaders.Validate(); err != nil {
+		return err
+	}
+
 	return h.ProxyConfig.Validate()
 }
 
@@ -92,6 +97,7 @@ func (h *HTTPClientConfig) Convert() *config.HTTPClientConfig {
 		FollowRedirects: h.FollowRedirects,
 		EnableHTTP2:     h.EnableHTTP2,
 		ProxyConfig:     h.ProxyConfig.Convert(),
+		HTTPHeaders:     h.HTTPHeaders.Convert(),
 	}
 }
 
@@ -177,6 +183,41 @@ func (p *ProxyConfig) Validate() error {
 	}
 
 	return nil
+}
+
+type Headers struct {
+	Headers map[string][]alloytypes.Secret `alloy:"http_headers,attr,optional"`
+}
+
+func (p *Headers) Convert() *config.Headers {
+	if p == nil {
+		return nil
+	}
+
+	res := make(map[string]config.Header, len(p.Headers))
+
+	for k, v := range p.Headers {
+		secrets := make([]config.Secret, 0, len(v))
+		for _, secret := range v {
+			secrets = append(secrets, config.Secret(secret))
+		}
+		res[k] = config.Header{
+			Secrets: secrets,
+		}
+	}
+
+	return &config.Headers{
+		Headers: res,
+	}
+}
+
+func (p *Headers) Validate() error {
+	if p == nil {
+		return nil
+	}
+
+	promHeaders := p.Convert()
+	return promHeaders.Validate()
 }
 
 // URL mirrors config.URL
@@ -407,4 +448,33 @@ func (o *OAuth2Config) Validate() error {
 	}
 
 	return o.ProxyConfig.Validate()
+}
+
+type SysLogFormat string
+
+const (
+	// A modern Syslog RFC
+	SyslogFormatRFC5424 SysLogFormat = "rfc5424"
+	// A legacy Syslog RFC also known as BSD-syslog
+	SyslogFormatRFC3164 SysLogFormat = "rfc3164"
+)
+
+// MarshalText implements encoding.TextMarshaler
+func (s SysLogFormat) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler
+func (s *SysLogFormat) UnmarshalText(text []byte) error {
+	str := string(text)
+	switch str {
+	case "rfc5424":
+		*s = SyslogFormatRFC5424
+	case "rfc3164":
+		*s = SyslogFormatRFC3164
+	default:
+		return fmt.Errorf("unknown syslog format: %s", str)
+	}
+
+	return nil
 }

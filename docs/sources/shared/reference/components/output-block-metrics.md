@@ -7,9 +7,9 @@ The `output` block configures a set of components to forward resulting telemetry
 
 The following arguments are supported:
 
-Name | Type | Description | Default | Required
----- | ---- | ----------- | ------- | --------
-`metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]` | no
+| Name      | Type                     | Description                           | Default | Required |
+| --------- | ------------------------ | ------------------------------------- | ------- | -------- |
+| `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
 
 You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.

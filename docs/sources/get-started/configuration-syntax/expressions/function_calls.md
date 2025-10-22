@@ -9,18 +9,19 @@ weight: 400
 
 # Function calls
 
-You can use {{< param "PRODUCT_NAME" >}} function calls to build richer expressions.
+You can use {{< param "PRODUCT_NAME" >}} function calls to create richer expressions.
 
-Functions take zero or more arguments as their input and always return a single value as their output.
-You can't construct functions. You can call functions from {{< param "PRODUCT_NAME" >}}'s standard library or export them from a component.
+Functions take zero or more arguments as input and always return a single value as output.
+You can't construct functions.
+You can call functions from the standard library or export them from a component.
 
-If a function fails, the expression isn't evaluated, and an error is reported.
+If a function fails, the expression isn't evaluated, and the system reports an error.
 
 ## Standard library functions
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax contains a [standard library][] of functions.
-Some functions enable interaction with the host system, for example, reading from an environment variable.
-Some functions allow for more complex expressions, for example, concatenating arrays or decoding JSON strings into objects.
+The {{< param "PRODUCT_NAME" >}} configuration syntax includes a [standard library][] of functions.
+Some functions interact with the host system, for example, reading from an environment variable.
+Other functions enable more complex expressions, for example, concatenating arrays or decoding JSON strings into objects.
 
 ```alloy
 sys.env("HOME")

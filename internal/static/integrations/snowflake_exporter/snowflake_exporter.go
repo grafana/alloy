@@ -2,11 +2,12 @@ package snowflake_exporter
 
 import (
 	"github.com/go-kit/log"
+	"github.com/grafana/snowflake-prometheus-exporter/collector"
+	config_util "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/grafana/snowflake-prometheus-exporter/collector"
-	config_util "github.com/prometheus/common/config"
 )
 
 // DefaultConfig is the default config for the snowflake integration
@@ -16,14 +17,15 @@ var DefaultConfig = Config{
 
 // Config is the configuration for the snowflake integration
 type Config struct {
-	AccountName          string             `yaml:"account_name,omitempty"`
-	Username             string             `yaml:"username,omitempty"`
-	Password             config_util.Secret `yaml:"password,omitempty"`
-	PrivateKeyPath       string             `yaml:"private_key_path,omitempty"`
-	PrivateKeyPassword   config_util.Secret `yaml:"private_key_password,omitempty"`
-	Role                 string             `yaml:"role,omitempty"`
-	Warehouse            string             `yaml:"warehouse,omitempty"`
-	ExcludeDeletedTables bool               `yaml:"exclude_deleted_tables,omitempty"`
+	AccountName           string             `yaml:"account_name,omitempty"`
+	Username              string             `yaml:"username,omitempty"`
+	Password              config_util.Secret `yaml:"password,omitempty"`
+	PrivateKeyPath        string             `yaml:"private_key_path,omitempty"`
+	PrivateKeyPassword    config_util.Secret `yaml:"private_key_password,omitempty"`
+	Role                  string             `yaml:"role,omitempty"`
+	Warehouse             string             `yaml:"warehouse,omitempty"`
+	ExcludeDeletedTables  bool               `yaml:"exclude_deleted_tables,omitempty"`
+	EnableDriverTraceLogs bool               `yaml:"enable_tracing,omitempty"`
 }
 
 func (c *Config) exporterConfig() *collector.Config {
@@ -36,11 +38,11 @@ func (c *Config) exporterConfig() *collector.Config {
 		Role:               c.Role,
 		Warehouse:          c.Warehouse,
 		ExcludeDeleted:     c.ExcludeDeletedTables,
+		EnableTracing:      c.EnableDriverTraceLogs,
 	}
 }
 
-// Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.AccountName, nil
 }
 

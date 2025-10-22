@@ -1,6 +1,8 @@
 package receiver
 
 import (
+	"encoding"
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -13,6 +15,7 @@ import (
 // Arguments configures the app_agent_receiver component.
 type Arguments struct {
 	LogLabels map[string]string `alloy:"extra_log_labels,attr,optional"`
+	LogFormat LogFormat         `alloy:"log_format,attr,optional"`
 
 	Server     ServerArguments     `alloy:"server,block,optional"`
 	SourceMaps SourceMapsArguments `alloy:"sourcemaps,block,optional"`
@@ -23,6 +26,7 @@ var _ syntax.Defaulter = (*Arguments)(nil)
 
 // SetToDefault applies default settings.
 func (args *Arguments) SetToDefault() {
+	args.LogFormat = FormatDefault
 	args.Server.SetToDefault()
 	args.SourceMaps.SetToDefault()
 }
@@ -92,4 +96,34 @@ type LocationArguments struct {
 type OutputArguments struct {
 	Logs   []loki.LogsReceiver `alloy:"logs,attr,optional"`
 	Traces []otelcol.Consumer  `alloy:"traces,attr,optional"`
+}
+
+type LogFormat string
+
+const (
+	FormatLogfmt LogFormat = "logfmt"
+	FormatJSON   LogFormat = "json"
+
+	FormatDefault = FormatLogfmt
+)
+
+var (
+	_ encoding.TextMarshaler   = FormatDefault
+	_ encoding.TextUnmarshaler = (*LogFormat)(nil)
+)
+
+func (ll LogFormat) MarshalText() (text []byte, err error) {
+	return []byte(ll), nil
+}
+
+func (ll *LogFormat) UnmarshalText(text []byte) error {
+	switch LogFormat(text) {
+	case "":
+		*ll = FormatDefault
+	case FormatLogfmt, FormatJSON:
+		*ll = LogFormat(text)
+	default:
+		return fmt.Errorf("unrecognized log format %q", string(text))
+	}
+	return nil
 }

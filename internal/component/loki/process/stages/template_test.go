@@ -2,6 +2,7 @@ package stages
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 var testTemplateYaml = `
@@ -58,7 +59,7 @@ var testTemplateLogLineWithMissingKey = `
 `
 
 func TestPipeline_Template(t *testing.T) {
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,14 +76,14 @@ func TestPipelineWithMissingKey_Template(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTemplateYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	_ = processEntries(pl, newEntry(nil, nil, testTemplateLogLineWithMissingKey, time.Now()))
 
-	expectedLog := "level=debug msg=\"extracted template could not be converted to a string\" err=\"Can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug msg=\"extracted template could not be converted to a string\" err=\"can't convert <nil> to string\" type=null"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -99,18 +100,18 @@ func TestTemplateValidation(t *testing.T) {
 func TestTemplateStage_Process(t *testing.T) {
 	tests := map[string]struct {
 		config            TemplateConfig
-		extracted         map[string]interface{}
-		expectedExtracted map[string]interface{}
+		extracted         map[string]any
+		expectedExtracted map[string]any
 	}{
 		"simple template": {
 			TemplateConfig{
 				Source:   "some",
 				Template: "{{ .Value }} appended",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"some": "value",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"some": "value appended",
 			},
 		},
@@ -119,10 +120,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "missing",
 				Template: "newval",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"notmissing": "value",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"notmissing": "value",
 				"missing":    "newval",
 			},
@@ -132,13 +133,13 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "message",
 				Template: "{{.Value}} in module {{.module}}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki",
 				"module":  "test",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"module":  "test",
@@ -150,11 +151,11 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "missing",
 				Template: "{{ .level }} for app {{ .app | ToUpper }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level": "warn",
 				"app":   "loki",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"missing": "warn for app LOKI",
@@ -165,12 +166,12 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "message",
 				Template: "{{.Value}} in module {{.module}}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki in module <no value>",
@@ -181,11 +182,11 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "level",
 				Template: "{{ Replace .Value \"Warning\" \"warn\" 1 }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "Warning",
 				"testval": nil,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"level":   "warn",
 				"testval": nil,
 			},
@@ -195,10 +196,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ .Value | ToLower }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Value",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "value",
 			},
 		},
@@ -207,10 +208,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ add 7 3 }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Value",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "10",
 			},
 		},
@@ -219,10 +220,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ ToLower .Value }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Value",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "value",
 			},
 		},
@@ -231,18 +232,18 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ .Value | ToLower }}",
 			},
-			map[string]interface{}{},
-			map[string]interface{}{},
+			map[string]any{},
+			map[string]any{},
 		},
 		"ReplaceAllToLower": {
 			TemplateConfig{
 				Source:   "testval",
 				Template: "{{ Replace .Value \" \" \"_\" -1 | ToLower }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "some_silly_value_with_lots_of_spaces",
 			},
 		},
@@ -251,10 +252,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: `{{ regexReplaceAll "(Silly)" .Value "${1}foo"  }}`,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Sillyfoo Value With Lots Of Spaces",
 			},
 		},
@@ -263,10 +264,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: `{{ regexReplaceAll "\\K" .Value "${1}foo"  }}`,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
 		},
@@ -275,10 +276,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: `{{ regexReplaceAll "( |Of)" .Value "_"  }}`,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some_Silly_Value_With_Lots___Spaces",
 			},
 		},
@@ -287,10 +288,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: `{{ regexReplaceAll "\\K" .Value "err"  }}`,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
 		},
@@ -299,10 +300,10 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ Trim .Value \"!\" }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "!!!!!WOOOOO!!!!!",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "WOOOOO",
 			},
 		},
@@ -311,28 +312,28 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "WOOOOO",
 			},
-			map[string]interface{}{},
+			map[string]any{},
 		},
 		"Don't add label with empty value": {
 			TemplateConfig{
 				Source:   "testval",
 				Template: "",
 			},
-			map[string]interface{}{},
-			map[string]interface{}{},
+			map[string]any{},
+			map[string]any{},
 		},
 		"Sha2Hash": {
 			TemplateConfig{
 				Source:   "testval",
 				Template: "{{ Sha2Hash .Value \"salt\" }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "this is PII data",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "5526fd6f8ad457279cf8ff06453c6cb61bf479fa826e3b099caa6c846f9376f2",
 			},
 		},
@@ -341,19 +342,18 @@ func TestTemplateStage_Process(t *testing.T) {
 				Source:   "testval",
 				Template: "{{ Hash .Value \"salt\" }}",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "this is PII data",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"testval": "0807ea24e992127128b38e4930f7155013786a4999c73a25910318a793847658",
 			},
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newTemplateStage(util_log.Logger, test.config)
+			st, err := newTemplateStage(log.NewNopLogger(), test.config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -361,5 +361,31 @@ func TestTemplateStage_Process(t *testing.T) {
 			out := processEntries(st, newEntry(test.expectedExtracted, nil, "not important for this test", time.Time{}))[0]
 			assert.Equal(t, test.expectedExtracted, out.Extracted)
 		})
+	}
+}
+
+func BenchmarkTemplateStage(b *testing.B) {
+	var entry Entry
+	gen := func(n int) map[string]any {
+		m := make(map[string]any, n)
+		for i := 0; i <= n; i++ {
+			v := strconv.FormatInt(int64(i), 10)
+			m[v] = v
+		}
+		return m
+	}
+
+	st, err := newTemplateStage(log.NewNopLogger(), TemplateConfig{
+		Source:   "1",
+		Template: "{{ .Value }}",
+	})
+	require.NoError(b, err)
+	entry = newEntry(gen(10), nil, "", time.Now())
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		entry = processEntries(st, entry)[0]
 	}
 }

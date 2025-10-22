@@ -6,21 +6,25 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    {{- with .Values.controller.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with .Values.controller.extraAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.controller.autoscaling.enabled }}
+  {{- if (and (not .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.enabled)) }}
   replicas: {{ .Values.controller.replicas }}
   {{- end }}
   {{- if .Values.controller.parallelRollout }}
   podManagementPolicy: Parallel
   {{- end }}
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
-  minReadySeconds: 10
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
   {{- end }}
   serviceName: {{ include "alloy.fullname" . }}
   selector:

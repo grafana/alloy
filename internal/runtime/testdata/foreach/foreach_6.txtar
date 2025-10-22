@@ -1,0 +1,26 @@
+Foreach in a foreach.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [1, 2]
+  var = "num"
+
+  template {
+    foreach "testForeachNested" {
+      collection = [1, 2]
+      var = "nestedNum"
+
+       template {
+        testcomponents.pulse "pt" {
+          max = num + nestedNum
+          frequency = "10ms"
+          forward_to = [testcomponents.summation_receiver.sum.receiver]
+        }
+      }
+
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}

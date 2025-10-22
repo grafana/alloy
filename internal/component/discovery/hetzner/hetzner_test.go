@@ -16,7 +16,10 @@ func TestAlloyUnmarshal(t *testing.T) {
 	alloyCfg := `
 		port = 8080
 		refresh_interval = "10m"
-		role = "robot"`
+		role = "robot"
+		http_headers = {
+			"foo" = ["foobar"],
+		}`
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -25,6 +28,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, 8080, args.Port)
 	assert.Equal(t, 10*time.Minute, args.RefreshInterval)
 	assert.Equal(t, "robot", args.Role)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidate(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 )
 
@@ -51,7 +51,8 @@ var (
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
 	Timeout:                  200 * time.Millisecond,
-	SendBatchSize:            8192,
+	SendBatchSize:            2000,
+	SendBatchMaxSize:         3000,
 	MetadataCardinalityLimit: 1000,
 }
 
@@ -81,12 +82,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements processor.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

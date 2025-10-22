@@ -3,6 +3,9 @@
 metadata:
   annotations:
     kubectl.kubernetes.io/default-container: alloy
+    {{- if and (not .Values.configReloader.enabled) $values.configMap.create $values.configMap.content }}
+    checksum/config: {{ (tpl  $values.configMap.content .) | sha256sum | trunc 63 }}
+    {{- end }}
     {{- with .Values.controller.podAnnotations }}
       {{- toYaml . | nindent 4 }}
     {{- end }}

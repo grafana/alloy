@@ -9,8 +9,8 @@ weight: 300
 
 # Operators
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax uses a common set of operators.
-All operations follow the standard [PEMDAS][] order of mathematical operations.
+The {{< param "PRODUCT_NAME" >}} configuration syntax uses a standard set of operators.
+All operations follow the [PEMDAS][] order of mathematical operations.
 
 ## Arithmetic operators
 
@@ -21,51 +21,51 @@ Operator | Description
 `*`      | Multiplies two numbers.
 `/`      | Divides two numbers.
 `%`      | Computes the remainder after dividing two numbers.
-`^`      | Raises the number to the specified power.
+`^`      | Raises a number to the specified power.
 
 ## String operators
 
 Operator | Description
 ---------|-------------------------
-`+`      | Concatenate two strings.
+`+`      | Concatenate two strings or two secrets, or a string and a secret.
 
 ## Comparison operators
 
 Operator | Description
 ---------|---------------------------------------------------------------------
-`==`     | `true` when two values are equal.
-`!=`     | `true` when two values aren't equal.
-`<`      | `true` when the left value is less than the right value.
-`<=`     | `true` when the left value is less than or equal to the right value.
-`>`      | `true` when the left value is greater than the right value.
-`>=`     | `true` when the left value is greater or equal to the right value.
+`==`     | Returns `true` when two values are equal.
+`!=`     | Returns `true` when two values aren't equal.
+`<`      | Returns `true` when the left value is less than the right value.
+`<=`     | Returns `true` when the left value is less than or equal to the right value.
+`>`      | Returns `true` when the left value is greater than the right value.
+`>=`     | Returns `true` when the left value is greater than or equal to the right value.
 
-You can apply the equality operators `==` and `!=` to any operands.
+You can use the equality operators `==` and `!=` with any operands.
 
-The two operands in ordering operators `<` `<=` `>` and `>=`  must both be _orderable_ and of the same type.
-The results of the comparisons are:
+The operands in ordering operators `<`, `<=`, `>`, and `>=` must be _orderable_ and of the same type.
+The results of these comparisons are:
 
-* Boolean values are equal if they're either both true or both false.
-* Numerical (integer and floating-point) values are orderable in the usual way.
-* String values are orderable lexically byte-wise.
+* Boolean values are equal if both are either `true` or `false`.
+* Numerical (integer and floating-point) values are ordered in the usual way.
+* String values are ordered lexically, byte-wise.
 * Objects are equal if all their fields are equal.
-* Array values are equal if their corresponding elements are equal.
+* Arrays are equal if their corresponding elements are equal.
 
 ## Logical operators
 
 Operator | Description
 ---------|---------------------------------------------------------
-`&&`     | `true` when the both left _and_ right value are `true`.
-`\|\|`   | `true` when the either left _or_ right value are `true`.
+`&&`     | Returns `true` when both the left _and_ right values are `true`.
+`\|\|`   | Returns `true` when either the left _or_ right value is `true`.
 `!`      | Negates a boolean value.
 
-Logical operators apply to boolean values and yield a boolean result.
+Logical operators work with boolean values and return a boolean result.
 
 ## Assignment operator
 
-The {{< param "PRODUCT_NAME" >}} configuration syntax uses `=` as its assignment operator.
+The {{< param "PRODUCT_NAME" >}} configuration syntax uses `=` as the assignment operator.
 
-An assignment statement may only assign a single value.
+An assignment statement can only assign a single value.
 Each value must be _assignable_ to the attribute or object key.
 
 * You can assign `null` to any attribute.
@@ -78,11 +78,11 @@ Each value must be _assignable_ to the attribute or object key.
 
 Brackets | Description
 ---------|------------------------------------
-`{ }`    | Defines blocks and objects.
-`( )`    | Groups and prioritizes expressions.
-`[ ]`    | Defines arrays.
+`{ }`    | Define blocks and objects.
+`( )`    | Group and prioritize expressions.
+`[ ]`    | Define arrays.
 
-The following example uses curly braces and square brackets to define an object and an array.
+For example, the following code uses curly braces and square brackets to define an object and an array.
 
 ```alloy
 obj = { app = "alloy", namespace = "dev" }
@@ -96,9 +96,9 @@ Operator | Description
 `[ ]`    | Access a member of an array or object.
 `.`      | Access a named member of an object or an exported field of a component.
 
-You can access arbitrarily nested values with {{< param "PRODUCT_NAME" >}}'s access operators.
-You can use square brackets to access zero-indexed array indices and object fields by enclosing the field name in double quotes.
-You can use the dot operator to access object fields without double quotes and component exports.
+You can use the {{< param "PRODUCT_NAME" >}} access operators to retrieve nested values.
+Use square brackets to access zero-indexed array elements or object fields by enclosing the field name in double quotes.
+Use the dot operator to access object fields without double quotes or component exports.
 
 ```alloy
 obj["app"]
@@ -108,8 +108,8 @@ obj.app
 local.file.token.content
 ```
 
-If you use the `[ ]` operator to access a member of an object where the member doesn't exist, the resulting value is `null`.
+If you use the `[ ]` operator to access a non-existent object member, the result is `null`.
 
-If you use the `.` operator to access a named member of an object where the named member doesn't exist, an error is generated.
+If you use the `.` operator to access a non-existent named member of an object, an error occurs.
 
 [PEMDAS]: https://en.wikipedia.org/wiki/Order_of_operations

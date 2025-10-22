@@ -21,7 +21,7 @@ modules:
   targets = [
     {
       "name" = "t1",
-      "address" = "localhost:161",
+      "address" = "snmp-simulator:161",
       "module" = "default",
       "auth" = "public_v2",
     },
@@ -37,17 +37,17 @@ prometheus.scrape "snmp_metrics" {
 
 prometheus.remote_write "snmp_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "snmp_metrics",
-  }  
+  }
 }
 
 prometheus.exporter.snmp "snmp_metrics2" {
@@ -71,7 +71,7 @@ modules:
         help: "A textual description of the entity."
 `
   target "t1" {
-      address     = "localhost:161"
+      address     = "snmp-simulator:161"
       module      = "default"
       auth        = "public_v2"
   }
@@ -86,16 +86,119 @@ prometheus.scrape "snmp_metrics2" {
 
 prometheus.remote_write "snmp_metrics2" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     metadata_config {
         send_interval = "1s"
     }
     queue_config {
         max_samples_per_send = 100
-    }    
+    }
   }
   external_labels = {
     test_name = "snmp_metrics2",
-  }  
+  }
 }
 
+prometheus.exporter.snmp "snmp_metrics3" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+  hrDeviceForTest:
+    walk:
+    - 1.3.6.1.2.1.25.3
+    metrics:
+    - name: hrDeviceIndex
+      oid: 1.3.6.1.2.1.25.3.2.1.1
+      type: gauge
+      help: A unique value for each device contained by the host - 1.3.6.1.2.1.25.3.2.1.1
+      indexes:
+      - labelname: hrDevice
+        type: gauge
+`
+  concurrency = 2
+  target "t1" {
+      address     = "snmp-simulator:161"
+      module      = "default,hrDeviceForTest"
+      auth        = "public_v2"
+  }
+}
+
+prometheus.scrape "snmp_metrics3" {
+  targets    = prometheus.exporter.snmp.snmp_metrics3.targets
+  forward_to = [prometheus.remote_write.snmp_metrics3.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "snmp_metrics3" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "snmp_metrics3",
+  }
+}
+
+
+//This test use merge strategy to add custom auth while keep using modules from embedded snmp config
+prometheus.exporter.snmp "snmp_metrics4" {
+  config_merge_strategy = "merge"
+  config = `
+auths:
+  public_custom:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+`
+
+  target "t1" {
+      address     = "snmp-simulator:161"
+      module      = "system,hrDevice"
+      auth        = "public_custom"
+  }
+}
+
+prometheus.scrape "snmp_metrics4" {
+  targets    = prometheus.exporter.snmp.snmp_metrics4.targets
+  forward_to = [prometheus.remote_write.snmp_metrics4.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "snmp_metrics4" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    metadata_config {
+        send_interval = "1s"
+    }
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "snmp_metrics4",
+  }
+}

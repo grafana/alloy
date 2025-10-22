@@ -1,4 +1,4 @@
-package statsd_exporter //nolint:golint
+package statsd_exporter
 
 import "github.com/prometheus/client_golang/prometheus"
 
@@ -10,6 +10,7 @@ type Metrics struct {
 	EventsFlushed         prometheus.Counter
 	EventsUnmapped        prometheus.Counter
 	UDPPackets            prometheus.Counter
+	UDPPacketDrops        prometheus.Counter
 	TCPConnections        prometheus.Counter
 	TCPErrors             prometheus.Counter
 	TCPLineTooLong        prometheus.Counter
@@ -45,6 +46,10 @@ func NewMetrics(r prometheus.Registerer) (*Metrics, error) {
 	m.UDPPackets = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "statsd_exporter_udp_packets_total",
 		Help: "The total number of StatsD packets received over UDP.",
+	})
+	m.UDPPacketDrops = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "statsd_exporter_udp_packet_drops_total",
+		Help: "The total number of dropped StatsD packets which received over UDP.",
 	})
 	m.TCPConnections = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "statsd_exporter_tcp_connections_total",

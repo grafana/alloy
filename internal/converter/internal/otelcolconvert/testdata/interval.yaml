@@ -6,6 +6,9 @@ receivers:
 
 processors:
   interval:
+    pass_through:
+      gauge: true
+      summary: true
 
 exporters:
   otlp:

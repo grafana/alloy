@@ -1,0 +1,19 @@
+Foreach with only one item. The pulse will send "1" to the receiver of the summation component until it reaches 10.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [10]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}

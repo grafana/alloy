@@ -13,6 +13,7 @@ Unicode true
 !include .\macros.nsis
 
 !define APPNAME     "Alloy"
+!define PUBLISHER   "Grafana Labs"
 !define HELPURL     "https://grafana.com/docs/alloy/latest"
 !define UPDATEURL   "https://github.com/grafana/alloy/releases"
 !define ABOUTURL    "https://github.com/grafana/alloy"
@@ -36,6 +37,13 @@ Var DisableReporting
 Var DisableReportingFlag
 Var DisableProfiling
 Var DisableProfilingFlag
+Var RuntimePriority
+Var RuntimePriorityFlag
+Var Stability
+Var StabilityFlag
+Var User
+Var Password
+Var AuthFlag
 
 # Pages during the installer.
 Page license
@@ -52,8 +60,12 @@ Section "install"
   ${GetParameters} $PassedInParameters
   ${GetOptions} $PassedInParameters "/DISABLEPROFILING=" $DisableProfiling
   ${GetOptions} $PassedInParameters "/DISABLEREPORTING=" $DisableReporting
+  ${GetOptions} $PassedInParameters "/RUNTIMEPRIORITY=" $RuntimePriority
+  ${GetOptions} $PassedInParameters "/STABILITY=" $Stability
   ${GetOptions} $PassedInParameters "/ENVIRONMENT=" $Environment
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
+  ${GetOptions} $PassedInParameters "/USERNAME=" $User
+  ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -82,14 +94,15 @@ Section "install"
   # the current installed version.
   !define UNINSTALLKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayName"          '${APPNAME} ${VERSION}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayVersion"       '${VERSION}'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "UninstallString"      '"$INSTDIR\uninstall.exe"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "InstallLocation"      '"$INSTDIR"'
   WriteRegStr   HKLM "${UNINSTALLKEY}" "DisplayIcon"          '"$INSTDIR\logo.ico"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '"${ABOUTURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "HelpLink"             '"${HELPURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLUpdateInfo"        '"${UPDATEURL}"'
-  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLInfoAbout"         '"${ABOUTURL}"'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "Publisher"            '${PUBLISHER}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "HelpLink"             '${HELPURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLUpdateInfo"        '${UPDATEURL}'
+  WriteRegStr   HKLM "${UNINSTALLKEY}" "URLInfoAbout"         '${ABOUTURL}'
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoRepair" 1
 
@@ -97,8 +110,15 @@ Section "install"
   Call CreateDataDirectory
   Call InitializeRegistry
 
+  ${If} $User != ""
+    StrCpy $AuthFlag "obj= $\"$User$\""
+    ${If} $Password != ""
+      StrCpy $AuthFlag "$AuthFlag password= $\"$Password$\""
+    ${EndIf}  
+  ${EndIf}
+
   # Create the service.
-  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
+  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
   Pop $0
 
   # Start the service.
@@ -124,6 +144,10 @@ Function CreateConfig
     AccessControl::SetOnFile    "$INSTDIR\config.alloy" "SYSTEM" "FullAccess"
     AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ListDirectory"
     AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    "$INSTDIR\config.alloy" "$User" "FullAccess"
+    ${EndIf}
+
     Return
 FunctionEnd
 
@@ -143,6 +167,10 @@ Function CreateDataDirectory
     AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "SYSTEM" "FullAccess"
     AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ListDirectory"
     AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "$User" "FullAccess"
+    ${EndIf}
+
     Return
 FunctionEnd
 
@@ -172,6 +200,18 @@ Function InitializeRegistry
     StrCpy $DisableReportingFlag ""
   ${EndIf}
 
+  ${If} $RuntimePriority != ""
+    StrCpy $RuntimePriorityFlag "--windows.priority=$\"$RuntimePriority$\"\0"
+  ${Else}
+    StrCpy $RuntimePriorityFlag ""
+  ${EndIf}
+
+  ${If} $Stability != ""
+    StrCpy $StabilityFlag "--stability.level=$\"$Stability$\"\0"
+  ${Else}
+    StrCpy $StabilityFlag ""
+  ${EndIf}
+
   ${If} $DisableProfiling == "yes"
     StrCpy $DisableProfilingFlag "--server.http.enable-pprof=false\0"
   ${Else}
@@ -183,7 +223,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Arguments'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag"'
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag"'
     Pop $0 # Ignore return result
   ${EndIf}
 
@@ -209,6 +249,9 @@ Function SetFolderPermissions
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericExecute"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericRead"
     AccessControl::GrantOnFile  $INSTDIR "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    $INSTDIR "$User" "FullAccess"
+    ${EndIf}
 FunctionEnd
 
 # Automatically called when uninstalling.

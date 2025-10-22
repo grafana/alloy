@@ -1,0 +1,44 @@
+mixed
+-- missing.alloy --
+local.missing "missing" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+-- missing_label.alloy --
+local.file {
+	filename = "/tmp/app-logs/app.log"
+}
+
+-- valid.alloy --
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+loki.source.file "local_files" {
+    targets    = local.file_match.applogs.targets
+
+    forward_to = [loki.process.add_new_label.receiver]
+}
+
+loki.process "add_new_label" {
+    stage.logfmt {
+        mapping = {
+            "extracted_level" = "level",
+        }
+    }
+
+    stage.labels {
+        values = {
+            "level" = "extracted_level",
+        }
+    }
+
+    forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
+

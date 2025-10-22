@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/assertmetrics"
 	"github.com/grafana/alloy/internal/util/testappender"
@@ -38,7 +39,7 @@ var (
 
 	// There is a race condition in prometheus where calls to NewManager can race over a package-global variable when
 	// calling targetMetadataCache.registerManager(m). This is a workaround to prevent this for now.
-	//TODO(thampiotr): Open an issue in prometheus to fix this?
+	// TODO(thampiotr): Open an issue in prometheus to fix this?
 	promManagerMutex sync.Mutex
 )
 
@@ -153,7 +154,7 @@ func TestDetectingMovedTargets(t *testing.T) {
 			promManagerMutex.Unlock()
 
 			require.NoError(t, err)
-			ctx, cancelRun := context.WithTimeout(context.Background(), testTimeout)
+			ctx, cancelRun := context.WithTimeout(t.Context(), testTimeout)
 			runErr := make(chan error)
 			go func() {
 				err := s.Run(ctx)
@@ -191,6 +192,10 @@ func testArgs() Arguments {
 	args.ScrapeInterval = 100 * time.Millisecond
 	args.ScrapeTimeout = args.ScrapeInterval
 	args.HonorLabels = true
+	err := args.Validate()
+	if err != nil {
+		panic(fmt.Errorf("invalid arguments for test: %w", err))
+	}
 	return args
 }
 
@@ -213,6 +218,8 @@ func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fa
 				return fakeCluster, nil
 			case labelstore.ServiceName:
 				return labelstore.New(nil, alloyMetricsReg), nil
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
 			default:
 				return nil, fmt.Errorf("service %q does not exist", name)
 			}
@@ -260,7 +267,7 @@ func setUpClusterLookup(fakeCluster *fakeCluster, assignment map[peer.Peer][]int
 	fakeCluster.lookupMap = make(map[shard.Key][]peer.Peer)
 	for owningPeer, ownedTargets := range assignment {
 		for _, id := range ownedTargets {
-			fakeCluster.lookupMap[shard.Key(targets[id].Target().NonMetaLabels().Hash())] = []peer.Peer{owningPeer}
+			fakeCluster.lookupMap[shard.Key(targets[id].Target().NonMetaLabelsHash())] = []peer.Peer{owningPeer}
 		}
 	}
 }
@@ -370,4 +377,8 @@ func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, err
 
 func (f *fakeCluster) Peers() []peer.Peer {
 	return f.peers
+}
+
+func (f *fakeCluster) Ready() bool {
+	return true
 }

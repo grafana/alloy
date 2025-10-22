@@ -444,8 +444,9 @@ func (a *AuthUserPass) vaultAuthenticate(ctx context.Context, cli *vault.Client)
 // AuthCustom provides a custom authentication method.
 type AuthCustom struct {
 	// Path to use for logging in (e.g., auth/kubernetes/login, etc.)
-	Path string                       `alloy:"path,attr"`
-	Data map[string]alloytypes.Secret `alloy:"data,attr"`
+	Path      string                       `alloy:"path,attr"`
+	Data      map[string]alloytypes.Secret `alloy:"data,attr"`
+	Namespace string                       `alloy:"namespace,attr,optional"`
 }
 
 // Login implements vault.AuthMethod.
@@ -458,7 +459,22 @@ func (a *AuthCustom) Login(ctx context.Context, client *vault.Client) (*vault.Se
 }
 
 func (a *AuthCustom) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*vault.Secret, error) {
-	s, err := cli.Auth().Login(ctx, a)
+	var s *vault.Secret
+	var err error
+
+	if a.Namespace != "" {
+		// Authenticating to a namespace different from the one used by the KV store is likely applicable to other forms of authentication on enterprise vault
+		// but only testable with authCustom when added in https://github.com/grafana/alloy/pull/2945
+		s, err = cli.WithNamespace(a.Namespace).Auth().Login(ctx, a)
+		if err == nil {
+			// As the WithNameSpace function creates a shallow copy of the original client, we need to set the acquired
+			// token to the original client manually.
+			cli.SetToken(s.Auth.ClientToken)
+		}
+	} else {
+		s, err = cli.Auth().Login(ctx, a)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("auth.custom: %w", err)
 	}

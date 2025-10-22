@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-149bbd"
+		name = "default-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -18,6 +18,7 @@ loki.write "logs_log_config" {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"

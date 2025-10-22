@@ -5,7 +5,7 @@ title: prometheus
 weight: 100
 ---
 
-# prometheus
+# `prometheus`
 
 This section contains reference documentation for the `prometheus` components.
 

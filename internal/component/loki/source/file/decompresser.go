@@ -1,6 +1,6 @@
 package file
 
-// This code is copied from loki/promtail@a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
+// This code is adapted from loki/promtail. Last revision used to port changes to Alloy was a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
 // Decompressor implements the reader interface and is used to read compressed log files.
 // It uses the Go stdlib's compress/* packages for decoding.
 
@@ -9,6 +9,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"compress/zlib"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -19,7 +20,6 @@ import (
 	"unsafe"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -43,41 +44,43 @@ func supportedCompressedFormats() map[string]struct{} {
 type decompressor struct {
 	metrics   *metrics
 	logger    log.Logger
-	handler   loki.EntryHandler
+	receiver  loki.LogsReceiver
 	positions positions.Positions
 
-	path   string
-	labels string
+	path      string
+	labels    model.LabelSet
+	labelsStr string
 
-	posAndSizeMtx sync.Mutex
-	stopOnce      sync.Once
+	posAndSizeMtx sync.RWMutex
 
 	running *atomic.Bool
-	posquit chan struct{}
-	posdone chan struct{}
-	done    chan struct{}
 
 	decoder *encoding.Decoder
 
 	position int64
 	size     int64
 	cfg      DecompressionConfig
+
+	componentStopping func() bool
 }
 
 func newDecompressor(
 	metrics *metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	receiver loki.LogsReceiver,
 	positions positions.Positions,
 	path string,
-	labels string,
+	labels model.LabelSet,
 	encodingFormat string,
 	cfg DecompressionConfig,
+	componentStopping func() bool,
 ) (*decompressor, error) {
+
+	labelsStr := labels.String()
 
 	logger = log.With(logger, "component", "decompressor")
 
-	pos, err := positions.Get(path, labels)
+	pos, err := positions.Get(path, labelsStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get positions: %w", err)
 	}
@@ -93,24 +96,20 @@ func newDecompressor(
 	}
 
 	decompressor := &decompressor{
-		metrics:   metrics,
-		logger:    logger,
-		handler:   loki.AddLabelsMiddleware(model.LabelSet{filenameLabel: model.LabelValue(path)}).Wrap(handler),
-		positions: positions,
-		path:      path,
-		labels:    labels,
-		running:   atomic.NewBool(false),
-		posquit:   make(chan struct{}),
-		posdone:   make(chan struct{}),
-		done:      make(chan struct{}),
-		position:  pos,
-		decoder:   decoder,
-		cfg:       cfg,
+		metrics:           metrics,
+		logger:            logger,
+		receiver:          receiver,
+		positions:         positions,
+		path:              path,
+		labels:            labels,
+		labelsStr:         labelsStr,
+		running:           atomic.NewBool(false),
+		position:          pos,
+		decoder:           decoder,
+		cfg:               cfg,
+		componentStopping: componentStopping,
 	}
 
-	go decompressor.readLines()
-	go decompressor.updatePosition()
-	metrics.filesActive.Add(1.)
 	return decompressor, nil
 }
 
@@ -151,23 +150,52 @@ func mountReader(f *os.File, logger log.Logger, format CompressionFormat) (reade
 	return reader, nil
 }
 
-func (d *decompressor) updatePosition() {
+func (d *decompressor) Run(ctx context.Context) {
+	// Check if context was canceled between two calls to Run.
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	labelsMiddleware := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
+	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
+	defer handler.Stop()
+
+	d.metrics.filesActive.Add(1.)
+
+	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		// readLines closes done on exit
+		d.readLines(handler, done)
+		cancel()
+	}()
+
+	d.running.Store(true)
+	defer d.running.Store(false)
+
+	<-ctx.Done()
+	d.stop(done)
+}
+
+func (d *decompressor) updatePosition(posquit chan struct{}) {
 	positionSyncPeriod := d.positions.SyncPeriod()
 	positionWait := time.NewTicker(positionSyncPeriod)
 	defer func() {
 		positionWait.Stop()
 		level.Info(d.logger).Log("msg", "position timer: exited", "path", d.path)
-		close(d.posdone)
+		d.cleanupMetrics()
 	}()
 
 	for {
 		select {
 		case <-positionWait.C:
-			if err := d.MarkPositionAndSize(); err != nil {
+			if err := d.markPositionAndSize(); err != nil {
 				level.Error(d.logger).Log("msg", "position timer: error getting position and/or size, stopping decompressor", "path", d.path, "error", err)
 				return
 			}
-		case <-d.posquit:
+		case <-posquit:
 			return
 		}
 	}
@@ -178,21 +206,29 @@ func (d *decompressor) updatePosition() {
 // It first decompresses the file as a whole using a reader and then it will iterate
 // over its chunks, separated by '\n'.
 // During each iteration, the parsed and decoded log line is then sent to the API with the current timestamp.
-func (d *decompressor) readLines() {
+// done channel is closed when readlines exits.
+func (d *decompressor) readLines(handler loki.EntryHandler, done chan struct{}) {
 	level.Info(d.logger).Log("msg", "read lines routine: started", "path", d.path)
-	d.running.Store(true)
 
 	if d.cfg.InitialDelay > 0 {
 		level.Info(d.logger).Log("msg", "sleeping before starting decompression", "path", d.path, "duration", d.cfg.InitialDelay.String())
 		time.Sleep(d.cfg.InitialDelay)
 	}
 
-	defer func() {
-		d.cleanupMetrics()
-		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
-		close(d.done)
+	posquit, posdone := make(chan struct{}), make(chan struct{})
+	go func() {
+		d.updatePosition(posquit)
+		close(posdone)
 	}()
-	entries := d.handler.Chan()
+
+	defer func() {
+		level.Info(d.logger).Log("msg", "read lines routine finished", "path", d.path)
+		close(posquit)
+		<-posdone
+		close(done)
+	}()
+
+	entries := handler.Chan()
 
 	f, err := os.Open(d.path)
 	if err != nil {
@@ -214,7 +250,7 @@ func (d *decompressor) readLines() {
 	maxLoglineSize := 2000000 // 2 MB
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(buffer, maxLoglineSize)
-	for line := 1; ; line++ {
+	for line := int64(1); ; line++ {
 		if !scanner.Scan() {
 			break
 		}
@@ -227,10 +263,13 @@ func (d *decompressor) readLines() {
 			break
 		}
 
-		if line <= int(d.position) {
+		d.posAndSizeMtx.RLock()
+		if line <= d.position {
 			// skip already seen lines.
+			d.posAndSizeMtx.RUnlock()
 			continue
 		}
+		d.posAndSizeMtx.RUnlock()
 
 		text := scanner.Text()
 		var finalText string
@@ -249,48 +288,50 @@ func (d *decompressor) readLines() {
 		d.metrics.readLines.WithLabelValues(d.path).Inc()
 
 		entries <- loki.Entry{
-			Labels: model.LabelSet{},
-			Entry: logproto.Entry{
+			// Allocate the expected size of labels. This matches the number of labels added by the middleware
+			// as configured in Run().
+			Labels: make(model.LabelSet, len(d.labels)+1),
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      finalText,
 			},
 		}
 
+		d.posAndSizeMtx.Lock()
 		d.size = int64(unsafe.Sizeof(finalText))
 		d.position++
+		d.posAndSizeMtx.Unlock()
 	}
 }
 
-func (d *decompressor) MarkPositionAndSize() error {
-	// Lock this update as there are 2 timers calling this routine, the sync in filetarget and the positions sync in this file.
-	d.posAndSizeMtx.Lock()
-	defer d.posAndSizeMtx.Unlock()
+func (d *decompressor) markPositionAndSize() error {
+	// Lock this update because it can be called in two different goroutines
+	d.posAndSizeMtx.RLock()
+	defer d.posAndSizeMtx.RUnlock()
 
 	d.metrics.totalBytes.WithLabelValues(d.path).Set(float64(d.size))
 	d.metrics.readBytes.WithLabelValues(d.path).Set(float64(d.position))
-	d.positions.Put(d.path, d.labels, d.position)
+	d.positions.Put(d.path, d.labelsStr, d.position)
 
 	return nil
 }
 
-func (d *decompressor) Stop() {
-	// stop can be called by two separate threads in filetarget, to avoid a panic closing channels more than once
-	// we wrap the stop in a sync.Once.
-	d.stopOnce.Do(func() {
-		// Shut down the position marker thread
-		close(d.posquit)
-		<-d.posdone
+func (d *decompressor) stop(done chan struct{}) {
+	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
+	<-done
 
+	level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
+
+	// If the component is not stopping, then it means that the target for this component is gone and that
+	// we should clear the entry from the positions file.
+	if !d.componentStopping() {
+		d.positions.Remove(d.path, d.labelsStr)
+	} else {
 		// Save the current position before shutting down reader
-		if err := d.MarkPositionAndSize(); err != nil {
+		if err := d.markPositionAndSize(); err != nil {
 			level.Error(d.logger).Log("msg", "error marking file position when stopping decompressor", "path", d.path, "error", err)
 		}
-
-		// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-		<-d.done
-		level.Info(d.logger).Log("msg", "stopped decompressor", "path", d.path)
-		d.handler.Stop()
-	})
+	}
 }
 
 func (d *decompressor) IsRunning() bool {
@@ -313,8 +354,4 @@ func (d *decompressor) cleanupMetrics() {
 	d.metrics.readLines.DeleteLabelValues(d.path)
 	d.metrics.readBytes.DeleteLabelValues(d.path)
 	d.metrics.totalBytes.DeleteLabelValues(d.path)
-}
-
-func (d *decompressor) Path() string {
-	return d.path
 }

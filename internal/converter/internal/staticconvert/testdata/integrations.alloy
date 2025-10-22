@@ -407,8 +407,9 @@ prometheus.scrape "integrations_memcached_exporter" {
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {
-	mongodb_uri    = "mongodb://mongodb-a:27017"
-	direct_connect = true
+	mongodb_uri      = "mongodb://mongodb-a:27017"
+	direct_connect   = true
+	discovering_mode = true
 }
 
 discovery.relabel "integrations_mongodb_exporter" {

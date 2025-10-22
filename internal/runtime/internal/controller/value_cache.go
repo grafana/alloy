@@ -1,25 +1,25 @@
 package controller
 
 import (
-	"reflect"
+	"fmt"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-// valueCache caches component arguments and exports to expose as variables for
-// Alloy expressions.
-//
-// The current state of valueCache can then be built into a *vm.Scope for other
-// components to be evaluated.
+// This special keyword is used to expose the argument values to the custom components.
+const argumentLabel = "argument"
+
+// valueCache caches exports and module arguments to expose as variables for Alloy expressions.
+// It also caches module exports to expose them to the parent loader.
+// The exports are stored directly in the scope which is used to evaluate Alloy expressions.
 type valueCache struct {
 	mut                sync.RWMutex
-	components         map[string]ComponentID // NodeID -> ComponentID
-	args               map[string]interface{} // NodeID -> component arguments value
-	exports            map[string]interface{} // NodeID -> component exports value
-	moduleArguments    map[string]any         // key -> module arguments value
-	moduleExports      map[string]any         // name -> value for the value of module exports
+	componentIds       map[string]ComponentID // NodeID -> ComponentID
+	moduleExports      map[string]any         // Export label -> Export value
+	moduleArguments    map[string]any         // Argument label -> Map with the key "value" that points to the Argument value
 	moduleChangedIndex int                    // Everytime a change occurs this is incremented
 	scope              *vm.Scope              // scope provides additional context for the nodes in the module
 }
@@ -27,50 +27,54 @@ type valueCache struct {
 // newValueCache creates a new ValueCache.
 func newValueCache() *valueCache {
 	return &valueCache{
-		components:      make(map[string]ComponentID),
-		args:            make(map[string]interface{}),
-		exports:         make(map[string]interface{}),
-		moduleArguments: make(map[string]any),
+		componentIds:    make(map[string]ComponentID, 0),
 		moduleExports:   make(map[string]any),
+		moduleArguments: make(map[string]any),
+		scope:           vm.NewScope(make(map[string]any)),
 	}
 }
 
-func (vc *valueCache) SetScope(scope *vm.Scope) {
-	vc.mut.Lock()
-	defer vc.mut.Unlock()
-	vc.scope = scope
-}
-
-// CacheArguments will cache the provided arguments by the given id. args may
-// be nil to store an empty object.
-func (vc *valueCache) CacheArguments(id ComponentID, args component.Arguments) {
-	vc.mut.Lock()
-	defer vc.mut.Unlock()
-
-	nodeID := id.String()
-	vc.components[nodeID] = id
-
-	var argsVal interface{} = make(map[string]interface{})
-	if args != nil {
-		argsVal = args
+// UpdateScopeVariables updates the Variables map of the scope with a deep copy of the provided map.
+func (vc *valueCache) UpdateScopeVariables(variables map[string]any) {
+	if variables == nil {
+		return
 	}
-	vc.args[nodeID] = argsVal
+	vc.mut.Lock()
+	defer vc.mut.Unlock()
+	vc.scope.Variables = deepCopyMap(variables)
 }
 
 // CacheExports will cache the provided exports using the given id. exports may
 // be nil to store an empty object.
-func (vc *valueCache) CacheExports(id ComponentID, exports component.Exports) {
+func (vc *valueCache) CacheExports(id ComponentID, exports component.Exports) error {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	nodeID := id.String()
-	vc.components[nodeID] = id
+	variables := vc.scope.Variables
+	// Build nested maps.
+	for i := 0; i < len(id)-1; i++ {
+		t := id[i]
+		if _, ok := variables[t]; !ok {
+			variables[t] = make(map[string]any)
+		} else if _, ok := variables[t].(map[string]any); !ok {
+			return fmt.Errorf("expected a map but found a value for %q when trying to cache the export for %s", t, id.String())
+		}
+		variables = variables[t].(map[string]any)
+	}
 
-	var exportsVal interface{} = make(map[string]interface{})
+	var exportsVal any = make(map[string]any)
 	if exports != nil {
 		exportsVal = exports
 	}
-	vc.exports[nodeID] = exportsVal
+	variables[id[len(id)-1]] = exportsVal
+	return nil
+}
+
+func (vc *valueCache) GetModuleArgument(key string) (any, bool) {
+	vc.mut.RLock()
+	defer vc.mut.RUnlock()
+	v, exist := vc.moduleArguments[key]
+	return v, exist
 }
 
 // CacheModuleArgument will cache the provided exports using the given id.
@@ -78,11 +82,9 @@ func (vc *valueCache) CacheModuleArgument(key string, value any) {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	if value == nil {
-		vc.moduleArguments[key] = nil
-	} else {
-		vc.moduleArguments[key] = value
-	}
+	keyMap := make(map[string]any)
+	keyMap["value"] = value
+	vc.moduleArguments[key] = keyMap
 }
 
 // CacheModuleExportValue saves the value to the map
@@ -94,7 +96,7 @@ func (vc *valueCache) CacheModuleExportValue(name string, value any) {
 	v, found := vc.moduleExports[name]
 	if !found {
 		vc.moduleChangedIndex++
-	} else if !reflect.DeepEqual(v, value) {
+	} else if !equality.DeepEqual(v, value) {
 		vc.moduleChangedIndex++
 	}
 
@@ -130,26 +132,64 @@ func (vc *valueCache) ExportChangeIndex() int {
 	return vc.moduleChangedIndex
 }
 
-// SyncIDs will remove any cached values for any Component ID which is not in
-// ids. SyncIDs should be called with the current set of components after the
-// graph is updated.
-func (vc *valueCache) SyncIDs(ids []ComponentID) {
-	expectMap := make(map[string]ComponentID, len(ids))
-	for _, id := range ids {
-		expectMap[id.String()] = id
-	}
-
+// SyncIDs will remove any cached values for any Component ID from the graph which is not in ids.
+// SyncIDs should be called with the current set of components after the graph is updated.
+func (vc *valueCache) SyncIDs(ids map[string]ComponentID) error {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	for id := range vc.components {
-		if _, keep := expectMap[id]; keep {
-			continue
+	// Find the components that should be removed.
+	cleanupIds := make([]ComponentID, 0)
+	for name, id := range vc.componentIds {
+		if _, exist := ids[name]; !exist {
+			cleanupIds = append(cleanupIds, id)
 		}
-		delete(vc.components, id)
-		delete(vc.args, id)
-		delete(vc.exports, id)
 	}
+
+	// Remove the component exports from the scope.
+	for _, id := range cleanupIds {
+		err := cleanup(vc.scope.Variables, id)
+		if err != nil {
+			return fmt.Errorf("failed to sync component %s: %w", id.String(), err)
+		}
+	}
+	vc.componentIds = ids
+	return nil
+}
+
+// cleanup removes the ComponentID path from the map
+func cleanup(m map[string]any, id ComponentID) error {
+	// Start with the index "0". It refers to the first part of the componentID and it's used for recursion.
+	return cleanupFromIndex(m, id, 0)
+}
+
+func cleanupFromIndex(m map[string]any, id ComponentID, index int) error {
+	if _, ok := m[id[index]]; !ok {
+		return nil
+	}
+
+	if index == len(id)-1 {
+		delete(m, id[index]) // Remove the component's exports.
+		return nil
+	}
+
+	if _, ok := m[id[index]].(map[string]any); !ok {
+		return fmt.Errorf("expected a map but found a value for %q", id[index])
+	}
+	nextM := m[id[index]].(map[string]any)
+
+	err := cleanupFromIndex(nextM, id, index+1)
+	if err != nil {
+		return err
+	}
+
+	// Delete if the map at this level is empty.
+	// If you only have one Prometheus component and you remove it, it will cleanup the full Prometheus path.
+	// If you have one Prometheus relabel and one Prometheus scrape, and you remove the relabel, it will cleanup the relabel path.
+	if len(nextM) == 0 {
+		delete(m, id[index])
+	}
+	return nil
 }
 
 // SyncModuleArgs will remove any cached values for any args no longer in the map.
@@ -157,80 +197,36 @@ func (vc *valueCache) SyncModuleArgs(args map[string]any) {
 	vc.mut.Lock()
 	defer vc.mut.Unlock()
 
-	for id := range vc.moduleArguments {
-		if _, keep := args[id]; keep {
-			continue
+	for arg := range vc.moduleArguments {
+		if _, ok := args[arg]; !ok {
+			delete(vc.moduleArguments, arg)
 		}
-		delete(vc.moduleArguments, id)
 	}
 }
 
-// BuildContext builds a vm.Scope based on the current set of cached values.
-// The arguments and exports for the same ID are merged into one object.
-func (vc *valueCache) BuildContext() *vm.Scope {
+// GetContext returns a scope that can be used for evaluation.
+func (vc *valueCache) GetContext() *vm.Scope {
 	vc.mut.RLock()
 	defer vc.mut.RUnlock()
+	vars := deepCopyMap(vc.scope.Variables)
 
-	scope := vm.NewScopeWithParent(vc.scope, make(map[string]interface{}))
-
-	// First, partition components by Alloy block name.
-	var componentsByBlockName = make(map[string][]ComponentID)
-	for _, id := range vc.components {
-		blockName := id[0]
-		componentsByBlockName[blockName] = append(componentsByBlockName[blockName], id)
-	}
-
-	// Then, convert each partition into a single value.
-	for blockName, ids := range componentsByBlockName {
-		scope.Variables[blockName] = vc.buildValue(ids, 1)
-	}
-
-	// Add module arguments to the scope.
+	// Add module arguments if there are any.
 	if len(vc.moduleArguments) > 0 {
-		scope.Variables["argument"] = make(map[string]any)
-	}
-	for key, value := range vc.moduleArguments {
-		keyMap := make(map[string]any)
-		keyMap["value"] = value
-
-		switch args := scope.Variables["argument"].(type) {
-		case map[string]any:
-			args[key] = keyMap
-		}
+		vars[argumentLabel] = deepCopyMap(vc.moduleArguments)
 	}
 
-	return scope
+	return vm.NewScope(vars)
 }
 
-// buildValue recursively converts the set of user components into a single
-// value. offset is used to determine which element in the userComponentName
-// we're looking at.
-func (vc *valueCache) buildValue(from []ComponentID, offset int) interface{} {
-	// We can't recurse anymore; return the node directly.
-	if len(from) == 1 && offset >= len(from[0]) {
-		name := from[0].String()
-
-		// TODO(rfratto): should we allow arguments to be returned so users can
-		// reference arguments as well as exports?
-		exports, ok := vc.exports[name]
-		if !ok {
-			exports = make(map[string]interface{})
+func deepCopyMap(original map[string]any) map[string]any {
+	newMap := make(map[string]any, len(original))
+	for key, value := range original {
+		switch v := value.(type) {
+		case map[string]any:
+			newMap[key] = deepCopyMap(v)
+		default:
+			newMap[key] = v
 		}
-		return exports
 	}
-
-	attrs := make(map[string]interface{})
-
-	// First, partition the components by their label.
-	var componentsByLabel = make(map[string][]ComponentID)
-	for _, id := range from {
-		blockName := id[offset]
-		componentsByLabel[blockName] = append(componentsByLabel[blockName], id)
-	}
-
-	// Then, convert each partition into a single value.
-	for label, ids := range componentsByLabel {
-		attrs[label] = vc.buildValue(ids, offset+1)
-	}
-	return attrs
+	return newMap
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"
@@ -39,7 +40,10 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*otlpexporter.Config).Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*otlpexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*otlpexporter.Config).QueueConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
@@ -59,7 +63,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	return &otlp.Arguments{
-		Timeout: cfg.Timeout,
+		Timeout: cfg.TimeoutConfig.Timeout,
 
 		Queue: toQueueArguments(cfg.QueueConfig),
 		Retry: toRetryArguments(cfg.RetryConfig),
@@ -70,12 +74,26 @@ func toOtelcolExporterOTLP(cfg *otlpexporter.Config) *otlp.Arguments {
 	}
 }
 
-func toQueueArguments(cfg exporterhelper.QueueSettings) otelcol.QueueArguments {
-	return otelcol.QueueArguments{
-		Enabled:      cfg.Enabled,
-		NumConsumers: cfg.NumConsumers,
-		QueueSize:    cfg.QueueSize,
+func toQueueArguments(cfg exporterhelper.QueueBatchConfig) otelcol.QueueArguments {
+	sizer, err := cfg.Sizer.MarshalText()
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal sizer: %w", err))
 	}
+
+	q := otelcol.QueueArguments{
+		Enabled:         cfg.Enabled,
+		NumConsumers:    cfg.NumConsumers,
+		QueueSize:       cfg.QueueSize,
+		BlockOnOverflow: cfg.BlockOnOverflow,
+		Sizer:           string(sizer),
+	}
+
+	if cfg.StorageID != nil {
+		q.Storage = &extension.ExtensionHandler{
+			ID: *cfg.StorageID,
+		}
+	}
+	return q
 }
 
 func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {
@@ -91,7 +109,7 @@ func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {
 
 func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArguments {
 	var a *auth.Handler
-	if cfg.Auth != nil {
+	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 
@@ -106,8 +124,8 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 
 		Compression: otelcol.CompressionType(cfg.Compression),
 
-		TLS:       toTLSClientArguments(cfg.TLSSetting),
-		Keepalive: toKeepaliveClientArguments(cfg.Keepalive),
+		TLS:       toTLSClientArguments(cfg.TLS),
+		Keepalive: toKeepaliveClientArguments(cfg.Keepalive.Get()),
 
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
@@ -116,7 +134,7 @@ func toGRPCClientArguments(cfg configgrpc.ClientConfig) otelcol.GRPCClientArgume
 		BalancerName:    balancerName,
 		Authority:       cfg.Authority,
 
-		Auth: a,
+		Authentication: a,
 	}
 }
 

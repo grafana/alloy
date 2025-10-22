@@ -268,21 +268,21 @@ local filename = 'alloy-controller.json';
       // Slow components evaluation time %
       (
         panel.new(title='Slow components evaluation times', type='timeseries') +
-        panel.withUnit('percentunit') +
+        panel.withUnit('s') +
         panel.withDescription(|||
-          The percentage of time spent evaluating 'slow' components - components that took longer than 1 minute to evaluate.
+          The maximum duration of slow component evaluations over time.
 
-          Ideally, no component should take more than 1 minute to evaluate. The components displayed in this chart
-          may be a sign of a problem with the pipeline.
+          This shows components that took longer than 1 minute to evaluate. Ideally, no component 
+          should take more than 1 minute to evaluate. The components displayed in this chart
+          may be a sign of a problem with the pipeline or performance issues.
         |||) +
         panel.withPosition({ x: 16, y: 12, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (component_path, component_id) (rate(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__rate_interval]))
-              / scalar(sum(rate(alloy_component_evaluation_seconds_sum{%(groupSelector)s}[$__rate_interval])))
+              increase(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__interval])
             ||| % $._config,
-            legendFormat='{{component path}} {{component_id}}',
+            legendFormat='{{instance}} {{controller_path}} {{component_id}}',
           ),
         ])
       ),

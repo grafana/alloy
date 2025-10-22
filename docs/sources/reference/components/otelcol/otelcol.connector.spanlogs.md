@@ -3,18 +3,21 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.connector.spanlogs/ # /docs/alloy/latest/reference/components/otelcol.connector.spanlogs/
 description: Learn about otelcol.connector.spanlogs
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.connector.spanlogs
 ---
 
-# otelcol.connector.spanlogs
+# `otelcol.connector.spanlogs`
 
-`otelcol.connector.spanlogs` accepts traces telemetry data from other `otelcol`
-components and outputs logs telemetry data for each span, root, or process.
+`otelcol.connector.spanlogs` accepts traces telemetry data from other `otelcol` components and outputs logs telemetry data for each span, root, or process.
 This allows you to automatically build a mechanism for trace discovery.
 
 {{< admonition type="note" >}}
 `otelcol.connector.spanlogs` is a custom component unrelated to any components from the OpenTelemetry Collector.
-It is based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
+It's based on the `automatic_logging` component in the [traces][] subsystem of Grafana Agent Static.
 
 [traces]: https://grafana.com/docs/agent/latest/static/configuration/traces-config
 {{< /admonition >}}
@@ -24,7 +27,7 @@ You can specify multiple `otelcol.connector.spanlogs` components by giving them 
 ## Usage
 
 ```alloy
-otelcol.connector.spanlogs "LABEL" {
+otelcol.connector.spanlogs "<LABEL>" {
   output {
     logs    = [...]
   }
@@ -33,61 +36,64 @@ otelcol.connector.spanlogs "LABEL" {
 
 ## Arguments
 
-`otelcol.connector.spanlogs` supports the following arguments:
+You can use the following arguments with `otelcol.connector.spanlogs`:
 
 | Name                 | Type           | Description                                   | Default | Required |
-| -------------------- | -------------- | --------------------------------------------- | ------- | -------- |
-| `spans`              | `bool`         | Log one line per span.                        | `false` | no       |
-| `roots`              | `bool`         | Log one line for every root span of a trace.  | `false` | no       |
-| `processes`          | `bool`         | Log one line for every process.               | `false` | no       |
-| `span_attributes`    | `list(string)` | Additional span attributes to log.            | `[]`    | no       |
-| `process_attributes` | `list(string)` | Additional process attributes to log.         | `[]`    | no       |
+|----------------------|----------------|-----------------------------------------------|---------|----------|
+| `event_attributes`   | `list(string)` | Additional event attributes to log.           | `[]`    | no       |
+| `events`             | `bool`         | Log one line for every span event.            | `false` | no       |
 | `labels`             | `list(string)` | A list of keys that will be logged as labels. | `[]`    | no       |
+| `process_attributes` | `list(string)` | Additional process attributes to log.         | `[]`    | no       |
+| `processes`          | `bool`         | Log one line for every process.               | `false` | no       |
+| `roots`              | `bool`         | Log one line for every root span of a trace.  | `false` | no       |
+| `span_attributes`    | `list(string)` | Additional span attributes to log.            | `[]`    | no       |
+| `spans`              | `bool`         | Log one line per span.                        | `false` | no       |
 
-The values listed in `labels` should be the values of either span or process attributes.
+The values listed in `labels` should be the values of either span, process, or event attributes.
 
 {{< admonition type="warning" >}}
-Setting `spans` to `true` could lead to a high volume of logs.
+Setting either `spans` or `events` to `true` could lead to a high volume of logs.
 {{< /admonition >}}
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.connector.spanlogs`:
+You can use the following blocks with `otelcol.connector.spanlogs`:
 
-| Hierarchy | Block         | Description                                       | Required |
-| --------- | ------------- | ------------------------------------------------- | -------- |
-| overrides | [overrides][] | Overrides for keys in the log body.               | no       |
-| output    | [output][]    | Configures where to send received telemetry data. | yes      |
+| Block                    | Description                                       | Required |
+|--------------------------|---------------------------------------------------|----------|
+| [`output`][output]       | Configures where to send received telemetry data. | yes      |
+| [`overrides`][overrides] | Overrides for keys in the log body.               | no       |
 
-[output]: #output-block
-[overrides]: #overrides-block
+[output]: #output
+[overrides]: #overrides
 
-### overrides block
+### `output`
+
+{{< badge text="Required" >}}
+
+{{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `overrides`
 
 The `overrides` block configures overrides for keys that will be logged in the body of the log line.
 
-The following attributes are supported:
+The following arguments are supported:
 
 | Name                | Type     | Description                                                | Default  | Required |
-| ------------------- | -------- | ---------------------------------------------------------- | -------- | -------- |
+|---------------------|----------|------------------------------------------------------------|----------|----------|
+| `duration_key`      | `string` | Log key for the duration of the span.                      | `dur`    | no       |
 | `logs_instance_tag` | `string` | Indicates if the log line is for a span, root, or process. | `traces` | no       |
 | `service_key`       | `string` | Log key for the service name of the resource.              | `svc`    | no       |
 | `span_name_key`     | `string` | Log key for the name of the span.                          | `span`   | no       |
 | `status_key`        | `string` | Log key for the status of the span.                        | `status` | no       |
-| `duration_key`      | `string` | Log key for the duration of the span.                      | `dur`    | no       |
 | `trace_id_key`      | `string` | Log key for the trace ID of the span.                      | `tid`    | no       |
-
-### output block
-
-{{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-| ------- | ------------------ | ---------------------------------------------------------------- |
+|---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
@@ -98,14 +104,13 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`otelcol.connector.spanlogs` does not expose any component-specific debug information.
+`otelcol.connector.spanlogs` doesn't expose any component-specific debug information.
 
 ## Example
 
 The following configuration sends logs derived from spans to Loki.
 
-Additionally, `otelcol.processor.attributes` is configured with a "hint" so that
-`otelcol.exporter.loki` promotes the span's "attribute1" attribute to a Loki label.
+Additionally, `otelcol.processor.attributes` is configured with a "hint" so that `otelcol.exporter.loki` promotes the span's "attribute1" attribute to a Loki label.
 
 ```alloy
 otelcol.receiver.otlp "default" {
@@ -120,9 +125,11 @@ otelcol.connector.spanlogs "default" {
   spans              = true
   roots              = true
   processes          = true
+  events             = true
   labels             = ["attribute1", "res_attribute1"]
   span_attributes    = ["attribute1"]
   process_attributes = ["res_attribute1"]
+  event_attributes   = ["log.severity", "log.message"]
 
   output {
     logs = [otelcol.processor.attributes.default.input]
@@ -152,7 +159,7 @@ loki.write "local" {
 }
 ```
 
-For an input trace like this...
+For an input trace like this:
 
 ```json
 {
@@ -198,6 +205,21 @@ For an input trace like this...
                   "key": "account_id",
                   "value": { "intValue": "2245" }
                 }
+              ],
+              "events": [
+                {
+                  "name": "log",
+                  "attributes": [
+                    {
+                      "key": "log.severity",
+                      "value": { "stringValue": "INFO" }
+                    },
+                    {
+                      "key": "log.message",
+                      "value": { "stringValue": "TestLogMessage" }
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -208,7 +230,7 @@ For an input trace like this...
 }
 ```
 
-... the output log coming out of `otelcol.connector.spanlogs` will look like this:
+The output log coming out of `otelcol.connector.spanlogs` looks like this:
 
 ```json
 {
@@ -267,6 +289,31 @@ For an input trace like this...
                 {
                   "key": "res_attribute1",
                   "value": { "intValue": "78" }
+                }
+              ]
+            },
+            {
+              "body": { "stringValue": "span=TestSpan dur=0ns attribute1=78 svc=TestSvcName res_attribute1=78 tid=7bba9f33312b3dbb8b2c2c62bb7abe2d log.severity=INFO log.message=TestLogMessage" },
+              "attributes": [
+                {
+                  "key": "traces",
+                  "value": { "stringValue": "event" }
+                },
+                {
+                  "key": "attribute1",
+                  "value": { "intValue": "78" }
+                },
+                {
+                  "key": "res_attribute1",
+                  "value": { "intValue": "78" }
+                },
+                {
+                  "key": "log.severity",
+                  "value": { "stringValue": "INFO" }
+                },
+                {
+                  "key": "log.message",
+                  "value": { "stringValue": "TestLogMessage" }
                 }
               ]
             }

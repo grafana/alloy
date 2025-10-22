@@ -5,7 +5,7 @@ package runtime_test
 
 import (
 	"context"
-	"os"
+	"io"
 	"strconv"
 	"testing"
 	"time"
@@ -65,7 +65,7 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -75,6 +75,10 @@ func TestUpdates_EmptyModule(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -126,7 +130,7 @@ func TestUpdates_ThroughModule(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -136,6 +140,10 @@ func TestUpdates_ThroughModule(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -188,7 +196,7 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -198,6 +206,10 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	// Verify updates propagated correctly.
 	require.Eventually(t, func() bool {
@@ -255,7 +267,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -265,6 +277,10 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.Ready()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -318,7 +334,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 
 func testOptions(t *testing.T) runtime.Options {
 	t.Helper()
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{
@@ -377,5 +393,9 @@ func verifyNoGoroutineLeaks(t *testing.T) {
 		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"),
 		goleak.IgnoreTopFunction("go.opentelemetry.io/otel/sdk/trace.(*batchSpanProcessor).processQueue"),
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"), // related to TCP keep alive
+		// TODO - #3257: There is a small race condition where the file detector's cancel func is closed but it has
+		// not yet been scheduled to run & then terminate. The refactor to fix this is significant,
+		// and not currently worth the investment.
+		goleak.IgnoreTopFunction("github.com/grafana/alloy/internal/filedetector.(*FSNotify).wait"),
 	)
 }

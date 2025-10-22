@@ -1,7 +1,10 @@
 package operator
 
 import (
+	"fmt"
 	"time"
+
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -24,6 +27,8 @@ type Arguments struct {
 	// Namespaces to search for monitor resources. Empty implies All namespaces
 	Namespaces []string `alloy:"namespaces,attr,optional"`
 
+	KubernetesRole string `alloy:"kubernetes_role,attr,optional"`
+
 	// LabelSelector allows filtering discovered monitor resources by labels
 	LabelSelector *config.LabelSelector `alloy:"selector,block,optional"`
 
@@ -32,6 +37,8 @@ type Arguments struct {
 	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
 	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
+
+	InformerSyncTimeout time.Duration `alloy:"informer_sync_timeout,attr,optional"`
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
@@ -47,6 +54,8 @@ func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
 	cfg := promconfig.DefaultGlobalConfig
 	cfg.ScrapeInterval = model.Duration(s.DefaultScrapeInterval)
 	cfg.ScrapeTimeout = model.Duration(s.DefaultScrapeTimeout)
+	cfg.MetricNameValidationScheme = promconfig.LegacyValidationConfig
+	cfg.MetricNameEscapingScheme = model.EscapeUnderscores
 	return cfg
 }
 
@@ -54,6 +63,8 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
+	KubernetesRole:      string(promk8s.RoleEndpoint),
+	InformerSyncTimeout: time.Minute,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -65,6 +76,9 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	if len(args.Namespaces) == 0 {
 		args.Namespaces = []string{apiv1.NamespaceAll}
+	}
+	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
+		return fmt.Errorf("only endpoints and endpointslice are supported")
 	}
 	return nil
 }

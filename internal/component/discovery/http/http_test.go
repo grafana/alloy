@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -30,11 +32,17 @@ func TestAlloyConfig(t *testing.T) {
 		username = "123"
 		password = "456"
 	}
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 	assert.Equal(t, args.HTTPClientConfig.BasicAuth.Username, "123")
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {
@@ -95,6 +103,14 @@ func TestComponent(t *testing.T) {
 				cancel()
 			},
 			Registerer: prometheus.NewRegistry(),
+			GetServiceData: func(name string) (interface{}, error) {
+				switch name {
+				case livedebugging.ServiceName:
+					return livedebugging.NewLiveDebugging(), nil
+				default:
+					return nil, fmt.Errorf("service %q does not exist", name)
+				}
+			},
 		},
 		Arguments{
 			RefreshInterval:  time.Second,
@@ -106,7 +122,7 @@ func TestComponent(t *testing.T) {
 	assert.NilError(t, err)
 	wg := sync.WaitGroup{}
 	var ctx context.Context
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), 10*time.Second)
 	wg.Add(1)
 	go func() {
 		err := component.Run(ctx)

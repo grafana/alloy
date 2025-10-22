@@ -10,7 +10,7 @@ import (
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 const DefaultBalancerName = "round_robin"
@@ -30,40 +30,68 @@ type GRPCServerArguments struct {
 
 	Keepalive *KeepaliveServerArguments `alloy:"keepalive,block,optional"`
 
-	// TODO(rfratto): auth
-	//
-	// Figuring out how to do authentication isn't very straightforward here. The
-	// auth section links to an authenticator extension.
-	//
-	// We will need to generally figure out how we want to provide common
-	// authentication extensions to all of our components.
+	// Auth is a binding to an otelcol.auth.* component extension which handles
+	// authentication.
+	// alloy name is auth instead of authentication so the user interface is the same as exporter components.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	IncludeMetadata bool `alloy:"include_metadata,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCServerArguments) Convert() *otelconfiggrpc.ServerConfig {
+func (args *GRPCServerArguments) Convert() (configoptional.Optional[otelconfiggrpc.ServerConfig], error) {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.ServerConfig](), nil
 	}
 
-	return &otelconfiggrpc.ServerConfig{
+	// If auth is set add that to the config.
+	var authentication configoptional.Optional[otelconfigauth.Config]
+	if args.Authentication != nil {
+		// If a auth plugin does not implement server auth, an error will be returned here.
+		serverExtension, err := args.Authentication.GetExtension(auth.Server)
+		if err != nil {
+			return configoptional.None[otelconfiggrpc.ServerConfig](), err
+		}
+		authentication = configoptional.Some(otelconfigauth.Config{
+			AuthenticatorID: serverExtension.ID,
+		})
+	}
+
+	return configoptional.Some(otelconfiggrpc.ServerConfig{
 		NetAddr: confignet.AddrConfig{
 			Endpoint:  args.Endpoint,
 			Transport: confignet.TransportType(args.Transport),
 		},
 
-		TLSSetting: args.TLS.Convert(),
+		TLS: args.TLS.Convert(),
 
-		MaxRecvMsgSizeMiB:    uint64(args.MaxRecvMsgSize / units.Mebibyte),
+		MaxRecvMsgSizeMiB:    int(args.MaxRecvMsgSize / units.Mebibyte),
 		MaxConcurrentStreams: args.MaxConcurrentStreams,
 		ReadBufferSize:       int(args.ReadBufferSize),
 		WriteBufferSize:      int(args.WriteBufferSize),
+		Keepalive:            args.Keepalive.Convert(),
+		IncludeMetadata:      args.IncludeMetadata,
+		Auth:                 authentication,
+	}), nil
+}
 
-		Keepalive: args.Keepalive.Convert(),
+// Temporary function until all upstream components are converted to use configoptional.Optional.
+func (args *GRPCServerArguments) ConvertToPtr() (*otelconfiggrpc.ServerConfig, error) {
+	converted, err := args.Convert()
+	return converted.Get(), err
+}
 
-		IncludeMetadata: args.IncludeMetadata,
+// Extensions exposes extensions used by args.
+func (args *GRPCServerArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
+	return m
 }
 
 // KeepaliveServerArguments holds shared keepalive settings for components
@@ -74,15 +102,15 @@ type KeepaliveServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveServerArguments) Convert() *otelconfiggrpc.KeepaliveServerConfig {
+func (args *KeepaliveServerArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerConfig] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveServerConfig]()
 	}
 
-	return &otelconfiggrpc.KeepaliveServerConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerConfig{
 		ServerParameters:  args.ServerParameters.Convert(),
 		EnforcementPolicy: args.EnforcementPolicy.Convert(),
-	}
+	})
 }
 
 // KeepaliveServerParamaters holds shared keepalive settings for components
@@ -96,18 +124,18 @@ type KeepaliveServerParamaters struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveServerParamaters) Convert() *otelconfiggrpc.KeepaliveServerParameters {
+func (args *KeepaliveServerParamaters) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveServerParameters] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveServerParameters]()
 	}
 
-	return &otelconfiggrpc.KeepaliveServerParameters{
+	return configoptional.Some(otelconfiggrpc.KeepaliveServerParameters{
 		MaxConnectionIdle:     args.MaxConnectionIdle,
 		MaxConnectionAge:      args.MaxConnectionAge,
 		MaxConnectionAgeGrace: args.MaxConnectionAgeGrace,
 		Time:                  args.Time,
 		Timeout:               args.Timeout,
-	}
+	})
 }
 
 // KeepaliveEnforcementPolicy holds shared keepalive settings for components
@@ -118,15 +146,15 @@ type KeepaliveEnforcementPolicy struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveEnforcementPolicy) Convert() *otelconfiggrpc.KeepaliveEnforcementPolicy {
+func (args *KeepaliveEnforcementPolicy) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveEnforcementPolicy] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveEnforcementPolicy]()
 	}
 
-	return &otelconfiggrpc.KeepaliveEnforcementPolicy{
+	return configoptional.Some(otelconfiggrpc.KeepaliveEnforcementPolicy{
 		MinTime:             args.MinTime,
 		PermitWithoutStream: args.PermitWithoutStream,
-	}
+	})
 }
 
 // GRPCClientArguments holds shared gRPC settings for components which launch
@@ -150,13 +178,14 @@ type GRPCClientArguments struct {
 
 	// Auth is a binding to an otelcol.auth.* component extension which handles
 	// authentication.
-	Auth *auth.Handler `alloy:"auth,attr,optional"`
+	// alloy name is auth instead of authentication to not break user interface compatibility.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
-func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
+func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error) {
 	if args == nil {
-		return nil
+		return nil, nil
 	}
 
 	opaqueHeaders := make(map[string]configopaque.String)
@@ -164,10 +193,17 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		opaqueHeaders[headerName] = configopaque.String(headerVal)
 	}
 
-	// Configure the authentication if args.Auth is set.
-	var auth *otelconfigauth.Authentication
-	if args.Auth != nil {
-		auth = &otelconfigauth.Authentication{AuthenticatorID: args.Auth.ID}
+	// Configure authentication if args.Auth is set.
+	var authentication configoptional.Optional[otelconfigauth.Config]
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return nil, err
+		}
+
+		authentication = configoptional.Some(otelconfigauth.Config{
+			AuthenticatorID: ext.ID,
+		})
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
@@ -181,8 +217,8 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 
 		Compression: args.Compression.Convert(),
 
-		TLSSetting: *args.TLS.Convert(),
-		Keepalive:  args.Keepalive.Convert(),
+		TLS:       *args.TLS.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 
 		ReadBufferSize:  int(args.ReadBufferSize),
 		WriteBufferSize: int(args.WriteBufferSize),
@@ -191,15 +227,19 @@ func (args *GRPCClientArguments) Convert() *otelconfiggrpc.ClientConfig {
 		BalancerName:    balancerName,
 		Authority:       args.Authority,
 
-		Auth: auth,
-	}
+		Auth: authentication,
+	}, nil
 }
 
 // Extensions exposes extensions used by args.
-func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	m := make(map[otelcomponent.ID]otelextension.Extension)
-	if args.Auth != nil {
-		m[args.Auth.ID] = args.Auth.Extension
+func (args *GRPCClientArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Client)
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
 	}
 	return m
 }
@@ -213,14 +253,14 @@ type KeepaliveClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *KeepaliveClientArguments) Convert() *otelconfiggrpc.KeepaliveClientConfig {
+func (args *KeepaliveClientArguments) Convert() configoptional.Optional[otelconfiggrpc.KeepaliveClientConfig] {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.KeepaliveClientConfig]()
 	}
 
-	return &otelconfiggrpc.KeepaliveClientConfig{
+	return configoptional.Some(otelconfiggrpc.KeepaliveClientConfig{
 		Time:                args.PingWait,
 		Timeout:             args.PingResponseTimeout,
 		PermitWithoutStream: args.PingWithoutStream,
-	}
+	})
 }

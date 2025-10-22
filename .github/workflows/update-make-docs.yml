@@ -3,10 +3,18 @@ on:
   schedule:
     - cron: '0 7 * * 1-5'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   main:
     if: github.repository == 'grafana/alloy'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: grafana/writers-toolkit/update-make-docs@update-make-docs/v1
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: grafana/writers-toolkit/update-make-docs@f65819d6a412b752c0e0263375215f049507b0e6 # update-make-docs/v1 # zizmor: ignore[unpinned-uses]
+        # This internal action's version is left as a tag instead of a pinned hash because renovate
+        # does not support this type of tag/version format without custom configuration.

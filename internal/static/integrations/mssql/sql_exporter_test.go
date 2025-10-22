@@ -32,6 +32,7 @@ metrics:
 			name: "valid config",
 			input: Config{
 				ConnectionString:   "sqlserver://user:pass@localhost:1433",
+				ConnectionName:     "localhost",
 				MaxIdleConnections: 3,
 				MaxOpenConnections: 3,
 				Timeout:            10 * time.Second,

@@ -1,75 +1,95 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.receive_http/
 description: Learn about pyroscope.receive_http
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: pyroscope.receive_http
 ---
 
-# pyroscope.receive_http
+# `pyroscope.receive_http`
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
-The HTTP API exposed is compatible with the Pyroscope [HTTP ingest API](https://grafana.com/docs/pyroscope/latest/configure-server/about-server-api/).
+The HTTP API exposed is compatible with both the Pyroscope [HTTP ingest API](https://grafana.com/docs/pyroscope/latest/reference-server-api/) and the [pushv1.PusherService](https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto) Connect API.
 This allows `pyroscope.receive_http` to act as a proxy for Pyroscope profiles, enabling flexible routing and distribution of profile data.
 
 ## Usage
 
 ```alloy
-pyroscope.receive_http "LABEL" {
+pyroscope.receive_http "<LABEL>" {
   http {
-    listen_address = "LISTEN_ADDRESS"
-    listen_port = PORT
+    listen_address = "<LISTEN_ADDRESS>"
+    listen_port = "<PORT>"
   }
-  forward_to = RECEIVER_LIST
+  forward_to = <RECEIVER_LIST>
 }
 ```
 
-The component will start an HTTP server supporting the following endpoint.
+The component starts an HTTP server supporting the following endpoints:
 
-* `POST /ingest` - send profiles to the component, which will be forwarded to the receivers as configured in the `forward_to argument`. The request format must match the format of the Pyroscope ingest API.
+* `POST /ingest`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
+  The request format must match the format of the Pyroscope ingest API.
+* `POST /push.v1.PusherService/Push`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
+  The request format must match the format of the Pyroscope pushv1.PusherService Connect API.
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following argument with `pyroscope.receive_http`:
 
-Name              | Type          | Description                                     | Default | Required
-------------------|---------------|-------------------------------------------------|---------|---------
-`forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes
+| Name         | Type                     | Description                            | Default | Required |
+| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
+| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
 
 ## Blocks
 
-The following blocks are supported inside the definition of `pyroscope.receive_http`:
+You can use the following blocks with `pyroscope.receive_http`:
 
-Hierarchy | Name | Description                                        | Required
-----------|------|----------------------------------------------------|---------
-`http`    | `http` | Configures the HTTP server that receives requests. | no
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
-### http
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
-The `http` block configures the HTTP server.
+[http]: #http
 
-You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
+### `http`
 
-Name                   | Type       | Description                                                                                                      | Default  | Required
------------------------|------------|------------------------------------------------------------------------------------------------------------------|----------|---------
-`conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 100.                                           | `0`      | no
-`listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no
-`listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no
-`server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                    | `"120s"` | no
-`server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                                    | `"30s"`  | no
-`server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                                   | `"30s"`  | no
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+[tls]: #tls
+
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
-`pyroscope.receive_http` does not export any fields.
+`pyroscope.receive_http` doesn't export any fields.
 
 ## Component health
 
-`pyroscope.receive_http` is reported as unhealthy if it is given an invalid configuration.
+`pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+
+## Debug metrics
+
+`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
+`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+
+## Troubleshoot
+
+{{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
 This example creates a `pyroscope.receive_http` component, which starts an HTTP server listening on `0.0.0.0` and port `9999`.
 The server receives profiles and forwards them to multiple `pyroscope.write` components, which write these profiles to different HTTP endpoints.
+
 ```alloy
 // Receives profiles over HTTP
 pyroscope.receive_http "default" {
@@ -97,10 +117,11 @@ pyroscope.write "production" {
 
 {{< admonition type="note" >}}
 This example demonstrates forwarding to multiple `pyroscope.write` components.
-This configuration will duplicate the received profiles and send a copy to each configured `pyroscope.write` component.
+This configuration duplicates the received profiles and sends a copy to each configured `pyroscope.write` component.
 {{< /admonition >}}
 
-You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed. This flexibility allows you to design a setup that best fits your infrastructure and profile routing requirements.
+You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed.
+This flexibility allows you to design a setup that best fits your infrastructure and profile routing requirements.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

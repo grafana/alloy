@@ -13,11 +13,12 @@ import (
 
 	"github.com/burningalchemist/sql_exporter"
 	"github.com/burningalchemist/sql_exporter/config"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/common/model"
 )
 
 // DefaultConfig is the default config for the mssql integration
@@ -30,6 +31,7 @@ var DefaultConfig = Config{
 // Config is the configuration for the mssql integration
 type Config struct {
 	ConnectionString   config_util.Secret `yaml:"connection_string,omitempty"`
+	ConnectionName     string             `yaml:"connection_name,omitempty"`
 	MaxIdleConnections int                `yaml:"max_idle_connections,omitempty"`
 	MaxOpenConnections int                `yaml:"max_open_connections,omitempty"`
 	Timeout            time.Duration      `yaml:"timeout,omitempty"`
@@ -66,7 +68,7 @@ func (c Config) validate() error {
 }
 
 // Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	url, err := url.Parse(string(c.ConnectionString))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse connection string URL: %w", err)
@@ -119,7 +121,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 
 	t, err := sql_exporter.NewTarget(
 		"mssqlintegration",
-		"",
+		c.ConnectionName,
 		string(c.ConnectionString),
 		[]*config.CollectorConfig{
 			&collectorConfig,

@@ -1,7 +1,6 @@
 package ebpf
 
 import (
-	"errors"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -9,31 +8,53 @@ import (
 )
 
 type Arguments struct {
-	ForwardTo            []pyroscope.Appendable `alloy:"forward_to,attr"`
-	Targets              []discovery.Target     `alloy:"targets,attr,optional"`
-	CollectInterval      time.Duration          `alloy:"collect_interval,attr,optional"`
-	SampleRate           int                    `alloy:"sample_rate,attr,optional"`
-	PidCacheSize         int                    `alloy:"pid_cache_size,attr,optional"`
-	BuildIDCacheSize     int                    `alloy:"build_id_cache_size,attr,optional"`
-	SameFileCacheSize    int                    `alloy:"same_file_cache_size,attr,optional"`
-	ContainerIDCacheSize int                    `alloy:"container_id_cache_size,attr,optional"`
-	CacheRounds          int                    `alloy:"cache_rounds,attr,optional"`
-	CollectUserProfile   bool                   `alloy:"collect_user_profile,attr,optional"`
-	CollectKernelProfile bool                   `alloy:"collect_kernel_profile,attr,optional"`
-	Demangle             string                 `alloy:"demangle,attr,optional"`
-	PythonEnabled        bool                   `alloy:"python_enabled,attr,optional"`
-	SymbolsMapSize       int                    `alloy:"symbols_map_size,attr,optional"`
-	PIDMapSize           int                    `alloy:"pid_map_size,attr,optional"`
+	ForwardTo           []pyroscope.Appendable `alloy:"forward_to,attr"`
+	Targets             []discovery.Target     `alloy:"targets,attr,optional"`
+	CollectInterval     time.Duration          `alloy:"collect_interval,attr,optional"`
+	SampleRate          int                    `alloy:"sample_rate,attr,optional"`
+	PythonEnabled       bool                   `alloy:"python_enabled,attr,optional"`
+	PerlEnabled         bool                   `alloy:"perl_enabled,attr,optional"`
+	PHPEnabled          bool                   `alloy:"php_enabled,attr,optional"`
+	HotspotEnabled      bool                   `alloy:"hotspot_enabled,attr,optional"`
+	RubyEnabled         bool                   `alloy:"ruby_enabled,attr,optional"`
+	V8Enabled           bool                   `alloy:"v8_enabled,attr,optional"`
+	DotNetEnabled       bool                   `alloy:"dotnet_enabled,attr,optional"`
+	GoEnabled           bool                   `alloy:"go_enabled,attr,optional"`
+	Demangle            string                 `alloy:"demangle,attr,optional"`
+	OffCPUThreshold     float64                `alloy:"off_cpu_threshold,attr,optional"` //TODO: Document this as a float?
+	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
+
+	// undocumented
+	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
+	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
+	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
+	ReporterUnsymbolizedStubs       bool   `alloy:"reporter_unsymbolized_stubs,attr,optional"`
+}
+
+type DeprecatedArguments struct {
+	// deprecated
+	PidCacheSize int `alloy:"pid_cache_size,attr,optional"`
+	// deprecated
+	BuildIDCacheSize int `alloy:"build_id_cache_size,attr,optional"`
+	// deprecated
+	SameFileCacheSize int `alloy:"same_file_cache_size,attr,optional"`
+	// deprecated
+	CacheRounds int `alloy:"cache_rounds,attr,optional"`
+	// deprecated
+	GoTableFallback bool `alloy:"go_table_fallback,attr,optional"`
+	// deprecated
+	SymbolsMapSize int `alloy:"symbols_map_size,attr,optional"`
+	// deprecated
+	PIDMapSize int `alloy:"pid_map_size,attr,optional"`
+	// deprecated
+	CollectUserProfile bool `alloy:"collect_user_profile,attr,optional"`
+	// deprecated
+	CollectKernelProfile bool `alloy:"collect_kernel_profile,attr,optional"`
+	// deprecated
+	ContainerIDCacheSize uint32 `alloy:"container_id_cache_size,attr,optional"`
 }
 
 // Validate implements syntax.Validator.
-func (arg *Arguments) Validate() error {
-	var errs []error
-	if arg.SymbolsMapSize <= 0 {
-		errs = append(errs, errors.New("symbols_map_size must be greater than 0"))
-	}
-	if arg.PIDMapSize <= 0 {
-		errs = append(errs, errors.New("pid_map_size must be greater than 0"))
-	}
-	return errors.Join(errs...)
+func (args *Arguments) Validate() error {
+	return nil
 }

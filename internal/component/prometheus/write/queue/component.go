@@ -8,12 +8,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/filequeue"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/network"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/serialization"
-	"github.com/grafana/alloy/internal/component/prometheus/write/queue/types"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/prometheus/client_golang/prometheus"
+	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -34,20 +30,13 @@ func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
 		opts:      opts,
 		args:      args,
 		log:       opts.Logger,
-		endpoints: map[string]*endpoint{},
+		endpoints: map[string]promqueue.Queue{},
 	}
-
+	s.opts.OnStateChange(Exports{Receiver: s})
 	err := s.createEndpoints()
 	if err != nil {
 		return nil, err
 	}
-	// This needs to be started before we export the onstatechange so that it can accept
-	// signals.
-	for _, ep := range s.endpoints {
-		ep.Start()
-	}
-	s.opts.OnStateChange(Exports{Receiver: s})
-
 	return s, nil
 }
 
@@ -58,13 +47,15 @@ type Queue struct {
 	args      Arguments
 	opts      component.Options
 	log       log.Logger
-	endpoints map[string]*endpoint
+	endpoints map[string]promqueue.Queue
+	ctx       context.Context
 }
 
 // Run starts the component, blocking until ctx is canceled or the component
 // suffers a fatal error. Run is guaranteed to be called exactly once per
 // Component.
 func (s *Queue) Run(ctx context.Context) error {
+	s.ctx = ctx
 	defer func() {
 		s.mut.Lock()
 		defer s.mut.Unlock()
@@ -73,7 +64,13 @@ func (s *Queue) Run(ctx context.Context) error {
 			ep.Stop()
 		}
 	}()
-
+	for _, ep := range s.endpoints {
+		// If any of these fail to start thats a problem.
+		err := ep.Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	<-ctx.Done()
 	return nil
 }
@@ -90,60 +87,54 @@ func (s *Queue) Update(args component.Arguments) error {
 	defer s.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	sync.OnceFunc(func() {
-		s.opts.OnStateChange(Exports{Receiver: s})
-	})
 	// If they are the same do nothing.
 	if reflect.DeepEqual(newArgs, s.args) {
 		return nil
 	}
 	s.args = newArgs
-	// TODO @mattdurham need to cycle through the endpoints figuring out what changed instead of this global stop and start.
-	// This will cause data in the endpoints and their children to be lost.
-	if len(s.endpoints) > 0 {
-		for _, ep := range s.endpoints {
+	// Figure out which endpoint is new, which is updated, and which needs to be gone.
+	// So add all the endpoints and then if they are in the new config then remove them from deletable.
+	deletableEndpoints := make(map[string]struct{})
+	for k := range s.endpoints {
+		deletableEndpoints[k] = struct{}{}
+	}
+
+	for _, epCfg := range s.args.Endpoints {
+		delete(deletableEndpoints, epCfg.Name)
+		ep, found := s.endpoints[epCfg.Name]
+		// If found stop and recreate.
+		if found {
+			// Stop and loose all the signals in the queue.
+			// TODO drain the signals and re-add them
 			ep.Stop()
 		}
-		s.endpoints = map[string]*endpoint{}
+		nativeCfg := epCfg.ToNativeType()
+		// Create
+		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
+		if err != nil {
+			return err
+		}
+		err = end.Start(s.ctx)
+		if err != nil {
+			return err
+		}
+		s.endpoints[epCfg.Name] = end
 	}
-	err := s.createEndpoints()
-	if err != nil {
-		return err
-	}
-	for _, ep := range s.endpoints {
-		ep.Start()
+	// Now we need to figure out the endpoints that were not touched and able to be deleted.
+	for name := range deletableEndpoints {
+		s.endpoints[name].Stop()
+		delete(s.endpoints, name)
 	}
 	return nil
 }
 
 func (s *Queue) createEndpoints() error {
-	// @mattdurham not in love with this code.
 	for _, ep := range s.args.Endpoints {
-		reg := prometheus.WrapRegistererWith(prometheus.Labels{"endpoint": ep.Name}, s.opts.Registerer)
-		stats := types.NewStats("alloy", "queue_series", reg)
-		stats.SeriesBackwardsCompatibility(reg)
-		meta := types.NewStats("alloy", "queue_metadata", reg)
-		meta.MetaBackwardsCompatibility(reg)
-		cfg := ep.ToNativeType()
-		client, err := network.New(cfg, s.log, stats.UpdateNetwork, meta.UpdateNetwork)
+		nativeCfg := ep.ToNativeType()
+		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
 		if err != nil {
 			return err
 		}
-		end := NewEndpoint(client, nil, s.args.TTL, s.opts.Logger)
-		fq, err := filequeue.NewQueue(filepath.Join(s.opts.DataPath, ep.Name, "wal"), func(ctx context.Context, dh types.DataHandle) {
-			_ = end.incoming.Send(ctx, dh)
-		}, s.opts.Logger)
-		if err != nil {
-			return err
-		}
-		serial, err := serialization.NewSerializer(types.SerializerConfig{
-			MaxSignalsInBatch: uint32(s.args.Persistence.MaxSignalsToBatch),
-			FlushFrequency:    s.args.Persistence.BatchInterval,
-		}, fq, stats.UpdateSerializer, s.opts.Logger)
-		if err != nil {
-			return err
-		}
-		end.serializer = serial
 		s.endpoints[ep.Name] = end
 	}
 	return nil
@@ -158,7 +149,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 
 	children := make([]storage.Appender, 0)
 	for _, ep := range c.endpoints {
-		children = append(children, serialization.NewAppender(ctx, c.args.TTL, ep.serializer, c.opts.Logger))
+		children = append(children, ep.Appender(ctx))
 	}
 	return &fanout{children: children}
 }

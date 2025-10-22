@@ -1,4 +1,4 @@
-package github_exporter //nolint:golint
+package github_exporter
 
 import (
 	"testing"

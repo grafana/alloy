@@ -85,9 +85,31 @@
     },
   },
 
+  withMax(max):: {
+    fieldConfig+: {
+      defaults+: {
+        max: max,
+      },
+    },
+  },
+
   withOverrides(overrides):: {
     fieldConfig+: {
       overrides: overrides,
+    },
+  },
+
+  withOverridesByName(name, properties):: {
+    fieldConfig+: {
+      overrides+: [
+        {
+          matcher: {
+            id: 'byName',
+            options: name,
+          },
+          properties: properties,
+        },
+      ],
     },
   },
 
@@ -113,6 +135,19 @@
   withDescription(desc):: { description: desc },
   withOptions(options):: { options: options },
   withTransformations(transformations):: { transformations: transformations },
+
+  withStacked(opacity=20, gradientMode='hue', stackingMode='normal'):: {
+    fieldConfig+: {
+      defaults+: {
+        custom+: {
+          fillOpacity: opacity,
+          gradientMode: gradientMode,
+          stacking: { mode: stackingMode },
+        },
+      },
+    },
+  },
+
 
   withQueries(queries):: { targets: queries },
 

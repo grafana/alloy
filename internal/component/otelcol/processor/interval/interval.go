@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -31,6 +31,8 @@ type Arguments struct {
 	// The interval in which the processor should export the aggregated metrics. Default: 60s.
 	Interval time.Duration `alloy:"interval,attr,optional"`
 
+	PassThrough PassThrough `alloy:"passthrough,block,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -38,9 +40,21 @@ type Arguments struct {
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
-var (
-	_ processor.Arguments = Arguments{}
-)
+type PassThrough struct {
+	// Determines whether gauge metrics should be passed through as they are or aggregated.
+	Gauge bool `alloy:"gauge,attr,optional"`
+	// Determines whether summary metrics should be passed through as they are or aggregated.
+	Summary bool `alloy:"summary,attr,optional"`
+}
+
+func (args PassThrough) Convert() intervalprocessor.PassThrough {
+	return intervalprocessor.PassThrough{
+		Gauge:   args.Gauge,
+		Summary: args.Summary,
+	}
+}
+
+var _ processor.Arguments = Arguments{}
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
@@ -50,6 +64,7 @@ var DefaultArguments = Arguments{
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
+	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -63,17 +78,18 @@ func (args *Arguments) Validate() error {
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return &intervalprocessor.Config{
-		Interval: args.Interval,
+		Interval:    args.Interval,
+		PassThrough: args.PassThrough.Convert(),
 	}, nil
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements processor.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

@@ -4,25 +4,29 @@ package snmp_exporter
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/config"
-	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/snmp_exporter/collector"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
 )
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
 var DefaultConfig = Config{
-	WalkParams:     make(map[string]snmp_config.WalkParams),
-	SnmpConfigFile: "",
-	SnmpTargets:    make([]SNMPTarget, 0),
-	SnmpConfig:     snmp_config.Config{},
+	WalkParams:              make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:          "",
+	SnmpConfigMergeStrategy: "replace",
+	SnmpConcurrency:         1,
+	SnmpTargets:             make([]SNMPTarget, 0),
+	SnmpConfig:              snmp_config.Config{},
 }
 
 // SNMPTarget defines a target device to be used by the integration.
@@ -38,10 +42,12 @@ type SNMPTarget struct {
 
 // Config configures the SNMP integration.
 type Config struct {
-	WalkParams     map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
-	SnmpConfigFile string                            `yaml:"config_file,omitempty"`
-	SnmpTargets    []SNMPTarget                      `yaml:"snmp_targets"`
-	SnmpConfig     snmp_config.Config                `yaml:"snmp_config,omitempty"`
+	WalkParams              map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile          string                            `yaml:"config_file,omitempty"`
+	SnmpConfigMergeStrategy string                            `yaml:"config_merge_strategy,omitempty"`
+	SnmpConcurrency         int                               `yaml:"concurrency,omitempty"`
+	SnmpTargets             []SNMPTarget                      `yaml:"snmp_targets"`
+	SnmpConfig              snmp_config.Config                `yaml:"snmp_config,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -57,9 +63,8 @@ func (c *Config) Name() string {
 	return "snmp"
 }
 
-// InstanceKey returns the hostname:port of the agent.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration creates a new SNMP integration.
@@ -73,7 +78,7 @@ func init() {
 
 // New creates a new snmp_exporter integration
 func New(log log.Logger, c *Config) (integrations.Integration, error) {
-	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig)
+	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err
 	}
@@ -99,22 +104,40 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 
 // LoadSNMPConfig loads the SNMP configuration from the given file. If the file is empty, it will
 // load the embedded configuration.
-func LoadSNMPConfig(snmpConfigFile string, snmpCfg *snmp_config.Config) (*snmp_config.Config, error) {
+func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, strategy string) (*snmp_config.Config, error) {
 	var err error
 	if snmpConfigFile != "" {
-		snmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
+		customSnmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
 		}
-	} else {
-		if len(snmpCfg.Modules) == 0 && len(snmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
-			snmpCfg, err = snmp_common.LoadEmbeddedConfig()
+	}
+	switch strategy {
+	case "replace":
+		if len(customSnmpCfg.Modules) == 0 && len(customSnmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
+			customSnmpCfg, err = snmp_common.LoadEmbeddedConfig()
 			if err != nil {
 				return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
 			}
 		}
+		return customSnmpCfg, nil
+	case "merge":
+		var finalCfg *snmp_config.Config
+		finalCfg, err = snmp_common.LoadEmbeddedConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
+		}
+
+		if len(customSnmpCfg.Auths) > 0 {
+			maps.Copy(finalCfg.Auths, customSnmpCfg.Auths)
+		}
+		if len(customSnmpCfg.Modules) > 0 {
+			maps.Copy(finalCfg.Modules, customSnmpCfg.Modules)
+		}
+		return finalCfg, nil
+	default:
+		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
 	}
-	return snmpCfg, nil
 }
 
 func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {

@@ -5,7 +5,7 @@ on:
     inputs:
       directory:
         description: "Directory to search for Go fuzz tests in."
-        default: '.'
+        default: "."
         required: false
         type: string
       fuzz-time:
@@ -18,30 +18,41 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   find-tests:
     runs-on: ubuntu-latest
     outputs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: Find fuzz tests
         id: find-tests
         run: |
-          TEST_FILES=$(find "${{ inputs.directory }}" -name '*_test.go' -not -path './vendor/*')
+          TEST_FILES=$(find "${DIRECTORY}" -name '*_test.go' -not -path './vendor/*')
 
           RESULTS=()
 
           for FILE in $TEST_FILES; do
-            FUZZ_FUNC=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
-            if [ -z "$FUZZ_FUNC" ]; then
+            FUZZ_FUNCS=$(grep -E 'func Fuzz\w*' $FILE | sed 's/func //' | sed 's/(.*$//')
+            if [ -z "$FUZZ_FUNCS" ]; then
               continue
             fi
 
-            PACKAGE_PATH=$(dirname ${FILE#${{ inputs.directory }}/})
-            RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+            PACKAGE_PATH=$(dirname ${FILE#${DIRECTORY}/})
+            for FUZZ_FUNC in $FUZZ_FUNCS; do
+              if [ -z "$FUZZ_FUNC" ]; then
+                continue
+              fi
 
-            echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+              RESULTS+=("{\"package\":\"$PACKAGE_PATH\",\"function\":\"$FUZZ_FUNC\"}")
+              echo "Found $FUZZ_FUNC in $PACKAGE_PATH"
+            done
           done
 
           NUM_RESULTS=${#RESULTS[@]}
@@ -55,6 +66,8 @@ jobs:
           done
 
           echo 'tests=['$INCLUDE_STRING']' >> $GITHUB_OUTPUT
+        env:
+          DIRECTORY: ${{ inputs.directory }}
 
   fuzz:
     name: "${{ matrix.package }}: ${{ matrix.function }}"
@@ -65,20 +78,22 @@ jobs:
       matrix:
         include: ${{ fromJson(needs.find-tests.outputs.tests) }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go 1.22
-        uses: actions/setup-go@v5
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          go-version: "1.22"
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
           cache: false
 
       - name: Find cache location
-        run:
-          echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
+        run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@v4
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
@@ -91,7 +106,10 @@ jobs:
           # support cross-module testing, and the provided directory may be in
           # a different module.
           cd "${{ matrix.package }}"
-          go test -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${{ inputs.fuzz-time }}" .
+          # Note: -parallel=1 is required to avoid race conditions in the fuzzer until https://github.com/golang/go/issues/56238 is fixed.
+          go test -parallel=1 -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
+        env:
+          FUZZ_TIME: ${{ inputs.fuzz-time }}
 
       # Fuzzing may have failed because of an existing bug, or it may have
       # found a new one and written a new test case file in testdata/ relative
@@ -117,7 +135,7 @@ jobs:
       - name: Upload fuzz failure as artifact
         id: artifact
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
           path: ${{ steps.new-failure.outputs.file }}
@@ -132,17 +150,20 @@ jobs:
 
           To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
 
-          <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+          <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${FAILED_PACKAGE}-${FAILED_FILE} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
 
           When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
           EOF
+        env:
+          FAILED_FUNCTION: ${{ steps.new-failure.outputs.function }}
+          FAILED_PACKAGE: ${{ steps.new-failure.outputs.package }}
 
       - name: Create new issue
         if: ${{ failure() && steps.new-failure.outputs.file != '' && inputs.create-issue }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
-            const failureName = "${{ steps.new-failure.outputs.name }}";
+            const failureName = "${FAILED_NAME}";
             const issueTitle = `${{ matrix.package }}: ${{ matrix.function }} failed (${failureName})`;
 
             // Look for existing issue first with the same title.
@@ -164,7 +185,7 @@ jobs:
 
             To reproduce the failure locally, run the following command using the GitHub CLI to download the failed test case:
 
-            <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
+            <pre lang="bash">gh run download --repo ${{ github.repository }} ${{ github.run_id }} -n failure-${FAILED_PACKAGE}-${FAILED_FUNCTION} --dir ${{ matrix.package }}/testdata/fuzz/${{ matrix.function }}</pre>
 
             When opening a PR with the fix, please include the test case file in your PR to prevent regressions.
 
@@ -173,3 +194,7 @@ jobs:
 
               labels: ['bug'],
             })
+        env:
+          FAILED_NAME: ${{ steps.new-failure.outputs.name }}
+          FAILED_FUNCTION: ${{ steps.new-failure.outputs.function }}
+          FAILED_PACKAGE: ${{ steps.new-failure.outputs.function }}

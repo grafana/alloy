@@ -12,8 +12,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -115,12 +115,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements processor.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements processor.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -187,11 +187,17 @@ type ToAttributes struct {
 	// match. If it is false rule processing will continue to be performed over the
 	// modified span name.
 	BreakAfterMatch bool `alloy:"break_after_match,attr,optional"`
+
+	// KeepOriginalName specifies if the original span name should be kept after
+	// processing the rules. If it is true the original span name will be kept,
+	// otherwise it will be replaced with the placeholders of the captured attributes.
+	KeepOriginalName bool `alloy:"keep_original_name,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultToAttributes = ToAttributes{
-	BreakAfterMatch: false,
+	BreakAfterMatch:  false,
+	KeepOriginalName: false,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -209,8 +215,9 @@ func (ta *ToAttributes) Convert() *spanprocessor.ToAttributes {
 	}
 
 	return &spanprocessor.ToAttributes{
-		Rules:           ta.Rules,
-		BreakAfterMatch: ta.BreakAfterMatch,
+		Rules:            ta.Rules,
+		BreakAfterMatch:  ta.BreakAfterMatch,
+		KeepOriginalName: ta.KeepOriginalName,
 	}
 }
 

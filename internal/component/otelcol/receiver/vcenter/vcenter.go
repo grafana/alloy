@@ -15,7 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -46,142 +46,152 @@ func (r *MetricConfig) Convert() map[string]interface{} {
 }
 
 type MetricsConfig struct {
-	VcenterClusterCPUEffective         MetricConfig `alloy:"vcenter.cluster.cpu.effective,block,optional"`
-	VcenterClusterCPULimit             MetricConfig `alloy:"vcenter.cluster.cpu.limit,block,optional"`
-	VcenterClusterHostCount            MetricConfig `alloy:"vcenter.cluster.host.count,block,optional"`
-	VcenterClusterMemoryEffective      MetricConfig `alloy:"vcenter.cluster.memory.effective,block,optional"`
-	VcenterClusterMemoryLimit          MetricConfig `alloy:"vcenter.cluster.memory.limit,block,optional"`
-	VcenterClusterVMCount              MetricConfig `alloy:"vcenter.cluster.vm.count,block,optional"`
-	VcenterClusterVMTemplateCount      MetricConfig `alloy:"vcenter.cluster.vm_template.count,block,optional"`
-	VcenterClusterVsanCongestions      MetricConfig `alloy:"vcenter.cluster.vsan.congestions,block,optional"`
-	VcenterClusterVsanLatencyAvg       MetricConfig `alloy:"vcenter.cluster.vsan.latency.avg,block,optional"`
-	VcenterClusterVsanOperations       MetricConfig `alloy:"vcenter.cluster.vsan.operations,block,optional"`
-	VcenterClusterVsanThroughput       MetricConfig `alloy:"vcenter.cluster.vsan.throughput,block,optional"`
-	VcenterDatacenterClusterCount      MetricConfig `alloy:"vcenter.datacenter.cluster.count,block,optional"`
-	VcenterDatacenterCPULimit          MetricConfig `alloy:"vcenter.datacenter.cpu.limit,block,optional"`
-	VcenterDatacenterDatastoreCount    MetricConfig `alloy:"vcenter.datacenter.datastore.count,block,optional"`
-	VcenterDatacenterDiskSpace         MetricConfig `alloy:"vcenter.datacenter.disk.space,block,optional"`
-	VcenterDatacenterHostCount         MetricConfig `alloy:"vcenter.datacenter.host.count,block,optional"`
-	VcenterDatacenterMemoryLimit       MetricConfig `alloy:"vcenter.datacenter.memory.limit,block,optional"`
-	VcenterDatacenterVMCount           MetricConfig `alloy:"vcenter.datacenter.vm.count,block,optional"`
-	VcenterDatastoreDiskUsage          MetricConfig `alloy:"vcenter.datastore.disk.usage,block,optional"`
-	VcenterDatastoreDiskUtilization    MetricConfig `alloy:"vcenter.datastore.disk.utilization,block,optional"`
-	VcenterHostCPUCapacity             MetricConfig `alloy:"vcenter.host.cpu.capacity,block,optional"`
-	VcenterHostCPUReserved             MetricConfig `alloy:"vcenter.host.cpu.reserved,block,optional"`
-	VcenterHostCPUUsage                MetricConfig `alloy:"vcenter.host.cpu.usage,block,optional"`
-	VcenterHostCPUUtilization          MetricConfig `alloy:"vcenter.host.cpu.utilization,block,optional"`
-	VcenterHostDiskLatencyAvg          MetricConfig `alloy:"vcenter.host.disk.latency.avg,block,optional"`
-	VcenterHostDiskLatencyMax          MetricConfig `alloy:"vcenter.host.disk.latency.max,block,optional"`
-	VcenterHostDiskThroughput          MetricConfig `alloy:"vcenter.host.disk.throughput,block,optional"`
-	VcenterHostMemoryUsage             MetricConfig `alloy:"vcenter.host.memory.usage,block,optional"`
-	VcenterHostMemoryUtilization       MetricConfig `alloy:"vcenter.host.memory.utilization,block,optional"`
-	VcenterHostNetworkPacketRate       MetricConfig `alloy:"vcenter.host.network.packet.rate,block,optional"`
-	VcenterHostNetworkPacketErrorRate  MetricConfig `alloy:"vcenter.host.network.packet.error.rate,block,optional"`
-	VcenterHostNetworkPacketDropRate   MetricConfig `alloy:"vcenter.host.network.packet.drop.rate,block,optional"`
-	VcenterHostNetworkThroughput       MetricConfig `alloy:"vcenter.host.network.throughput,block,optional"`
-	VcenterHostNetworkUsage            MetricConfig `alloy:"vcenter.host.network.usage,block,optional"`
-	VcenterHostVsanCacheHitRate        MetricConfig `alloy:"vcenter.host.vsan.cache.hit_rate,block,optional"`
-	VcenterHostVsanCongestions         MetricConfig `alloy:"vcenter.host.vsan.congestions,block,optional"`
-	VcenterHostVsanLatencyAvg          MetricConfig `alloy:"vcenter.host.vsan.latency.avg,block,optional"`
-	VcenterHostVsanOperations          MetricConfig `alloy:"vcenter.host.vsan.operations,block,optional"`
-	VcenterHostVsanThroughput          MetricConfig `alloy:"vcenter.host.vsan.throughput,block,optional"`
-	VcenterResourcePoolCPUShares       MetricConfig `alloy:"vcenter.resource_pool.cpu.shares,block,optional"`
-	VcenterResourcePoolCPUUsage        MetricConfig `alloy:"vcenter.resource_pool.cpu.usage,block,optional"`
-	VcenterResourcePoolMemoryBallooned MetricConfig `alloy:"vcenter.resource_pool.memory.ballooned,block,optional"`
-	VcenterResourcePoolMemoryGranted   MetricConfig `alloy:"vcenter.resource_pool.memory.granted,block,optional"`
-	VcenterResourcePoolMemoryShares    MetricConfig `alloy:"vcenter.resource_pool.memory.shares,block,optional"`
-	VcenterResourcePoolMemorySwapped   MetricConfig `alloy:"vcenter.resource_pool.memory.swapped,block,optional"`
-	VcenterResourcePoolMemoryUsage     MetricConfig `alloy:"vcenter.resource_pool.memory.usage,block,optional"`
-	VcenterVMCPUReadiness              MetricConfig `alloy:"vcenter.vm.cpu.readiness,block,optional"`
-	VcenterVMCPUUsage                  MetricConfig `alloy:"vcenter.vm.cpu.usage,block,optional"`
-	VcenterVMCPUUtilization            MetricConfig `alloy:"vcenter.vm.cpu.utilization,block,optional"`
-	VcenterVMDiskLatencyAvg            MetricConfig `alloy:"vcenter.vm.disk.latency.avg,block,optional"`
-	VcenterVMDiskLatencyMax            MetricConfig `alloy:"vcenter.vm.disk.latency.max,block,optional"`
-	VcenterVMDiskThroughput            MetricConfig `alloy:"vcenter.vm.disk.throughput,block,optional"`
-	VcenterVMDiskUsage                 MetricConfig `alloy:"vcenter.vm.disk.usage,block,optional"`
-	VcenterVMDiskUtilization           MetricConfig `alloy:"vcenter.vm.disk.utilization,block,optional"`
-	VcenterVMMemoryBallooned           MetricConfig `alloy:"vcenter.vm.memory.ballooned,block,optional"`
-	VcenterVMMemorySwapped             MetricConfig `alloy:"vcenter.vm.memory.swapped,block,optional"`
-	VcenterVMMemorySwappedSsd          MetricConfig `alloy:"vcenter.vm.memory.swapped_ssd,block,optional"`
-	VcenterVMMemoryUsage               MetricConfig `alloy:"vcenter.vm.memory.usage,block,optional"`
-	VcenterVMMemoryUtilization         MetricConfig `alloy:"vcenter.vm.memory.utilization,block,optional"`
-	VcenterVMNetworkPacketRate         MetricConfig `alloy:"vcenter.vm.network.packet.rate,block,optional"`
-	VcenterVMNetworkPacketDropRate     MetricConfig `alloy:"vcenter.vm.network.packet.drop.rate,block,optional"`
-	VcenterVMNetworkThroughput         MetricConfig `alloy:"vcenter.vm.network.throughput,block,optional"`
-	VcenterVMNetworkUsage              MetricConfig `alloy:"vcenter.vm.network.usage,block,optional"`
-	VcenterVMVsanLatencyAvg            MetricConfig `alloy:"vcenter.vm.vsan.latency.avg,block,optional"`
-	VcenterVMVsanOperations            MetricConfig `alloy:"vcenter.vm.vsan.operations,block,optional"`
-	VcenterVMVsanThroughput            MetricConfig `alloy:"vcenter.vm.vsan.throughput,block,optional"`
+	VcenterClusterCPUEffective          MetricConfig `alloy:"vcenter.cluster.cpu.effective,block,optional"`
+	VcenterClusterCPULimit              MetricConfig `alloy:"vcenter.cluster.cpu.limit,block,optional"`
+	VcenterClusterHostCount             MetricConfig `alloy:"vcenter.cluster.host.count,block,optional"`
+	VcenterClusterMemoryEffective       MetricConfig `alloy:"vcenter.cluster.memory.effective,block,optional"`
+	VcenterClusterMemoryLimit           MetricConfig `alloy:"vcenter.cluster.memory.limit,block,optional"`
+	VcenterClusterVMCount               MetricConfig `alloy:"vcenter.cluster.vm.count,block,optional"`
+	VcenterClusterVMTemplateCount       MetricConfig `alloy:"vcenter.cluster.vm_template.count,block,optional"`
+	VcenterClusterVsanCongestions       MetricConfig `alloy:"vcenter.cluster.vsan.congestions,block,optional"`
+	VcenterClusterVsanLatencyAvg        MetricConfig `alloy:"vcenter.cluster.vsan.latency.avg,block,optional"`
+	VcenterClusterVsanOperations        MetricConfig `alloy:"vcenter.cluster.vsan.operations,block,optional"`
+	VcenterClusterVsanThroughput        MetricConfig `alloy:"vcenter.cluster.vsan.throughput,block,optional"`
+	VcenterDatacenterClusterCount       MetricConfig `alloy:"vcenter.datacenter.cluster.count,block,optional"`
+	VcenterDatacenterCPULimit           MetricConfig `alloy:"vcenter.datacenter.cpu.limit,block,optional"`
+	VcenterDatacenterDatastoreCount     MetricConfig `alloy:"vcenter.datacenter.datastore.count,block,optional"`
+	VcenterDatacenterDiskSpace          MetricConfig `alloy:"vcenter.datacenter.disk.space,block,optional"`
+	VcenterDatacenterHostCount          MetricConfig `alloy:"vcenter.datacenter.host.count,block,optional"`
+	VcenterDatacenterMemoryLimit        MetricConfig `alloy:"vcenter.datacenter.memory.limit,block,optional"`
+	VcenterDatacenterVMCount            MetricConfig `alloy:"vcenter.datacenter.vm.count,block,optional"`
+	VcenterDatastoreDiskUsage           MetricConfig `alloy:"vcenter.datastore.disk.usage,block,optional"`
+	VcenterDatastoreDiskUtilization     MetricConfig `alloy:"vcenter.datastore.disk.utilization,block,optional"`
+	VcenterHostCPUCapacity              MetricConfig `alloy:"vcenter.host.cpu.capacity,block,optional"`
+	VcenterHostCPUReserved              MetricConfig `alloy:"vcenter.host.cpu.reserved,block,optional"`
+	VcenterHostCPUUsage                 MetricConfig `alloy:"vcenter.host.cpu.usage,block,optional"`
+	VcenterHostCPUUtilization           MetricConfig `alloy:"vcenter.host.cpu.utilization,block,optional"`
+	VcenterHostDiskLatencyAvg           MetricConfig `alloy:"vcenter.host.disk.latency.avg,block,optional"`
+	VcenterHostDiskLatencyMax           MetricConfig `alloy:"vcenter.host.disk.latency.max,block,optional"`
+	VcenterHostDiskThroughput           MetricConfig `alloy:"vcenter.host.disk.throughput,block,optional"`
+	VcenterHostMemoryCapacity           MetricConfig `alloy:"vcenter.host.memory.capacity,block,optional"`
+	VcenterHostMemoryUsage              MetricConfig `alloy:"vcenter.host.memory.usage,block,optional"`
+	VcenterHostMemoryUtilization        MetricConfig `alloy:"vcenter.host.memory.utilization,block,optional"`
+	VcenterHostNetworkPacketRate        MetricConfig `alloy:"vcenter.host.network.packet.rate,block,optional"`
+	VcenterHostNetworkPacketErrorRate   MetricConfig `alloy:"vcenter.host.network.packet.error.rate,block,optional"`
+	VcenterHostNetworkPacketDropRate    MetricConfig `alloy:"vcenter.host.network.packet.drop.rate,block,optional"`
+	VcenterHostNetworkThroughput        MetricConfig `alloy:"vcenter.host.network.throughput,block,optional"`
+	VcenterHostNetworkUsage             MetricConfig `alloy:"vcenter.host.network.usage,block,optional"`
+	VcenterHostVsanCacheHitRate         MetricConfig `alloy:"vcenter.host.vsan.cache.hit_rate,block,optional"`
+	VcenterHostVsanCongestions          MetricConfig `alloy:"vcenter.host.vsan.congestions,block,optional"`
+	VcenterHostVsanLatencyAvg           MetricConfig `alloy:"vcenter.host.vsan.latency.avg,block,optional"`
+	VcenterHostVsanOperations           MetricConfig `alloy:"vcenter.host.vsan.operations,block,optional"`
+	VcenterHostVsanThroughput           MetricConfig `alloy:"vcenter.host.vsan.throughput,block,optional"`
+	VcenterResourcePoolCPUShares        MetricConfig `alloy:"vcenter.resource_pool.cpu.shares,block,optional"`
+	VcenterResourcePoolCPUUsage         MetricConfig `alloy:"vcenter.resource_pool.cpu.usage,block,optional"`
+	VcenterResourcePoolMemoryBallooned  MetricConfig `alloy:"vcenter.resource_pool.memory.ballooned,block,optional"`
+	VcenterResourcePoolMemoryGranted    MetricConfig `alloy:"vcenter.resource_pool.memory.granted,block,optional"`
+	VcenterResourcePoolMemoryShares     MetricConfig `alloy:"vcenter.resource_pool.memory.shares,block,optional"`
+	VcenterResourcePoolMemorySwapped    MetricConfig `alloy:"vcenter.resource_pool.memory.swapped,block,optional"`
+	VcenterResourcePoolMemoryUsage      MetricConfig `alloy:"vcenter.resource_pool.memory.usage,block,optional"`
+	VcenterVMCPUReadiness               MetricConfig `alloy:"vcenter.vm.cpu.readiness,block,optional"`
+	VcenterVMCPUTime                    MetricConfig `alloy:"vcenter.vm.cpu.time,block,optional"`
+	VcenterVMCPUUsage                   MetricConfig `alloy:"vcenter.vm.cpu.usage,block,optional"`
+	VcenterVMCPUUtilization             MetricConfig `alloy:"vcenter.vm.cpu.utilization,block,optional"`
+	VcenterVMDiskLatencyAvg             MetricConfig `alloy:"vcenter.vm.disk.latency.avg,block,optional"`
+	VcenterVMDiskLatencyMax             MetricConfig `alloy:"vcenter.vm.disk.latency.max,block,optional"`
+	VcenterVMDiskThroughput             MetricConfig `alloy:"vcenter.vm.disk.throughput,block,optional"`
+	VcenterVMDiskUsage                  MetricConfig `alloy:"vcenter.vm.disk.usage,block,optional"`
+	VcenterVMDiskUtilization            MetricConfig `alloy:"vcenter.vm.disk.utilization,block,optional"`
+	VcenterVMMemoryBallooned            MetricConfig `alloy:"vcenter.vm.memory.ballooned,block,optional"`
+	VcenterVMMemoryGranted              MetricConfig `alloy:"vcenter.vm.memory.granted,block,optional"`
+	VcenterVMMemorySwapped              MetricConfig `alloy:"vcenter.vm.memory.swapped,block,optional"`
+	VcenterVMMemorySwappedSsd           MetricConfig `alloy:"vcenter.vm.memory.swapped_ssd,block,optional"`
+	VcenterVMMemoryUsage                MetricConfig `alloy:"vcenter.vm.memory.usage,block,optional"`
+	VcenterVMMemoryUtilization          MetricConfig `alloy:"vcenter.vm.memory.utilization,block,optional"`
+	VcenterVMNetworkBroadcastPacketRate MetricConfig `alloy:"vcenter.vm.network.broadcast.packet.rate,block,optional"`
+	VcenterVMNetworkMulticastPacketRate MetricConfig `alloy:"vcenter.vm.network.multicast.packet.rate,block,optional"`
+	VcenterVMNetworkPacketRate          MetricConfig `alloy:"vcenter.vm.network.packet.rate,block,optional"`
+	VcenterVMNetworkPacketDropRate      MetricConfig `alloy:"vcenter.vm.network.packet.drop.rate,block,optional"`
+	VcenterVMNetworkThroughput          MetricConfig `alloy:"vcenter.vm.network.throughput,block,optional"`
+	VcenterVMNetworkUsage               MetricConfig `alloy:"vcenter.vm.network.usage,block,optional"`
+	VcenterVMVsanLatencyAvg             MetricConfig `alloy:"vcenter.vm.vsan.latency.avg,block,optional"`
+	VcenterVMVsanOperations             MetricConfig `alloy:"vcenter.vm.vsan.operations,block,optional"`
+	VcenterVMVsanThroughput             MetricConfig `alloy:"vcenter.vm.vsan.throughput,block,optional"`
 }
 
 func (args *MetricsConfig) SetToDefault() {
 	*args = MetricsConfig{
-		VcenterClusterCPUEffective:         MetricConfig{Enabled: true},
-		VcenterClusterCPULimit:             MetricConfig{Enabled: true},
-		VcenterClusterHostCount:            MetricConfig{Enabled: true},
-		VcenterClusterMemoryEffective:      MetricConfig{Enabled: true},
-		VcenterClusterMemoryLimit:          MetricConfig{Enabled: true},
-		VcenterClusterVMCount:              MetricConfig{Enabled: true},
-		VcenterClusterVMTemplateCount:      MetricConfig{Enabled: true},
-		VcenterClusterVsanCongestions:      MetricConfig{Enabled: true},
-		VcenterClusterVsanLatencyAvg:       MetricConfig{Enabled: true},
-		VcenterClusterVsanOperations:       MetricConfig{Enabled: true},
-		VcenterClusterVsanThroughput:       MetricConfig{Enabled: true},
-		VcenterDatacenterClusterCount:      MetricConfig{Enabled: true},
-		VcenterDatacenterCPULimit:          MetricConfig{Enabled: true},
-		VcenterDatacenterDatastoreCount:    MetricConfig{Enabled: true},
-		VcenterDatacenterDiskSpace:         MetricConfig{Enabled: true},
-		VcenterDatacenterHostCount:         MetricConfig{Enabled: true},
-		VcenterDatacenterMemoryLimit:       MetricConfig{Enabled: true},
-		VcenterDatacenterVMCount:           MetricConfig{Enabled: true},
-		VcenterDatastoreDiskUsage:          MetricConfig{Enabled: true},
-		VcenterDatastoreDiskUtilization:    MetricConfig{Enabled: true},
-		VcenterHostCPUCapacity:             MetricConfig{Enabled: true},
-		VcenterHostCPUReserved:             MetricConfig{Enabled: true},
-		VcenterHostCPUUsage:                MetricConfig{Enabled: true},
-		VcenterHostCPUUtilization:          MetricConfig{Enabled: true},
-		VcenterHostDiskLatencyAvg:          MetricConfig{Enabled: true},
-		VcenterHostDiskLatencyMax:          MetricConfig{Enabled: true},
-		VcenterHostDiskThroughput:          MetricConfig{Enabled: true},
-		VcenterHostMemoryUsage:             MetricConfig{Enabled: true},
-		VcenterHostMemoryUtilization:       MetricConfig{Enabled: true},
-		VcenterHostNetworkPacketRate:       MetricConfig{Enabled: true},
-		VcenterHostNetworkPacketErrorRate:  MetricConfig{Enabled: true},
-		VcenterHostNetworkPacketDropRate:   MetricConfig{Enabled: true},
-		VcenterHostNetworkThroughput:       MetricConfig{Enabled: true},
-		VcenterHostNetworkUsage:            MetricConfig{Enabled: true},
-		VcenterHostVsanCacheHitRate:        MetricConfig{Enabled: true},
-		VcenterHostVsanCongestions:         MetricConfig{Enabled: true},
-		VcenterHostVsanLatencyAvg:          MetricConfig{Enabled: true},
-		VcenterHostVsanOperations:          MetricConfig{Enabled: true},
-		VcenterHostVsanThroughput:          MetricConfig{Enabled: true},
-		VcenterResourcePoolCPUShares:       MetricConfig{Enabled: true},
-		VcenterResourcePoolCPUUsage:        MetricConfig{Enabled: true},
-		VcenterResourcePoolMemoryBallooned: MetricConfig{Enabled: true},
-		VcenterResourcePoolMemoryGranted:   MetricConfig{Enabled: true},
-		VcenterResourcePoolMemoryShares:    MetricConfig{Enabled: true},
-		VcenterResourcePoolMemorySwapped:   MetricConfig{Enabled: true},
-		VcenterResourcePoolMemoryUsage:     MetricConfig{Enabled: true},
-		VcenterVMCPUReadiness:              MetricConfig{Enabled: true},
-		VcenterVMCPUUsage:                  MetricConfig{Enabled: true},
-		VcenterVMCPUUtilization:            MetricConfig{Enabled: true},
-		VcenterVMDiskLatencyAvg:            MetricConfig{Enabled: true},
-		VcenterVMDiskLatencyMax:            MetricConfig{Enabled: true},
-		VcenterVMDiskThroughput:            MetricConfig{Enabled: true},
-		VcenterVMDiskUsage:                 MetricConfig{Enabled: true},
-		VcenterVMDiskUtilization:           MetricConfig{Enabled: true},
-		VcenterVMMemoryBallooned:           MetricConfig{Enabled: true},
-		VcenterVMMemorySwapped:             MetricConfig{Enabled: true},
-		VcenterVMMemorySwappedSsd:          MetricConfig{Enabled: true},
-		VcenterVMMemoryUsage:               MetricConfig{Enabled: true},
-		VcenterVMMemoryUtilization:         MetricConfig{Enabled: true},
-		VcenterVMNetworkPacketRate:         MetricConfig{Enabled: true},
-		VcenterVMNetworkPacketDropRate:     MetricConfig{Enabled: true},
-		VcenterVMNetworkThroughput:         MetricConfig{Enabled: true},
-		VcenterVMNetworkUsage:              MetricConfig{Enabled: true},
-		VcenterVMVsanLatencyAvg:            MetricConfig{Enabled: true},
-		VcenterVMVsanOperations:            MetricConfig{Enabled: true},
-		VcenterVMVsanThroughput:            MetricConfig{Enabled: true},
+		VcenterClusterCPUEffective:          MetricConfig{Enabled: true},
+		VcenterClusterCPULimit:              MetricConfig{Enabled: true},
+		VcenterClusterHostCount:             MetricConfig{Enabled: true},
+		VcenterClusterMemoryEffective:       MetricConfig{Enabled: true},
+		VcenterClusterMemoryLimit:           MetricConfig{Enabled: true},
+		VcenterClusterVMCount:               MetricConfig{Enabled: true},
+		VcenterClusterVMTemplateCount:       MetricConfig{Enabled: true},
+		VcenterClusterVsanCongestions:       MetricConfig{Enabled: true},
+		VcenterClusterVsanLatencyAvg:        MetricConfig{Enabled: true},
+		VcenterClusterVsanOperations:        MetricConfig{Enabled: true},
+		VcenterClusterVsanThroughput:        MetricConfig{Enabled: true},
+		VcenterDatacenterClusterCount:       MetricConfig{Enabled: true},
+		VcenterDatacenterCPULimit:           MetricConfig{Enabled: true},
+		VcenterDatacenterDatastoreCount:     MetricConfig{Enabled: true},
+		VcenterDatacenterDiskSpace:          MetricConfig{Enabled: true},
+		VcenterDatacenterHostCount:          MetricConfig{Enabled: true},
+		VcenterDatacenterMemoryLimit:        MetricConfig{Enabled: true},
+		VcenterDatacenterVMCount:            MetricConfig{Enabled: true},
+		VcenterDatastoreDiskUsage:           MetricConfig{Enabled: true},
+		VcenterDatastoreDiskUtilization:     MetricConfig{Enabled: true},
+		VcenterHostCPUCapacity:              MetricConfig{Enabled: true},
+		VcenterHostCPUReserved:              MetricConfig{Enabled: true},
+		VcenterHostCPUUsage:                 MetricConfig{Enabled: true},
+		VcenterHostCPUUtilization:           MetricConfig{Enabled: true},
+		VcenterHostDiskLatencyAvg:           MetricConfig{Enabled: true},
+		VcenterHostDiskLatencyMax:           MetricConfig{Enabled: true},
+		VcenterHostDiskThroughput:           MetricConfig{Enabled: true},
+		VcenterHostMemoryCapacity:           MetricConfig{Enabled: false},
+		VcenterHostMemoryUsage:              MetricConfig{Enabled: true},
+		VcenterHostMemoryUtilization:        MetricConfig{Enabled: true},
+		VcenterHostNetworkPacketRate:        MetricConfig{Enabled: true},
+		VcenterHostNetworkPacketErrorRate:   MetricConfig{Enabled: true},
+		VcenterHostNetworkPacketDropRate:    MetricConfig{Enabled: true},
+		VcenterHostNetworkThroughput:        MetricConfig{Enabled: true},
+		VcenterHostNetworkUsage:             MetricConfig{Enabled: true},
+		VcenterHostVsanCacheHitRate:         MetricConfig{Enabled: true},
+		VcenterHostVsanCongestions:          MetricConfig{Enabled: true},
+		VcenterHostVsanLatencyAvg:           MetricConfig{Enabled: true},
+		VcenterHostVsanOperations:           MetricConfig{Enabled: true},
+		VcenterHostVsanThroughput:           MetricConfig{Enabled: true},
+		VcenterResourcePoolCPUShares:        MetricConfig{Enabled: true},
+		VcenterResourcePoolCPUUsage:         MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryBallooned:  MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryGranted:    MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryShares:     MetricConfig{Enabled: true},
+		VcenterResourcePoolMemorySwapped:    MetricConfig{Enabled: true},
+		VcenterResourcePoolMemoryUsage:      MetricConfig{Enabled: true},
+		VcenterVMCPUReadiness:               MetricConfig{Enabled: true},
+		VcenterVMCPUUsage:                   MetricConfig{Enabled: true},
+		VcenterVMCPUTime:                    MetricConfig{Enabled: false},
+		VcenterVMCPUUtilization:             MetricConfig{Enabled: true},
+		VcenterVMDiskLatencyAvg:             MetricConfig{Enabled: true},
+		VcenterVMDiskLatencyMax:             MetricConfig{Enabled: true},
+		VcenterVMDiskThroughput:             MetricConfig{Enabled: true},
+		VcenterVMDiskUsage:                  MetricConfig{Enabled: true},
+		VcenterVMDiskUtilization:            MetricConfig{Enabled: true},
+		VcenterVMMemoryBallooned:            MetricConfig{Enabled: true},
+		VcenterVMMemoryGranted:              MetricConfig{Enabled: false},
+		VcenterVMMemorySwapped:              MetricConfig{Enabled: true},
+		VcenterVMMemorySwappedSsd:           MetricConfig{Enabled: true},
+		VcenterVMMemoryUsage:                MetricConfig{Enabled: true},
+		VcenterVMMemoryUtilization:          MetricConfig{Enabled: true},
+		VcenterVMNetworkBroadcastPacketRate: MetricConfig{Enabled: false},
+		VcenterVMNetworkMulticastPacketRate: MetricConfig{Enabled: false},
+		VcenterVMNetworkPacketRate:          MetricConfig{Enabled: true},
+		VcenterVMNetworkPacketDropRate:      MetricConfig{Enabled: true},
+		VcenterVMNetworkThroughput:          MetricConfig{Enabled: true},
+		VcenterVMNetworkUsage:               MetricConfig{Enabled: true},
+		VcenterVMVsanLatencyAvg:             MetricConfig{Enabled: true},
+		VcenterVMVsanOperations:             MetricConfig{Enabled: true},
+		VcenterVMVsanThroughput:             MetricConfig{Enabled: true},
 	}
 }
 
@@ -191,72 +201,77 @@ func (args *MetricsConfig) Convert() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"vcenter.cluster.cpu.effective":          args.VcenterClusterCPUEffective.Convert(),
-		"vcenter.cluster.cpu.limit":              args.VcenterClusterCPULimit.Convert(),
-		"vcenter.cluster.host.count":             args.VcenterClusterHostCount.Convert(),
-		"vcenter.cluster.memory.effective":       args.VcenterClusterMemoryEffective.Convert(),
-		"vcenter.cluster.memory.limit":           args.VcenterClusterMemoryLimit.Convert(),
-		"vcenter.cluster.vm.count":               args.VcenterClusterVMCount.Convert(),
-		"vcenter.cluster.vm_template.count":      args.VcenterClusterVMTemplateCount.Convert(),
-		"vcenter.cluster.vsan.congestions":       args.VcenterClusterVsanCongestions.Convert(),
-		"vcenter.cluster.vsan.latency.avg":       args.VcenterClusterVsanLatencyAvg.Convert(),
-		"vcenter.cluster.vsan.operations":        args.VcenterClusterVsanOperations.Convert(),
-		"vcenter.cluster.vsan.throughput":        args.VcenterClusterVsanThroughput.Convert(),
-		"vcenter.datacenter.cluster.count":       args.VcenterDatacenterClusterCount.Convert(),
-		"vcenter.datacenter.cpu.limit":           args.VcenterDatacenterCPULimit.Convert(),
-		"vcenter.datacenter.datastore.count":     args.VcenterDatacenterDatastoreCount.Convert(),
-		"vcenter.datacenter.disk.space":          args.VcenterDatacenterDiskSpace.Convert(),
-		"vcenter.datacenter.host.count":          args.VcenterDatacenterHostCount.Convert(),
-		"vcenter.datacenter.memory.limit":        args.VcenterDatacenterMemoryLimit.Convert(),
-		"vcenter.datacenter.vm.count":            args.VcenterDatacenterVMCount.Convert(),
-		"vcenter.datastore.disk.usage":           args.VcenterDatastoreDiskUsage.Convert(),
-		"vcenter.datastore.disk.utilization":     args.VcenterDatastoreDiskUtilization.Convert(),
-		"vcenter.host.cpu.capacity":              args.VcenterHostCPUCapacity.Convert(),
-		"vcenter.host.cpu.reserved":              args.VcenterHostCPUReserved.Convert(),
-		"vcenter.host.cpu.usage":                 args.VcenterHostCPUUsage.Convert(),
-		"vcenter.host.cpu.utilization":           args.VcenterHostCPUUtilization.Convert(),
-		"vcenter.host.disk.latency.avg":          args.VcenterHostDiskLatencyAvg.Convert(),
-		"vcenter.host.disk.latency.max":          args.VcenterHostDiskLatencyMax.Convert(),
-		"vcenter.host.disk.throughput":           args.VcenterHostDiskThroughput.Convert(),
-		"vcenter.host.memory.usage":              args.VcenterHostMemoryUsage.Convert(),
-		"vcenter.host.memory.utilization":        args.VcenterHostMemoryUtilization.Convert(),
-		"vcenter.host.network.packet.rate":       args.VcenterHostNetworkPacketRate.Convert(),
-		"vcenter.host.network.packet.error.rate": args.VcenterHostNetworkPacketErrorRate.Convert(),
-		"vcenter.host.network.packet.drop.rate":  args.VcenterHostNetworkPacketDropRate.Convert(),
-		"vcenter.host.network.throughput":        args.VcenterHostNetworkThroughput.Convert(),
-		"vcenter.host.network.usage":             args.VcenterHostNetworkUsage.Convert(),
-		"vcenter.host.vsan.cache.hit_rate":       args.VcenterHostVsanCacheHitRate.Convert(),
-		"vcenter.host.vsan.congestions":          args.VcenterHostVsanCongestions.Convert(),
-		"vcenter.host.vsan.latency.avg":          args.VcenterHostVsanLatencyAvg.Convert(),
-		"vcenter.host.vsan.operations":           args.VcenterHostVsanOperations.Convert(),
-		"vcenter.host.vsan.throughput":           args.VcenterHostVsanThroughput.Convert(),
-		"vcenter.resource_pool.cpu.shares":       args.VcenterResourcePoolCPUShares.Convert(),
-		"vcenter.resource_pool.cpu.usage":        args.VcenterResourcePoolCPUUsage.Convert(),
-		"vcenter.resource_pool.memory.ballooned": args.VcenterResourcePoolMemoryBallooned.Convert(),
-		"vcenter.resource_pool.memory.granted":   args.VcenterResourcePoolMemoryGranted.Convert(),
-		"vcenter.resource_pool.memory.shares":    args.VcenterResourcePoolMemoryShares.Convert(),
-		"vcenter.resource_pool.memory.swapped":   args.VcenterResourcePoolMemorySwapped.Convert(),
-		"vcenter.resource_pool.memory.usage":     args.VcenterResourcePoolMemoryUsage.Convert(),
-		"vcenter.vm.cpu.usage":                   args.VcenterVMCPUUsage.Convert(),
-		"vcenter.vm.cpu.readiness":               args.VcenterVMCPUReadiness.Convert(),
-		"vcenter.vm.cpu.utilization":             args.VcenterVMCPUUtilization.Convert(),
-		"vcenter.vm.disk.latency.avg":            args.VcenterVMDiskLatencyAvg.Convert(),
-		"vcenter.vm.disk.latency.max":            args.VcenterVMDiskLatencyMax.Convert(),
-		"vcenter.vm.disk.throughput":             args.VcenterVMDiskThroughput.Convert(),
-		"vcenter.vm.disk.usage":                  args.VcenterVMDiskUsage.Convert(),
-		"vcenter.vm.disk.utilization":            args.VcenterVMDiskUtilization.Convert(),
-		"vcenter.vm.memory.ballooned":            args.VcenterVMMemoryBallooned.Convert(),
-		"vcenter.vm.memory.swapped":              args.VcenterVMMemorySwapped.Convert(),
-		"vcenter.vm.memory.swapped_ssd":          args.VcenterVMMemorySwappedSsd.Convert(),
-		"vcenter.vm.memory.usage":                args.VcenterVMMemoryUsage.Convert(),
-		"vcenter.vm.memory.utilization":          args.VcenterVMMemoryUtilization.Convert(),
-		"vcenter.vm.network.packet.rate":         args.VcenterVMNetworkPacketRate.Convert(),
-		"vcenter.vm.network.packet.drop.rate":    args.VcenterVMNetworkPacketDropRate.Convert(),
-		"vcenter.vm.network.throughput":          args.VcenterVMNetworkThroughput.Convert(),
-		"vcenter.vm.network.usage":               args.VcenterVMNetworkUsage.Convert(),
-		"vcenter.vm.vsan.latency.avg":            args.VcenterVMVsanLatencyAvg.Convert(),
-		"vcenter.vm.vsan.operations":             args.VcenterVMVsanOperations.Convert(),
-		"vcenter.vm.vsan.throughput":             args.VcenterVMVsanThroughput.Convert()}
+		"vcenter.cluster.cpu.effective":            args.VcenterClusterCPUEffective.Convert(),
+		"vcenter.cluster.cpu.limit":                args.VcenterClusterCPULimit.Convert(),
+		"vcenter.cluster.host.count":               args.VcenterClusterHostCount.Convert(),
+		"vcenter.cluster.memory.effective":         args.VcenterClusterMemoryEffective.Convert(),
+		"vcenter.cluster.memory.limit":             args.VcenterClusterMemoryLimit.Convert(),
+		"vcenter.cluster.vm.count":                 args.VcenterClusterVMCount.Convert(),
+		"vcenter.cluster.vm_template.count":        args.VcenterClusterVMTemplateCount.Convert(),
+		"vcenter.cluster.vsan.congestions":         args.VcenterClusterVsanCongestions.Convert(),
+		"vcenter.cluster.vsan.latency.avg":         args.VcenterClusterVsanLatencyAvg.Convert(),
+		"vcenter.cluster.vsan.operations":          args.VcenterClusterVsanOperations.Convert(),
+		"vcenter.cluster.vsan.throughput":          args.VcenterClusterVsanThroughput.Convert(),
+		"vcenter.datacenter.cluster.count":         args.VcenterDatacenterClusterCount.Convert(),
+		"vcenter.datacenter.cpu.limit":             args.VcenterDatacenterCPULimit.Convert(),
+		"vcenter.datacenter.datastore.count":       args.VcenterDatacenterDatastoreCount.Convert(),
+		"vcenter.datacenter.disk.space":            args.VcenterDatacenterDiskSpace.Convert(),
+		"vcenter.datacenter.host.count":            args.VcenterDatacenterHostCount.Convert(),
+		"vcenter.datacenter.memory.limit":          args.VcenterDatacenterMemoryLimit.Convert(),
+		"vcenter.datacenter.vm.count":              args.VcenterDatacenterVMCount.Convert(),
+		"vcenter.datastore.disk.usage":             args.VcenterDatastoreDiskUsage.Convert(),
+		"vcenter.datastore.disk.utilization":       args.VcenterDatastoreDiskUtilization.Convert(),
+		"vcenter.host.cpu.capacity":                args.VcenterHostCPUCapacity.Convert(),
+		"vcenter.host.cpu.reserved":                args.VcenterHostCPUReserved.Convert(),
+		"vcenter.host.cpu.usage":                   args.VcenterHostCPUUsage.Convert(),
+		"vcenter.host.cpu.utilization":             args.VcenterHostCPUUtilization.Convert(),
+		"vcenter.host.disk.latency.avg":            args.VcenterHostDiskLatencyAvg.Convert(),
+		"vcenter.host.disk.latency.max":            args.VcenterHostDiskLatencyMax.Convert(),
+		"vcenter.host.disk.throughput":             args.VcenterHostDiskThroughput.Convert(),
+		"vcenter.host.memory.capacity":             args.VcenterHostMemoryCapacity.Convert(),
+		"vcenter.host.memory.usage":                args.VcenterHostMemoryUsage.Convert(),
+		"vcenter.host.memory.utilization":          args.VcenterHostMemoryUtilization.Convert(),
+		"vcenter.host.network.packet.rate":         args.VcenterHostNetworkPacketRate.Convert(),
+		"vcenter.host.network.packet.error.rate":   args.VcenterHostNetworkPacketErrorRate.Convert(),
+		"vcenter.host.network.packet.drop.rate":    args.VcenterHostNetworkPacketDropRate.Convert(),
+		"vcenter.host.network.throughput":          args.VcenterHostNetworkThroughput.Convert(),
+		"vcenter.host.network.usage":               args.VcenterHostNetworkUsage.Convert(),
+		"vcenter.host.vsan.cache.hit_rate":         args.VcenterHostVsanCacheHitRate.Convert(),
+		"vcenter.host.vsan.congestions":            args.VcenterHostVsanCongestions.Convert(),
+		"vcenter.host.vsan.latency.avg":            args.VcenterHostVsanLatencyAvg.Convert(),
+		"vcenter.host.vsan.operations":             args.VcenterHostVsanOperations.Convert(),
+		"vcenter.host.vsan.throughput":             args.VcenterHostVsanThroughput.Convert(),
+		"vcenter.resource_pool.cpu.shares":         args.VcenterResourcePoolCPUShares.Convert(),
+		"vcenter.resource_pool.cpu.usage":          args.VcenterResourcePoolCPUUsage.Convert(),
+		"vcenter.resource_pool.memory.ballooned":   args.VcenterResourcePoolMemoryBallooned.Convert(),
+		"vcenter.resource_pool.memory.granted":     args.VcenterResourcePoolMemoryGranted.Convert(),
+		"vcenter.resource_pool.memory.shares":      args.VcenterResourcePoolMemoryShares.Convert(),
+		"vcenter.resource_pool.memory.swapped":     args.VcenterResourcePoolMemorySwapped.Convert(),
+		"vcenter.resource_pool.memory.usage":       args.VcenterResourcePoolMemoryUsage.Convert(),
+		"vcenter.vm.cpu.time":                      args.VcenterVMCPUTime.Convert(),
+		"vcenter.vm.cpu.usage":                     args.VcenterVMCPUUsage.Convert(),
+		"vcenter.vm.cpu.readiness":                 args.VcenterVMCPUReadiness.Convert(),
+		"vcenter.vm.cpu.utilization":               args.VcenterVMCPUUtilization.Convert(),
+		"vcenter.vm.disk.latency.avg":              args.VcenterVMDiskLatencyAvg.Convert(),
+		"vcenter.vm.disk.latency.max":              args.VcenterVMDiskLatencyMax.Convert(),
+		"vcenter.vm.disk.throughput":               args.VcenterVMDiskThroughput.Convert(),
+		"vcenter.vm.disk.usage":                    args.VcenterVMDiskUsage.Convert(),
+		"vcenter.vm.disk.utilization":              args.VcenterVMDiskUtilization.Convert(),
+		"vcenter.vm.memory.ballooned":              args.VcenterVMMemoryBallooned.Convert(),
+		"vcenter.vm.memory.granted":                args.VcenterVMMemoryGranted.Convert(),
+		"vcenter.vm.memory.swapped":                args.VcenterVMMemorySwapped.Convert(),
+		"vcenter.vm.memory.swapped_ssd":            args.VcenterVMMemorySwappedSsd.Convert(),
+		"vcenter.vm.memory.usage":                  args.VcenterVMMemoryUsage.Convert(),
+		"vcenter.vm.memory.utilization":            args.VcenterVMMemoryUtilization.Convert(),
+		"vcenter.vm.network.broadcast.packet.rate": args.VcenterVMNetworkBroadcastPacketRate.Convert(),
+		"vcenter.vm.network.multicast.packet.rate": args.VcenterVMNetworkMulticastPacketRate.Convert(),
+		"vcenter.vm.network.packet.rate":           args.VcenterVMNetworkPacketRate.Convert(),
+		"vcenter.vm.network.packet.drop.rate":      args.VcenterVMNetworkPacketDropRate.Convert(),
+		"vcenter.vm.network.throughput":            args.VcenterVMNetworkThroughput.Convert(),
+		"vcenter.vm.network.usage":                 args.VcenterVMNetworkUsage.Convert(),
+		"vcenter.vm.vsan.latency.avg":              args.VcenterVMVsanLatencyAvg.Convert(),
+		"vcenter.vm.vsan.operations":               args.VcenterVMVsanOperations.Convert(),
+		"vcenter.vm.vsan.throughput":               args.VcenterVMVsanThroughput.Convert()}
 }
 
 type ResourceAttributeConfig struct {
@@ -415,12 +430,12 @@ func (args Arguments) Validate() error {
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements receiver.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

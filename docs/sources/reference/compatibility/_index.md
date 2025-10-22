@@ -17,6 +17,7 @@ The value of an attribute may matter as well as its type.
 Refer to each component's documentation for more details on what values are acceptable.
 
 For example:
+
 * A Prometheus component may always expect an `"__address__"` label inside a list of targets.
 * A `string` argument may only accept certain values like "traceID" or "spanID".
 {{< /admonition >}}
@@ -41,6 +42,11 @@ The following components, grouped by namespace, _export_ Targets.
 
 {{< collapse title="beyla" >}}
 - [beyla.ebpf](../components/beyla/beyla.ebpf)
+{{< /collapse >}}
+
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -113,12 +119,17 @@ The following components, grouped by namespace, _export_ Targets.
 
 <!-- END GENERATED SECTION: EXPORTERS OF Targets -->
 
-
 <!-- NOTE: this title is used as an anchor in links. Do not change. -->
 ### Targets Consumers
+
 The following components, grouped by namespace, _consume_ Targets.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
+
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
+{{< /collapse >}}
 
 {{< collapse title="discovery" >}}
 - [discovery.process](../components/discovery/discovery.process)
@@ -130,6 +141,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.source.docker](../components/loki/loki.source.docker)
 - [loki.source.file](../components/loki/loki.source.file)
 - [loki.source.kubernetes](../components/loki/loki.source.kubernetes)
@@ -140,6 +152,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.scrape](../components/prometheus/prometheus.scrape)
 {{< /collapse >}}
 
@@ -150,7 +163,6 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: CONSUMERS OF Targets -->
-
 
 ## Prometheus `MetricsReceiver`
 
@@ -173,6 +185,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
 - [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
@@ -192,8 +205,10 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
+- [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)
 - [prometheus.operator.servicemonitors](../components/prometheus/prometheus.operator.servicemonitors)
 - [prometheus.receive_http](../components/prometheus/prometheus.receive_http)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
@@ -217,6 +232,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 
 {{< collapse title="loki" >}}
 - [loki.echo](../components/loki/loki.echo)
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)
@@ -236,11 +252,17 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
 
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
+{{< /collapse >}}
+
 {{< collapse title="faro" >}}
 - [faro.receiver](../components/faro/faro.receiver)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
+- [loki.enrich](../components/loki/loki.enrich)
 - [loki.process](../components/loki/loki.process)
 - [loki.relabel](../components/loki/loki.relabel)
 - [loki.secretfilter](../components/loki/loki.secretfilter)
@@ -292,15 +314,20 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
 - [otelcol.exporter.datadog](../components/otelcol/otelcol.exporter.datadog)
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
+- [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
+- [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
+- [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
-- [otelcol.exporter.logging](../components/otelcol/otelcol.exporter.logging)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
 - [otelcol.exporter.otlp](../components/otelcol/otelcol.exporter.otlp)
 - [otelcol.exporter.otlphttp](../components/otelcol/otelcol.exporter.otlphttp)
 - [otelcol.exporter.prometheus](../components/otelcol/otelcol.exporter.prometheus)
+- [otelcol.exporter.splunkhec](../components/otelcol/otelcol.exporter.splunkhec)
+- [otelcol.exporter.syslog](../components/otelcol/otelcol.exporter.syslog)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
+- [otelcol.processor.cumulativetodelta](../components/otelcol/otelcol.processor.cumulativetodelta)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
@@ -313,6 +340,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
+- [otelcol.receiver.googlecloudpubsub](../components/otelcol/otelcol.receiver.googlecloudpubsub)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
@@ -339,6 +367,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)
 - [otelcol.processor.batch](../components/otelcol/otelcol.processor.batch)
+- [otelcol.processor.cumulativetodelta](../components/otelcol/otelcol.processor.cumulativetodelta)
 - [otelcol.processor.deltatocumulative](../components/otelcol/otelcol.processor.deltatocumulative)
 - [otelcol.processor.discovery](../components/otelcol/otelcol.processor.discovery)
 - [otelcol.processor.filter](../components/otelcol/otelcol.processor.filter)
@@ -351,14 +380,24 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
+- [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
+- [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
+- [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
+- [otelcol.receiver.fluentforward](../components/otelcol/otelcol.receiver.fluentforward)
+- [otelcol.receiver.googlecloudpubsub](../components/otelcol/otelcol.receiver.googlecloudpubsub)
+- [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)
 - [otelcol.receiver.loki](../components/otelcol/otelcol.receiver.loki)
 - [otelcol.receiver.opencensus](../components/otelcol/otelcol.receiver.opencensus)
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
+- [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
+- [otelcol.receiver.splunkhec](../components/otelcol/otelcol.receiver.splunkhec)
+- [otelcol.receiver.syslog](../components/otelcol/otelcol.receiver.syslog)
+- [otelcol.receiver.tcplog](../components/otelcol/otelcol.receiver.tcplog)
 - [otelcol.receiver.vcenter](../components/otelcol/otelcol.receiver.vcenter)
 - [otelcol.receiver.zipkin](../components/otelcol/otelcol.receiver.zipkin)
 {{< /collapse >}}
@@ -380,6 +419,7 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 <!-- START GENERATED SECTION: EXPORTERS OF Pyroscope `ProfilesReceiver` -->
 
 {{< collapse title="pyroscope" >}}
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.write](../components/pyroscope/pyroscope.write)
 {{< /collapse >}}
 
@@ -396,6 +436,7 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 - [pyroscope.ebpf](../components/pyroscope/pyroscope.ebpf)
 - [pyroscope.java](../components/pyroscope/pyroscope.java)
 - [pyroscope.receive_http](../components/pyroscope/pyroscope.receive_http)
+- [pyroscope.relabel](../components/pyroscope/pyroscope.relabel)
 - [pyroscope.scrape](../components/pyroscope/pyroscope.scrape)
 {{< /collapse >}}
 

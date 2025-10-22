@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -58,9 +58,9 @@ type Arguments struct {
 	// If set to 0, metrics are flushed on every received batch of traces.
 	MetricsFlushInterval time.Duration `alloy:"metrics_flush_interval,attr,optional"`
 
-	// DatabaseNameAttribute is the attribute name used to identify the database name from span attributes.
-	// The default value is db.name
-	DatabaseNameAttribute string `alloy:"database_name_attribute,attr,optional"`
+	// DatabaseNameAttributes is the attribute name list of attributes need to match used to identify the database name from span attributes, the higher the front, the higher the priority.
+	// The default value is {"db.name"}.
+	DatabaseNameAttributes []string `alloy:"database_name_attributes,attr,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -109,10 +109,11 @@ func (args *Arguments) SetToDefault() {
 			10 * time.Second,
 			15 * time.Second,
 		},
-		Dimensions:            []string{},
-		CacheLoop:             1 * time.Minute,
-		StoreExpirationLoop:   2 * time.Second,
-		DatabaseNameAttribute: "db.name",
+		Dimensions:             []string{},
+		CacheLoop:              1 * time.Minute,
+		StoreExpirationLoop:    2 * time.Second,
+		DatabaseNameAttributes: []string{"db.name"},
+		MetricsFlushInterval:   60 * time.Second,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: []string{
@@ -164,10 +165,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 			MaxItems: args.Store.MaxItems,
 			TTL:      args.Store.TTL,
 		},
-		CacheLoop:             args.CacheLoop,
-		StoreExpirationLoop:   args.StoreExpirationLoop,
-		MetricsFlushInterval:  args.MetricsFlushInterval,
-		DatabaseNameAttribute: args.DatabaseNameAttribute,
+		CacheLoop:              args.CacheLoop,
+		StoreExpirationLoop:    args.StoreExpirationLoop,
+		MetricsFlushInterval:   &args.MetricsFlushInterval,
+		DatabaseNameAttributes: args.DatabaseNameAttributes,
 		//TODO: Add VirtualNodePeerAttributes when it's no longer controlled by
 		// the "processor.servicegraph.virtualNode" feature gate.
 		// VirtualNodePeerAttributes: args.VirtualNodePeerAttributes,
@@ -175,12 +176,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 }
 
 // Extensions implements connector.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements connector.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

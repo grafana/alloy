@@ -1,5 +1,4 @@
-//go:build !freebsd
-
+//go:build !freebsd && !openbsd
 
 package datadog_test
 
@@ -9,7 +8,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 
@@ -24,42 +23,44 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 15 * time.Second
-		defaultQueueSettings = exporterhelper.NewDefaultQueueSettings()
+		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
 
 		// Until logs get added, our default config is not equal to the default factory config
 		// from the official exporter; as such as need to init it all here
-		defaultExporterSettings = datadogexporter.MetricsExporterConfig{
+		defaultExporterSettings = datadogOtelconfig.MetricsExporterConfig{
 			ResourceAttributesAsTags:           false,
-			InstrumentationScopeMetadataAsTags: false,
+			InstrumentationScopeMetadataAsTags: true,
 		}
-		defaultHistSettings = datadogexporter.HistogramConfig{
+		defaultHistSettings = datadogOtelconfig.HistogramConfig{
 			Mode:             "distributions",
 			SendAggregations: false,
 		}
-		defaultSumSettings = datadogexporter.SumConfig{
-			CumulativeMonotonicMode:        datadogexporter.CumulativeMonotonicSumModeToDelta,
-			InitialCumulativeMonotonicMode: datadogexporter.InitialValueModeAuto,
+		defaultSumSettings = datadogOtelconfig.SumConfig{
+			CumulativeMonotonicMode:        datadogOtelconfig.CumulativeMonotonicSumModeToDelta,
+			InitialCumulativeMonotonicMode: datadogOtelconfig.InitialValueModeAuto,
 		}
-		defaultSummarySettings = datadogexporter.SummaryConfig{
-			Mode: datadogexporter.SummaryModeGauges,
+		defaultSummarySettings = datadogOtelconfig.SummaryConfig{
+			Mode: datadogOtelconfig.SummaryModeGauges,
 		}
 
 		defaultClient = confighttp.ClientConfig{
-			Timeout: defaultTimeout,
+			Timeout:         defaultTimeout,
+			MaxIdleConns:    100,
+			IdleConnTimeout: 90 * time.Second,
 		}
-		connsPerHost     = 10
-		connsPerHostPtr  = &connsPerHost
+		connsPerHost = 10
 	)
 
 	tests := []struct {
 		testName string
 		alloyCfg string
-		expected datadogexporter.Config
+		expected datadogOtelconfig.Config
 	}{
 		{
 			testName: "full customise",
 			alloyCfg: `
-				hostname = "customhostname" 
+				hostname = "customhostname"
+				hostname_detection_timeout = "5s"
 
 				client {
 					timeout = "10s"
@@ -76,10 +77,15 @@ func TestConfigConversion(t *testing.T) {
 						"instrumentation:express.server" = "express",
 					}
 				}
+				logs {
+					use_compression = true
+					compression_level = 9
+				}
 				metrics {
 					delta_ttl = 1200
 					exporter {
 						resource_attributes_as_tags = true
+						instrumentation_scope_metadata_as_tags = false
 					}
 					histograms {
 						mode = "counters"
@@ -92,50 +98,63 @@ func TestConfigConversion(t *testing.T) {
 					}
 				}
 			`,
-			expected: datadogexporter.Config{
-				ClientConfig:  confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHostPtr},
-				QueueSettings: defaultQueueSettings,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogexporter.TagsConfig{Hostname: "customhostname"},
-				OnlyMetadata:  false,
-				API: datadogexporter.APIConfig{
+			expected: datadogOtelconfig.Config{
+				ClientConfig:             confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second},
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{Hostname: "customhostname"},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 5 * time.Second,
+				API: datadogOtelconfig.APIConfig{
 					Key:              configopaque.String("abc"),
 					Site:             "datadoghq.com",
 					FailOnInvalidKey: true,
 				},
-				Metrics: datadogexporter.MetricsConfig{
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.datadoghq.com",
+					},
+
+					UseCompression:   true,
+					CompressionLevel: 9,
+					BatchWait:        5,
+				},
+				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://api.datadoghq.com",
 					},
 					DeltaTTL: 1200,
-					ExporterConfig: datadogexporter.MetricsExporterConfig{
+					ExporterConfig: datadogOtelconfig.MetricsExporterConfig{
 						ResourceAttributesAsTags:           true,
 						InstrumentationScopeMetadataAsTags: false,
 					},
-					HistConfig: datadogexporter.HistogramConfig{
+					HistConfig: datadogOtelconfig.HistogramConfig{
 						SendAggregations: false,
-						Mode:             datadogexporter.HistogramModeCounters,
+						Mode:             datadogOtelconfig.HistogramModeCounters,
 					},
-					SumConfig: datadogexporter.SumConfig{
-						CumulativeMonotonicMode:        datadogexporter.CumulativeMonotonicSumModeToDelta,
-						InitialCumulativeMonotonicMode: datadogexporter.InitialValueModeKeep,
+					SumConfig: datadogOtelconfig.SumConfig{
+						CumulativeMonotonicMode:        datadogOtelconfig.CumulativeMonotonicSumModeToDelta,
+						InitialCumulativeMonotonicMode: datadogOtelconfig.InitialValueModeKeep,
 					},
-					SummaryConfig: datadogexporter.SummaryConfig{
-						Mode: datadogexporter.SummaryModeNoQuantiles,
+					SummaryConfig: datadogOtelconfig.SummaryConfig{
+						Mode: datadogOtelconfig.SummaryModeNoQuantiles,
 					},
 				},
-				Traces: datadogexporter.TracesConfig{
+				Traces: datadogOtelconfig.TracesExporterConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://trace.agent.datadoghq.com",
 					},
-					SpanNameRemappings: map[string]string{
-						"instrumentation:express.server": "express",
+					TracesConfig: datadogOtelconfig.TracesConfig{
+						SpanNameRemappings: map[string]string{
+							"instrumentation:express.server": "express",
+						},
+						IgnoreResources: []string{"(GET|POST) /healthcheck"},
 					},
-					IgnoreResources: []string{"(GET|POST) /healthcheck"},
 				},
-				HostMetadata: datadogexporter.HostMetadataConfig{
+				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
-					HostnameSource: datadogexporter.HostnameSourceConfigOrSystem,
+					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},
@@ -146,14 +165,23 @@ func TestConfigConversion(t *testing.T) {
 					api_key = "abc"
 				}
 			`,
-			expected: datadogexporter.Config{
-				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueSettings,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogexporter.TagsConfig{},
-				OnlyMetadata:  false,
-				API:           datadogexporter.APIConfig{Key: configopaque.String("abc"), Site: "datadoghq.com"},
-				Metrics: datadogexporter.MetricsConfig{
+			expected: datadogOtelconfig.Config{
+				ClientConfig:             defaultClient,
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 25 * time.Second,
+				API:                      datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "datadoghq.com"},
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.datadoghq.com",
+					},
+					UseCompression:   true,
+					CompressionLevel: 6,
+					BatchWait:        5,
+				},
+				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://api.datadoghq.com",
 					},
@@ -163,15 +191,18 @@ func TestConfigConversion(t *testing.T) {
 					SumConfig:      defaultSumSettings,
 					SummaryConfig:  defaultSummarySettings,
 				},
-				Traces: datadogexporter.TracesConfig{
+				Traces: datadogOtelconfig.TracesExporterConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://trace.agent.datadoghq.com",
 					},
-					IgnoreResources: []string{},
+					TracesConfig: datadogOtelconfig.TracesConfig{
+						IgnoreResources: []string{},
+					},
 				},
-				HostMetadata: datadogexporter.HostMetadataConfig{
+				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
-					HostnameSource: datadogexporter.HostnameSourceConfigOrSystem,
+					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},
@@ -187,14 +218,23 @@ func TestConfigConversion(t *testing.T) {
         			endpoint = "https://trace.agent.datadoghq.com"
     			}
 			`,
-			expected: datadogexporter.Config{
-				ClientConfig:  defaultClient,
-				QueueSettings: defaultQueueSettings,
-				BackOffConfig: defaultRetrySettings,
-				TagsConfig:    datadogexporter.TagsConfig{},
-				OnlyMetadata:  false,
-				API:           datadogexporter.APIConfig{Key: configopaque.String("abc"), Site: "ap1.datadoghq.com"},
-				Metrics: datadogexporter.MetricsConfig{
+			expected: datadogOtelconfig.Config{
+				ClientConfig:             defaultClient,
+				QueueSettings:            defaultQueueConfig,
+				BackOffConfig:            defaultRetrySettings,
+				TagsConfig:               datadogOtelconfig.TagsConfig{},
+				OnlyMetadata:             false,
+				HostnameDetectionTimeout: 25 * time.Second,
+				API:                      datadogOtelconfig.APIConfig{Key: configopaque.String("abc"), Site: "ap1.datadoghq.com"},
+				Logs: datadogOtelconfig.LogsConfig{
+					TCPAddrConfig: confignet.TCPAddrConfig{
+						Endpoint: "https://http-intake.logs.ap1.datadoghq.com",
+					},
+					UseCompression:   true,
+					CompressionLevel: 6,
+					BatchWait:        5,
+				},
+				Metrics: datadogOtelconfig.MetricsConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://api.ap1.datadoghq.com",
 					},
@@ -204,15 +244,18 @@ func TestConfigConversion(t *testing.T) {
 					SumConfig:      defaultSumSettings,
 					SummaryConfig:  defaultSummarySettings,
 				},
-				Traces: datadogexporter.TracesConfig{
+				Traces: datadogOtelconfig.TracesExporterConfig{
 					TCPAddrConfig: confignet.TCPAddrConfig{
 						Endpoint: "https://trace.agent.datadoghq.com",
 					},
-					IgnoreResources: []string{},
+					TracesConfig: datadogOtelconfig.TracesConfig{
+						IgnoreResources: []string{},
+					},
 				},
-				HostMetadata: datadogexporter.HostMetadataConfig{
+				HostMetadata: datadogOtelconfig.HostMetadataConfig{
 					Enabled:        true,
-					HostnameSource: datadogexporter.HostnameSourceConfigOrSystem,
+					HostnameSource: datadogOtelconfig.HostnameSourceConfigOrSystem,
+					ReporterPeriod: 30 * time.Minute,
 				},
 			},
 		},
@@ -224,7 +267,7 @@ func TestConfigConversion(t *testing.T) {
 			require.NoError(t, syntax.Unmarshal([]byte(tc.alloyCfg), &args))
 			actual, err := args.Convert()
 			require.NoError(t, err)
-			require.Equal(t, &tc.expected, actual.(*datadogexporter.Config))
+			require.Equal(t, &tc.expected, actual.(*datadogOtelconfig.Config))
 		})
 	}
 }

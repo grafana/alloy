@@ -33,6 +33,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 			username = "username"
 			password = "pass"
 		}
+		http_headers = {
+			"foo" = ["foobar"],
+		}
 		`
 
 	var args Arguments
@@ -45,6 +48,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, 12*time.Second, args.RefreshInterval)
 	assert.Equal(t, "username", args.HTTPClientConfig.BasicAuth.Username)
 	assert.Equal(t, alloytypes.Secret("pass"), args.HTTPClientConfig.BasicAuth.Password)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	require.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {

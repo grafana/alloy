@@ -10,6 +10,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -43,8 +44,8 @@ func (opencensusReceiverConverter) ConvertAndAppend(state *State, id componentst
 
 func toOpencensusReceiver(state *State, id componentstatus.InstanceID, cfg *opencensusreceiver.Config) *opencensus.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &opencensus.Arguments{

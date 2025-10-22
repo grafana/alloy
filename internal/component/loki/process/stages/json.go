@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/jmespath/go-jmespath"
+	"github.com/jmespath-community/go-jmespath"
 	json "github.com/json-iterator/go"
 )
 
@@ -28,7 +28,7 @@ type JSONConfig struct {
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.
-func validateJSONConfig(c *JSONConfig) (map[string]*jmespath.JMESPath, error) {
+func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, error) {
 	if c == nil {
 		return nil, errors.New(ErrEmptyJSONStageConfig)
 	}
@@ -41,7 +41,7 @@ func validateJSONConfig(c *JSONConfig) (map[string]*jmespath.JMESPath, error) {
 		return nil, errors.New(ErrEmptyJSONStageSource)
 	}
 
-	expressions := map[string]*jmespath.JMESPath{}
+	expressions := map[string]jmespath.JMESPath{}
 
 	for n, e := range c.Expressions {
 		var err error
@@ -61,7 +61,7 @@ func validateJSONConfig(c *JSONConfig) (map[string]*jmespath.JMESPath, error) {
 // jsonStage sets extracted data using JMESPath expressions
 type jsonStage struct {
 	cfg         *JSONConfig
-	expressions map[string]*jmespath.JMESPath
+	expressions map[string]jmespath.JMESPath
 	logger      log.Logger
 }
 
@@ -165,7 +165,7 @@ func (j *jsonStage) processEntry(extracted map[string]interface{}, entry *string
 		}
 	}
 	if Debug {
-		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted data", fmt.Sprintf("%v", extracted))
+		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
 }

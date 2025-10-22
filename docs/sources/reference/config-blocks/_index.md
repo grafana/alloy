@@ -8,7 +8,7 @@ weight: 200
 # Configuration blocks
 
 Configuration blocks are optional top-level blocks that can be used to configure various parts of the {{< param "PRODUCT_NAME" >}} process.
-Each configuration block can only be defined once.
+Unlabeled configuration blocks can only be defined once.
 
 Configuration blocks are _not_ components, so they have no exports.
 

@@ -13,7 +13,8 @@ import (
 
 // Config configures behavior of the printer.
 type Config struct {
-	Indent int // Indentation to apply to all emitted code. Default 0.
+	Indent        int  // Indentation to apply to all emitted code. Default 0.
+	RedactSecrets bool // Should secrets be redacted. Default false.
 }
 
 // Fprint pretty-prints the specified node to w. The Node type must be an
@@ -235,6 +236,14 @@ func (p *printer) Write(args ...interface{}) {
 
 		default:
 			panic(fmt.Sprintf("printer: unsupported argument %v (%T)\n", arg, arg))
+		}
+
+		if p.cfg.RedactSecrets {
+			if v, ok := arg.(ast.Expr); ok {
+				if v.IsSecret() {
+					data = "\"(secret)\""
+				}
+			}
 		}
 
 		next := p.pos

@@ -1,17 +1,26 @@
+#
+# TODO: Can this be removed in favor of renovatebot?
+#
 name: Check Dependencies
 on:
   workflow_dispatch: {}
   schedule:
     - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Invoke action
-        uses: rfratto/depcheck@main
+        uses: rfratto/depcheck@95f3e3d75101f21e73363c928d500a222cf03572 # main
         with:
           github-token: ${{ secrets.MANAGE_ISSUES_GH_TOKEN }}

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	duration "github.com/channelmeter/iso8601duration"
 	"github.com/go-kit/log"
 	azure_config "github.com/webdevops/azure-metrics-exporter/config"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
@@ -29,7 +30,8 @@ func init() {
 
 // DefaultConfig holds the default settings for the azure_exporter integration.
 var DefaultConfig = Config{
-	Timespan:              "PT1M",
+	Timespan:              "PT5M",
+	Interval:              "PT1M",
 	MetricNameTemplate:    "azure_{type}_{metric}_{aggregation}_{unit}",
 	MetricHelpTemplate:    "Azure metric {metric} for {type} with aggregation {aggregation} as {unit}",
 	IncludedResourceTags:  []string{"owner"},
@@ -55,8 +57,11 @@ type Config struct {
 	MetricAggregations []string `yaml:"metric_aggregations"`
 
 	// All fields below are optional
+	// Must be an ISO8601 Duration - defaults to PT5M if not specified
+	Timespan string `yaml:"timespan"`
 	// Must be an ISO8601 Duration - defaults to PT1M if not specified
-	Timespan             string   `yaml:"timespan"`
+	Interval string `yaml:"interval"`
+
 	IncludedDimensions   []string `yaml:"included_dimensions"`
 	IncludedResourceTags []string `yaml:"included_resource_tags"`
 
@@ -115,7 +120,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 func (c *Config) Validate() error {
 	var configErrors []string
 
-	if c.Subscriptions == nil || len(c.Subscriptions) == 0 {
+	if len(c.Subscriptions) == 0 {
 		configErrors = append(configErrors, "subscriptions cannot be empty")
 	}
 
@@ -123,7 +128,7 @@ func (c *Config) Validate() error {
 		configErrors = append(configErrors, "resource_type cannot be empty")
 	}
 
-	if c.Metrics == nil || len(c.Metrics) == 0 {
+	if len(c.Metrics) == 0 {
 		configErrors = append(configErrors, "metrics cannot be empty")
 	}
 
@@ -151,6 +156,20 @@ func (c *Config) Validate() error {
 		configErrors = append(configErrors, fmt.Errorf("failed to create an azure cloud configuration from azure cloud environment %s, %v", c.AzureCloudEnvironment, err).Error())
 	}
 
+	timespan, tErr := duration.FromString(c.Timespan)
+	if tErr != nil {
+		configErrors = append(configErrors, fmt.Sprintf("timespan %s is not a valid ISO8601 duration, %v", c.Timespan, tErr))
+	}
+
+	interval, iErr := duration.FromString(c.Interval)
+	if iErr != nil {
+		configErrors = append(configErrors, fmt.Sprintf("timespan %s is not a valid ISO8601 duration, %v", c.Timespan, iErr))
+	}
+
+	if tErr == nil && iErr == nil && timespan.ToDuration() < interval.ToDuration() {
+		configErrors = append(configErrors, fmt.Sprintf("timespan %s must be greater than or equal to interval %s", c.Timespan, c.Interval))
+	}
+
 	if len(configErrors) != 0 {
 		return errors.New(strings.Join(configErrors, ","))
 	}
@@ -175,11 +194,10 @@ func (c *Config) ToScrapeSettings() (*metrics.RequestMetricSettings, error) {
 		ValidateDimensions: c.ValidateDimensions,
 		Regions:            c.Regions,
 
-		// Interval controls data aggregation timeframe ie 1 minute or 5 minutes aggregations
 		// Timespan controls query start and end time
-		// Interval == Timespan to ensure we only get a single data point any more than that is useless
 		Timespan: c.Timespan,
-		Interval: to.Ptr[string](c.Timespan),
+		// Interval controls the resolution of the data returned
+		Interval: to.Ptr(c.Interval),
 
 		// Unused settings just here to capture they are intentionally not set
 		Name:  "",
@@ -213,6 +231,12 @@ func (c *Config) ToScrapeSettings() (*metrics.RequestMetricSettings, error) {
 		settings.MetricTop = to.Ptr[int32](100_000_000)
 		settings.MetricOrderBy = "" // Order is only relevant if top won't return all the results our high value should prevent this
 	}
+
+	// Using regions is at subscription scope which adds a default filter that respects top
+	if len(settings.Regions) > 0 && settings.MetricTop == nil {
+		settings.MetricTop = to.Ptr[int32](100_000_000)
+	}
+
 	return &settings, nil
 }
 
@@ -244,6 +268,11 @@ func MergeConfigWithQueryParams(cfg Config, params url.Values) (Config, error) {
 	timespan := params.Get("timespan")
 	if len(timespan) != 0 {
 		cfg.Timespan = timespan
+	}
+
+	interval := params.Get("interval")
+	if len(interval) != 0 {
+		cfg.Interval = interval
 	}
 
 	if dimensions, exists := params["included_dimensions"]; exists {

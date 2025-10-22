@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+
+	"github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 func TestNewExtension(t *testing.T) {
@@ -40,10 +41,10 @@ func TestStartAndShutdownLocalFile(t *testing.T) {
 
 	e := newExtension(cfg, componenttest.NewNopTelemetrySettings())
 	require.NotNil(t, e)
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 
 	// test and verify
-	assert.NoError(t, e.Shutdown(context.Background()))
+	assert.NoError(t, e.Shutdown(t.Context()))
 }
 
 func TestRemote(t *testing.T) {
@@ -92,7 +93,7 @@ func TestRemote(t *testing.T) {
 
 			go func() {
 				err = server.Serve(lis)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}()
 			defer func() { server.Stop() }()
 
@@ -102,7 +103,7 @@ func TestRemote(t *testing.T) {
 			cfg.Source.ReloadInterval = tc.reloadInterval
 			cfg.Source.Remote = &configgrpc.ClientConfig{
 				Endpoint: fmt.Sprintf("127.0.0.1:%d", lis.Addr().(*net.TCPAddr).Port),
-				TLSSetting: configtls.ClientConfig{
+				TLS: configtls.ClientConfig{
 					Insecure: true, // test only
 				},
 				WaitForReady: true,
@@ -114,7 +115,7 @@ func TestRemote(t *testing.T) {
 			require.NotNil(t, e)
 
 			// start the server
-			assert.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+			assert.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 
 			// make test case defined number of calls
 			for i := 0; i < tc.performedClientCallCount; i++ {
@@ -125,7 +126,7 @@ func TestRemote(t *testing.T) {
 			}
 
 			// shut down the server
-			assert.NoError(t, e.Shutdown(context.Background()))
+			assert.NoError(t, e.Shutdown(t.Context()))
 
 			// verify observed calls
 			assert.Len(t, mockServer.observedCalls, tc.expectedOutboundGrpcCallCount)

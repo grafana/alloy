@@ -77,7 +77,7 @@ func (app *Appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v f
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -108,7 +108,7 @@ func (app *Appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e ex
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -136,7 +136,7 @@ func (app *Appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m me
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -162,7 +162,7 @@ func (app *Appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t i
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -211,6 +211,16 @@ func (app *Appender) Rollback() error {
 // AppendCTZeroSample implements storage.Appender.
 func (app *Appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64) (storage.SeriesRef, error) {
 	panic("this test appender does not yet implement AppendCTZeroSample")
+}
+
+// AppendHistogramCTZeroSample implements storage.Appender.
+func (app *Appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	panic("this test appender does not yet implement AppendHistogramCTZeroSample")
+}
+
+// SetOptions implements storage.Appender.
+func (app *Appender) SetOptions(o *storage.AppendOptions) {
+	panic("this test appender does not yet implement SetOptions")
 }
 
 // MetricFamilies returns the generated slice of *dto.MetricsFamily.

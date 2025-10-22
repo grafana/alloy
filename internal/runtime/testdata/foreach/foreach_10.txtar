@@ -1,0 +1,20 @@
+A collection containing arrays.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [[10, 4, 100], [20, 6, 200]]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      // Only ingest the 4 and the 6.
+      max = num[1]
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}

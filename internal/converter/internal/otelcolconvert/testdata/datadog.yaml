@@ -12,6 +12,7 @@ exporters:
     metrics:
       delta_ttl: 1200
       resource_attributes_as_tags: true
+      instrumentation_scope_metadata_as_tags: false
       histograms:
         mode: "counters"
       sums:
@@ -22,6 +23,9 @@ exporters:
       ignore_resources: ["(GET|POST) /healthcheck"]
       span_name_remappings:
         instrumentation:express.server: "express"
+    logs:
+      use_compression: true
+      compression_level: 7
 
 service:
   pipelines:

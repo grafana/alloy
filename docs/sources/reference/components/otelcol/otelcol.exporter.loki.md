@@ -3,78 +3,80 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.exporter.loki/ # /docs/alloy/latest/reference/components/otelcol.exporter.loki/
 description: Learn about otelcol.exporter.loki
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.exporter.loki
 ---
 
-# otelcol.exporter.loki
+# `otelcol.exporter.loki`
 
-`otelcol.exporter.loki` accepts OTLP-formatted logs from other `otelcol`
-components, converts them to Loki-formatted log entries, and forwards them
-to `loki` components.
+`otelcol.exporter.loki` accepts OTLP-formatted logs from other `otelcol` components, converts them to Loki-formatted log entries, and forwards them to `loki` components.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.loki` is a custom component unrelated to the `lokiexporter` from the OpenTelemetry Collector.
 {{< /admonition >}}
 
-The attributes of the OTLP log are not converted to Loki attributes by default.
+The attributes of the OTLP log aren't converted to Loki attributes by default.
 To convert them, the OTLP log should contain special "hint" attributes:
-* To convert OTLP resource attributes to Loki labels,
-  use the `loki.resource.labels` hint attribute.
-* To convert OTLP log attributes to Loki labels,
-  use the `loki.attribute.labels` hint attribute.
+
+* To convert OTLP resource attributes to Loki labels, use the `loki.resource.labels` hint attribute.
+* To convert OTLP log attributes to Loki labels, use the `loki.attribute.labels` hint attribute.
 
 Labels will be translated to a [Prometheus format][], which is more constrained than the OTLP format.
-For examples on label translation, see the [Converting OTLP attributes to Loki labels][] section.
+For examples on label translation, see the [Convert OTLP attributes to Loki labels][] section.
 
 Multiple `otelcol.exporter.loki` components can be specified by giving them different labels.
 
-[Converting OTLP attributes to Loki labels]: #converting-otlp-attributes-to-loki-labels
+[Convert OTLP attributes to Loki labels]: #convert-otlp-attributes-to-loki-labels
 
 ## Usage
 
 ```alloy
-otelcol.exporter.loki "LABEL" {
+otelcol.exporter.loki "<LABEL>" {
   forward_to = [...]
 }
 ```
 
 ## Arguments
 
-`otelcol.exporter.loki` supports the following arguments:
+You can use the following argument with `otelcol.exporter.loki`:
 
-Name         | Type             | Description                           | Default | Required
--------------|------------------|---------------------------------------|---------|---------
-`forward_to` | `list(receiver)` | Where to forward converted Loki logs. |         | yes
+| Name         | Type             | Description                           | Default | Required |
+| ------------ | ---------------- | ------------------------------------- | ------- | -------- |
+| `forward_to` | `list(receiver)` | Where to forward converted Loki logs. |         | yes      |
+
+## Blocks
+
+The `otelcol.exporter.loki` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+| ------- | ------------------ | ---------------------------------------------------------------- |
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for logs. Other telemetry signals are ignored.
 
-Logs sent to `input` are converted to Loki-compatible log entries and are
-forwarded to the `forward_to` argument in sequence.
+Logs sent to `input` are converted to Loki-compatible log entries and are forwarded to the `forward_to` argument in sequence.
 
 ## Component health
 
-`otelcol.exporter.loki` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.exporter.loki` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.exporter.loki` does not expose any component-specific debug
+`otelcol.exporter.loki` doesn't expose any component-specific debug
 information.
 
 ## Examples
 
 ### Basic usage
 
-This example accepts OTLP logs over gRPC, transforms them and forwards
-the converted log entries to `loki.write`:
+This example accepts OTLP logs over gRPC, transforms them and forwards the converted log entries to `loki.write`:
 
 ```alloy
 otelcol.receiver.otlp "default" {
@@ -96,16 +98,18 @@ loki.write "local" {
 }
 ```
 
-### Converting OTLP attributes to Loki labels
+### Convert OTLP attributes to Loki labels
 
-The example below will convert the following attributes to Loki labels:
+This example converts the following attributes to Loki labels:
+
 * The `service.name` and `service.namespace` OTLP resource attributes.
 * The `event.domain` and `event.name` OTLP log attributes.
 
-Labels will be translated to a [Prometheus format][]. For example:
+Labels will be translated to a [Prometheus format][].
+For example:
 
 | OpenTelemetry Attribute | Prometheus Label                                      |
-|-------------------------|-------------------------------------------------------|
+| ----------------------- | ----------------------------------------------------- |
 | `name`                  | `name`                                                |
 | `host.name`             | `host_name`                                           |
 | `host_name`             | `host_name`                                           |

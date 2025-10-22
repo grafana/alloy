@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 var testSamplingAlloy = `
@@ -20,7 +21,7 @@ stage.sampling {
 
 func TestSamplingPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testSamplingAlloy), &plName, registry)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testSamplingAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	entries := make([]Entry, 0)

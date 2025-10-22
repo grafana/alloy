@@ -8,8 +8,8 @@
     {{- toYaml .Values.configReloader.customArgs | nindent 4 }}
   {{- else }}
   args:
-    - --volume-dir=/etc/alloy
-    - --webhook-url=http://localhost:{{ $values.listenPort }}/-/reload
+    - --watched-dir=/etc/alloy
+    - --reload-url=http://localhost:{{ $values.listenPort }}/-/reload
   {{- end }}
   volumeMounts:
     - name: config

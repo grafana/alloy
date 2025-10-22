@@ -2,6 +2,7 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"
@@ -10,6 +11,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -48,8 +50,16 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 		return nil
 	}
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
+
+	metricsFlushInterval := cfg.MetricsFlushInterval
+	var metricsFlushIntervalValue time.Duration
+	if metricsFlushInterval == nil {
+		metricsFlushIntervalValue = 60 * time.Second
+	} else {
+		metricsFlushIntervalValue = *metricsFlushInterval
+	}
 
 	return &servicegraph.Arguments{
 		LatencyHistogramBuckets: cfg.LatencyHistogramBuckets,
@@ -58,10 +68,10 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 			MaxItems: cfg.Store.MaxItems,
 			TTL:      cfg.Store.TTL,
 		},
-		CacheLoop:             cfg.CacheLoop,
-		StoreExpirationLoop:   cfg.StoreExpirationLoop,
-		MetricsFlushInterval:  cfg.MetricsFlushInterval,
-		DatabaseNameAttribute: cfg.DatabaseNameAttribute,
+		CacheLoop:              cfg.CacheLoop,
+		StoreExpirationLoop:    cfg.StoreExpirationLoop,
+		MetricsFlushInterval:   metricsFlushIntervalValue,
+		DatabaseNameAttributes: cfg.DatabaseNameAttributes,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 		},

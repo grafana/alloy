@@ -1,8 +1,27 @@
+// NOTE: this file is copied from Prometheus codebase and adapted to work correctly with Alloy types.
+// For backwards compatibility purposes, the behaviour implemented here should not be changed.
+
+// Copyright 2015 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package relabel
 
 import (
+	"crypto/md5"
+	"encoding/binary"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/grafana/regexp"
 	"github.com/prometheus/common/model"
@@ -69,8 +88,8 @@ type Regexp struct {
 }
 
 func newRegexp(s string) (Regexp, error) {
-	re, err := regexp.Compile("^(?:" + s + ")$")
-	return Regexp{re}, err
+	regex, err := regexp.Compile("^(?s:" + s + ")$")
+	return Regexp{regex}, err
 }
 
 func mustNewRegexp(s string) Regexp {
@@ -91,20 +110,23 @@ func (re Regexp) MarshalText() (text []byte, err error) {
 
 // UnmarshalText implements encoding.TextUnmarshaler for Regexp.
 func (re *Regexp) UnmarshalText(text []byte) error {
-	regex, err := regexp.Compile("^(?:" + string(text) + ")$")
+	r, err := newRegexp(string(text))
 	if err != nil {
 		return err
 	}
-
-	*re = Regexp{regex}
+	*re = r
 	return nil
 }
 
 // String returns the original string used to compile the regular expression.
 func (re Regexp) String() string {
+	if re.Regexp == nil {
+		return ""
+	}
+
 	str := re.Regexp.String()
-	// Trim the anchor `^(?:` prefix and `)$` suffix.
-	return str[4 : len(str)-2]
+	// Trim the anchor `^(?s:` prefix and `)$` suffix.
+	return str[5 : len(str)-2]
 }
 
 // Config describes a relabelling step to be applied on a target.
@@ -149,7 +171,17 @@ func (rc *Config) Validate() error {
 	if (rc.Action == Replace || rc.Action == HashMod || rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.TargetLabel == "" {
 		return fmt.Errorf("relabel configuration for %s action requires 'target_label' value", rc.Action)
 	}
-	if (rc.Action == Replace || rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !relabelTarget.MatchString(rc.TargetLabel) {
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
+	if rc.Action == Replace && !strings.Contains(rc.TargetLabel, "$") && !model.LabelName(rc.TargetLabel).IsValid() {
+		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
+	}
+	if rc.Action == Replace && strings.Contains(rc.TargetLabel, "$") && !relabelTarget.MatchString(rc.TargetLabel) {
+		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
+	}
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
+	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
 	if (rc.Action == Lowercase || rc.Action == Uppercase || rc.Action == KeepEqual || rc.Action == DropEqual) && rc.Replacement != DefaultRelabelConfig.Replacement {
@@ -158,6 +190,8 @@ func (rc *Config) Validate() error {
 	if rc.Action == LabelMap && !relabelTarget.MatchString(rc.Replacement) {
 		return fmt.Errorf("%q is invalid 'replacement' for %s action", rc.Replacement, rc.Action)
 	}
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
 	if rc.Action == HashMod && !model.LabelName(rc.TargetLabel).IsValid() {
 		return fmt.Errorf("%q is invalid 'target_label' for %s action", rc.TargetLabel, rc.Action)
 	}
@@ -184,6 +218,99 @@ func (rc *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// ProcessBuilder should be called with lb LabelBuilder containing the initial set of labels,
+// which are then modified following the configured rules using builder's methods such as Set and Del.
+func ProcessBuilder(lb LabelBuilder, cfgs ...*Config) (keep bool) {
+	for _, cfg := range cfgs {
+		keep = doRelabel(cfg, lb)
+		if !keep {
+			return false
+		}
+	}
+	return true
+}
+
+func doRelabel(cfg *Config, lb LabelBuilder) (keep bool) {
+	var va [16]string
+	values := va[:0]
+	if len(cfg.SourceLabels) > cap(values) {
+		values = make([]string, 0, len(cfg.SourceLabels))
+	}
+	for _, ln := range cfg.SourceLabels {
+		values = append(values, lb.Get(ln))
+	}
+	val := strings.Join(values, cfg.Separator)
+
+	switch cfg.Action {
+	case Drop:
+		if cfg.Regex.MatchString(val) {
+			return false
+		}
+	case Keep:
+		if !cfg.Regex.MatchString(val) {
+			return false
+		}
+	case DropEqual:
+		if lb.Get(cfg.TargetLabel) == val {
+			return false
+		}
+	case KeepEqual:
+		if lb.Get(cfg.TargetLabel) != val {
+			return false
+		}
+	case Replace:
+		indexes := cfg.Regex.FindStringSubmatchIndex(val)
+		// If there is no match no replacement must take place.
+		if indexes == nil {
+			break
+		}
+		target := model.LabelName(cfg.Regex.ExpandString([]byte{}, cfg.TargetLabel, val, indexes))
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !target.IsValid() {
+			break
+		}
+		res := cfg.Regex.ExpandString([]byte{}, cfg.Replacement, val, indexes)
+		if len(res) == 0 {
+			lb.Del(string(target))
+			break
+		}
+		lb.Set(string(target), string(res))
+	case Lowercase:
+		lb.Set(cfg.TargetLabel, strings.ToLower(val))
+	case Uppercase:
+		lb.Set(cfg.TargetLabel, strings.ToUpper(val))
+	case HashMod:
+		hash := md5.Sum([]byte(val))
+		// Use only the last 8 bytes of the hash to give the same result as earlier versions of this code.
+		mod := binary.BigEndian.Uint64(hash[8:]) % cfg.Modulus
+		lb.Set(cfg.TargetLabel, fmt.Sprintf("%d", mod))
+	case LabelMap:
+		lb.Range(func(name, value string) {
+			if cfg.Regex.MatchString(name) {
+				res := cfg.Regex.ReplaceAllString(name, cfg.Replacement)
+				lb.Set(res, value)
+			}
+		})
+	case LabelDrop:
+		lb.Range(func(name, value string) {
+			if cfg.Regex.MatchString(name) {
+				lb.Del(name)
+			}
+		})
+	case LabelKeep:
+		lb.Range(func(name, value string) {
+			if !cfg.Regex.MatchString(name) {
+				lb.Del(name)
+			}
+		})
+	default:
+		panic(fmt.Errorf("relabel: unknown relabel action type %q", cfg.Action))
+	}
+
+	return true
 }
 
 // ComponentToPromRelabelConfigs bridges the Component-based configuration of

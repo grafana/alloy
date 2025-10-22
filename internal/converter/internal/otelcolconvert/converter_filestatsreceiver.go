@@ -14,7 +14,8 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/receiver/scraperhelper"
+	"go.opentelemetry.io/collector/pipeline"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 )
 
 func init() {
@@ -46,7 +47,7 @@ func (filestatsReceiverConverter) ConvertAndAppend(state *State, id componentsta
 
 func toFilestatsReceiver(state *State, id componentstatus.InstanceID, cfg *filestatsreceiver.Config) *file_stats.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
 	return &file_stats.Arguments{

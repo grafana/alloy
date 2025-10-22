@@ -3,53 +3,57 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.auth.basic/ # /docs/alloy/latest/reference/components/otelcol.auth.basic/
 description: Learn about otelcol.auth.basic
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.auth.basic
 ---
 
-# otelcol.auth.basic
+# `otelcol.auth.basic`
 
-`otelcol.auth.basic` exposes a `handler` that can be used by other `otelcol`
-components to authenticate requests using basic authentication.
+`otelcol.auth.basic` exposes a `handler` that other `otelcol` components can use to authenticate requests using basic authentication.
 
-This extension supports both server and client authentication.
+This component supports both server and client authentication.
 
-> **NOTE**: `otelcol.auth.basic` is a wrapper over the upstream OpenTelemetry
-> Collector `basicauth` extension. Bug reports or feature requests will be
-> redirected to the upstream repository, if necessary.
+{{< admonition type="note" >}}
+`otelcol.auth.basic` is a wrapper over the upstream OpenTelemetry Collector [`basicauth`][] extension.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
 
-Multiple `otelcol.auth.basic` components can be specified by giving them
-different labels.
+[`basicauth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/basicauthextension
+{{< /admonition >}}
+
+You can specify multiple `otelcol.auth.basic` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-otelcol.auth.basic "LABEL" {
-  username = "USERNAME"
-  password = "PASSWORD"
+otelcol.auth.basic "<LABEL>" {
+  username = "<USERNAME>"
+  password = "<PASSWORD>"
 }
 ```
 
 ## Arguments
 
-`otelcol.auth.basic` supports the following arguments:
+You can use the following arguments with `otelcol.auth.basic`:
 
-Name       | Type     | Description                                        | Default | Required
------------|----------|----------------------------------------------------|---------|---------
-`username` | `string` | Username to use for basic authentication requests. |         | yes
-`password` | `secret` | Password to use for basic authentication requests. |         | yes
+| Name       | Type     | Description                                        | Default | Required |
+| ---------- | -------- | -------------------------------------------------- | ------- | -------- |
+| `password` | `secret` | Password to use for basic authentication requests. |         | yes      |
+| `username` | `string` | Username to use for basic authentication requests. |         | yes      |
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.auth.basic`:
+You can use the following block with `otelcol.auth.basic`:
 
-Hierarchy | Block      | Description                          | Required
-----------|------------|--------------------------------------|---------
-debug_metrics  | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+| -------------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[debug_metrics]: #debug_metrics-block
+[debug_metrics]: #debug_metrics
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -57,22 +61,21 @@ debug_metrics  | [debug_metrics][] | Configures the metrics that this component 
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                       | Description
-----------|----------------------------|----------------------------------------------------------------
-`handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests.
+| Name      | Type                       | Description                                                     |
+| --------- | -------------------------- | --------------------------------------------------------------- |
+| `handler` | `capsule(otelcol.Handler)` | A value that other components can use to authenticate requests. |
 
 ## Component health
 
-`otelcol.auth.basic` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.auth.basic` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.auth.basic` does not expose any component-specific debug information.
+`otelcol.auth.basic` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example configures [otelcol.exporter.otlp][] to use basic authentication:
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication:
 
 ```alloy
 otelcol.exporter.otlp "example" {

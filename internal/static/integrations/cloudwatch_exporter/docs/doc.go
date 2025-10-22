@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strings"
 
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
+	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
 )
 
 //go:embed template.md
@@ -51,19 +52,28 @@ func checkServicesDocSection(path string, expectedDoc string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file to check: %w", err)
 	}
-	if !strings.Contains(string(contents), strings.TrimRight(expectedDoc, "\n")) {
-		return fmt.Errorf("doc has no services section, or is out of date")
+	if !strings.Contains(string(contents), expectedDoc) {
+		return fmt.Errorf("doc has no services section, or is out of date, or not alphabetically sorted")
 	}
 	return nil
 }
 
 func generateServicesDocSection() string {
 	var sb strings.Builder
-	for _, supportedSvc := range yaceConf.SupportedServices {
+
+	slices.SortFunc(yaceConf.SupportedServices, func(i, j yaceConf.ServiceConfig) int {
+		return strings.Compare(strings.ToLower(i.Namespace), strings.ToLower(j.Namespace))
+	})
+
+	for i, supportedSvc := range yaceConf.SupportedServices {
 		sb.WriteString(
-			fmt.Sprintf("- Namespace: `%s`\n", supportedSvc.Namespace),
+			fmt.Sprintf("* Namespace: `%s`", supportedSvc.Namespace),
 		)
+		if i < len(yaceConf.SupportedServices)-1 {
+			sb.WriteString("\n")
+		}
 	}
+
 	doc := strings.Replace(docTemplate, servicesListReplacement, sb.String(), 1)
 	return doc
 }

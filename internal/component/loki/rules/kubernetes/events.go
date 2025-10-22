@@ -6,25 +6,28 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/v3/pkg/logql/syntax"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/rulefmt"
+	"github.com/prometheus/prometheus/promql/parser"
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
+
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const eventTypeSyncLoki kubernetes.EventType = "sync-loki"
 
 func (c *Component) eventLoop(ctx context.Context) {
 	for {
-		eventInterface, shutdown := c.queue.Get()
+		evt, shutdown := c.queue.Get()
 		if shutdown {
 			level.Info(c.log).Log("msg", "shutting down event loop")
 			return
 		}
 
-		evt := eventInterface.(kubernetes.Event)
 		c.metrics.eventsTotal.WithLabelValues(string(evt.Typ)).Inc()
 		err := c.processEvent(ctx, evt)
 
@@ -102,38 +105,50 @@ func (c *Component) reconcileState(ctx context.Context) error {
 		return err
 	}
 
-	diffs := kubernetes.DiffRuleState(desiredState, c.currentState)
-	var result error
+	diffs := kubernetes.DiffPrometheusRuleGroupState(desiredState, c.currentState)
+	var errs error
 	for ns, diff := range diffs {
 		err = c.applyChanges(ctx, ns, diff)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = multierror.Append(errs, err)
 			continue
 		}
 	}
 
-	return result
+	return errs
 }
 
-func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error) {
+func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespace, error) {
 	matchedNamespaces, err := c.namespaceLister.List(c.namespaceSelector)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
-	desiredState := make(kubernetes.RuleGroupsByNamespace)
+	desiredState := make(kubernetes.PrometheusRuleGroupsByNamespace)
 	for _, ns := range matchedNamespaces {
 		crdState, err := c.ruleLister.PrometheusRules(ns.Name).List(c.ruleSelector)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list rules: %w", err)
 		}
 
-		for _, pr := range crdState {
-			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, pr)
-
-			groups, err := convertCRDRuleGroupToRuleGroup(pr.Spec)
+		for _, rule := range crdState {
+			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, rule)
+			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			if c.args.ExtraQueryMatchers != nil {
+				for _, ruleGroup := range groups {
+					for i := range ruleGroup.Rules {
+						query := ruleGroup.Rules[i].Expr
+						newQuery, err := addMatchersToQuery(query, c.args.ExtraQueryMatchers.Matchers)
+						if err != nil {
+							level.Error(c.log).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
+						}
+						ruleGroup.Rules[i].Expr = newQuery
+					}
+				}
 			}
 
 			desiredState[lokiNs] = groups
@@ -143,23 +158,90 @@ func (c *Component) loadStateFromK8s() (kubernetes.RuleGroupsByNamespace, error)
 	return desiredState, nil
 }
 
+func addMatchersToQuery(query string, matchers []Matcher) (string, error) {
+	var err error
+	for _, s := range matchers {
+		query, err = labelsSetLogQL(query, s.MatchType, s.Name, s.Value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return query, nil
+}
+
+// Inspired from the labelsSetPromQL function from the mimir.rules.kubernetes component
+// this function was modified to use the logql parser instead
+func labelsSetLogQL(query, labelMatchType, name, value string) (string, error) {
+	expr, err := syntax.ParseExpr(query)
+	if err != nil {
+		return query, err
+	}
+
+	var matchType labels.MatchType
+	switch labelMatchType {
+	case parser.ItemType(parser.EQL).String():
+		matchType = labels.MatchEqual
+	case parser.ItemType(parser.NEQ).String():
+		matchType = labels.MatchNotEqual
+	case parser.ItemType(parser.EQL_REGEX).String():
+		matchType = labels.MatchRegexp
+	case parser.ItemType(parser.NEQ_REGEX).String():
+		matchType = labels.MatchNotRegexp
+	default:
+		return query, fmt.Errorf("invalid label match type: %s", labelMatchType)
+	}
+	expr.Walk(func(e syntax.Expr) bool {
+		switch concrete := e.(type) {
+		case *syntax.MatchersExpr:
+			var found bool
+			for _, l := range concrete.Mts {
+				if l.Name == name {
+					l.Type = matchType
+					l.Value = value
+					found = true
+				}
+			}
+			if !found {
+				concrete.Mts = append(concrete.Mts, &labels.Matcher{
+					Type:  matchType,
+					Name:  name,
+					Value: value,
+				})
+			}
+		}
+		return true
+	})
+
+	return expr.String(), nil
+}
+
 func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.RuleGroup, error) {
 	buf, err := yaml.Marshal(crd)
 	if err != nil {
 		return nil, err
 	}
 
-	groups, _ := rulefmt.Parse(buf)
-
-	// Disable looking for errors, loki queries won't be valid prometheus queries, but still want the similar information
-	//if len(errs) > 0 {
-	//	return nil, multierror.Append(nil, errs...)
-	//}
+	var errs error
+	groups, _ := rulefmt.Parse(buf, false)
+	for _, group := range groups.Groups {
+		for _, rule := range group.Rules {
+			if _, err := syntax.ParseExpr(rule.Expr); err != nil {
+				if rule.Record != "" {
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for record '%s' in group '%s': %w", rule.Record, group.Name, err))
+				} else {
+					errs = multierror.Append(errs, fmt.Errorf("could not parse expression for alert '%s' in group '%s': %w", rule.Alert, group.Name, err))
+				}
+			}
+		}
+	}
+	if errs != nil {
+		return nil, errs
+	}
 
 	return groups.Groups, nil
 }
 
-func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.RuleGroupDiff) error {
+func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []kubernetes.PrometheusRuleGroupDiff) error {
 	if len(diffs) == 0 {
 		return nil
 	}

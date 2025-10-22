@@ -19,19 +19,20 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/syslog/syslogparser"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/labels"
 
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
-	protocolUDP = "udp"
-	protocolTCP = "tcp"
+	ProtocolUDP = "udp"
+	ProtocolTCP = "tcp"
 )
 
 type Transport interface {
@@ -82,7 +83,7 @@ func (t *baseTransport) maxMessageLength() int {
 }
 
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
 		lb.Set(string(k), string(v))
 	}
@@ -171,7 +172,7 @@ func NewSyslogTCPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessag
 
 // Run implements SyslogTransport
 func (t *TCPTransport) Run() error {
-	l, err := net.Listen(protocolTCP, t.config.ListenAddress)
+	l, err := net.Listen(ProtocolTCP, t.config.ListenAddress)
 	l = conntrack.NewListener(l, conntrack.TrackWithName("syslog_target/"+t.config.ListenAddress))
 	if err != nil {
 		return fmt.Errorf("error setting up syslog target: %w", err)
@@ -196,7 +197,7 @@ func (t *TCPTransport) Run() error {
 	}
 
 	t.listener = l
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", protocolTCP, "tls", tlsEnabled)
+	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
 
 	t.openConnections.Add(1)
 	go t.acceptConnections()
@@ -287,7 +288,7 @@ func (t *TCPTransport) acceptConnections() {
 		c, err := t.listener.Accept()
 		if err != nil {
 			if !t.Ready() {
-				level.Info(l).Log("msg", "syslog server shutting down", "protocol", protocolTCP, "err", t.ctx.Err())
+				level.Info(l).Log("msg", "syslog server shutting down", "protocol", ProtocolTCP, "err", t.ctx.Err())
 				return
 			}
 
@@ -321,7 +322,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 
 	lbs := t.connectionLabels(ipFromConn(c).String())
 
-	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), c, func(result *syslog.Result) {
+	err := syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, c, func(result *syslog.Result) {
 		if err := result.Error; err != nil {
 			t.handleMessageError(err)
 			return
@@ -330,7 +331,11 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	}, t.maxMessageLength())
 
 	if err != nil {
-		level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		if err == io.EOF {
+			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		} else {
+			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+		}
 	}
 }
 
@@ -364,16 +369,16 @@ func NewSyslogUDPTransport(config *scrapeconfig.SyslogTargetConfig, handleMessag
 // Run implements SyslogTransport
 func (t *UDPTransport) Run() error {
 	var err error
-	addr, err := net.ResolveUDPAddr(protocolUDP, t.config.ListenAddress)
+	addr, err := net.ResolveUDPAddr(ProtocolUDP, t.config.ListenAddress)
 	if err != nil {
 		return fmt.Errorf("error resolving UDP address: %w", err)
 	}
-	t.udpConn, err = net.ListenUDP(protocolUDP, addr)
+	t.udpConn, err = net.ListenUDP(ProtocolUDP, addr)
 	if err != nil {
 		return fmt.Errorf("error setting up syslog target: %w", err)
 	}
 	_ = t.udpConn.SetReadBuffer(1024 * 1024)
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", protocolUDP)
+	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
 
 	t.openConnections.Add(1)
 	go t.acceptPackets()
@@ -399,7 +404,7 @@ func (t *UDPTransport) acceptPackets() {
 
 	for {
 		if !t.Ready() {
-			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", protocolUDP, "err", t.ctx.Err())
+			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
 			for _, stream := range streams {
 				if err = stream.Close(); err != nil {
 					level.Error(t.logger).Log("msg", "failed to close pipe", "err", err)
@@ -446,7 +451,7 @@ func (t *UDPTransport) handleRcv(c *ConnPipe) {
 
 		r := bytes.NewReader(datagram[:n])
 
-		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), r, func(result *syslog.Result) {
+		err = syslogparser.ParseStream(t.config.IsRFC3164Message(), t.config.RFC3164DefaultToCurrentYear, r, func(result *syslog.Result) {
 			if err := result.Error; err != nil {
 				t.handleMessageError(err)
 			} else {

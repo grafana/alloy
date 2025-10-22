@@ -10,6 +10,8 @@ weight: 200
 
 # Deploy {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
+{{< docs/learning-journeys title="Monitor Kubernetes cluster infrastructure in Grafana Cloud" url="https://grafana.com/docs/learning-journeys/kubernetes/" >}}
+
 {{< param "PRODUCT_NAME" >}} can be deployed on Kubernetes by using the Helm chart for {{< param "PRODUCT_NAME" >}}.
 
 ## Before you begin
@@ -42,7 +44,7 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
+   * _`<NAMESPACE>`_: The namespace to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
 
 1. Install {{< param "PRODUCT_NAME" >}}:
 
@@ -52,8 +54,8 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace created in the previous step.
-   - _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
+   * _`<NAMESPACE>`_: The namespace created in the previous step.
+   * _`<RELEASE_NAME>`_: The name to use for your {{< param "PRODUCT_NAME" >}} installation, such as `alloy`.
 
 1. Verify that the {{< param "PRODUCT_NAME" >}} pods are running:
 
@@ -63,16 +65,15 @@ To deploy {{< param "PRODUCT_NAME" >}} on Kubernetes using Helm, run the followi
 
    Replace the following:
 
-   - _`<NAMESPACE>`_: The namespace used in the previous step.
+   * _`<NAMESPACE>`_: The namespace used in the previous step.
 
 You have successfully deployed {{< param "PRODUCT_NAME" >}} on Kubernetes, using default Helm settings.
 
 ## Next steps
 
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-<!-- - Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub][Artifact Hub] for more information about the Helm chart. -->
+<!-- Refer to the [{{< param "PRODUCT_NAME" >}} Helm chart documentation on Artifact Hub](https://artifacthub.io/packages/helm/grafana/alloy) for more information about the Helm chart. -->
 
 [Helm]: https://helm.sh
-[Artifact Hub]: https://artifacthub.io/packages/helm/grafana/alloy
 [Configure]: ../../../configure/kubernetes/

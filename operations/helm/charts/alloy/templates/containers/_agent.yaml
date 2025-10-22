@@ -16,7 +16,7 @@
     - --cluster.enabled=true
     - --cluster.join-addresses={{ include "alloy.fullname" . }}-cluster
     {{- if $values.clustering.name }}
-    - --cluster.name={{ $values.clustering.name | quote }}
+    - --cluster.name={{ $values.clustering.name }}
     {{- end}}
     {{- end}}
     {{- if $values.stabilityLevel }}
@@ -39,9 +39,12 @@
   envFrom:
     {{- toYaml $values.envFrom | nindent 4 }}
   {{- end }}
+  {{- if or $values.enableHttpServerPort (gt (len $values.extraPorts) 0) }}
   ports:
+    {{- if $values.enableHttpServerPort }}
     - containerPort: {{ $values.listenPort }}
       name: http-metrics
+    {{- end }}
     {{- range $portMap := $values.extraPorts }}
     - containerPort: {{ $portMap.targetPort }}
       {{- if $portMap.hostPort }}
@@ -50,13 +53,20 @@
       name: {{ $portMap.name }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
     {{- end }}
+  {{- end }}
+  {{- if $values.enableHttpServerPort }}
   readinessProbe:
     httpGet:
       path: /-/ready
       port: {{ $values.listenPort }}
       scheme: {{ $values.listenScheme }}
-    initialDelaySeconds: 10
-    timeoutSeconds: 1
+    initialDelaySeconds: {{ $values.initialDelaySeconds }}
+    timeoutSeconds: {{ $values.timeoutSeconds }}
+  {{- end }}
+  {{- with $values.livenessProbe }}
+  livenessProbe:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with $values.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
@@ -82,7 +92,7 @@
       mountPath: /var/lib/docker/containers
       readOnly: true
     {{- end }}
-    {{- range $values.mounts.extra }}
-    - {{- toYaml . | nindent 6 }}
+    {{- with $values.mounts.extra }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

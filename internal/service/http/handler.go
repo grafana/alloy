@@ -11,9 +11,9 @@ import (
 
 // tlsConfig generates a tls.Config from args.
 func (args *TLSArguments) winTlsConfig(_ *server.WinCertStoreHandler) (*tls.Config, error) {
-	return nil, fmt.Errorf("Windows Certificate filter is only available on Windows platforms.")
+	return nil, fmt.Errorf("the Windows Certificate filter is only available on Windows platforms")
 }
 
 func (s *Service) updateWindowsCertificateFilter(_ *TLSArguments) error {
-	return fmt.Errorf("Windows Certificate filter is only available on Windows platforms.")
+	return fmt.Errorf("the Windows Certificate filter is only available on Windows platforms")
 }

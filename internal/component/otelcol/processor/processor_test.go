@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 )
 
@@ -77,7 +77,7 @@ func TestProcessor(t *testing.T) {
 		for {
 			err = ce.Input.ConsumeTraces(ctx, ptrace.NewTraces())
 
-			if errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+			if errors.Is(err, pipeline.ErrSignalNotSupported) {
 				// Our component may not have been fully initialized yet. Wait a little
 				// bit before trying again.
 				time.Sleep(100 * time.Millisecond)
@@ -160,11 +160,11 @@ func (fa fakeProcessorArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeProcessorArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeProcessorArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
-func (fa fakeProcessorArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeProcessorArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

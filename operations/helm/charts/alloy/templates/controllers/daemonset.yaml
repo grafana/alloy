@@ -3,15 +3,19 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
+    {{- with .Values.controller.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with .Values.controller.extraAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   {{- if ge (int .Capabilities.KubeVersion.Minor) 22 }}
-  minReadySeconds: 10
+  minReadySeconds: {{ .Values.controller.minReadySeconds }}
   {{- end }}
   selector:
     matchLabels:

@@ -7,8 +7,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/debug"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
-	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
 )
 
@@ -74,7 +74,7 @@ func Test(t *testing.T) {
 			actual := actualPtr.(*debugexporter.Config)
 			fmt.Printf("Passed conversion")
 
-			require.NoError(t, otelcomponent.ValidateConfig(actual))
+			require.NoError(t, xconfmap.Validate(actual))
 
 			require.Equal(t, tc.expectedReturn, *actual)
 		})

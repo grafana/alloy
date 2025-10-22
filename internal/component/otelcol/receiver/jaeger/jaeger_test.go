@@ -10,13 +10,12 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
 
 // Test ensures that otelcol.receiver.jaeger can start successfully.
 func Test(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -121,15 +120,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Nil(t, args.Protocols.ThriftBinary)
 		require.Equal(t, defaults, args.Protocols.ThriftCompact)
 	})
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

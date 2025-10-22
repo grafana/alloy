@@ -442,29 +442,31 @@ func convertLabels(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig
 }
 
 func convertMetrics(cfg interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
-	pMetrics := &promtailstages.MetricsConfig{}
-	if err := mapstructure.Decode(cfg, pMetrics); err != nil {
+	pMetrics := promtailstages.MetricsConfig{}
+	if err := mapstructure.Decode(cfg, &pMetrics); err != nil {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
 
-	var fMetrics []stages.MetricConfig
-
+	var (
+		sortedNames = make([]string, 0, len(pMetrics))
+		fMetrics    = make([]stages.MetricConfig, 0, len(pMetrics))
+	)
 	// sort metric names to make conversion deterministic
-	var sortedNames []string
-	for name := range *pMetrics {
+	for name := range pMetrics {
 		sortedNames = append(sortedNames, name)
 	}
 	sort.Strings(sortedNames)
 
 	for _, name := range sortedNames {
-		pMetric := (*pMetrics)[name]
+		pMetric := pMetrics[name]
 		fMetric, ok := toAlloyMetricsProcessStage(name, pMetric, diags)
 		if !ok {
 			return stages.StageConfig{}, false
 		}
 		fMetrics = append(fMetrics, fMetric)
 	}
+
 	return stages.StageConfig{MetricsConfig: &stages.MetricsConfig{
 		Metrics: fMetrics,
 	}}, true
@@ -484,7 +486,7 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 	}
 
 	// Create metric according to type
-	switch pMetric.MetricType {
+	switch strings.ToLower(pMetric.MetricType) {
 	case promtailstages.MetricTypeCounter:
 		pCounter, err := promtailmetric.NewCounters(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
 		if err != nil {

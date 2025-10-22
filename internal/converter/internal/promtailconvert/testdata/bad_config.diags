@@ -1,1 +1,2 @@
-(Critical) failed to parse Promtail config: yaml: unmarshal errors:\n  line 11: field not_a_thing not found in type promtailconvert.Config
+(Critical) failed to parse Promtail config: yaml: unmarshal errors:
+  line 11: field not_a_thing not found in type config.plain

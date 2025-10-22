@@ -3,21 +3,27 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.receiver.loki/ # /docs/alloy/latest/reference/otelcol.receiver.loki/
 description: Learn about otelcol.receiver.loki
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: otelcol.receiver.loki
 ---
 
-# otelcol.receiver.loki
+# `otelcol.receiver.loki`
 
-`otelcol.receiver.loki` receives Loki log entries, converts them to the
-OpenTelemetry logs format, and forwards them to other `otelcol.*` components.
+`otelcol.receiver.loki` receives Loki log entries, converts them to the OpenTelemetry logs format, and forwards them to other `otelcol.*` components.
 
-Multiple `otelcol.receiver.loki` components can be specified by giving them
-different labels.
+You can specify multiple `otelcol.receiver.loki` components by giving them different labels.
+
+{{< admonition type="note" >}}
+`otelcol.receiver.loki` is a custom component unrelated to any receivers from the upstream OpenTelemetry Collector.
+{{< /admonition >}}
 
 ## Usage
 
 ```alloy
-otelcol.receiver.loki "LABEL" {
+otelcol.receiver.loki "<LABEL>" {
   output {
     logs = [...]
   }
@@ -26,21 +32,21 @@ otelcol.receiver.loki "LABEL" {
 
 ## Arguments
 
-`otelcol.receiver.loki` doesn't support any arguments and is configured fully
-through inner blocks.
+The `otelcol.receiver.loki` component doesn't support any arguments. You can configure this component with blocks.
 
 ## Blocks
 
-The following blocks are supported inside the definition of
-`otelcol.receiver.loki`:
+You can use the following blocks with `otelcol.receiver.loki`:
 
-Hierarchy | Block | Description | Required
---------- | ----- | ----------- | --------
-output | [output][] | Configures where to send converted telemetry data. | yes
+| Block              | Description                                        | Required |
+|--------------------|----------------------------------------------------|----------|
+| [`output`][output] | Configures where to send converted telemetry data. | yes      |
 
-[output]: #output-block
+[output]: #output
 
-### output block
+### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -48,28 +54,23 @@ output | [output][] | Configures where to send converted telemetry data. | yes
 
 The following fields are exported and can be referenced by other components:
 
-Name | Type | Description
----- | ---- | -----------
-`receiver` | `LogsReceiver` | A value that other components can use to send Loki logs to.
+| Name       | Type           | Description                                                 |
+|------------|----------------|-------------------------------------------------------------|
+| `receiver` | `LogsReceiver` | A value that other components can use to send Loki logs to. |
 
 ## Component health
 
-`otelcol.receiver.loki` is only reported as unhealthy if given an invalid
-configuration.
+`otelcol.receiver.loki` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 
-`otelcol.receiver.loki` does not expose any component-specific debug
-information.
+`otelcol.receiver.loki` doesn't expose any component-specific debug information.
 
 ## Example
 
-This example uses the `otelcol.receiver.loki` component as a bridge
-between the Loki and OpenTelemetry ecosystems. The component exposes a
-receiver which the `loki.source.file` component uses to send Loki log entries
-to. The logs are converted to the OTLP format before they are forwarded
-to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable
-endpoint:
+This example uses the `otelcol.receiver.loki` component as a bridge between the Loki and OpenTelemetry ecosystems.
+The component exposes a receiver which the `loki.source.file` component uses to send Loki log entries to.
+The logs are converted to the OTLP format before they're forwarded to the `otelcol.exporter.otlp` component to be sent to an OTLP-capable endpoint:
 
 ```alloy
 loki.source.file "default" {
@@ -88,7 +89,7 @@ otelcol.receiver.loki "default" {
 
 otelcol.exporter.otlp "default" {
   client {
-    endpoint = sys.env("OTLP_ENDPOINT")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```

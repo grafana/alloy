@@ -3,9 +3,10 @@ package runtime
 import (
 	"context"
 
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // GetServiceConsumers implements [service.Host]. It returns a slice of
@@ -72,14 +73,15 @@ func (f *Runtime) NewController(id string) service.Controller {
 	return ServiceController{
 		f: newController(controllerOptions{
 			Options: Options{
-				ControllerID:    id,
-				Logger:          f.opts.Logger,
-				Tracer:          f.opts.Tracer,
-				DataPath:        f.opts.DataPath,
-				MinStability:    f.opts.MinStability,
-				Reg:             f.opts.Reg,
-				Services:        f.opts.Services,
-				OnExportsChange: nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
+				ControllerID:         id,
+				Logger:               f.opts.Logger,
+				Tracer:               f.opts.Tracer,
+				DataPath:             f.opts.DataPath,
+				MinStability:         f.opts.MinStability,
+				Reg:                  f.opts.Reg,
+				Services:             f.opts.Services,
+				EnableCommunityComps: f.opts.EnableCommunityComps,
+				OnExportsChange:      nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
 			},
 			IsModule:       true,
 			ModuleRegistry: newModuleRegistry(),
@@ -93,12 +95,12 @@ type ServiceController struct {
 }
 
 func (sc ServiceController) Run(ctx context.Context) { sc.f.Run(ctx) }
-func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) error {
+func (sc ServiceController) LoadSource(b []byte, args map[string]any, configPath string) (*ast.File, error) {
 	source, err := ParseSource("", b)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return sc.f.LoadSource(source, args, configPath)
+	return source.SourceFiles()[""], sc.f.LoadSource(source, args, configPath)
 }
 func (sc ServiceController) Ready() bool { return sc.f.Ready() }
 

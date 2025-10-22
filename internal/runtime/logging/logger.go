@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/slogadapter"
+	"github.com/grafana/loki/pkg/push"
 )
 
 type EnabledAware interface {
@@ -55,6 +55,12 @@ func New(w io.Writer, o Options) (*Logger, error) {
 	return l, nil
 }
 
+// NewNop returns a logger that does nothing
+func NewNop() *Logger {
+	l, _ := NewDeferred(io.Discard)
+	return l
+}
+
 // NewDeferred creates a new logger with the default log level and format.
 // The logger is not updated during initialization.
 func NewDeferred(w io.Writer) (*Logger, error) {
@@ -63,7 +69,6 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		format  formatVar
 		writer  writerVar
 	)
-
 	l := &Logger{
 		inner: w,
 
@@ -104,11 +109,10 @@ func (l *Logger) Update(o Options) error {
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
-	newWriter := l.inner
+	l.writer.SetInnerWriter(l.inner)
 	if len(o.WriteTo) > 0 {
-		newWriter = io.MultiWriter(l.inner, &lokiWriter{o.WriteTo})
+		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
-	l.writer.Set(newWriter)
 
 	// Build all our deferred handlers
 	if l.deferredSlog != nil {
@@ -124,13 +128,21 @@ func (l *Logger) Update(o Options) error {
 			// We now can check to see if if our buffered log is at the right level.
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
-				bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
+				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
 	}
 	l.buffer = nil
 
 	return nil
+}
+
+func (l *Logger) SetTemporaryWriter(w io.Writer) {
+	l.writer.SetTemporaryWriter(w)
+}
+
+func (l *Logger) RemoveTemporaryWriter() {
+	l.writer.RemoveTemporaryWriter()
 }
 
 // Log implements log.Logger.
@@ -184,7 +196,7 @@ func (fw *lokiWriter) Write(p []byte) (int, error) {
 		select {
 		case receiver.Chan() <- loki.Entry{
 			Labels: model.LabelSet{"component": "alloy"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      string(p),
 			},
@@ -215,24 +227,63 @@ func (f *formatVar) Set(format Format) {
 
 type writerVar struct {
 	mut sync.RWMutex
-	w   io.Writer
+
+	lokiWriter  *lokiWriter
+	innerWriter io.Writer
+	tmpWriter   io.Writer
 }
 
-func (w *writerVar) Set(inner io.Writer) {
+func (w *writerVar) SetTemporaryWriter(writer io.Writer) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
-	w.w = inner
+	w.tmpWriter = writer
 }
 
-func (w *writerVar) Write(p []byte) (n int, err error) {
+func (w *writerVar) RemoveTemporaryWriter() {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.tmpWriter = nil
+}
+
+func (w *writerVar) SetInnerWriter(writer io.Writer) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.innerWriter = writer
+}
+
+func (w *writerVar) SetLokiWriter(writer *lokiWriter) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.lokiWriter = writer
+}
+
+func (w *writerVar) Write(p []byte) (int, error) {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	if w.w == nil {
+	if w.innerWriter == nil {
 		return 0, fmt.Errorf("no writer available")
 	}
 
-	return w.w.Write(p)
+	// The following is effectively an io.Multiwriter, but without updating
+	// the Multiwriter each time tmpWriter is added or removed.
+	if _, err := w.innerWriter.Write(p); err != nil {
+		return 0, err
+	}
+
+	if w.lokiWriter != nil {
+		if _, err := w.lokiWriter.Write(p); err != nil {
+			return 0, err
+		}
+	}
+
+	if w.tmpWriter != nil {
+		if _, err := w.tmpWriter.Write(p); err != nil {
+			return 0, err
+		}
+	}
+
+	return len(p), nil
 }
 
 type bufferedItem struct {

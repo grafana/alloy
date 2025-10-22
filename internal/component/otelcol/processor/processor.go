@@ -6,24 +6,30 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
+	otelprocessor "go.opentelemetry.io/collector/processor"
+	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
-	"github.com/prometheus/client_golang/prometheus"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
-	otelprocessor "go.opentelemetry.io/collector/processor"
-	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/metric"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -37,11 +43,11 @@ type Arguments interface {
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// NextConsumers returns the set of consumers to send data to.
 	NextConsumers() *otelcol.ConsumerArguments
@@ -63,10 +69,11 @@ type Processor struct {
 	sched     *scheduler.Scheduler
 	collector *lazycollector.Collector
 
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -82,7 +89,6 @@ var (
 // The registered component must be registered to export the
 // otelcol.ConsumerExports type, otherwise New will panic.
 func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Processor, error) {
-
 	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
@@ -90,7 +96,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.New(ctx)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
@@ -112,11 +118,10 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
-		liveDebuggingConsumer: livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), opts.ID),
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	if err := p.Update(args); err != nil {
 		return nil, err
@@ -134,6 +139,8 @@ func (p *Processor) Run(ctx context.Context) error {
 // configuration for OpenTelemetry Collector processor configuration and manage
 // the underlying OpenTelemetry Collector processor.
 func (p *Processor) Update(args component.Arguments) error {
+	p.updateMut.Lock()
+	defer p.updateMut.Unlock()
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
@@ -150,18 +157,14 @@ func (p *Processor) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := p.args.DebugMetricsConfig().Level.Convert()
-	if err != nil {
-		return err
-	}
-
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelprocessor.Settings{
+		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(p.opts.Logger),
 
 			TracerProvider: p.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -177,19 +180,6 @@ func (p *Processor) Update(args component.Arguments) error {
 	}
 
 	next := p.args.NextConsumers()
-	traces, metrics, logs := next.Traces, next.Metrics, next.Logs
-
-	if p.debugDataPublisher.IsActive(livedebugging.ComponentID(p.opts.ID)) {
-		traces = append(traces, p.liveDebuggingConsumer)
-		metrics = append(metrics, p.liveDebuggingConsumer)
-		logs = append(logs, p.liveDebuggingConsumer)
-	}
-
-	var (
-		nextTraces  = fanoutconsumer.Traces(traces)
-		nextMetrics = fanoutconsumer.Metrics(metrics)
-		nextLogs    = fanoutconsumer.Logs(logs)
-	)
 
 	// Create instances of the processor from our factory for each of our
 	// supported telemetry signals.
@@ -197,8 +187,15 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var tracesProcessor otelprocessor.Traces
 	if len(next.Traces) > 0 {
-		tracesProcessor, err = p.factory.CreateTracesProcessor(p.ctx, settings, processorConfig, nextTraces)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		fanout := fanoutconsumer.Traces(next.Traces)
+		tracesInterceptor := interceptconsumer.Traces(fanout,
+			func(ctx context.Context, td ptrace.Traces) error {
+				livedebuggingpublisher.PublishTracesIfActive(p.debugDataPublisher, p.opts.ID, td, otelcol.GetComponentMetadata(next.Traces))
+				return fanout.ConsumeTraces(ctx, td)
+			},
+		)
+		tracesProcessor, err = p.factory.CreateTraces(p.ctx, settings, processorConfig, tracesInterceptor)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if tracesProcessor != nil {
 			components = append(components, tracesProcessor)
@@ -207,8 +204,15 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var metricsProcessor otelprocessor.Metrics
 	if len(next.Metrics) > 0 {
-		metricsProcessor, err = p.factory.CreateMetricsProcessor(p.ctx, settings, processorConfig, nextMetrics)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		fanout := fanoutconsumer.Metrics(next.Metrics)
+		metricsInterceptor := interceptconsumer.Metrics(fanout,
+			func(ctx context.Context, md pmetric.Metrics) error {
+				livedebuggingpublisher.PublishMetricsIfActive(p.debugDataPublisher, p.opts.ID, md, otelcol.GetComponentMetadata(next.Metrics))
+				return fanout.ConsumeMetrics(ctx, md)
+			},
+		)
+		metricsProcessor, err = p.factory.CreateMetrics(p.ctx, settings, processorConfig, metricsInterceptor)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if metricsProcessor != nil {
 			components = append(components, metricsProcessor)
@@ -217,17 +221,28 @@ func (p *Processor) Update(args component.Arguments) error {
 
 	var logsProcessor otelprocessor.Logs
 	if len(next.Logs) > 0 {
-		logsProcessor, err = p.factory.CreateLogsProcessor(p.ctx, settings, processorConfig, nextLogs)
-		if err != nil && !errors.Is(err, otelcomponent.ErrDataTypeIsNotSupported) {
+		fanout := fanoutconsumer.Logs(next.Logs)
+		logsInterceptor := interceptconsumer.Logs(fanout,
+			func(ctx context.Context, ld plog.Logs) error {
+				livedebuggingpublisher.PublishLogsIfActive(p.debugDataPublisher, p.opts.ID, ld, otelcol.GetComponentMetadata(next.Logs))
+				return fanout.ConsumeLogs(ctx, ld)
+			},
+		)
+		logsProcessor, err = p.factory.CreateLogs(p.ctx, settings, processorConfig, logsInterceptor)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
 			return err
 		} else if logsProcessor != nil {
 			components = append(components, logsProcessor)
 		}
 	}
 
+	updateConsumersFunc := func() {
+		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	}
+
 	// Schedule the components to run once our component is running.
-	p.sched.Schedule(host, components...)
-	p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+	p.sched.Schedule(p.ctx, updateConsumersFunc, host, components...)
+
 	return nil
 }
 
@@ -236,6 +251,4 @@ func (p *Processor) CurrentHealth() component.Health {
 	return p.sched.CurrentHealth()
 }
 
-func (p *Processor) LiveDebugging(_ int) {
-	p.Update(p.args)
-}
+func (p *Processor) LiveDebugging() {}

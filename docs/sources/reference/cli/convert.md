@@ -1,14 +1,15 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/convert/
 description: Learn about the convert command
-menuTitle: convert
-title: The convert command
+labels:
+  stage: public-preview
+  products:
+    - oss
+title: convert
 weight: 100
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Public preview</span>
-
-# The convert command
+# `convert`
 
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -16,16 +17,14 @@ The `convert` command converts a supported configuration format to the {{< param
 
 ## Usage
 
-Usage:
-
 ```shell
 alloy convert [<FLAG> ...] <FILE_NAME>
 ```
 
-   Replace the following:
+Replace the following:
 
-   * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
+* _`<FLAG>`_: One or more flags that define the input and output of the command.
+* _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
 
 If the _`<FILE_NAME>`_ argument isn't provided or if the _`<FILE_NAME>`_ argument is equal to `-`, `convert` converts the contents of standard input.
 Otherwise, `convert` reads and converts the file from disk specified by the argument.
@@ -40,13 +39,14 @@ The following flags are supported:
 
 * `--output`, `-o`: The filepath and filename where the output is written.
 * `--report`, `-r`: The filepath and filename where the report is written.
-* `--source-format`, `-f`: Required. The format of the source file. Supported formats: [otelcol], [prometheus], [promtail], [static].
+* `--source-format`, `-f`: Required. The format of the source file. Supported formats: [`otelcol`][otelcol], [`prometheus`][prometheus], [`promtail`][promtail], [`static`][static].
 * `--bypass-errors`, `-b`: Enable bypassing errors when converting.
-* `--extra-args`, `e`: Extra arguments from the original format used by the converter.
+* `--extra-args`, `-e`: Extra arguments from the original format used by the converter.
 
 ### Defaults
 
 {{< param "PRODUCT_NAME" >}} defaults are managed as follows:
+
 * If a provided source configuration value matches an {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
 * If a non-provided source configuration value default matches an {{< param "PRODUCT_NAME" >}} default value, the property is left off the output.
 * If a non-provided source configuration value default doesn't match an {{< param "PRODUCT_NAME" >}} default value, the default value is included in the output.
@@ -54,7 +54,7 @@ The following flags are supported:
 ### Errors
 
 Errors are defined as non-critical issues identified during the conversion where an output can still be generated.
-These can be bypassed using the `--bypass-errors` flag.
+You can use the `--bypass-errors` flag to bypass these errors.
 
 ### OpenTelemetry Collector
 
@@ -71,7 +71,7 @@ Refer to [Migrate from OpenTelemetry Collector to {{< param "PRODUCT_NAME" >}}][
 
 Using the `--source-format=prometheus` will convert the source configuration from [Prometheus v2.45][] to an {{< param "PRODUCT_NAME" >}} configuration.
 
-This includes Prometheus features such as [scrape_config][], [relabel_config][], [metric_relabel_configs][], [remote_write][], and many supported *_sd_configs.
+This includes Prometheus features such as [`scrape_config`][scrape_config], [`relabel_config`][relabel_config], [`metric_relabel_configs`][metric_relabel_configs], [`remote_write`][remote_write], and many supported `*_sd_configs`.
 Unsupported features in a source configuration result in [errors][].
 
 Refer to [Migrate from Prometheus to {{< param "PRODUCT_NAME" >}}][migrate prometheus] for a detailed migration guide.
@@ -110,6 +110,7 @@ Refer to [Migrate from Grafana Agent Static to {{< param "PRODUCT_NAME" >}}][mig
 [relabel_config]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#relabel_config
 [metric_relabel_configs]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#metric_relabel_configs
 [remote_write]: https://prometheus.io/docs/prometheus/2.45/configuration/configuration/#remote_write
+[Component Reference]: ../../components/otelcol/
 [migrate otelcol]: ../../../set-up/migrate/from-otelcol/
 [migrate prometheus]: ../../../set-up/migrate/from-prometheus/
 [Promtail v2.8.x]: https://grafana.com/docs/loki/v2.8.x/clients/promtail/

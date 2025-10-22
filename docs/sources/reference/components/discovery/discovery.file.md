@@ -3,47 +3,47 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.file/ # /docs/alloy/latest/reference/components/discovery.file/
 description: Learn about discovery.file
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: discovery.file
 ---
 
-# discovery.file
+# `discovery.file`
 
-{{< admonition type="note" >}}
-In {{< param "PRODUCT_NAME" >}} `v0.35.0`, the `discovery.file` component was renamed to [local.file_match][], and `discovery.file` was repurposed to discover scrape targets from one or more files.
-
-If you are trying to discover files on the local filesystem rather than scrape targets within a set of files, you should use [local.file_match][] instead.
-
-[local.file_match]: ../../local/local.file_match/
-{{< /admonition >}}
-
-`discovery.file` discovers targets from a set of files, similar to the [Prometheus file_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
+`discovery.file` discovers targets from a set of files, similar to the [Prometheus `file_sd_config`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config).
 
 ## Usage
 
 ```alloy
-discovery.file "LABEL" {
-  files = [FILE_PATH_1, FILE_PATH_2, ...]
+discovery.file "<LABEL>" {
+  files = ["<FILE_PATH_1>", "<FILE_PATH_2>", ...]
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.file`:
 
-Name               | Type           | Description                              | Default | Required
--------------------|----------------|------------------------------------------|---------|---------
-`files`            | `list(string)` | Files to read and discover targets from. |         | yes
-`refresh_interval` | `duration`     | How often to sync targets.               | "5m"    | no
+| Name               | Type           | Description                              | Default | Required |
+| ------------------ | -------------- | ---------------------------------------- | ------- | -------- |
+| `files`            | `list(string)` | Files to read and discover targets from. |         | yes      |
+| `refresh_interval` | `duration`     | How often to sync targets.               | `"5m"`  | no       |
 
-The last path segment of each element in `files` may contain a single * that matches any character sequence, e.g. `my/path/tg_*.json`.
+The last path segment of each element in `files` may contain a single `*` that matches any character sequence, for example, `my/path/tg_*.json`.
+
+## Blocks
+
+The `discovery.file` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|---------------------------------------------------
-`targets` | `list(map(string))` | The set of targets discovered from the filesystem.
+| Name      | Type                | Description                                        |
+| --------- | ------------------- | -------------------------------------------------- |
+| `targets` | `list(map(string))` | The set of targets discovered from the filesystem. |
 
 Each target includes the following labels:
 
@@ -56,15 +56,18 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.file` does not expose any component-specific debug information.
+`discovery.file` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.file` does not expose any component-specific debug metrics.
+`discovery.file` doesn't expose any component-specific debug metrics.
 
 ## Examples
 
+The following examples show you how to configure the `discovery.file` component.
+
 ### Example target files
+
 ```json
 [
   {
@@ -110,20 +113,21 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
 
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### File discovery with retained file path label
 
@@ -151,20 +155,21 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = <PROMETHEUS_REMOTE_WRITE_URL>
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = <USERNAME>
+      password = <PASSWORD>
     }
   }
 }
 ```
 
 Replace the following:
-  - `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-  - `USERNAME`: The username to use for authentication to the remote_write API.
-  - `PASSWORD`: The password to use for authentication to the remote_write API.
+
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

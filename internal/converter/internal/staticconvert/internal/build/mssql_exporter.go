@@ -15,6 +15,7 @@ func (b *ConfigBuilder) appendMssqlExporter(config *mssql_exporter.Config, insta
 func toMssqlExporter(config *mssql_exporter.Config) *mssql.Arguments {
 	return &mssql.Arguments{
 		ConnectionString:   alloytypes.Secret(config.ConnectionString),
+		ConnectionName:     config.ConnectionName,
 		MaxIdleConnections: config.MaxIdleConnections,
 		MaxOpenConnections: config.MaxOpenConnections,
 		Timeout:            config.Timeout,

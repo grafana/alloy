@@ -3,6 +3,7 @@ package file_match
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/bmatcuk/doublestar"
 	"github.com/go-kit/log"
@@ -14,8 +15,9 @@ import (
 
 // watch handles a single discovery.target for file watching.
 type watch struct {
-	target discovery.Target
-	log    log.Logger
+	target          discovery.Target
+	log             log.Logger
+	ignoreOlderThan time.Duration
 }
 
 func (w *watch) getPaths() ([]discovery.Target, error) {
@@ -48,24 +50,29 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 			}
 			continue
 		}
+
 		if fi.IsDir() {
 			continue
 		}
-		dt := discovery.Target{}
-		for dk, v := range w.target {
-			dt[dk] = v
+
+		if w.ignoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-w.ignoreOlderThan)) {
+			continue
 		}
-		dt["__path__"] = abs
-		allMatchingPaths = append(allMatchingPaths, dt)
+
+		tb := discovery.NewTargetBuilderFrom(w.target)
+		tb.Set("__path__", abs)
+		allMatchingPaths = append(allMatchingPaths, tb.Target())
 	}
 
 	return allMatchingPaths, nil
 }
 
 func (w *watch) getPath() string {
-	return w.target["__path__"]
+	path, _ := w.target.Get("__path__")
+	return path
 }
 
 func (w *watch) getExcludePath() string {
-	return w.target["__path_exclude__"]
+	excludePath, _ := w.target.Get("__path_exclude__")
+	return excludePath
 }

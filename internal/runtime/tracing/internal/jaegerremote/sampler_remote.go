@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	jaeger_api_v2 "github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	jaeger_api_v2 "github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 )

@@ -54,9 +54,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -113,6 +114,9 @@ type Options struct {
 
 	// EnableCommunityComps enables the use of community components.
 	EnableCommunityComps bool
+
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // Runtime is the Alloy system.
@@ -128,17 +132,19 @@ type Runtime struct {
 
 	loadFinished chan struct{}
 
-	loadMut    sync.RWMutex
-	loadedOnce atomic.Bool
+	loadMut      sync.RWMutex
+	loadedOnce   atomic.Bool
+	loadComplete atomic.Bool
 }
 
 // New creates a new, unstarted Alloy controller. Call Run to run the controller.
 func New(o Options) *Runtime {
 	return newController(controllerOptions{
-		Options:        o,
-		ModuleRegistry: newModuleRegistry(),
-		IsModule:       false, // We are creating a new root controller.
-		WorkerPool:     worker.NewDefaultWorkerPool(),
+		Options:              o,
+		ModuleRegistry:       newModuleRegistry(),
+		IsModule:             false, // We are creating a new root controller.
+		WorkerPool:           worker.NewDefaultWorkerPool(),
+		TaskShutdownDeadline: o.TaskShutdownDeadline,
 	})
 }
 
@@ -147,11 +153,13 @@ func New(o Options) *Runtime {
 type controllerOptions struct {
 	Options
 
-	ComponentRegistry controller.ComponentRegistry // Custom component registry used in tests.
-	ModuleRegistry    *moduleRegistry              // Where to register created modules.
-	IsModule          bool                         // Whether this controller is for a module.
+	ComponentRegistry component.Registry // Custom component registry used in tests.
+	ModuleRegistry    *moduleRegistry    // Where to register created modules.
+	IsModule          bool               // Whether this controller is for a module.
 	// A worker pool to evaluate components asynchronously. A default one will be created if this is nil.
 	WorkerPool worker.Pool
+	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
+	TaskShutdownDeadline time.Duration
 }
 
 // newController creates a new, unstarted Alloy controller with a specific
@@ -184,7 +192,7 @@ func newController(o controllerOptions) *Runtime {
 		opts:   o,
 
 		updateQueue: controller.NewQueue(),
-		sched:       controller.NewScheduler(log),
+		sched:       controller.NewScheduler(log, o.TaskShutdownDeadline),
 
 		modules: o.ModuleRegistry,
 
@@ -207,17 +215,24 @@ func newController(o controllerOptions) *Runtime {
 			OnExportsChange: o.OnExportsChange,
 			Registerer:      o.Reg,
 			ControllerID:    o.ControllerID,
-			NewModuleController: func(id string) controller.ModuleController {
+			NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
+				// The module controller registry should take precedence.,
+				// because it is tailored to this module.
+				reg := o.Reg
+				if opts.RegOverride != nil {
+					reg = opts.RegOverride
+				}
+
 				return newModuleController(&moduleControllerOptions{
 					ComponentRegistry:    o.ComponentRegistry,
 					ModuleRegistry:       o.ModuleRegistry,
 					Logger:               log,
 					Tracer:               tracer,
-					Reg:                  o.Reg,
+					Reg:                  reg,
 					DataPath:             o.DataPath,
 					MinStability:         o.MinStability,
 					EnableCommunityComps: o.EnableCommunityComps,
-					ID:                   id,
+					ID:                   opts.Id,
 					ServiceMap:           serviceMap,
 					WorkerPool:           workerPool,
 				})
@@ -265,6 +280,7 @@ func (f *Runtime) Run(ctx context.Context) {
 				components = f.loader.Components()
 				services   = f.loader.Services()
 				imports    = f.loader.Imports()
+				forEachs   = f.loader.ForEachs()
 
 				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
 			)
@@ -276,6 +292,10 @@ func (f *Runtime) Run(ctx context.Context) {
 				runnables = append(runnables, i)
 			}
 
+			for _, fe := range forEachs {
+				runnables = append(runnables, fe)
+			}
+
 			// Only the root controller should run services, since modules share the
 			// same service instance as the root.
 			if !f.opts.IsModule {
@@ -284,10 +304,11 @@ func (f *Runtime) Run(ctx context.Context) {
 				}
 			}
 
-			err := f.sched.Synchronize(runnables)
-			if err != nil {
+			if err := f.sched.Synchronize(runnables); err != nil {
 				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
 			}
+
+			f.loadComplete.Store(true)
 		}
 	}
 }
@@ -306,9 +327,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
-		ComponentBlocks: source.components,
-		ConfigBlocks:    source.configBlocks,
-		DeclareBlocks:   source.declareBlocks,
+		ComponentBlocks: source.Components(),
+		ConfigBlocks:    source.Configs(),
+		DeclareBlocks:   source.Declares(),
 		ArgScope: vm.NewScope(map[string]interface{}{
 			importsource.ModulePath: modulePath,
 		}),
@@ -319,9 +340,9 @@ func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath str
 func (f *Runtime) loadSource(source *Source, args map[string]any, customComponentRegistry *controller.CustomComponentRegistry) error {
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:                    args,
-		ComponentBlocks:         source.components,
-		ConfigBlocks:            source.configBlocks,
-		DeclareBlocks:           source.declareBlocks,
+		ComponentBlocks:         source.Components(),
+		ConfigBlocks:            source.Configs(),
+		DeclareBlocks:           source.Declares(),
 		CustomComponentRegistry: customComponentRegistry,
 		ArgScope:                customComponentRegistry.Scope(),
 	})
@@ -330,6 +351,8 @@ func (f *Runtime) loadSource(source *Source, args map[string]any, customComponen
 func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error {
 	f.loadMut.Lock()
 	defer f.loadMut.Unlock()
+
+	f.loadComplete.Store(false)
 
 	diags := f.loader.Apply(applyOptions)
 	if !f.loadedOnce.Load() && diags.HasErrors() {
@@ -350,4 +373,9 @@ func (f *Runtime) applyLoaderConfig(applyOptions controller.ApplyOptions) error 
 // Ready returns whether the Alloy controller has finished its initial load.
 func (f *Runtime) Ready() bool {
 	return f.loadedOnce.Load()
+}
+
+// LoadComplete returns true when the components loaded via LoadSource have been scheduled and are running. Used in testing.
+func (f *Runtime) LoadComplete() bool {
+	return f.loadComplete.Load()
 }

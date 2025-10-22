@@ -64,7 +64,7 @@ tls_config {
 }
 
 func TestValidateNilTLSConfig(t *testing.T) {
-	var args Arguments = Arguments{}
+	var args = Arguments{}
 	err := args.Validate()
 	assert.NoError(t, err)
 }

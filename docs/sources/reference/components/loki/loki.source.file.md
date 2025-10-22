@@ -3,10 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.source.file/ # /docs/alloy/latest/reference/components/loki.source.file/
 description: Learn about loki.source.file
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: loki.source.file
 ---
 
-# loki.source.file
+# `loki.source.file`
 
 `loki.source.file` reads log entries from files and forwards them to other `loki.*` components.
 New log entries are forwarded whenever a log entry line ends with the `\n` character.
@@ -31,75 +35,71 @@ loki.source.file "<LABEL>" {
 
 The component starts a new reader for each of the given `targets` and fans out log entries to the list of receivers passed in `forward_to`.
 
-`loki.source.file` supports the following arguments:
+You can use the following arguments with `loki.source.file`:
 
-| Name                    | Type                 | Description                                                                 | Default | Required |
-|-------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
-| `targets`               | `list(map(string))`  | List of files to read from.                                                 |         | yes      |
-| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                                   |         | yes      |
-| `encoding`              | `string`             | The encoding to convert from when reading files.                            | `""`    | no       |
-| `tail_from_end`         | `bool`               | Whether a log file is tailed from the end if a stored position isn't found. | `false` | no       |
-| `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.                               | `""`    | no       |
+| Name                    | Type                 | Description                                                | Default | Required |
+| ----------------------- | -------------------- | ---------------------------------------------------------- | ------- | -------- |
+| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                  |         | yes      |
+| `targets`               | `list(map(string))`  | List of files to read from.                                |         | yes      |
+| `encoding`              | `string`             | The encoding to convert from when reading files.           | `""`    | no       |
+| `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.              | `""`    | no       |
+| `tail_from_end`         | `bool`               | Whether to tail from end if a stored position isn't found. | `false` | no       |
 
-The `encoding` argument must be a valid [IANA encoding][] name. If not set, it
-defaults to UTF-8.
+The `encoding` argument must be a valid [IANA encoding][] name.
+If not set, it defaults to UTF-8.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
-When set to true, only new logs will be read, ignoring the existing ones.
+When set to true, only new logs are read, ignoring the existing ones.
 
-
-{{< admonition type="note" >}}
-The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is rewritten into the new format.
-This operation only occurs if the positions file doesn't exist and the `legacy_positions_file` is valid.
-After the configuration is successfully converted, the `legacy_positions_file` is deleted.
-If you add any labels before `loki.source.file`, then the positions file conversion won't work.
-The legacy positions file didn't have a concept of labels in the positions file, so the conversion assumes no labels.
-{{< /admonition >}}
+The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
+The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
+This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
+When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `loki.source.file`:
+You can use the following blocks with `loki.source.file`:
 
-| Hierarchy     | Name              | Description                                                       | Required |
-|---------------|-------------------|-------------------------------------------------------------------|----------|
-| decompression | [decompression][] | Configure reading logs from compressed files.                     | no       |
-| file_watch    | [file_watch][]    | Configure how often files should be polled from disk for changes. | no       |
+| Name                             | Description                                                       | Required |
+| -------------------------------- | ----------------------------------------------------------------- | -------- |
+| [`decompression`][decompression] | Configure reading logs from compressed files.                     | no       |
+| [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes. | no       |
 
-[decompression]: #decompression-block
-[file_watch]: #file_watch-block
+[decompression]: #decompression
+[file_watch]: #file_watch
 
-### decompression block
+### `decompression`
 
-The `decompression` block contains configuration for reading logs from
-compressed files. The following arguments are supported:
+The `decompression` block contains configuration for reading logs from compressed files.
+The following arguments are supported:
 
 | Name            | Type       | Description                                                     | Default | Required |
 | --------------- | ---------- | --------------------------------------------------------------- | ------- | -------- |
 | `enabled`       | `bool`     | Whether decompression is enabled.                               |         | yes      |
-| `initial_delay` | `duration` | Time to wait before starting to read from new compressed files. | 0       | no       |
 | `format`        | `string`   | Compression format.                                             |         | yes      |
+| `initial_delay` | `duration` | Time to wait before starting to read from new compressed files. | 0       | no       |
 
 If you compress a file under a folder being scraped, `loki.source.file` might try to ingest your file before you finish compressing it.
 To avoid it, pick an `initial_delay` that's long enough to avoid it.
 
 Currently supported compression formats are:
 
-- `gz` - for Gzip
-- `z` - for zlib
-- `bz2` - for bzip2
+* `gz` - for Gzip
+* `z` - for zlib
+* `bz2` - for bzip2
 
 The component can only support one compression format at a time.
 To handle multiple formats, you must create multiple components.
 
-### file_watch block
+### `file_watch`
 
 The `file_watch` block configures how often log files are polled from disk for changes.
 The following arguments are supported:
 
 | Name                 | Type       | Description                          | Default | Required |
 | -------------------- | ---------- | ------------------------------------ | ------- | -------- |
-| `min_poll_frequency` | `duration` | Minimum frequency to poll for files. | 250ms   | no       |
 | `max_poll_frequency` | `duration` | Maximum frequency to poll for files. | 250ms   | no       |
+| `min_poll_frequency` | `duration` | Minimum frequency to poll for files. | 250ms   | no       |
 
 If no file changes are detected, the poll frequency doubles until a file change is detected or the poll frequency reaches the `max_poll_frequency`.
 
@@ -117,17 +117,17 @@ If file changes are detected, the poll frequency is reset to `min_poll_frequency
 
 `loki.source.file` exposes some target-level debug information per reader:
 
-- The tailed path.
-- Whether the reader is running.
-- The last recorded read offset in the positions file.
+* The tailed path.
+* Whether the reader is running.
+* The last recorded read offset in the positions file.
 
 ## Debug metrics
 
-- `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
-- `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
-- `loki_source_file_read_lines_total` (counter): Number of lines read.
-- `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
-- `loki_source_file_files_active_total` (gauge): Number of active files.
+* `loki_source_file_encoding_failures_total` (counter): Number of encoding failures.
+* `loki_source_file_file_bytes_total` (gauge): Number of bytes total.
+* `loki_source_file_files_active_total` (gauge): Number of active files.
+* `loki_source_file_read_bytes_total` (gauge): Number of bytes read.
+* `loki_source_file_read_lines_total` (counter): Number of lines read.
 
 ## Component behavior
 
@@ -154,6 +154,8 @@ When it's added back on, `loki.source.file` starts reading it from the beginning
 [cmd-args]: ../../../cli/run/
 
 ## Examples
+
+The following examples demonstrate how you can collect log entries with `loki.source.file`.
 
 ### Static targets
 

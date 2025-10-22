@@ -1,4 +1,4 @@
-//go:build !freebsd
+//go:build !freebsd && !openbsd
 
 package datadog_config
 
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
+	datadogOtelconfig "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/datadog/config"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -17,15 +17,15 @@ import (
 // Datadog Exporter only supports InsecureSkipVerify for TLS configuration.
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/examples/collector.yaml#L219
 type DatadogClientArguments struct {
-	ReadBufferSize      int            `alloy:"read_buffer_size,attr,optional"`
-	WriteBufferSize     int            `alloy:"write_buffer_size,attr,optional"`
-	Timeout             time.Duration  `alloy:"timeout,attr,optional"`
-	MaxIdleConns        *int           `alloy:"max_idle_conns,attr,optional"`
-	MaxIdleConnsPerHost *int           `alloy:"max_idle_conns_per_host,attr,optional"`
-	MaxConnsPerHost     *int           `alloy:"max_conns_per_host,attr,optional"`
-	IdleConnTimeout     *time.Duration `alloy:"idle_conn_timeout,attr,optional"`
-	DisableKeepAlives   bool           `alloy:"disable_keep_alives,attr,optional"`
-	InsecureSkipVerify  bool           `alloy:"insecure_skip_verify,attr,optional"`
+	ReadBufferSize      int           `alloy:"read_buffer_size,attr,optional"`
+	WriteBufferSize     int           `alloy:"write_buffer_size,attr,optional"`
+	Timeout             time.Duration `alloy:"timeout,attr,optional"`
+	MaxIdleConns        int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost int           `alloy:"max_idle_conns_per_host,attr,optional"`
+	MaxConnsPerHost     int           `alloy:"max_conns_per_host,attr,optional"`
+	IdleConnTimeout     time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	DisableKeepAlives   bool          `alloy:"disable_keep_alives,attr,optional"`
+	InsecureSkipVerify  bool          `alloy:"insecure_skip_verify,attr,optional"`
 }
 
 func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
@@ -44,7 +44,7 @@ func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
 		MaxConnsPerHost:     args.MaxConnsPerHost,
 		IdleConnTimeout:     args.IdleConnTimeout,
 		DisableKeepAlives:   args.DisableKeepAlives,
-		TLSSetting: configtls.ClientConfig{
+		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},
 	}
@@ -56,7 +56,9 @@ func (args *DatadogClientArguments) SetToDefault() {
 	// We leave this to OTel as the types for MaxIdleConns etc are ptrs, which is difficult for Alloy to default.
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.105.0/exporter/datadogexporter/internal/clientutil/http.go#L49
 	*args = DatadogClientArguments{
-		Timeout: 15 * time.Second,
+		Timeout:         15 * time.Second,
+		MaxIdleConns:    100,
+		IdleConnTimeout: 90 * time.Second,
 	}
 }
 
@@ -68,12 +70,12 @@ type DatadogAPIArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *DatadogAPIArguments) Convert() *datadogexporter.APIConfig {
+func (args *DatadogAPIArguments) Convert() *datadogOtelconfig.APIConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &datadogexporter.APIConfig{
+	return &datadogOtelconfig.APIConfig{
 		Key:              configopaque.String(args.Key),
 		Site:             args.Site,
 		FailOnInvalidKey: args.FailOnInvalidKey,
@@ -97,15 +99,17 @@ type DatadogHostMetadataArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *DatadogHostMetadataArguments) Convert() *datadogexporter.HostMetadataConfig {
+func (args *DatadogHostMetadataArguments) Convert() *datadogOtelconfig.HostMetadataConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &datadogexporter.HostMetadataConfig{
+	return &datadogOtelconfig.HostMetadataConfig{
 		Enabled:        args.Enabled,
-		HostnameSource: datadogexporter.HostnameSource(args.HostnameSource),
+		HostnameSource: datadogOtelconfig.HostnameSource(args.HostnameSource),
 		Tags:           args.Tags,
+		//TODO: Make ReporterPeriod configurable.
+		ReporterPeriod: 30 * time.Minute,
 	}
 }
 
@@ -130,7 +134,7 @@ type DatadogTracesArguments struct {
 	TraceBuffer               int               `alloy:"trace_buffer,attr,optional"`
 }
 
-func (args *DatadogTracesArguments) Convert(endpoint string) *datadogexporter.TracesConfig {
+func (args *DatadogTracesArguments) Convert(endpoint string) *datadogOtelconfig.TracesExporterConfig {
 	if args == nil {
 		return nil
 	}
@@ -139,16 +143,18 @@ func (args *DatadogTracesArguments) Convert(endpoint string) *datadogexporter.Tr
 		endpoint = args.Endpoint
 	}
 
-	return &datadogexporter.TracesConfig{
-		TCPAddrConfig:             confignet.TCPAddrConfig{Endpoint: endpoint},
-		IgnoreResources:           args.IgnoreResources,
-		SpanNameRemappings:        args.SpanNameRemappings,
-		SpanNameAsResourceName:    args.SpanNameAsResourceName,
-		ComputeStatsBySpanKind:    args.ComputeStatsBySpanKind,
-		ComputeTopLevelBySpanKind: args.ComputeTopLevelBySpanKind,
-		PeerTagsAggregation:       args.PeerTagsAggregation,
-		PeerTags:                  args.PeerTags,
-		TraceBuffer:               args.TraceBuffer,
+	return &datadogOtelconfig.TracesExporterConfig{
+		TCPAddrConfig: confignet.TCPAddrConfig{Endpoint: endpoint},
+		TracesConfig: datadogOtelconfig.TracesConfig{
+			IgnoreResources:           args.IgnoreResources,
+			SpanNameRemappings:        args.SpanNameRemappings,
+			SpanNameAsResourceName:    args.SpanNameAsResourceName,
+			ComputeStatsBySpanKind:    args.ComputeStatsBySpanKind,
+			ComputeTopLevelBySpanKind: args.ComputeTopLevelBySpanKind,
+			PeerTagsAggregation:       args.PeerTagsAggregation,
+			PeerTags:                  args.PeerTags,
+		},
+		TraceBuffer: args.TraceBuffer,
 	}
 }
 
@@ -168,7 +174,7 @@ type DatadogMetricsArguments struct {
 	SummaryConfig  DatadogSummaryArguments         `alloy:"summaries,block,optional"`
 }
 
-func (args *DatadogMetricsArguments) Convert(endpoint string) *datadogexporter.MetricsConfig {
+func (args *DatadogMetricsArguments) Convert(endpoint string) *datadogOtelconfig.MetricsConfig {
 	if args == nil {
 		return nil
 	}
@@ -177,7 +183,7 @@ func (args *DatadogMetricsArguments) Convert(endpoint string) *datadogexporter.M
 		endpoint = args.Endpoint
 	}
 
-	return &datadogexporter.MetricsConfig{
+	return &datadogOtelconfig.MetricsConfig{
 		DeltaTTL:       args.DeltaTTL,
 		TCPAddrConfig:  confignet.TCPAddrConfig{Endpoint: endpoint},
 		ExporterConfig: *args.ExporterConfig.Convert(),
@@ -192,7 +198,7 @@ func (args *DatadogMetricsArguments) SetToDefault() {
 		DeltaTTL: 3600,
 		ExporterConfig: DatadogMetricsExporterArguments{
 			ResourceAttributesAsTags:           false,
-			InstrumentationScopeMetadataAsTags: false,
+			InstrumentationScopeMetadataAsTags: true,
 		},
 		HistConfig: DatadogHistogramArguments{
 			Mode:             "distributions",
@@ -214,12 +220,12 @@ type DatadogMetricsExporterArguments struct {
 	InstrumentationScopeMetadataAsTags bool `alloy:"instrumentation_scope_metadata_as_tags,attr,optional"`
 }
 
-func (args *DatadogMetricsExporterArguments) Convert() *datadogexporter.MetricsExporterConfig {
+func (args *DatadogMetricsExporterArguments) Convert() *datadogOtelconfig.MetricsExporterConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &datadogexporter.MetricsExporterConfig{
+	return &datadogOtelconfig.MetricsExporterConfig{
 		ResourceAttributesAsTags:           args.ResourceAttributesAsTags,
 		InstrumentationScopeMetadataAsTags: args.InstrumentationScopeMetadataAsTags,
 	}
@@ -228,7 +234,7 @@ func (args *DatadogMetricsExporterArguments) Convert() *datadogexporter.MetricsE
 func (args *DatadogMetricsExporterArguments) SetToDefault() {
 	*args = DatadogMetricsExporterArguments{
 		ResourceAttributesAsTags:           false,
-		InstrumentationScopeMetadataAsTags: false,
+		InstrumentationScopeMetadataAsTags: true,
 	}
 }
 
@@ -238,13 +244,13 @@ type DatadogHistogramArguments struct {
 	SendAggregations bool   `alloy:"send_aggregation_metrics,attr,optional"`
 }
 
-func (args *DatadogHistogramArguments) Convert() *datadogexporter.HistogramConfig {
+func (args *DatadogHistogramArguments) Convert() *datadogOtelconfig.HistogramConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &datadogexporter.HistogramConfig{
-		Mode:             datadogexporter.HistogramMode(args.Mode),
+	return &datadogOtelconfig.HistogramConfig{
+		Mode:             datadogOtelconfig.HistogramMode(args.Mode),
 		SendAggregations: args.SendAggregations,
 	}
 }
@@ -263,21 +269,21 @@ type DatadogSumArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *DatadogSumArguments) Convert() *datadogexporter.SumConfig {
+func (args *DatadogSumArguments) Convert() *datadogOtelconfig.SumConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &datadogexporter.SumConfig{
-		CumulativeMonotonicMode:        datadogexporter.CumulativeMonotonicSumMode(args.CumulativeMonotonicMode),
-		InitialCumulativeMonotonicMode: datadogexporter.InitialValueMode(args.InitialCumulativeMonotonicMode),
+	return &datadogOtelconfig.SumConfig{
+		CumulativeMonotonicMode:        datadogOtelconfig.CumulativeMonotonicSumMode(args.CumulativeMonotonicMode),
+		InitialCumulativeMonotonicMode: datadogOtelconfig.InitialValueMode(args.InitialCumulativeMonotonicMode),
 	}
 }
 
 func (args *DatadogSumArguments) SetToDefault() {
 	*args = DatadogSumArguments{
-		CumulativeMonotonicMode:        string(datadogexporter.CumulativeMonotonicSumModeToDelta),
-		InitialCumulativeMonotonicMode: string(datadogexporter.InitialValueModeAuto),
+		CumulativeMonotonicMode:        string(datadogOtelconfig.CumulativeMonotonicSumModeToDelta),
+		InitialCumulativeMonotonicMode: string(datadogOtelconfig.InitialValueModeAuto),
 	}
 }
 
@@ -287,17 +293,50 @@ type DatadogSummaryArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *DatadogSummaryArguments) Convert() *datadogexporter.SummaryConfig {
+func (args *DatadogSummaryArguments) Convert() *datadogOtelconfig.SummaryConfig {
 	if args == nil {
 		return nil
 	}
-	return &datadogexporter.SummaryConfig{
-		Mode: datadogexporter.SummaryMode(args.Mode),
+	return &datadogOtelconfig.SummaryConfig{
+		Mode: datadogOtelconfig.SummaryMode(args.Mode),
 	}
 }
 
 func (args *DatadogSummaryArguments) SetToDefault() {
 	*args = DatadogSummaryArguments{
-		Mode: string(datadogexporter.SummaryModeGauges),
+		Mode: string(datadogOtelconfig.SummaryModeGauges),
+	}
+}
+
+// DatadogLogsArguments holds Summary specific configuration settings
+type DatadogLogsArguments struct {
+	Endpoint         string `alloy:"endpoint,attr,optional"`
+	UseCompression   bool   `alloy:"use_compression,attr,optional"`
+	CompressionLevel int    `alloy:"compression_level,attr,optional"`
+	BatchWait        int    `alloy:"batch_wait,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (args *DatadogLogsArguments) Convert(endpoint string) *datadogOtelconfig.LogsConfig {
+	if args == nil {
+		return nil
+	}
+	if args.Endpoint != "" {
+		endpoint = args.Endpoint
+	}
+	return &datadogOtelconfig.LogsConfig{
+		TCPAddrConfig:    confignet.TCPAddrConfig{Endpoint: endpoint},
+		UseCompression:   args.UseCompression,
+		CompressionLevel: args.CompressionLevel,
+		BatchWait:        args.BatchWait,
+	}
+}
+
+// SetToDefault sets the default values for the DatadogLogsArguments
+func (args *DatadogLogsArguments) SetToDefault() {
+	*args = DatadogLogsArguments{
+		UseCompression:   true,
+		CompressionLevel: 6,
+		BatchWait:        5,
 	}
 }

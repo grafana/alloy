@@ -1,7 +1,6 @@
 package http_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -136,7 +135,7 @@ func eventually(t *testing.T, min, max time.Duration, retries int, f func() erro
 
 	l := util.TestLogger(t)
 
-	bo := backoff.New(context.Background(), backoff.Config{
+	bo := backoff.New(t.Context(), backoff.Config{
 		MinBackoff: min,
 		MaxBackoff: max,
 		MaxRetries: retries,

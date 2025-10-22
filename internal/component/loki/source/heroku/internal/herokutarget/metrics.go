@@ -4,7 +4,10 @@ package herokutarget
 // configure and run the targets that can read heroku entries and forward them
 // to other loki components.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type Metrics struct {
 	herokuEntries prometheus.Counter
@@ -24,6 +27,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Number of parsing errors while receiving Heroku messages",
 	})
 
-	reg.MustRegister(m.herokuEntries, m.herokuErrors)
+	m.herokuEntries = util.MustRegisterOrGet(reg, m.herokuEntries).(prometheus.Counter)
+	m.herokuErrors = util.MustRegisterOrGet(reg, m.herokuErrors).(prometheus.Counter)
 	return &m
 }

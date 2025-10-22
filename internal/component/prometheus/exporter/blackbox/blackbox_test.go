@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/syntax"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestUnmarshalAlloy(t *testing.T) {
@@ -259,20 +260,20 @@ func TestBuildBlackboxTargets(t *testing.T) {
 		Targets:            TargetBlock{{Name: "target_a", Target: "http://example.com", Module: "http_2xx"}},
 		ProbeTimeoutOffset: 1.0,
 	}
-	baseTarget := discovery.Target{
+	baseTarget := discovery.NewTargetFromMap(map[string]string{
 		model.SchemeLabel:                   "http",
 		model.MetricsPathLabel:              "component/prometheus.exporter.blackbox.default/metrics",
 		"instance":                          "prometheus.exporter.blackbox.default",
 		"job":                               "integrations/blackbox",
 		"__meta_agent_integration_name":     "blackbox",
 		"__meta_agent_integration_instance": "prometheus.exporter.blackbox.default",
-	}
+	})
 	args := component.Arguments(baseArgs)
 	targets := buildBlackboxTargets(baseTarget, args)
 	require.Equal(t, 1, len(targets))
-	require.Equal(t, "integrations/blackbox/target_a", targets[0]["job"])
-	require.Equal(t, "http://example.com", targets[0]["__param_target"])
-	require.Equal(t, "http_2xx", targets[0]["__param_module"])
+	requireTargetLabel(t, targets[0], "job", "integrations/blackbox/target_a")
+	requireTargetLabel(t, targets[0], "__param_target", "http://example.com")
+	requireTargetLabel(t, targets[0], "__param_module", "http_2xx")
 }
 
 func TestBuildBlackboxTargetsWithExtraLabels(t *testing.T) {
@@ -289,23 +290,23 @@ func TestBuildBlackboxTargetsWithExtraLabels(t *testing.T) {
 		}},
 		ProbeTimeoutOffset: 1.0,
 	}
-	baseTarget := discovery.Target{
+	baseTarget := discovery.NewTargetFromMap(map[string]string{
 		model.SchemeLabel:                   "http",
 		model.MetricsPathLabel:              "component/prometheus.exporter.blackbox.default/metrics",
 		"instance":                          "prometheus.exporter.blackbox.default",
 		"job":                               "integrations/blackbox",
 		"__meta_agent_integration_name":     "blackbox",
 		"__meta_agent_integration_instance": "prometheus.exporter.blackbox.default",
-	}
+	})
 	args := component.Arguments(baseArgs)
 	targets := buildBlackboxTargets(baseTarget, args)
 	require.Equal(t, 1, len(targets))
-	require.Equal(t, "integrations/blackbox/target_a", targets[0]["job"])
-	require.Equal(t, "http://example.com", targets[0]["__param_target"])
-	require.Equal(t, "http_2xx", targets[0]["__param_module"])
+	requireTargetLabel(t, targets[0], "job", "integrations/blackbox/target_a")
+	requireTargetLabel(t, targets[0], "__param_target", "http://example.com")
+	requireTargetLabel(t, targets[0], "__param_module", "http_2xx")
 
-	require.Equal(t, "test", targets[0]["env"])
-	require.Equal(t, "bar", targets[0]["foo"])
+	requireTargetLabel(t, targets[0], "env", "test")
+	requireTargetLabel(t, targets[0], "foo", "bar")
 
 	// Check that the extra labels do not override existing labels
 	baseArgs.Targets[0].Labels = map[string]string{
@@ -315,8 +316,8 @@ func TestBuildBlackboxTargetsWithExtraLabels(t *testing.T) {
 	args = component.Arguments(baseArgs)
 	targets = buildBlackboxTargets(baseTarget, args)
 	require.Equal(t, 1, len(targets))
-	require.Equal(t, "integrations/blackbox/target_a", targets[0]["job"])
-	require.Equal(t, "prometheus.exporter.blackbox.default", targets[0]["instance"])
+	requireTargetLabel(t, targets[0], "job", "integrations/blackbox/target_a")
+	requireTargetLabel(t, targets[0], "instance", "prometheus.exporter.blackbox.default")
 }
 
 // Test convert from TargetsList to []blackbox_exporter.BlackboxTarget
@@ -450,4 +451,11 @@ func TestValidateTargetsMutualExclusivity(t *testing.T) {
 		Targets:     targetBlock,
 	}
 	require.ErrorContains(t, args.Validate(), "the block `target` and the attribute `targets` are mutually exclusive")
+}
+
+func requireTargetLabel(t *testing.T, target discovery.Target, label, expectedValue string) {
+	t.Helper()
+	actual, ok := target.Get(label)
+	require.True(t, ok)
+	require.Equal(t, expectedValue, actual)
 }

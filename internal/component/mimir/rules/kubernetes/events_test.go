@@ -10,7 +10,6 @@ import (
 	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -24,23 +23,23 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	mimirClient "github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/mimir/client"
 )
 
 type fakeMimirClient struct {
 	rulesMut sync.RWMutex
-	rules    map[string][]rulefmt.RuleGroup
+	rules    map[string][]client.MimirRuleGroup
 }
 
-var _ mimirClient.Interface = &fakeMimirClient{}
+var _ client.Interface = &fakeMimirClient{}
 
 func newFakeMimirClient() *fakeMimirClient {
 	return &fakeMimirClient{
-		rules: make(map[string][]rulefmt.RuleGroup),
+		rules: make(map[string][]client.MimirRuleGroup),
 	}
 }
 
-func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule rulefmt.RuleGroup) error {
+func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule client.MimirRuleGroup) error {
 	m.rulesMut.Lock()
 	defer m.rulesMut.Unlock()
 	m.deleteLocked(namespace, rule.Name)
@@ -74,10 +73,10 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 	}
 }
 
-func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
+func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
-	output := make(map[string][]rulefmt.RuleGroup)
+	output := make(map[string][]client.MimirRuleGroup)
 	for ns, v := range m.rules {
 		if namespace != "" && namespace != ns {
 			continue
@@ -120,7 +119,7 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -133,7 +132,7 @@ func TestEventLoop(t *testing.T) {
 		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))
@@ -223,7 +222,7 @@ func TestAdditionalLabels(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -237,7 +236,7 @@ func TestAdditionalLabels(t *testing.T) {
 		externalLabels:    map[string]string{"foo": "bar"},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))
@@ -252,7 +251,7 @@ func TestAdditionalLabels(t *testing.T) {
 	eventHandler.OnAdd(rule, false)
 
 	// Wait for the rule to be added to mimir
-	rules := map[string][]rulefmt.RuleGroup{}
+	rules := map[string][]client.MimirRuleGroup{}
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
@@ -298,6 +297,9 @@ func TestExtraQueryMatchers(t *testing.T) {
 			Name:      "name",
 			Namespace: "namespace",
 			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+			Labels: map[string]string{
+				"foo": "bar",
+			},
 		},
 		Spec: v1.PrometheusRuleSpec{
 			Groups: []v1.RuleGroup{
@@ -319,7 +321,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		stopChan:          make(chan struct{}),
 		health:            &fakeHealthReporter{},
 		mimirClient:       newFakeMimirClient(),
@@ -341,10 +343,15 @@ func TestExtraQueryMatchers(t *testing.T) {
 				MatchType: "=",
 				Value:     "good",
 			},
+			{
+				Name:           "label",
+				MatchType:      "=",
+				ValueFromLabel: "foo",
+			},
 		}},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
 	require.NoError(t, processor.syncMimir(ctx))
@@ -359,7 +366,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 	eventHandler.OnAdd(rule, false)
 
 	// Wait for the rule to be added to mimir
-	rules := map[string][]rulefmt.RuleGroup{}
+	rules := map[string][]client.MimirRuleGroup{}
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var err error
 		rules, err = processor.mimirClient.ListRules(ctx, "")
@@ -376,10 +383,111 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 		expectedRule := `- name: group1
   rules:
-    - expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",job=\"good\"}[10m]) / rate(total{cluster=~\"prod-.*\",job=\"good\"}[10m]))"
+    - expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]) / rate(total{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]))"
       record: record_rule_1
     - alert: alert_1
-      expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",foo=\"bar\",job=\"good\"}[10m]) / (rate(success{cluster=~\"prod-.*\",job=\"good\"}[10m]) + rate(failure{cluster=~\"prod-.*\",job=\"good\"}[10m]))) < 0.995"
+      expr: "sum by (namespace) (rate(success{cluster=~\"prod-.*\",foo=\"bar\",job=\"good\",label=\"bar\"}[10m]) / (rate(success{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]) + rate(failure{cluster=~\"prod-.*\",job=\"good\",label=\"bar\"}[10m]))) < 0.995"
+`
+		require.YAMLEq(t, expectedRule, string(ruleBuf))
+	}
+}
+
+func TestSourceTenants(t *testing.T) {
+	nsIndexer := testNamespaceIndexer()
+	ruleIndexer := testRuleIndexer()
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace",
+			UID:  types.UID("33f8860c-bd06-4c0d-a0b1-a114d6b9937b"),
+		},
+	}
+
+	rule := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+			Annotations: map[string]string{
+				AnnotationsSourceTenants: "tenant1,tenant2",
+			},
+		},
+		Spec: v1.PrometheusRuleSpec{
+			Groups: []v1.RuleGroup{
+				{
+					Name: "group1",
+					Rules: []v1.Rule{
+						{
+							Alert: "alert1",
+							Expr:  intstr.FromString("expr1"),
+						},
+						{
+							Alert: "alert2",
+							Expr:  intstr.FromString("expr2"),
+							Labels: map[string]string{
+								// This label should get overridden.
+								"foo": "lalalala",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	processor := &eventProcessor{
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		stopChan:          make(chan struct{}),
+		health:            &fakeHealthReporter{},
+		mimirClient:       newFakeMimirClient(),
+		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
+		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
+		namespaceSelector: labels.Everything(),
+		ruleSelector:      labels.Everything(),
+		namespacePrefix:   "alloy",
+		metrics:           newMetrics(),
+		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+	}
+
+	ctx := t.Context()
+
+	// Do an initial sync of the Mimir ruler state before starting the event processing loop.
+	require.NoError(t, processor.syncMimir(ctx))
+	go processor.run(ctx)
+	defer processor.stop()
+
+	eventHandler := kubernetes.NewQueuedEventHandler(processor.logger, processor.queue)
+
+	// Add a namespace and rule to kubernetes
+	require.NoError(t, nsIndexer.Add(ns))
+	require.NoError(t, ruleIndexer.Add(rule))
+	eventHandler.OnAdd(rule, false)
+
+	// Wait for the rule to be added to mimir
+	rules := map[string][]client.MimirRuleGroup{}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		var err error
+		rules, err = processor.mimirClient.ListRules(ctx, "")
+		assert.NoError(c, err)
+		assert.Len(c, rules, 1)
+	}, 10*time.Second, 10*time.Millisecond)
+
+	// The map of rules has only one element.
+	for ruleName, rule := range rules {
+		require.Equal(t, "alloy/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf", ruleName)
+
+		ruleBuf, err := yaml.Marshal(rule)
+		require.NoError(t, err)
+
+		expectedRule := `- name: group1
+  rules:
+  - alert: alert1
+    expr: expr1
+  - alert: alert2
+    expr: expr2
+    labels:
+      foo: lalalala
+  source_tenants: ["tenant1","tenant2"]
 `
 		require.YAMLEq(t, expectedRule, string(ruleBuf))
 	}

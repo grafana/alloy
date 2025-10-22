@@ -74,6 +74,8 @@ type Component struct {
 	maxCacheSize int
 
 	debugDataPublisher livedebugging.DebugDataPublisher
+
+	builder labels.ScratchBuilder
 }
 
 var (
@@ -99,6 +101,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+		builder:            labels.NewScratchBuilder(0),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -125,9 +128,18 @@ func (c *Component) Run(ctx context.Context) error {
 			c.metrics.entriesProcessed.Inc()
 			lbls := c.relabel(entry)
 
-			if c.debugDataPublisher.IsActive(componentID) {
-				c.debugDataPublisher.Publish(componentID, fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String()))
+			count := uint64(1)
+			if len(lbls) == 0 {
+				count = 0 // if no labels are left, the count is not incremented because the log will be filtered out
 			}
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				count,
+				func() string {
+					return fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String())
+				},
+			))
 
 			if len(lbls) == 0 {
 				level.Debug(c.opts.Logger).Log("msg", "dropping entry after relabeling", "labels", entry.Labels.String())
@@ -230,20 +242,19 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {
-	var lbls labels.Labels
+	c.builder.Reset()
 	for k, v := range e.Labels {
-		lbls = append(lbls, labels.Label{
-			Name:  string(k),
-			Value: string(v),
-		})
+		c.builder.Add(string(k), string(v))
 	}
+	c.builder.Sort()
+	lbls := c.builder.Labels()
 	lbls, _ = relabel.Process(lbls, c.rcs...)
 
-	relabeled := make(model.LabelSet, len(lbls))
-	for i := range lbls {
-		relabeled[model.LabelName(lbls[i].Name)] = model.LabelValue(lbls[i].Value)
-	}
+	relabeled := make(model.LabelSet, lbls.Len())
+	lbls.Range(func(lbl labels.Label) {
+		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
 	return relabeled
 }
 
-func (c *Component) LiveDebugging(_ int) {}
+func (c *Component) LiveDebugging() {}

@@ -165,29 +165,25 @@ type queueClient struct {
 
 	wg sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// series cache
 	series        map[chunks.HeadSeriesRef]model.LabelSet
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
-	quit                chan struct{}
-	markerHandler       MarkerHandler
+	ctx           context.Context
+	cancel        context.CancelFunc
+	maxStreams    int
+	quit          chan struct{}
+	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -208,12 +204,9 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		externalLabels:      cfg.ExternalLabels.LabelSet,
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes
@@ -232,12 +225,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 	}
 
 	c.client.Timeout = cfg.Timeout
-
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range c.metrics.countersWithHost {
-		counter.WithLabelValues(c.cfg.URL.Host).Add(0)
-	}
 
 	c.wg.Add(1)
 	go c.runSendOldBatches()
@@ -309,19 +296,6 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
 
-	// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-	if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-		if !c.maxLineSizeTruncate {
-			c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-			c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-			return
-		}
-
-		c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-		c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-		e.Line = e.Line[:c.maxLineSize]
-	}
-
 	// TODO: can I make this locking more fine grained?
 	c.batchesMtx.Lock()
 
@@ -364,7 +338,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e lo
 	if err != nil {
 		level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := ReasonGeneric
-		if err.Error() == errMaxStreamsLimitExceeded {
+		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = ReasonStreamLimited
 		}
 		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Add(float64(len(e.Line)))
@@ -456,7 +430,7 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		return
 	}
 	bufBytes := float64(len(buf))
-	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
+	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 
 	backoff := backoff.New(c.ctx, c.cfg.BackoffConfig)
 	var status int
@@ -465,7 +439,7 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		// send uses `timeout` internally, so `context.Background` is good enough.
 		status, err = c.send(ctx, tenantID, buf)
 
-		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host).Observe(time.Since(start).Seconds())
+		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if c.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
@@ -476,8 +450,8 @@ func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *bat
 		}
 
 		if err == nil {
-			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
-			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host).Add(float64(entriesCount))
+			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
+			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
 
 			return
 		}
@@ -605,9 +579,6 @@ func (c *queueClient) StopNow() {
 }
 
 func (c *queueClient) processLabels(lbs model.LabelSet) (model.LabelSet, string) {
-	if len(c.externalLabels) > 0 {
-		lbs = c.externalLabels.Merge(lbs)
-	}
 	tenantID := c.getTenantID(lbs)
 	return lbs, tenantID
 }

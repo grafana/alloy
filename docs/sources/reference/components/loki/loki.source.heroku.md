@@ -3,92 +3,104 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.source.heroku/ # /docs/alloy/latest/reference/components/loki.source.heroku/
 description: Learn about loki.source.heroku
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: loki.source.heroku
 ---
 
-# loki.source.heroku
+# `loki.source.heroku`
 
-`loki.source.heroku` listens for Heroku messages over TCP connections
-and forwards them to other `loki.*` components.
+`loki.source.heroku` listens for Heroku messages over TCP connections and forwards them to other `loki.*` components.
 
-The component starts a new heroku listener for the given `listener`
-block and fans out incoming entries to the list of receivers in `forward_to`.
+The component starts a new Heroku listener for the given `listener` block and fans out incoming entries to the list of receivers in `forward_to`.
 
-Before using `loki.source.heroku`, Heroku should be configured with the URL where {{< param "PRODUCT_NAME" >}} will be listening.
+Before using `loki.source.heroku`, Heroku should be configured with the URL where {{< param "PRODUCT_NAME" >}} is listening.
 Follow the steps in [Heroku HTTPS Drain docs](https://devcenter.heroku.com/articles/log-drains#https-drains) for using the Heroku CLI with a command like the following:
 
 ```shell
 heroku drains:add [http|https]://HOSTNAME:PORT/heroku/api/v1/drain -a HEROKU_APP_NAME
 ```
 
-Multiple `loki.source.heroku` components can be specified by giving them
-different labels.
+You can specify multiple `loki.source.heroku` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-loki.source.heroku "LABEL" {
+loki.source.heroku "<LABEL>" {
     http {
-        listen_address = "LISTEN_ADDRESS"
-        listen_port    = LISTEN_PORT
+        listen_address = "<LISTEN_ADDRESS>"
+        listen_port    = "<LISTEN_PORT>"
     }
-    forward_to = RECEIVER_LIST
+    forward_to = <RECEIVER_LIST>
 }
 ```
 
 ## Arguments
 
-`loki.source.heroku` supports the following arguments:
+You can use the following arguments with `loki.source.heroku`:
 
-Name                        | Type                 | Description                                                                        | Default | Required
-----------------------------|----------------------|------------------------------------------------------------------------------------|---------|---------
-`use_incoming_timestamp`    | `bool`               | Whether or not to use the timestamp received from Heroku.                          | `false` | no
-`labels`                    | `map(string)`        | The labels to associate with each received Heroku record.                          | `{}`    | no
-`forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |         | yes
-`relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                          | `{}`    | no
-`graceful_shutdown_timeout` | `duration`           | Timeout for servers graceful shutdown. If configured, should be greater than zero. | "30s"   | no
+| Name                        | Type                 | Description                                                                        | Default | Required |
+| --------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |         | yes      |
+| `graceful_shutdown_timeout` | `duration`           | Timeout for servers graceful shutdown. If configured, should be greater than zero. | `"30s"` | no       |
+| `labels`                    | `map(string)`        | The labels to associate with each received Heroku record.                          | `{}`    | no       |
+| `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                          | `{}`    | no       |
+| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from Heroku.                                 | `false` | no       |
 
-The `relabel_rules` field can make use of the `rules` export value from a
-`loki.relabel` component to apply one or more relabeling rules to log entries
-before they're forwarded to the list of receivers in `forward_to`.
+The `relabel_rules` field can make use of the `rules` export value from a `loki.relabel` component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `loki.source.heroku`:
+You can use the following blocks with `loki.source.heroku`:
 
-Hierarchy | Name     | Description                                        | Required
-----------|----------|----------------------------------------------------|---------
-`http`    | [http][] | Configures the HTTP server that receives requests. | no
-`grpc`    | [grpc][] | Configures the gRPC server that receives requests. | no
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
+| `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
 [grpc]: #grpc
+[tls]: #tls
 
-### http
-
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### grpc
+### `grpc`
 
 {{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `http`
+
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tls`
+
+The `tls` block configures TLS for the HTTP and gRPC servers.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Labels
 
 The `labels` map is applied to every message that the component reads.
 
-The following internal labels all prefixed with `__` are available but will be discarded if not relabeled:
-- `__heroku_drain_host`
-- `__heroku_drain_app`
-- `__heroku_drain_proc`
-- `__heroku_drain_log_id`
+The following internal labels all prefixed with `__` are available but are discarded if not relabeled:
 
-All url query params will be translated to `__heroku_drain_param_<name>`
+* `__heroku_drain_app`
+* `__heroku_drain_host`
+* `__heroku_drain_log_id`
+* `__heroku_drain_proc`
 
-If the `X-Scope-OrgID` header is set it will be translated to `__tenant_id__`
+All URL query parameters are translated to `__heroku_drain_param_<name>`
+
+If the `X-Scope-OrgID` header is set it's translated to `__tenant_id__`
 
 ## Exported fields
 
-`loki.source.heroku` does not export any fields.
+`loki.source.heroku` doesn't export any fields.
 
 ## Component health
 
@@ -98,10 +110,12 @@ configuration.
 ## Debug information
 
 `loki.source.heroku` exposes some debug information per Heroku listener:
+
 * Whether the listener is currently running.
 * The listen address.
 
 ## Debug metrics
+
 * `loki_source_heroku_drain_entries_total` (counter): Number of successful entries received by the Heroku target.
 * `loki_source_heroku_drain_parsing_errors_total` (counter): Number of parsing errors while receiving Heroku messages.
 
@@ -142,6 +156,7 @@ loki.write "local" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

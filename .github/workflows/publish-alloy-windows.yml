@@ -1,0 +1,75 @@
+name: Shared Windows container publish workflow
+
+on:
+  workflow_call:
+    inputs:
+      img-name:
+        required: true
+        type: string
+      push:
+        required: false
+        type: boolean
+        default: true
+      dev:
+        required: false
+        type: boolean
+        default: false
+      pr-number:
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish_windows_container:
+    name: Publish Alloy Windows container
+    strategy:
+      matrix:
+        os: [windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # This step needs to run before "Checkout code".
+      # That's because it generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@13fb504e3bfe323c1188bf244970d94b2d336e86 # dockerhub-login-v1.0.1
+
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+
+    - name: Tag dev
+      if: ${{ inputs.dev }}
+      run: |
+        & "C:/Program Files/git/bin/bash.exe" -c './tools/tag-dev'
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - name: Get Go version from go.mod
+      id: get_go_version
+      # Use only the major and minor versions.
+      # Don't use the patch number, because those docker images sometimes get deleted.
+      run: |
+        $go_version = go mod edit -json | ConvertFrom-Json | select -exp Go
+        $go_version_split = $go_version.ToString().split(".")
+        $go_short_version = $go_version_split[0] + "." + $go_version_split[1]
+        "alloy_go_version=$go_short_version" >> $env:GITHUB_OUTPUT
+
+    - name: Build and publish the container
+      # TODO: Run "make alloy-image-windows" instead?
+      run: |
+        & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${SHOULD_PUSH_ALLOY_IMAGE} WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${GO_VERSION} ./tools/ci/docker-containers-windows ${IMG_NAME}'
+      env:
+        SHOULD_PUSH_ALLOY_IMAGE: ${{ inputs.push }}
+        IMG_NAME: ${{ inputs.img-name }}
+        GO_VERSION: ${{ steps.get_go_version.outputs.alloy_go_version }}
+        GITHUB_PR_NUMBER: ${{ inputs.pr-number }}

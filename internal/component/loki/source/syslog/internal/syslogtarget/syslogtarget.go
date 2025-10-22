@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
 	"github.com/leodido/go-syslog/v4/rfc5424"
@@ -29,7 +29,7 @@ import (
 var (
 	DefaultIdleTimeout      = 120 * time.Second
 	DefaultMaxMessageLength = 8192
-	DefaultProtocol         = protocolTCP
+	DefaultProtocol         = ProtocolTCP
 )
 
 // SyslogTarget listens to syslog messages.
@@ -61,6 +61,7 @@ func NewSyslogTarget(
 	relabel []*relabel.Config,
 	config *scrapeconfig.SyslogTargetConfig,
 ) (*SyslogTarget, error) {
+
 	t := &SyslogTarget{
 		metrics:       metrics,
 		logger:        logger,
@@ -71,14 +72,14 @@ func NewSyslogTarget(
 	}
 
 	switch t.transportProtocol() {
-	case protocolTCP:
+	case ProtocolTCP:
 		t.transport = NewSyslogTCPTransport(
 			config,
 			t.handleMessage,
 			t.handleMessageError,
 			logger,
 		)
-	case protocolUDP:
+	case ProtocolUDP:
 		t.transport = NewSyslogUDPTransport(
 			config,
 			t.handleMessage,
@@ -150,12 +151,12 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg syslog
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
 	if t.config.UseIncomingTimestamp && rfc5424Msg.Timestamp != nil {
@@ -207,12 +208,12 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg syslog
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
 	if t.config.UseIncomingTimestamp && rfc3164Msg.Timestamp != nil {
@@ -238,7 +239,7 @@ func (t *SyslogTarget) messageSender(entries chan<- loki.Entry) {
 	for msg := range t.messages {
 		entries <- loki.Entry{
 			Labels: msg.labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: msg.timestamp,
 				Line:      msg.message,
 			},

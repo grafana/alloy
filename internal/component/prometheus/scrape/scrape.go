@@ -3,6 +3,7 @@ package scrape
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"reflect"
 	"slices"
@@ -15,19 +16,25 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
+	promlogging "github.com/prometheus/prometheus/util/logging"
 
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -69,6 +76,10 @@ type Arguments struct {
 	Params url.Values `alloy:"params,attr,optional"`
 	// Whether to scrape a classic histogram that is also exposed as a native histogram.
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
+	// Whether to scrape native histograms.
+	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+	// File to which scrape failures are logged.
+	ScrapeFailureLogFile string `alloy:"scrape_failure_log_file,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 	// The timeout for scraping targets of this config.
@@ -110,6 +121,25 @@ type Arguments struct {
 	// It is invalid to set both EnableProtobufNegotiation and ScrapeProtocols.
 	// TODO: https://github.com/grafana/alloy/issues/878: Remove this option.
 	EnableProtobufNegotiation bool `alloy:"enable_protobuf_negotiation,attr,optional"`
+	// The validation scheme to use for metric names.
+	MetricNameValidationScheme string `alloy:"metric_name_validation_scheme,attr,optional"`
+	// The escaping scheme to use for metric names.
+	MetricNameEscapingScheme string `alloy:"metric_name_escaping_scheme,attr,optional"`
+	// The fallback protocol to use if the target does not provide a valid Content-Type header.
+	ScrapeFallbackProtocol string `alloy:"scrape_fallback_protocol,attr,optional"`
+	// Whether to convert classic histograms with buckets to native histograms
+	// with custom buckets (NHCB). False by default.
+	ConvertClassicHistogramsToNHCB bool `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
+	// Whether compression is enabled for the scrape. True by default.
+	EnableCompression bool `alloy:"enable_compression,attr,optional"`
+	// If there are more than this many buckets in a native histogram,
+	// buckets will be merged to stay within the limit. Disabled when set to zero.
+	NativeHistogramBucketLimit uint `alloy:"native_histogram_bucket_limit,attr,optional"`
+	// If the growth factor of one bucket to the next is smaller than this,
+	// buckets will be merged to stay within the limit. Disabled when set zero.
+	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
+	// Whether the metric metadata should be passed to the downstream components.
+	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -126,6 +156,14 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeInterval:           1 * time.Minute,  // From config.DefaultGlobalConfig
 		ScrapeTimeout:            10 * time.Second, // From config.DefaultGlobalConfig
 		ScrapeProtocols:          slices.Clone(defaultScrapeProtocols),
+		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
+		ScrapeNativeHistograms:   false,
+		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
+		MetricNameValidationScheme:     config.LegacyValidationConfig,
+		ConvertClassicHistogramsToNHCB: false,
+		EnableCompression:              true,
+		NativeHistogramBucketLimit:     0,
+		NativeHistogramMinBucketFactor: 0,
 	}
 }
 
@@ -144,6 +182,21 @@ func (arg *Arguments) Validate() error {
 		// For backwards-compatibility, if EnableProtobufNegotiation is set to true, the ScrapeProtocols are set to
 		// [PrometheusProto, OpenMetricsText1.0.0, OpenMetricsText0.0.1, PrometheusText0.0.4].
 		arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		// In previous Prometheus versions, EnableProtobufNegotiation would also enable native histogram scraping.
+		// This is no longer the case, so we need to explicitly enable it here.
+		arg.ScrapeNativeHistograms = true
+	}
+
+	if arg.ScrapeNativeHistograms {
+		// When scrape_native_histograms is set to true, the default scrape protocols are overridden to
+		// Proto-first scrape protocols, like in upstream Prometheus.
+		if reflect.DeepEqual(arg.ScrapeProtocols, defaultScrapeProtocols) {
+			arg.ScrapeProtocols = slices.Clone(defaultNativeHistogramScrapeProtocols)
+		}
+
+		if !slices.Contains(arg.ScrapeProtocols, string(config.PrometheusProto)) {
+			return fmt.Errorf("scrape_native_histograms is set to true, but PrometheusProto is not in scrape_protocols")
+		}
 	}
 
 	// Validate scrape protocols
@@ -157,6 +210,36 @@ func (arg *Arguments) Validate() error {
 			return fmt.Errorf("invalid scrape protocol %q: %w", p, err)
 		}
 		existing[p] = struct{}{}
+	}
+
+	if arg.ScrapeFallbackProtocol != "" {
+		promSP := config.ScrapeProtocol(arg.ScrapeFallbackProtocol)
+		if err := promSP.Validate(); err != nil {
+			return fmt.Errorf("invalid scrape_fallback_protocol %q: %w", arg.ScrapeFallbackProtocol, err)
+		}
+	}
+
+	switch arg.MetricNameValidationScheme {
+	case config.UTF8ValidationConfig, config.LegacyValidationConfig:
+	default:
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, config.UTF8ValidationConfig, config.LegacyValidationConfig)
+	}
+
+	switch arg.MetricNameEscapingScheme {
+	case "":
+		if arg.MetricNameValidationScheme == config.LegacyValidationConfig {
+			arg.MetricNameEscapingScheme = model.EscapeUnderscores
+		} else {
+			arg.MetricNameEscapingScheme = model.AllowUTF8
+		}
+	case model.AllowUTF8, model.EscapeUnderscores, model.EscapeDots, model.EscapeValues:
+	default:
+		supportedValues := []string{model.AllowUTF8, model.EscapeUnderscores, model.EscapeDots, model.EscapeValues}
+		return fmt.Errorf("invalid metric_name_escaping_scheme: %q, supported values: %v", arg.MetricNameEscapingScheme, supportedValues)
+	}
+
+	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != config.UTF8ValidationConfig {
+		return fmt.Errorf("metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'")
 	}
 
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
@@ -181,21 +264,30 @@ type Component struct {
 	movedTargetsCounter client_prometheus.Counter
 	unregisterer        util.Unregisterer
 
-	mut        sync.RWMutex
-	args       Arguments
-	scraper    *scrape.Manager
-	appendable *prometheus.Fanout
+	mut             sync.RWMutex
+	args            Arguments
+	scraper         *scrape.Manager
+	appendable      *prometheus.Fanout
+	firstUpdateDone bool
 
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 var (
-	_ component.Component = (*Component)(nil)
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
 )
 
 // New creates a new prometheus.scrape component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	data, err := o.GetServiceData(http.ServiceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get information about HTTP server: %w", err)
@@ -214,19 +306,30 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	if args.HonorMetadata && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
+	var metadataStore prometheus.UpdateableMetadataStore
+	if args.HonorMetadata {
+		metadataStore = prometheus.NewMetadataStore()
+	} else {
+		metadataStore = prometheus.NoopMetadataStore{}
+	}
+
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
 	scrapeOptions := &scrape.Options{
+		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
+		// NOTE: This is not Update()-able.
+		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
+		AppendMetadata:                  args.HonorMetadata,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
-	scraper, err := scrape.NewManager(scrapeOptions, o.Logger, alloyAppendable, unregisterer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
-	}
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
@@ -248,12 +351,25 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:                o,
 		cluster:             clusterData,
 		reloadTargets:       make(chan struct{}, 1),
-		scraper:             scraper,
+		debugDataPublisher:  debugDataPublisher.(livedebugging.DebugDataPublisher),
 		appendable:          alloyAppendable,
 		targetsGauge:        targetsGauge,
 		movedTargetsCounter: movedTargetsCounter,
 		unregisterer:        unregisterer,
 	}
+
+	interceptor := c.newInterceptor(ls)
+
+	scraper, err := scrape.NewManager(
+		scrapeOptions,
+		slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)),
+		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
+		interceptor,
+		unregisterer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
+	}
+	c.scraper = scraper
 
 	// Call to Update() to set the receivers and targets once at the start.
 	if err := c.Update(args); err != nil {
@@ -321,6 +437,7 @@ func (c *Component) distributeTargets(
 	jobName string,
 	args Arguments,
 ) (map[string][]*targetgroup.Group, []*scrape.Target) {
+
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets
@@ -332,7 +449,7 @@ func (c *Component) distributeTargets(
 
 	newLocalTargets := newDistTargets.LocalTargets()
 	c.targetsGauge.Set(float64(len(newLocalTargets)))
-	promNewTargets := c.componentTargetsToPromTargetGroups(jobName, newLocalTargets)
+	promNewTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, newLocalTargets)
 
 	movedTargets := newDistTargets.MovedToRemoteInstance(oldDistributedTargets)
 	c.movedTargetsCounter.Add(float64(len(movedTargets)))
@@ -350,14 +467,31 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
+
+	// Some fields are not updateable at runtime - only allow them when Update()
+	// is called for the first time from New().
+	if !c.firstUpdateDone {
+		c.firstUpdateDone = true
+	} else {
+		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
+			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
+		}
+		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
+			return fmt.Errorf("extra_metrics cannot be updated at runtime")
+		}
+	}
+
 	c.args = newArgs
 
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 
+	promConfig, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)))
+	if err != nil {
+		return fmt.Errorf("error loading blank prometheus config: %w", err)
+	}
 	sc := getPromScrapeConfigs(c.opts.ID, newArgs)
-	err := c.scraper.ApplyConfig(&config.Config{
-		ScrapeConfigs: []*config.ScrapeConfig{sc},
-	})
+	promConfig.ScrapeConfigs = []*config.ScrapeConfig{sc}
+	err = c.scraper.ApplyConfig(promConfig)
 	if err != nil {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
@@ -405,9 +539,10 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
-	dec.ScrapeClassicHistograms = c.ScrapeClassicHistograms
+	dec.AlwaysScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
+	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
 	dec.MetricsPath = c.MetricsPath
 	dec.Scheme = c.Scheme
 	dec.BodySizeLimit = c.BodySizeLimit
@@ -426,6 +561,16 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 
 	// HTTP scrape client settings
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
+
+	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
+	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
+	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
+	convertToNHCB := c.ConvertClassicHistogramsToNHCB
+	dec.ConvertClassicHistogramsToNHCB = &convertToNHCB
+	dec.EnableCompression = c.EnableCompression
+	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
+	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
+
 	return &dec
 }
 
@@ -456,12 +601,12 @@ func BuildTargetStatuses(targets map[string][]*scrape.Target) []TargetStatus {
 				lastError = st.LastError().Error()
 			}
 			if st != nil {
-				lb := labels.NewScratchBuilder(0)
+				lb := labels.NewBuilder(labels.EmptyLabels())
 				res = append(res, TargetStatus{
 					JobName:            job,
 					URL:                st.URL().String(),
 					Health:             string(st.Health()),
-					Labels:             st.Labels(&lb).Map(),
+					Labels:             st.Labels(lb).Map(),
 					LastError:          lastError,
 					LastScrape:         st.LastScrape(),
 					LastScrapeDuration: st.LastScrapeDuration(),
@@ -479,34 +624,88 @@ func (c *Component) DebugInfo() interface{} {
 	}
 }
 
-func (c *Component) componentTargetsToPromTargetGroups(jobName string, tgs []discovery.Target) map[string][]*targetgroup.Group {
-	promGroup := &targetgroup.Group{Source: jobName}
-	for _, tg := range tgs {
-		promGroup.Targets = append(promGroup.Targets, convertLabelSet(tg))
-	}
-
-	return map[string][]*targetgroup.Group{jobName: {promGroup}}
-}
-
 func (c *Component) populatePromLabels(targets []discovery.Target, jobName string, args Arguments) []*scrape.Target {
-	lb := labels.NewBuilder(labels.EmptyLabels())
-	promTargets, errs := scrape.TargetsFromGroup(
-		c.componentTargetsToPromTargetGroups(jobName, targets)[jobName][0],
-		getPromScrapeConfigs(c.opts.ID, args),
-		false,                                /* noDefaultScrapePort - always false in this component */
-		make([]*scrape.Target, len(targets)), /* targets slice to reuse */
-		lb,
-	)
-	for _, err := range errs {
-		level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+	// We need to call scrape.TargetsFromGroup to reuse the rather complex logic of populating labels on targets.
+	allTargets := make([]*scrape.Target, 0, len(targets))
+	groups := discovery.ComponentTargetsToPromTargetGroups(jobName, targets)
+	for _, tgs := range groups {
+		for _, tg := range tgs {
+			promTargets, errs := scrape.TargetsFromGroup(
+				tg,
+				getPromScrapeConfigs(jobName, args),
+				make([]*scrape.Target, len(targets)), /* targets slice to reuse */
+				labels.NewBuilder(labels.EmptyLabels()),
+			)
+			for _, err := range errs {
+				level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+			}
+			allTargets = append(allTargets, promTargets...)
+		}
 	}
-	return promTargets
+
+	return allTargets
 }
 
-func convertLabelSet(tg discovery.Target) model.LabelSet {
-	lset := make(model.LabelSet, len(tg))
-	for k, v := range tg {
-		lset[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return lset
+func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interceptor {
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	return prometheus.NewInterceptor(c.appendable, ls,
+		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.Append(globalRef, l, t, v)
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
+				},
+			))
+			return globalRef, nextErr
+		}),
+		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					var data string
+					if h != nil {
+						data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
+					} else if fh != nil {
+						data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
+					} else {
+						data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
+					}
+					return data
+				},
+			))
+			return globalRef, nextErr
+		}),
+		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.UpdateMetadata(globalRef, l, m)
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
+				},
+			))
+			return globalRef, nextErr
+		}),
+		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
+			_, nextErr := next.AppendExemplar(globalRef, l, e)
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.PrometheusMetric,
+				1,
+				func() string {
+					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
+				},
+			))
+			return globalRef, nextErr
+		}),
+	)
 }
+
+func (c *Component) LiveDebugging() {}

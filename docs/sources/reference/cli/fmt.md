@@ -1,27 +1,28 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/fmt/
 description: Learn about the fmt command
-menuTitle: fmt
-title: The fmt command
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: fmt
 weight: 200
 ---
 
-# The fmt command
+# `fmt`
 
 The `fmt` command formats a given {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Usage
 
-Usage:
-
 ```shell
 alloy fmt [<FLAG> ...] <FILE_NAME>
 ```
 
-   Replace the following:
+Replace the following:
 
-   * _`<FLAG>`_: One or more flags that define the input and output of the command.
-   * _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
+* _`<FLAG>`_: One or more flags that define the input and output of the command.
+* _`<FILE_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file.
 
 If the _`<FILE_NAME>`_ argument isn't provided or if the _`<FILE_NAME>`_ argument is equal to `-`, `fmt` formats the contents of standard input.
 Otherwise, `fmt` reads and formats the file from disk specified by the argument.

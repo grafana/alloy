@@ -3,20 +3,24 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/ot
 aliases:
   - ../otelcol.processor.deltatocumulative/ # /docs/alloy/latest/reference/otelcol.processor.deltatocumulative/
 description: Learn about otelcol.processor.deltatocumulative
+labels:
+  stage: experimental
+  products:
+    - oss
 title: otelcol.processor.deltatocumulative
 ---
 
-<span class="badge docs-labels__stage docs-labels__item">Experimental</span>
-
-# otelcol.processor.deltatocumulative
+# `otelcol.processor.deltatocumulative`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.processor.deltatocumulative` accepts metrics from other `otelcol` components and converts metrics with the delta temporality to cumulative.
 
 {{< admonition type="note" >}}
-`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector `deltatocumulative` processor.
+`otelcol.processor.deltatocumulative` is a wrapper over the upstream OpenTelemetry Collector [`deltatocumulative`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`deltatocumulative`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/deltatocumulativeprocessor
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.deltatocumulative` components by giving them different labels.
@@ -24,7 +28,7 @@ You can specify multiple `otelcol.processor.deltatocumulative` components by giv
 ## Usage
 
 ```alloy
-otelcol.processor.deltatocumulative "LABEL" {
+otelcol.processor.deltatocumulative "<LABEL>" {
   output {
     metrics = [...]
   }
@@ -33,12 +37,12 @@ otelcol.processor.deltatocumulative "LABEL" {
 
 ## Arguments
 
-`otelcol.processor.deltatocumulative` supports the following arguments:
+You can use the following arguments with `otelcol.processor.deltatocumulative`:
 
-Name          | Type       | Description                                                         | Default | Required
-------------- | ---------- | ------------------------------------------------------------------- | ------- | --------
-`max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`  | no
-`max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `0`     | no
+| Name          | Type       | Description                                                         | Default               | Required |
+|---------------|------------|---------------------------------------------------------------------|-----------------------|----------|
+| `max_stale`   | `duration` | How long to wait for a new sample before marking a stream as stale. | `"5m"`                | no       |
+| `max_streams` | `number`   | Upper limit of streams to track. Set to `0` to disable.             | `9223372036854775807` | no       |
 
 `otelcol.processor.deltatocumulative` tracks incoming metric streams.
 Sum and exponential histogram metrics with delta temporality are tracked and converted into cumulative temporality.
@@ -47,25 +51,26 @@ If a new sample hasn't been received since the duration specified by `max_stale`
 
 The `max_streams` attribute configures the upper limit of streams to track.
 If the limit of tracked streams is reached, new incoming streams are dropped.
-You can disable this behavior by setting `max_streams` to `0`.
 
 ## Blocks
 
-The following blocks are supported inside the definition of `otelcol.processor.deltatocumulative`:
+You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
-Hierarchy     | Block             | Description                                                                | Required
-------------- | ----------------- | -------------------------------------------------------------------------- | --------
-output        | [output][]        | Configures where to send received telemetry data.                          | yes
-debug_metrics | [debug_metrics][] | Configures the metrics that this component generates to monitor its state. | no
+| Block                            | Description                                                                | Required |
+|----------------------------------|----------------------------------------------------------------------------|----------|
+| [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
-[output]: #output-block
-[debug_metrics]: #debug_metrics-block
+[output]: #output
+[debug_metrics]: #debug_metrics
 
-### output block
+### `output`
+
+{{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### debug_metrics block
+### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -73,9 +78,9 @@ debug_metrics | [debug_metrics][] | Configures the metrics that this component g
 
 The following fields are exported and can be referenced by other components:
 
-Name    | Type               | Description
---------|--------------------|-----------------------------------------------------------------
-`input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to.
+| Name    | Type               | Description                                                      |
+|---------|--------------------|------------------------------------------------------------------|
+| `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for metrics.
 
@@ -85,17 +90,14 @@ Name    | Type               | Description
 
 ## Debug information
 
-`otelcol.processor.deltatocumulative` does not expose any component-specific debug information.
+`otelcol.processor.deltatocumulative` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-* `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
+* `otelcol_deltatocumulative_datapoints` (counter): Total number of datapoints processed (successfully or unsuccessfully).
 * `otelcol_deltatocumulative_streams_limit` (gauge): Upper limit of tracked streams.
-* `otelcol_deltatocumulative_streams_evicted` (counter): Total number of streams removed from tracking to ingest newer streams.
 * `otelcol_deltatocumulative_streams_max_stale_seconds` (gauge): Duration without new samples after which streams are dropped.
-* `otelcol_deltatocumulative_datapoints_processed` (counter): Total number of datapoints processed (successfully or unsuccessfully).
-* `otelcol_deltatocumulative_datapoints_dropped` (counter): Faulty datapoints that were dropped due to the reason given in the `reason` label.
-* `otelcol_deltatocumulative_gaps_length` (counter): Total length of all gaps in the streams, such as being due to lost in transit.
+* `otelcol_deltatocumulative_streams_tracked` (gauge): Number of streams currently tracked by the aggregation state.
 
 ## Examples
 
@@ -112,16 +114,16 @@ otelcol.processor.deltatocumulative "default" {
 
 otelcol.exporter.otlp "production" {
   client {
-    endpoint = sys.env("OTLP_SERVER_ENDPOINT")
+    endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```
 
 [otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
-### Exporting Prometheus data
+### Export Prometheus data
 
-This example converts delta temporality metrics to cumulative metrics before it is converted to Prometheus data, which requires cumulative temporality:
+This example converts delta temporality metrics to cumulative metrics before it's converted to Prometheus data, which requires cumulative temporality:
 
 ```alloy
 otelcol.processor.deltatocumulative "default" {
@@ -136,7 +138,7 @@ otelcol.exporter.prometheus "default" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = sys.env("PROMETHEUS_SERVER_URL")
+    url = sys.env("<PROMETHEUS_SERVER_URL>")
   }
 }
 ```

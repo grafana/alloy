@@ -1,6 +1,9 @@
 # -- Overrides the chart's name. Used to change the infix in the resource names.
 nameOverride: null
 
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
 # -- Overrides the chart's computed fullname. Used to change the full prefix of
 # resource names.
 fullnameOverride: null
@@ -9,7 +12,7 @@ fullnameOverride: null
 ## If you want to override only one image registry, use the specific fields but if you want to override them all, use `global.image.registry`
 global:
   image:
-    # -- Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...)
+    # -- Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...)
     registry: ""
 
     # -- Optional set of global image pull secrets.
@@ -55,6 +58,9 @@ alloy:
   # By default, data is lost between reboots.
   storagePath: /tmp/alloy
 
+  # -- Enables Grafana Alloy container's http server port.
+  enableHttpServerPort: true
+
   # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
   # containers.
   listenAddr: 0.0.0.0
@@ -64,6 +70,12 @@ alloy:
 
   # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
   listenScheme: HTTP
+
+  # -- Initial delay for readiness probe.
+  initialDelaySeconds: 10
+
+  # -- Timeout for readiness probe.
+  timeoutSeconds: 1
 
   # --  Base path where the UI is exposed.
   uiPathPrefix: /
@@ -120,6 +132,9 @@ alloy:
     #     - /bin/sleep
     #     - "10"
 
+  # -- Set livenessProbe for the Grafana Alloy container.
+  livenessProbe: {}
+
 image:
   # -- Grafana Alloy image registry (defaults to docker.io)
   registry: "docker.io"
@@ -139,6 +154,56 @@ rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
 
+  # -- If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and
+  # ClusterRoleBindings. If not using ClusterRoles, bear in mind that Alloy will not be able to discover cluster-scoped
+  # resources such as Nodes.
+  namespaces: []
+
+  # -- The rules to create for the ClusterRole or Role objects.
+  rules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.podlogs` component.
+    - apiGroups: ["monitoring.grafana.com"]
+      resources: ["podlogs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `mimir.rules.kubernetes` component.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["prometheusrules"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `prometheus.operator.*` components.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes_events` component.
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `remote.kubernetes.*` components.
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `otelcol.processor.k8sattributes` component.
+    - apiGroups: ["apps", "extensions"]
+      resources: ["replicasets"]
+      verbs: ["get", "list", "watch"]
+
+  # -- The rules to create for the ClusterRole objects.
+  clusterRules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["nodes", "nodes/proxy", "nodes/metrics"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for accessing metrics endpoint.
+    - nonResourceURLs: ["/metrics"]
+      verbs: ["get"]
+
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
   create: true
@@ -149,6 +214,8 @@ serviceAccount:
   # -- The name of the existing service account to use when
   # serviceAccount.create is false.
   name: null
+  # Whether the Alloy pod should automatically mount the service account token.
+  automountServiceAccountToken: true
 
 # Options for the extra controller used for config reloading.
 configReloader:
@@ -156,11 +223,11 @@ configReloader:
   enabled: true
   image:
     # -- Config reloader image registry (defaults to docker.io)
-    registry: "ghcr.io"
+    registry: "quay.io"
     # -- Repository to get config reloader image from.
-    repository: jimmidyson/configmap-reload
+    repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.12.0
+    tag: v0.81.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
   # -- Override the args passed to the container.
@@ -168,8 +235,8 @@ configReloader:
   # -- Resource requests and limits to apply to the config reloader container.
   resources:
     requests:
-      cpu: "1m"
-      memory: "5Mi"
+      cpu: "10m"
+      memory: "50Mi"
   # -- Security context to apply to the Grafana configReloader container.
   securityContext: {}
 
@@ -181,12 +248,18 @@ controller:
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
   replicas: 1
 
+  # -- Extra labels to add to the controller.
+  extraLabels: {}
+
   # -- Annotations to add to controller.
   extraAnnotations: {}
 
   # -- Whether to deploy pods in parallel. Only used when controller.type is
   # 'statefulset'.
   parallelRollout: true
+
+  # -- How many additional seconds to wait before considering a pod ready.
+  minReadySeconds: 10
 
   # -- Configures Pods to use the host network. When set to true, the ports that will be used must be specified.
   hostNetwork: false
@@ -238,6 +311,7 @@ controller:
 
   autoscaling:
     # -- Creates a HorizontalPodAutoscaler for controller type deployment.
+    # Deprecated: Please use controller.autoscaling.horizontal instead
     enabled: false
     # -- The lower limit for the number of replicas to which the autoscaler can scale down.
     minReplicas: 1
@@ -270,6 +344,82 @@ controller:
       # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling up.
       stabilizationWindowSeconds: 0
 
+    # -- Configures the Horizontal Pod Autoscaler for the controller.
+    horizontal:
+      # -- Enables the Horizontal Pod Autoscaler for the controller.
+      enabled: false
+
+      # -- The lower limit for the number of replicas to which the autoscaler can scale down.
+      minReplicas: 1
+      # -- The upper limit for the number of replicas to which the autoscaler can scale up.
+      maxReplicas: 5
+      # -- Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling.
+      targetCPUUtilizationPercentage: 0
+      # -- Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling.
+      targetMemoryUtilizationPercentage: 80
+
+      scaleDown:
+        # -- List of policies to determine the scale-down behavior.
+        policies: []
+          # - type: Pods
+          #   value: 4
+          #   periodSeconds: 60
+        # -- Determines which of the provided scaling-down policies to apply if multiple are specified.
+        selectPolicy: Max
+        # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling down.
+        stabilizationWindowSeconds: 300
+
+      scaleUp:
+        # -- List of policies to determine the scale-up behavior.
+        policies: []
+          # - type: Pods
+          #   value: 4
+          #   periodSeconds: 60
+        # -- Determines which of the provided scaling-up policies to apply if multiple are specified.
+        selectPolicy: Max
+        # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling up.
+        stabilizationWindowSeconds: 0
+    # -- Configures the Vertical Pod Autoscaler for the controller.
+    vertical:
+      # -- Enables the Vertical Pod Autoscaler for the controller.
+      enabled: false
+
+      # -- List of recommenders to use for the Vertical Pod Autoscaler.
+      # Recommenders are responsible for generating recommendation for the object.
+      # List should be empty (then the default recommender will generate the recommendation)
+      # or contain exactly one recommender.
+      recommenders: []
+      # recommenders:
+      # - name: custom-recommender-performance
+
+      # -- Configures the resource policy for the Vertical Pod Autoscaler.
+      resourcePolicy:
+        # -- Configures the container policies for the Vertical Pod Autoscaler.
+        containerPolicies:
+        - containerName: alloy
+          # -- The controlled resources for the Vertical Pod Autoscaler.
+          controlledResources:
+          - cpu
+          - memory
+          # -- The controlled values for the Vertical Pod Autoscaler. Needs to be either RequestsOnly or RequestsAndLimits.
+          controlledValues: "RequestsAndLimits"
+          # -- The maximum allowed values for the pods.
+          maxAllowed: {}
+          # cpu: 200m
+          # memory: 100Mi
+          # -- Defines the min allowed resources for the pod
+          minAllowed: {}
+          # cpu: 200m
+          # memory: 100Mi
+
+      # -- Configures the update policy for the Vertical Pod Autoscaler.
+      updatePolicy:
+        # -- Specifies minimal number of replicas which need to be alive for VPA Updater to attempt pod eviction
+        # minReplicas: 1
+        # -- Specifies whether recommended updates are applied when a Pod is started and whether recommended updates
+        # are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
+        # updateMode: Auto
+
   # -- Affinity configuration for pods.
   affinity: {}
 
@@ -287,6 +437,22 @@ controller:
 
   # -- Additional containers to run alongside the Alloy container and initContainers.
   extraContainers: []
+
+networkPolicy:
+  enabled: false
+  flavor: kubernetes
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Default allow all traffic because Alloy is so configurable
+  # It is recommended to change this before deploying to production
+  # To disable each policyType, set value to `null`
+  ingress:
+    - {}
+  egress:
+    - {}
 
 service:
   # -- Creates a Service for the controller's pods.
@@ -366,3 +532,13 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+# -- Extra k8s manifests to deploy
+extraObjects: []
+# - apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: grafana-cloud
+#   stringData:
+#     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
+#     PROMETHEUS_USERNAME: '123456'

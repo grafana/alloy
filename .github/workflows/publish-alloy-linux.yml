@@ -1,0 +1,73 @@
+name: Shared Linux container publish workflow
+
+on:
+  workflow_call:
+    inputs:
+      img-name:
+        required: true
+        type: string
+      push:
+        required: false
+        type: boolean
+        default: true
+      dev:
+        required: false
+        type: boolean
+        default: false
+      pr-number:
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish_linux_container:
+    name: Publish Alloy Linux container
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # This step needs to run before "Checkout code".
+      # That's because it generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to DockerHub (from vault)
+      uses: grafana/shared-workflows/actions/dockerhub-login@13fb504e3bfe323c1188bf244970d94b2d336e86 # dockerhub-login-v1.0.1
+
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+
+    - name: Tag dev
+      if: ${{ inputs.dev }}
+      run: |
+        ./tools/tag-dev
+
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        cache: false
+
+    - run: |
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        docker buildx create --name multiarch-alloy-${IMG_NAME}-${GITHUB_SHA} --driver docker-container --use
+        ./tools/ci/docker-containers ${IMG_NAME}
+        docker buildx rm multiarch-alloy-${IMG_NAME}-${GITHUB_SHA}
+      env:
+        PUSH_ALLOY_IMAGE: ${{ inputs.push }}
+        IMG_NAME: ${{ inputs.img-name }}
+        GITHUB_PR_NUMBER: ${{ inputs.pr-number }}

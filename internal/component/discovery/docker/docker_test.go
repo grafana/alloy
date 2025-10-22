@@ -10,6 +10,9 @@ import (
 func TestAlloyConfig(t *testing.T) {
 	var exampleAlloyConfig = `
 	host = "unix:///var/run/docker.sock"
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 
 	var args Arguments

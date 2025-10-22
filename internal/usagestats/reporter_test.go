@@ -42,7 +42,7 @@ func Test_ReportLoop(t *testing.T) {
 	r, err := NewReporter(log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	go func() {
 		<-time.After(6 * time.Second)

@@ -1,4 +1,4 @@
-package mongodb_exporter //nolint:golint
+package mongodb_exporter
 
 import (
 	"testing"

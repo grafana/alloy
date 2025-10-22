@@ -1,0 +1,144 @@
+name: Build
+on:
+  pull_request:
+concurrency:
+  # Cancel any running workflow for the same branch when new commits are pushed.
+  # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
+  # and head_ref (available when CI is triggered by a PR).
+  group: "${{ github.ref_name }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build_linux:
+    name: Build on Linux
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    strategy:
+      matrix:
+        os: [linux]
+        arch: [amd64, arm64, ppc64le, s390x]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
+
+  build_linux_boringcrypto:
+    name: Build on Linux (boringcrypto)
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.21-boringcrypto@sha256:a6fa44bb736498737c17aaeada5d237572be1af9f24849ab3b557692b46be57e
+    strategy:
+      matrix:
+        os: [linux]
+        arch: [amd64, arm64]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
+
+  build_mac_intel:
+    name: Build on MacOS (Intel)
+    runs-on: macos-14-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
+
+  build_mac_arm:
+    name: Build on MacOS (ARM)
+    runs-on: macos-14-xlarge
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+
+  build_windows:
+    name: Build on Windows (AMD64)
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: echo "GO_TAGS=builtinassets" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: make alloy
+
+  build_freebsd:
+    name: Build on FreeBSD (AMD64)
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+          persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version-file: go.mod
+        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
+        cache: false
+    - run: make generate-ui
+    - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy

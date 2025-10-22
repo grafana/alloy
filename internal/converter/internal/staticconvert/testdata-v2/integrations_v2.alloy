@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-149bbd"
+		name = "default-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -23,6 +23,7 @@ logging {
 
 faro.receiver "integrations_app_agent_receiver" {
 	extra_log_labels = {}
+	log_format       = ""
 
 	server {
 		listen_address           = "localhost"
@@ -325,8 +326,9 @@ prometheus.scrape "integrations_memcached" {
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {
-	mongodb_uri    = "mongodb://mongodb-a:27017"
-	direct_connect = true
+	mongodb_uri      = "mongodb://mongodb-a:27017"
+	direct_connect   = true
+	discovering_mode = true
 }
 
 discovery.relabel "integrations_mongodb" {
@@ -720,7 +722,7 @@ prometheus.exporter.snmp "integrations_snmp" {
 	}, {
 		address      = "192.168.1.3",
 		auth         = "private",
-		module       = "mikrotik",
+		module       = "system,mikrotik",
 		name         = "network_router_2",
 		snmp_context = "dummyContext",
 		walk_params  = "private",

@@ -3,21 +3,17 @@ package cloudwatch
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"log/slog"
 	"time"
 
 	"github.com/go-kit/log"
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
-	"github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
-	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
+	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 	"github.com/grafana/alloy/syntax"
 )
-
-// Since we are gathering metrics from CloudWatch and writing them in prometheus during each scrape, the timestamp
-// used should be the scrape one
-var addCloudwatchTimestamp = false
 
 // Avoid producing absence of values in metrics
 var defaultNilToZero = true
@@ -113,11 +109,12 @@ type Role struct {
 type Dimensions map[string]string
 
 type Metric struct {
-	Name       string        `alloy:"name,attr"`
-	Statistics []string      `alloy:"statistics,attr"`
-	Period     time.Duration `alloy:"period,attr"`
-	Length     time.Duration `alloy:"length,attr,optional"`
-	NilToZero  *bool         `alloy:"nil_to_zero,attr,optional"`
+	Name                   string        `alloy:"name,attr"`
+	Statistics             []string      `alloy:"statistics,attr"`
+	Period                 time.Duration `alloy:"period,attr"`
+	Length                 time.Duration `alloy:"length,attr,optional"`
+	NilToZero              *bool         `alloy:"nil_to_zero,attr,optional"`
+	AddCloudwatchTimestamp *bool         `alloy:"add_cloudwatch_timestamp,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -136,7 +133,7 @@ func ConvertToYACE(a Arguments, logger log.Logger) (yaceModel.JobsConfig, error)
 }
 
 // convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
-// This function is added for the backward compatibility of the deprecated service aliases. This compatability
+// This function is added for the backward compatibility of the deprecated service aliases. This compatibility
 // may be removed in the future.
 func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
 	for i, job := range a.Discovery {
@@ -214,7 +211,7 @@ func convertToYACE(a Arguments) (yaceModel.JobsConfig, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	modelConf, err := conf.Validate(logging.NewNopLogger())
+	modelConf, err := conf.Validate(slog.New(slog.DiscardHandler))
 	if err != nil {
 		return yaceModel.JobsConfig{}, err
 	}
@@ -234,7 +231,7 @@ func (tags Tags) toYACE() []yaceConf.Tag {
 func toYACERoles(rs []Role) []yaceConf.Role {
 	yaceRoles := []yaceConf.Role{}
 	// YACE defaults to an empty role, which means the environment configured role is used
-	// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
+	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
 	if len(rs) == 0 {
 		yaceRoles = append(yaceRoles, yaceConf.Role{})
 	}
@@ -274,7 +271,7 @@ func toYACEMetrics(ms []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 			Delay: 0,
 
 			NilToZero:              nilToZero,
-			AddCloudwatchTimestamp: &addCloudwatchTimestamp,
+			AddCloudwatchTimestamp: m.AddCloudwatchTimestamp,
 		})
 	}
 	return yaceMetrics

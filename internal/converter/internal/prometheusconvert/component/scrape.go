@@ -47,31 +47,51 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		return nil
 	}
 
-	return &scrape.Arguments{
-		Targets:                   targets,
-		ForwardTo:                 forwardTo,
-		JobName:                   scrapeConfig.JobName,
-		HonorLabels:               scrapeConfig.HonorLabels,
-		HonorTimestamps:           scrapeConfig.HonorTimestamps,
-		TrackTimestampsStaleness:  scrapeConfig.TrackTimestampsStaleness,
-		Params:                    scrapeConfig.Params,
-		ScrapeClassicHistograms:   scrapeConfig.ScrapeClassicHistograms,
-		ScrapeInterval:            time.Duration(scrapeConfig.ScrapeInterval),
-		ScrapeTimeout:             time.Duration(scrapeConfig.ScrapeTimeout),
-		ScrapeProtocols:           convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
-		MetricsPath:               scrapeConfig.MetricsPath,
-		Scheme:                    scrapeConfig.Scheme,
-		BodySizeLimit:             scrapeConfig.BodySizeLimit,
-		SampleLimit:               scrapeConfig.SampleLimit,
-		TargetLimit:               scrapeConfig.TargetLimit,
-		LabelLimit:                scrapeConfig.LabelLimit,
-		LabelNameLengthLimit:      scrapeConfig.LabelNameLengthLimit,
-		LabelValueLengthLimit:     scrapeConfig.LabelValueLengthLimit,
-		HTTPClientConfig:          *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
-		ExtraMetrics:              false,
-		EnableProtobufNegotiation: false,
-		Clustering:                cluster.ComponentBlock{Enabled: false},
+	histogramsToNHCB := scrapeConfig.ConvertClassicHistogramsToNHCB != nil && *scrapeConfig.ConvertClassicHistogramsToNHCB
+	fallbackProtocol := string(scrapeConfig.ScrapeFallbackProtocol)
+	if fallbackProtocol == "" {
+		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
 	}
+
+	// Set the escaping and validation scheme to default values in Alloy for maximum compatibility with backends.
+	scrapeConfig.MetricNameValidationScheme = prom_config.LegacyValidationConfig
+	scrapeConfig.MetricNameEscapingScheme = "" // this will default to underscores given the legacy validation scheme
+
+	alloyArgs := &scrape.Arguments{
+		Targets:                        targets,
+		ForwardTo:                      forwardTo,
+		JobName:                        scrapeConfig.JobName,
+		HonorLabels:                    scrapeConfig.HonorLabels,
+		HonorTimestamps:                scrapeConfig.HonorTimestamps,
+		TrackTimestampsStaleness:       scrapeConfig.TrackTimestampsStaleness,
+		Params:                         scrapeConfig.Params,
+		ScrapeClassicHistograms:        scrapeConfig.AlwaysScrapeClassicHistograms,
+		ScrapeNativeHistograms:         false, // this is controlled by a Prometheus feature, not the config file
+		ScrapeInterval:                 time.Duration(scrapeConfig.ScrapeInterval),
+		ScrapeTimeout:                  time.Duration(scrapeConfig.ScrapeTimeout),
+		ScrapeFailureLogFile:           scrapeConfig.ScrapeFailureLogFile,
+		ScrapeProtocols:                convertScrapeProtocols(scrapeConfig.ScrapeProtocols),
+		MetricsPath:                    scrapeConfig.MetricsPath,
+		Scheme:                         scrapeConfig.Scheme,
+		BodySizeLimit:                  scrapeConfig.BodySizeLimit,
+		SampleLimit:                    scrapeConfig.SampleLimit,
+		TargetLimit:                    scrapeConfig.TargetLimit,
+		LabelLimit:                     scrapeConfig.LabelLimit,
+		LabelNameLengthLimit:           scrapeConfig.LabelNameLengthLimit,
+		LabelValueLengthLimit:          scrapeConfig.LabelValueLengthLimit,
+		HTTPClientConfig:               *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
+		ExtraMetrics:                   false,
+		EnableProtobufNegotiation:      false,
+		ConvertClassicHistogramsToNHCB: histogramsToNHCB,
+		EnableCompression:              scrapeConfig.EnableCompression,
+		NativeHistogramBucketLimit:     scrapeConfig.NativeHistogramBucketLimit,
+		NativeHistogramMinBucketFactor: scrapeConfig.NativeHistogramMinBucketFactor,
+		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme,
+		MetricNameEscapingScheme:       scrapeConfig.MetricNameEscapingScheme,
+		ScrapeFallbackProtocol:         fallbackProtocol,
+		Clustering:                     cluster.ComponentBlock{Enabled: false},
+	}
+	return alloyArgs
 }
 
 func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Target {
@@ -89,7 +109,7 @@ func getScrapeTargets(staticConfig prom_discovery.StaticConfig) []discovery.Targ
 				targetMap[string(labelName)] = string(labelValue)
 				newMap := map[string]string{}
 				maps.Copy(newMap, targetMap)
-				targets = append(targets, newMap)
+				targets = append(targets, discovery.NewTargetFromMap(newMap))
 			}
 		}
 	}

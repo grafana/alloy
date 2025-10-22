@@ -130,5 +130,4 @@ func TestValidateConfig(t *testing.T) {
 			require.Equal(t, c.expected, c.input)
 		})
 	}
-
 }

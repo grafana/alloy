@@ -5,6 +5,14 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+type RuleGroupDiffKind string
+
+const (
+	RuleGroupDiffKindAdd    RuleGroupDiffKind = "add"
+	RuleGroupDiffKindRemove RuleGroupDiffKind = "remove"
+	RuleGroupDiffKindUpdate RuleGroupDiffKind = "update"
+)
+
 type LabelSelector struct {
 	MatchLabels      map[string]string `alloy:"match_labels,attr,optional"`
 	MatchExpressions []MatchExpression `alloy:"match_expression,block,optional"`

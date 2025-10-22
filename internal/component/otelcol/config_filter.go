@@ -226,7 +226,7 @@ type LogSeverityNumberMatchProperties struct {
 func (args LogSeverityNumberMatchProperties) convert() (map[string]interface{}, error) {
 	numVal, exists := severityLevels[args.Min]
 	if !exists {
-		return nil, fmt.Errorf(fmt.Sprintf("No severity value for %q", args.Min))
+		return nil, fmt.Errorf("no severity value for %q", args.Min)
 	}
 
 	return map[string]interface{}{

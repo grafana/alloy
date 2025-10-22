@@ -1,15 +1,14 @@
-//go:build linux
-
 package main
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 func TestUnixMetrics(t *testing.T) {
-	var unixMetrics = []string{
+	var expectedMetrics = []string{
 		"node_arp_entries",
 		"node_boot_time_seconds",
 		"node_context_switches_total",
@@ -44,15 +43,7 @@ func TestUnixMetrics(t *testing.T) {
 		"node_memory_Cached_bytes",
 		"node_memory_CommitLimit_bytes",
 		"node_memory_Committed_AS_bytes",
-		"node_memory_DirectMap1G_bytes",
-		"node_memory_DirectMap2M_bytes",
-		"node_memory_DirectMap4k_bytes",
 		"node_memory_Dirty_bytes",
-		"node_memory_HugePages_Free",
-		"node_memory_HugePages_Rsvd",
-		"node_memory_HugePages_Surp",
-		"node_memory_HugePages_Total",
-		"node_memory_Hugepagesize_bytes",
 		"node_memory_Inactive_anon_bytes",
 		"node_memory_Inactive_bytes",
 		"node_memory_Inactive_file_bytes",
@@ -159,5 +150,19 @@ func TestUnixMetrics(t *testing.T) {
 		"node_vmstat_pswpin",
 		"node_vmstat_pswpout",
 	}
-	common.MimirMetricsTest(t, unixMetrics, []string{}, "unix_metrics")
+
+	switch runtime.GOOS {
+	case "windows":
+		t.Skip("Skipping Unix metrics test on Windows")
+	// darwin does not support hugepages (aka super pages on mac), so we only add them for linux
+	case "linux":
+		expectedMetrics = append(expectedMetrics,
+			"node_memory_HugePages_Free",
+			"node_memory_HugePages_Rsvd",
+			"node_memory_HugePages_Surp",
+			"node_memory_HugePages_Total",
+			"node_memory_Hugepagesize_bytes")
+	}
+
+	common.MimirMetricsTest(t, expectedMetrics, []string{}, "unix_metrics")
 }

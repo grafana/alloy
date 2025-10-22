@@ -1,6 +1,6 @@
 // Package kubernetes_events implements the loki.source.kubernetes_events
 // component.
-package kubernetes_events //nolint:golint
+package kubernetes_events
 
 import (
 	"context"

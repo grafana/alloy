@@ -6,6 +6,7 @@ import (
 	"testing"
 	"unicode"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token"
@@ -61,6 +62,49 @@ func TestVM_Evaluate_Literals(t *testing.T) {
 	}
 }
 
+func TestVM_Evaluate_Secrets(t *testing.T) {
+	scope := vm.NewScope(map[string]any{
+		"secretSecret":           alloytypes.Secret("foo"),
+		"optionalSecretStr":      alloytypes.OptionalSecret{Value: "bar"},
+		"optionalSecretInt":      alloytypes.OptionalSecret{Value: "123", IsSecret: false},
+		"optionalSecretNegative": alloytypes.OptionalSecret{Value: "-123", IsSecret: false},
+		"optionalSecretFloat":    alloytypes.OptionalSecret{Value: "23.5", IsSecret: false},
+	})
+
+	tt := map[string]struct {
+		input  string
+		expect interface{}
+		errMsg string
+	}{
+		"secret":                       {`secretSecret`, string("bar"), "secrets may not be converted into strings"},
+		"optional secret str":          {`optionalSecretStr`, string("bar"), ""},
+		"optional secret int":          {`optionalSecretInt`, int(123), ""},
+		"optional secret negative int": {`optionalSecretNegative`, int(-123), ""},
+		"optional secret float":        {`optionalSecretFloat`, float64(23.5), ""},
+	}
+
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+
+			eval := vm.New(expr)
+
+			vPtr := reflect.New(reflect.TypeOf(tc.expect)).Interface()
+
+			err = eval.Evaluate(scope, vPtr)
+			if tc.errMsg == "" {
+				require.NoError(t, err)
+
+				actual := reflect.ValueOf(vPtr).Elem().Interface()
+				require.Equal(t, tc.expect, actual)
+			} else {
+				require.ErrorContains(t, err, tc.errMsg)
+			}
+		})
+	}
+}
+
 func TestVM_Evaluate(t *testing.T) {
 	// Shared scope across all tests below
 	scope := vm.NewScope(map[string]interface{}{
@@ -89,6 +133,9 @@ func TestVM_Evaluate(t *testing.T) {
 		{`3.0 / 5.0`, float64(0.6)},
 		{`5 % 3`, int(2)},
 		{`3 ^ 5`, int(243)},
+		{`3 ^ 0`, int(1)},
+		{`3 ^ 1`, int(3)},
+		{`0 ^ 1`, int(0)},
 		{`3 + 5 * 2`, int(13)}, // Chain multiple binops
 		{`42.0^-2`, float64(0.0005668934240362812)},
 

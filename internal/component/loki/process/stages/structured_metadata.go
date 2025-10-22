@@ -2,9 +2,8 @@ package stages
 
 import (
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 func newStructuredMetadataStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
@@ -35,7 +34,7 @@ func (*structuredMetadataStage) Cleanup() {
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
 		processLabelsConfigs(s.logger, e.Extracted, s.labelsConfig, func(labelName model.LabelName, labelValue model.LabelValue) {
-			e.StructuredMetadata = append(e.StructuredMetadata, logproto.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
+			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
 		})
 		return s.extractFromLabels(e)
 	})
@@ -48,7 +47,7 @@ func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
 	for lName, lSrc := range s.labelsConfig {
 		labelKey := model.LabelName(lSrc)
 		if lValue, ok := labels[labelKey]; ok {
-			e.StructuredMetadata = append(e.StructuredMetadata, logproto.LabelAdapter{Name: lName, Value: string(lValue)})
+			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: lName, Value: string(lValue)})
 			foundLabels = append(foundLabels, labelKey)
 		}
 	}

@@ -3,34 +3,38 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.postgres/ # /docs/alloy/latest/reference/components/prometheus.exporter.postgres/
 description: Learn about prometheus.exporter.postgres
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.postgres
 ---
 
-# prometheus.exporter.postgres
+# `prometheus.exporter.postgres`
 
 The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) for collecting metrics from a PostgreSQL database.
 
-Multiple `prometheus.exporter.postgres` components can be specified by giving them different labels.
+You can specify multiple `prometheus.exporter.postgres` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.postgres "LABEL" {
-    data_source_names = DATA_SOURCE_NAMES_LIST
+prometheus.exporter.postgres "<LABEL>" {
+    data_source_names = "<DATA_SOURCE_NAMES_LIST>"
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `prometheus.exporter.postgres`:
 
 | Name                         | Type           | Description                                                                   | Default | Required |
-|------------------------------|----------------|-------------------------------------------------------------------------------|---------|----------|
+| ---------------------------- | -------------- | ----------------------------------------------------------------------------- | ------- | -------- |
 | `data_source_names`          | `list(secret)` | Specifies the PostgreSQL servers to connect to.                               |         | yes      |
-| `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
+| `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | `""`    | no       |
 | `disable_default_metrics`    | `bool`         | When `true`, only exposes metrics supplied from `custom_queries_config_path`. | `false` | no       |
-| `custom_queries_config_path` | `string`       | Path to YAML file containing custom queries to expose as metrics.             | ""      | no       |
-| `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | []      | no       |
+| `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
+| `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | `[]`    | no       |
 
 Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_names`.
 
@@ -48,17 +52,22 @@ If `disable_default_metrics` is set to `true`, only the metrics defined in the `
 A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument.
 The following collectors are available for selection:
 
-* `database`
+{{< column-list >}}
+
+* `buffercache_summary`
 * `database_wraparound`
+* `database`
 * `locks`
 * `long_running_transactions`
 * `postmaster`
 * `process_idle`
-* `replication`
 * `replication_slot`
+* `replication`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
+* `stat_checkpointer` - Only supported in PostgreSQL 17 and later
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_statements`
 * `stat_user_tables`
 * `stat_wal_receiver`
@@ -67,33 +76,41 @@ The following collectors are available for selection:
 * `wal`
 * `xlog_location`
 
+{{< /column-list >}}
+
 By default, the following collectors are enabled:
+
+{{< column-list >}}
 
 * `database`
 * `locks`
-* `replication`
 * `replication_slot`
+* `replication`
+* `roles`
 * `stat_bgwriter`
 * `stat_database`
+* `stat_progress_vacuum`
 * `stat_user_tables`
 * `statio_user_tables`
 * `wal`
 
+{{< /column-list >}}
+
 {{< admonition type="note" >}}
-Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument will only be applied to the first data source in the list.
+Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument is only applied to the first data source in the list.
 {{< /admonition >}}
 
 ## Blocks
 
-The following blocks are supported:
+You can use the following block with `prometheus.exporter.postgres`:
 
-| Hierarchy     | Block             | Description                  | Required |
-| ------------- | ----------------- | ---------------------------- | -------- |
-| autodiscovery | [autodiscovery][] | Database discovery settings. | no       |
+| Name                             | Description                  | Required |
+| -------------------------------- | ---------------------------- | -------- |
+| [`autodiscovery`][autodiscovery] | Database discovery settings. | no       |
 
-[autodiscovery]: #autodiscovery-block
+[autodiscovery]: #autodiscovery
 
-### autodiscovery block
+### `autodiscovery`
 
 The `autodiscovery` block configures discovery of databases, outside of any specified in `data_source_names`.
 
@@ -101,13 +118,24 @@ The following arguments are supported:
 
 | Name                 | Type           | Description                                                                    | Default | Required |
 |----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
 | `database_allowlist` | `list(string)` | List of databases to filter for, meaning only these databases will be scraped. |         | no       |
 | `database_denylist`  | `list(string)` | List of databases to filter out, meaning all other databases will be scraped.  |         | no       |
+| `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
 
-If `enabled` is set to `true` and no allowlist or denylist is specified, the exporter will scrape from all databases.
+If `enabled` is set to `true` and no allowlist or denylist is specified, the exporter scrapes from all databases.
 
-If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` will have any effect.
+If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` has any effect.
+
+### `stat_statements`
+
+The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
+This configuration takes effect only when the `stat_statements` collector is enabled.
+
+The following arguments are supported:
+| Name            | Type     | Description                                         | Default | Required |
+| --------------- | -------- | --------------------------------------------------- | ------- | -------- |
+| `include_query` | `bool`   | Enable the selection of query ID and SQL statement. | `false` | no       |
+| `query_length`  | `number` | Maximum length of the statement query text.         | `120`   | no       |
 
 ## Exported fields
 
@@ -129,7 +157,7 @@ If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denyl
 
 ### Collect metrics from a PostgreSQL server
 
-This example uses a `prometheus.exporter.postgres` component to collect metrics from a PostgreSQL server running locally with all default settings:
+The following example uses a `prometheus.exporter.postgres` component to collect metrics from a PostgreSQL server running locally with all default settings:
 
 ```alloy
 // Because no autodiscovery is defined, this will only scrape the 'database_name' database, as defined
@@ -145,11 +173,11 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -157,14 +185,13 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect custom metrics from an allowlisted set of databases
 
-This example uses a `prometheus.exporter.postgres` component to collect custom metrics from a set of
-specific databases, replacing default metrics with custom metrics derived from queries in `/etc/alloy/custom-postgres-metrics.yaml`:
+The following example uses a `prometheus.exporter.postgres` component to collect custom metrics from a set of specific databases, replacing default metrics with custom metrics derived from queries in `/etc/alloy/custom-postgres-metrics.yaml`:
 
 ```alloy
 prometheus.exporter.postgres "example" {
@@ -189,11 +216,11 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -201,9 +228,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 ### Collect metrics from all databases except for a denylisted database
 
@@ -230,23 +257,34 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
 ```
 
+### Escape special characters in postgres url
+
+If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
+
+```alloy
+prometheus.exporter.postgres "example" {
+  data_source_names = [
+    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable"
+  ]
+}
+```
+This ensures the DSN remains valid and correctly parsed.
+
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the `remote_write` API.
-- `PASSWORD`: The password to use for authentication to the `remote_write` API.
-
-[scrape]: ../prometheus.scrape/
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

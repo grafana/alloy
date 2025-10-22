@@ -49,7 +49,7 @@ To complete this tutorial:
 
 <!-- INTERACTIVE ignore START -->
 {{< admonition type="tip" >}}
-Alternatively, you can try out this example in our interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
+Alternatively, you can try out this example in the interactive learning environment: [Sending metrics to Prometheus](https://killercoda.com/grafana-labs/course/alloy/send-metrics-to-prometheus).
 
 It's a fully configured environment with all the dependencies already installed.
 
@@ -174,9 +174,11 @@ This connects directly to the Prometheus instance running in the Docker containe
 Copy your local `config.alloy` file into the default {{< param "PRODUCT_NAME" >}} configuration file location.
 
 {{< docs/ignore >}}
+
 ```bash
 sudo cp config.alloy /etc/alloy/config.alloy
 ```
+
 {{< /docs/ignore >}}
 <!-- INTERACTIVE ignore START -->
 {{< code >}}
@@ -188,6 +190,7 @@ sudo cp config.alloy $(brew --prefix)/etc/alloy/config.alloy
 ```linux
 sudo cp config.alloy /etc/alloy/config.alloy
 ```
+
 {{< /code >}}
 <!-- INTERACTIVE ignore END -->
 
@@ -202,7 +205,7 @@ curl -X POST http://localhost:12345/-/reload
 This step uses the {{< param "PRODUCT_NAME" >}} UI, on `localhost` port `12345`.
 If you choose to run Alloy in a Docker container, make sure you use the `--server.http.listen-addr=0.0.0.0:12345` argument.
 
-If you don’t use this argument, the [debugging UI][debug] won’t be available outside of the Docker container.
+If you don't use this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
 [debug]: ../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
@@ -210,23 +213,25 @@ If you don’t use this argument, the [debugging UI][debug] won’t be available
 
 {{< docs/ignore >}}
 
-> This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don’t use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won’t be available outside of the Docker container.
+> This step uses the {{< param "PRODUCT_NAME" >}} UI on `localhost` port `12345`. If you chose to run {{< param "PRODUCT_NAME" >}} in a Docker container, make sure you use the `--server.http.listen-addr=` argument. If you don't use this argument, the [debugging UI](../../troubleshoot/debug/#alloy-ui) won't be available outside of the Docker container.
 
 {{< /docs/ignore >}}
 
 Optional: You can do a system service restart {{< param "PRODUCT_NAME" >}} and load the configuration file:
 
 {{< docs/ignore >}}
+
 ```bash
   sudo systemctl reload alloy
 ```
+
 {{< /docs/ignore >}}
 
 <!-- INTERACTIVE ignore START -->
 {{< code >}}
 
 ```macos
-brew services restart alloy
+brew services restart grafana/grafana/alloy
 ```
 
 ```linux
@@ -257,21 +262,19 @@ You can see that the components are healthy, and you are ready to explore the me
 
 ## Log into Grafana and explore metrics in Prometheus
 
-Open [http://localhost:3000/explore/metrics/](http://localhost:3000/explore/metrics/) to access the **Explore Metrics** feature in Grafana.
+Open [http://localhost:3000/explore/metrics/](http://localhost:3000/explore/metrics/) to access the **Metrics Drilldown** feature in Grafana.
 
-From here you can visually explore the metrics that are being sent to Prometheus by {{< param "PRODUCT_NAME" >}}. 
+From here you can visually explore the metrics sent to Prometheus by {{< param "PRODUCT_NAME" >}}.
 
 {{< figure src="/media/docs/alloy/explore-metrics.png" alt="Explore Metrics App" >}}
 
-You can also build promQL queries manually to explore the data further.
+You can also build PromQL queries manually to explore the data further.
 
 Open [http://localhost:3000/explore](http://localhost:3000/explore) to access the **Explore** feature in Grafana.
 
 Select Prometheus as the data source and click the **Metrics Browser** button to select the metric, labels, and values for your labels.
 
 Here you can see that metrics are flowing through to Prometheus as expected, and the end-to-end configuration was successful.
-
-
 
 <!-- INTERACTIVE page step4.md END -->
 

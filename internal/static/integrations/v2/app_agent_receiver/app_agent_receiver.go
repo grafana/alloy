@@ -1,4 +1,4 @@
-package app_agent_receiver //nolint:golint
+package app_agent_receiver
 
 import (
 	"fmt"

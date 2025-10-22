@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: alloy
+  namespace: default
   labels:
     helm.sh/chart: alloy
     app.kubernetes.io/name: alloy
@@ -27,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.4.3
+          image: docker.io/grafana/alloy:v1.11.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -56,21 +57,20 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
-            -
-              mountPath: /etc/geoip
+            - mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
-          image: ghcr.io/jimmidyson/configmap-reload:v0.12.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
           args:
-            - --volume-dir=/etc/alloy
-            - --webhook-url=http://localhost:12345/-/reload
+            - --watched-dir=/etc/alloy
+            - --reload-url=http://localhost:12345/-/reload
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
           resources:
             requests:
-              cpu: 1m
-              memory: 5Mi
+              cpu: 10m
+              memory: 50Mi
         - env:
           - name: GEOIPUPDATE_ACCOUNT_ID
             value: geoipupdate_account_id

@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // ComponentConverter represents a converter which converts an OpenTelemetry
@@ -53,9 +54,10 @@ var converters []ComponentConverter
 //   - The current OpenTelemetry Collector pipelines being converted.
 //   - The current OpenTelemetry Collector component being converted.
 type State struct {
-	cfg   *otelcol.Config // Input config.
-	file  *builder.File   // Output file.
-	group *pipelineGroup  // Current pipeline group being converted.
+	cfg    *otelcol.Config // Input config.
+	file   *builder.File   // Output file.
+	groups []pipelineGroup // All pipeline groups.
+	group  *pipelineGroup  // Current pipeline group being converted.
 
 	// converterLookup maps a converter key to the associated converter instance.
 	converterLookup map[converterKey]ComponentConverter
@@ -73,6 +75,11 @@ type converterKey struct {
 	Type component.Type
 }
 
+type groupedInstanceID struct {
+	componentstatus.InstanceID        // ID of the Otel component.
+	groupName                  string // Name of the Otel pipeline where the component is referenced.
+}
+
 // Body returns the body of the file being generated. Implementations of
 // [componentConverter] should use this to append components.
 func (state *State) Body() *builder.Body { return state.file.Body() }
@@ -81,12 +88,15 @@ func (state *State) Body() *builder.Body { return state.file.Body() }
 // Component component being converted. It is safe to use this label to create
 // multiple Alloy components in a chain.
 func (state *State) AlloyComponentLabel() string {
-	return state.alloyLabelForComponent(state.componentID)
+	return state.alloyLabelForComponent(groupedInstanceID{
+		InstanceID: state.componentID,
+		groupName:  state.group.Name,
+	})
 }
 
 // alloyLabelForComponent returns the unique Alloy label for the given
 // OpenTelemetry Collector component.
-func (state *State) alloyLabelForComponent(c componentstatus.InstanceID) string {
+func (state *State) alloyLabelForComponent(c groupedInstanceID) string {
 	const defaultLabel = "default"
 
 	// We need to prove that it's possible to statelessly compute the label for a
@@ -112,7 +122,7 @@ func (state *State) alloyLabelForComponent(c componentstatus.InstanceID) string 
 	// config.
 
 	var (
-		groupName     = state.group.Name
+		groupName     = c.groupName
 		componentName = c.ComponentID().Name()
 	)
 
@@ -145,8 +155,8 @@ func (state *State) alloyLabelForComponent(c componentstatus.InstanceID) string 
 
 // Next returns the set of Alloy component IDs for a given data type that the
 // current component being converted should forward data to.
-func (state *State) Next(c componentstatus.InstanceID, dataType component.DataType) []componentID {
-	instances := state.nextInstances(c, dataType)
+func (state *State) Next(c componentstatus.InstanceID, signal pipeline.Signal) []componentID {
+	instances := state.nextInstances(c, signal)
 
 	var ids []componentID
 
@@ -181,18 +191,43 @@ func (state *State) Next(c componentstatus.InstanceID, dataType component.DataTy
 	return ids
 }
 
-func (state *State) nextInstances(c componentstatus.InstanceID, dataType component.DataType) []componentstatus.InstanceID {
-	switch dataType {
-	case component.DataTypeMetrics:
-		return state.group.NextMetrics(c)
-	case component.DataTypeLogs:
-		return state.group.NextLogs(c)
-	case component.DataTypeTraces:
-		return state.group.NextTraces(c)
+func (state *State) nextInstances(c componentstatus.InstanceID, signal pipeline.Signal) []groupedInstanceID {
+	ids := []groupedInstanceID{}
 
-	default:
-		panic(fmt.Sprintf("otelcolconvert: unknown data type %q", dataType))
+	groups := make([]*pipelineGroup, 0)
+
+	if c.Kind() == component.KindReceiver {
+		// For receivers we need to check all groups because the same receiver might be used in multiple groups.
+		// TODO: should we also dedup exporters and connectors?
+		for _, group := range state.groups {
+			groups = append(groups, &group)
+		}
+	} else {
+		groups = append(groups, state.group)
 	}
+
+	for _, g := range groups {
+		var nextIDs []componentstatus.InstanceID
+		switch signal {
+		case pipeline.SignalMetrics:
+			nextIDs = g.NextMetrics(c)
+		case pipeline.SignalLogs:
+			nextIDs = g.NextLogs(c)
+		case pipeline.SignalTraces:
+			nextIDs = g.NextTraces(c)
+		default:
+			panic(fmt.Sprintf("otelcolconvert: unknown data type %q", signal))
+		}
+
+		for _, id := range nextIDs {
+			ids = append(ids, groupedInstanceID{
+				InstanceID: id,
+				groupName:  g.Name,
+			})
+		}
+	}
+
+	return ids
 }
 
 func (state *State) LookupExtension(id component.ID) componentID {

@@ -1,6 +1,6 @@
 //go:build !linux
 
-package cadvisor //nolint:golint
+package cadvisor
 
 import (
 	"context"

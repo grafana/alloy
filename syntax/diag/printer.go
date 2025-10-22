@@ -77,7 +77,7 @@ func (p *Printer) Fprint(w io.Writer, files map[string][]byte, diags Diagnostics
 
 		// Print a blank line to separate diagnostics.
 		if i+1 < len(diags) {
-			fmt.Fprintf(bw, "\n")
+			_, _ = fmt.Fprintf(bw, "\n")
 		}
 	}
 
@@ -106,7 +106,7 @@ func (p *Printer) printDiagnosticHeader(w io.Writer, diag Diagnostic) {
 	case SeverityLevelWarn:
 		_, _ = fmt.Fprintf(w, "Warning: ")
 	}
-	fmt.Fprintf(w, "%s: %s\n", diag.StartPos, diag.Message)
+	_, _ = fmt.Fprintf(w, "%s: %s\n", diag.StartPos, diag.Message)
 }
 
 func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
@@ -115,7 +115,7 @@ func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
 		end   = diag.EndPos
 	)
 
-	fmt.Fprintf(w, "\n")
+	_, _ = fmt.Fprintf(w, "\n")
 
 	var (
 		lines = strings.Split(string(file), "\n")
@@ -133,15 +133,15 @@ func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
 
 		// Print line number and margin.
 		printPaddedNumber(w, prefixWidth, lineNum)
-		fmt.Fprintf(w, " | ")
+		_, _ = fmt.Fprintf(w, " | ")
 
 		if multiline {
 			// Use 0 for the column number so we never consider the starting line for
 			// showing |.
 			if inRange(lineNum, 0, start, end) {
-				fmt.Fprint(w, "| ")
+				_, _ = fmt.Fprint(w, "| ")
 			} else {
-				fmt.Fprint(w, "  ")
+				_, _ = fmt.Fprint(w, "  ")
 			}
 		}
 
@@ -154,10 +154,10 @@ func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
 				printCh(w, tabWidth, ' ')
 				continue
 			}
-			fmt.Fprintf(w, "%c", ch)
+			_, _ = fmt.Fprintf(w, "%c", ch)
 		}
 
-		fmt.Fprintf(w, "\n")
+		_, _ = fmt.Fprintf(w, "\n")
 
 		// Print the focus indicator if we're on a line that needs it.
 		//
@@ -174,15 +174,15 @@ func (p *Printer) printRange(w io.Writer, file []byte, diag Diagnostic) {
 			case multiline && lineNum == start.Line:
 				// |_ would look like an incorrect right angle, so the second bar
 				// is dropped.
-				fmt.Fprintf(w, " |  _")
+				_, _ = fmt.Fprintf(w, " |  _")
 			case multiline && lineNum == end.Line:
-				fmt.Fprintf(w, " | |_")
+				_, _ = fmt.Fprintf(w, " | |_")
 			default:
-				fmt.Fprintf(w, " | ")
+				_, _ = fmt.Fprintf(w, " | ")
 			}
 
 			p.printFocus(w, line, lineNum, diag)
-			fmt.Fprintf(w, "\n")
+			_, _ = fmt.Fprintf(w, "\n")
 		}
 	}
 }
@@ -208,10 +208,10 @@ func (p *Printer) printFocus(w io.Writer, data string, line int, diag Diagnostic
 		case ch == '\t' || ch == '\v':
 			printCh(w, tabWidth, blank)
 		case inRange(line, column, diag.StartPos, diag.EndPos):
-			fmt.Fprintf(w, "%c", '^')
+			_, _ = fmt.Fprintf(w, "%c", '^')
 		default:
 			// Print a space.
-			fmt.Fprintf(w, "%c", blank)
+			_, _ = fmt.Fprintf(w, "%c", blank)
 		}
 	}
 }

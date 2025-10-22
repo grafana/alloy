@@ -1,0 +1,62 @@
+otelcol.receiver.splunkhec "default" {
+	raw_path = "/raw"
+
+	hec_metadata_to_otel_attrs {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
+	}
+
+	output {
+		metrics = [otelcol.exporter.splunkhec.default.input]
+		logs    = [otelcol.exporter.splunkhec.default.input]
+	}
+}
+
+otelcol.exporter.splunkhec "default" {
+	client {
+		endpoint                = "https://splunk:8088/services/collector"
+		timeout                 = "10s"
+		max_idle_conns          = 200
+		max_idle_conns_per_host = 100
+		idle_conn_timeout       = "10s"
+	}
+
+	splunk {
+		token              = "[REDACTED]"
+		source             = "otel"
+		sourcetype         = "otel"
+		index              = "metrics"
+		splunk_app_name    = "OpenTelemetry-Collector Splunk Exporter"
+		splunk_app_version = "v0.0.1"
+
+		otel_to_hec_fields {
+			severity_text   = "otel.log.severity.text"
+			severity_number = "otel.log.severity.number"
+		}
+
+		heartbeat {
+			interval = "30s"
+		}
+
+		telemetry {
+			enabled                = true
+			override_metrics_names = {
+				otelcol_exporter_splunkhec_heartbeats_failed = "app_heartbeats_failed_total",
+				otelcol_exporter_splunkhec_heartbeats_sent   = "app_heartbeats_success_total",
+			}
+			extra_attributes = {
+				custom_key   = "custom_value",
+				dataset_name = "SplunkCloudBeaverStack",
+			}
+		}
+	}
+
+	otel_attrs_to_hec_metadata {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
+	}
+}

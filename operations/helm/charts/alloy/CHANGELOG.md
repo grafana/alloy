@@ -11,12 +11,194 @@ internal API changes are not present.
 Unreleased
 ----------
 
-0.9.3 (2024-10-29)
-------------------
+- Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
+
+- Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
+
+- Fix alloy container template and documentation for `alloy.extraPorts` to contain `port` 
+  instead of unsupported `hostPort` (@jkruke)
+
+1.3.1 (2025-10-10)
+----------
+
+- Update to Grafana Alloy v1.11.2. (@kalleep)
+
+1.3.0 (2025-09-30)
+----------
+
+### Bug fixes
+
+- Update to Grafana Alloy v1.11.0. (@kalleep)
+
+- Avoid unnecessary pod restarts when the config reloader is enabled by not setting `checksum/config` pod annotation. (@ebuildy)
+
+- Remove readiness probe using curl when http server port is disabled. (@kalleep)
+
+1.2.1 (2025-08-07)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.1. (@kalleep)
+
+- Add support for configuring initialDelaySeconds and timeoutSeconds in Helm chart for readiness probe. (@peter-meltcafe)
+
+- Add option to not expose http server port. (@kun98-liu)
+
+- Add support to provide extraLabels to alloy.controler (@evkuzin)
+
+1.2.0 (2025-07-16)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.10.0. (@ptodev)
+
+1.1.2 (2025-06-26)
+----------
+- Add NetworkPolicy support. (@TheRealNoob)
+
+- Update to Grafana Alloy v1.9.2. (@ptodev)
+
+1.1.1 (2025-06-05)
+----------
+
+### Bug fixes
+
+- Fix `alloy.mounts.extra` incorrect list after templating. (@sentoz)
+
+- Update to Grafana Alloy v1.9.1. (@thampiotr)
+
+1.1.0 (2025-06-02)
+----------
+
+### Bug fixes
+
+- Fix VPA issue not rendering correctly. (@mattdurham)
+
+- Fix `app.kubernetes.io/version` label not being set correctly. (@wildum)
+
+### Enhancements
+
+- Update to Grafana Alloy v1.9.0. (@wildum)
+
+1.0.3 (2025-05-05)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.3. (@kalleep)
+
+1.0.2 (2025-04-23)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.2. (@kalleep)
+
+1.0.1 (2025-04-10)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.8.1. (@dehaansa)
+
+- Update default configreloader resources to match what is set in prometheus-operator project (@dehaansa)
+- Add Vertical Pod Autoscaler support (@QuentinBisson)
+- Add support for configuring minReadySeconds in Helm chart. (@PabloPie)
+
+1.0.0 (2025-04-09)
+----------
+
+### Enhancements
+
+- Update version to `1.0.0`. This Helm chart is now covered with the [backward-compatibility](https://grafana.com/docs/alloy/latest/introduction/backward-compatibility/) policy.
+
+- Update to Grafana Alloy v1.8.0. (@thampiotr)
+
+0.12.6 (2025-04-03)
+----------
+### Breaking changes
+
+- configReloader.customArgs are likely to break as the prometheus maintained config reloader does not have the same arguments as the previous image (@dehaansa)
+
+### Enhancements
+
+- Change configReloader from jimmydyson/configmap-reload to prometheus-operator/prometheus-config-reloader (@dehaansa)
+- Update to Grafana Alloy v1.7.5. (@kimxogus)
+- Add `checksum/config` pod annotation (@kimxogus)
+
+### Other changes
+
+- Fix typo in values.yaml documentation (@petewall)
+
+0.12.5 (2025-03-13)
+----------
+### Enhancements
+
+- Update to Grafana Alloy v1.7.4. (@dehaansa)
+
+0.12.4 (2025-03-13)
+----------
+### Enhancements
+
+- Update to Grafana Alloy v1.7.3. (@dehaansa)
+
+0.12.3 (2025-03-10)
+----------
+
+### Enhancements
+
+- Add support for adding livenessProbe to agent container (@slimes28)
+
+0.12.2 (2025-03-10)
+----------
+
+### Bug Fixes
+
+- Set resource namespace correctly (@shinebayar-g)
+
+### Enhancements
+
+- Add a new `automountServiceAccountToken` configuration value for `serviceAccount`. (@ptodev)
+- Update to Grafana Alloy v1.7.2. (@thampiotr)
+
+0.12.1 (2025-02-26)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.7.1. (@thampiotr)
+
+0.12.0 (2025-02-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.7.0. (@thampiotr)
+
+0.11.0 (2025-01-23)
+----------
+
+### Enhancements
+
+- Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
+- Add the ability to deploy extra manifest files. (@dbluxo)
+
+0.10.1 (2024-12-03)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.5.1. (@ptodev)
+
+0.10.0 (2024-11-13)
+----------
 
 ### Enhancements
 
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
+- Update to Grafana Alloy v1.5.0. (@thampiotr)
 
 ### Bugfixes
 
@@ -78,7 +260,6 @@ Unreleased
 
 - Update helm chart to use v1.3.1.
 
-
 0.6.0 (2024-08-05)
 ------------------
 
@@ -129,7 +310,6 @@ Unreleased
 ### Enhancements
 
 - Update to Grafana Alloy v1.1.0. (@rfratto)
-
 
 0.2.0 (2024-05-08)
 ------------------

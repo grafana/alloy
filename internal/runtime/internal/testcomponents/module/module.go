@@ -3,11 +3,11 @@ package module
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -44,7 +44,7 @@ func NewModuleComponent(o component.Options) (*ModuleComponent, error) {
 // It will set the component health in addition to return the error so that the consumer can rely on either or both.
 // If the content is the same as the last time it was successfully loaded, it will not be reloaded.
 func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue string) error {
-	if reflect.DeepEqual(args, c.getLatestArgs()) && contentValue == c.getLatestContent() {
+	if equality.DeepEqual(args, c.getLatestArgs()) && contentValue == c.getLatestContent() {
 		return nil
 	}
 

@@ -13,7 +13,7 @@ weight: 1000
 Follow these steps to debug issues with {{< param "PRODUCT_NAME" >}}:
 
 1. Use the {{< param "PRODUCT_NAME" >}} UI to debug issues.
-1. If the {{< param "PRODUCT_NAME" >}} UI doesn't help with debugging an issue, logs can be examined instead.
+1. If the {{< param "PRODUCT_NAME" >}} UI doesn't help with debugging an issue, you can examine the logs.
 
 ## {{% param "PRODUCT_NAME" %}} UI
 
@@ -43,11 +43,19 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-{{< figure src="/media/docs/alloy/ui_graph_page.png" alt="Alloy UI graph page" >}}
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The **Graph** page shows a graph view of components defined in the configuration file and their health.
+{{< figure src="/media/docs/alloy/ui_graph_page_new_2.png" alt="Alloy UI graph page" >}}
+
+The **Graph** page shows a graph view of components defined in the configuration file.
 Clicking a component in the graph navigates to the [Component detail page](#component-detail-page) for that component.
 
+You can click and drag the components to move them around.
+
+To access the graph page of a module, click on the **Graph** button on the module's detail page.
+
+The amount of data that exits a component that supports [live debugging][#live-debugging-page] is shown on the outgoing edges of the component.
+The data is refreshed according to the `window` parameter.
 ### Component detail page
 
 {{< figure src="/media/docs/alloy/ui_component_detail_page_2.png" alt="Alloy UI component detail page" >}}
@@ -57,10 +65,9 @@ The component detail page shows the following information for each component:
 * The health of the component with a message explaining the health.
 * The current evaluated arguments for the component.
 * The current exports for the component.
-* The current debug info for the component (if the component has debug info).
+* The current debug info for the component if the component has debug info.
 
 From there you can also go to the component documentation or to its corresponding [Live Debugging page](#live-debugging-page).
-
 
 {{< admonition type="note" >}}
 Values marked as a [secret][] are obfuscated and display as the text `(secret)`.
@@ -101,19 +108,23 @@ Live debugging allows you to do the following:
 The format and content of the debugging data vary depending on the component type.
 
 {{< admonition type="note" >}}
-Live debugging is not yet available in all components.
+Live debugging isn't yet available in all components.
 
 Supported components:
+
 * `loki.process`
 * `loki.relabel`
 * `loki.secretfilter`
+* `otelcol.connector.*`
 * `otelcol.processor.*`
 * `otelcol.receiver.*`
+* `prometheus.remote_write`
 * `prometheus.relabel`
+* `discovery.*`
+* `prometheus.scrape`
 {{< /admonition >}}
 
-
-## Debugging using the UI
+## Debug using the UI
 
 To debug using the UI:
 
@@ -121,32 +132,32 @@ To debug using the UI:
 * Ensure that the arguments and exports for misbehaving components appear correct.
 * Ensure that the live debugging data meets your expectations.
 
-## Examining logs
+## Examine logs
 
 Logs may also help debug issues with {{< param "PRODUCT_NAME" >}}.
 
 To reduce logging noise, many components hide debugging info behind debug-level log lines.
-It is recommended that you configure the [`logging` block][logging] to show debug-level log lines when debugging issues with {{< param "PRODUCT_NAME" >}}.
+It's recommended that you configure the [`logging` block][logging] to show debug-level log lines when debugging issues with {{< param "PRODUCT_NAME" >}}.
 
 The location of {{< param "PRODUCT_NAME" >}} logs is different based on how it's deployed.
 Refer to the [`logging` block][logging] page to see how to find logs for your system.
 
-## Debugging clustering issues
+## Debug clustering issues
 
 To debug issues when using [clustering][], check for the following symptoms.
 
-- **Cluster not converging**: The cluster peers aren't converging on the same view of their peers' status.
+* **Cluster not converging**: The cluster peers aren't converging on the same view of their peers' status.
   This is most likely due to network connectivity issues between the cluster nodes.
-  Use the {{< param "PRODUCT_NAME" >}} UI of each running peer to understand which nodes aren't being picked up correctly.
-- **Cluster split brain**: The cluster peers aren't aware of one another, thinking they’re the only node present.
+  Use the {{< param "PRODUCT_NAME" >}} UI of each running peer to understand which nodes aren't picked up correctly.
+* **Cluster split brain**: The cluster peers aren't aware of one another, thinking they're the only node present.
   Again, check for network connectivity issues.
   Check that the addresses or DNS names given to the node to join are correctly formatted and reachable.
-- **Configuration drift**: Clustering assumes that all nodes are running with the same configuration file at roughly the same time.
+* **Configuration drift**: Clustering assumes that all nodes are running with the same configuration file at roughly the same time.
   Check the logs for issues with the reloaded configuration file as well as the graph page to verify changes have been applied.
-- **Node name conflicts**: Clustering assumes all nodes have unique names.
+* **Node name conflicts**: Clustering assumes all nodes have unique names.
   Nodes with conflicting names are rejected and won't join the cluster.
   Look at the clustering UI page for the list of current peers with their names, and check the logs for any reported name conflict events.
-- **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it has not completely gone away.
+* **Node stuck in terminating state**: The node attempted to gracefully shut down and set its state to Terminating, but it hasn't completely gone away.
   Check the clustering page to view the state of the peers and verify that the terminating {{< param "PRODUCT_NAME" >}} has been shut down.
 
 {{< admonition type="note" >}}

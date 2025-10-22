@@ -12,13 +12,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
 )
 
 const (
 	typeSpan    = "span"
 	typeRoot    = "root"
 	typeProcess = "process"
+	typeEvent   = "event"
 )
 
 type consumer struct {
@@ -30,8 +31,10 @@ type options struct {
 	spans             bool
 	roots             bool
 	processes         bool
+	events            bool
 	spanAttributes    []string
 	processAttributes []string
+	eventAttributes   []string
 	overrides         OverrideConfig
 	labels            map[string]struct{}
 	nextConsumer      otelconsumer.Logs
@@ -67,8 +70,10 @@ func (c *consumer) UpdateOptions(args Arguments, nextConsumer otelconsumer.Logs)
 		spans:             args.Spans,
 		roots:             args.Roots,
 		processes:         args.Processes,
+		events:            args.Events,
 		spanAttributes:    args.SpanAttributes,
 		processAttributes: args.ProcessAttributes,
+		eventAttributes:   args.EventAttributes,
 		overrides:         args.Overrides,
 		labels:            labels,
 		nextConsumer:      nextConsumer,
@@ -95,7 +100,7 @@ func (c *consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		ssLen := rs.ScopeSpans().Len()
 
 		var svc string
-		svcAtt, ok := rs.Resource().Attributes().Get(semconv.AttributeServiceName)
+		svcAtt, ok := rs.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 		if ok {
 			svc = svcAtt.Str()
 		}
@@ -126,11 +131,12 @@ func (c *consumer) consumeSpans(serviceName string, ss ptrace.ScopeSpans, rs pco
 		span := ss.Spans().At(k)
 		traceID := span.TraceID().String()
 
+		logEvents := c.opts.events
 		logSpans := c.opts.spans
 		logRoots := c.opts.roots && span.ParentSpanID().IsEmpty()
 		logProcesses := c.opts.processes && lastTraceID != traceID
 
-		if !logSpans && !logRoots && !logProcesses {
+		if !logSpans && !logRoots && !logProcesses && !logEvents {
 			return nil
 		}
 
@@ -175,7 +181,36 @@ func (c *consumer) consumeSpans(serviceName string, ss ptrace.ScopeSpans, rs pco
 				return err
 			}
 		}
+
+		if logEvents {
+			err := c.consumeEvents(keyValues, span.Events(), logRecords)
+			if err != nil {
+				return err
+			}
+		}
 	}
+	return nil
+}
+
+func (c *consumer) consumeEvents(output pcommon.Map, events ptrace.SpanEventSlice, logRecords plog.LogRecordSlice) error {
+	eventsLen := events.Len()
+	for i := 0; i < eventsLen; i++ {
+		event := events.At(i)
+
+		// Can we find a solution without relying on more memory allocation?
+		// Clone output map due to having multiple events in one span otherwise leading to continuous use
+		// of the previous set event keyVals.
+		eventOutput := pcommon.NewMap()
+		output.CopyTo(eventOutput)
+
+		c.eventKeyVals(eventOutput, event)
+
+		err := c.appendLogRecord(typeEvent, eventOutput, logRecords)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -240,6 +275,18 @@ func (c *consumer) createLogRecord(kind string, keyValues pcommon.Map) (*plog.Lo
 	})
 
 	return &res, nil
+}
+
+func (c *consumer) eventKeyVals(output pcommon.Map, event ptrace.SpanEvent) {
+	etAtts := event.Attributes()
+
+	for _, name := range c.opts.eventAttributes {
+		att, ok := etAtts.Get(name)
+		if ok {
+			val := output.PutEmpty(name)
+			att.CopyTo(val)
+		}
+	}
 }
 
 func (c *consumer) processKeyVals(output pcommon.Map, resource pcommon.Resource, svc string) {

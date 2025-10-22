@@ -6,6 +6,7 @@ package internal
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 type kv struct {
@@ -21,6 +22,28 @@ func metrics(metrics ...pmetric.Metric) pmetric.Metrics {
 	}
 
 	return md
+}
+
+func metricsFromResourceMetrics(metrics ...pmetric.ResourceMetrics) pmetric.Metrics {
+	md := pmetric.NewMetrics()
+	for _, metric := range metrics {
+		mr := md.ResourceMetrics().AppendEmpty()
+		metric.CopyTo(mr)
+	}
+	return md
+}
+
+func resourceMetrics(job, instance string, metrics ...pmetric.Metric) pmetric.ResourceMetrics {
+	mr := pmetric.NewResourceMetrics()
+	mr.Resource().Attributes().PutStr(string(semconv.ServiceNameKey), job)
+	mr.Resource().Attributes().PutStr(string(semconv.ServiceInstanceIDKey), instance)
+	ms := mr.ScopeMetrics().AppendEmpty().Metrics()
+
+	for _, metric := range metrics {
+		destMetric := ms.AppendEmpty()
+		metric.CopyTo(destMetric)
+	}
+	return mr
 }
 
 func histogramPointRaw(attributes []*kv, startTimestamp, timestamp pcommon.Timestamp) pmetric.HistogramDataPoint {
@@ -65,6 +88,7 @@ func histogramPointNoValue(attributes []*kv, startTimestamp, timestamp pcommon.T
 func histogramMetric(name string, points ...pmetric.HistogramDataPoint) pmetric.Metric {
 	metric := pmetric.NewMetric()
 	metric.SetName(name)
+	metric.Metadata().PutStr("prometheus.type", "histogram")
 	histogram := metric.SetEmptyHistogram()
 	histogram.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
 
@@ -81,6 +105,7 @@ func histogramMetric(name string, points ...pmetric.HistogramDataPoint) pmetric.
 func exponentialHistogramMetric(name string, points ...pmetric.ExponentialHistogramDataPoint) pmetric.Metric {
 	metric := pmetric.NewMetric()
 	metric.SetName(name)
+	metric.Metadata().PutStr("prometheus.type", "histogram")
 	histogram := metric.SetEmptyExponentialHistogram()
 	histogram.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
 
@@ -198,6 +223,7 @@ func doublePointNoValue(attributes []*kv, startTimestamp, timestamp pcommon.Time
 func gaugeMetric(name string, points ...pmetric.NumberDataPoint) pmetric.Metric {
 	metric := pmetric.NewMetric()
 	metric.SetName(name)
+	metric.Metadata().PutStr("prometheus.type", "gauge")
 	destPointL := metric.SetEmptyGauge().DataPoints()
 	for _, point := range points {
 		destPoint := destPointL.AppendEmpty()
@@ -210,6 +236,7 @@ func gaugeMetric(name string, points ...pmetric.NumberDataPoint) pmetric.Metric 
 func sumMetric(name string, points ...pmetric.NumberDataPoint) pmetric.Metric {
 	metric := pmetric.NewMetric()
 	metric.SetName(name)
+	metric.Metadata().PutStr("prometheus.type", "counter")
 	sum := metric.SetEmptySum()
 	sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
 	sum.SetIsMonotonic(true)
@@ -260,6 +287,7 @@ func summaryPointNoValue(attributes []*kv, startTimestamp, timestamp pcommon.Tim
 func summaryMetric(name string, points ...pmetric.SummaryDataPoint) pmetric.Metric {
 	metric := pmetric.NewMetric()
 	metric.SetName(name)
+	metric.Metadata().PutStr("prometheus.type", "summary")
 	destPointL := metric.SetEmptySummary().DataPoints()
 	for _, point := range points {
 		destPoint := destPointL.AppendEmpty()

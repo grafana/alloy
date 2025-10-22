@@ -15,13 +15,12 @@ You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 ## Before you begin
 
 - These steps assume you already have a working [Chef][] setup.
-- You can add the following resources to any new or existing recipe.
+- You can add the following resources to any recipe.
 - These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories.
   The tasks target Linux systems from the following families:
-  - Debian (including Ubuntu)
-  - RedHat Enterprise Linux
+  - Debian, including Ubuntu
+  - RedHat Enterprise Linux, including Fedora
   - Amazon Linux
-  - Fedora
 
 ## Steps
 
@@ -88,7 +87,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
 The default configuration file location is `/etc/alloy/config.alloy`.
-You can replace this file with your own configuration or create a new configuration file for the service to use.
+You can replace this file with your own configuration or create a configuration file for the service to use.
 
 ## Next steps
 

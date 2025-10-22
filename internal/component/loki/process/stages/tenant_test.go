@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
 
 	lokiutil "github.com/grafana/loki/v3/pkg/util"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var testTenantAlloyExtractedData = `
@@ -39,14 +39,14 @@ func TestPipelineWithMissingKey_Tenant(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTenantAlloyExtractedData), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testTenantAlloyExtractedData), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
 	Debug = true
 
 	_ = processEntries(pl, newEntry(nil, nil, testTenantLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug msg=\"failed to convert value to string\" err=\"Can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug msg=\"failed to convert value to string\" err=\"can't convert <nil> to string\" type=null"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -128,7 +128,7 @@ func TestTenantStage_Validation(t *testing.T) {
 		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(util_log.Logger, testData.config)
+			stage, err := newTenantStage(log.NewNopLogger(), testData.config)
 
 			if testData.expectedErr != nil {
 				assert.EqualError(t, err, testData.expectedErr.Error())
@@ -204,7 +204,7 @@ func TestTenantStage_Process(t *testing.T) {
 		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(util_log.Logger, testData.config)
+			stage, err := newTenantStage(log.NewNopLogger(), testData.config)
 			require.NoError(t, err)
 
 			// Process and dummy line and ensure nothing has changed except

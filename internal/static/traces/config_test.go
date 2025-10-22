@@ -6,16 +6,18 @@ import (
 	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/static/traces/pushreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/otelcol"
-	"gopkg.in/yaml.v2"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func tmpFile(t *testing.T, content string) (*os.File, func()) {
-	f, err := os.CreateTemp("", "")
+	f, err := os.CreateTemp(t.TempDir(), "")
 	require.NoError(t, err)
 
 	_, err = f.Write([]byte(content))
@@ -68,14 +70,33 @@ receivers:
 			expectedError: true,
 		},
 		{
-			name: "empty receiver config",
+			name: "nil jaeger config",
 			cfg: `
 receivers:
   jaeger:
 remote_write:
   - endpoint: example.com:12345
 `,
-			expectedError: true,
+			expectedError: false,
+			expectedConfig: `
+receivers:
+  push_receiver: {}
+  jaeger:
+exporters:
+  otlp/0:
+    endpoint: example.com:12345
+    compression: gzip
+    retry_on_failure:
+      max_elapsed_time: 60s
+processors: {}
+extensions: {}
+service:
+  pipelines:
+    traces:
+      exporters: ["otlp/0"]
+      processors: []
+      receivers: ["push_receiver", "jaeger"]
+`,
 		},
 		{
 			name: "basic config",
@@ -363,36 +384,6 @@ service:
       receivers: ["push_receiver", "jaeger"]
   extensions: ["jaegerremotesampling/0", "jaegerremotesampling/1"]
 `,
-		},
-		{
-			name: "push_config and remote_write",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
-		},
-		{
-			name: "push_config.batch and batch",
-			cfg: `
-receivers:
-  jaeger:
-push_config:
-  endpoint: example:12345
-  batch:
-    timeout: 5s
-    send_batch_size: 100
-batch:
-  timeout: 5s
-  send_batch_size: 100
-remote_write:
-  - endpoint: anotherexample.com:12345
-`,
-			expectedError: true,
 		},
 		{
 			name: "one backend with remote_write",
@@ -1159,8 +1150,6 @@ remote_write:
       scopes: ["api.metrics"]
       timeout: 2s
 `,
-			// The tls.ciphersuites would appear that it should output nothing or nil but during the conversion otelcolConfigFromStringMap the otelcol.Unmarshal converts the nil array to a blank one []. This is specifically used
-			// in confmap.go that transforms nil arrays into [] on the zeroSliceHookFunc.
 			expectedConfig: `
 receivers:
   push_receiver: {}
@@ -1174,8 +1163,6 @@ extensions:
     token_url: https://example.com/oauth2/default/v1/token
     scopes: ["api.metrics"]
     timeout: 2s
-    tls:
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1244,7 +1231,6 @@ extensions:
       key_file: keyfile
       min_version: "1.3"
       reload_interval: 1h
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1313,7 +1299,6 @@ extensions:
       key_pem: test_secret_key_pem_string
       max_version: "1.2"
       reload_interval: 1h
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1370,16 +1355,12 @@ extensions:
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
-   tls:
-     cipher_suites: []
  oauth2client/otlp1:
    client_id: anotherclientid
    client_secret: anotherclientsecret
    token_url: https://example.com/oauth2/default/v1/token
    scopes: ["api.metrics"]
    timeout: 2s
-   tls:
-     cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: example.com:12345
@@ -1440,7 +1421,6 @@ extensions:
     timeout: 2s
     tls:
       insecure: true
-      cipher_suites: []
 exporters:
   otlphttp/0:
     endpoint: http://example.com:12345
@@ -1544,7 +1524,7 @@ service:
 			sortService(actualConfig)
 			sortService(expectedConfig)
 
-			assert.Equal(t, *expectedConfig, *actualConfig)
+			require.Equal(t, expectedConfig, actualConfig)
 		})
 	}
 }
@@ -1751,9 +1731,18 @@ load_balancing:
 			for componentID := range tc.expectedProcessors {
 				if len(tc.expectedProcessors[componentID]) > 0 {
 					assert.NotNil(t, tc.expectedProcessors)
-					assert.NotNil(t, actualConfig.Service.Pipelines[componentID])
+					var p pipeline.ID
+					signal := pipeline.Signal{}
+					err = signal.UnmarshalText([]byte(componentID.Type().String()))
+					require.NoError(t, err)
+					if componentID.Name() != "" {
+						p = pipeline.NewIDWithName(signal, componentID.Name())
+					} else {
+						p = pipeline.NewID(signal)
+					}
 
-					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[componentID].Processors)
+					assert.NotNil(t, actualConfig.Service.Pipelines[p])
+					assert.Equal(t, tc.expectedProcessors[componentID], actualConfig.Service.Pipelines[p].Processors)
 				}
 			}
 		})
@@ -1905,7 +1894,7 @@ remote_write:
 	assert.Nil(t, err)
 	otel, err := cfg.OtelConfig()
 	assert.Nil(t, err)
-	assert.Contains(t, otel.Service.Pipelines[component.NewID(component.MustNewType("traces"))].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
+	assert.Contains(t, otel.Service.Pipelines[pipeline.NewID(pipeline.SignalTraces)].Receivers, component.NewID(component.MustNewType(pushreceiver.TypeStr)))
 }
 
 func TestUnmarshalYAMLEmptyOTLP(t *testing.T) {

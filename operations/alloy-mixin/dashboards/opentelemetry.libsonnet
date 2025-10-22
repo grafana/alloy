@@ -23,61 +23,143 @@ local stackedPanelMixin = {
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
+  local panelPosition3Across(row, col) = panel.withPosition({x: col*8, y: row*10, w: 8, h: 10}),
+  local panelPosition4Across(row, col) = panel.withPosition({x: col*6, y: row*10, w: 6, h: 10}),
+  local rowPosition(row) = panel.withPosition({h: 1, w: 24, x: 0, y: row*10}),
+
   [filename]:
     dashboard.new(name='Alloy / OpenTelemetry', tag=$._config.dashboardTag) +
     dashboard.withDashboardsLink(tag=$._config.dashboardTag) +
     dashboard.withUID(std.md5(filename)) +
     dashboard.withTemplateVariablesMixin(templateVariables) +
     dashboard.withPanelsMixin([
-      // "Receivers for traces" row
+      // First row - Metrics and Logs
       (
-        panel.new('Receivers for traces [otelcol.receiver]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 0 })
+        panel.new('Receivers [otelcol.receiver.*]', 'row') +
+        rowPosition(0)
+      ),
+      (
+        panel.new(title='Accepted metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points successfully pushed into the pipeline.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=0, col=0) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_accepted_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Refused metric points', type='timeseries') +
+        panel.withDescription(|||
+          Number of metric points that could not be pushed into the pipeline.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=0, col=1) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_refused_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Accepted logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records successfully pushed into the pipeline.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=0, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_accepted_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Refused logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records that could not be pushed into the pipeline.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=0, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_receiver_refused_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
       ),
       (
         panel.new(title='Accepted spans', type='timeseries') +
         panel.withDescription(|||
           Number of spans successfully pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
-        panel.withPosition({ x: 0, y: 0, w: 8, h: 10 }) +
+        panelPosition4Across(row=1, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_accepted_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            //TODO: How will the dashboard look if there is more than one receiver component? The legend is not unique enough?
-            legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
       ),
       (
         panel.new(title='Refused spans', type='timeseries') +
-        stackedPanelMixin +
         panel.withDescription(|||
           Number of spans that could not be pushed into the pipeline.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
-        panel.withPosition({ x: 8, y: 0, w: 8, h: 10 }) +
+        panelPosition4Across(row=1, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_receiver_refused_spans_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }} / {{ transport }}',
           ),
         ])
       ),
       (
         panel.newHeatmap('RPC server duration', 'ms') +
         panel.withDescription(|||
-          The duration of inbound RPCs.
+          The duration of inbound RPCs for otelcol.receiver.* components.
         |||) +
-        panel.withPosition({ x: 16, y: 0, w: 8, h: 10 }) +
+        panelPosition4Across(row=1, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, rpc_service="opentelemetry.proto.collector.trace.v1.TraceService"}[$__rate_interval]))
+              sum by (le) (increase(rpc_server_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.receiver.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('HTTP server duration', 'ms') +
+        panel.withDescription(|||
+          The duration of inbound HTTP requests for otelcol.receiver.* components.
+        |||) +
+        panelPosition4Across(row=1, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(http_server_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.receiver.*"}[$__rate_interval]))
             ||| % $._config,
             format='heatmap',
             legendFormat='{{le}}',
@@ -87,8 +169,8 @@ local stackedPanelMixin = {
 
       // "Batching" row
       (
-        panel.new('Batching of logs, metrics, and traces [otelcol.processor.batch]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 10 })
+        panel.new('Batching [otelcol.processor.batch]', 'row') +
+        rowPosition(2)
       ),
       (
         panel.newHeatmap('Number of units in the batch', 'short') +
@@ -96,7 +178,7 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of spans, metric datapoints, or log lines in a batch
         |||) +
-        panel.withPosition({ x: 0, y: 10, w: 8, h: 10 }) +
+        panelPosition3Across(row=2, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
@@ -115,13 +197,13 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of distinct metadata value combinations being processed
         |||) +
-        panel.withPosition({ x: 8, y: 10, w: 8, h: 10 }) +
+        panel.withUnit('short') +
+        panelPosition3Across(row=2, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s}
+              sum by(instance) (otelcol_processor_batch_metadata_cardinality{%(instanceSelector)s})
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
@@ -130,54 +212,149 @@ local stackedPanelMixin = {
         panel.withDescription(|||
           Number of times the batch was sent due to a timeout trigger
         |||) +
-        panel.withPosition({ x: 16, y: 10, w: 8, h: 10 }) +
+        panel.withUnit('cps') +
+        panelPosition3Across(row=2, col=2) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_processor_batch_timeout_trigger_send_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
 
-      // "Exporters for traces" row
+      // "Exporters" row
       (
-        panel.new('Exporters for traces [otelcol.exporter]', 'row') +
-        panel.withPosition({ h: 1, w: 24, x: 0, y: 20 })
+        panel.new('Exporters [otelcol.exporter.*]', 'row') +
+        rowPosition(3)
       ),
       (
-        panel.new(title='Exported sent spans', type='timeseries') +
+        panel.new(title='Exported metric points', type='timeseries') +
         panel.withDescription(|||
-          Number of spans successfully sent to destination.
+          Number of metric points successfully sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
-        panel.withPosition({ x: 0, y: 20, w: 8, h: 10 }) +
+        panelPosition4Across(row=3, col=0) +
         panel.withQueries([
           panel.newQuery(
             expr= ||| 
-              rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_sent_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
       (
-        panel.new(title='Exported failed spans', type='timeseries') +
+        panel.new(title='Failed metric points', type='timeseries') +
         panel.withDescription(|||
-          Number of spans in failed attempts to send to destination.
+          Number of metric points that failed to be sent to destination.
         |||) +
+        panel.withUnit('cps') +
         stackedPanelMixin +
-        panel.withPosition({ x: 8, y: 20, w: 8, h: 10 }) +
+        panelPosition4Across(row=3, col=1) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval])
+              sum by(instance) (rate(otelcol_exporter_send_failed_metric_points_total{%(instanceSelector)s}[$__rate_interval]))
             ||| % $._config,
-            legendFormat='{{ pod }}',
           ),
         ])
       ),
-
+      (
+        panel.new(title='Exported logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records successfully sent to destination.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=3, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_sent_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Failed logs', type='timeseries') +
+        panel.withDescription(|||
+          Number of log records that failed to be sent to destination.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=3, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_send_failed_log_records_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Exported spans', type='timeseries') +
+        panel.withDescription(|||
+          Number of spans successfully sent to destination.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=4, col=0) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_sent_spans_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.new(title='Failed spans', type='timeseries') +
+        panel.withDescription(|||
+          Number of spans that failed to be sent to destination.
+        |||) +
+        panel.withUnit('cps') +
+        stackedPanelMixin +
+        panelPosition4Across(row=4, col=1) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(instance) (rate(otelcol_exporter_send_failed_spans_total{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('RPC client duration', 'ms') +
+        panel.withDescription(|||
+          The duration of outbound RPCs for otelcol.exporter.* components.
+        |||) +
+        panelPosition4Across(row=4, col=2) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(rpc_client_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.exporter.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
+      (
+        panel.newHeatmap('HTTP client duration', 'ms') +
+        panel.withDescription(|||
+          The duration of outbound HTTP requests for otelcol.exporter.* components.
+        |||) +
+        panelPosition4Across(row=4, col=3) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (le) (increase(http_client_duration_milliseconds_bucket{%(instanceSelector)s, component_id=~"otelcol.exporter.*"}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+        ])
+      ),
     ]),
 }

@@ -21,7 +21,7 @@ import (
 )
 
 func Test_TopicDiscovery(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	group := &testConsumerGroupHandler{}
 	TopicPollInterval = time.Microsecond
 	var closed bool
@@ -38,7 +38,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			return nil
 		},
 		consumer: consumer{
-			ctx:           context.Background(),
+			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
 			logger:        log.NewNopLogger(),
@@ -58,22 +58,18 @@ func Test_TopicDiscovery(t *testing.T) {
 	ts.loop()
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1"}, group.GetTopics())
-	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
+	}, 1*time.Minute, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
 
 	client.UpdateTopics([]string{"topic1", "topic2"})
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1", "topic2"}, group.GetTopics())
 	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1", "topic2"}, group.GetTopics())
 

@@ -1,5 +1,5 @@
 // Package redis_exporter embeds https://github.com/oliver006/redis_exporter
-package redis_exporter //nolint:golint
+package redis_exporter
 
 import (
 	"errors"
@@ -82,6 +82,7 @@ func (c Config) GetExporterOptions() re.Options {
 		CheckKeys:                 c.CheckKeys,
 		CheckKeysBatchSize:        c.CheckKeyGroupsBatchSize,
 		CheckKeyGroups:            c.CheckKeyGroups,
+		MaxDistinctKeyGroups:      c.MaxDistinctKeyGroups,
 		CheckSingleKeys:           c.CheckSingleKeys,
 		CheckStreams:              c.CheckStreams,
 		CheckSingleStreams:        c.CheckSingleStreams,
@@ -116,7 +117,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the addr of the redis server.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.RedisAddr, nil
 }
 
@@ -153,7 +154,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 		exporterConfig.LuaScript = scripts
 	}
 
-	//new version of the exporter takes the file paths directly, for hot-reloading support (https://github.com/oliver006/redis_exporter/pull/526)
+	// new version of the exporter takes the file paths directly, for hot-reloading support (https://github.com/oliver006/redis_exporter/pull/526)
 
 	if (c.TLSClientKeyFile != "") != (c.TLSClientCertFile != "") {
 		return nil, errors.New("TLS client key file and cert file should both be present")
@@ -175,7 +176,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 	if c.RedisPasswordFile != "" {
 		password, err := os.ReadFile(c.RedisPasswordFile)
 		if err != nil {
-			return nil, fmt.Errorf("Error loading password file %s: %w", c.RedisPasswordFile, err)
+			return nil, fmt.Errorf("error loading password file %s: %w", c.RedisPasswordFile, err)
 		}
 		exporterConfig.Password = strings.TrimSpace(string(password))
 	}

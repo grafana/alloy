@@ -16,13 +16,15 @@ import (
 // Options passed to all tailers.
 type Options struct {
 	// Client to use to request logs from Kubernetes.
-	Client *kubernetes.Clientset
+	Client kubernetes.Interface
 
 	// Handler to send discovered logs to.
 	Handler loki.EntryHandler
 
 	// Positions interface so tailers can save/restore offsets in log files.
 	Positions positions.Positions
+
+	TailFromEnd bool
 }
 
 // A Manager manages a set of running Tailers.

@@ -5,7 +5,10 @@ package gcplogtarget
 // logs like bucket logs, load balancer logs, and Kubernetes cluster logs
 // from GCP.
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // Metrics stores gcplog entry metrics.
 type Metrics struct {
@@ -52,12 +55,10 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Number of parsing errors while receiving gcplog messages",
 	}, []string{"reason"})
 
-	reg.MustRegister(
-		m.gcplogEntries,
-		m.gcplogErrors,
-		m.gcplogTargetLastSuccessScrape,
-		m.gcpPushEntries,
-		m.gcpPushErrors,
-	)
+	m.gcplogEntries = util.MustRegisterOrGet(reg, m.gcplogEntries).(*prometheus.CounterVec)
+	m.gcplogErrors = util.MustRegisterOrGet(reg, m.gcplogErrors).(*prometheus.CounterVec)
+	m.gcplogTargetLastSuccessScrape = util.MustRegisterOrGet(reg, m.gcplogTargetLastSuccessScrape).(*prometheus.GaugeVec)
+	m.gcpPushEntries = util.MustRegisterOrGet(reg, m.gcpPushEntries).(*prometheus.CounterVec)
+	m.gcpPushErrors = util.MustRegisterOrGet(reg, m.gcpPushErrors).(*prometheus.CounterVec)
 	return &m
 }

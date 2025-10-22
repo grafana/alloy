@@ -7,12 +7,15 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
@@ -29,10 +32,15 @@ type Fanout struct {
 	writeLatency   prometheus.Histogram
 	samplesCounter prometheus.Counter
 	ls             labelstore.LabelStore
+	metadataStore  UpdateableMetadataStore
+
+	// lastSeriesCount stores the number of series that were sent through the last appender. It helps to estimate how
+	// much memory to allocate for the staleness trackers.
+	lastSeriesCount atomic.Int64
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
+func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore, ms UpdateableMetadataStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "prometheus_fanout_latency",
 		Help:    "Write latency for sending to direct and indirect components",
@@ -52,6 +60,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 		writeLatency:   wl,
 		samplesCounter: s,
 		ls:             ls,
+		metadataStore:  ms,
 	}
 }
 
@@ -69,19 +78,23 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
 	// code from the prometheusreceiver which expects the Appender context to
-	// be contain both a scrape target and a metadata store, and fails the
+	// contain both a scrape target and a metadata store, and fails the
 	// conversion if they are missing. We should find a way around this as both
 	// Targets and Metadata will be handled in a different way in Alloy.
-	ctx = scrape.ContextWithTarget(ctx, &scrape.Target{})
-	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	// TODO(@ptodev): Can we instead use the more recent translator package:
+	// https://github.com/prometheus/otlptranslator
+	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
+	ctx = scrape.ContextWithMetricMetadataStore(ctx, f.metadataStore)
 
 	app := &appender{
 		children:          make([]storage.Appender, 0),
-		componentID:       f.componentID,
-		writeLatency:      f.writeLatency,
-		samplesCounter:    f.samplesCounter,
-		ls:                f.ls,
-		stalenessTrackers: make([]labelstore.StalenessTracker, 0),
+		fanout:            f,
+		stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
 	}
 
 	for _, x := range f.children {
@@ -95,12 +108,15 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 type appender struct {
 	children          []storage.Appender
-	componentID       string
-	writeLatency      prometheus.Histogram
-	samplesCounter    prometheus.Counter
 	start             time.Time
-	ls                labelstore.LabelStore
 	stalenessTrackers []labelstore.StalenessTracker
+	fanout            *Fanout
+}
+
+func (a *appender) SetOptions(opts *storage.AppendOptions) {
+	for _, x := range a.children {
+		x.SetOptions(opts)
+	}
 }
 
 var _ storage.Appender = (*appender)(nil)
@@ -111,7 +127,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		a.start = time.Now()
 	}
 	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
 	a.stalenessTrackers = append(a.stalenessTrackers, labelstore.StalenessTracker{
 		GlobalRefID: uint64(ref),
@@ -129,7 +145,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		}
 	}
 	if updated {
-		a.samplesCounter.Inc()
+		a.fanout.samplesCounter.Inc()
 	}
 	return ref, multiErr
 }
@@ -138,7 +154,8 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 func (a *appender) Commit() error {
 	defer a.recordLatency()
 	var multiErr error
-	a.ls.TrackStaleness(a.stalenessTrackers)
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
 	for _, x := range a.children {
 		err := x.Commit()
 		if err != nil {
@@ -151,7 +168,8 @@ func (a *appender) Commit() error {
 // Rollback satisfies the Appender interface.
 func (a *appender) Rollback() error {
 	defer a.recordLatency()
-	a.ls.TrackStaleness(a.stalenessTrackers)
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
 	var multiErr error
 	for _, x := range a.children {
 		err := x.Rollback()
@@ -167,7 +185,7 @@ func (a *appender) recordLatency() {
 		return
 	}
 	duration := time.Since(a.start)
-	a.writeLatency.Observe(duration.Seconds())
+	a.fanout.writeLatency.Observe(duration.Seconds())
 }
 
 // AppendExemplar satisfies the Appender interface.
@@ -176,7 +194,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exem
 		a.start = time.Now()
 	}
 	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
 	var multiErr error
 	for _, x := range a.children {
@@ -194,8 +212,15 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 		a.start = time.Now()
 	}
 	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
+
+	// Store metadata in our local store
+	familyName := l.Get(model.MetricNameLabel)
+	if familyName != "" {
+		a.fanout.metadataStore.UpdateMetadata(familyName, m)
+	}
+
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.UpdateMetadata(ref, l, m)
@@ -211,8 +236,9 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 		a.start = time.Now()
 	}
 	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
+	// TODO histograms are not currently tracked for staleness causing them to be held forever
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendHistogram(ref, l, t, h, fh)
@@ -228,7 +254,7 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 		a.start = time.Now()
 	}
 	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
 	var multiErr error
 	for _, x := range a.children {
@@ -240,19 +266,19 @@ func (a *appender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t,
 	return ref, multiErr
 }
 
-// NoopMetadataStore implements the MetricMetadataStore interface.
-type NoopMetadataStore map[string]scrape.MetricMetadata
-
-// GetMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) GetMetadata(familyName string) (scrape.MetricMetadata, bool) {
-	return scrape.MetricMetadata{}, false
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
+	}
+	var multiErr error
+	for _, x := range a.children {
+		_, err := x.AppendHistogramCTZeroSample(ref, l, t, ct, h, fh)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return ref, multiErr
 }
-
-// ListMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) ListMetadata() []scrape.MetricMetadata { return nil }
-
-// SizeMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) SizeMetadata() int { return 0 }
-
-// LengthMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) LengthMetadata() int { return 0 }

@@ -2,6 +2,7 @@ package runtime_test
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,16 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
+	"github.com/grafana/alloy/internal/featuregate"
+	alloy_runtime "github.com/grafana/alloy/internal/runtime"
+	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents/module/string"
+	"github.com/grafana/alloy/internal/runtime/internal/testservices"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // use const to avoid lint error
@@ -298,12 +301,12 @@ func TestImportError(t *testing.T) {
 
 func testConfig(t *testing.T, config string, reloadConfig string, update func()) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 
 	err := ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()
@@ -315,6 +318,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		defer wg.Done()
 		ctrl.Run(ctx)
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	// Check for initial condition
 	require.Eventually(t, func() bool {
@@ -341,6 +348,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 		err = ctrl.LoadSource(f, nil, "")
 		require.NoError(t, err)
 
+		require.Eventually(t, func() bool {
+			return ctrl.LoadComplete()
+		}, 3*time.Second, 10*time.Millisecond)
+
 		// Export should be -10 after update
 		require.Eventually(t, func() bool {
 			export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -351,10 +362,10 @@ func testConfig(t *testing.T, config string, reloadConfig string, update func())
 
 func testConfigError(t *testing.T, config string, expectedError string) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl, f := setup(t, config)
+	ctrl, f := setup(t, config, nil, featuregate.StabilityPublicPreview)
 	err := ctrl.LoadSource(f, nil, "")
 	require.ErrorContains(t, err, expectedError)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	var wg sync.WaitGroup
 	defer func() {
 		cancel()
@@ -368,15 +379,17 @@ func testConfigError(t *testing.T, config string, expectedError string) {
 	}()
 }
 
-func setup(t *testing.T, config string) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+func setup(t *testing.T, config string, reg prometheus.Registerer, stability featuregate.Stability) (*alloy_runtime.Runtime, *alloy_runtime.Source) {
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 	ctrl := alloy_runtime.New(alloy_runtime.Options{
 		Logger:       s,
 		DataPath:     t.TempDir(),
-		MinStability: featuregate.StabilityPublicPreview,
-		Reg:          nil,
-		Services:     []service.Service{},
+		MinStability: stability,
+		Reg:          reg,
+		Services: []service.Service{
+			&testservices.Fake{},
+		},
 	})
 	f, err := alloy_runtime.ParseSource(t.Name(), []byte(config))
 	require.NoError(t, err)
@@ -392,5 +405,19 @@ func getTestFiles(directory string, t *testing.T) []fs.FileInfo {
 	files, err := dir.Readdir(-1)
 	require.NoError(t, err)
 
-	return files
+	// Don't use files which start with a dot (".").
+	// This is to prevent the test suite from using files such as ".DS_Store",
+	// which Visual Studio Code may add.
+	return filterFiles(files, ".")
+}
+
+// Only take into account files which don't have a certain prefix.
+func filterFiles(files []fs.FileInfo, denylistedPrefix string) []fs.FileInfo {
+	res := make([]fs.FileInfo, 0, len(files))
+	for _, file := range files {
+		if !strings.HasPrefix(file.Name(), denylistedPrefix) {
+			res = append(res, file)
+		}
+	}
+	return res
 }

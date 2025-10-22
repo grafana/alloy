@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
@@ -27,8 +28,15 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
+	"github.com/prometheus/prometheus/util/compression"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 )
+
+// Upstream prometheus implementation https://github.com/prometheus/prometheus/blob/main/tsdb/agent/db.go
+// 	based on the prometheus tsdb head wal https://github.com/prometheus/prometheus/blob/main/tsdb/head_wal.go
 
 // ErrWALClosed is an error returned when a WAL operation can't run because the
 // storage has already been closed.
@@ -84,15 +92,13 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 	})
 
 	if r != nil {
-		r.MustRegister(
-			m.numActiveSeries,
-			m.numDeletedSeries,
-			m.totalOutOfOrderSamples,
-			m.totalCreatedSeries,
-			m.totalRemovedSeries,
-			m.totalAppendedSamples,
-			m.totalAppendedExemplars,
-		)
+		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
+		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
+		m.totalOutOfOrderSamples = util.MustRegisterOrGet(r, m.totalOutOfOrderSamples).(prometheus.Counter)
+		m.totalCreatedSeries = util.MustRegisterOrGet(r, m.totalCreatedSeries).(prometheus.Counter)
+		m.totalRemovedSeries = util.MustRegisterOrGet(r, m.totalRemovedSeries).(prometheus.Counter)
+		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
+		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 	}
 
 	return &m
@@ -145,9 +151,19 @@ type Storage struct {
 	notifier wlog.WriteNotified
 }
 
+// stripeSeriesSize is the number of stripes to use for series locking. A larger number allows for more concurrent writes without
+// concerns for lock contention, but allocates a static amount of memory for each remote write component in use. This value is
+// 4x smaller than the current default for prometheus TSDB. There are discussions about dropping it even further in,
+// https://github.com/prometheus/prometheus/issues/17100. This value is likely still too high for our use case, but we
+// cannot easily test for lock contention we will play it safe and keep it higher for now.
+var stripeSeriesSize = 4096
+
 // NewStorage makes a new Storage.
 func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
-	w, err := wlog.NewSize(logger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, wlog.CompressionSnappy)
+	// Convert go-kit logger to slog logger
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
+
+	w, err := wlog.NewSize(slogLogger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +173,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 		wal:     w,
 		logger:  logger,
 		deleted: map[chunks.HeadSeriesRef]int{},
-		series:  newStripeSeries(tsdb.DefaultStripeSize),
+		series:  newStripeSeries(stripeSeriesSize),
 		metrics: newStorageMetrics(registerer),
 		nextRef: atomic.NewUint64(0),
 	}
@@ -212,12 +228,11 @@ func (w *Storage) replayWAL() error {
 
 	level.Info(w.logger).Log("msg", "replaying WAL, this may take a while", "dir", w.wal.Dir())
 	dir, startFrom, err := wlog.LastCheckpoint(w.wal.Dir())
-	if err != nil && err != record.ErrNotFound {
+	if err != nil && !errors.Is(err, record.ErrNotFound) {
 		return fmt.Errorf("find last checkpoint: %w", err)
 	}
 
-	multiRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
-
+	duplicateRefToValidRef := map[chunks.HeadSeriesRef]chunks.HeadSeriesRef{}
 	if err == nil {
 		sr, err := wlog.NewSegmentsReader(dir)
 		if err != nil {
@@ -231,7 +246,7 @@ func (w *Storage) replayWAL() error {
 
 		// A corrupted checkpoint is a hard error for now and requires user
 		// intervention. There's likely little data that can be recovered anyway.
-		if err := w.loadWAL(wlog.NewReader(sr), multiRef); err != nil {
+		if err := w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, startFrom); err != nil {
 			return fmt.Errorf("backfill checkpoint: %w", err)
 		}
 		startFrom++
@@ -239,33 +254,37 @@ func (w *Storage) replayWAL() error {
 	}
 
 	// Find the last segment.
-	_, last, err := wlog.Segments(w.wal.Dir())
+	_, lastSegment, err := wlog.Segments(w.wal.Dir())
 	if err != nil {
 		return fmt.Errorf("finding WAL segments: %w", err)
 	}
 
 	// Backfill segments from the most recent checkpoint onwards.
-	for i := startFrom; i <= last; i++ {
+	for i := startFrom; i <= lastSegment; i++ {
 		s, err := wlog.OpenReadSegment(wlog.SegmentName(w.wal.Dir(), i))
 		if err != nil {
 			return fmt.Errorf("open WAL segment %d: %w", i, err)
 		}
 
 		sr := wlog.NewSegmentBufReader(s)
-		err = w.loadWAL(wlog.NewReader(sr), multiRef)
+		err = w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, i)
 		if err := sr.Close(); err != nil {
 			level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
 		}
 		if err != nil {
 			return err
 		}
-		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", last)
+		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", lastSegment)
 	}
 
 	return nil
 }
 
-func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef) (err error) {
+// loadWAL reads the WAL and populates the in-memory series.
+// duplicateRefToValidRef tracks SeriesRefs that are duplicates by their labels, and maps them to the valid SeriesRef
+// that should be used instead. Duplicate SeriesRefs for the same labels can happen when a series is gc'ed from memory
+// but has not been fully removed from the WAL via a wlog.Checkpoint yet.
+func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
 		dec     record.Decoder
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
@@ -368,21 +387,20 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 		switch v := d.(type) {
 		case []record.RefSeries:
 			for _, s := range v {
-				// If this is a new series, create it in memory without a timestamp.
-				// If we read in a sample for it, we'll use the timestamp of the latest
-				// sample. Otherwise, the series is stale and will be deleted once
-				// the truncation is performed.
-				if w.series.GetByID(s.Ref) == nil {
-					series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
-					w.series.Set(s.Labels.Hash(), series)
-					multiRef[s.Ref] = series.ref
+				// Make sure we don't try to reuse a Ref that already exists in the WAL.
+				if s.Ref > lastRef {
+					lastRef = s.Ref
+				}
 
+				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
+				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
+				if !created {
+					duplicateRefToValidRef[s.Ref] = series.ref
+					// Make sure we keep the duplicate SeriesRef checkpoints while it might still exist in the WAL.
+					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
-
-					if s.Ref > lastRef {
-						lastRef = s.Ref
-					}
 				}
 			}
 
@@ -390,14 +408,18 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			seriesPool.Put(v)
 		case []record.RefSample:
 			for _, s := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[s.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
+					// Make sure we keep the duplicate SeriesRef in checkpoints until we get past the current segment.
+					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					s.Ref = ref
+				}
+				series := w.series.GetByID(s.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
 
-				series := w.series.GetByID(ref)
+				// Update the lastTs for the series if this sample is newer
 				if s.T > series.lastTs {
 					series.lastTs = s.T
 				}
@@ -407,13 +429,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			samplesPool.Put(v)
 		case []record.RefHistogramSample:
 			for _, entry := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[entry.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					entry.Ref = ref
+				}
+				series := w.series.GetByID(entry.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
-				series := w.series.GetByID(ref)
+
+				// Update the lastTs for the series if this sample is newer
 				if entry.T > series.lastTs {
 					series.lastTs = entry.T
 				}
@@ -423,13 +448,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, multiRef map[chunks.HeadSeriesRef]chun
 			histogramsPool.Put(v)
 		case []record.RefFloatHistogramSample:
 			for _, entry := range v {
-				// Update the lastTs for the series based
-				ref, ok := multiRef[entry.Ref]
-				if !ok {
+				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					entry.Ref = ref
+				}
+				series := w.series.GetByID(entry.Ref)
+				if series == nil {
 					nonExistentSeriesRefs.Inc()
 					continue
 				}
-				series := w.series.GetByID(ref)
+
+				// Update the lastTs for the series if this sample is newer
 				if entry.T > series.lastTs {
 					series.lastTs = entry.T
 				}
@@ -521,7 +549,7 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil
 	}
 
-	keep := func(id chunks.HeadSeriesRef) bool {
+	keep := func(id chunks.HeadSeriesRef, _ int) bool {
 		if w.series.GetByID(id) != nil {
 			return true
 		}
@@ -529,7 +557,11 @@ func (w *Storage) Truncate(mint int64) error {
 		seg, ok := w.deleted[id]
 		return ok && seg > last
 	}
-	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint); err != nil {
+
+	// Convert go-kit logger to slog logger
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
+
+	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
@@ -683,7 +715,7 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 
@@ -807,7 +839,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 		// Ensure no empty or duplicate labels have gotten through. This mirrors the
 		// equivalent validation code in the TSDB's headAppender.
 		l = l.WithoutEmpty()
-		if len(l) == 0 {
+		if l.Len() == 0 {
 			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 		}
 
@@ -866,6 +898,16 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m meta
 	return 0, nil
 }
 
+func (a *appender) SetOptions(_ *storage.AppendOptions) {
+	// TODO: implement this later
+	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
+}
+
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	// TODO: implement this later
+	return 0, nil
+}
+
 // Commit submits the collected samples and purges the batch.
 func (a *appender) Commit() error {
 	if err := a.log(); err != nil {
@@ -912,7 +954,7 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingHistograms) > 0 {
-		buf = encoder.HistogramSamples(a.pendingHistograms, buf)
+		buf, _ = encoder.HistogramSamples(a.pendingHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
@@ -920,7 +962,7 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingFloatHistograms) > 0 {
-		buf = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		buf, _ = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}

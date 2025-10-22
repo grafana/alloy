@@ -66,13 +66,13 @@ type LatencyConfig struct {
 	// ThresholdMs in milliseconds.
 	ThresholdMs int64 `alloy:"threshold_ms,attr"`
 	// Upper bound in milliseconds.
-	UpperThresholdmsMs int64 `alloy:"upper_threshold_ms,attr,optional"`
+	UpperThresholdMs int64 `alloy:"upper_threshold_ms,attr,optional"`
 }
 
 func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
 	return tsp.LatencyCfg{
-		ThresholdMs:        latencyConfig.ThresholdMs,
-		UpperThresholdmsMs: latencyConfig.UpperThresholdmsMs,
+		ThresholdMs:      latencyConfig.ThresholdMs,
+		UpperThresholdMs: latencyConfig.UpperThresholdMs,
 	}
 }
 
@@ -197,6 +197,10 @@ type BooleanAttributeConfig struct {
 	// Value indicate the bool value, either true or false to use when matching against attribute values.
 	// BooleanAttribute Policy will apply exact value match on Value
 	Value bool `alloy:"value,attr"`
+	// InvertMatch indicates that values must not match against attribute values.
+	// If InvertMatch is true and Values is equal to 'true', all other values will be sampled except 'true'.
+	// Also, if the specified Key does not match any resource or span attributes, data will be sampled.
+	InvertMatch bool `alloy:"invert_match,attr,optional"`
 }
 
 func (booleanAttributeConfig BooleanAttributeConfig) Convert() tsp.BooleanAttributeCfg {
@@ -425,10 +429,16 @@ type DecisionCacheConfig struct {
 	// For effective use, this value should be at least an order of magnitude higher than Arguments.NumTraces.
 	// If left as default 0, a no-op DecisionCache will be used.
 	SampledCacheSize int `alloy:"sampled_cache_size,attr,optional"`
+	// NonSampledCacheSize specifies the size of the cache that holds the non-sampled trace IDs.
+	// This value will be the maximum amount of trace IDs that the cache can hold before overwriting previous IDs.
+	// For effective use, this value should be at least an order of magnitude higher than Config.NumTraces.
+	// If left as default 0, a no-op DecisionCache will be used.
+	NonSampledCacheSize int `alloy:"non_sampled_cache_size,attr,optional"`
 }
 
 func (decisionCacheConfig DecisionCacheConfig) Convert() tsp.DecisionCacheConfig {
 	return tsp.DecisionCacheConfig{
-		SampledCacheSize: decisionCacheConfig.SampledCacheSize,
+		SampledCacheSize:    decisionCacheConfig.SampledCacheSize,
+		NonSampledCacheSize: decisionCacheConfig.NonSampledCacheSize,
 	}
 }

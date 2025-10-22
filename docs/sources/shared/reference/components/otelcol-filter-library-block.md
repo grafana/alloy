@@ -10,10 +10,10 @@ This block specifies properties to match the implementation library against:
 
 The following arguments are supported:
 
-Name      | Type     | Description                   | Default | Required
-----------|----------|-------------------------------|---------|---------
-`name`    | `string` | The attribute key.            |         | yes
-`version` | `string` | The version to match against. | null    | no
+| Name      | Type     | Description                   | Default | Required |
+| --------- | -------- | ----------------------------- | ------- | -------- |
+| `name`    | `string` | The attribute key.            |         | yes      |
+| `version` | `string` | The version to match against. | null    | no       |
 
 If `version` is unset, any version matches.
-If `version` is set to an empty string, it only matches a library version, which is also an empty string.
+If you set `version` to an empty string, it only matches a library version, which is also an empty string.

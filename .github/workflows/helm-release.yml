@@ -9,6 +9,10 @@ env:
   CR_INDEX_PATH: "${{ github.workspace }}/.cr-index"
   CR_PACKAGE_PATH: "${{ github.workspace }}/.cr-release-packages"
   CR_TOOL_PATH: "${{ github.workspace }}/.cr-tool"
+
+permissions:
+  contents: read
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -17,13 +21,14 @@ jobs:
       chartpath: ${{ steps.list-changed.outputs.chartpath }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
           path: source
+          persist-credentials: false
 
       - name: Install chart-testing
-        uses: helm/chart-testing-action@v2.6.1
+        uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b # v2.7.0
 
       - name: List changed charts
         id: list-changed
@@ -32,8 +37,8 @@ jobs:
 
           latest_tag=$( if ! git describe --tags --abbrev=0 --match='helm-chart/*' 2> /dev/null ; then git rev-list --max-parents=0 --first-parent HEAD; fi )
 
-          echo "Running: ct list-changed --config ${CT_CONFIGFILE} --since ${latest_tag} --target-branch ${{ github.ref_name }}"
-          changed=$(ct list-changed --config "${CT_CONFIGFILE}" --since "${latest_tag}" --target-branch "${{ github.ref_name }}")
+          echo "Running: ct list-changed --config ${CT_CONFIGFILE} --since ${latest_tag} --target-branch ${GH_REF_NAME}"
+          changed=$(ct list-changed --config "${CT_CONFIGFILE}" --since "${latest_tag}" --target-branch "${GH_REF_NAME}")
           echo "${changed}"
 
           num_changed=$(wc -l <<< ${changed})
@@ -57,26 +62,40 @@ jobs:
             echo "No charts have changed, skipping release"
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          GH_REF_NAME: ${{ github.ref_name }}
 
   release:
     needs: [setup]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.changed == 'true'
+    permissions:
+      contents: write # Needed to push to origin
+      id-token: write # Needed to generate app token
     steps:
-      - uses: actions/create-github-app-token@v1
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+        with:
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+          export_env: false
+
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token
         with:
-          app-id: ${{ secrets.ALLOYBOT_APP_ID }}
-          private-key: ${{ secrets.ALLOYBOT_PRIVATE_KEY }}
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
           owner: grafana
           repositories: alloy,helm-charts
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
           path: source
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true # Needed for `git push origin tag_name`
 
       - name: Configure Git
         run: |
@@ -85,12 +104,13 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Checkout helm-charts
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
           repository: grafana/helm-charts
           path: helm-charts
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Configure Git for helm-charts
         run: |
@@ -99,15 +119,16 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
+          # renovate: datasource=github-releases packageName=helm/helm
           version: v3.10.3
 
       - name: Parse Chart.yaml
         id: parse-chart
         run: |
           cd source
-          changed="${{ needs.setup.outputs.chartpath }}"
+          changed="${CHART_PATH}"
           description=$(yq ".description" < ${changed}/Chart.yaml)
           name=$(yq ".name" < ${changed}/Chart.yaml)
           version=$(yq ".version" < ${changed}/Chart.yaml)
@@ -115,6 +136,8 @@ jobs:
           echo "desc=${description}" >> $GITHUB_OUTPUT
           echo "tagname=helm-chart/${version}" >> $GITHUB_OUTPUT
           echo "packagename=${name}-${version}" >> $GITHUB_OUTPUT
+        env:
+          CHART_PATH: ${{ needs.setup.outputs.chartpath }}
 
       - name: Install CR tool
         run: |
@@ -128,21 +151,27 @@ jobs:
       - name: Create Helm package
         run: |
           cd source
-          "${CR_TOOL_PATH}/cr" package "${{ steps.parse-chart.outputs.chartpath }}" --config "${CR_CONFIGFILE}" --package-path "${CR_PACKAGE_PATH}"
+          "${CR_TOOL_PATH}/cr" package "${CHART_PATH}" --config "${CR_CONFIGFILE}" --package-path "${CR_PACKAGE_PATH}"
           echo "Result of chart package:"
           ls -l "${CR_PACKAGE_PATH}"
+        env:
+          CHART_PATH: ${{ steps.parse-chart.outputs.chartpath }}
+
 
       - name: Create tag and check if exists on origin
         run: |
           cd source
-          echo "Making tag ${{ steps.parse-chart.outputs.tagname }}"
-          git tag "${{ steps.parse-chart.outputs.tagname }}"
+          echo "Making tag ${TAG_NAME}"
+          git tag "${TAG_NAME}"
+        env:
+          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
+
 
       # Note that this creates a release in grafana/helm-charts with a new tag.
       # The tag name in grafana/helm-charts is <package>-<version>, while the
       # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
         with:
           name: ${{ steps.parse-chart.outputs.packagename }}
           repository: grafana/helm-charts
@@ -160,10 +189,15 @@ jobs:
       - name: Push release tag on origin
         run: |
           cd source
-          echo "Pushing tag ${{ steps.parse-chart.outputs.tagname }}"
-          git push origin "${{ steps.parse-chart.outputs.tagname }}"
+          echo "Pushing tag ${TAG_NAME}"
+          git push origin "${TAG_NAME}"
+        env:
+          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
 
       - name: Update helm-charts index.yaml
         run: |
           cd helm-charts
-          "${CR_TOOL_PATH}/cr" index --config "${CR_CONFIGFILE}" --token "${{ steps.app-token.outputs.token }}" --index-path "${CR_INDEX_PATH}" --package-path "${CR_PACKAGE_PATH}" --push
+          "${CR_TOOL_PATH}/cr" index --config "${CR_CONFIGFILE}" --token "${TOKEN}" --index-path "${CR_INDEX_PATH}" --package-path "${CR_PACKAGE_PATH}" --push
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}

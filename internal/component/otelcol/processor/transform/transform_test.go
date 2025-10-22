@@ -3,6 +3,7 @@ package transform_test
 import (
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
@@ -25,7 +26,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"error_mode": "propagate",
+				"error_mode":         "propagate",
+				"trace_statements":   []interface{}{},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -35,7 +40,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"error_mode": "ignore",
+				"error_mode":         "ignore",
+				"trace_statements":   []interface{}{},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -45,7 +54,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			trace_statements {
 				context = "span"
 				statements = [
-					// Accessing a map with a key that does not exist will return nil. 
+					// Accessing a map with a key that does not exist will return nil.
 					` + backtick + `set(attributes["test"], "pass") where attributes["test"] == nil` + backtick + `,
 				]
 			}
@@ -61,6 +70,177 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
+			},
+		},
+		{
+			testName: "TransformWithConditions",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				context = "span"
+				statements = [
+					` + backtick + `set(name, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "datapoint"
+				statements = [
+					` + backtick + `set(metric.name, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "log"
+				statements = [
+					` + backtick + `set(body, "bear")` + backtick + `,
+				]
+				conditions = [
+					` + backtick + `attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "span",
+						"statements": []interface{}{
+							`set(name, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"context": "datapoint",
+						"statements": []interface{}{
+							`set(metric.name, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "log",
+						"statements": []interface{}{
+							`set(body, "bear")`,
+						},
+						"conditions": []interface{}{
+							`attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"profile_statements": []interface{}{},
+			},
+		},
+		{
+			testName: "TransformWithContextStatementsErrorMode",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				error_mode = "propagate"
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "propagate")` + backtick + `,
+				]
+			}
+			trace_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "resource"
+				error_mode = "silent"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "silent")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "resource"
+				error_mode = "propagate"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "propagate")` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(resource.attributes["name"], "ignore")` + backtick + `,
+				]
+			}
+
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "propagate",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "propagate")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "silent",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "silent")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"error_mode": "propagate",
+						"context":    "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "propagate")`,
+						},
+					},
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(resource.attributes["name"], "ignore")`,
+						},
+					},
+				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -87,7 +267,165 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
+		},
+		{
+			testName: "FlatConfiguration",
+			cfg: `
+			error_mode = "ignore"
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+				metric = [
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+				log = [
+					` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
+							`set(resource.attributes["name"], "bear")`,
+						},
+					},
+				},
+				"profile_statements": []interface{}{},
+			},
+		},
+		{
+			testName: "MixedConfigurationStyles",
+			cfg: `
+			error_mode = "ignore"
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+				metric = [
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+				log = [
+					` + backtick + `set(log.body, "bear") where log.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			trace_statements {
+				context = "span"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			log_statements {
+				context = "resource"
+				statements = [
+					` + backtick + `set(attributes["name"], "bear")` + backtick + `,
+					` + backtick + `keep_keys(attributes, ["http.method", "http.path"])` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"error_mode": "ignore",
+				"trace_statements": []interface{}{
+					map[string]interface{}{
+						"context": "span",
+						"statements": []interface{}{
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(span.name, "bear") where span.attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"metric_statements": []interface{}{
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"log_statements": []interface{}{
+					map[string]interface{}{
+						"context": "resource",
+						"statements": []interface{}{
+							`set(attributes["name"], "bear")`,
+							`keep_keys(attributes, ["http.method", "http.path"])`,
+						},
+					},
+					map[string]interface{}{
+						"context": "",
+						"statements": []interface{}{
+							`set(log.body, "bear") where log.attributes["http.path"] == "/animal"`,
+						},
+					},
+				},
+				"profile_statements": []interface{}{},
+			},
+		},
+		{
+			testName: "InvalidFlatConfiguration",
+			cfg: `
+			error_mode = "ignore"
+			statements {
+				trace = [
+					` + backtick + `set(span.name, "bear") where span.attributes["http.path"] == "/animal"` + backtick + `,
+					` + backtick + `set(resource.attributes["name"], "bear")` + backtick + `,
+					` + backtick + `set(metric.name, "bear") where resource.attributes["http.path"] == "/animal"` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			errorMsg: `inferred context "metric" is not a valid candidate`,
 		},
 		{
 			testName: "RenameAttribute2",
@@ -111,6 +449,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -135,6 +476,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"trace_statements":   []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -160,6 +504,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"log_statements":     []interface{}{},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -190,6 +537,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"metric_statements":  []interface{}{},
+				"profile_statements": []interface{}{},
+				"trace_statements":   []interface{}{},
 			},
 		},
 		{
@@ -320,6 +670,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -413,6 +764,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []interface{}{},
 			},
 		},
 		{
@@ -435,7 +787,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(body, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_metric",
@@ -449,7 +801,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(name, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_trace",
@@ -463,7 +815,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "set(name, \"bear\" where attributes[\"http.path\"] == \"/animal\"": statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
 		},
 		{
 			testName: "unknown_function_log",
@@ -477,7 +829,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(log.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_metric",
@@ -491,7 +843,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(datapoint.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_trace",
@@ -505,7 +857,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `unable to parse OTTL statement "not_a_function(span.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_context",
@@ -544,10 +896,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			// Validate the two configs
 			require.NoError(t, actual.Validate())
-			require.NoError(t, expectedCfg.Validate())
+			// Don't validate expectedCfg, because it contains internal slices
+			// with OTTL functions that aren't part of the config -
+			// they are just a way to store internal state.
+			// The validation would fail because those functions won't be registered.
+			// You'd have to register those functions by creating a factory first.
 
-			// Compare the two configs
-			require.Equal(t, expectedCfg, *actual)
+			// Compare the two configs by marshaling to JSON.
+			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
 }

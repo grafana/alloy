@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package asprof
 
@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // extracting to /tmp
@@ -23,64 +23,45 @@ import (
 // write skippable tests with uid=0
 func TestStickyDir(t *testing.T) {
 	dir := "/tmp"
-	p := NewProfiler(dir, EmbeddedArchive)
-	p.tmpDirMarker = fmt.Sprintf("alloy-asprof-%s", uuid.NewString())
-	t.Logf("tmpDirMarker: %s", p.tmpDirMarker)
-	err := p.ExtractDistributions()
-	assert.NoError(t, err)
+	tmpDirMarker := fmt.Sprintf("alloy-asprof-%s", uuid.NewString())
+	t.Logf("tmpDirMarker: %s", tmpDirMarker)
+	dist, err := ExtractDistribution(EmbeddedArchive, dir, tmpDirMarker)
+	require.NoError(t, err)
+	require.NotNil(t, dist)
 }
 
 func TestOwnedDir(t *testing.T) {
-	dir := tempDir(t)
+	dir := t.TempDir()
 	err := os.Chmod(dir, 0755)
-	assert.NoError(t, err)
-	p := NewProfiler(dir, EmbeddedArchive)
-	err = p.ExtractDistributions()
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	dist, err := ExtractDistribution(EmbeddedArchive, dir, "alloy-asprof")
+	require.NoError(t, err)
+	require.NotNil(t, dist)
 }
 
 func TestOwnedDirWrongPermission(t *testing.T) {
-	dir := tempDir(t)
+	dir := t.TempDir()
 	err := os.Chmod(dir, 0777)
-	assert.NoError(t, err)
-	p := NewProfiler(dir, EmbeddedArchive)
-	err = p.ExtractDistributions()
-	assert.Error(t, err)
+	require.NoError(t, err)
+	dist, err := ExtractDistribution(EmbeddedArchive, dir, "alloy-asprof-")
+	require.Error(t, err)
+	require.Empty(t, dist.extractedDir)
 }
 
 func TestDistSymlink(t *testing.T) {
-	// check if /tmp/dist-... is a symlink
-	td := []bool{true, false}
-	for _, glibc := range td {
-		t.Run(fmt.Sprintf("glibc=%t", glibc), func(t *testing.T) {
-			root := tempDir(t)
-			err := os.Chmod(root, 0755)
-			assert.NoError(t, err)
-			manipulated := tempDir(t)
-			err = os.Chmod(manipulated, 0755)
-			assert.NoError(t, err)
-			p := NewProfiler(root, EmbeddedArchive)
-			muslDistName, glibcDistName := p.getDistNames()
+	root := t.TempDir()
+	err := os.Chmod(root, 0755)
+	require.NoError(t, err)
+	manipulated := t.TempDir()
+	err = os.Chmod(manipulated, 0755)
+	require.NoError(t, err)
+	distName := "dist"
 
-			if glibc {
-				err = os.Symlink(manipulated, filepath.Join(root, muslDistName))
-				assert.NoError(t, err)
-			} else {
-				err = os.Symlink(manipulated, filepath.Join(root, glibcDistName))
-				assert.NoError(t, err)
-			}
+	err = os.Symlink(manipulated, filepath.Join(root, distName))
+	require.NoError(t, err)
 
-			err = p.ExtractDistributions()
-			t.Logf("expected %s", err)
-			assert.Error(t, err)
-		})
-	}
-}
-
-func tempDir(t *testing.T) string {
-	t.Helper()
-	dir, err := os.MkdirTemp("", "asprof-test")
-	assert.NoError(t, err)
-	t.Logf("dir: %s", dir)
-	return dir
+	dist, err := ExtractDistribution(EmbeddedArchive, root, distName)
+	t.Logf("expected %s", err)
+	require.Error(t, err)
+	require.Empty(t, dist.extractedDir)
 }

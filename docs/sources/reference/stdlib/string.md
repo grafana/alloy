@@ -53,7 +53,7 @@ Subsequent calls without an explicit index will then proceed with `n`+1, `n`+2, 
 The function produces an error if the format string requests an impossible conversion or accesses more arguments than are given.
 An error is also produced for an unsupported format verb.
 
-##### Verbs
+#### Verbs
 
 The specification may contain the following verbs.
 
@@ -73,6 +73,9 @@ The specification may contain the following verbs.
 | `%G` | Like `%E` for large exponents or like `%f` otherwise.                                     |
 | `%s` | Convert to string and insert the string's characters.                                     |
 | `%q` | Convert to string and produce a JSON quoted string representation.                        |
+
+When using the `string.format` function with a [`secret`][] value, you must first convert it to a non-sensitive string using the [`convert.nonsensitive`][] function.
+If the resulting value must be a [`secret`][], you can use string concatenation with the `+` operator instead of the `string.format` function.
 
 ## string.join
 
@@ -194,13 +197,16 @@ If the string doesn't start with the prefix, the string is returned unchanged.
 "hello"
 ```
 
-## strings.trim_space
+## string.trim_space
 
-`strings.trim_space` removes any whitespace characters from the start and end of a string.
+`string.trim_space` removes any whitespace characters from the start and end of a string.
 
 ### Examples
 
 ```alloy
-> strings.trim_space("  hello\n\n")
+> string.trim_space("  hello\n\n")
 "hello"
 ```
+
+[`secret`]: ../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+[`convert.nonsensitive`]: ../convert/#nonsensitive

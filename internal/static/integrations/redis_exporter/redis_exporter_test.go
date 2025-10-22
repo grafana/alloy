@@ -1,4 +1,4 @@
-package redis_exporter //nolint:golint
+package redis_exporter
 
 import (
 	"bytes"

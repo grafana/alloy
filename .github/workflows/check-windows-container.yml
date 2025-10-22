@@ -1,0 +1,33 @@
+name: Check Windows container
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile.windows'
+      - 'tools/ci/docker-containers-windows'
+      - '.github/workflows/check-windows-container.yml'
+      - '.github/workflows/publish-alloy.yml'
+      - '.github/workflows/publish-alloy-devel.yml'
+      - '.github/workflows/publish-alloy-release.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile.windows'
+      - 'tools/ci/docker-containers-windows'
+      - '.github/workflows/check-windows-container.yml'
+      - '.github/workflows/publish-alloy.yml'
+      - '.github/workflows/publish-alloy-devel.yml'
+      - '.github/workflows/publish-alloy-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check_windows_container:
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel
+      push: false

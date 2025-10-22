@@ -1,12 +1,16 @@
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
-{{- if and (or (eq .Values.controller.type "deployment") (eq .Values.controller.type "statefulset" ))  .Values.controller.autoscaling.enabled }}
-{{- if not (empty .Values.controller.autoscaling.targetMemoryUtilizationPercentage)}}
+{{- if and (or (eq .Values.controller.type "deployment") (eq .Values.controller.type "statefulset" )) (or .Values.controller.autoscaling.horizontal.enabled .Values.controller.autoscaling.enabled)  }}
+{{ $autoscaling := .Values.controller.autoscaling }}
+{{- if .Values.controller.autoscaling.horizontal.enabled }}
+{{- $autoscaling = .Values.controller.autoscaling.horizontal }}
+{{- end }}
+{{- if (not (empty $autoscaling.targetMemoryUtilizationPercentage)) }}
   {{- $_ := $values.resources.requests | required ".Values.alloy.resources.requests is required when using autoscaling." -}}
   {{- $_ := $values.resources.requests.memory | required ".Values.alloy.resources.requests.memory is required when using autoscaling based on memory utilization." -}}
   {{- $_ := .Values.configReloader.resources.requests  | required ".Values.configReloader.resources.requests is required when using autoscaling." -}}
   {{- $_ := .Values.configReloader.resources.requests.memory  | required ".Values.configReloader.resources.requests.memory is required when using autoscaling based on memory utilization." -}}
 {{- end}}
-{{- if not (empty .Values.controller.autoscaling.targetCPUUtilizationPercentage)}}
+{{- if (not (empty $autoscaling.targetCPUUtilizationPercentage)) }}
   {{- $_ := $values.resources.requests | required ".Values.alloy.resources.requests is required when using autoscaling." -}}
   {{- $_ := $values.resources.requests.cpu | required ".Values.alloy.resources.requests.cpu is required when using autoscaling based on cpu utilization." -}}
   {{- $_ := .Values.configReloader.resources.requests  | required ".Values.configReloader.resources.requests is required when using autoscaling." -}}
@@ -16,6 +20,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: availability
@@ -24,7 +29,7 @@ spec:
     apiVersion: apps/v1
     kind: {{ .Values.controller.type  }}
     name: {{ include "alloy.fullname" . }}
-  {{- with .Values.controller.autoscaling }}
+  {{- with $autoscaling }}
   minReplicas: {{ .minReplicas }}
   maxReplicas: {{ .maxReplicas }}
   behavior:

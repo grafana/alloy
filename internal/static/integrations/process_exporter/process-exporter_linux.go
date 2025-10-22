@@ -1,5 +1,5 @@
 // Package process_exporter embeds https://github.com/ncabatoff/process-exporter
-package process_exporter //nolint:golint
+package process_exporter
 
 import (
 	"context"
@@ -31,13 +31,14 @@ func New(logger log.Logger, c *Config) (*Integration, error) {
 	}
 
 	pc, err := collector.NewProcessCollector(collector.ProcessCollectorOption{
-		ProcFSPath:  c.ProcFSPath,
-		Children:    c.Children,
-		Threads:     c.Threads,
-		GatherSMaps: c.SMaps,
-		Namer:       cfg.MatchNamers,
-		Recheck:     c.Recheck,
-		Debug:       false,
+		ProcFSPath:        c.ProcFSPath,
+		Children:          c.Children,
+		Threads:           c.Threads,
+		GatherSMaps:       c.SMaps,
+		Namer:             cfg.MatchNamers,
+		Recheck:           c.Recheck,
+		RemoveEmptyGroups: c.RemoveEmptyGroups,
+		Debug:             false,
 	})
 	if err != nil {
 		return nil, err

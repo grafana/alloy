@@ -29,6 +29,6 @@ if [[ -z $(git status -s) ]]; then
   SHA=$(git rev-parse --short HEAD)
   echo ${VERSION}-devel+${SHA}
 else
-  # Git is dirty; tag as VERSION-devel+wip.
-  echo ${VERSION}-devel+wip
+  # Git is dirty; tag as VERSION-devel+dirty.
+  echo ${VERSION}-devel+dirty
 fi

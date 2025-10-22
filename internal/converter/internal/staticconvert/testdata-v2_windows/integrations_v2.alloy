@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-149bbd"
+		name = "default-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -9,11 +9,7 @@ prometheus.remote_write "metrics_default" {
 	}
 }
 
-prometheus.exporter.windows "integrations_windows_exporter" {
-	service {
-		use_api = "false"
-	}
-}
+prometheus.exporter.windows "integrations_windows_exporter" { }
 
 discovery.relabel "integrations_windows" {
 	targets = prometheus.exporter.windows.integrations_windows_exporter.targets

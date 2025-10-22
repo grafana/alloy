@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
@@ -14,6 +16,7 @@ const (
 	NotEquals
 	DeepEquals
 	NotDeepEquals
+	NotYAMLMarshallEquals
 )
 
 // ValidateSupported will return a diagnostic error if the validationType
@@ -34,6 +37,16 @@ func ValidateSupported(validationType int, value1 any, value2 any, name string, 
 		isInvalid = reflect.DeepEqual(value1, value2)
 	case NotDeepEquals:
 		isInvalid = !reflect.DeepEqual(value1, value2)
+	case NotYAMLMarshallEquals:
+		v1yaml, err := yaml.Marshal(value1)
+		if err != nil {
+			diags.Add(diag.SeverityLevelError, fmt.Sprintf("Error marshalling value1: %v", err))
+		}
+		v2yaml, err := yaml.Marshal(value2)
+		if err != nil {
+			diags.Add(diag.SeverityLevelError, fmt.Sprintf("Error marshalling value2: %v", err))
+		}
+		isInvalid = string(v1yaml) != string(v2yaml)
 	default:
 		diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("Invalid converter validation type was requested: %d.", validationType))
 	}

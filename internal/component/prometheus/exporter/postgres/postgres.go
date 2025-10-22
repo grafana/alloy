@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -10,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/lib/pq"
 	config_util "github.com/prometheus/common/config"
 )
 
@@ -25,40 +23,10 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // default to component ID if no better instance key can be found
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.convert(opts.ID), defaultInstanceKey)
-}
-
-func parsePostgresURL(url string) (map[string]string, error) {
-	raw, err := pq.ParseURL(url)
-	if err != nil {
-		return nil, err
-	}
-
-	res := map[string]string{}
-
-	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
-
-	for _, keypair := range strings.Split(raw, " ") {
-		parts := strings.SplitN(keypair, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("unexpected keypair %s from pq", keypair)
-		}
-
-		key := parts[0]
-		value := parts[1]
-
-		// Undo all the transformations ParseURL did: remove wrapping
-		// quotes and then unescape the escaped characters.
-		value = strings.TrimPrefix(value, "'")
-		value = strings.TrimSuffix(value, "'")
-		value = unescaper.Replace(value)
-
-		res[key] = value
-	}
-
-	return res, nil
 }
 
 // DefaultArguments holds the default arguments for the prometheus.exporter.postgres
@@ -70,6 +38,7 @@ var DefaultArguments = Arguments{
 	},
 	DisableDefaultMetrics:   false,
 	CustomQueriesConfigPath: "",
+	StatStatementFlags:      nil,
 }
 
 // Arguments configures the prometheus.exporter.postgres component
@@ -86,7 +55,8 @@ type Arguments struct {
 	EnabledCollectors       []string `alloy:"enabled_collectors,attr,optional"`
 
 	// Blocks
-	AutoDiscovery AutoDiscovery `alloy:"autodiscovery,block,optional"`
+	AutoDiscovery      AutoDiscovery       `alloy:"autodiscovery,block,optional"`
+	StatStatementFlags *StatStatementFlags `alloy:"stat_statements,block,optional"`
 }
 
 func (a *Arguments) Validate() error {
@@ -106,6 +76,12 @@ type AutoDiscovery struct {
 	DatabaseDenylist  []string `alloy:"database_denylist,attr,optional"`
 }
 
+// StatStatementFlags describe the flags to pass along the activation of the stat_statements collector
+type StatStatementFlags struct {
+	IncludeQuery bool `alloy:"include_query,attr,optional"`
+	QueryLength  uint `alloy:"query_length,attr,optional"`
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
@@ -122,6 +98,17 @@ func (a *Arguments) convert(instanceName string) *postgres_exporter.Config {
 		QueryPath:              a.CustomQueriesConfigPath,
 		Instance:               instanceName,
 		EnabledCollectors:      a.EnabledCollectors,
+		StatStatementFlags:     a.StatStatementFlags.Convert(),
+	}
+}
+
+func (s *StatStatementFlags) Convert() *postgres_exporter.StatStatementFlags {
+	if s == nil {
+		return nil
+	}
+	return &postgres_exporter.StatStatementFlags{
+		IncludeQuery: s.IncludeQuery,
+		QueryLength:  s.QueryLength,
 	}
 }
 

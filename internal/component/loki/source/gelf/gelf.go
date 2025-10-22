@@ -78,7 +78,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.receivers = newArgs.Receivers
 
 	var rcs []*relabel.Config
-	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
+	if len(newArgs.RelabelRules) > 0 {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 

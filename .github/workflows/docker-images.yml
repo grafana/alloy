@@ -8,24 +8,33 @@ on:
       - Makefile
       - 'tools/make/*'
 
+permissions:
+  contents: read
+
 jobs:
   # NOTE(rfratto): We only test building the Docker images for the host
   # platform, but we're really only looking for issues that are
   # architecture-independent.
   linux:
-    runs-on: ubuntu-latest
+    # We use a large runner for the additional disk space.
+    runs-on: github-hosted-ubuntu-x64-large
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile .
 
   windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
       - name: Build image
         run: |
           docker build -t alloy-test:latest -f Dockerfile.windows .
-
-

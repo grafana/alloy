@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
@@ -87,7 +86,7 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager
-func NewManager(metrics *Metrics, logger log.Logger, limits limit.Config, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
+func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
 	var fake struct{}
 
 	walWatcherMetrics := wal.NewWatcherMetrics(reg)
@@ -120,7 +119,7 @@ func NewManager(metrics *Metrics, logger log.Logger, limits limit.Config, reg pr
 			}
 			markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(clientName))
 
-			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, limits.MaxStreams, limits.MaxLineSize.Val(), limits.MaxLineSizeTruncate, logger, markerHandler)
+			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, maxStreams, logger, markerHandler)
 			if err != nil {
 				return nil, fmt.Errorf("error starting queue client: %w", err)
 			}
@@ -141,7 +140,7 @@ func NewManager(metrics *Metrics, logger log.Logger, limits limit.Config, reg pr
 				client:  queue,
 			})
 		} else {
-			client, err := New(metrics, cfg, limits.MaxStreams, limits.MaxLineSize.Val(), limits.MaxLineSizeTruncate, logger)
+			client, err := New(metrics, cfg, maxStreams, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error starting client: %w", err)
 			}
@@ -254,7 +253,7 @@ func GetClientName(cfg Config) string {
 
 func asSha256(o interface{}) string {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%v", o)))
+	_, _ = fmt.Fprintf(h, "%v", o)
 
 	temp := fmt.Sprintf("%x", h.Sum(nil))
 	return temp[:6]

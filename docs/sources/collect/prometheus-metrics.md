@@ -18,15 +18,15 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [discovery.kubernetes][]
-* [prometheus.remote_write][]
-* [prometheus.scrape][]
+* [`discovery.kubernetes`][discovery.kubernetes]
+* [`prometheus.remote_write`][prometheus.remote_write]
+* [`prometheus.scrape`][prometheus.scrape]
 
 ## Before you begin
 
 * Ensure that you have basic familiarity with instrumenting applications with Prometheus.
 * Have a set of Prometheus exports or applications exposing Prometheus metrics that you want to collect metrics from.
-* Identify where you will write collected metrics.
+* Identify where to write collected metrics.
   Metrics can be written to Prometheus or Prometheus-compatible endpoints such as Grafana Mimir, Grafana Cloud, or Grafana Enterprise Metrics.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
@@ -34,7 +34,7 @@ This topic describes how to:
 
 Before components can collect Prometheus metrics, you must have a component responsible for writing those metrics somewhere.
 
-The [prometheus.remote_write][] component is responsible for delivering Prometheus metrics to one or Prometheus-compatible endpoints.
+The [`prometheus.remote_write`][prometheus.remote_write] component is responsible for delivering Prometheus metrics to one or more Prometheus-compatible endpoints.
 After a `prometheus.remote_write` component is defined, you can use other {{< param "PRODUCT_NAME" >}} components to forward metrics to it.
 
 To configure a `prometheus.remote_write` component for metrics delivery, complete the following steps:
@@ -51,9 +51,9 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
    Replace the following:
 
-   - _`<LABEL>`_: The label for the component, such as `default`.
+   * _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `prometheus.remote_write` components in the same configuration file.
-   - _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
+   * _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -66,8 +66,8 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
    Replace the following:
 
-   - _`<USERNAME>`_: The basic authentication username.
-   - _`<PASSWORD>`_: The basic authentication password or API key.
+   * _`<USERNAME>`_: The basic authentication username.
+   * _`<PASSWORD>`_: The basic authentication password or API key.
 
 1. If you have more than one endpoint to write metrics to, repeat the `endpoint` block for additional endpoints.
 
@@ -76,7 +76,7 @@ The following example demonstrates configuring `prometheus.remote_write` with mu
 ```alloy
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 
   endpoint {
@@ -125,7 +125,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
        Replace the following
 
-       - _`<DISCOVERY_LABEL>`_: The label for the component, such as `pods`.
+       * _`<DISCOVERY_LABEL>`_: The label for the component, such as `pods`.
          The label you use must be unique across all `discovery.kubernetes` components in the same configuration file.
 
        This generates one Prometheus target for every exposed port on every discovered Pod.
@@ -141,7 +141,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
        Replace the following:
 
-       - _`<NAMESPACE_NAMES>`_: A comma-delimited list of strings representing Namespaces to search.
+       * _`<NAMESPACE_NAMES>`_: A comma-delimited list of strings representing Namespaces to search.
          Each string must be wrapped in double quotes. For example, `"default","kube-system"`.
 
        If you don't want to search for Pods in the Namespace {{< param "PRODUCT_NAME" >}} is running in, set `own_namespace` to `false`.
@@ -157,7 +157,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
        Replace the following:
 
-       - _`<FIELD_SELECTOR>`_: The Kubernetes field selector to use, such as `metadata.name=my-service`.
+       * _`<FIELD_SELECTOR>`_: The Kubernetes field selector to use, such as `metadata.name=my-service`.
          For more information on field selectors, refer to the Kubernetes documentation on [Field Selectors][].
 
        Create additional `selectors` blocks for each field selector you want to apply.
@@ -173,7 +173,7 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
        Replace the following:
 
-       - _`<LABEL_SELECTOR>`_: The Kubernetes label selector, such as `environment in (production, qa)`.
+       * _`<LABEL_SELECTOR>`_: The Kubernetes label selector, such as `environment in (production, qa)`.
          For more information on label selectors, refer to the Kubernetes documentation on [Labels and Selectors][].
 
        Create additional `selectors` blocks for each label selector you want to apply.
@@ -191,10 +191,10 @@ To collect metrics from Kubernetes Pods, complete the following steps:
 
        Replace the following:
 
-       - _`<SCRAPE_LABEL>`_: The label for the component, such as `pods`.
+       * _`<SCRAPE_LABEL>`_: The label for the component, such as `pods`.
          The label you use must be unique across all `prometheus.scrape` components in the same configuration file.
-       - _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
-       - _`<REMOTE_WRITE_LABEL>`_: The label for your existing `prometheus.remote_write` component.
+       * _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
+       * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 
 The following example demonstrates configuring {{< param "PRODUCT_NAME" >}} to collect metrics from running production Kubernetes Pods in the `default` Namespace.
 
@@ -221,12 +221,12 @@ prometheus.scrape "pods" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
 
-For more information on configuring Kubernetes service delivery and collecting metrics, refer to [discovery.kubernetes][] and [prometheus.scrape][].
+For more information on configuring Kubernetes service delivery and collecting metrics, refer to [`discovery.kubernetes`][discovery.kubernetes] and [`prometheus.scrape`][prometheus.scrape].
 
 ## Collect metrics from Kubernetes Services
 
@@ -251,10 +251,10 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
        Replace the following:
 
-       - _`<DISCOVERY_LABEL>`_: A label for the component, such as `services`.
+       * _`<DISCOVERY_LABEL>`_: A label for the component, such as `services`.
          The label you use must be unique across all `discovery.kubernetes` components in the same configuration file.
 
-       This will generate one Prometheus target for every exposed port on every discovered Service.
+       This generates one Prometheus target for every exposed port on every discovered Service.
 
     1. To limit the Namespaces that Services are discovered in, add the following block inside the `discovery.kubernetes` component.
 
@@ -267,7 +267,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
        Replace the following:
 
-       - _`<NAMESPACE_NAMES>`_: A comma-delimited list of strings representing Namespaces to search.
+       * _`<NAMESPACE_NAMES>`_: A comma-delimited list of strings representing Namespaces to search.
          Each string must be wrapped in double quotes. For example, `"default","kube-system"`.
 
        If you don't want to search for Services in the Namespace {{< param "PRODUCT_NAME" >}} is running in, set `own_namespace` to `false`.
@@ -283,7 +283,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
        Replace the following:
 
-       - _`<FIELD_SELECTOR>`_: The Kubernetes field selector, such as `metadata.name=my-service`.
+       * _`<FIELD_SELECTOR>`_: The Kubernetes field selector, such as `metadata.name=my-service`.
          For more information on field selectors, refer to the Kubernetes documentation on [Field Selectors][].
 
        Create additional `selectors` blocks for each field selector you want to apply.
@@ -299,7 +299,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
        Replace the following:
 
-       - _`<LABEL_SELECTOR>`_: The Kubernetes label selector, such as `environment in (production, qa)`.
+       * _`<LABEL_SELECTOR>`_: The Kubernetes label selector, such as `environment in (production, qa)`.
          For more information on label selectors, refer to the Kubernetes documentation on [Labels and Selectors][].
 
        Create additional `selectors` blocks for each label selector you want to apply.
@@ -317,10 +317,10 @@ To collect metrics from Kubernetes Services, complete the following steps.
 
        Replace the following:
 
-       - _`<SCRAPE_LABEL>`_: The label for the component, such as `services`.
+       * _`<SCRAPE_LABEL>`_: The label for the component, such as `services`.
          The label you use must be unique across all `prometeus.scrape` components in the same configuration file.
-       - _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
-       - _`<REMOTE_WRITE_LABEL>`_: The label for your existing `prometheus.remote_write` component.
+       * _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
+       * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 
 The following example demonstrates configuring {{< param "PRODUCT_NAME" >}} to collect metrics from running production Kubernetes Services in the `default` Namespace.
 
@@ -347,12 +347,12 @@ prometheus.scrape "services" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
 
-For more information on configuring Kubernetes service delivery and collecting metrics, refer to [discovery.kubernetes][] and [prometheus.scrape][].
+For more information on configuring Kubernetes service delivery and collecting metrics, refer to [`discovery.kubernetes`][discovery.kubernetes] and [`prometheus.scrape`][prometheus.scrape].
 
 ## Collect metrics from custom targets
 
@@ -373,9 +373,9 @@ To collect metrics from a custom set of targets, complete the following steps.
 
    Replace the following:
 
-   - _`<SCRAPE_LABEL>`: The label for the component, such as `custom_targets`.
+   * _`<SCRAPE_LABEL>`: The label for the component, such as `custom_targets`.
      The label you use must be unique across all `prometheus.scrape` components in the same configuration file.
-   - _`<TARGET_LIST>`_: A comma-delimited list of [Objects][] denoting the Prometheus target.
+   * _`<TARGET_LIST>`_: A comma-delimited list of [Objects][] denoting the Prometheus target.
      Each object must conform to the following rules:
 
      * There must be an `__address__` key denoting the `HOST:PORT` of the target to collect metrics from.
@@ -384,9 +384,9 @@ To collect metrics from a custom set of targets, complete the following steps.
      * To explicitly specify which HTTP path to collect metrics from, set the `__metrics_path__` key to the HTTP path to use.
        If the `__metrics_path__` key isn't provided, the path to use is inherited by the settings of the `prometheus.scrape` component. The default is `"/metrics"`.
      * Add additional keys as desired to inject extra labels to collected metrics.
-       Any label starting with two underscores (`__`) will be dropped prior to scraping.
+       Any label starting with two underscores (`__`) is dropped prior to scraping.
 
-   - _`<REMOTE_WRITE_LABEL>`_: The label for your existing `prometheus.remote_write` component.
+   * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 
 The following example demonstrates configuring `prometheus.scrape` to collect metrics from a custom set of endpoints.
 
@@ -416,14 +416,12 @@ prometheus.scrape "custom_targets" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9090/api/prom/push"
+    url = "http://localhost:9009/api/prom/push"
   }
 }
 ```
 
 [Prometheus]: https://prometheus.io
-[Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
-[Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
 [Field Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 [Labels and Selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#set-based-requirement
 [Configure metrics delivery]: #configure-metrics-delivery

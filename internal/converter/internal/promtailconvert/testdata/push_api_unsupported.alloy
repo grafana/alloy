@@ -1,0 +1,35 @@
+loki.source.api "fun" {
+	http {
+		listen_address       = "localhost"
+		listen_port          = 9094
+		conn_limit           = 100
+		server_read_timeout  = "10s"
+		server_write_timeout = "10s"
+		server_idle_timeout  = "10s"
+
+		tls {
+			cert_file = "/var/cert"
+		}
+	}
+
+	grpc {
+		listen_address                = "127.0.0.1"
+		listen_port                   = 9095
+		conn_limit                    = 100
+		max_connection_age            = "10s"
+		max_connection_age_grace      = "10s"
+		max_connection_idle           = "1m0s"
+		server_max_recv_msg_size      = 1000
+		server_max_send_msg_size      = 1000
+		server_max_concurrent_streams = 100
+
+		tls {
+			cert_file = "/var/cert"
+		}
+	}
+	graceful_shutdown_timeout = "10s"
+	forward_to                = []
+	labels                    = {}
+	relabel_rules             = null
+	max_send_message_size     = "0B"
+}

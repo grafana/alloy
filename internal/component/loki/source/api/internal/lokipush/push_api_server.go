@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -13,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/user"
+	lokipush "github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -35,22 +34,30 @@ type PushAPIServer struct {
 	server       *fnet.TargetServer
 	handler      loki.EntryHandler
 
-	rwMutex       sync.RWMutex
-	labels        model.LabelSet
-	relabelRules  []*relabel.Config
-	keepTimestamp bool
+	rwMutex            sync.RWMutex
+	labels             model.LabelSet
+	relabelRules       []*relabel.Config
+	keepTimestamp      bool
+	maxSendMessageSize int64
 }
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
 	handler loki.EntryHandler,
 	registerer prometheus.Registerer,
+	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
 
+	// Zero means default. This is done to match Loki's pushtarget.go behaviour.
+	if maxSendMessageSize <= 0 {
+		maxSendMessageSize = 100 << 20
+	}
+
 	s := &PushAPIServer{
-		logger:       logger,
-		serverConfig: serverConfig,
-		handler:      handler,
+		logger:             logger,
+		serverConfig:       serverConfig,
+		handler:            handler,
+		maxSendMessageSize: maxSendMessageSize,
 	}
 
 	srv, err := fnet.NewTargetServer(logger, "loki_source_api", registerer, serverConfig)
@@ -66,7 +73,6 @@ func (s *PushAPIServer) Run() error {
 	level.Info(s.logger).Log("msg", "starting push API server")
 
 	err := s.server.MountAndRun(func(router *mux.Router) {
-
 		// Extract the tenant ID from the request and add it to the context.
 		tenantHeaderExtractor := func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -157,14 +163,17 @@ func (s *PushAPIServer) getRelabelRules() []*relabel.Config {
 func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	logger := util_log.WithContext(r.Context(), util_log.Logger)
 	tenantID, _ := tenant.TenantID(r.Context())
-	req, err := push.ParseRequest(
+	req, _, err := push.ParseRequest(
 		logger,
 		tenantID,
+		int(s.maxSendMessageSize),
 		r,
-		nil, // tenants retention
-		nil, // limits
+		push.EmptyLimits{},
+		nil,
 		push.ParseLokiRequest,
 		nil, // usage tracker
+		nil,
+		"",
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
@@ -184,7 +193,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			lastErr = err
 			continue
 		}
-		sort.Sort(ls)
 
 		lb := labels.NewBuilder(ls)
 
@@ -195,19 +203,19 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 
 		// Apply relabeling
 		processed, keep := relabel.Process(lb.Labels(), relabelRules...)
-		if !keep || len(processed) == 0 {
+		if !keep || processed.Len() == 0 {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		// Convert to model.LabelSet
 		filtered := model.LabelSet{}
-		for i := range processed {
-			if strings.HasPrefix(processed[i].Name, "__") {
-				continue
+		processed.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, "__") {
+				return
 			}
-			filtered[model.LabelName(processed[i].Name)] = model.LabelValue(processed[i].Value)
-		}
+			filtered[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+		})
 
 		// Add tenant ID to the filtered labels if it is set
 		if tenantID != "" {
@@ -217,7 +225,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		for _, entry := range stream.Entries {
 			e := loki.Entry{
 				Labels: filtered.Clone(),
-				Entry: logproto.Entry{
+				Entry: lokipush.Entry{
 					Line:               entry.Line,
 					StructuredMetadata: entry.StructuredMetadata,
 					Parsed:             entry.Parsed,
@@ -264,7 +272,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		}
 		entries <- loki.Entry{
 			Labels: addLabels,
-			Entry: logproto.Entry{
+			Entry: lokipush.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
@@ -279,7 +287,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
-func (s *PushAPIServer) ready(w http.ResponseWriter, r *http.Request) {
+func (s *PushAPIServer) ready(w http.ResponseWriter, _ *http.Request) {
 	resp := "ready"
 	if _, err := w.Write([]byte(resp)); err != nil {
 		level.Error(s.logger).Log("msg", "failed to respond to ready endoint", "err", err)

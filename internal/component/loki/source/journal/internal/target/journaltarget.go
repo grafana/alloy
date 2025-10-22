@@ -2,8 +2,8 @@
 
 package target
 
-// This code is copied from Promtail (https://github.com/grafana/loki/commit/954df433e98f659d006ced52b23151cb5eb2fdfa) with minor edits. The target package is used to
-// configure and run the targets that can read journal entries and forward them
+// This code is copied from Promtail (https://github.com/grafana/loki/blob/baaaa83c78c03c6b9257afddc0854daec928a755/clients/pkg/promtail/targets/journal/journaltarget.go#L4)
+// with minor edits. The target package is used to configure and run the targets that can read journal entries and forward them
 // to other loki components.
 
 import (
@@ -15,9 +15,9 @@ import (
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -214,7 +214,11 @@ func journalTargetWithReader(
 		for {
 			err := t.r.Follow(until, io.Discard)
 			if err != nil {
-				if err == sdjournal.ErrExpired || err == syscall.EBADMSG || err == io.EOF || strings.HasPrefix(err.Error(), "failed to iterate journal:") {
+				if err == sdjournal.ErrExpired {
+					return
+				}
+
+				if err == syscall.EBADMSG || err == io.EOF || strings.HasPrefix(err.Error(), "failed to iterate journal:") {
 					level.Error(t.logger).Log("msg", "unable to follow journal", "err", err.Error())
 					return
 				}
@@ -338,7 +342,7 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
 	t.handler.Chan() <- loki.Entry{
 		Labels: lbls,
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Line:      msg,
 			Timestamp: ts,
 		},

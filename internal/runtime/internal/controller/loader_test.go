@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
@@ -83,7 +83,7 @@ func TestLoader(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -122,6 +122,45 @@ func TestLoader(t *testing.T) {
 		diags := applyFromContent(t, l, []byte(testFile), nil, nil)
 		require.NoError(t, diags.ErrorOrNil())
 		requireGraph(t, l.Graph(), testGraphDefinition)
+	})
+
+	t.Run("Check data flow edges", func(t *testing.T) {
+		invalidFile := `
+			testcomponents.passthrough "one" {
+				input = "1"
+			}
+
+			testcomponents.passthrough "pass" {
+				input = testcomponents.passthrough.one.output
+				lag = testcomponents.passthrough.one.output + "s"
+			}
+
+			testcomponents.summation "sum" {
+				input = testcomponents.passthrough.pass.output 
+			}
+		`
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, []byte(invalidFile), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph := l.Graph()
+
+		sum := newGraph.GetByID("testcomponents.summation.sum").(controller.ComponentNode)
+		pass := newGraph.GetByID("testcomponents.passthrough.pass").(controller.ComponentNode)
+		one := newGraph.GetByID("testcomponents.passthrough.one").(controller.ComponentNode)
+		require.Equal(t, []string{"testcomponents.passthrough.pass", "testcomponents.passthrough.pass"}, one.GetDataFlowEdgesTo())
+		require.Equal(t, []string{"testcomponents.summation.sum"}, pass.GetDataFlowEdgesTo())
+		require.Empty(t, sum.GetDataFlowEdgesTo())
+
+		// Check that the data flow edges are not duplicated after the reload
+		diags = applyFromContent(t, l, []byte(invalidFile), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph = l.Graph()
+		sum = newGraph.GetByID("testcomponents.summation.sum").(controller.ComponentNode)
+		pass = newGraph.GetByID("testcomponents.passthrough.pass").(controller.ComponentNode)
+		one = newGraph.GetByID("testcomponents.passthrough.one").(controller.ComponentNode)
+		require.Equal(t, []string{"testcomponents.passthrough.pass", "testcomponents.passthrough.pass"}, one.GetDataFlowEdgesTo())
+		require.Equal(t, []string{"testcomponents.summation.sum"}, pass.GetDataFlowEdgesTo())
+		require.Empty(t, sum.GetDataFlowEdgesTo())
 	})
 
 	t.Run("Copy existing components and delete stale ones", func(t *testing.T) {
@@ -353,6 +392,19 @@ func TestLoader(t *testing.T) {
 		diags = applyFromContent(t, l, nil, nil, []byte(invalidFile))
 		require.ErrorContains(t, diags.ErrorOrNil(), `block declare.a already declared at TestLoader/Declare_block_redefined_after_reload:2:4`)
 	})
+
+	t.Run("Foreach incorrect feature stability", func(t *testing.T) {
+		invalidFile := `
+			foreach "a" {
+				collection = [5]
+				var = "item"
+				template {}
+			}
+		`
+		l := controller.NewLoader(newLoaderOptions())
+		diags := applyFromContent(t, l, nil, []byte(invalidFile), nil)
+		require.ErrorContains(t, diags.ErrorOrNil(), `config block "foreach" is at stability level "experimental", which is below the minimum allowed stability level "public-preview". Use --stability.level command-line flag to enable "experimental"`)
+	})
 }
 
 func TestLoader_Services(t *testing.T) {
@@ -382,7 +434,7 @@ func TestLoader_Services(t *testing.T) {
 				MinStability:      stability,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return nil
 				},
 			},
@@ -439,7 +491,7 @@ func TestScopeWithFailingComponent(t *testing.T) {
 				MinStability:      featuregate.StabilityPublicPreview,
 				OnBlockNodeUpdate: func(cn controller.BlockNode) { /* no-op */ },
 				Registerer:        prometheus.NewRegistry(),
-				NewModuleController: func(id string) controller.ModuleController {
+				NewModuleController: func(opts controller.ModuleControllerOpts) controller.ModuleController {
 					return fakeModuleController{}
 				},
 			},

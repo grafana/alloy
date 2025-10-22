@@ -161,10 +161,10 @@ func (d *Discovery) Refresh(ctx context.Context) ([]*targetgroup.Group, error) {
 	if err := json.Unmarshal(body, &podList); err != nil {
 		return nil, fmt.Errorf("error unmarshaling response body: %v", err)
 	}
-	return d.refresh(podList)
+	return d.refresh(podList), nil
 }
 
-func (d *Discovery) refresh(podList v1.PodList) ([]*targetgroup.Group, error) {
+func (d *Discovery) refresh(podList v1.PodList) []*targetgroup.Group {
 	discovered := make(map[string]bool)
 	// Create a list of targets from the pods
 	var targetGroups []*targetgroup.Group
@@ -191,7 +191,7 @@ func (d *Discovery) refresh(podList v1.PodList) ([]*targetgroup.Group, error) {
 	// update the list of discovered pods
 	d.discoveredPodSources = discovered
 
-	return targetGroups, nil
+	return targetGroups
 }
 
 func (d *Discovery) buildPodTargetGroup(pod v1.Pod) *targetgroup.Group {

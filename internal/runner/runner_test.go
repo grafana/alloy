@@ -14,7 +14,7 @@ import (
 
 func TestRunner_ApplyPayloads(t *testing.T) {
 	t.Run("new Workers get scheduled for new tasks", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 		defer cancel()
 
 		workerCount := atomic.NewUint64(0)
@@ -38,7 +38,7 @@ func TestRunner_ApplyPayloads(t *testing.T) {
 	})
 
 	t.Run("old Workers get terminated for removed tasks", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 		defer cancel()
 
 		workerCount := atomic.NewUint64(0)
@@ -59,7 +59,7 @@ func TestRunner_ApplyPayloads(t *testing.T) {
 }
 
 func TestRunner_Stop(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	workerCount := atomic.NewUint64(0)

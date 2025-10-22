@@ -13,7 +13,9 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
 
@@ -46,13 +48,13 @@ func (otlpReceiverConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otlpreceiver.Config) *otlp.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &otlp.Arguments{
-		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPC)),
+		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPC.Get())),
 		HTTP: toHTTPConfigArguments(cfg.HTTP),
 
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
@@ -74,14 +76,14 @@ func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArgu
 		Endpoint:  cfg.NetAddr.Endpoint,
 		Transport: string(cfg.NetAddr.Transport),
 
-		TLS: toTLSServerArguments(cfg.TLSSetting),
+		TLS: toTLSServerArguments(cfg.TLS.Get()),
 
 		MaxRecvMsgSize:       units.Base2Bytes(cfg.MaxRecvMsgSizeMiB) * units.MiB,
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
 		ReadBufferSize:       units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize:      units.Base2Bytes(cfg.WriteBufferSize),
 
-		Keepalive: toKeepaliveServerArguments(cfg.Keepalive),
+		Keepalive: toKeepaliveServerArguments(cfg.Keepalive.Get()),
 
 		IncludeMetadata: cfg.IncludeMetadata,
 	}
@@ -122,8 +124,8 @@ func toKeepaliveServerArguments(cfg *configgrpc.KeepaliveServerConfig) *otelcol.
 	}
 
 	return &otelcol.KeepaliveServerArguments{
-		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters),
-		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy),
+		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters.Get()),
+		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy.Get()),
 	}
 }
 
@@ -152,17 +154,18 @@ func toKeepaliveEnforcementPolicy(cfg *configgrpc.KeepaliveEnforcementPolicy) *o
 	}
 }
 
-func toHTTPConfigArguments(cfg *otlpreceiver.HTTPConfig) *otlp.HTTPConfigArguments {
-	if cfg == nil {
+func toHTTPConfigArguments(ocfg configoptional.Optional[otlpreceiver.HTTPConfig]) *otlp.HTTPConfigArguments {
+	if !ocfg.HasValue() {
 		return nil
 	}
+	cfg := ocfg.Get()
 
 	return &otlp.HTTPConfigArguments{
-		HTTPServerArguments: toHTTPServerArguments(cfg.ServerConfig),
+		HTTPServerArguments: toHTTPServerArguments(&cfg.ServerConfig),
 
-		TracesURLPath:  cfg.TracesURLPath,
-		MetricsURLPath: cfg.MetricsURLPath,
-		LogsURLPath:    cfg.LogsURLPath,
+		TracesURLPath:  string(cfg.TracesURLPath),
+		MetricsURLPath: string(cfg.MetricsURLPath),
+		LogsURLPath:    string(cfg.LogsURLPath),
 	}
 }
 
@@ -181,9 +184,9 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 	return &otelcol.HTTPServerArguments{
 		Endpoint: cfg.Endpoint,
 
-		TLS: toTLSServerArguments(cfg.TLSSetting),
+		TLS: toTLSServerArguments(cfg.TLS.Get()),
 
-		CORS: toCORSArguments(cfg.CORS),
+		CORS: toCORSArguments(cfg.CORS.Get()),
 
 		MaxRequestBodySize: units.Base2Bytes(cfg.MaxRequestBodySize),
 		IncludeMetadata:    cfg.IncludeMetadata,

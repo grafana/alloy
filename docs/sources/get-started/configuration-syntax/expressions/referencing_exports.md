@@ -7,22 +7,22 @@ title: Referencing component exports
 weight: 200
 ---
 
-# Referencing component exports
+# Reference component exports
 
-Referencing exports enables {{< param "PRODUCT_NAME" >}} to configure and connect components dynamically using expressions.
-While components can work in isolation, they're more useful when one component's behavior and data flow are bound to the exports of another, building a dependency relationship between the two.
+Referencing exports allows {{< param "PRODUCT_NAME" >}} to configure and connect components dynamically using expressions.
+While components can work independently, they're more effective when one component's behavior and data flow depend on another component's exports, creating a dependency relationship.
 
-Such references can only appear as part of another component's arguments or a configuration block's fields.
+Such references can only appear in another component's arguments or a configuration block's fields.
 Components can't reference themselves.
 
-## Using references
+## Use references
 
-You build references by combining the component's name, label, and named export with dots.
+You create references by combining the component's name, label, and named export with dots.
 
-For example, you can reference the contents of a file exported by the `local.file` component labeled `target` as `local.file.target.content`.
-Similarly, a `prometheus.remote_write` component instance labeled `onprem` exposes its receiver for metrics on `prometheus.remote_write.onprem.receiver`.
+For example, you can refer to the contents of a file exported by the `local.file` component labeled `target` as `local.file.target.content`.
+Similarly, a `prometheus.remote_write` component instance labeled `onprem` exposes its receiver for metrics as `prometheus.remote_write.onprem.receiver`.
 
-The following example shows some references.
+The following example demonstrates some references.
 
 ```alloy
 local.file "target" {
@@ -41,12 +41,11 @@ prometheus.remote_write "onprem" {
 }
 ```
 
-In the preceding example, you wired together a very simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
+In the preceding example, you created a simple pipeline by writing a few {{< param "PRODUCT_NAME" >}} expressions.
 
 {{< figure src="/media/docs/alloy/diagram-referencing-exports.png" alt="Example of a pipeline" >}}
 
-After the value is resolved, it must match the [type][] of the attribute it is assigned to.
-While you can only configure attributes using the basic {{< param "PRODUCT_NAME" >}} types,
-the exports of components can take on special internal {{< param "PRODUCT_NAME" >}} types, such as Secrets or Capsules, which expose different functionality.
+After the value resolves, it must match the [type][] of the attribute it's assigned to.
+While you can only configure attributes using the basic {{< param "PRODUCT_NAME" >}} types, the exports of components can use special internal {{< param "PRODUCT_NAME" >}} types, such as Secrets or Capsules, which provide additional functionality.
 
 [type]: ../types_and_values/

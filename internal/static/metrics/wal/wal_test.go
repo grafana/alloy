@@ -1,16 +1,16 @@
 package wal
 
 import (
-	"context"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -18,7 +18,10 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestStorage_InvalidSeries(t *testing.T) {
@@ -30,7 +33,7 @@ func TestStorage_InvalidSeries(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Samples
 	_, err = app.Append(0, labels.Labels{}, 0, 0)
@@ -74,7 +77,7 @@ func TestStorage(t *testing.T) {
 	}()
 	s.SetNotifier(notifier)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := buildSeries([]string{"foo", "bar", "baz"})
@@ -115,7 +118,7 @@ func TestStorage_Rollback(t *testing.T) {
 		require.NoError(t, s.Close())
 	})
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 	for _, metric := range payload {
@@ -145,7 +148,7 @@ func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
 	require.NoError(t, err, "should not reject valid series")
@@ -188,7 +191,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
 	require.NoError(t, err)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
 	// Write half of the samples.
@@ -216,7 +219,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 		require.Greater(t, series.lastTs, int64(0), "series timestamp not updated")
 	}
 
-	app = s.Appender(context.Background())
+	app = s.Appender(t.Context())
 
 	for _, metric := range payload[len(payload)/2:] {
 		metric.Write(t, app)
@@ -253,7 +256,7 @@ func TestStorage_ExistingWAL_RefID(t *testing.T) {
 	s, err := NewStorage(l, nil, walDir)
 	require.NoError(t, err)
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
 	// Write all the samples
@@ -287,7 +290,7 @@ func TestStorage_Truncate(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
 
@@ -338,6 +341,83 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
+func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
+	// Ensure the WAL can handle duplicate SeriesRefs by hash when being loaded.
+	walDir := t.TempDir()
+
+	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	app := s.Appender(t.Context())
+
+	var payload seriesList
+	for i, metricName := range []string{"foo", "bar", "baz", "blerg"} {
+		payload = append(payload, &series{
+			name: metricName,
+			samples: []sample{
+				{int64(i), float64(i * 10.0)},
+				{int64(i * 10), float64(i * 100.0)},
+			},
+		})
+	}
+
+	originalSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.Write(t, app)
+		originalSeriesRefs = append(originalSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+
+	// Forcefully create a bunch of new segments so when we truncate
+	// there's enough segments to be considered for truncation.
+	for i := 0; i < 3; i++ {
+		_, err := s.wal.NextSegmentSync()
+		require.NoError(t, err)
+	}
+	// Series are still active
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Force GC of all the series, but they will stay in the checkpoint
+	keepTs := payload[len(payload)-1].samples[1].ts + 1
+	err = s.Truncate(keepTs)
+	require.NoError(t, err)
+	// No more active series because they were GC'ed with Truncate
+	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Publish new samples that will create new SeriesRefs for the same labels.
+	duplicateSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.samples = metric.samples[1:]
+		metric.samples[0].ts = metric.samples[0].ts * 10
+		metric.Write(t, app)
+
+		duplicateSeriesRefs = append(duplicateSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+	// We should be back to 4 active series now
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Close the WAL before we have a chance to remove the first RefIDs
+	require.NoError(t, s.Close())
+
+	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	// There should only be 4 active series after we reload the WAL
+	assert.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+	// The original SeriesRefs should be in series
+	for _, ref := range originalSeriesRefs {
+		assert.NotNil(t, s.series.GetByID(ref))
+	}
+
+	// The duplicated SeriesRefs should be considered deleted
+	for _, ref := range duplicateSeriesRefs {
+		assert.Contains(t, s.deleted, ref)
+	}
+
+	require.NoError(t, s.Close())
+}
+
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
 	walDir := t.TempDir()
 
@@ -347,7 +427,7 @@ func TestStorage_WriteStalenessMarkers(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := seriesList{
@@ -422,7 +502,7 @@ func TestGlobalReferenceID_Normal(t *testing.T) {
 
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 	l := labels.New(labels.Label{
 		Name:  "__name__",
 		Value: "label1",
@@ -453,7 +533,7 @@ func TestDBAllowOOOSamples(t *testing.T) {
 		require.NoError(t, s.Close())
 	}()
 
-	app := s.Appender(context.Background())
+	app := s.Appender(t.Context())
 
 	// Write some samples
 	payload := buildSeries([]string{"foo", "bar", "baz"})
@@ -475,7 +555,7 @@ func BenchmarkAppendExemplar(b *testing.B) {
 
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
-	app := s.Appender(context.Background())
+	app := s.Appender(b.Context())
 	sRef, _ := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
 	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
 
@@ -488,6 +568,49 @@ func BenchmarkAppendExemplar(b *testing.B) {
 
 	// Actually use appended exemplars in case they get eliminated
 	_ = app.Commit()
+}
+
+func BenchmarkCreateSeries(b *testing.B) {
+	walDir := b.TempDir()
+
+	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	defer s.Close()
+
+	app := s.Appender(b.Context()).(*appender)
+	lbls := make([]labels.Labels, b.N)
+
+	for i, l := range labelsForTest("benchmark", b.N) {
+		lbls[i] = labels.New(l...)
+	}
+
+	b.ResetTimer()
+
+	for _, l := range lbls {
+		app.getOrCreate(l)
+	}
+}
+
+// Create series for tests.
+func labelsForTest(lName string, seriesCount int) [][]labels.Label {
+	var s [][]labels.Label
+
+	for i := 0; i < seriesCount; i++ {
+		lset := []labels.Label{
+			{Name: "a", Value: lName},
+			{Name: "instance", Value: "localhost" + strconv.Itoa(i)},
+			{Name: "job", Value: "prometheus"},
+		}
+		s = append(s, lset)
+	}
+
+	return s
+}
+
+func BenchmarkStripeSeriesSize(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		newStripeSeries(stripeSeriesSize)
+	}
 }
 
 type sample struct {
@@ -520,7 +643,11 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	// Write other data points with AddFast
 	for _, sample := range s.samples[offset:] {
-		_, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		ref, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		// The ref we had changed stop using the old value
+		if *s.ref != ref {
+			s.ref = &ref
+		}
 		require.NoError(t, err)
 	}
 

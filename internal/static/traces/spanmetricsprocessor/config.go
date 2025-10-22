@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
@@ -64,7 +64,7 @@ type Config struct {
 	Namespace string `mapstructure:"namespace"`
 }
 
-var _ component.ConfigValidator = (*Config)(nil)
+var _ xconfmap.Validator = (*Config)(nil)
 
 // GetAggregationTemporality converts the string value given in the config into a AggregationTemporality.
 // Returns cumulative, unless delta is correctly specified.

@@ -1,6 +1,7 @@
 package remotewrite
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -11,17 +12,21 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 
 	"github.com/google/uuid"
+	"github.com/grafana/regexp"
 	common "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	promsigv4 "github.com/prometheus/common/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	promsigv4 "github.com/prometheus/sigv4"
 )
 
 // Defaults for config blocks.
 var (
+	PrometheusProtobufMessageV1 = string(config.RemoteWriteProtoMsgV1)
+	PrometheusProtobufMessageV2 = string(config.RemoteWriteProtoMsgV2)
+
 	DefaultArguments = Arguments{
 		WALOptions: DefaultWALOptions,
 	}
@@ -49,6 +54,8 @@ var (
 		MinKeepaliveTime:  5 * time.Minute,
 		MaxKeepaliveTime:  8 * time.Hour,
 	}
+
+	errTooManyAuth = errors.New("at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
 )
 
 // Arguments represents the input state of the prometheus.remote_write
@@ -73,6 +80,7 @@ type EndpointOptions struct {
 	Headers              map[string]string       `alloy:"headers,attr,optional"`
 	SendExemplars        bool                    `alloy:"send_exemplars,attr,optional"`
 	SendNativeHistograms bool                    `alloy:"send_native_histograms,attr,optional"`
+	ProtobufMessage      string                  `alloy:"protobuf_message,attr,optional"`
 	HTTPClientConfig     *types.HTTPClientConfig `alloy:",squash"`
 	QueueOptions         *QueueOptions           `alloy:"queue_config,block,optional"`
 	MetadataOptions      *MetadataOptions        `alloy:"metadata_config,block,optional"`
@@ -83,10 +91,13 @@ type EndpointOptions struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (r *EndpointOptions) SetToDefault() {
+	defaultHTTPClientConfig := types.CloneDefaultHTTPClientConfig()
+	defaultHTTPClientConfig.EnableHTTP2 = false // This has changed to false when we upgraded to Prometheus v3.4.2
 	*r = EndpointOptions{
 		RemoteTimeout:    30 * time.Second,
 		SendExemplars:    true,
-		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
+		ProtobufMessage:  PrometheusProtobufMessageV1,
+		HTTPClientConfig: defaultHTTPClientConfig,
 	}
 }
 
@@ -107,17 +118,15 @@ func (r *EndpointOptions) Validate() error {
 		}
 	}
 
-	const tooManyAuthErr = "at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured"
-
 	if r.SigV4 != nil {
 		if r.AzureAD != nil || isAuthSetInHttpClientConfig(r.HTTPClientConfig) {
-			return fmt.Errorf(tooManyAuthErr)
+			return errTooManyAuth
 		}
 	}
 
 	if r.AzureAD != nil {
 		if r.SigV4 != nil || isAuthSetInHttpClientConfig(r.HTTPClientConfig) {
-			return fmt.Errorf(tooManyAuthErr)
+			return errTooManyAuth
 		}
 	}
 
@@ -127,6 +136,10 @@ func (r *EndpointOptions) Validate() error {
 				return err
 			}
 		}
+	}
+
+	if err := config.RemoteWriteProtoMsg(r.ProtobufMessage).Validate(); err != nil {
+		return fmt.Errorf("invalid protobuf_message %q for endpoint %q: %w", r.ProtobufMessage, r.Name, err)
 	}
 
 	return nil
@@ -241,13 +254,13 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 			Name:                 rw.Name,
 			SendExemplars:        rw.SendExemplars,
 			SendNativeHistograms: rw.SendNativeHistograms,
-
-			WriteRelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
-			HTTPClientConfig:    *rw.HTTPClientConfig.Convert(),
-			QueueConfig:         rw.QueueOptions.toPrometheusType(),
-			MetadataConfig:      rw.MetadataOptions.toPrometheusType(),
-			SigV4Config:         rw.SigV4.toPrometheusType(),
-			AzureADConfig:       rw.AzureAD.toPrometheusType(),
+			ProtobufMessage:      config.RemoteWriteProtoMsg(rw.ProtobufMessage),
+			WriteRelabelConfigs:  alloy_relabel.ComponentToPromRelabelConfigs(rw.WriteRelabelConfigs),
+			HTTPClientConfig:     *rw.HTTPClientConfig.Convert(),
+			QueueConfig:          rw.QueueOptions.toPrometheusType(),
+			MetadataConfig:       rw.MetadataOptions.toPrometheusType(),
+			SigV4Config:          rw.SigV4.toPrometheusType(),
+			AzureADConfig:        rw.AzureAD.toPrometheusType(),
 		})
 	}
 
@@ -274,15 +287,66 @@ type ManagedIdentityConfig struct {
 	ClientID string `alloy:"client_id,attr"`
 }
 
-func (m ManagedIdentityConfig) toPrometheusType() azuread.ManagedIdentityConfig {
-	return azuread.ManagedIdentityConfig{
+func (m *ManagedIdentityConfig) toPrometheusType() *azuread.ManagedIdentityConfig {
+	if m == nil {
+		return nil
+	}
+
+	return &azuread.ManagedIdentityConfig{
 		ClientID: m.ClientID,
+	}
+}
+
+// OAuthConfig is used to store azure oauth config values.
+type OAuthConfig struct {
+	// ClientID is the clientId of the azure active directory application that is being used to authenticate.
+	ClientID string `alloy:"client_id,attr"`
+
+	// ClientSecret is the clientSecret of the azure active directory application that is being used to authenticate.
+	ClientSecret alloytypes.Secret `alloy:"client_secret,attr"`
+
+	// TenantID is the tenantId of the azure active directory application that is being used to authenticate.
+	TenantID string `alloy:"tenant_id,attr"`
+}
+
+func (c *OAuthConfig) toPrometheusType() *azuread.OAuthConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &azuread.OAuthConfig{
+		ClientID: c.ClientID,
+		// TODO(ptodev): Upstream a change to make this an opaque string.
+		ClientSecret: string(c.ClientSecret),
+		TenantID:     c.TenantID,
+	}
+}
+
+// SDKConfig is used to store azure SDK config values.
+type SDKConfig struct {
+	// TenantID is the tenantId of the azure active directory application that is being used to authenticate.
+	TenantID string `alloy:"tenant_id,attr"`
+}
+
+func (c *SDKConfig) toPrometheusType() *azuread.SDKConfig {
+	if c == nil {
+		return nil
+	}
+
+	return &azuread.SDKConfig{
+		TenantID: c.TenantID,
 	}
 }
 
 type AzureADConfig struct {
 	// ManagedIdentity is the managed identity that is being used to authenticate.
-	ManagedIdentity ManagedIdentityConfig `alloy:"managed_identity,block"`
+	ManagedIdentity *ManagedIdentityConfig `alloy:"managed_identity,block,optional"`
+
+	// OAuth is the oauth config that is being used to authenticate.
+	OAuth *OAuthConfig `alloy:"oauth,block,optional"`
+
+	// SDK is the SDK config that is being used to authenticate.
+	SDK *SDKConfig `alloy:"sdk,block,optional"`
 
 	// Cloud is the Azure cloud in which the service is running. Example: AzurePublic/AzureGovernment/AzureChina.
 	Cloud string `alloy:"cloud,attr,optional"`
@@ -293,9 +357,64 @@ func (a *AzureADConfig) Validate() error {
 		return fmt.Errorf("must provide a cloud in the Azure AD config")
 	}
 
-	_, err := uuid.Parse(a.ManagedIdentity.ClientID)
-	if err != nil {
-		return fmt.Errorf("the provided Azure Managed Identity client_id provided is invalid")
+	if a.ManagedIdentity == nil && a.OAuth == nil && a.SDK == nil {
+		return fmt.Errorf("must provide an Azure Managed Identity, Azure OAuth or Azure SDK in the Azure AD config")
+	}
+
+	if a.ManagedIdentity != nil && a.OAuth != nil {
+		return fmt.Errorf("cannot provide both Azure Managed Identity and Azure OAuth in the Azure AD config")
+	}
+
+	if a.ManagedIdentity != nil && a.SDK != nil {
+		return fmt.Errorf("cannot provide both Azure Managed Identity and Azure SDK in the Azure AD config")
+	}
+
+	if a.OAuth != nil && a.SDK != nil {
+		return fmt.Errorf("cannot provide both Azure OAuth and Azure SDK in the Azure AD config")
+	}
+
+	if a.ManagedIdentity != nil {
+		if a.ManagedIdentity.ClientID == "" {
+			return fmt.Errorf("must provide an Azure Managed Identity client_id in the Azure AD config")
+		}
+
+		_, err := uuid.Parse(a.ManagedIdentity.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure Managed Identity client_id is invalid")
+		}
+	}
+
+	if a.OAuth != nil {
+		if a.OAuth.ClientID == "" {
+			return fmt.Errorf("must provide an Azure OAuth client_id in the Azure AD config")
+		}
+		if a.OAuth.ClientSecret == "" {
+			return fmt.Errorf("must provide an Azure OAuth client_secret in the Azure AD config")
+		}
+		if a.OAuth.TenantID == "" {
+			return fmt.Errorf("must provide an Azure OAuth tenant_id in the Azure AD config")
+		}
+
+		var err error
+		_, err = uuid.Parse(a.OAuth.ClientID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure OAuth client_id is invalid")
+		}
+		_, err = regexp.MatchString("^[0-9a-zA-Z-.]+$", a.OAuth.TenantID)
+		if err != nil {
+			return fmt.Errorf("the provided Azure OAuth tenant_id is invalid")
+		}
+	}
+
+	if a.SDK != nil {
+		var err error
+
+		if a.SDK.TenantID != "" {
+			_, err = regexp.MatchString("^[0-9a-zA-Z-.]+$", a.SDK.TenantID)
+			if err != nil {
+				return fmt.Errorf("the provided Azure OAuth tenant_id is invalid")
+			}
+		}
 	}
 
 	return nil
@@ -313,9 +432,10 @@ func (a *AzureADConfig) toPrometheusType() *azuread.AzureADConfig {
 		return nil
 	}
 
-	mangedIdentity := a.ManagedIdentity.toPrometheusType()
 	return &azuread.AzureADConfig{
-		ManagedIdentity: &mangedIdentity,
+		ManagedIdentity: a.ManagedIdentity.toPrometheusType(),
+		OAuth:           a.OAuth.toPrometheusType(),
+		SDK:             a.SDK.toPrometheusType(),
 		Cloud:           a.Cloud,
 	}
 }

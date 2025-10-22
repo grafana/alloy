@@ -1,7 +1,6 @@
 package convert_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -319,7 +318,7 @@ func TestConsumeLogs(t *testing.T) {
 
 			converter := convert.New(logger, promReg, []loki.LogsReceiver{receiver})
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			log := processortest.CreateTestLogs(tc.inputLogJson)
 

@@ -1,0 +1,21 @@
+receivers:
+  awscloudwatch:
+    profile: 'my-profile'
+    region: us-west-1
+    logs:
+      poll_interval: 5m
+      groups:
+        named:
+          /aws/eks/dev-0/cluster:
+            names: [kube-apiserver-ea9c831555adca1815ae04b87661klasdj]
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [awscloudwatch]
+      processors: []
+      exporters: [otlp]

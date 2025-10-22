@@ -137,6 +137,12 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 		if sc.ScrapeProtocols == nil {
 			sc.ScrapeProtocols = c.global.Prometheus.ScrapeProtocols
 		}
+		if sc.MetricNameValidationScheme == "" {
+			sc.MetricNameValidationScheme = c.global.Prometheus.MetricNameValidationScheme
+		}
+		if sc.MetricNameEscapingScheme == "" {
+			sc.MetricNameEscapingScheme = c.global.Prometheus.MetricNameEscapingScheme
+		}
 		if err := validateScrapeProtocols(sc.ScrapeProtocols); err != nil {
 			return fmt.Errorf("invalid scrape protocols provided: %w", err)
 		}

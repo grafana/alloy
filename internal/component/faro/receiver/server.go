@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,7 +47,11 @@ func newServerMetrics(reg prometheus.Registerer) *serverMetrics {
 			Help: "Current number of inflight requests.",
 		}, []string{"method", "route"}),
 	}
-	reg.MustRegister(m.requestDuration, m.rxMessageSize, m.txMessageSize, m.inflightRequests)
+
+	m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
+	m.rxMessageSize = util.MustRegisterOrGet(reg, m.rxMessageSize).(*prometheus.HistogramVec)
+	m.txMessageSize = util.MustRegisterOrGet(reg, m.txMessageSize).(*prometheus.HistogramVec)
+	m.inflightRequests = util.MustRegisterOrGet(reg, m.inflightRequests).(*prometheus.GaugeVec)
 
 	return m
 }
@@ -80,16 +85,20 @@ func (s *server) Run(ctx context.Context) error {
 	})
 
 	mw := middleware.Instrument{
-		RouteMatcher:     r,
 		Duration:         s.metrics.requestDuration,
 		RequestBodySize:  s.metrics.rxMessageSize,
 		ResponseBodySize: s.metrics.txMessageSize,
 		InflightRequests: s.metrics.inflightRequests,
 	}
 
+	ri := middleware.RouteInjector{
+		RouteMatcher: r,
+	}
+	riHandler := ri.Wrap(r)
+
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.args.Host, s.args.Port),
-		Handler: mw.Wrap(r),
+		Handler: mw.Wrap(riHandler),
 	}
 
 	errCh := make(chan error, 1)

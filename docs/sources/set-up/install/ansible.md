@@ -10,12 +10,12 @@ weight: 550
 
 # Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
 
-You can use the [Grafana Ansible Collection](https://github.com/grafana/grafana-ansible-collection) to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
+You can use the [Grafana Ansible Collection][collection] to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
 
 ## Before you begin
 
-- These steps assume you already have a working [Ansible][] setup and a pre-existing inventory.
-- You can add the tasks below to any new or existing role.
+- These steps assume you already have a working [Ansible][] setup and an inventory.
+- You can add the tasks below to any role.
 
 ## Steps
 
@@ -33,7 +33,7 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
           ansible.builtin.include_role:
             name: grafana.grafana.alloy
           vars:
-            config: |
+            alloy_config: |
               prometheus.scrape "default" {
                 targets = [{"__address__" = "localhost:12345"}]
                 forward_to = [prometheus.remote_write.prom.receiver]
@@ -61,12 +61,12 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 To verify that the {{< param "PRODUCT_NAME" >}} service on the target machine is `active` and `running`, open a terminal window and run the following command:
 
 ```shell
-$ sudo systemctl status alloy.service
+sudo systemctl status alloy.service
 ```
 
 If the service is `active` and `running`, the output should look similar to this:
 
-```
+```shell
 alloy.service - Grafana Alloy
   Loaded: loaded (/etc/systemd/system/alloy.service; enabled; vendor preset: enabled)
   Active: active (running) since Wed 2022-07-20 09:56:15 UTC; 36s ago
@@ -82,6 +82,6 @@ Main PID: 3176 (alloy-linux-amd)
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[Grafana Ansible Collection]: https://github.com/grafana/grafana-ansible-collection
+[collection]: https://github.com/grafana/grafana-ansible-collection
 [Ansible]: https://www.ansible.com/
 [Configure]: ../../../configure/linux/

@@ -33,10 +33,8 @@ type Component struct {
 }
 
 func (c *Component) Run(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return nil
-	}
+	<-ctx.Done()
+	return nil
 }
 
 func (c *Component) Update(args component.Arguments) error {

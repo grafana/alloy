@@ -12,23 +12,23 @@ Some vendor-agnostic components may also be accepted as community components if 
 
 The first step is to ensure that the proposal meets the following criteria and does not duplicate existing proposals:
 
-* Avoid overlapping functionalities.
-* Avoid components that can be implemented as [modules][module].
-* Avoid components that affect our dependencies in an undesired way, such as pulling in an incompatible version or bloating the collector.
-* Make sure that the code licenses are compatible with Alloy's [license][].
-* You are willing to be a maintainer of the component.
+- Avoid overlapping functionalities.
+- Avoid components that can be implemented as [modules][module].
+- Avoid components that affect our dependencies in an undesired way, such as pulling in an incompatible version or bloating the collector.
+- Make sure that the code licenses are compatible with the Alloy [license][].
+- You are willing to be a maintainer of the component.
 
-While not mandatory, it is beneficial if:
+While not mandatory, it's beneficial if:
 
-* The component comes from the [OpenTelemetry contrib repository][otel].
-* The component supports all the [platforms that Alloy supports][platforms].
+- The component comes from the [OpenTelemetry contrib repository][otel].
+- The component supports all the [platforms that Alloy supports][platforms].
 
 We are implementing a gradual rollout strategy for community components to allow for process refinement as needed.
 Even if a proposal meets all the established criteria, we may exercise caution in its acceptance to ensure a smooth integration process.
 
 ## Creating a proposal
 
-To create a proposal, submit a new issue in [Alloy's repo][issue] with the template `Community component proposal`.
+To create a proposal, submit a new issue in the [Alloy repo][issue] with the template `Community component proposal`.
 
 Make sure that the issue has the label `community-component` before submitting it.
 
@@ -42,15 +42,18 @@ Doing the implementation will make you a maintainer of the component. This will 
 
 Community components live amongst other components in the code. The only difference with core components is that the flag `Community` should be set to true when registering the component.
 
-The documentation should also follow the same pattern as the core components. You must include the the following markdown elements in the component documentation.
+The documentation should also follow the same pattern as the core components. You must include the following markdown elements in the component documentation.
 
-* A community badge below the frontmatter.
+- A community badge in the front matter labels.
 
   ```markdown
-  <span class="badge docs-labels__stage docs-labels__item">Community</span>
+  labels:
+  products: - oss
+  tags: - text: Community
+  tooltip: This component is developed, maintained, and supported by the Alloy user community.
   ```
 
-* The [shortcode][] for the community component description below the heading 1.
+- The [shortcode][] for the community component description below the heading 1.
 
   ```markdown
   {{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -64,8 +67,8 @@ Failing to keep the component up to date may result in the component being depre
 
 The list of maintainers is kept as a comment in the component's Go file:
 
-* Anyone can volunteer to become a maintainer by opening a pull request to add themselves as code owner for the component.
-* Any maintainer can step out of the role by opening a pull request to remove their GitHub handle from code owners for the component.
+- Anyone can volunteer to become a maintainer by opening a pull request to add themselves as code owner for the component.
+- Any maintainer can step out of the role by opening a pull request to remove their GitHub handle from code owners for the component.
 
 [cc]: ../sources/get-started/community_components.md
 [module]: ../sources/get-started/modules.md

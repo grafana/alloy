@@ -4,7 +4,7 @@
 # should *not* run this locally since it pushes the containers.
 #
 # This script expects to be run from the repo root and has checks for running
-# from a Drone trigger.
+# from a GitHub Actions trigger.
 set -euxo pipefail
 
 # Environment variables used throughout this script. These must be set
@@ -14,18 +14,31 @@ set -euxo pipefail
 # If the environment variables are unset, the variables below default to an
 # empty string.
 export TARGET_CONTAINER=${1:-}
-export DRONE_TAG=${DRONE_TAG:-}
+PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
+export GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
+GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
+
+if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+  export GITHUB_TAG="$GITHUB_REF_NAME"
+else
+  export GITHUB_TAG=""
+fi
+
+DOCKER_FLAGS=""
+if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+	DOCKER_FLAGS="--push"
+fi
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
-# We need to determine what version to assign to built binaries. If containers
-# are being built from a Drone tag trigger, we force the version to come from the
-# Drone tag name.
+# We need to determine what version to assign to built binaries. 
+# If containers are being built from a GitHub Actions tag trigger, 
+# we force the version to come from the GitHub Actions tag name.
 #
 # Otherwise, we use the ./tools/image-tag script to determine the version.
-if [ -n "$DRONE_TAG" ]; then
-  VERSION=$DRONE_TAG
+if [ -n "$GITHUB_TAG" ]; then
+  VERSION=$GITHUB_TAG
 else
   # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
   # produce valid semver.
@@ -46,10 +59,10 @@ TAG_VERSION=${VERSION//+/-}
 # tagged from a stable release (i.e., not a release candidate) or when building
 # a dev image.
 #
-# If we're not running from drone, we'll set the branch tag to match the
+# If we're not running from GitHub Actions, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
+if [[ -n "$GITHUB_TAG" && "$GITHUB_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
   BRANCH_TAG=latest
 else
   BRANCH_TAG=$TAG_VERSION
@@ -62,7 +75,7 @@ export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker buildx build --push               \
+    docker buildx build $DOCKER_FLAGS        \
       --platform $BUILD_PLATFORMS            \
       --build-arg RELEASE_BUILD=1            \
       --build-arg VERSION="$VERSION"         \
@@ -77,7 +90,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build --push                            \
+    docker buildx build $DOCKER_FLAGS                     \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO            \
       --build-arg RELEASE_BUILD=1                         \
       --build-arg VERSION="$VERSION"                      \
@@ -89,7 +102,7 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel)
-    docker buildx build --push             \
+    docker buildx build $DOCKER_FLAGS      \
       --platform $BUILD_PLATFORMS          \
       --build-arg RELEASE_BUILD=1          \
       --build-arg VERSION="$VERSION"       \
@@ -104,7 +117,7 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build --push                          \
+    docker buildx build $DOCKER_FLAGS                   \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
       --build-arg RELEASE_BUILD=1                       \
       --build-arg VERSION="$VERSION"                    \
@@ -115,8 +128,33 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
+  alloy-devel-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS      \
+      --platform $BUILD_PLATFORMS          \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg VERSION="$VERSION"       \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG" \
+      -f Dockerfile                        \
+      .
+    ;;
+
+  alloy-devel-boringcrypto-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS                   \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO          \
+      --build-arg RELEASE_BUILD=1                       \
+      --build-arg VERSION="$VERSION"                    \
+      --build-arg GOEXPERIMENT=boringcrypto             \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG-boringcrypto" \
+      -f Dockerfile                                     \
+      .
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto"
+    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto|alloy-devel-pr|alloy-devel-boringcrypto-pr"
     exit 1
     ;;
 esac

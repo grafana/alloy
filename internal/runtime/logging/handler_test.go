@@ -2,7 +2,6 @@ package logging
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -16,7 +15,7 @@ import (
 func Test(t *testing.T) {
 	var buf bytes.Buffer
 	handler := getTestHandler(t, &buf)
-	handler.Handle(context.Background(), newTestRecord("hello world"))
+	handler.Handle(t.Context(), newTestRecord("hello world"))
 
 	expect := `level=info msg="hello world"` + "\n"
 	require.Equal(t, expect, buf.String())
@@ -27,6 +26,9 @@ func TestGroups(t *testing.T) {
 	handler := getTestHandler(t, &buf)
 	handler = handler.WithAttrs([]slog.Attr{
 		slog.String("foo", "bar"),
+		slog.String("\tspaced key\n", "baz"),
+		slog.String("key=with=equal", "qux"),
+		slog.String("key\"with\"quote", "quux"),
 	})
 
 	handler = handler.WithGroup("test")
@@ -39,9 +41,9 @@ func TestGroups(t *testing.T) {
 		slog.String("genre", "jazz"),
 	})
 
-	handler.Handle(context.Background(), newTestRecord("hello world"))
+	handler.Handle(t.Context(), newTestRecord("hello world"))
 
-	expect := `level=info msg="hello world" foo=bar test.location=home test.inner.genre=jazz` + "\n"
+	expect := `level=info msg="hello world" foo=bar spaced_key=baz key_with_equal=qux key_with_quote=quux test.location=home test.inner.genre=jazz` + "\n"
 	require.Equal(t, expect, buf.String())
 }
 

@@ -1,14 +1,15 @@
 package oracledb_exporter
 
 import (
-	"errors"
 	"fmt"
-	"net/url"
+	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
-	oe "github.com/iamseth/oracledb_exporter/collector"
+	oe "github.com/oracle/oracle-db-appdev-monitoring/collector"
 
 	// required driver for integration
 	_ "github.com/sijms/go-ora/v2"
@@ -24,13 +25,8 @@ var DefaultConfig = Config{
 	MaxOpenConns:     10,
 	MaxIdleConns:     0,
 	QueryTimeout:     5,
-	// CustomMetrics:    "",
+	CustomMetrics:    []string{},
 }
-
-var (
-	errNoConnectionString = errors.New("no connection string was provided")
-	errNoHostname         = errors.New("no hostname in connection string")
-)
 
 // Config is the configuration for the oracledb v2 integration
 type Config struct {
@@ -38,28 +34,10 @@ type Config struct {
 	MaxIdleConns     int                `yaml:"max_idle_connections"`
 	MaxOpenConns     int                `yaml:"max_open_connections"`
 	QueryTimeout     int                `yaml:"query_timeout"`
-	CustomMetrics    string             `yaml:"custom_metrics,omitempty"`
-}
-// ValidateConnString attempts to ensure the connection string supplied is valid
-// to connect to an OracleDB instance
-func validateConnString(connStr string) error {
-	if connStr == "" {
-		return errNoConnectionString
-	}
-	u, err := url.Parse(connStr)
-	if err != nil {
-		return fmt.Errorf("unable to parse connection string: %w", err)
-	}
-
-	if u.Scheme != "oracle" {
-		return fmt.Errorf("unexpected scheme of type '%s'. Was expecting 'oracle': %w", u.Scheme, err)
-	}
-
-	// hostname is required for identification
-	if u.Hostname() == "" {
-		return errNoHostname
-	}
-	return nil
+	DefaultMetrics   string             `yaml:"default_metrics,omitempty"`
+	CustomMetrics    []string           `yaml:"custom_metrics,omitempty"`
+	Username         string             `yaml:"username,omitempty"`
+	Password         config_util.Secret `yaml:"password,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -77,11 +55,11 @@ func (c *Config) Name() string {
 
 // InstanceKey returns the addr of the oracle instance.
 func (c *Config) InstanceKey(agentKey string) (string, error) {
-	u, err := url.Parse(string(c.ConnectionString))
-	if err != nil {
-		return "", err
+	parts := strings.Split(string(c.ConnectionString), "/")
+	if len(parts) == 0 {
+		return "", fmt.Errorf("invalid connection string format")
 	}
-	return fmt.Sprintf("%s:%s", u.Hostname(), u.Port()), nil
+	return parts[0], nil
 }
 
 // NewIntegration returns the OracleDB Exporter Integration
@@ -95,18 +73,27 @@ func init() {
 }
 
 // New creates a new oracledb integration. The integration scrapes metrics
-// from an OracleDB exporter running with the https://github.com/iamseth/oracledb_exporter
+// from an OracleDB exporter running with the https://github.com/oracle/oracle-db-appdev-monitoring
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	if err := validateConnString(string(c.ConnectionString)); err != nil {
-		return nil, fmt.Errorf("invalid connection string: %w", err)
-	}
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
 
-	oeExporter, err := oe.NewExporter(logger, &oe.Config{
-		DSN:          string(c.ConnectionString),
-		MaxIdleConns: c.MaxIdleConns,
-		MaxOpenConns: c.MaxOpenConns,
-		CustomMetrics: c.CustomMetrics,
-		QueryTimeout:  c.QueryTimeout,
+	oeExporter, err := oe.NewExporter(slogLogger, &oe.MetricsConfiguration{
+		Databases: map[string]oe.DatabaseConfig{
+			"default": {
+				URL:      string(c.ConnectionString),
+				Username: c.Username,
+				Password: string(c.Password),
+				ConnectConfig: oe.ConnectConfig{
+					MaxIdleConns: c.MaxIdleConns,
+					MaxOpenConns: c.MaxOpenConns,
+					QueryTimeout: c.QueryTimeout,
+				},
+			},
+		},
+		Metrics: oe.MetricsFilesConfig{
+			Custom:  c.CustomMetrics,
+			Default: c.DefaultMetrics,
+		},
 	})
 
 	if err != nil {

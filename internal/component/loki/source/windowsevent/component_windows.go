@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
@@ -116,10 +117,13 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs))
+	// Same as the loki.source.file sync position period
+	bookmarkSyncPeriod := 10 * time.Second
+	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs), bookmarkSyncPeriod)
 	if err != nil {
 		return err
 	}
+
 	// Stop the original target.
 	if c.target != nil {
 		err := c.target.Stop()

@@ -87,7 +87,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls)
+	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls, prometheus.NoopMetadataStore{})
 
 	converter := convert.New(o.Logger, fanout, convertArgumentsToConvertOptions(c))
 
@@ -105,7 +105,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// Construct a consumer based on our converter and export it. This will
 	// remain the same throughout the component's lifetime, so we do this during
 	// component construction.
-	export := lazyconsumer.New(context.Background())
+	export := lazyconsumer.New(context.Background(), o.ID)
 	export.SetConsumers(nil, converter, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 

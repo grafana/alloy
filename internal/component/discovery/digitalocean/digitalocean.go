@@ -37,6 +37,7 @@ type Arguments struct {
 	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
+	HTTPHeaders     *config.Headers     `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{
@@ -63,6 +64,10 @@ func (a *Arguments) Validate() error {
 		return fmt.Errorf("exactly one of bearer_token or bearer_token_file must be specified")
 	}
 
+	if err := a.HTTPHeaders.Validate(); err != nil {
+		return err
+	}
+
 	return a.ProxyConfig.Validate()
 }
 
@@ -73,6 +78,7 @@ func (a Arguments) Convert() discovery.DiscovererConfig {
 	httpClientConfig.FollowRedirects = a.FollowRedirects
 	httpClientConfig.EnableHTTP2 = a.EnableHTTP2
 	httpClientConfig.ProxyConfig = a.ProxyConfig
+	httpClientConfig.HTTPHeaders = a.HTTPHeaders
 
 	return &prom_discovery.SDConfig{
 		RefreshInterval:  model.Duration(a.RefreshInterval),

@@ -54,7 +54,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		varStore = &varSourceMapsStore{}
 
 		metrics = newMetricsExporter(o.Registerer)
-		logs    = newLogsExporter(log.With(o.Logger, "exporter", "logs"), varStore)
+		logs    = newLogsExporter(log.With(o.Logger, "exporter", "logs"), varStore, args.LogFormat)
 		traces  = newTracesExporter(log.With(o.Logger, "exporter", "traces"))
 	)
 

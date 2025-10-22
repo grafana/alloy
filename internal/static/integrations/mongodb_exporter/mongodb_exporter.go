@@ -1,31 +1,62 @@
-package mongodb_exporter //nolint:golint
+package mongodb_exporter
 
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
-	"os"
 
 	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 var DefaultConfig = Config{
-	DirectConnect: true,
+	CompatibleMode:           true,
+	CollectAll:               true,
+	DirectConnect:            true,
+	DiscoveringMode:          true,
+	EnableDBStats:            false,
+	EnableDBStatsFreeStorage: false,
+	EnableDiagnosticData:     false,
+	EnableReplicasetStatus:   false,
+	EnableReplicasetConfig:   false,
+	EnableCurrentopMetrics:   false,
+	EnableTopMetrics:         false,
+	EnableIndexStats:         false,
+	EnableCollStats:          false,
+	EnableProfile:            false,
+	EnableShards:             false,
+	EnableFCV:                false,
+	EnablePBMMetrics:         false,
 }
 
 // Config controls mongodb_exporter
 type Config struct {
 	// MongoDB connection URI. example:mongodb://user:pass@127.0.0.1:27017/admin?ssl=true"
-	URI                    config_util.Secret `yaml:"mongodb_uri"`
-	DirectConnect          bool               `yaml:"direct_connect,omitempty"`
-	DiscoveringMode        bool               `yaml:"discovering_mode,omitempty"`
-	TLSBasicAuthConfigPath string             `yaml:"tls_basic_auth_config_path,omitempty"`
+	URI                      config_util.Secret `yaml:"mongodb_uri"`
+	CompatibleMode           bool               `yaml:"compatible_mode,omitempty"`
+	CollectAll               bool               `yaml:"collect_all,omitempty"`
+	DirectConnect            bool               `yaml:"direct_connect,omitempty"`
+	DiscoveringMode          bool               `yaml:"discovering_mode,omitempty"`
+	EnableDBStats            bool               `yaml:"enable_db_stats,omitempty"`
+	EnableDBStatsFreeStorage bool               `yaml:"enable_db_stats_free_storage,omitempty"`
+	EnableDiagnosticData     bool               `yaml:"enable_diagnostic_data,omitempty"`
+	EnableReplicasetStatus   bool               `yaml:"enable_replicaset_status,omitempty"`
+	EnableReplicasetConfig   bool               `yaml:"enable_replicaset_config,omitempty"`
+	EnableCurrentopMetrics   bool               `yaml:"enable_currentop_metrics,omitempty"`
+	EnableTopMetrics         bool               `yaml:"enable_top_metrics,omitempty"`
+	EnableIndexStats         bool               `yaml:"enable_index_stats,omitempty"`
+	EnableCollStats          bool               `yaml:"enable_coll_stats,omitempty"`
+	EnableProfile            bool               `yaml:"enable_profile,omitempty"`
+	EnableShards             bool               `yaml:"enable_shards,omitempty"`
+	EnableFCV                bool               `yaml:"enable_fcv,omitempty"`
+	EnablePBMMetrics         bool               `yaml:"enable_pbm_metrics,omitempty"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -61,28 +92,30 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := integrations.NewLogger(logger)
-
-	if c.TLSBasicAuthConfigPath != "" {
-		if _, err := os.Stat(c.TLSBasicAuthConfigPath); err != nil {
-			return nil, fmt.Errorf("tls config file path is invalid: %s. error: %w", c.TLSBasicAuthConfigPath, errors.Unwrap(err))
-		}
-	}
+	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
 
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
 		Logger:                 logrusLogger,
 		DisableDefaultRegistry: true,
 
-		// NOTE(rfratto): CompatibleMode configures the exporter to use old metric
-		// names from mongodb_exporter <v0.20.0. Many existing dashboards rely on
-		// the old names, so we hard-code it to true now. We may wish to make this
-		// configurable in the future.
-		CompatibleMode:  true,
-		CollectAll:      true,
-		DirectConnect:   c.DirectConnect,
-		DiscoveringMode: c.DiscoveringMode,
-		TLSConfigPath:   c.TLSBasicAuthConfigPath,
+		CompatibleMode:           c.CompatibleMode,
+		CollectAll:               c.CollectAll,
+		DirectConnect:            c.DirectConnect,
+		DiscoveringMode:          c.DiscoveringMode,
+		EnableDBStats:            c.EnableDBStats,
+		EnableDBStatsFreeStorage: c.EnableDBStatsFreeStorage,
+		EnableDiagnosticData:     c.EnableDiagnosticData,
+		EnableReplicasetStatus:   c.EnableReplicasetStatus,
+		EnableReplicasetConfig:   c.EnableReplicasetConfig,
+		EnableCurrentopMetrics:   c.EnableCurrentopMetrics,
+		EnableTopMetrics:         c.EnableTopMetrics,
+		EnableIndexStats:         c.EnableIndexStats,
+		EnableCollStats:          c.EnableCollStats,
+		EnableProfile:            c.EnableProfile,
+		EnableShards:             c.EnableShards,
+		EnableFCV:                c.EnableFCV,
+		EnablePBMMetrics:         c.EnablePBMMetrics,
 	})
 
 	return integrations.NewHandlerIntegration(c.Name(), exp.Handler()), nil

@@ -15,7 +15,7 @@ import (
 // Configuration errors.
 var (
 	ErrLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
-	ErrLimitStageByLabelMustDrop    = errors.New("When ratelimiting by label, drop must be true")
+	ErrLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
 	ratelimitDropReason             = "ratelimit_drop_stage"
 )
 

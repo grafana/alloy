@@ -16,7 +16,7 @@ import (
 
 const ServiceName = "labelstore"
 
-type service struct {
+type Service struct {
 	log                 log.Logger
 	mut                 sync.Mutex
 	globalRefID         uint64
@@ -35,13 +35,13 @@ type staleMarker struct {
 
 type Arguments struct{}
 
-var _ alloy_service.Service = (*service)(nil)
+var _ alloy_service.Service = (*Service)(nil)
 
-func New(l log.Logger, r prometheus.Registerer) *service {
+func New(l log.Logger, r prometheus.Registerer) *Service {
 	if l == nil {
 		l = log.NewNopLogger()
 	}
-	s := &service{
+	s := &Service{
 		log:                 l,
 		globalRefID:         0,
 		mappings:            make(map[string]*remoteWriteMapping),
@@ -62,7 +62,7 @@ func New(l log.Logger, r prometheus.Registerer) *service {
 // Definition returns the Definition of the Service.
 // Definition must always return the same value across all
 // calls.
-func (s *service) Definition() alloy_service.Definition {
+func (s *Service) Definition() alloy_service.Definition {
 	return alloy_service.Definition{
 		Name:       ServiceName,
 		ConfigType: Arguments{},
@@ -71,12 +71,12 @@ func (s *service) Definition() alloy_service.Definition {
 	}
 }
 
-func (s *service) Describe(m chan<- *prometheus.Desc) {
+func (s *Service) Describe(m chan<- *prometheus.Desc) {
 	m <- s.totalIDs
 	m <- s.idsInRemoteWrapping
 }
 
-func (s *service) Collect(m chan<- prometheus.Metric) {
+func (s *Service) Collect(m chan<- prometheus.Metric) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -89,7 +89,7 @@ func (s *service) Collect(m chan<- prometheus.Metric) {
 // Run starts a Service. Run must block until the provided
 // context is canceled. Returning an error should be treated
 // as a fatal error for the Service.
-func (s *service) Run(ctx context.Context, host alloy_service.Host) error {
+func (s *Service) Run(ctx context.Context, host alloy_service.Host) error {
 	staleCheck := time.NewTicker(10 * time.Minute)
 	for {
 		select {
@@ -109,7 +109,7 @@ func (s *service) Run(ctx context.Context, host alloy_service.Host) error {
 //
 // Update will be called once before Run, and may be called
 // while Run is active.
-func (s *service) Update(_ any) error {
+func (s *Service) Update(_ any) error {
 	return nil
 }
 
@@ -118,12 +118,12 @@ func (s *service) Update(_ any) error {
 // as callers are expected to be able to cache the result.
 //
 // Data may be invoked before Run.
-func (s *service) Data() any {
+func (s *Service) Data() any {
 	return s
 }
 
 // GetOrAddLink is called by a remote_write endpoint component to add mapping and get back the global id.
-func (s *service) GetOrAddLink(componentID string, localRefID uint64, lbls labels.Labels) uint64 {
+func (s *Service) GetOrAddLink(componentID string, localRefID uint64, lbls labels.Labels) uint64 {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -154,14 +154,14 @@ func (s *service) GetOrAddLink(componentID string, localRefID uint64, lbls label
 }
 
 // GetOrAddGlobalRefID is used to create a global refid for a labelset
-func (s *service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
+func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	// Guard against bad input.
-	if l == nil {
+	if l.IsEmpty() {
 		return 0
 	}
+
+	s.mut.Lock()
+	defer s.mut.Unlock()
 
 	labelHash := l.Hash()
 	globalID, found := s.labelsHashToGlobal[labelHash]
@@ -174,7 +174,7 @@ func (s *service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 }
 
 // GetGlobalRefID returns the global refid for a component local combo, or 0 if not found
-func (s *service) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
+func (s *Service) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -187,7 +187,7 @@ func (s *service) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
 }
 
 // GetLocalRefID returns the local refid for a component global combo, or 0 if not found
-func (s *service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
+func (s *Service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -199,7 +199,7 @@ func (s *service) GetLocalRefID(componentID string, globalRefID uint64) uint64 {
 	return local
 }
 
-func (s *service) TrackStaleness(ids []StalenessTracker) {
+func (s *Service) TrackStaleness(ids []StalenessTracker) {
 	var (
 		toAdd    = make([]*staleMarker, 0)
 		toRemove = make([]uint64, 0)
@@ -233,7 +233,7 @@ func (s *service) TrackStaleness(ids []StalenessTracker) {
 var staleDuration = time.Minute * 10
 
 // CheckAndRemoveStaleMarkers is called to garbage collect and items that have grown stale over stale duration (10m)
-func (s *service) CheckAndRemoveStaleMarkers() {
+func (s *Service) CheckAndRemoveStaleMarkers() {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 

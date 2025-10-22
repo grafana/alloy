@@ -1,13 +1,15 @@
 package kubernetes
 
 import (
+	"testing"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/syntax"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAlloyConfig(t *testing.T) {
@@ -55,23 +57,22 @@ func TestClusteringDuplicateAddress(t *testing.T) {
 		true,
 		cluster.Mock(),
 		[]discovery.Target{
-			{
+			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "localhost:9090",
 				"container":   "alloy",
 				"pod":         "grafana-k8s-monitoring-alloy-0",
 				"job":         "integrations/alloy",
 				"namespace":   "default",
-			},
-			{
+			}),
+			discovery.NewTargetFromMap(map[string]string{
 				"__address__": "localhost:8080",
 				"container":   "alloy",
 				"pod":         "grafana-k8s-monitoring-alloy-0",
 				"job":         "integrations/alloy",
 				"namespace":   "default",
-			},
+			}),
 		},
 		kubetail.ClusteringLabels,
 	)
 	require.True(t, distTargets.TargetCount() == 1)
-
 }

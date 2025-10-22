@@ -3,24 +3,27 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.memcached/ # /docs/alloy/latest/reference/components/prometheus.exporter.memcached/
 description: Learn about prometheus.exporter.memcached
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.memcached
 ---
 
-# prometheus.exporter.memcached
+# `prometheus.exporter.memcached`
 
-The `prometheus.exporter.memcached` component embeds
-[memcached_exporter](https://github.com/prometheus/memcached_exporter) for collecting metrics from a Memcached server.
+The `prometheus.exporter.memcached` component embeds the [`memcached_exporter`](https://github.com/prometheus/memcached_exporter) for collecting metrics from a Memcached server.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.memcached "LABEL" {
+prometheus.exporter.memcached "<LABEL>" {
 }
 ```
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `prometheus.exporter.memcached`:
 
 | Name      | Type       | Description                                         | Default             | Required |
 | --------- | ---------- | --------------------------------------------------- | ------------------- | -------- |
@@ -29,15 +32,15 @@ The following arguments are supported:
 
 ## Blocks
 
-The following blocks are supported inside the definition of `prometheus.exporter.memcached`:
+You can use the following block with `prometheus.exporter.memcached`:
 
-| Hierarchy  | Block          | Description                                             | Required |
-| ---------- | -------------- | ------------------------------------------------------- | -------- |
-| tls_config | [tls_config][] | TLS configuration for requests to the Memcached server. | no       |
+| Block                      | Description                                             | Required |
+| -------------------------- | ------------------------------------------------------- | -------- |
+| [`tls_config`][tls_config] | TLS configuration for requests to the Memcached server. | no       |
 
-[tls_config]: #tls_config-block
+[tls_config]: #tls_config
 
-### tls_config block
+### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -47,24 +50,20 @@ The following blocks are supported inside the definition of `prometheus.exporter
 
 ## Component health
 
-`prometheus.exporter.memcached` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.memcached` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.memcached` does not expose any component-specific
-debug information.
+`prometheus.exporter.memcached` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.memcached` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.memcached` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a `prometheus.exporter.memcached` component to collect metrics from a Memcached
-server running locally, and scrapes the metrics using a [prometheus.scrape][scrape] component:
+The following example uses a `prometheus.exporter.memcached` component to collect metrics from a Memcached server running locally, and scrapes the metrics using a [`prometheus.scrape`][scrape] component:
 
 ```alloy
 prometheus.exporter.memcached "example" {
@@ -73,17 +72,17 @@ prometheus.exporter.memcached "example" {
 }
 
 prometheus.scrape "example" {
-  targets    = [prometheus.exporter.memcached.example.targets]
+  targets    = prometheus.exporter.memcached.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -91,9 +90,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

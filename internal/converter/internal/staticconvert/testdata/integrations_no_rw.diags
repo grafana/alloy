@@ -1,2 +1,2 @@
-(Error) The converter does not support handling integrations which are not connected to a remote_write.
+(Critical) The converter does not support handling integrations which are not connected to a remote_write.
 (Warning) Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.

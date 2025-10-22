@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +21,9 @@ import (
 	coreListers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
 )
 
 type fakeLokiClient struct {
@@ -85,17 +87,10 @@ func (m *fakeLokiClient) ListRules(ctx context.Context, namespace string) (map[s
 }
 
 func TestEventLoop(t *testing.T) {
-	nsIndexer := cache.NewIndexer(
-		cache.DeletionHandlingMetaNamespaceKeyFunc,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	nsLister := coreListers.NewNamespaceLister(nsIndexer)
-
-	ruleIndexer := cache.NewIndexer(
-		cache.DeletionHandlingMetaNamespaceKeyFunc,
-		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
-	)
-	ruleLister := promListers.NewPrometheusRuleLister(ruleIndexer)
+	nsIndexer := testNamespaceIndexer()
+	nsLister := testNamespaceLister(nsIndexer)
+	ruleIndexer := testRuleIndexer()
+	ruleLister := testRuleLister(ruleIndexer)
 
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -117,7 +112,7 @@ func TestEventLoop(t *testing.T) {
 					Rules: []v1.Rule{
 						{
 							Alert: "alert",
-							Expr:  intstr.FromString("expr"),
+							Expr:  intstr.FromString("{component=\"alloy\"}"),
 						},
 					},
 				},
@@ -127,7 +122,7 @@ func TestEventLoop(t *testing.T) {
 
 	component := Component{
 		log:               log.NewLogfmtLogger(os.Stdout),
-		queue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
 		ruleLister:        ruleLister,
@@ -138,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 	}
 	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go component.eventLoop(ctx)
@@ -159,7 +154,7 @@ func TestEventLoop(t *testing.T) {
 	// Update the rule in kubernetes
 	rule.Spec.Groups[0].Rules = append(rule.Spec.Groups[0].Rules, v1.Rule{
 		Alert: "alert2",
-		Expr:  intstr.FromString("expr2"),
+		Expr:  intstr.FromString("{component=\"alloy-2\"}"),
 	})
 	ruleIndexer.Update(rule)
 	eventHandler.OnUpdate(rule, rule)
@@ -183,4 +178,139 @@ func TestEventLoop(t *testing.T) {
 		require.NoError(t, err)
 		return len(rules) == 0
 	}, time.Second, 10*time.Millisecond)
+}
+
+func TestExtraQueryMatchers(t *testing.T) {
+	nsIndexer := testNamespaceIndexer()
+	nsLister := testNamespaceLister(nsIndexer)
+	ruleIndexer := testRuleIndexer()
+	ruleLister := testRuleLister(ruleIndexer)
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace",
+			UID:  types.UID("33f8860c-bd06-4c0d-a0b1-a114d6b9937b"),
+		},
+	}
+
+	rule := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+		},
+		Spec: v1.PrometheusRuleSpec{
+			Groups: []v1.RuleGroup{
+				{
+					Name: "group1",
+					Rules: []v1.Rule{
+						{
+							Record: "record_rule_1",
+							Expr:   intstr.FromString("count_over_time({job=\"bad\", app=\"test\"}[5m]) / count_over_time({app=\"test\"}[5m])"),
+						},
+						{
+							Alert: "alert_1",
+							Expr:  intstr.FromString("count_over_time({message=\"success\"} |= \"my-log\" | json [5m])"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	args := Arguments{
+		LokiNameSpacePrefix: "alloy",
+		ExtraQueryMatchers: &ExtraQueryMatchers{Matchers: []Matcher{
+			{
+				Name:      "cluster",
+				MatchType: "=~",
+				Value:     "prod-.*",
+			},
+			{
+				Name:      "job",
+				MatchType: "=",
+				Value:     "good",
+			},
+		}},
+	}
+
+	component := Component{
+		log:               log.NewLogfmtLogger(os.Stdout),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		namespaceLister:   nsLister,
+		namespaceSelector: labels.Everything(),
+		ruleLister:        ruleLister,
+		ruleSelector:      labels.Everything(),
+		lokiClient:        newFakeLokiClient(),
+		args:              args,
+		metrics:           newMetrics(),
+	}
+	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go component.eventLoop(ctx)
+
+	// Add a namespace and rule to kubernetes
+	nsIndexer.Add(ns)
+	ruleIndexer.Add(rule)
+	eventHandler.OnAdd(rule, false)
+
+	// Wait for the rule to be added to loki
+	require.Eventually(t, func() bool {
+		rules, err := component.lokiClient.ListRules(ctx, "")
+		require.NoError(t, err)
+		// The map of rules has only one element.
+		for ruleName, rule := range rules {
+			require.Equal(t, "alloy-namespace-name-64aab764-c95e-4ee9-a932-cd63ba57e6cf", ruleName)
+
+			ruleBuf, err := yaml.Marshal(rule)
+			require.NoError(t, err)
+
+			expectedRule := `- name: group1
+  rules:
+    - expr: "(count_over_time({job=\"good\", app=\"test\", cluster=~\"prod-.*\"}[5m]) / count_over_time({app=\"test\", cluster=~\"prod-.*\", job=\"good\"}[5m]))"
+      record: record_rule_1
+    - alert: alert_1
+      expr: "count_over_time({message=\"success\", cluster=~\"prod-.*\", job=\"good\"} |= \"my-log\" | json[5m])"
+`
+			require.YAMLEq(t, expectedRule, string(ruleBuf))
+		}
+		return len(rules) == 1
+	}, time.Second, 10*time.Millisecond)
+	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncLoki})
+
+	// Remove the rule from kubernetes
+	ruleIndexer.Delete(rule)
+	eventHandler.OnDelete(rule)
+
+	// Wait for the rule to be removed from loki
+	require.Eventually(t, func() bool {
+		rules, err := component.lokiClient.ListRules(ctx, "")
+		require.NoError(t, err)
+		return len(rules) == 0
+	}, time.Second, 10*time.Millisecond)
+}
+
+func testRuleIndexer() cache.Indexer {
+	return cache.NewIndexer(
+		cache.DeletionHandlingMetaNamespaceKeyFunc,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+}
+
+func testNamespaceIndexer() cache.Indexer {
+	return cache.NewIndexer(
+		cache.DeletionHandlingMetaNamespaceKeyFunc,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+}
+
+func testRuleLister(indexer cache.Indexer) promListers.PrometheusRuleLister {
+	return promListers.NewPrometheusRuleLister(indexer)
+}
+
+func testNamespaceLister(indexer cache.Indexer) coreListers.NamespaceLister {
+	return coreListers.NewNamespaceLister(indexer)
 }

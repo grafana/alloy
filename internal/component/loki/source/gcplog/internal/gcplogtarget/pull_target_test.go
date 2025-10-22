@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	//nolint:staticcheck // TODO: upgrade to v2
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
@@ -107,7 +108,7 @@ type testContext struct {
 func testPullTarget(t *testing.T) *testContext {
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	sub := newFakeSubscription()
 	promClient := fake.NewClient(func() {})
 	target := &PullTarget{

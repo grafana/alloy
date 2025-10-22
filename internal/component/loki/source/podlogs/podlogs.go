@@ -47,8 +47,23 @@ type Arguments struct {
 
 	Selector          config.LabelSelector `alloy:"selector,block,optional"`
 	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
+	TailFromEnd       bool                 `alloy:"tail_from_end,attr,optional"`
+
+	// Node filtering settings to limit pod discovery to specific nodes.
+	NodeFilter NodeFilterConfig `alloy:"node_filter,block,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
+}
+
+// NodeFilterConfig configures node-based filtering for pod discovery.
+// When enabled, only pods running on the specified node will be discovered,
+// which is useful for DaemonSet deployments to avoid cross-node log collection.
+type NodeFilterConfig struct {
+	// Enabled controls whether node filtering is active.
+	Enabled bool `alloy:"enabled,attr,optional"`
+	// NodeName specifies the node name to filter by. If empty, the component
+	// will attempt to use the NODE_NAME environment variable.
+	NodeName string `alloy:"node_name,attr,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -240,9 +255,10 @@ func (c *Component) updateTailer(args Arguments) error {
 	}
 
 	managerOpts := &kubetail.Options{
-		Client:    clientSet,
-		Handler:   loki.NewEntryHandler(c.handler.Chan(), func() {}),
-		Positions: c.positions,
+		Client:      clientSet,
+		Handler:     loki.NewEntryHandler(c.handler.Chan(), func() {}),
+		Positions:   c.positions,
+		TailFromEnd: args.TailFromEnd,
 	}
 	c.lastOptions = managerOpts
 
@@ -258,11 +274,20 @@ func (c *Component) updateTailer(args Arguments) error {
 // updateReconciler updates the state of the reconciler. This must only be
 // called after updateTailer. mut must be held when calling.
 func (c *Component) updateReconciler(args Arguments) error {
+	// The clustering settings should always be updated,
+	// even if the selectors haven't changed.
+	c.reconciler.SetDistribute(args.Clustering.Enabled)
+
 	var (
 		selectorChanged          = !reflect.DeepEqual(c.args.Selector, args.Selector)
 		namespaceSelectorChanged = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
+		nodeFilterChanged        = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
 	)
-	if !selectorChanged && !namespaceSelectorChanged {
+
+	// Update node filter configuration
+	c.reconciler.UpdateNodeFilter(args.NodeFilter.Enabled, args.NodeFilter.NodeName)
+
+	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged {
 		return nil
 	}
 
@@ -276,7 +301,6 @@ func (c *Component) updateReconciler(args Arguments) error {
 	}
 
 	c.reconciler.UpdateSelectors(sel, nsSel)
-	c.reconciler.SetDistribute(args.Clustering.Enabled)
 
 	// Request a reconcile so the new selectors get applied.
 	c.controller.RequestReconcile()

@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -22,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Rename the kubernetes_(.*) labels without the suffix and remove them,
@@ -69,12 +71,12 @@ func TestRelabeling(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 
 	// Send a log entry to the component's receiver.
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": "agent", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},
@@ -130,7 +132,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	}
 
 	c, _ := New(opts, args)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(b.Context())
 	go c.Run(ctx)
 
 	var entry loki.Entry
@@ -144,7 +146,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		c.receiver.Chan() <- loki.Entry{
 			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/%d.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": model.LabelValue(fmt.Sprintf("agent-%d", i)), "foo": "bar"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: now,
 				Line:      "very important log",
 			},
@@ -188,10 +190,12 @@ func TestCache(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	go c.Run(context.Background())
+	go c.Run(t.Context())
 
+	receivedMessages := atomic.NewInt32(0)
 	go func() {
 		for e := range ch1.Chan() {
+			receivedMessages.Inc()
 			require.Equal(t, "very important log", e.Line)
 		}
 	}()
@@ -220,7 +224,10 @@ func TestCache(t *testing.T) {
 	e.Labels = lsets[2]
 	c.receiver.Chan() <- e
 
-	time.Sleep(100 * time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.EqualValues(c, 3, receivedMessages.Load())
+	}, 3*time.Second, 25*time.Millisecond)
+
 	// Let's look into the cache's structure now!
 	// The cache should have stored each label set by its fingerprint.
 	for i := 0; i < 3; i++ {
@@ -241,6 +248,11 @@ func TestCache(t *testing.T) {
 	// or the underlying stored value.
 	e.Labels = lsets[0]
 	c.receiver.Chan() <- e
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.EqualValues(c, 4, receivedMessages.Load())
+	}, 3*time.Second, 25*time.Millisecond)
+
 	require.Equal(t, c.cache.Len(), 3)
 	val, _ := c.cache.Get(lsets[0].Fingerprint())
 	cachedVal := val.([]cacheItem)
@@ -262,7 +274,10 @@ func TestCache(t *testing.T) {
 	e.Labels = ls2
 	c.receiver.Chan() <- e
 
-	time.Sleep(100 * time.Millisecond)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.EqualValues(c, 6, receivedMessages.Load())
+	}, 3*time.Second, 25*time.Millisecond)
+
 	// Both of these should be under a single, new cache key which will contain
 	// both entries.
 	require.Equal(t, c.cache.Len(), 4)
@@ -283,13 +298,19 @@ func TestCache(t *testing.T) {
 	e.Labels = lsets[4]
 	c.receiver.Chan() <- e
 
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.EqualValues(c, 8, receivedMessages.Load())
+	}, 3*time.Second, 25*time.Millisecond)
+
 	require.Equal(t, c.cache.Len(), 4)
 	wantKeys := []model.Fingerprint{lsets[0].Fingerprint(), ls1.Fingerprint(), lsets[3].Fingerprint(), lsets[4].Fingerprint()}
-	for i, k := range c.cache.Keys() { // Returns the cache keys in LRU order.
+	actualKeys := make([]model.Fingerprint, 0, len(wantKeys))
+	for _, k := range c.cache.Keys() { // Returns the cache keys in LRU order.
 		f, ok := k.(model.Fingerprint)
 		require.True(t, ok)
-		require.Equal(t, f, wantKeys[i])
+		actualKeys = append(actualKeys, f)
 	}
+	require.Equal(t, wantKeys, actualKeys)
 }
 
 func TestEntrySentToTwoRelabelComponents(t *testing.T) {
@@ -345,8 +366,8 @@ rule {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), lsf.Arguments{
-			Targets: []discovery.Target{{"__path__": f.Name(), "somelbl": "somevalue"}},
+		err := ctrl.Run(t.Context(), lsf.Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
@@ -432,7 +453,7 @@ func TestRuleGetter(t *testing.T) {
 func getEntry() loki.Entry {
 	return loki.Entry{
 		Labels: model.LabelSet{},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},

@@ -79,7 +79,12 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
-			level.Info(c.opts.Logger).Log("receiver", c.opts.ID, "entry", entry.Line, "labels", entry.Labels.String())
+			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+			if err != nil {
+				level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+				structured_metadata = []byte("{}")
+			}
+			level.Info(c.opts.Logger).Log("receiver", c.opts.ID, "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
 		}
 	}
 }

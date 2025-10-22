@@ -32,7 +32,7 @@ func TestJournal(t *testing.T) {
 		Receivers:    []loki.LogsReceiver{lr},
 	})
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cnc := context.WithTimeout(ctx, 5*time.Second)
 	defer cnc()
 	go c.Run(ctx)

@@ -12,6 +12,31 @@ local cluster_node_filename = 'alloy-cluster-node.json';
       includeInstance=false,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
 
+  local minClusterSizeLineStyle = [
+    {
+      id: 'color',
+      value: {
+        fixedColor: 'red',
+        mode: 'fixed',
+      },
+    },
+    {
+      id: 'custom.lineStyle',
+      value: {
+        dash: [10, 10],
+        fill: 'dash',
+      },
+    },
+    {
+      id: 'custom.lineWidth',
+      value: 1,
+    },
+    {
+      id: 'custom.dashPattern',
+      value: [10, 10],
+    },
+  ],
+
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
     dashboard.withDocsLink(
@@ -238,6 +263,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
           for an extended period of time and not converging.
 
           This graph helps to identify which instances may be in a split brain state.
+
+          The minimum cluster size shows the value of the --cluster.wait-for-size flag, which specifies the minimum 
+          number of instances required before cluster-enabled components begin processing traffic.
         |||) +
         panel.withPosition({ h: 12, w: 24, x: 0, y: 18 }) +
         panel.withQueries([
@@ -247,8 +275,14 @@ local cluster_node_filename = 'alloy-cluster-node.json';
             ||| % $._config,
             legendFormat='{{instance}}',
           ),
-        ])
+          panel.newQuery(
+            expr= |||
+              avg(cluster_minimum_size{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='Minimum cluster size',
+          )
+        ]) + 
+        panel.withOverridesByName('Minimum cluster size', minClusterSizeLineStyle)
       ),
-
     ]),
 }

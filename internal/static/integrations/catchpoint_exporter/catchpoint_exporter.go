@@ -1,7 +1,11 @@
 package catchpoint_exporter
 
 import (
+	"log/slog"
+
 	"github.com/go-kit/log"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -31,8 +35,7 @@ func (c *Config) exporterConfig() *collector.Config {
 	}
 }
 
-// Identifier returns a string that identifies the integration.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.Port, nil
 }
 
@@ -58,7 +61,7 @@ func init() {
 func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
 	exporterConfig := c.exporterConfig()
 
-	col := collector.NewCollector(l, exporterConfig)
+	col := collector.NewCollector(slog.New(logging.NewSlogGoKitHandler(l)), exporterConfig)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
 		integrations.WithCollectors(col),

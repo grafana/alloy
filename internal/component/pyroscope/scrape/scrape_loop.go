@@ -32,9 +32,8 @@ type scrapePool struct {
 	scrapeClient *http.Client
 	appendable   pyroscope.Appendable
 
-	mtx            sync.RWMutex
-	activeTargets  map[uint64]*scrapeLoop
-	droppedTargets []*Target
+	mtx           sync.RWMutex
+	activeTargets map[uint64]*scrapeLoop
 }
 
 func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger log.Logger) (*scrapePool, error) {
@@ -58,19 +57,17 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 	allTargets := tg.config.ProfilingConfig.AllTargets()
 	level.Info(tg.logger).Log("msg", "syncing target groups", "job", tg.config.JobName)
 	var actives []*Target
-	tg.droppedTargets = tg.droppedTargets[:0]
 	for _, group := range groups {
-		targets, dropped, err := targetsFromGroup(group, tg.config, allTargets)
+		targets, err := targetsFromGroup(group, tg.config, allTargets)
 		if err != nil {
 			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 			continue
 		}
-		for _, t := range targets {
-			if t.Labels().Len() > 0 {
-				actives = append(actives, t)
-			}
+		if actives == nil {
+			actives = targets
+		} else { // in practice we only have one group
+			actives = append(actives, targets...)
 		}
-		tg.droppedTargets = append(tg.droppedTargets, dropped...)
 	}
 
 	for _, t := range actives {
@@ -78,8 +75,6 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 			loop := newScrapeLoop(t, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger)
 			tg.activeTargets[t.Hash()] = loop
 			loop.start()
-		} else {
-			tg.activeTargets[t.Hash()].SetDiscoveredLabels(t.DiscoveredLabels())
 		}
 	}
 
@@ -149,14 +144,6 @@ func (tg *scrapePool) ActiveTargets() []*Target {
 	return result
 }
 
-func (tg *scrapePool) DroppedTargets() []*Target {
-	tg.mtx.RLock()
-	defer tg.mtx.RUnlock()
-	result := make([]*Target, 0, len(tg.droppedTargets))
-	result = append(result, tg.droppedTargets...)
-	return result
-}
-
 type scrapeLoop struct {
 	*Target
 
@@ -181,11 +168,15 @@ func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Ap
 		timeout += interval - time.Second
 	}
 
+	appender := appendable.Appender()
+	if !t.godeltaprof {
+		appender = NewDeltaAppender(appender, t.allLabels)
+	}
 	return &scrapeLoop{
 		Target:       t,
 		logger:       logger,
 		scrapeClient: scrapeClient,
-		appender:     NewDeltaAppender(appendable.Appender(), t.allLabels),
+		appender:     appender,
 		interval:     interval,
 		timeout:      timeout,
 	}
@@ -235,7 +226,7 @@ func (t *scrapeLoop) scrape() {
 		}
 	}
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
-		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t.Labels().String(), "err", err)
+		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
 		return
 	}
@@ -245,7 +236,7 @@ func (t *scrapeLoop) scrape() {
 		t.lastScrapeSize = len(b)
 	}
 	if err := t.appender.Append(context.Background(), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
-		level.Error(t.logger).Log("msg", "push failed", "labels", t.Labels().String(), "err", err)
+		level.Error(t.logger).Log("msg", "push failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
 		return
 	}
@@ -273,11 +264,10 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 			return err
 		}
 		req.Header.Set("User-Agent", userAgentHeader)
-
 		t.req = req
 	}
 
-	level.Debug(t.logger).Log("msg", "scraping profile", "labels", t.Labels().String(), "url", t.req.URL.String())
+	level.Debug(t.logger).Log("msg", "scraping profile", "target", t, "url", t.req.URL.String())
 	resp, err := ctxhttp.Do(ctx, t.scrapeClient, t.req)
 	if err != nil {
 		return err
@@ -297,8 +287,13 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 	}
 
 	if len(b) == 0 {
-		return fmt.Errorf("empty %s profile from %s", profileType, t.req.URL.String())
+		return fmt.Errorf("empty %s profile", profileType)
 	}
+
+	if err := validateProfileData(b, resp.Header.Get("Content-Type")); err != nil {
+		return fmt.Errorf("invalid profile data: %w", err)
+	}
+
 	return nil
 }
 

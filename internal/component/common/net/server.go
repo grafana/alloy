@@ -5,10 +5,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // TargetServer is wrapper around dskit.Server that handles some common
@@ -25,6 +26,8 @@ type TargetServer struct {
 // NewTargetServer creates a new TargetServer, applying some defaults to the server configuration.
 // If provided config is nil, a default configuration will be used instead.
 func NewTargetServer(logger log.Logger, metricsNamespace string, reg prometheus.Registerer, config *ServerConfig) (*TargetServer, error) {
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
 	if !model.IsValidMetricName(model.LabelValue(metricsNamespace)) {
 		return nil, fmt.Errorf("metrics namespace is not prometheus compatible: %s", metricsNamespace)
 	}

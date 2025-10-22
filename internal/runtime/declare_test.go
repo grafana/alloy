@@ -339,7 +339,7 @@ func TestDeclare(t *testing.T) {
 			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)
@@ -349,6 +349,10 @@ func TestDeclare(t *testing.T) {
 				cancel()
 				<-done
 			}()
+
+			require.Eventually(t, func() bool {
+				return ctrl.LoadComplete()
+			}, 3*time.Second, 10*time.Millisecond)
 
 			require.Eventually(t, func() bool {
 				export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -381,7 +385,7 @@ func TestDeclareModulePath(t *testing.T) {
 	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)
@@ -391,6 +395,11 @@ func TestDeclareModulePath(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
 	time.Sleep(30 * time.Millisecond)
 	passthrough := getExport[testcomponents.PassthroughExports](t, ctrl, "", "testcomponents.passthrough.pass")
 	require.Equal(t, passthrough.Output, "")
@@ -506,7 +515,7 @@ func TestDeclareError(t *testing.T) {
 				t.Errorf("Expected error to match regex %q, but got: %v", tc.expectedError, err)
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)
@@ -578,6 +587,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
+			defer verifyNoGoroutineLeaks(t)
 			ctrl := runtime.New(testOptions(t))
 			f, err := runtime.ParseSource(t.Name(), []byte(tc.config))
 			require.NoError(t, err)
@@ -586,7 +596,7 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			err = ctrl.LoadSource(f, nil, "")
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan struct{})
 			go func() {
 				ctrl.Run(ctx)
@@ -607,8 +617,11 @@ func TestDeclareUpdateConfig(t *testing.T) {
 			require.NotNil(t, f)
 
 			// Reload the controller with the new config.
-			err = ctrl.LoadSource(f, nil, "")
-			require.NoError(t, err)
+			require.NoError(t, ctrl.LoadSource(f, nil, ""))
+
+			require.Eventually(t, func() bool {
+				return ctrl.LoadComplete()
+			}, 3*time.Second, 10*time.Millisecond)
 
 			require.Eventually(t, func() bool {
 				export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")

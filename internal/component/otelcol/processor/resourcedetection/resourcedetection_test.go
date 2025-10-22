@@ -14,9 +14,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/dynatrace"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/gcp"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/heroku"
 	kubernetes_node "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/k8snode"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/kubeadm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/openshift"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
 	"github.com/grafana/alloy/syntax"
@@ -54,7 +56,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "invalid_detector_and_all_valid_ones",
 			cfg: `
-			detectors = ["non-existent-detector2", "env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node"]
+			detectors = ["non-existent-detector2", "env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace", "kubeadm"]
 			output {}
 			`,
 			errorMsg: "invalid detector: non-existent-detector2",
@@ -62,11 +64,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "all_detectors_with_defaults",
 			cfg: `
-			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node"]
+			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "kubernetes_node", "dynatrace", "kubeadm"]
 			output {}
 			`,
 			expected: map[string]interface{}{
-				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "k8snode"},
+				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "consul", "docker", "gcp", "heroku", "system", "openshift", "k8snode", "dynatrace", "kubeadm"},
 				"timeout":          5 * time.Second,
 				"override":         true,
 				"ec2":              ec2.DefaultArguments.Convert(),
@@ -83,6 +85,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -108,6 +112,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -135,6 +141,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": true},
 						"host.type":               map[string]interface{}{"enabled": true},
 					},
+					"max_attempts":             3,
+					"max_backoff":              20 * time.Second,
+					"fail_on_missing_metadata": false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -149,6 +158,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -177,6 +188,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": true},
 						"host.type":               map[string]interface{}{"enabled": true},
 					},
+					"max_attempts":             3,
+					"max_backoff":              20 * time.Second,
+					"fail_on_missing_metadata": false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -191,6 +205,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -210,6 +226,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					host.name  { enabled = false }
 					host.type  { enabled = false }
 				}
+				max_attempts = 5
+				max_backoff = "10s"
+				fail_on_missing_metadata = true
 			}
 			output {}
 			`,
@@ -230,6 +249,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.name":               map[string]interface{}{"enabled": false},
 						"host.type":               map[string]interface{}{"enabled": false},
 					},
+					"max_attempts":             5,
+					"max_backoff":              10 * time.Second,
+					"fail_on_missing_metadata": true,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -244,6 +266,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -292,6 +316,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -356,6 +382,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -393,6 +421,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -401,6 +431,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			detectors = ["eks"]
 			eks {
 				resource_attributes {
+					cloud.account.id { enabled = true }
 					cloud.platform { enabled = true }
 					cloud.provider { enabled = false }
 				}
@@ -414,6 +445,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"eks": map[string]interface{}{
 					"tags": []string{},
 					"resource_attributes": map[string]interface{}{
+						"cloud.account.id": map[string]interface{}{
+							"enabled": true,
+						},
 						"cloud.platform": map[string]interface{}{
 							"enabled": true,
 						},
@@ -435,6 +469,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -496,6 +532,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -566,6 +604,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -603,6 +643,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -645,6 +687,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -672,6 +716,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -686,6 +732,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					cloud.provider { enabled = true }
 					cloud.region { enabled = false }
 					faas.id { enabled = false }
+					gcp.gce.instance.group_manager.zone { enabled = false }
 				}
 			}
 			output {}
@@ -735,6 +782,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"gcp.gce.instance.name": map[string]interface{}{
 							"enabled": false,
 						},
+						"gcp.gce.instance.group_manager.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"gcp.gce.instance.group_manager.region": map[string]interface{}{
+							"enabled": true,
+						},
+						"gcp.gce.instance.group_manager.zone": map[string]interface{}{
+							"enabled": false,
+						},
 						"host.id": map[string]interface{}{
 							"enabled": true,
 						},
@@ -762,6 +818,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -789,6 +847,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -831,6 +891,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -858,6 +920,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -923,6 +987,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -950,6 +1016,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1002,6 +1070,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":    defaultArgs.Convert(),
 				"openshift": openshift.DefaultArguments.Convert(),
 				"k8snode":   kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":   kubeadm.DefaultArguments.Convert(),
+				"dynatrace": dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1029,6 +1099,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1083,6 +1155,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1110,6 +1184,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1173,6 +1249,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1200,6 +1278,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1247,6 +1327,82 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"heroku":           heroku.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+			},
+		}, {
+			testName: "kubeadm_defaults",
+			cfg: `
+			detectors = ["kubeadm"]
+			kubeadm {}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors":        []string{"kubeadm"},
+				"timeout":          5 * time.Second,
+				"override":         true,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "kubeadm_explicit",
+			cfg: `
+			detectors = ["kubeadm"]
+			kubeadm {
+				auth_type = "kubeConfig"
+				context = "fake_ctx"
+				resource_attributes {
+					k8s.cluster.name { enabled = true }
+					k8s.cluster.uid { enabled = true }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"detectors": []string{"kubeadm"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"kubeadm": map[string]interface{}{
+					"auth_type": "kubeConfig",
+					"context":   "fake_ctx",
+					"resource_attributes": map[string]interface{}{
+						"k8s.cluster.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"k8s.cluster.uid": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1286,6 +1442,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1303,6 +1461,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					host.cpu.stepping { enabled = true }
 					host.cpu.vendor.id { enabled = false }
 					host.id { enabled = false }
+					host.interface { enabled = true }
 					host.name { enabled = false }
 					// os.description { enabled = false }
 					// os.type { enabled = true }
@@ -1341,14 +1500,26 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"host.id": map[string]interface{}{
 							"enabled": false,
 						},
+						"host.interface": map[string]interface{}{
+							"enabled": true,
+						},
 						"host.name": map[string]interface{}{
+							"enabled": false,
+						},
+						"os.build.id": map[string]interface{}{
 							"enabled": false,
 						},
 						"os.description": map[string]interface{}{
 							"enabled": false,
 						},
+						"os.name": map[string]interface{}{
+							"enabled": false,
+						},
 						"os.type": map[string]interface{}{
 							"enabled": true,
+						},
+						"os.version": map[string]interface{}{
+							"enabled": false,
 						},
 					},
 				},
@@ -1365,6 +1536,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"heroku":           heroku.DefaultArguments.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1392,6 +1565,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1461,6 +1636,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"heroku":           heroku.DefaultArguments.Convert(),
 				"system":           defaultArgs.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1489,6 +1666,57 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"system":           defaultArgs.Convert(),
 				"openshift":        openshift.DefaultArguments.Convert(),
 				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "dynatrace",
+			cfg: `
+			detectors = ["dynatrace"]
+			timeout = "7s"
+			override = false
+			dynatrace {
+				resource_attributes {
+					host.name {
+						enabled = true
+					}
+					dt.entity.host {
+						enabled = true
+					}
+				}
+			}
+			output {}
+			`,
+			expected: map[string]interface{}{
+				"dynatrace": map[string]interface{}{
+					"resource_attributes": map[string]interface{}{
+						"host.name": map[string]interface{}{
+							"enabled": true,
+						},
+						"dt.entity.host": map[string]interface{}{
+							"enabled": true,
+						},
+					},
+				},
+				"detectors":        []string{"dynatrace"},
+				"timeout":          7 * time.Second,
+				"override":         false,
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
 			},
 		},
 	}

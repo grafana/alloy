@@ -27,6 +27,8 @@ otelcol.exporter.datadog "default" {
 		span_name_remappings = {
 			"instrumentation:express.server" = "express",
 		}
+		compute_stats_by_span_kind = true
+		peer_tags_aggregation      = true
 	}
 
 	metrics {
@@ -34,7 +36,8 @@ otelcol.exporter.datadog "default" {
 		endpoint  = "https://api.datadoghq.com"
 
 		exporter {
-			resource_attributes_as_tags = true
+			resource_attributes_as_tags            = true
+			instrumentation_scope_metadata_as_tags = false
 		}
 
 		histograms {
@@ -48,5 +51,10 @@ otelcol.exporter.datadog "default" {
 		summaries {
 			mode = "noquantiles"
 		}
+	}
+
+	logs {
+		endpoint          = "https://http-intake.logs.datadoghq.com"
+		compression_level = 7
 	}
 }

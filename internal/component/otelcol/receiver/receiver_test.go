@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
-	otelextension "go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
 )
 
@@ -52,7 +52,7 @@ func TestReceiver(t *testing.T) {
 
 	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
 
-	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	err := consumer.ConsumeTraces(t.Context(), ptrace.NewTraces())
 	require.NoError(t, err)
 
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
@@ -110,7 +110,7 @@ func TestReceiverUpdate(t *testing.T) {
 	// Now the trace receiver is started.
 	require.NoError(t, waitConsumerTrigger.Wait(time.Second), "no traces consumer sent")
 
-	err := consumer.ConsumeTraces(context.Background(), ptrace.NewTraces())
+	err := consumer.ConsumeTraces(t.Context(), ptrace.NewTraces())
 	require.NoError(t, err)
 
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
@@ -185,11 +185,11 @@ func (fa fakeReceiverArgs) Convert() (otelcomponent.Config, error) {
 	return &struct{}{}, nil
 }
 
-func (fa fakeReceiverArgs) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (fa fakeReceiverArgs) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
-func (fa fakeReceiverArgs) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (fa fakeReceiverArgs) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

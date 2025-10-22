@@ -28,8 +28,9 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
@@ -43,6 +44,7 @@ var DefaultArguments = Arguments{
 // Arguments controls the mssql exporter.
 type Arguments struct {
 	ConnectionString   alloytypes.Secret         `alloy:"connection_string,attr"`
+	ConnectionName     string                    `alloy:"connection_name,attr,optional"`
 	MaxIdleConnections int                       `alloy:"max_idle_connections,attr,optional"`
 	MaxOpenConnections int                       `alloy:"max_open_connections,attr,optional"`
 	Timeout            time.Duration             `alloy:"timeout,attr,optional"`

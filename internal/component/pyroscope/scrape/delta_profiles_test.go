@@ -32,7 +32,7 @@ func TestDeltaProfilerAppender(t *testing.T) {
 
 	// first sample (not compressed) should be dropped
 	first := newMemoryProfile(0, (15 * time.Second).Nanoseconds())
-	err := appender.Append(context.Background(), lbs, []*pyroscope.RawSample{{RawProfile: marshal(t, first)}})
+	err := appender.Append(t.Context(), lbs, []*pyroscope.RawSample{{RawProfile: marshal(t, first)}})
 	require.NoError(t, err)
 	require.Len(t, outSamples, 0)
 
@@ -40,7 +40,7 @@ func TestDeltaProfilerAppender(t *testing.T) {
 	second.Sample[0].Value[0] = 10
 
 	// second sample (compressed) should compute the diff with the first one for the correct samples.
-	err = appender.Append(context.Background(), lbs, []*pyroscope.RawSample{{RawProfile: compress(t, marshal(t, second))}})
+	err = appender.Append(t.Context(), lbs, []*pyroscope.RawSample{{RawProfile: compress(t, marshal(t, second))}})
 	require.NoError(t, err)
 	require.Len(t, outSamples, 1)
 
@@ -60,7 +60,7 @@ func TestDeltaProfilerAppenderNoop(t *testing.T) {
 			return nil
 		}), nil)
 	in := newMemoryProfile(0, 0)
-	err := appender.Append(context.Background(), nil, []*pyroscope.RawSample{{RawProfile: marshal(t, in)}})
+	err := appender.Append(t.Context(), nil, []*pyroscope.RawSample{{RawProfile: marshal(t, in)}})
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
 	require.Equal(t, in, unmarshal(t, actual[0].RawProfile))

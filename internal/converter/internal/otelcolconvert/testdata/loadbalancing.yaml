@@ -6,6 +6,8 @@ receivers:
 exporters:
   loadbalancing:
     routing_key: "service"
+    sending_queue:
+      storage: "file_storage/fs"
     protocol:
       otlp:
     resolver:
@@ -15,7 +17,14 @@ exporters:
           - backend-2:4317
           - backend-3:4317
 
+extensions:
+  file_storage/fs:
+    directory: /var/lib/otelcol/file_storage
+    compaction:
+      directory: /var/lib/otelcol/file_storage
+
 service:
+  extensions: [ file_storage/fs ]
   pipelines:
     metrics:
       receivers: [otlp]

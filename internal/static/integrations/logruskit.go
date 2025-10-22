@@ -1,4 +1,4 @@
-package integrations //nolint:golint
+package integrations
 
 import (
 	"encoding/json"
@@ -50,6 +50,12 @@ func (o output) Write(data []byte) (n int, err error) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+
+	// Protecting against a potential integer overflow as reported by GitHub CodeQL.
+	// The number of fields is expected to be well below this limit.
+	if len(ll.Data) > 100000 {
+		return 0, fmt.Errorf("too many fields: %d", len(ll.Data))
+	}
 
 	vals := make([]interface{}, 0, 2*len(ll.Data)+2)
 	for _, k := range keys {

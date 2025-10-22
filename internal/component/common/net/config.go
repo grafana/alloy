@@ -7,7 +7,9 @@ import (
 	"math"
 	"time"
 
+	"github.com/grafana/alloy/syntax/alloytypes"
 	dskit "github.com/grafana/dskit/server"
+	"github.com/prometheus/common/config"
 )
 
 const (
@@ -44,6 +46,7 @@ type HTTPConfig struct {
 	ServerReadTimeout  time.Duration `alloy:"server_read_timeout,attr,optional"`
 	ServerWriteTimeout time.Duration `alloy:"server_write_timeout,attr,optional"`
 	ServerIdleTimeout  time.Duration `alloy:"server_idle_timeout,attr,optional"`
+	TLSConfig          *TLSConfig    `alloy:"tls,block,optional"`
 }
 
 // Into applies the configs from HTTPConfig into a dskit.Into.
@@ -54,6 +57,15 @@ func (h *HTTPConfig) Into(c *dskit.Config) {
 	c.HTTPServerReadTimeout = h.ServerReadTimeout
 	c.HTTPServerWriteTimeout = h.ServerWriteTimeout
 	c.HTTPServerIdleTimeout = h.ServerIdleTimeout
+	if h.TLSConfig != nil {
+		h.TLSConfig.Into(&c.HTTPTLSConfig)
+		if h.TLSConfig.MinVersion != c.MinVersion {
+			c.MinVersion = h.TLSConfig.MinVersion
+		}
+		if h.TLSConfig.CipherSuites != c.CipherSuites {
+			c.CipherSuites = h.TLSConfig.CipherSuites
+		}
+	}
 }
 
 // GRPCConfig configures the gRPC dskit started by dskit.Server.
@@ -67,6 +79,20 @@ type GRPCConfig struct {
 	ServerMaxRecvMsg           int           `alloy:"server_max_recv_msg_size,attr,optional"`
 	ServerMaxSendMsg           int           `alloy:"server_max_send_msg_size,attr,optional"`
 	ServerMaxConcurrentStreams uint          `alloy:"server_max_concurrent_streams,attr,optional"`
+	TLSConfig                  *TLSConfig    `alloy:"tls,block,optional"`
+}
+
+// TLSConfig sets up options for TLS connections.
+type TLSConfig struct {
+	Cert         string            `alloy:"cert_pem,attr,optional"`
+	Key          alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	CertFile     string            `alloy:"cert_file,attr,optional"`
+	KeyFile      string            `alloy:"key_file,attr,optional"`
+	ClientAuth   string            `alloy:"client_auth_type,attr,optional"`
+	ClientCAFile string            `alloy:"client_ca_file,attr,optional"`
+	ClientCA     string            `alloy:"client_ca,attr,optional"`
+	CipherSuites string            `alloy:"cipher_suites,attr,optional"`
+	MinVersion   string            `alloy:"min_version,attr,optional"`
 }
 
 // Into applies the configs from GRPCConfig into a dskit.Into.
@@ -80,6 +106,26 @@ func (g *GRPCConfig) Into(c *dskit.Config) {
 	c.GRPCServerMaxRecvMsgSize = g.ServerMaxRecvMsg
 	c.GRPCServerMaxSendMsgSize = g.ServerMaxSendMsg
 	c.GRPCServerMaxConcurrentStreams = g.ServerMaxConcurrentStreams
+	if g.TLSConfig != nil {
+		g.TLSConfig.Into(&c.GRPCTLSConfig)
+		if g.TLSConfig.MinVersion != c.MinVersion {
+			c.MinVersion = g.TLSConfig.MinVersion
+		}
+		if g.TLSConfig.CipherSuites != c.CipherSuites {
+			c.CipherSuites = g.TLSConfig.CipherSuites
+		}
+	}
+}
+
+// Into applies the configs from TLSConfig to dskit.TLSConfig
+func (t *TLSConfig) Into(c *dskit.TLSConfig) {
+	c.TLSCert = t.Cert
+	c.TLSKey = config.Secret(t.Key)
+	c.TLSCertPath = t.CertFile
+	c.TLSKeyPath = t.KeyFile
+	c.ClientCAs = t.ClientCAFile
+	c.ClientCAsText = t.ClientCA
+	c.ClientAuth = t.ClientAuth
 }
 
 // Convert converts the Alloy-based ServerConfig into a dskit.Config object.
@@ -108,6 +154,7 @@ func newdskitDefaultConfig() dskit.Config {
 	// By default, do not register instrumentation since every metric is later registered
 	// inside a custom register
 	c.RegisterInstrumentation = false
+	c.GRPCCollectMaxStreamsByConn = false
 	return c
 }
 

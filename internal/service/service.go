@@ -9,9 +9,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/ast"
 )
 
 // Definition describes an individual service. Services have unique names
@@ -46,6 +48,11 @@ type Definition struct {
 	Stability featuregate.Stability
 }
 
+// CloneConfig returns a new zero value of the registered config type.
+func (d Definition) CloneConfig() any {
+	return reflect.New(reflect.TypeOf(d.ConfigType)).Interface()
+}
+
 // Host is a controller for services and components.
 type Host interface {
 	// GetComponent gets a running component by ID.
@@ -75,7 +82,7 @@ type Host interface {
 // Controller is implemented by alloy.Alloy.
 type Controller interface {
 	Run(ctx context.Context)
-	LoadSource(source []byte, args map[string]any, configPath string) error
+	LoadSource(source []byte, args map[string]any, configPath string) (*ast.File, error)
 	Ready() bool
 }
 

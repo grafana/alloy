@@ -10,38 +10,42 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 // StageConfig defines a single stage in a processing pipeline.
 // We define these as pointers types so we can use reflection to check that
 // exactly one is set.
 type StageConfig struct {
-	CRIConfig             *CRIConfig             `alloy:"cri,block,optional"`
-	DecolorizeConfig      *DecolorizeConfig      `alloy:"decolorize,block,optional"`
-	DockerConfig          *DockerConfig          `alloy:"docker,block,optional"`
-	DropConfig            *DropConfig            `alloy:"drop,block,optional"`
-	EventLogMessageConfig *EventLogMessageConfig `alloy:"eventlogmessage,block,optional"`
-	GeoIPConfig           *GeoIPConfig           `alloy:"geoip,block,optional"`
-	JSONConfig            *JSONConfig            `alloy:"json,block,optional"`
-	LabelAllowConfig      *LabelAllowConfig      `alloy:"label_keep,block,optional"`
-	LabelDropConfig       *LabelDropConfig       `alloy:"label_drop,block,optional"`
-	LabelsConfig          *LabelsConfig          `alloy:"labels,block,optional"`
-	LimitConfig           *LimitConfig           `alloy:"limit,block,optional"`
-	LogfmtConfig          *LogfmtConfig          `alloy:"logfmt,block,optional"`
-	LuhnFilterConfig      *LuhnFilterConfig      `alloy:"luhn,block,optional"`
-	MatchConfig           *MatchConfig           `alloy:"match,block,optional"`
-	MetricsConfig         *MetricsConfig         `alloy:"metrics,block,optional"`
-	MultilineConfig       *MultilineConfig       `alloy:"multiline,block,optional"`
-	OutputConfig          *OutputConfig          `alloy:"output,block,optional"`
-	PackConfig            *PackConfig            `alloy:"pack,block,optional"`
-	RegexConfig           *RegexConfig           `alloy:"regex,block,optional"`
-	ReplaceConfig         *ReplaceConfig         `alloy:"replace,block,optional"`
-	StaticLabelsConfig    *StaticLabelsConfig    `alloy:"static_labels,block,optional"`
-	StructuredMetadata    *LabelsConfig          `alloy:"structured_metadata,block,optional"`
-	SamplingConfig        *SamplingConfig        `alloy:"sampling,block,optional"`
-	TemplateConfig        *TemplateConfig        `alloy:"template,block,optional"`
-	TenantConfig          *TenantConfig          `alloy:"tenant,block,optional"`
-	TimestampConfig       *TimestampConfig       `alloy:"timestamp,block,optional"`
+	CRIConfig                    *CRIConfig                    `alloy:"cri,block,optional"`
+	DecolorizeConfig             *DecolorizeConfig             `alloy:"decolorize,block,optional"`
+	DockerConfig                 *DockerConfig                 `alloy:"docker,block,optional"`
+	DropConfig                   *DropConfig                   `alloy:"drop,block,optional"`
+	EventLogMessageConfig        *EventLogMessageConfig        `alloy:"eventlogmessage,block,optional"`
+	GeoIPConfig                  *GeoIPConfig                  `alloy:"geoip,block,optional"`
+	JSONConfig                   *JSONConfig                   `alloy:"json,block,optional"`
+	LabelAllowConfig             *LabelAllowConfig             `alloy:"label_keep,block,optional"`
+	LabelDropConfig              *LabelDropConfig              `alloy:"label_drop,block,optional"`
+	LabelsConfig                 *LabelsConfig                 `alloy:"labels,block,optional"`
+	LimitConfig                  *LimitConfig                  `alloy:"limit,block,optional"`
+	LogfmtConfig                 *LogfmtConfig                 `alloy:"logfmt,block,optional"`
+	LuhnFilterConfig             *LuhnFilterConfig             `alloy:"luhn,block,optional"`
+	MatchConfig                  *MatchConfig                  `alloy:"match,block,optional"`
+	MetricsConfig                *MetricsConfig                `alloy:"metrics,block,optional"`
+	MultilineConfig              *MultilineConfig              `alloy:"multiline,block,optional"`
+	OutputConfig                 *OutputConfig                 `alloy:"output,block,optional"`
+	PackConfig                   *PackConfig                   `alloy:"pack,block,optional"`
+	PatternConfig                *PatternConfig                `alloy:"pattern,block,optional"`
+	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"`
+	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"`
+	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"`
+	StructuredMetadata           *LabelsConfig                 `alloy:"structured_metadata,block,optional"`
+	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional"`
+	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"`
+	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
+	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
+	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
+	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }
 
 var rateLimiter *rate.Limiter
@@ -57,10 +61,10 @@ type Pipeline struct {
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer) (*Pipeline, error) {
+func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, jobName, stage, registerer)
+		newStage, err := New(logger, jobName, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
@@ -74,7 +78,7 @@ func NewPipeline(logger log.Logger, stages []StageConfig, jobName *string, regis
 	}, nil
 }
 
-// RunWith will reads from the input channel entries, mutate them with the process function and returns them via the output channel.
+// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
 func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
 	out := make(chan Entry)
 	go func() {

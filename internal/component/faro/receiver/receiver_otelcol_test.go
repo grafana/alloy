@@ -77,8 +77,8 @@ func TestWithOtelcolConsumer(t *testing.T) {
 	go func() {
 		err := otelcolExporter.Run(ctx, otlphttp.Arguments{
 			Client: otlphttp.HTTPClientArguments(otelcol.HTTPClientArguments{
-				Endpoint: finalOtelServer.URL,
-				Auth:     &otelcolAuthHeaderExport.Handler,
+				Endpoint:       finalOtelServer.URL,
+				Authentication: otelcolAuthHeaderExport.Handler,
 				TLS: otelcol.TLSClientArguments{
 					Insecure:           true,
 					InsecureSkipVerify: true,

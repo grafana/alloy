@@ -2,8 +2,6 @@ package pyroscope
 
 import (
 	"context"
-	"io"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -14,7 +12,11 @@ import (
 )
 
 const (
-	LabelNameDelta = "__delta__"
+	LabelNameDelta   = "__delta__"
+	LabelName        = "__name__"
+	LabelServiceName = "service_name"
+
+	HeaderContentType = "Content-Type"
 )
 
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
@@ -29,14 +31,18 @@ type Appender interface {
 }
 
 type RawSample struct {
+	ID string
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte
 }
 
 type IncomingProfile struct {
-	Body    io.ReadCloser
-	Headers http.Header
-	URL     *url.URL
+	// RawBody is the set of bytes of the pprof profile, as its sent by the client
+	RawBody []byte
+	// ContentType is the content type of the RawBody. This must be sent on to the endpoints.
+	ContentType []string
+	URL         *url.URL
+	Labels      labels.Labels
 }
 
 var _ Appendable = (*Fanout)(nil)
@@ -130,7 +136,15 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 	}()
 	var multiErr error
 	for _, x := range a.children {
-		err := x.AppendIngest(ctx, profile)
+		// Create a copy for each child
+		profileCopy := &IncomingProfile{
+			RawBody:     profile.RawBody,     // []byte is immutable, safe to share
+			ContentType: profile.ContentType, // []string is immutable, safe to share
+			URL:         profile.URL,         // URL is immutable once created
+			Labels:      profile.Labels.Copy(),
+		}
+
+		err := x.AppendIngest(ctx, profileCopy)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
@@ -149,6 +163,22 @@ func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, sample
 }
 
 func (f AppendableFunc) AppendIngest(_ context.Context, _ *IncomingProfile) error {
+	// This is a no-op implementation
+	return nil
+}
+
+// For testing AppendIngest operations
+type AppendableIngestFunc func(ctx context.Context, profile *IncomingProfile) error
+
+func (f AppendableIngestFunc) Appender() Appender {
+	return f
+}
+
+func (f AppendableIngestFunc) AppendIngest(ctx context.Context, p *IncomingProfile) error {
+	return f(ctx, p)
+}
+
+func (f AppendableIngestFunc) Append(_ context.Context, _ labels.Labels, _ []*RawSample) error {
 	// This is a no-op implementation
 	return nil
 }

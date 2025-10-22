@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -29,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
@@ -53,7 +53,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// The third stage will set some labels from the extracted values above.
 	// Again, if the value is empty, it is inferred that we want to use the
 	// populate the label with extracted value of the same name.
-	stg := `stage.json { 
+	stg := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
 				drop_malformed = true
 		    }
@@ -62,7 +62,7 @@ func TestJSONLabelsStage(t *testing.T) {
 				source      = "extra"
 			}
 			stage.labels {
-			    values = { 
+			    values = {
 				  stream = "",
 				  user   = "",
 				  ts     = "timestamp",
@@ -101,7 +101,7 @@ func TestJSONLabelsStage(t *testing.T) {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	wgRun := sync.WaitGroup{}
 
 	wgRun.Add(1)
@@ -117,7 +117,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// Send a log entry to the component's receiver.
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ingestionTs,
 			Line:      logline,
 		},
@@ -161,8 +161,8 @@ func TestJSONLabelsStage(t *testing.T) {
 	// The timestamp in "IN" is different from the one in "OUT".
 	// Even though there are two downstream components, we expect only one "OUT" line to be printed.
 	expectedLiveDebuggingLog := []string{
-		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}",
-		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}",
+		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}, structured_metadata: {}",
+		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
 	}
 	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
@@ -212,7 +212,7 @@ stage.label_keep {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -221,7 +221,7 @@ stage.label_keep {
 	logline := `{"log":"log message\n","stream":"stderr","time":"2022-01-09T08:37:45.8233626Z"}`
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "env": "dev"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      logline,
 		},
@@ -308,7 +308,7 @@ stage.labels {
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go c.Run(ctx)
 
@@ -317,7 +317,7 @@ stage.labels {
 	logline := `2022-01-17T08:17:42-07:00 stderr somewhere, somehow, an error occurred`
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      logline,
 		},
@@ -376,7 +376,7 @@ stage.static_labels {
 	args1.ForwardTo = []loki.LogsReceiver{ch1}
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
+	ctx, ctxCancel := context.WithCancel(t.Context())
 	defer ctxCancel()
 
 	// Start the loki.process components.
@@ -400,7 +400,7 @@ stage.static_labels {
 
 	go func() {
 		err := ctrl.Run(ctx, lsf.Arguments{
-			Targets: []discovery.Target{{"__path__": f.Name(), "somelbl": "somevalue"}},
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
@@ -466,7 +466,7 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 		stopReceiving: make(chan struct{}),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	res.keepSending.Store(true)
 	res.keepUpdating.Store(true)
@@ -543,7 +543,7 @@ func (r *testFrequentUpdate) sendLogs() {
 			ts := time.Now()
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: ts,
 					Line:      logline,
 				},
@@ -646,12 +646,12 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (i
 			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
 		},
 	}
-	ld.SetServiceHost(host)
 	ld.SetEnabled(true)
 	ld.AddCallback(
+		host,
 		"callback1",
 		"",
-		func(data string) { log.Append(data) },
+		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
 	)
 
 	return func(name string) (interface{}, error) {
@@ -679,7 +679,7 @@ func TestLeakyUpdate(t *testing.T) {
 	numLogsToSend := 1
 
 	cfg1 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test1"
           action = "inc"
@@ -688,7 +688,7 @@ func TestLeakyUpdate(t *testing.T) {
 	}` + forwardArgs
 
 	cfg2 := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test2"
           action = "inc"
@@ -731,7 +731,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	numLogsToSend := 3
 
 	cfgWithMetric := `
-	stage.metrics { 
+	stage.metrics {
         metric.counter {
           name = "paulin_test"
           action = "inc"
@@ -776,7 +776,7 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// We try having a metric with the same name as before so that we can see if there
 	// is some sort of double registration error for that metric.
 	cfgWithTwoMetrics := `
-	stage.metrics { 
+	stage.metrics {
 		metric.counter {
 		  name = "paulin_test_3"
 		  action = "inc"
@@ -838,7 +838,7 @@ func newTester(t *testing.T) *tester {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go c.Run(ctx)
 
 	logTimestamp := time.Now()
@@ -852,7 +852,7 @@ func newTester(t *testing.T) *tester {
 		logTimestamp: logTimestamp,
 		logEntry: loki.Entry{
 			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: logTimestamp,
 				Line:      logline,
 			},

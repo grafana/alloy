@@ -22,11 +22,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 )
 
-const (
-	traceIDKey = "trace_id"
-	spanIDKey  = "span_id"
-)
-
 type metricFamily struct {
 	mtype pmetric.MetricType
 	// isMonotonic only applies to sums
@@ -150,7 +145,7 @@ func (mg *metricGroup) toDistributionPoint(dest pmetric.HistogramDataPointSlice)
 	tsNanos := timestampFromMs(mg.ts)
 	if mg.created != 0 {
 		point.SetStartTimestamp(timestampFromFloat64(mg.created))
-	} else {
+	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
 	}
@@ -228,7 +223,7 @@ func (mg *metricGroup) toExponentialHistogramDataPoints(dest pmetric.Exponential
 	tsNanos := timestampFromMs(mg.ts)
 	if mg.created != 0 {
 		point.SetStartTimestamp(timestampFromFloat64(mg.created))
-	} else {
+	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
 	}
@@ -322,7 +317,7 @@ func (mg *metricGroup) toSummaryPoint(dest pmetric.SummaryDataPointSlice) {
 	point.SetTimestamp(tsNanos)
 	if mg.created != 0 {
 		point.SetStartTimestamp(timestampFromFloat64(mg.created))
-	} else {
+	} else if !removeStartTimeAdjustment.IsEnabled() {
 		// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 		point.SetStartTimestamp(tsNanos)
 	}
@@ -336,7 +331,7 @@ func (mg *metricGroup) toNumberDataPoint(dest pmetric.NumberDataPointSlice) {
 	if mg.mtype == pmetric.MetricTypeSum {
 		if mg.created != 0 {
 			point.SetStartTimestamp(timestampFromFloat64(mg.created))
-		} else {
+		} else if !removeStartTimeAdjustment.IsEnabled() {
 			// metrics_adjuster adjusts the startTimestamp to the initial scrape timestamp
 			point.SetStartTimestamp(tsNanos)
 		}
@@ -402,7 +397,7 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 			mg.ts = t
 			mg.count = v
 			mg.hasCount = true
-		case metricName == mf.metadata.Metric+metricSuffixCreated:
+		case metricName == mf.metadata.MetricFamily+metricSuffixCreated:
 			mg.created = v
 		default:
 			boundary, err := getBoundary(mf.mtype, ls)
@@ -412,11 +407,11 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 			mg.complexValue = append(mg.complexValue, &dataPoint{value: v, boundary: boundary})
 		}
 	case pmetric.MetricTypeExponentialHistogram:
-		if metricName == mf.metadata.Metric+metricSuffixCreated {
+		if metricName == mf.metadata.MetricFamily+metricSuffixCreated {
 			mg.created = v
 		}
 	case pmetric.MetricTypeSum:
-		if metricName == mf.metadata.Metric+metricSuffixCreated {
+		if metricName == mf.metadata.MetricFamily+metricSuffixCreated {
 			mg.created = v
 		} else {
 			mg.value = v
@@ -428,6 +423,11 @@ func (mf *metricFamily) addSeries(seriesRef uint64, metricName string, ls labels
 	}
 
 	return nil
+}
+
+func (mf *metricFamily) addCreationTimestamp(seriesRef uint64, ls labels.Labels, atMs, created int64) {
+	mg := mf.loadMetricGroupOrCreate(seriesRef, ls, atMs)
+	mg.created = float64(created)
 }
 
 func (mf *metricFamily) addExponentialHistogramSeries(seriesRef uint64, metricName string, ls labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) error {
@@ -471,6 +471,7 @@ func (mf *metricFamily) appendMetric(metrics pmetric.MetricSlice, trimSuffixes b
 	metric.SetName(name)
 	metric.SetDescription(mf.metadata.Help)
 	metric.SetUnit(prometheus.UnitWordToUCUM(mf.metadata.Unit))
+	metric.Metadata().PutStr(prometheus.MetricMetadataTypeKey, string(mf.metadata.Type))
 
 	var pointCount int
 
@@ -544,7 +545,7 @@ func convertExemplar(pe exemplar.Exemplar, e pmetric.Exemplar) {
 	e.FilteredAttributes().EnsureCapacity(pe.Labels.Len())
 	pe.Labels.Range(func(lb labels.Label) {
 		switch strings.ToLower(lb.Name) {
-		case traceIDKey:
+		case prometheus.ExemplarTraceIDKey:
 			var tid [16]byte
 			err := decodeAndCopyToLowerBytes(tid[:], []byte(lb.Value))
 			if err == nil {
@@ -552,7 +553,7 @@ func convertExemplar(pe exemplar.Exemplar, e pmetric.Exemplar) {
 			} else {
 				e.FilteredAttributes().PutStr(lb.Name, lb.Value)
 			}
-		case spanIDKey:
+		case prometheus.ExemplarSpanIDKey:
 			var sid [8]byte
 			err := decodeAndCopyToLowerBytes(sid[:], []byte(lb.Value))
 			if err == nil {

@@ -10,13 +10,13 @@ weight: 10
 
 # {{% param "PRODUCT_NAME" %}} configuration syntax
 
-{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components with the {{< param "PRODUCT_NAME" >}} configuration syntax.
-{{< param "PRODUCT_NAME" >}} handles the collection, transformation, and delivery of telemetry data.
-Each component in the configuration handles one of those tasks or specifies how data flows and how the components are bound together.
+{{< param "FULL_PRODUCT_NAME" >}} dynamically configures and connects components using the {{< param "PRODUCT_NAME" >}} configuration syntax.
+{{< param "PRODUCT_NAME" >}} collects, transforms, and delivers telemetry data.
+Each configuration component performs a specific task or defines data flow and component connections.
 
 {{< figure src="/media/docs/alloy/flow-diagram-small-alloy.png" alt="Alloy flow diagram" >}}
 
-The following simple example shows the basic concepts and how an {{< param "PRODUCT_NAME" >}} configuration comes together into a pipeline.
+The following example demonstrates the basic concepts and how an {{< param "PRODUCT_NAME" >}} configuration forms a pipeline.
 
 ```alloy
 // Collection: mount a local directory with a certain path spec
@@ -59,18 +59,18 @@ loki.write "local_loki" {
 }
 ```
 
-The {{< param "PRODUCT_NAME" >}} syntax aims to reduce errors in configuration files by making configurations easier to read and write.
-The {{< param "PRODUCT_NAME" >}} syntax uses blocks, attributes, and expressions.
-The blocks can be copied and pasted from the documentation to help you get started as quickly as possible.
+The {{< param "PRODUCT_NAME" >}} syntax reduces configuration errors by making files easier to read and write.
+It uses blocks, attributes, and expressions.
+You can copy and paste blocks from the documentation to get started quickly.
 
-The {{< param "PRODUCT_NAME" >}} syntax is declarative, so ordering components, blocks, and attributes does not matter.
-The relationship between components determines the order of operations in the pipeline.
+The {{< param "PRODUCT_NAME" >}} syntax is declarative, so the order of components, blocks, and attributes doesn't matter.
+The relationships between components determine the pipeline's operation sequence.
 
 ## Blocks
 
-You use _Blocks_ to configure components and groups of attributes.
-Each block can contain any number of attributes or nested blocks. 
-Blocks are steps in the overall pipeline expressed by the configuration.
+Use _Blocks_ to configure components and groups of attributes.
+Each block can include attributes or nested blocks.
+Blocks represent steps in the pipeline.
 
 ```alloy
 prometheus.remote_write "default" {
@@ -80,19 +80,19 @@ prometheus.remote_write "default" {
 }
 ```
 
-The preceding example has two blocks:
+The preceding example contains two blocks:
 
-* `prometheus.remote_write "default"`: A labeled block which instantiates a `prometheus.remote_write` component.
+* `prometheus.remote_write "default"`: A labeled block that creates a `prometheus.remote_write` component.
   The label is the string `"default"`.
-* `endpoint`: An unlabeled block inside the component that configures an endpoint to send metrics to.
+* `endpoint`: An unlabeled block inside the component that configures an endpoint for sending metrics.
   This block sets the `url` attribute to specify the endpoint.
 
 ## Attributes
 
-You use _Attributes_ to configure individual settings.
-Attributes always take the form of `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
+Use _Attributes_ to configure individual settings.
+Attributes follow the format `ATTRIBUTE_NAME = ATTRIBUTE_VALUE`.
 
-The following example shows how to set the `log_level` attribute to `"debug"`.
+The following example sets the `log_level` attribute to `"debug"`.
 
 ```alloy
 log_level = "debug"
@@ -100,46 +100,45 @@ log_level = "debug"
 
 ## Expressions
 
-You use expressions to compute the value of an attribute.
-The simplest expressions are constant values like `"debug"`, `32`, or `[1, 2, 3, 4]`.
-The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, for example:
+Use expressions to compute attribute values.
+Simple expressions include constants like `"debug"`, `32`, or `[1, 2, 3, 4]`.
+The {{< param "PRODUCT_NAME" >}} syntax supports complex expressions, such as:
 
-* Referencing the exports of components: `local.file.password_file.content`
+* Referencing component exports: `local.file.password_file.content`
 * Mathematical operations: `1 + 2`, `3 * 4`, `(5 * 6) + (7 + 8)`
 * Equality checks: `local.file.file_a.content == local.file.file_b.content`
-* Calling functions from {{< param "PRODUCT_NAME" >}}'s standard library: `sys.env("HOME")` retrieves the value of the `HOME` environment variable.
+* Calling functions from the standard library: `sys.env("HOME")` retrieves the `HOME` environment variable.
 
-You can use expressions for any attribute inside a component definition.
+You can use expressions for any attribute in a component definition.
 
-### Referencing component exports
+### Reference component exports
 
-The most common expression is to reference the exports of a component, for example, `local.file.password_file.content`.
-You form a reference to a component's exports by merging the component's name (for example, `local.file`),
-label (for example, `password_file`), and export name (for example, `content`), delimited by a period.
+The most common expression references a component's exports, such as `local.file.password_file.content`.
+You form a reference by combining the component's name (for example, `local.file`), label (for example, `password_file`), and export name (for example, `content`), separated by periods.
 
 ## Configuration syntax design goals
 
 {{< param "PRODUCT_NAME" >}} is:
 
-* _Fast_: The configuration language is fast, so the component controller can quickly evaluate changes.
-* _Simple_: The configuration language is easy to read and write to minimize the learning curve.
-* _Easy to debug_: The configuration language gives detailed information when there's a mistake in the configuration file.
+* _Fast_: The configuration language is fast and the controller evaluates changes quickly.
+* _Simple_: The configuration language is easy to read and write, reducing the learning curve.
+* _Easy to debug_: The configuration language provides detailed error information.
 
 The {{< param "PRODUCT_NAME" >}} configuration syntax is a distinct language with custom syntax and features, such as first-class functions.
 
-* Blocks are a group of related settings and usually represent creating a component.
-  Blocks have a name that consists of zero or more identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
-* Attributes appear within blocks and assign a value to a name.
-* Expressions represent a value, either literally or by referencing and combining other values.
-  You use expressions to compute a value for an attribute.
+* Blocks group related settings and typically represent component creation.
+  Blocks have a name consisting of identifiers separated by `.`, an optional user label, and a body containing attributes and nested blocks.
+* Attributes appear within blocks and assign values to names.
+* Expressions represent values, either literally or by referencing and combining other values.
+  You use expressions to compute attribute values.
 
 ## Tooling
 
-You can use one or all of the following tools to help you write {{< param "PRODUCT_NAME" >}} configuration files.
+You can use the following tools to write {{< param "PRODUCT_NAME" >}} configuration files:
 
 * Editor support for:
   * [VSCode](https://github.com/grafana/vscode-alloy)
   * [Vim/Neovim](https://github.com/grafana/vim-alloy)
-* Code formatting using the [`alloy fmt` command][fmt]
+* Code formatting with the [`alloy fmt` command][fmt]
 
 [fmt]: ../../reference/cli/fmt/

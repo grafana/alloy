@@ -42,18 +42,17 @@
 ## Targets for generating assets:
 ##
 ##   generate                  Generate everything.
-##   generate-drone            Generate the Drone YAML from Jsonnet.
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
 ##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
+##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##
 ## Other targets:
 ##
 ##   build-container-cache  Create a cache for the build container to speed up
 ##                          subsequent proxied builds
-##   drone                  Sign Drone CI config (maintainers only)
 ##   clean                  Clean caches and built binaries
 ##   help                   Displays this message
 ##   info                   Print Makefile-specific environment variables
@@ -79,7 +78,7 @@
 include tools/make/*.mk
 
 ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:nanoserver-1809
+ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         ?= build/alloy
 SERVICE_BINARY       ?= build/alloy-service
 ALLOYLINT_BINARY     ?= build/alloylint
@@ -90,13 +89,25 @@ CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
 
+# Determine the golangci-lint binary path using Make functions where possible.
+# Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
+# Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
+# $(wildcard ...) checks for existence. PATH check still uses shell for practicality.
+# Allows override via environment/command line using ?=
+GOLANGCI_LINT_BINARY ?= $(or \
+    $(if $(shell go env GOBIN),$(wildcard $(shell go env GOBIN)/golangci-lint)), \
+    $(wildcard $(shell go env GOPATH)/bin/golangci-lint), \
+    $(shell command -v golangci-lint 2>/dev/null), \
+    golangci-lint \
+)
+
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
-    VERSION GO_TAGS GOEXPERIMENT
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
 
 #
 # Constants for targets
@@ -108,8 +119,10 @@ VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
+		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
                 -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -132,17 +145,21 @@ endif
 
 .PHONY: lint
 lint: alloylint
-	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
+	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
+	$(ALLOYLINT_BINARY) ./...
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
 	$(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more without -race for packages that have known race detection issues. The
-# final command runs tests for all other submodules.
+# final command runs tests for syntax module.
 test:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker ./internal/component/prometheus/write/queue/serialization  ./internal/component/prometheus/write/queue/network
-	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
+	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
+	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
@@ -155,6 +172,12 @@ endif
 .PHONY: integration-test
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
 
 #
 # Targets for building binaries
@@ -211,11 +234,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest
-generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest
-
-generate-drone:
-	drone jsonnet -V BUILD_IMAGE_VERSION=$(BUILD_IMAGE_VERSION) --stream --format --source .drone/drone.jsonnet --target .drone/drone.yml
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest generate-snmp
+generate: generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest generate-snmp
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
@@ -249,7 +269,7 @@ generate-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./docs
+	go generate ./internal/tools/docs_generator/
 endif
 
 generate-winmanifest:
@@ -258,20 +278,31 @@ ifeq ($(USE_CONTAINER),1)
 else
 	go generate ./internal/winmanifest
 endif
+
+generate-snmp:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
+	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
+	sed -i "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	go generate ./internal/static/integrations/snmp_exporter/common; \
+	sed -i "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
+endif
+
 #
 # Other targets
 #
 # build-container-cache and clean-build-container-cache are defined in
 # Makefile.build-container.
-
-# Drone signs the yaml, you will need to specify DRONE_TOKEN, which can be
-# found by logging into your profile in Drone.
-#
-# This will only work for maintainers.
-.PHONY: drone
-drone: generate-drone
-	drone lint .drone/drone.yml --trusted
-	drone --server https://drone.grafana.net sign --save grafana/alloy .drone/drone.yml
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

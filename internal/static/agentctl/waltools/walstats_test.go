@@ -2,16 +2,18 @@ package waltools
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
+	"github.com/prometheus/prometheus/util/compression"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,12 +48,12 @@ func TestWALStats(t *testing.T) {
 //
 // The directory the WAL is in is returned.
 func setupTestWAL(t *testing.T) string {
-	l := log.NewNopLogger()
+	l := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	walDir := t.TempDir()
 
 	reg := prometheus.NewRegistry()
-	w, err := wlog.NewSize(log.NewNopLogger(), reg, filepath.Join(walDir, "wal"), wlog.DefaultSegmentSize, wlog.CompressionSnappy)
+	w, err := wlog.NewSize(l, reg, filepath.Join(walDir, "wal"), wlog.DefaultSegmentSize, compression.Snappy)
 	require.NoError(t, err)
 	defer w.Close()
 
@@ -91,7 +93,7 @@ func setupTestWAL(t *testing.T) string {
 	require.NoError(t, nextSegment(w))
 
 	// Checkpoint the previous segment.
-	_, err = wlog.Checkpoint(l, w, 0, 1, func(_ chunks.HeadSeriesRef) bool { return true }, 0)
+	_, err = wlog.Checkpoint(l, w, 0, 1, func(_ chunks.HeadSeriesRef, _ int) bool { return true }, 0)
 	require.NoError(t, err)
 	require.NoError(t, nextSegment(w))
 

@@ -3,7 +3,7 @@
 # This script builds and pushes windows Docker containers.
 #
 # This script expects to be run from the repo root and has checks for running
-# from a Drone trigger.
+# from a GitHub Actions trigger.
 
 set -euxo pipefail
 
@@ -14,13 +14,35 @@ set -euxo pipefail
 # If the environment variables are unset, the variables below default to an
 # empty string.
 export TARGET_CONTAINER=${1:-}
-export DRONE_TAG=${DRONE_TAG:-}
+PUSH_ALLOY_IMAGE=${PUSH_ALLOY_IMAGE:-}
+GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-}
+GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER:-}
+
+if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+  export GITHUB_TAG="$GITHUB_REF_NAME"
+else
+  export GITHUB_TAG=""
+fi
+
+WINDOWS_VERSION=${WINDOWS_VERSION:-}
+if [ "$WINDOWS_VERSION" = "windows-2022" ]; then
+  export BASE_IMAGE_GO="library/golang:${ALLOY_GO_VERSION}-windowsservercore-ltsc2022"
+  export BASE_IMAGE_WINDOWS="mcr.microsoft.com/windows/nanoserver:ltsc2022"
+  IMAGE_NAME_SUFFIX="windowsservercore-ltsc2022"
+else
+  # Report invalid windows base image and exit with code 1
+  echo "Invalid windows base image: $WINDOWS_VERSION"
+  exit 1
+fi
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
-if [ -n "$DRONE_TAG" ]; then
-  VERSION=$DRONE_TAG
+# TODO: Unit test this script? Test cases:
+# * Input:  ALLOY_GO_VERSION=1.24 WINDOWS_VERSION=windows-2022 GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v1.8.0 ./tools/ci/docker-containers-windows alloy
+#   Output: docker build -t grafana/alloy:v1.8.0-windowsservercore-ltsc2022 -t grafana/alloy:windowsservercore-ltsc2022 --build-arg VERSION=v1.8.0 --build-arg RELEASE_BUILD=1 --build-arg BASE_IMAGE_GO=library/golang:1.24-windowsservercore-ltsc2022 --build-arg BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022 -f ./Dockerfile.windows .
+if [ -n "$GITHUB_TAG" ]; then
+  VERSION=$GITHUB_TAG
 else
   # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
   # produce valid semver.
@@ -28,23 +50,23 @@ else
 fi
 
 # DEFAULT_LATEST is the default tag to use for the "latest" tag.
-DEFAULT_LATEST=nanoserver-1809
-CNGCRYPTO_LATEST=nanoserver-1809-cngcrypto
+DEFAULT_LATEST=$IMAGE_NAME_SUFFIX
+CNGCRYPTO_LATEST=$IMAGE_NAME_SUFFIX-cngcrypto
 
 # The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
 # characters that may have been emitted by ./tools/image-tag).
-VERSION_TAG=${VERSION//+/-}-nanoserver-1809
+VERSION_TAG=${VERSION//+/-}-$IMAGE_NAME_SUFFIX
 
 # We also need to know which "branch tag" to update. Branch tags are used as a
 # secondary tag for Docker containers. The branch tag is "latest" when being
 # tagged from a stable release (i.e., not a release candidate) or when building
 # a dev image.
 #
-# If we're not running from drone, we'll set the branch tag to match the
+# If we're not running from GitHub Actions, we'll set the branch tag to match the
 # version. This effectively acts as a no-op because it will tag the same Docker
 # image twice.
-if [[ -n "$DRONE_TAG" && "$DRONE_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
+if [[ -n "$GITHUB_TAG" && "$GITHUB_TAG" != *"-rc."* ]] || [[ "$TARGET_CONTAINER" == *"-devel"* ]]; then
   BRANCH_TAG=$DEFAULT_LATEST
 else
   BRANCH_TAG=$VERSION_TAG
@@ -57,11 +79,15 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       --build-arg VERSION="$VERSION"         \
       --build-arg RELEASE_BUILD=1            \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       -f ./Dockerfile.windows                \
       .
 
-    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-cngcrypto)
@@ -74,13 +100,17 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       --build-arg VERSION="$VERSION"         \
       --build-arg RELEASE_BUILD=1            \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto     \
       --build-arg GO_TAGS=cngcrypto          \
       -f ./Dockerfile.windows                \
       .
 
-    docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-devel)
@@ -89,11 +119,15 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
       --build-arg VERSION="$VERSION"       \
       --build-arg RELEASE_BUILD=1          \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       -f ./Dockerfile.windows              \
       .
 
-    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
     ;;
 
   alloy-devel-cngcrypto)
@@ -106,17 +140,38 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
       --build-arg VERSION="$VERSION"       \
       --build-arg RELEASE_BUILD=1          \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto   \
       --build-arg GO_TAGS=cngcrypto        \
       -f ./Dockerfile.windows              \
       .
 
-    docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
-    docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
+      docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
+    fi
+    ;;
+
+  alloy-devel-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${VERSION_TAG}"
+
+    docker build                           \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG" \
+      --build-arg VERSION="$VERSION"       \
+      --build-arg RELEASE_BUILD=1          \
+      --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
+      --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
+      -f ./Dockerfile.windows              \
+      .
+
+    if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
+      docker push "$DEVEL_ALLOY_IMAGE:$TAG"
+    fi
     ;;
 
   *)
-    echo "Usage: $0 alloy|alloy-cngcrypto|alloy-devel|alloy-devel-cngcrypto"
+    echo "Usage: $0 alloy|alloy-cngcrypto|alloy-devel|alloy-devel-cngcrypto|alloy-devel-pr"
     exit 1
     ;;
 esac

@@ -54,7 +54,7 @@ func TestConfig_ApplyDefaults_Validations(t *testing.T) {
 		},
 		{
 			name: "re-used positions path",
-			err:  fmt.Errorf("Loki configs config-a and config-c must have different positions file paths"),
+			err:  fmt.Errorf("loki configs config-a and config-c must have different positions file paths"),
 			cfg: untab(`
 				configs:
 				- name: config-a
@@ -70,7 +70,7 @@ func TestConfig_ApplyDefaults_Validations(t *testing.T) {
 		},
 		{
 			name: "empty name",
-			err:  fmt.Errorf("Loki config index 1 must have a name"),
+			err:  fmt.Errorf("loki config index 1 must have a name"),
 			cfg: untab(`
 				positions_directory: /tmp
 				configs:

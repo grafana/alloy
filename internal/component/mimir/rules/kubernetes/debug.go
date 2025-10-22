@@ -23,6 +23,10 @@ type DebugMimirNamespace struct {
 func (c *Component) DebugInfo() interface{} {
 	var output DebugInfo
 
+	if c.eventProcessor == nil {
+		return output
+	}
+
 	currentState := c.eventProcessor.getMimirState()
 	for namespace := range currentState {
 		if !isManagedMimirNamespace(c.args.MimirNameSpacePrefix, namespace) {

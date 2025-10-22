@@ -45,9 +45,9 @@ func (t *TestTarget) AddHistogram(opts prometheus.HistogramOpts) prometheus.Hist
 }
 
 func (t *TestTarget) Target() discovery.Target {
-	return discovery.Target{
+	return discovery.NewTargetFromMap(map[string]string{
 		"__address__": t.server.Listener.Addr().String(),
-	}
+	})
 }
 
 func (t *TestTarget) Registry() *prometheus.Registry {

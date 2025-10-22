@@ -95,6 +95,18 @@ Unfortunately, updating Otel dependencies is not straightforward:
 You can refer to [PR grafana/agent#5290](https://github.com/grafana/agent/pull/5290)
 for an example on how to update Alloy.
 
+### Notify community component contributors
+
+You can find the community contributor GitHub handles at the top of the community component files (the components that have "Community" set to true).
+Once the PR is created, you can ping them in the PR and message them on Slack. Each contributor should create a PR in your branch with the updated component.
+Notify the contributors a few days before the release so they have enough time to do the update.
+It should not be a blocker for the release. If the contributors can't do the update, you can fix the code to resolve the breaking changes or disable the component if that's too complicated.
+
+### Check for metric updates
+
+Some Otel metrics are used in the k8s monitoring helm chart and in integrations.
+Make sure to update this [list](https://github.com/grafana/k8s-monitoring-helm/blob/main/charts/k8s-monitoring-v1/default_allow_lists/alloy_integration.yaml) if any of these metrics has been removed or renamed.
+
 ## Testing
 
 ### Testing a tracing pipeline locally

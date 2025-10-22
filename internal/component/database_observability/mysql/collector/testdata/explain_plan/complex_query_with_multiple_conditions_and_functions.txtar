@@ -1,0 +1,194 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    d.dept_name,
+    t.title,
+    COUNT(*) as count,
+    AVG(s.salary) as avg_salary,
+    AVG(TIMESTAMPDIFF(YEAR, e.hire_date, CURDATE())) as avg_years_employed
+FROM departments d
+JOIN dept_emp de ON d.dept_no = de.dept_no
+JOIN employees e ON de.emp_no = e.emp_no
+JOIN titles t ON e.emp_no = t.emp_no
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE de.to_date = '9999-01-01'
+AND t.to_date = '9999-01-01'
+AND s.to_date = '9999-01-01'
+AND e.hire_date > '1985-01-01'
+GROUP BY d.dept_name, t.title
+HAVING avg_salary > 60000
+ORDER BY d.dept_name, avg_salary DESC\G
+```
+
+-- complex_query_with_multiple_conditions_and_functions.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "85905.59"
+    },
+    "ordering_operation": {
+      "using_filesort": true,
+      "grouping_operation": {
+        "using_temporary_table": true,
+        "using_filesort": false,
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "de",
+              "access_type": "ALL",
+              "possible_keys": [
+                "PRIMARY",
+                "dept_no"
+              ],
+              "rows_examined_per_scan": 331143,
+              "rows_produced_per_join": 33114,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "30539.87",
+                "eval_cost": "3311.43",
+                "prefix_cost": "33851.30",
+                "data_read_per_join": "1M"
+              },
+              "used_columns": [
+                "emp_no",
+                "dept_no",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`de`.`to_date` = DATE'9999-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "t",
+              "access_type": "ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.de.emp_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 4920,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "33114.30",
+                "eval_cost": "492.09",
+                "prefix_cost": "71886.48",
+                "data_read_per_join": "1M"
+              },
+              "used_columns": [
+                "emp_no",
+                "title",
+                "from_date",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`t`.`to_date` = DATE'9999-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "d",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "dept_no"
+              ],
+              "key_length": "16",
+              "ref": [
+                "employees.de.dept_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 4920,
+              "filtered": "100.00",
+              "cost_info": {
+                "read_cost": "4920.88",
+                "eval_cost": "492.09",
+                "prefix_cost": "77299.46",
+                "data_read_per_join": "884K"
+              },
+              "used_columns": [
+                "dept_no",
+                "dept_name"
+              ]
+            }
+          },
+          {
+            "table": {
+              "table_name": "e",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.de.emp_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 1640,
+              "filtered": "33.33",
+              "cost_info": {
+                "read_cost": "4916.72",
+                "eval_cost": "164.01",
+                "prefix_cost": "82708.26",
+                "data_read_per_join": "217K"
+              },
+              "used_columns": [
+                "emp_no",
+                "hire_date"
+              ],
+              "attached_condition": "(`employees`.`e`.`hire_date` > DATE'1985-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "s",
+              "access_type": "ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.de.emp_no"
+              ],
+              "rows_examined_per_scan": 9,
+              "rows_produced_per_join": 1542,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "1654.65",
+                "eval_cost": "154.27",
+                "prefix_cost": "85905.59",
+                "data_read_per_join": "24K"
+              },
+              "used_columns": [
+                "emp_no",
+                "salary",
+                "from_date",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

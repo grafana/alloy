@@ -16,6 +16,7 @@ import (
 	prom_config "github.com/prometheus/prometheus/config"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,9 +52,9 @@ func (discoveryProcessorConverter) ConvertAndAppend(state *otelcolconvert.State,
 func toDiscoveryProcessor(state *otelcolconvert.State, id componentstatus.InstanceID, cfg *promsdprocessor.Config, label string) (*otelcol_discovery.Arguments, diag.Diagnostics) {
 	var (
 		diags       diag.Diagnostics
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	// We need to Marshal/Unmarshal the scrape configs to translate them

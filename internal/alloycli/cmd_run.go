@@ -2,27 +2,28 @@ package alloycli
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
 
@@ -45,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
 	// Install Components
@@ -64,6 +66,9 @@ func runCommand() *cobra.Command {
 		clusterAdvInterfaces:  advertise.DefaultInterfaces,
 		clusterMaxJoinPeers:   5,
 		clusterRejoinInterval: 60 * time.Second,
+		disableSupportBundle:  false,
+		windowsPriority:       windowspriority.PriorityNormal,
+		taskShutdownDeadline:  10 * time.Minute,
 	}
 
 	cmd := &cobra.Command{
@@ -100,7 +105,7 @@ depending on the nature of the reload error.
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.Run(args[0])
+			return r.Run(cmd, args[0])
 		},
 	}
 
@@ -111,6 +116,8 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
 	cmd.Flags().
 		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
+	cmd.Flags().
+		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
 
 	// Cluster flags
 	cmd.Flags().
@@ -141,6 +148,10 @@ depending on the nature of the reload error.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
 	cmd.Flags().
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
+	cmd.Flags().
+		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
+	cmd.Flags().
+		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -153,6 +164,10 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	if runtime.GOOS == "windows" {
+		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+	}
+	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -180,13 +195,18 @@ type alloyRun struct {
 	clusterTLSCertPath           string
 	clusterTLSKeyPath            string
 	clusterTLSServerName         string
+	clusterWaitForSize           int
+	clusterWaitTimeout           time.Duration
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
 	enableCommunityComps         bool
+	disableSupportBundle         bool
+	windowsPriority              string
+	taskShutdownDeadline         time.Duration
 }
 
-func (fr *alloyRun) Run(configPath string) error {
+func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -208,6 +228,23 @@ func (fr *alloyRun) Run(configPath string) error {
 		return fmt.Errorf("building tracer: %w", err)
 	}
 
+	// The non-windows path for this is just a return nil, but to protect against
+	// refactoring assumptions we confirm that we're running on windows before setting the priority.
+	if runtime.GOOS == "windows" && fr.windowsPriority != "normal" {
+		if err := featuregate.CheckAllowed(
+			featuregate.StabilityPublicPreview,
+			fr.minStability,
+			"Windows process priority"); err != nil {
+			return err
+		}
+
+		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
+			return fmt.Errorf("setting process priority: %w", err)
+		} else {
+			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+		}
+	}
+
 	// Set the global tracer provider to catch global traces, but ideally things
 	// use the tracer provider given to them so the appropriate attributes get
 	// injected.
@@ -216,9 +253,10 @@ func (fr *alloyRun) Run(configPath string) error {
 	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
-	// If there is a cgroup will follow that
-	if fr.minStability.Permits(featuregate.StabilityPublicPreview) {
-		memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.New(l.Handler())))
+	// If there is a cgroup on linux it will use that
+	err = applyAutoMemLimit(l)
+	if err != nil {
+		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
 	}
 
 	// Enable the profiling.
@@ -248,46 +286,63 @@ func (fr *alloyRun) Run(configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (*alloy_runtime.Source, error)
+		reload func() (map[string][]byte, error)
 		ready  func() bool
 	)
 
-	clusterService, err := buildClusterService(clusterOptions{
+	clusterService, err := buildClusterService(ClusterOptions{
 		Log:     log.With(l, "service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
-		EnableClustering:    fr.clusterEnabled,
-		NodeName:            fr.clusterNodeName,
-		AdvertiseAddress:    fr.clusterAdvAddr,
-		ListenAddress:       fr.httpListenAddr,
-		JoinPeers:           splitPeers(fr.clusterJoinAddr, ","),
-		DiscoverPeers:       fr.clusterDiscoverPeers,
-		RejoinInterval:      fr.clusterRejoinInterval,
-		AdvertiseInterfaces: fr.clusterAdvInterfaces,
-		ClusterMaxJoinPeers: fr.clusterMaxJoinPeers,
-		ClusterName:         fr.clusterName,
-		EnableTLS:           fr.clusterEnableTLS,
-		TLSCertPath:         fr.clusterTLSCertPath,
-		TLSCAPath:           fr.clusterTLSCAPath,
-		TLSKeyPath:          fr.clusterTLSKeyPath,
-		TLSServerName:       fr.clusterTLSServerName,
+		EnableClustering:       fr.clusterEnabled,
+		NodeName:               fr.clusterNodeName,
+		AdvertiseAddress:       fr.clusterAdvAddr,
+		ListenAddress:          fr.httpListenAddr,
+		JoinPeers:              splitPeers(fr.clusterJoinAddr, ","),
+		DiscoverPeers:          fr.clusterDiscoverPeers,
+		RejoinInterval:         fr.clusterRejoinInterval,
+		AdvertiseInterfaces:    fr.clusterAdvInterfaces,
+		ClusterMaxJoinPeers:    fr.clusterMaxJoinPeers,
+		ClusterName:            fr.clusterName,
+		EnableTLS:              fr.clusterEnableTLS,
+		TLSCertPath:            fr.clusterTLSCertPath,
+		TLSCAPath:              fr.clusterTLSCAPath,
+		TLSKeyPath:             fr.clusterTLSKeyPath,
+		TLSServerName:          fr.clusterTLSServerName,
+		MinimumClusterSize:     fr.clusterWaitForSize,
+		MinimumSizeWaitTimeout: fr.clusterWaitTimeout,
 	})
 	if err != nil {
 		return err
 	}
 
+	runtimeFlags := []string{}
+	if !fr.disableSupportBundle {
+		cmd.Flags().VisitAll(func(f *pflag.Flag) {
+			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
+		})
+	}
+
 	httpService := httpservice.New(httpservice.Options{
-		Logger:   log.With(l, "service", "http"),
+		Logger:   l,
 		Tracer:   t,
 		Gatherer: prometheus.DefaultGatherer,
 
-		ReadyFunc:  func() bool { return ready() },
-		ReloadFunc: func() (*alloy_runtime.Source, error) { return reload() },
+		ReadyFunc: func() bool { return ready() },
+		ReloadFunc: func() error {
+			_, err := reload()
+			return err
+		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
 		MemoryListenAddr: fr.inMemoryAddr,
 		EnablePProf:      fr.enablePprof,
+		MinStability:     fr.minStability,
+		BundleContext: httpservice.SupportBundleContext{
+			RuntimeFlags:         runtimeFlags,
+			DisableSupportBundle: fr.disableSupportBundle,
+		},
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
@@ -305,6 +360,7 @@ func (fr *alloyRun) Run(configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:        fr.uiPrefix,
 		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
+		Logger:          log.With(l, "service", "ui"),
 	})
 
 	otelService := otel_service.New(l)
@@ -331,21 +387,29 @@ func (fr *alloyRun) Run(configPath string) error {
 			remoteCfgService,
 			uiService,
 		},
+		TaskShutdownDeadline: fr.taskShutdownDeadline,
 	})
 
 	ready = f.Ready
-	reload = func() (*alloy_runtime.Source, error) {
-		alloySource, err := loadAlloySource(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		defer instrumentation.InstrumentConfig(err == nil, alloySource.SHA256(), fr.clusterName)
-
+	reload = func() (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
-		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return alloySource, fmt.Errorf("error during the initial load: %w", err)
+
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+		if err != nil {
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
 		}
 
-		return alloySource, nil
+		httpService.SetSources(alloySource.SourceFiles())
+		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
+			return sources, fmt.Errorf("error during the initial load: %w", err)
+		}
+
+		return sources, nil
 	}
 
 	// Alloy controller
@@ -365,7 +429,7 @@ func (fr *alloyRun) Run(configPath string) error {
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(l).Log("msg", "failed to start reporter", "err", err)
 			}
 		}()
@@ -382,7 +446,7 @@ func (fr *alloyRun) Run(configPath string) error {
 				ContextLinesBefore: 1,
 				ContextLinesAfter:  1,
 			})
-			_ = p.Fprint(os.Stderr, source.RawConfigs(), diags)
+			_ = p.Fprint(os.Stderr, source, diags)
 
 			// Print newline after the diagnostics.
 			fmt.Println()
@@ -425,6 +489,9 @@ func (fr *alloyRun) Run(configPath string) error {
 func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interface{} {
 	return func() map[string]interface{} {
 		components := component.GetAllComponents(f, component.InfoOptions{})
+		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+		}
 		componentNames := map[string]struct{}{}
 		for _, c := range components {
 			if c.Type != component.TypeBuiltin {
@@ -436,7 +503,7 @@ func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]interf
 	}
 }
 
-func loadAlloySource(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (*alloy_runtime.Source, error) {
+func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -468,7 +535,7 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 			return nil, err
 		}
 
-		return alloy_runtime.ParseSources(sources)
+		return sources, nil
 	}
 
 	bb, err := os.ReadFile(path)
@@ -490,17 +557,35 @@ func loadAlloySource(path string, converterSourceFormat string, converterBypassE
 		}
 	}
 
-	return alloy_runtime.ParseSource(path, bb)
+	return map[string][]byte{path: bb}, nil
 }
 
-// addDeprecatedFlags adds flags that are deprecated, but we keep them for backwards compatibility.
-func addDeprecatedFlags(cmd *cobra.Command) {
-	_ = cmd.Flags().
-		Bool("cluster.use-discovery-v1", false, "This flag is deprecated and has no effect.")
-	err := cmd.Flags().MarkDeprecated("cluster.use-discovery-v1", "This flag is deprecated and has no effect.")
-	if err != nil { // this should never fail
-		panic(err)
+func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	// Combined hash of all the sources.
+	hash := sha256.New()
+
+	// Sort keys so they are always added in the same order.
+	keys := maps.Keys(sources)
+	slices.Sort(keys)
+	for _, key := range keys {
+		hash.Write(sources[key])
 	}
+
+	return [32]byte(hash.Sum(nil))
+}
+
+// addDeprecatedFlags adds flags that are deprecated, have no effect, but we keep them for backwards compatibility.
+func addDeprecatedFlags(cmd *cobra.Command) {
+	deprecateFlagByName := func(cmd *cobra.Command, name string) {
+		msg := "This flag is deprecated and has no effect."
+		_ = cmd.Flags().Bool(name, false, msg)
+		err := cmd.Flags().MarkDeprecated(name, msg)
+		if err != nil { // this should never fail
+			panic(err)
+		}
+	}
+	deprecateFlagByName(cmd, "cluster.use-discovery-v1")
+	deprecateFlagByName(cmd, "feature.prometheus.metric-validation-scheme")
 }
 
 func interruptContext() (context.Context, context.CancelFunc) {

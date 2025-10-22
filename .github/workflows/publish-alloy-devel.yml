@@ -1,0 +1,112 @@
+name: Publish alloy-devel containers
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  publish_linux_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel
+      dev: true
+
+  publish_linux_boringcrypto_container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name:  alloy-devel-boringcrypto
+      dev: true
+
+  publish_windows_container:
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel
+      dev: true
+        
+  update_deployment_tools:
+    name: Update deployment_tools
+    runs-on: ubuntu-latest
+    needs:
+    - publish_linux_container
+    - publish_linux_boringcrypto_container
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+
+    - name: Get Vault secrets
+      uses: grafana/shared-workflows/actions/get-vault-secrets@28361cdb22223e5f1e34358c86c20908e7248760 # get-vault-secrets-v1.1.0
+      with:
+        common_secrets: |
+          GITHUB_APP_ID=updater-app:app-id
+          GITHUB_APP_INSTALLATION_ID=updater-app:app-installation-id
+          GITHUB_APP_PRIVATE_KEY=updater-app:private-key
+
+    - name: Checkout code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      with:
+        persist-credentials: false
+
+    - name: Get the image tag
+      run: |
+        echo "$(bash ./tools/image-tag-docker)" > .tag-only
+        echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+
+      # This step needs to run after "Get the image tag".
+      # That's because the login to GAR generates a new file.
+      # We don't want this file to end up in the repo directory.
+      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Log in to Google Artifact Registry
+      uses: grafana/shared-workflows/actions/login-to-gar@ebcac324fecb38bbeb7a2e59c82da34010c14014 # login-to-gar-v0.2.2
+      with:
+        registry: "us-docker.pkg.dev"
+        environment: "prod"
+
+    - name: Update to latest image
+      run: |
+        set -e -o pipefail
+
+        echo "The image tag is: $(cat .image-tag)"
+
+        cat << EOF > config.json
+        {
+          "git_committer_name": "updater-for-ci[bot]",
+          "git_author_name": "updater-for-ci[bot]",
+          "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+          "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+          "destination_branch": "master",
+          "pull_request_branch_prefix": "auto-merge/updater/alloy",
+          "pull_request_enabled": true,
+          "pull_request_existing_strategy": "replace",
+          "pull_request_message": "Created by https://github.com/grafana/alloy/actions/runs/${{ github.run_id }}. This PR will auto-merge once CI has passed.",
+          "pull_request_team_reviewers": [],
+          "repo_name": "deployment_tools",
+          "update_jsonnet_attribute_configs": [
+            {
+              "file_path": "ksonnet/lib/alloy/waves/alloy.libsonnet",
+              "jsonnet_key": "dev_canary",
+              "jsonnet_value_file": ".image-tag"
+            }
+          ]
+        }
+        EOF
+
+        docker run --rm \
+          -e GITHUB_APP_ID \
+          -e GITHUB_APP_INSTALLATION_ID \
+          -e GITHUB_APP_PRIVATE_KEY \
+          -e CONFIG_JSON="$(cat config.json)" \
+          -v ./.image-tag:/app/.image-tag \
+          us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log

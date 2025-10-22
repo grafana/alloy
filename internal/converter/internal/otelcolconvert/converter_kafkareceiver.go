@@ -9,11 +9,13 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,10 +47,16 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
+
+	var tlsCfgPtr *otelcol.TLSClientArguments
+	if cfg.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.TLS)
+		tlsCfgPtr = &tlsCfg
+	}
 
 	return &kafka.Arguments{
 		Brokers:           cfg.Brokers,
@@ -69,6 +77,21 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
+		TLS: tlsCfgPtr,
+
+		Logs:    toKafkaTopicEncodingConfig(cfg.Logs),
+		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
+		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
+
+		MinFetchSize:           cfg.MinFetchSize,
+		DefaultFetchSize:       cfg.DefaultFetchSize,
+		MaxFetchSize:           cfg.MaxFetchSize,
+		MaxFetchWait:           cfg.MaxFetchWait,
+		GroupRebalanceStrategy: cfg.GroupRebalanceStrategy,
+		GroupInstanceID:        cfg.GroupInstanceID,
+
+		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
@@ -76,6 +99,24 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+	}
+}
+
+func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArguments {
+	return kafka.ErrorBackOffArguments{
+		Enabled:             cfg.Enabled,
+		InitialInterval:     cfg.InitialInterval,
+		RandomizationFactor: cfg.RandomizationFactor,
+		Multiplier:          cfg.Multiplier,
+		MaxInterval:         cfg.MaxInterval,
+		MaxElapsedTime:      cfg.MaxElapsedTime,
+	}
+}
+
+func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) *kafka.KafkaReceiverTopicEncodingConfig {
+	return &kafka.KafkaReceiverTopicEncodingConfig{
+		Topic:    cfg.Topic,
+		Encoding: cfg.Encoding,
 	}
 }
 
@@ -119,8 +160,7 @@ func toKafkaAWSMSK(cfg map[string]any) otelcol.KafkaAWSMSKArguments {
 	}
 
 	return otelcol.KafkaAWSMSKArguments{
-		Region:     cfg["region"].(string),
-		BrokerAddr: cfg["broker_addr"].(string),
+		Region: cfg["region"].(string),
 	}
 }
 
@@ -156,21 +196,22 @@ func toKafkaKerberos(cfg map[string]any) *otelcol.KafkaKerberosArguments {
 	}
 }
 
-func toKafkaMetadata(cfg kafkaexporter.Metadata) otelcol.KafkaMetadataArguments {
+func toKafkaMetadata(cfg configkafka.MetadataConfig) otelcol.KafkaMetadataArguments {
 	return otelcol.KafkaMetadataArguments{
-		IncludeAllTopics: cfg.Full,
-		Retry:            toKafkaRetry(cfg.Retry),
+		Full:            cfg.Full,
+		RefreshInterval: cfg.RefreshInterval,
+		Retry:           toKafkaRetry(cfg.Retry),
 	}
 }
 
-func toKafkaRetry(cfg kafkaexporter.MetadataRetry) otelcol.KafkaMetadataRetryArguments {
+func toKafkaRetry(cfg configkafka.MetadataRetryConfig) otelcol.KafkaMetadataRetryArguments {
 	return otelcol.KafkaMetadataRetryArguments{
 		MaxRetries: cfg.Max,
 		Backoff:    cfg.Backoff,
 	}
 }
 
-func toKafkaAutoCommit(cfg kafkareceiver.AutoCommit) kafka.AutoCommitArguments {
+func toKafkaAutoCommit(cfg configkafka.AutoCommitConfig) kafka.AutoCommitArguments {
 	return kafka.AutoCommitArguments{
 		Enable:   cfg.Enable,
 		Interval: cfg.Interval,

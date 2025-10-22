@@ -3,6 +3,7 @@ package jaeger
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
@@ -14,7 +15,8 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfiggrpc "go.opentelemetry.io/collector/config/configgrpc"
 	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -64,23 +66,49 @@ func (args *Arguments) Validate() error {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	grpcProtocol, err := args.Protocols.GRPC.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	httpProtocol, err := args.Protocols.ThriftHTTP.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &jaegerreceiver.Config{
 		Protocols: jaegerreceiver.Protocols{
-			GRPC:          args.Protocols.GRPC.Convert(),
-			ThriftHTTP:    args.Protocols.ThriftHTTP.Convert(),
-			ThriftBinary:  args.Protocols.ThriftBinary.Convert(),
-			ThriftCompact: args.Protocols.ThriftCompact.Convert(),
+			GRPC:             grpcProtocol,
+			ThriftHTTP:       httpProtocol,
+			ThriftBinaryUDP:  args.Protocols.ThriftBinary.Convert(),
+			ThriftCompactUDP: args.Protocols.ThriftCompact.Convert(),
 		},
 	}, nil
 }
 
 // Extensions implements receiver.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return nil
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	extensionMap := make(map[otelcomponent.ID]otelcomponent.Component)
+
+	// Gets the extensions for the HTTP server and GRPC server
+	if args.Protocols.ThriftHTTP != nil && args.Protocols.ThriftHTTP.HTTPServerArguments != nil {
+		httpExtensions := args.Protocols.ThriftHTTP.HTTPServerArguments.Extensions()
+
+		// Copies the extensions for the HTTP server into the map
+		maps.Copy(extensionMap, httpExtensions)
+	}
+
+	if args.Protocols.GRPC != nil && args.Protocols.GRPC.GRPCServerArguments != nil {
+		grpcExtensions := args.Protocols.GRPC.GRPCServerArguments.Extensions()
+
+		// Copies the extensions for the GRPC server into the map.
+		maps.Copy(extensionMap, grpcExtensions)
+	}
+
+	return extensionMap
 }
 
 // Exporters implements receiver.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
@@ -113,9 +141,9 @@ func (args *GRPC) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *GRPC) Convert() *otelconfiggrpc.ServerConfig {
+func (args *GRPC) Convert() (configoptional.Optional[otelconfiggrpc.ServerConfig], error) {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfiggrpc.ServerConfig](), nil
 	}
 
 	return args.GRPCServerArguments.Convert()
@@ -136,9 +164,9 @@ func (args *ThriftHTTP) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftHTTP) Convert() *otelconfighttp.ServerConfig {
+func (args *ThriftHTTP) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
-		return nil
+		return configoptional.None[otelconfighttp.ServerConfig](), nil
 	}
 
 	return args.HTTPServerArguments.Convert()
@@ -154,12 +182,12 @@ type ProtocolUDP struct {
 }
 
 // Convert converts proto into the upstream type.
-func (proto *ProtocolUDP) Convert() *jaegerreceiver.ProtocolUDP {
+func (proto *ProtocolUDP) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if proto == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
-	return &jaegerreceiver.ProtocolUDP{
+	return configoptional.Some(jaegerreceiver.ProtocolUDP{
 		Endpoint: proto.Endpoint,
 		ServerConfigUDP: jaegerreceiver.ServerConfigUDP{
 			QueueSize:        proto.QueueSize,
@@ -167,7 +195,7 @@ func (proto *ProtocolUDP) Convert() *jaegerreceiver.ProtocolUDP {
 			Workers:          proto.Workers,
 			SocketBufferSize: int(proto.SocketBufferSize),
 		},
-	}
+	})
 }
 
 // ThriftCompact wraps ProtocolUDP and provides additional behavior.
@@ -188,9 +216,9 @@ func (args *ThriftCompact) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftCompact) Convert() *jaegerreceiver.ProtocolUDP {
+func (args *ThriftCompact) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if args == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
 	return args.ProtocolUDP.Convert()
@@ -214,9 +242,9 @@ func (args *ThriftBinary) SetToDefault() {
 }
 
 // Convert converts proto into the upstream type.
-func (args *ThriftBinary) Convert() *jaegerreceiver.ProtocolUDP {
+func (args *ThriftBinary) Convert() configoptional.Optional[jaegerreceiver.ProtocolUDP] {
 	if args == nil {
-		return nil
+		return configoptional.None[jaegerreceiver.ProtocolUDP]()
 	}
 
 	return args.ProtocolUDP.Convert()

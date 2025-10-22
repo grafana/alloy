@@ -2,21 +2,26 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"reflect"
 	"sync"
 	"time"
+
+	"github.com/grafana/tail/watch"
+	"github.com/prometheus/common/model"
+
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/tail/watch"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -78,14 +83,18 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	updateMut sync.Mutex
+	tasksMut sync.RWMutex
+	tasks    map[positions.Entry]runnerTask
 
-	mut       sync.RWMutex
-	args      Arguments
-	handler   loki.LogsReceiver
-	receivers []loki.LogsReceiver
-	posFile   positions.Positions
-	readers   map[positions.Entry]reader
+	handler loki.LogsReceiver
+	posFile positions.Positions
+
+	receiversMut sync.RWMutex
+	receivers    []loki.LogsReceiver
+
+	stopping atomic.Bool
+
+	updateReaders chan struct{}
 }
 
 // New creates a new loki.source.file component.
@@ -113,10 +122,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:    o,
 		metrics: newMetrics(o.Registerer),
 
-		handler:   loki.NewLogsReceiver(),
-		receivers: args.ForwardTo,
-		posFile:   positionsFile,
-		readers:   make(map[positions.Entry]reader),
+		handler:       loki.NewLogsReceiver(),
+		receivers:     args.ForwardTo,
+		posFile:       positionsFile,
+		tasks:         make(map[positions.Entry]runnerTask),
+		updateReaders: make(chan struct{}, 1),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -128,155 +138,194 @@ func New(o component.Options, args Arguments) (*Component, error) {
 }
 
 // Run implements component.Component.
-// TODO(@tpaschalis). Should we periodically re-check? What happens if a target
-// comes alive _after_ it's been passed to us and we never receive another
-// Update()? Or should it be a responsibility of the discovery component?
 func (c *Component) Run(ctx context.Context) error {
+	runner := runner.New(func(t *runnerTask) runner.Worker {
+		return &runnerReader{
+			reader: t.reader,
+		}
+	})
+
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
-		c.mut.RLock()
-		for _, r := range c.readers {
-			r.Stop()
-		}
+
+		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
+		drainCtx, cancelDrain := context.WithCancel(context.Background())
+		defer cancelDrain()
+		go func() {
+			for {
+				select {
+				case <-drainCtx.Done():
+					return
+				case <-c.handler.Chan(): // Ignore the remaining entries
+				}
+			}
+		}()
+
+		c.tasksMut.RLock()
+		c.stopping.Store(true)
+		runner.Stop()
 		c.posFile.Stop()
 		close(c.handler.Chan())
-		c.mut.RUnlock()
+		c.tasksMut.RUnlock()
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case entry := <-c.handler.Chan():
+				c.receiversMut.RLock()
+				for _, receiver := range c.receivers {
+					select {
+					case <-ctx.Done():
+						return
+					case receiver.Chan() <- entry:
+					}
+				}
+				c.receiversMut.RUnlock()
 			}
-			c.mut.RUnlock()
 		}
-	}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.updateReaders:
+				level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
+
+				c.tasksMut.RLock()
+				var tasks []*runnerTask
+				for _, entry := range c.tasks {
+					tasks = append(tasks, &entry)
+				}
+				c.tasksMut.RUnlock()
+
+				if err := runner.ApplyTasks(ctx, tasks); err != nil {
+					if !errors.Is(err, context.Canceled) {
+						level.Error(c.opts.Logger).Log("msg", "failed to apply tasks", "err", err)
+					}
+				} else {
+					level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.updateMut.Lock()
-	defer c.updateMut.Unlock()
-
-	// Stop all readers so we can recreate them below. This *must* be done before
-	// c.mut is held to avoid a race condition where stopping a reader is
-	// flushing its data, but the flush never succeeds because the Run goroutine
-	// fails to get a read lock.
-	//
-	// Stopping the readers avoids the issue we saw with stranded wrapped
-	// handlers staying behind until they were GC'ed and sending duplicate
-	// message to the global handler. It also makes sure that we update
-	// everything with the new labels. Simply zeroing out the c.readers map did
-	// not work correctly to shut down the wrapped handlers in time.
-	//
-	// TODO (@tpaschalis) We should be able to optimize this somehow and eg.
-	// cache readers for paths we already know about, and whose labels have not
-	// changed. Once we do that we should:
-	//
-	// * Call to c.pruneStoppedReaders to give cached but errored readers a
-	//   chance to restart.
-	// * Stop tailing any files that were no longer in the new targets
-	//   and conditionally remove their readers only by calling toStopTailing
-	//   and c.stopTailingAndRemovePosition.
-	oldPaths := c.stopReaders()
-
 	newArgs := args.(Arguments)
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	c.args = newArgs
-	c.receivers = newArgs.ForwardTo
+	// It's important to have the same lock order in Update and Run to avoid
+	// deadlocks.
+	c.tasksMut.Lock()
+	defer c.tasksMut.Unlock()
 
-	c.readers = make(map[positions.Entry]reader)
-
-	if len(newArgs.Targets) == 0 {
-		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
-		return nil
+	c.receiversMut.RLock()
+	if receiversChanged(c.receivers, newArgs.ForwardTo) {
+		// Upgrade lock to write.
+		c.receiversMut.RUnlock()
+		c.receiversMut.Lock()
+		c.receivers = newArgs.ForwardTo
+		c.receiversMut.Unlock()
+	} else {
+		c.receiversMut.RUnlock()
 	}
 
-	for _, target := range newArgs.Targets {
-		path := target[pathLabel]
+	c.tasks = make(map[positions.Entry]runnerTask)
 
-		labels := make(model.LabelSet)
-		for k, v := range target {
-			if strings.HasPrefix(k, model.ReservedLabelPrefix) {
-				continue
-			}
-			labels[model.LabelName(k)] = model.LabelValue(v)
-		}
+	// There are cases where we have several targets with the same path + public labels
+	// but the path no longer exist so we cannot create a task for it. So we need to track
+	// what we have checked separately from the task map to prevent performing checks that
+	// will fail multiple times.
+	checked := make(map[positions.Entry]struct{})
+
+	for _, target := range newArgs.Targets {
+		path, _ := target.Get(pathLabel)
+
+		labels := target.NonReservedLabelSet()
 
 		// Deduplicate targets which have the same public label set.
-		readersKey := positions.Entry{Path: path, Labels: labels.String()}
-		if _, exist := c.readers[readersKey]; exist {
+		key := positions.Entry{Path: path, Labels: labels.String()}
+		if _, exists := checked[key]; exists {
 			continue
 		}
 
-		c.reportSize(path, labels.String())
+		checked[key] = struct{}{}
 
-		handler := loki.AddLabelsMiddleware(labels).Wrap(loki.NewEntryHandler(c.handler.Chan(), func() {}))
-		reader, err := c.startTailing(path, labels, handler)
+		fi, err := os.Stat(path)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		if fi.IsDir() {
+			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+
+		reader, err := c.createReader(readerOptions{
+			path:                path,
+			labels:              labels,
+			encoding:            newArgs.Encoding,
+			decompressionConfig: newArgs.DecompressionConfig,
+			fileWatch:           newArgs.FileWatch,
+			tailFromEnd:         newArgs.TailFromEnd,
+			legacyPositionUsed:  newArgs.LegacyPositionsFile != "",
+		})
 		if err != nil {
 			continue
 		}
 
-		c.readers[readersKey] = readerWithHandler{
-			reader:  reader,
-			handler: handler,
+		c.tasks[key] = runnerTask{
+			reader: reader,
+			path:   path,
+			labels: labels.String(),
+			// TODO: Could fastFingerPrint work?
+			readerHash: uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
 		}
 	}
 
-	// Remove from the positions file any entries that had a Reader before, but
-	// are no longer in the updated set of Targets.
-	for r := range missing(c.readers, oldPaths) {
-		c.posFile.Remove(r.Path, r.Labels)
+	if len(newArgs.Targets) == 0 {
+		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
+	}
+
+	select {
+	case c.updateReaders <- struct{}{}:
+	default:
 	}
 
 	return nil
 }
 
-// readerWithHandler combines a reader with an entry handler associated with
-// it. Closing the reader will also close the handler.
-type readerWithHandler struct {
-	reader
-	handler loki.EntryHandler
-}
-
-func (r readerWithHandler) Stop() {
-	r.reader.Stop()
-	r.handler.Stop()
-}
-
-// stopReaders stops existing readers and returns the set of paths which were
-// stopped.
-func (c *Component) stopReaders() map[positions.Entry]struct{} {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
-
-	stoppedPaths := make(map[positions.Entry]struct{}, len(c.readers))
-
-	for p, r := range c.readers {
-		stoppedPaths[p] = struct{}{}
-		r.Stop()
-	}
-
-	return stoppedPaths
-}
-
 // DebugInfo returns information about the status of tailed targets.
 // TODO(@tpaschalis) Decorate with more debug information once it's made
 // available, such as the last time a log line was read.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
+	c.tasksMut.RLock()
+	defer c.tasksMut.RUnlock()
 	var res readerDebugInfo
-	for e, reader := range c.readers {
+	for e, task := range c.tasks {
 		offset, _ := c.posFile.Get(e.Path, e.Labels)
 		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
 			Path:       e.Path,
 			Labels:     e.Labels,
-			IsRunning:  reader.IsRunning(),
+			IsRunning:  task.reader.IsRunning(),
 			ReadOffset: offset,
 		})
 	}
@@ -294,72 +343,58 @@ type targetInfo struct {
 	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
-// Returns the elements from set b which are missing from set a
-func missing(as map[positions.Entry]reader, bs map[positions.Entry]struct{}) map[positions.Entry]struct{} {
-	c := map[positions.Entry]struct{}{}
-	for a := range bs {
-		if _, ok := as[a]; !ok {
-			c[a] = struct{}{}
-		}
-	}
-	return c
+type readerOptions struct {
+	path                string
+	labels              model.LabelSet
+	encoding            string
+	decompressionConfig DecompressionConfig
+	fileWatch           FileWatch
+	tailFromEnd         bool
+	legacyPositionUsed  bool
 }
 
-// startTailing starts and returns a reader for the given path. For most files,
-// this will be a tailer implementation. If the file suffix alludes to it being
-// a compressed file, then a decompressor will be started instead.
-func (c *Component) startTailing(path string, labels model.LabelSet, handler loki.EntryHandler) (reader, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
-		c.metrics.totalBytes.DeleteLabelValues(path)
-		return nil, fmt.Errorf("failed to stat path %s", path)
-	}
-
-	if fi.IsDir() {
-		level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
-		c.metrics.totalBytes.DeleteLabelValues(path)
-		return nil, fmt.Errorf("failed to tail file, it was a directory %s", path)
-	}
-
+// For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
+// a compressed file, then a decompressor will be created instead.
+func (c *Component) createReader(opts readerOptions) (reader, error) {
 	var reader reader
-	if c.args.DecompressionConfig.Enabled {
-		level.Debug(c.opts.Logger).Log("msg", "reading from compressed file", "filename", path)
+	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
 			c.metrics,
 			c.opts.Logger,
-			handler,
+			c.handler,
 			c.posFile,
-			path,
-			labels.String(),
-			c.args.Encoding,
-			c.args.DecompressionConfig,
+			opts.path,
+			opts.labels,
+			opts.encoding,
+			opts.decompressionConfig,
+			c.IsStopping,
 		)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start decompressor", "error", err, "filename", path)
-			return nil, fmt.Errorf("failed to start decompressor %s", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create decompressor", "error", err, "filename", opts.path)
+			return nil, fmt.Errorf("failed to create decompressor %s", err)
 		}
 		reader = decompressor
 	} else {
-		level.Debug(c.opts.Logger).Log("msg", "tailing new file", "filename", path)
 		pollOptions := watch.PollingFileWatcherOptions{
-			MinPollFrequency: c.args.FileWatch.MinPollFrequency,
-			MaxPollFrequency: c.args.FileWatch.MaxPollFrequency,
+			MinPollFrequency: opts.fileWatch.MinPollFrequency,
+			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		}
 		tailer, err := newTailer(
 			c.metrics,
 			c.opts.Logger,
-			handler,
+			c.handler,
 			c.posFile,
-			path,
-			labels.String(),
-			c.args.Encoding,
+			opts.path,
+			opts.labels,
+			opts.encoding,
 			pollOptions,
-			c.args.TailFromEnd,
+			opts.tailFromEnd,
+			opts.legacyPositionUsed,
+			c.IsStopping,
 		)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start tailer", "error", err, "filename", path)
-			return nil, fmt.Errorf("failed to start tailer %s", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create tailer", "error", err, "filename", opts.path)
+			return nil, fmt.Errorf("failed to create tailer %s", err)
 		}
 		reader = tailer
 	}
@@ -367,21 +402,18 @@ func (c *Component) startTailing(path string, labels model.LabelSet, handler lok
 	return reader, nil
 }
 
-func (c *Component) reportSize(path, labels string) {
-	// Ask the reader to update the size if a reader exists, this keeps
-	// position and size metrics in sync.
-	if reader, ok := c.readers[positions.Entry{Path: path, Labels: labels}]; ok {
-		err := reader.MarkPositionAndSize()
-		if err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to get file size from existing reader, ", "file", path, "error", err)
-			return
-		}
-	} else {
-		// Must be a new file, just directly read the size of it
-		fi, err := os.Stat(path)
-		if err != nil {
-			return
-		}
-		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+func (c *Component) IsStopping() bool {
+	return c.stopping.Load()
+}
+
+func receiversChanged(prev, next []loki.LogsReceiver) bool {
+	if len(prev) != len(next) {
+		return true
 	}
+	for i := range prev {
+		if !reflect.DeepEqual(prev[i], next[i]) {
+			return true
+		}
+	}
+	return false
 }

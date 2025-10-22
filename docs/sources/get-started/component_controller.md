@@ -9,26 +9,26 @@ weight: 200
 
 # Component controller
 
-The _component controller_ is the core part of {{< param "PRODUCT_NAME" >}} which manages components at runtime.
+The _component controller_ is the core part of {{< param "PRODUCT_NAME" >}} that manages components at runtime.
 
-The component controller is responsible for:
+The component controller:
 
-* Reading and validating the configuration file.
-* Managing the lifecycle of defined components.
-* Evaluating the arguments used to configure components.
-* Reporting the health of defined components.
+* Reads and validates the configuration file.
+* Manages the lifecycle of defined components.
+* Evaluates the arguments used to configure components.
+* Reports the health of defined components.
 
 ## Component graph
 
-A relationship between [components][Components] is created when an expression is used to set the argument of one component to an exported field of another component.
+A relationship between [components][Components] forms when an expression sets one component's argument to an exported field of another component.
 
-The set of all components and the relationships between them define a [Directed Acyclic Graph][DAG] (DAG),
-which informs the component controller which references are valid and in what order components must be evaluated.
+The set of all components and their relationships defines a [Directed Acyclic Graph][DAG] (DAG).
+This graph tells the component controller which references are valid and the order in which to evaluate components.
 
-For a configuration file to be valid, components must not reference themselves or contain a cyclic reference.
+For a configuration file to be valid, components can't reference themselves or create cyclic references.
 
 ```alloy
-// INVALID: local.file.some_file can not reference itself:
+// INVALID: local.file.some_file can't reference itself:
 local.file "self_reference" {
   filename = local.file.self_reference.content
 }
@@ -46,68 +46,67 @@ local.file "b" {
 
 ## Component evaluation
 
-A component is _evaluated_ when its expressions are computed into concrete values.
-The computed values configure the component's runtime behavior.
-The component controller is finished loading once all components are evaluated, configured, and running.
+Component evaluation is the process of computing expressions into concrete values.
+These values configure the component's runtime behavior.
+The component controller is fully loaded once all components are evaluated, configured, and running.
 
-The component controller only evaluates a given component after evaluating all of that component's dependencies.
-Components that don't depend on other components can be evaluated anytime during the evaluation process.
+The component controller evaluates a component only after evaluating all its dependencies.
+Components without dependencies can be evaluated at any time during the process.
 
 ## Component reevaluation
 
-A [component][Components] is dynamic. A component can update its exports any number of times throughout its lifetime.
+A [component][Components] is dynamic and can update its exports multiple times during its lifetime.
 
-A _controller reevaluation_ is triggered when a component updates its exports.
-The component controller reevaluates any component that references the changed component, any components that reference those components,
-and so on, until all affected components are reevaluated.
+A _controller reevaluation_ occurs when a component updates its exports.
+The component controller reevaluates any component that references the changed component, along with their dependents, until all affected components are reevaluated.
 
 ## Component health
 
-At any given time, a component can have one of the following health states:
+At any time, a component can have one of these health states:
 
 1. Unknown: The default state. The component isn't running yet.
 1. Healthy: The component is working as expected.
 1. Unhealthy: The component isn't working as expected.
 1. Exited: The component has stopped and is no longer running.
 
-By default, the component controller determines the health of a component.
-The component controller marks a component as healthy as long as that component is running and its most recent evaluation succeeded.
+By default, the component controller determines a component's health.
+The controller marks a component as healthy if it's running and its most recent evaluation succeeded.
 
-Some components can report their own component-specific health information.
-For example, the `local.file` component reports itself as unhealthy if the file it was watching gets deleted.
+Some components can report their own health information.
+For example, the `local.file` component reports itself as unhealthy if the file it's watching gets deleted.
 
 The overall health of a component is determined by combining the controller-reported health of the component with the component-specific health information.
 
-An individual component's health is independent of the health of any other components it references.
-A component can be marked as healthy even if it references an exported field of an unhealthy component.
+A component's health is independent of the health of any components it references.
+A component can be healthy even if it references an exported field of an unhealthy component.
 
-## Handling evaluation failures
+## Evaluation failures
 
-When a component fails to evaluate, it's marked as unhealthy with the reason for why the evaluation failed.
+When a component fails to evaluate, it's marked as unhealthy with the reason for the failure.
 
-When an evaluation fails, the component continues operating as normal.
-The component continues using its previous set of evaluated arguments and can continue exporting new values.
+Despite the failure, the component continues operating normally.
+It uses its last valid set of evaluated arguments and can keep exporting new values.
 
 This behavior prevents failure propagation.
-If your `local.file` component, which watches API keys, suddenly stops working, other components continue using the last valid API key until the component returns to a healthy state.
+For example, if your `local.file` component, which watches API keys, stops working, other components continue using the last valid API key until the component recovers.
 
 ## In-memory traffic
 
-Components that expose HTTP endpoints, such as [prometheus.exporter.unix][], can expose an internal address that completely bypasses the network and communicate in-memory.
-Components within the same process can communicate with one another without needing to be aware of any network-level protections such as authentication or mutual TLS.
+Components that expose HTTP endpoints, such as [`prometheus.exporter.unix`][prometheus.exporter.unix], can use an internal address to bypass the network and communicate in-memory.
+Components in the same process can communicate without needing network-level protections like authentication or mutual TLS.
 
 The internal address defaults to `alloy.internal:12345`.
-If this address collides with a real target on your network, change it to something unique using the `--server.http.memory-addr` flag in the [run][] command.
+If this address conflicts with a real target on your network, change it using the `--server.http.memory-addr` flag in the [run][] command.
 
-Components must opt-in to using in-memory traffic.
-Refer to the individual documentation for components to learn if in-memory traffic is supported.
+Components must opt in to using in-memory traffic.
+Refer to the individual component documentation to learn if in-memory traffic is supported.
 
-## Updating the configuration file
+## Configuration file updates
 
-The `/-/reload` HTTP endpoint and the `SIGHUP` signal can inform the component controller to reload the configuration file.
-When this happens, the component controller synchronizes the set of running components with the ones in the configuration file,
-removing components no longer defined in the configuration file and creating new components added to the configuration file.
-All components managed by the controller are reevaluated after reloading.
+The `/-/reload` HTTP endpoint and the `SIGHUP` signal notify the component controller to reload the configuration file.
+When reloading, the controller synchronizes the running components with the configuration file.
+It removes components no longer defined and creates new ones added to the file.
+After reloading, the controller reevaluates all managed components.
 
 [DAG]: https://en.wikipedia.org/wiki/Directed_acyclic_graph
 [prometheus.exporter.unix]: ../../reference/components/prometheus/prometheus.exporter.unix

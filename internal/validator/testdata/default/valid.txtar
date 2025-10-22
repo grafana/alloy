@@ -1,0 +1,233 @@
+valid config
+-- main.alloy --
+http {
+	tls {
+		cert_file = sys.env("TLS_CERT_FILE_PATH")
+		key_file  = sys.env("TLS_KEY_FILE_PATH")
+	}
+}
+
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+livedebugging {
+	enabled = true
+}
+
+tracing {
+	sampling_fraction = 0.1
+
+	write_to = [otelcol.exporter.otlp.tempo.input]
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "http://tempo:3001"
+	}
+}
+
+local.file_match "applogs" {
+	path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+loki.source.file "local_files" {
+	targets = local.file_match.applogs.targets
+
+	forward_to = [loki.process.add_new_label.receiver]
+}
+
+loki.process "add_new_label" {
+	stage.logfmt {
+		mapping = {
+			"extracted_level" = "level",
+		}
+	}
+
+	stage.labels {
+		values = {
+			"level" = "extracted_level",
+		}
+	}
+
+	forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
+
+declare "self_collect" {
+	argument "metrics_output" {
+		optional = false
+		comment  = "Where to send collected metrics."
+	}
+	
+	argument "optional" {
+		optional = true
+	}
+
+	prometheus.scrape "selfmonitor" {
+		targets = [{
+			__address__ = "127.0.0.1:12345",
+		}]
+
+		forward_to = [argument.metrics_output.value]
+	}
+}
+
+self_collect "selfmonitor" {
+	metrics_output = "test"
+}
+
+import.file "math" {
+	filename = "module.alloy"
+}
+
+math.add "default" { }
+
+discovery.kubernetes "default" {
+	role = "pod"
+}
+
+discovery.relabel "redis" {
+	targets = discovery.kubernetes.default.targets
+
+	// Remove all targets except the Redis ones.
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		regex         = "redis-cont"
+		action        = "keep"
+	}
+}
+
+// Collect metrics for each Redis instance.
+foreach "redis" {
+	collection = discovery.relabel.redis.output
+	var        = "each"
+
+	template {
+		prometheus.exporter.redis "default" {
+			// This is the "__address__" label from discovery.kubernetes.
+			redis_addr = each["__address__"]
+		}
+
+		prometheus.scrape "default" {
+			targets    = prometheus.exporter.redis.default.targets
+			forward_to = [prometheus.relabel.default.receiver]
+		}
+
+		// Add labels from discovery.kubernetes.
+		prometheus.relabel "default" {
+			rule {
+				replacement  = each["__meta_kubernetes_namespace"]
+				target_label = "k8s_namespace"
+				action       = "replace"
+			}
+
+			rule {
+				replacement  = each["__meta_kubernetes_pod_container_name"]
+				target_label = "k8s_pod_container_name"
+				action       = "replace"
+			}
+
+			forward_to = [prometheus.remote_write.mimir.receiver]
+		}
+
+		math.add "default" { }
+	}
+}
+
+prometheus.remote_write "mimir" {
+	endpoint {
+		url = "https://prometheus-xxx.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = sys.env("<PROMETHEUS_USERNAME>")
+			password = sys.env("<GRAFANA_CLOUD_API_KEY>")
+		}
+	}
+}
+
+foreach "outer" {
+	collection = ["/tmp", "/var"]
+	var        = "prefix"
+
+	template {
+		foreach "inner" {
+			collection = ["/log/*.log", "/log2/*.log"]
+			var        = "suffix"
+
+			template {
+				local.file_match "applogs" {
+					path_targets = [{"__path__" = prefix + suffix}]
+				}
+			}
+		}
+	}
+}
+
+import.string "string" {
+  content = ""
+}
+
+import.file "file" {
+  filename = "path/to/module/config.alloy"
+}
+
+import.git "git" {
+  repository = "https://github.com/grafana/alloy/module.git"
+  revision   = "main"
+  path       = "modules"
+}
+
+import.http "http" {
+  url = "http://server.com/module"
+}
+
+declare "shadow_me" {}
+
+declare "my_module" {
+	declare "shadow_me" {}
+
+	shadow_me "test" {}
+}
+
+shadow_me "test" {}
+
+// use "a" before declare in "b"
+declare "b" { a "test" {} }
+
+declare "a" { }
+
+declare "pods_and_nodes" {
+	discovery.kubernetes "pods" {
+		role = "pod"
+	}
+
+	discovery.kubernetes "nodes" {
+		role = "node"
+	}
+
+	export "kubernetes_resources" {
+		value = array.concat(
+			discovery.kubernetes.pods.targets,
+			discovery.kubernetes.nodes.targets,
+		)
+	}
+}
+
+pods_and_nodes "pan" {}
+
+prometheus.scrape "pan" {
+	targets = pods_and_nodes.pan.kubernetes_resources
+	forward_to = []
+}
+
+prometheus.scrape "stdlibexperimental" {
+  targets    = array.combine_maps([], [], [])
+  forward_to = array.combine_maps([], [], [])
+}

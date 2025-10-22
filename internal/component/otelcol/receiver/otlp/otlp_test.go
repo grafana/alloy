@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"gotest.tools/assert"
+
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
@@ -17,20 +19,19 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
-	"gotest.tools/assert"
 )
 
 // Test performs a basic integration test which runs the otelcol.receiver.otlp
 // component and ensures that it can receive and forward data.
 func Test(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -119,15 +120,6 @@ func makeTracesOutput(ch chan ptrace.Traces) *otelcol.ConsumerArguments {
 	}
 }
 
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
-}
-
 func TestUnmarshalDefault(t *testing.T) {
 	alloyCfg := `
 		http {}
@@ -143,22 +135,27 @@ func TestUnmarshalDefault(t *testing.T) {
 
 	expected := otlpreceiver.Config{
 		Protocols: otlpreceiver.Protocols{
-			GRPC: &configgrpc.ServerConfig{
+			GRPC: configoptional.Some[configgrpc.ServerConfig](configgrpc.ServerConfig{
 				NetAddr: confignet.AddrConfig{
 					Endpoint:  "0.0.0.0:4317",
 					Transport: "tcp",
 				},
 				ReadBufferSize: 524288,
-			},
-			HTTP: &otlpreceiver.HTTPConfig{
-				ServerConfig: &confighttp.ServerConfig{
+				Keepalive: configoptional.Some[configgrpc.KeepaliveServerConfig](configgrpc.KeepaliveServerConfig{
+					ServerParameters:  configoptional.Some[configgrpc.KeepaliveServerParameters](configgrpc.KeepaliveServerParameters{}),
+					EnforcementPolicy: configoptional.Some[configgrpc.KeepaliveEnforcementPolicy](configgrpc.KeepaliveEnforcementPolicy{}),
+				}),
+			}),
+			HTTP: configoptional.Some[otlpreceiver.HTTPConfig](otlpreceiver.HTTPConfig{
+				ServerConfig: confighttp.ServerConfig{
 					Endpoint:              "0.0.0.0:4318",
-					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate"},
+					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
+					CORS:                  configoptional.Some[confighttp.CORSConfig](confighttp.CORSConfig{}),
 				},
 				TracesURLPath:  "/v1/traces",
 				MetricsURLPath: "/v1/metrics",
 				LogsURLPath:    "/v1/logs",
-			},
+			}),
 		},
 	}
 

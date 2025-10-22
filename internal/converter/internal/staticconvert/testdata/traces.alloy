@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_remote_write_name" {
 	endpoint {
-		name = "remote_write_name-149bbd"
+		name = "remote_write_name-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -99,7 +99,7 @@ otelcol.processor.attributes "_0_default" {
 	}
 
 	output {
-		traces = [otelcol.exporter.loadbalancing._0_default.input, otelcol.exporter.logging._0_default.input, otelcol.connector.spanmetrics._0_default.input]
+		traces = [otelcol.exporter.loadbalancing._0_default.input, otelcol.exporter.debug._0_default.input, otelcol.connector.spanmetrics._0_default.input]
 	}
 }
 
@@ -142,7 +142,9 @@ otelcol.exporter.loadbalancing "_0_default" {
 	}
 }
 
-otelcol.exporter.logging "_0_default" { }
+otelcol.exporter.debug "_0_default" {
+	verbosity = "Basic"
+}
 
 otelcol.connector.spanmetrics "_0_default" {
 	histogram {
@@ -183,7 +185,7 @@ otelcol.processor.batch "_1_default" {
 	send_batch_max_size = 4096
 
 	output {
-		traces = [otelcol.exporter.otlp._1_0.input, otelcol.exporter.logging._1_default.input, otelcol.connector.spanmetrics._1_default.input]
+		traces = [otelcol.exporter.otlp._1_0.input, otelcol.exporter.debug._1_default.input, otelcol.connector.spanmetrics._1_default.input]
 	}
 }
 
@@ -220,7 +222,9 @@ otelcol.exporter.otlp "_1_0" {
 	}
 }
 
-otelcol.exporter.logging "_1_default" { }
+otelcol.exporter.debug "_1_default" {
+	verbosity = "Basic"
+}
 
 otelcol.connector.spanmetrics "_1_default" {
 	histogram {

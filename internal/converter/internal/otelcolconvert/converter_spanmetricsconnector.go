@@ -11,6 +11,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -49,20 +50,20 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		return nil
 	}
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
 	var exponential *spanmetrics.ExponentialHistogramConfig
-	if cfg.Histogram.Exponential != nil {
+	if cfg.Histogram.Exponential.HasValue() {
 		exponential = &spanmetrics.ExponentialHistogramConfig{
-			MaxSize: cfg.Histogram.Exponential.MaxSize,
+			MaxSize: cfg.Histogram.Exponential.Get().MaxSize,
 		}
 	}
 
 	var explicit *spanmetrics.ExplicitHistogramConfig
-	if cfg.Histogram.Explicit != nil {
+	if cfg.Histogram.Explicit.HasValue() {
 		explicit = &spanmetrics.ExplicitHistogramConfig{
-			Buckets: cfg.Histogram.Explicit.Buckets,
+			Buckets: cfg.Histogram.Explicit.Get().Buckets,
 		}
 	}
 
@@ -75,6 +76,22 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 	var dimensions []spanmetrics.Dimension
 	for _, d := range cfg.Dimensions {
 		dimensions = append(dimensions, spanmetrics.Dimension{
+			Name:    d.Name,
+			Default: d.Default,
+		})
+	}
+
+	var callsDimensions []spanmetrics.Dimension
+	for _, d := range cfg.CallsDimensions {
+		callsDimensions = append(callsDimensions, spanmetrics.Dimension{
+			Name:    d.Name,
+			Default: d.Default,
+		})
+	}
+
+	var histogramDimensions []spanmetrics.Dimension
+	for _, d := range cfg.Histogram.Dimensions {
+		histogramDimensions = append(histogramDimensions, spanmetrics.Dimension{
 			Name:    d.Name,
 			Default: d.Default,
 		})
@@ -95,6 +112,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 
 	return &spanmetrics.Arguments{
 		Dimensions:             dimensions,
+		CallsDimensions:        callsDimensions,
 		ExcludeDimensions:      cfg.ExcludeDimensions,
 		DimensionsCacheSize:    cfg.DimensionsCacheSize,
 		AggregationTemporality: spanmetrics.FromOTelAggregationTemporality(cfg.AggregationTemporality),
@@ -103,12 +121,14 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 			Unit:        cfg.Histogram.Unit.String(),
 			Exponential: exponential,
 			Explicit:    explicit,
+			Dimensions:  histogramDimensions,
 		},
 		MetricsFlushInterval:         cfg.MetricsFlushInterval,
 		MetricsExpiration:            cfg.MetricsExpiration,
 		TimestampCacheSize:           timestampCacheSize,
 		Namespace:                    cfg.Namespace,
 		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
+		AggregationCardinalityLimit:  cfg.AggregationCardinalityLimit,
 		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,
 		Exemplars: spanmetrics.ExemplarsConfig{
 			Enabled:         cfg.Exemplars.Enabled,
@@ -118,6 +138,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 			Enabled:    cfg.Events.Enabled,
 			Dimensions: eventDimensions,
 		},
+		IncludeInstrumentationScope: cfg.IncludeInstrumentationScope,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

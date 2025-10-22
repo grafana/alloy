@@ -14,10 +14,6 @@ ARG GO_RUNTIME=mustoverride
 # We retrieve many of our dependencies by using various smaller containers.
 #
 
-# Dependency: golangci-lint (for linting)
-FROM alpine as golangci
-RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.54.2
-
 # Dependency: docker (for building images)
 FROM alpine:3.17 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
@@ -58,24 +54,12 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
 # dependencies.
 FROM rfratto/viceroy:v0.4.0
 
-# Install NodeJS LTS. This is needed because the most recent version of NodeJS
-# from official Debian packages is v12, and we need version v18.
-#
-# This must be done before installing other dependencies, otherwise nodesource
-# will fail on installing NodeJS for all platforms instead of just our host
-# platform.
-# Source: https://github.com/nodesource/distributions#installation-instructions
-
-RUN  apt-get update && apt-get install -qy ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings  \
- &&  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
- &&  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
- &&  apt-get update && apt-get install -qy nodejs \
- &&  rm -rf /var/lib/apt/lists/*
-
-# Install Yarn.
-#
-# See https://yarnpkg.com/getting-started/install#nodejs-1610
-RUN corepack enable
+# Fix apt sources - restrict main bullseye to supported architectures
+RUN rm -f /etc/apt/sources.list \
+ && rm -rf /etc/apt/sources.list.d/* \
+ && echo "deb [arch=amd64,arm64,armhf,i386] https://ftp.debian.org/debian bullseye main" > /etc/apt/sources.list \
+ && echo "deb https://ftp.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list \
+ && echo "deb https://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list
 
 # Install other dependencies.
 #
@@ -90,13 +74,19 @@ RUN apt-get update                                \
  && gem install --no-document fpm                 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=golangci /bin/golangci-lint                  /usr/local/bin
 COPY --from=docker   /usr/bin/docker                     /usr/bin/docker
 COPY --from=docker   /usr/libexec/docker/cli-plugins     /usr/libexec/docker/cli-plugins
 COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
 COPY --from=nsis     /usr/share/nsis/Plugins/x86-unicode /usr/share/nsis/Plugins/x86-unicode
 COPY --from=golang   /usr/local/go                       /usr/local/go
 COPY --from=golang   /go/bin                             /go/bin
+
+# Install Node.js 20 directly from NodeSource repository
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+  && apt-get install -y nodejs \
+  && corepack enable \
+  && node -v \
+  && yarn -v
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository

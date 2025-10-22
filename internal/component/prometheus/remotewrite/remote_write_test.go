@@ -1,7 +1,6 @@
 package remotewrite_test
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -215,7 +214,7 @@ func sendMetric(
 ) {
 
 	rwExports := tc.Exports().(remotewrite.Exports)
-	appender := rwExports.Receiver.Appender(context.Background())
+	appender := rwExports.Receiver.Appender(t.Context())
 	_, err := appender.Append(0, labels, time, value)
 	require.NoError(t, err)
 	require.NoError(t, appender.Commit())

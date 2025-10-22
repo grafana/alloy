@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/grafana/alloy/internal/featuregate"
 )
 
 var testLabelsYaml = ` stage.json {
@@ -40,7 +40,7 @@ var testLabelsLogLineWithMissingKey = `
 `
 
 func TestLabelsPipeline_Labels(t *testing.T) {
-	pl, err := NewPipeline(util_log.Logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), nil, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 
 	_ = processEntries(pl, newEntry(nil, nil, testLabelsLogLineWithMissingKey, time.Now()))
 
-	expectedLog := "level=debug msg=\"failed to convert extracted label value to string\" err=\"Can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug msg=\"failed to convert extracted label value to string\" err=\"can't convert <nil> to string\" type=null"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -91,9 +91,9 @@ func TestLabels(t *testing.T) {
 		},
 		"invalid label name": {
 			config: LabelsConfig{
-				Values: map[string]*string{"#*FDDS*": nil},
+				Values: map[string]*string{"\xfd": nil},
 			},
-			err:          fmt.Errorf(ErrInvalidLabelName, "#*FDDS*"),
+			err:          fmt.Errorf(ErrInvalidLabelName, "\xfd"),
 			expectedCfgs: nil,
 		},
 		"label value is set from name": {
@@ -175,7 +175,7 @@ func TestLabelStage_Process(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newLabelStage(util_log.Logger, test.config)
+			st, err := newLabelStage(log.NewNopLogger(), test.config)
 			if err != nil {
 				t.Fatal(err)
 			}

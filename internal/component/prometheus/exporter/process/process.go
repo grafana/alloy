@@ -3,6 +3,7 @@ package process
 import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/common"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/process_exporter"
@@ -20,30 +21,34 @@ func init() {
 	})
 }
 
-func createIntegration(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createIntegration(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
+	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
+	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for process exporter
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 // DefaultArguments holds the default arguments for the prometheus.exporter.process
 // component.
 var DefaultArguments = Arguments{
-	ProcFSPath: "/proc",
-	Children:   true,
-	Threads:    true,
-	SMaps:      true,
-	Recheck:    false,
+	ProcFSPath:        "/proc",
+	Children:          true,
+	Threads:           true,
+	SMaps:             true,
+	Recheck:           false,
+	RemoveEmptyGroups: false,
 }
 
 // Arguments configures the prometheus.exporter.process component
 type Arguments struct {
 	ProcessExporter []MatcherGroup `alloy:"matcher,block,optional"`
 
-	ProcFSPath string `alloy:"procfs_path,attr,optional"`
-	Children   bool   `alloy:"track_children,attr,optional"`
-	Threads    bool   `alloy:"track_threads,attr,optional"`
-	SMaps      bool   `alloy:"gather_smaps,attr,optional"`
-	Recheck    bool   `alloy:"recheck_on_scrape,attr,optional"`
+	ProcFSPath        string `alloy:"procfs_path,attr,optional"`
+	Children          bool   `alloy:"track_children,attr,optional"`
+	Threads           bool   `alloy:"track_threads,attr,optional"`
+	SMaps             bool   `alloy:"gather_smaps,attr,optional"`
+	Recheck           bool   `alloy:"recheck_on_scrape,attr,optional"`
+	RemoveEmptyGroups bool   `alloy:"remove_empty_groups,attr,optional"`
 }
 
 // MatcherGroup taken and converted to Alloy from github.com/ncabatoff/process-exporter/config

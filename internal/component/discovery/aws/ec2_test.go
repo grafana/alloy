@@ -9,6 +9,7 @@ import (
 	"gotest.tools/assert"
 
 	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func TestConvert(t *testing.T) {
@@ -19,6 +20,12 @@ func TestConvert(t *testing.T) {
 	httpClientConfig.ProxyConfig = &config.ProxyConfig{
 		ProxyURL: config.URL{
 			URL: u,
+		},
+	}
+
+	httpClientConfig.HTTPHeaders = &config.Headers{
+		Headers: map[string][]alloytypes.Secret{
+			"foo": {"foobar"},
 		},
 	}
 
@@ -34,4 +41,7 @@ func TestConvert(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "us-east-1", promArgs.Region)
 	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }

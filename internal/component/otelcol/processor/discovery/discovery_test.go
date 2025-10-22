@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
 )
 
 func testRunProcessor(t *testing.T, processorConfig string, testSignal processortest.Signal) {
@@ -411,7 +411,7 @@ func Test_PodAssociationLabels(t *testing.T) {
 
 		resourceLabel := podAssociationLabel
 		if resourceLabel == promsdconsumer.PodAssociationHostnameLabel {
-			resourceLabel = semconv.AttributeHostName
+			resourceLabel = string(semconv.HostNameKey)
 		}
 		var inputTrace = fmt.Sprintf(`{
 			"resourceSpans": [{

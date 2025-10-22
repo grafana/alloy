@@ -1,13 +1,13 @@
 loki.source.file "test" {
   targets    = [
-    {__path__ = "logs.txt"},
+    {__path__ = "/etc/alloy/logs.txt"},
   ]
   forward_to = [loki.write.test.receiver]
 }
 
 loki.write "test" {
   endpoint {
-    url = "http://localhost:3100/loki/api/v1/push"
+    url = "http://loki:3100/loki/api/v1/push"
   }
   external_labels = {
     test_name = "read_log_file",

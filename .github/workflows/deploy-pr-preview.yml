@@ -1,0 +1,41 @@
+name: Deploy pr preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - closed
+    paths:
+      - "docs/sources/**"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-pr-preview:
+    if: "!github.event.pull_request.head.repo.fork"
+    uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@main
+    # ^ We can't pin a hash for this action because deploy-preview's checkout step relies on it
+    # having been called against the main branch
+    permissions:
+      contents: read # Clone repositories.
+      id-token: write # Fetch Vault secrets.
+      pull-requests: write # Create or update PR comments.
+      statuses: write # Update GitHub status check with deploy preview link.
+    with:
+      branch: ${{ github.head_ref }}
+      event_number: ${{ github.event.number }}
+      repo: alloy
+      sha: ${{ github.event.pull_request.head.sha }}
+      sources: |
+        [
+          {
+            "index_file": "content/docs/alloy/_index.md",
+            "relative_prefix": "/docs/alloy/latest/",
+            "repo": "alloy",
+            "source_directory": "docs/sources",
+            "website_directory": "content/docs/alloy/latest"
+          }
+        ]
+      title: ${{ github.event.pull_request.title }}

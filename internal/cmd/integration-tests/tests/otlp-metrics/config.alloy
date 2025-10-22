@@ -3,6 +3,7 @@ otelcol.receiver.otlp "otlp_metrics" {
 
   output {
     metrics = [otelcol.processor.attributes.otlp_metrics.input, otelcol.exporter.prometheus.otlp_to_prom_metrics.input]
+    traces = [otelcol.processor.attributes.otlp_metrics.input]
   }
 }
 
@@ -14,13 +15,23 @@ otelcol.processor.attributes "otlp_metrics" {
   }
 
   output {
+    metrics = [otelcol.processor.batch.otlp_metrics.input]
+    traces = [otelcol.processor.batch.otlp_metrics.input]
+  }
+}
+
+otelcol.processor.batch "otlp_metrics" {
+  output {
     metrics = [otelcol.exporter.otlphttp.otlp_metrics.input]
+	  traces = [otelcol.exporter.otlphttp.otlp_metrics.input]
   }
 }
 
 otelcol.exporter.otlphttp "otlp_metrics" {
+	metrics_endpoint = "http://mimir:9009/otlp/v1/metrics"
+	traces_endpoint = "http://tempo:4318/v1/traces"
   client {
-    endpoint = "http://localhost:9009/otlp"
+	  endpoint = "ignore"
     tls {
       insecure             = true
       insecure_skip_verify = true
@@ -34,7 +45,7 @@ otelcol.exporter.prometheus "otlp_to_prom_metrics" {
 
 prometheus.remote_write "otlp_to_prom_metrics" {
   endpoint {
-    url = "http://localhost:9009/api/v1/push"
+    url = "http://mimir:9009/api/v1/push"
     send_native_histograms = true
     metadata_config {
         send_interval = "1s"
@@ -45,5 +56,23 @@ prometheus.remote_write "otlp_to_prom_metrics" {
   }
   external_labels = {
     test_name = "otlp_to_prom_metrics",
+  }
+}
+
+prometheus.exporter.self "otlp_integration" {}
+
+prometheus.scrape "otlp_integration" {
+  targets = prometheus.exporter.self.otlp_integration.targets
+  forward_to = [prometheus.remote_write.otlp_integration.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "otlp_integration" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+  external_labels = {
+    test_name = "otlp_integration",
   }
 }

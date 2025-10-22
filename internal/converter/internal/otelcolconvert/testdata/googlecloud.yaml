@@ -1,0 +1,105 @@
+receivers:
+  googlecloudpubsub:
+    project: otel-project
+    subscription: projects/otel-project/subscriptions/otlp-logs
+    encoding: otlp_proto_trace
+    user_agent: alloy
+    compression: gzip
+    insecure: true
+    ignore_encoding_error: true
+    timeout: "10s"
+
+exporters:
+  googlecloud:
+    project: my-project-id
+    destination_project_quota: true
+    user_agent: my-user-agent
+    impersonate:
+      target_principal: my-principal@example.com
+      subject: my-jwt-sub
+      delegates:
+        - foo@example.com
+        - bar@example.com
+    metric:
+      prefix: workload.example.com
+      endpoint: monitoring.example.com:443
+      compression: gzip
+      grpc_pool_size: 6
+      use_insecure: true
+      known_domains:
+        - known.example.com
+      skip_create_descriptor: true
+      instrumentation_library_labels: false
+      create_service_timeseries: true
+      create_metric_descriptor_buffer_size: 57
+      service_resource_labels: false
+      resource_filters:
+        - prefix: my-prefix
+          regex: my-regex
+      cumulative_normalization: false
+      sum_of_squared_deviation: true
+      experimental_wal_config:
+        directory: /path/to/dir
+        max_backoff: 2h
+    trace:
+      endpoint: cloudtrace.example.com:443
+      grpc_pool_size: 7
+      use_insecure: true
+      attribute_mappings:
+        - key: my-key
+          replacement: my-replacement
+    log:
+      endpoint: logging.example.com:443
+      compression: gzip
+      grpc_pool_size: 8
+      use_insecure: true
+      default_log_name: my-exported-log
+      resource_filters:
+        - prefix: prefix-2
+          regex: regex-2
+    sending_queue:
+      enabled: true
+      num_consumers: 123
+      queue_size: 1234
+
+  googlecloudpubsub:
+    project: my-project-id
+    user_agent: my-user-agent
+    topic: projects/foo-bar/topics/custom-topic
+    compression: gzip
+    watermark:
+      behavior: earliest
+      allowed_drift: 10s
+    endpoint: https://www.googleapis.com/
+    insecure: true
+    ordering:
+      enabled: true
+      from_resource_attribute: attr
+      remove_resource_attribute: true
+    sending_queue:
+      enabled: true
+      num_consumers: 57
+      queue_size: 567
+      sizer: "requests"
+    retry_on_failure:
+      enabled: true
+      initial_interval: "10s"
+      max_interval: "1m"
+      max_elapsed_time: "10m"
+      multiplier: 2
+    timeout: 15s
+
+service:
+  pipelines:
+    traces:
+      receivers: [googlecloudpubsub]
+      processors: []
+      exporters: [googlecloud, googlecloudpubsub]
+    metrics:
+      receivers: [googlecloudpubsub]
+      processors: []
+      exporters: [googlecloud, googlecloudpubsub]
+    logs:
+      receivers: [googlecloudpubsub]
+      processors: []
+      exporters: [googlecloud, googlecloudpubsub]

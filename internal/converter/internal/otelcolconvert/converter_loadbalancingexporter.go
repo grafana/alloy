@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
@@ -36,10 +37,13 @@ func (loadbalancingExporterConverter) ConvertAndAppend(state *State, id componen
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*loadbalancingexporter.Config).Protocol.OTLP.ClientConfig.Auth.Get().AuthenticatorID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(*cfg.(*loadbalancingexporter.Config).QueueSettings.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
-		return val
+		return common.GetAlloyTypesOverrideHook()(val)
 	}
 
 	args := toLoadbalancingExporter(cfg.(*loadbalancingexporter.Config))
@@ -63,6 +67,9 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 		Protocol:   toProtocol(cfg.Protocol),
 		Resolver:   toResolver(cfg.Resolver),
 		RoutingKey: routingKey,
+		Timeout:    cfg.TimeoutSettings.Timeout,
+		Queue:      toQueueArguments(cfg.QueueSettings),
+		Retry:      toRetryArguments(cfg.BackOffConfig),
 
 		DebugMetrics: common.DefaultValue[loadbalancing.Arguments]().DebugMetrics,
 	}
@@ -70,12 +77,12 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 
 func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 	var a *auth.Handler
-	if cfg.OTLP.Auth != nil {
+	if cfg.OTLP.ClientConfig.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 
 	// Set default value for `balancer_name` to sync up with upstream's
-	balancerName := cfg.OTLP.BalancerName
+	balancerName := cfg.OTLP.ClientConfig.BalancerName
 	if balancerName == "" {
 		balancerName = otelcol.DefaultBalancerName
 	}
@@ -85,23 +92,23 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 		// otlpexporter, but otelcol.exporter.loadbalancing uses custom types to
 		// remove unwanted fields.
 		OTLP: loadbalancing.OtlpConfig{
-			Timeout: cfg.OTLP.Timeout,
+			Timeout: cfg.OTLP.TimeoutConfig.Timeout,
 			Queue:   toQueueArguments(cfg.OTLP.QueueConfig),
 			Retry:   toRetryArguments(cfg.OTLP.RetryConfig),
 			Client: loadbalancing.GRPCClientArguments{
-				Compression: otelcol.CompressionType(cfg.OTLP.Compression),
+				Compression: otelcol.CompressionType(cfg.OTLP.ClientConfig.Compression),
 
-				TLS:       toTLSClientArguments(cfg.OTLP.TLSSetting),
-				Keepalive: toKeepaliveClientArguments(cfg.OTLP.Keepalive),
+				TLS:       toTLSClientArguments(cfg.OTLP.ClientConfig.TLS),
+				Keepalive: toKeepaliveClientArguments(cfg.OTLP.ClientConfig.Keepalive.Get()),
 
-				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ReadBufferSize),
-				WriteBufferSize: units.Base2Bytes(cfg.OTLP.WriteBufferSize),
-				WaitForReady:    cfg.OTLP.WaitForReady,
-				Headers:         toHeadersMap(cfg.OTLP.Headers),
+				ReadBufferSize:  units.Base2Bytes(cfg.OTLP.ClientConfig.ReadBufferSize),
+				WriteBufferSize: units.Base2Bytes(cfg.OTLP.ClientConfig.WriteBufferSize),
+				WaitForReady:    cfg.OTLP.ClientConfig.WaitForReady,
+				Headers:         toHeadersMap(cfg.OTLP.ClientConfig.Headers),
 				BalancerName:    balancerName,
-				Authority:       cfg.OTLP.Authority,
+				Authority:       cfg.OTLP.ClientConfig.Authority,
 
-				Auth: a,
+				Authentication: a,
 			},
 		},
 	}
@@ -109,10 +116,10 @@ func toProtocol(cfg loadbalancingexporter.Protocol) loadbalancing.Protocol {
 
 func toResolver(cfg loadbalancingexporter.ResolverSettings) loadbalancing.ResolverSettings {
 	return loadbalancing.ResolverSettings{
-		Static:      toStaticResolver(cfg.Static),
-		DNS:         toDNSResolver(cfg.DNS),
-		Kubernetes:  toKubernetesResolver(cfg.K8sSvc),
-		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap),
+		Static:      toStaticResolver(cfg.Static.Get()),
+		DNS:         toDNSResolver(cfg.DNS.Get()),
+		Kubernetes:  toKubernetesResolver(cfg.K8sSvc.Get()),
+		AWSCloudMap: toAWSCloudMap(cfg.AWSCloudMap.Get()),
 	}
 }
 
@@ -145,9 +152,10 @@ func toKubernetesResolver(cfg *loadbalancingexporter.K8sSvcResolver) *loadbalanc
 	}
 
 	return &loadbalancing.KubernetesResolver{
-		Service: cfg.Service,
-		Ports:   cfg.Ports,
-		Timeout: cfg.Timeout,
+		Service:         cfg.Service,
+		Ports:           cfg.Ports,
+		Timeout:         cfg.Timeout,
+		ReturnHostnames: cfg.ReturnHostnames,
 	}
 }
 

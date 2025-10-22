@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -65,7 +64,7 @@ func TestLokiClient_X(t *testing.T) {
 		},
 	} {
 		t.Run(tc.test, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			require.NoError(t, client.DeleteRuleGroup(ctx, tc.namespace, tc.name))
 
 			req := <-requestCh

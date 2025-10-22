@@ -3,31 +3,37 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.dnsmasq/ # /docs/alloy/latest/reference/components/prometheus.exporter.dnsmasq/
 description: Learn about prometheus.exporter.dnsmasq
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.dnsmasq
 ---
 
-# prometheus.exporter.dnsmasq
+# `prometheus.exporter.dnsmasq`
 
-The `prometheus.exporter.dnsmasq` component embeds
-[dnsmasq_exporter](https://github.com/google/dnsmasq_exporter) for collecting statistics from a dnsmasq server.
+The `prometheus.exporter.dnsmasq` component embeds the [`dnsmasq_exporter`](https://github.com/google/dnsmasq_exporter) for collecting statistics from a dnsmasq server.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.dnsmasq "LABEL" {
+prometheus.exporter.dnsmasq "<LABEL>" {
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-All arguments are optional. Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.dnsmasq`:
 
 | Name            | Type     | Description                                          | Default                          | Required |
 | --------------- | -------- | ---------------------------------------------------- | -------------------------------- | -------- |
 | `address`       | `string` | The address of the dnsmasq server.                   | `"localhost:53"`                 | no       |
-| `leases_file`   | `string` | The path to the dnsmasq leases file.                 | `"/var/lib/misc/dnsmasq.leases"` | no       |
 | `expose_leases` | `bool`   | Expose dnsmasq leases as metrics (high cardinality). | `false`                          | no       |
+| `leases_file`   | `string` | The path to the dnsmasq leases file.                 | `"/var/lib/misc/dnsmasq.leases"` | no       |
+
+## Blocks
+
+The `prometheus.exporter.dnsmasq` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -35,24 +41,22 @@ All arguments are optional. Omitted fields take their default values.
 
 ## Component health
 
-`prometheus.exporter.dnsmasq` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.dnsmasq` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.dnsmasq` does not expose any component-specific
+`prometheus.exporter.dnsmasq` doesn't expose any component-specific
 debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.dnsmasq` does not expose any component-specific
+`prometheus.exporter.dnsmasq` doesn't expose any component-specific
 debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.dnsmasq`:
+The following example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.dnsmasq`:
 
 ```alloy
 prometheus.exporter.dnsmasq "example" {
@@ -67,11 +71,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -79,9 +83,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

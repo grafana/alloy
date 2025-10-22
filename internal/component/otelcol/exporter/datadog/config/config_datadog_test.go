@@ -1,5 +1,4 @@
-//go:build !freebsd
-
+//go:build !freebsd && !openbsd
 
 package datadog_config_test
 
@@ -175,6 +174,44 @@ func TestUnmarshalDatadogMetricConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var sl datadog_config.DatadogMetricsArguments
+			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestUnmarshalDatadogLogsConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		cfg       string
+		expectErr bool
+	}{
+		{
+			name: "valid logs arguments config",
+			cfg: `
+				compression_level = 3
+				use_compression = true
+				batch_wait = 2
+				endpoint = "test"
+			`,
+		},
+		{
+			name: "invalid logs config",
+			cfg: `
+				compression_level = "9"
+				use_compression = "true"
+				`,
+			expectErr: true,
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var sl datadog_config.DatadogLogsArguments
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)

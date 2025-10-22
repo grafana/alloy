@@ -23,8 +23,9 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression string  `alloy:"expression,attr"`
-	Source     *string `alloy:"source,attr,optional"`
+	Expression       string  `alloy:"expression,attr"`
+	Source           *string `alloy:"source,attr,optional"`
+	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
 // validateRegexConfig validates the config and return a regex
@@ -83,13 +84,17 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 
 	if r.config.Source != nil {
 		if _, ok := extracted[*r.config.Source]; !ok {
-			level.Debug(r.logger).Log("msg", "source does not exist in the set of extracted values", "source", *r.config.Source)
+			if Debug {
+				level.Debug(r.logger).Log("msg", "source does not exist in the set of extracted values", "source", *r.config.Source)
+			}
 			return
 		}
 
 		value, err := getString(extracted[*r.config.Source])
 		if err != nil {
-			level.Debug(r.logger).Log("msg", "failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
+			if Debug {
+				level.Debug(r.logger).Log("msg", "failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
+			}
 			return
 		}
 
@@ -97,22 +102,57 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]interfa
 	}
 
 	if input == nil {
-		level.Debug(r.logger).Log("msg", "cannot parse a nil entry")
+		if Debug {
+			level.Debug(r.logger).Log("msg", "cannot parse a nil entry")
+		}
 		return
 	}
 
 	match := r.expression.FindStringSubmatch(*input)
 	if match == nil {
-		level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+		if Debug {
+			level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+		}
 		return
 	}
 
 	for i, name := range r.expression.SubexpNames() {
 		if i != 0 && name != "" {
 			extracted[name] = match[i]
+			if r.config.LabelsFromGroups {
+				labelName := model.LabelName(name)
+				labelValue := model.LabelValue(match[i])
+
+				// TODO: add support for different validation schemes.
+				//nolint:staticcheck
+				if !labelName.IsValid() {
+					if Debug {
+						level.Debug(r.logger).Log("msg", "invalid label name from regex capture group", "labelName", labelName)
+					}
+					continue
+				}
+
+				if !labelValue.IsValid() {
+					if Debug {
+						level.Debug(r.logger).Log("msg", "invalid label value from regex capture group", "labelName", labelName, "labelValue", labelValue)
+					}
+					continue
+				}
+
+				oldLabelValue, ok := labels[labelName]
+
+				// Label from capture group will override existing label with same name
+				if Debug && ok {
+					level.Debug(r.logger).Log("msg", "label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
+				}
+
+				labels[labelName] = labelValue
+			}
 		}
 	}
-	level.Debug(r.logger).Log("msg", "extracted data debug in regex stage", "extracted data", fmt.Sprintf("%v", extracted))
+	if Debug {
+		level.Debug(r.logger).Log("msg", "extracted data debug in regex stage", "extracted data", fmt.Sprintf("%v", extracted))
+	}
 }
 
 // Name implements Stage

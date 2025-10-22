@@ -3,38 +3,45 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.github/ # /docs/alloy/latest/reference/components/prometheus.exporter.github/
 description: Learn about prometheus.exporter.github
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.github
 ---
 
-# prometheus.exporter.github
+# `prometheus.exporter.github`
 
-The `prometheus.exporter.github` component embeds
-[github_exporter](https://github.com/githubexporter/github-exporter) for collecting statistics from GitHub.
+The `prometheus.exporter.github` component embeds the [`github_exporter`](https://github.com/githubexporter/github-exporter) for collecting statistics from GitHub.
 
 ## Usage
 
 ```alloy
-prometheus.exporter.github "LABEL" {
+prometheus.exporter.github "<LABEL>" {
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-All arguments are optional. Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.github`:
 
-| Name             | Type           | Description                                                      | Default                  | Required |
-| ---------------- | -------------- | ---------------------------------------------------------------- | ------------------------ | -------- |
-| `api_url`        | `string`       | The full URI of the GitHub API.                                  | `https://api.github.com` | no       |
-| `repositories`   | `list(string)` | GitHub repositories for which to collect metrics.                |                          | no       |
-| `organizations`  | `list(string)` | GitHub organizations for which to collect metrics.               |                          | no       |
-| `users`          | `list(string)` | A list of GitHub users for which to collect metrics.             |                          | no       |
-| `api_token`      | `secret`       | API token to use to authenticate against GitHub.                 |                          | no       |
-| `api_token_file` | `string`       | File containing API token to use to authenticate against GitHub. |                          | no       |
+| Name             | Type           | Description                                                      | Default                    | Required |
+| ---------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
+| `api_token_file` | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
+| `api_token`      | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
+| `api_url`        | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
+| `organizations`  | `list(string)` | GitHub organizations for which to collect metrics.               |                            | no       |
+| `repositories`   | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
+| `users`          | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
 
-GitHub uses an aggressive rate limit for unauthenticated requests based on IP address. To allow more API requests, it is recommended to configure either `api_token` or `api_token_file` to authenticate against GitHub.
+GitHub uses an aggressive rate limit for unauthenticated requests based on IP address.
+To allow more API requests, we recommend that you configure either `api_token` or `api_token_file` to authenticate against GitHub.
 
 When provided, `api_token_file` takes precedence over `api_token`.
+
+## Blocks
+
+The `prometheus.exporter.github` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -42,24 +49,20 @@ When provided, `api_token_file` takes precedence over `api_token`.
 
 ## Component health
 
-`prometheus.exporter.github` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.github` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.github` does not expose any component-specific
-debug information.
+`prometheus.exporter.github` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.github` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.github` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.github`:
+The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.github`:
 
 ```alloy
 prometheus.exporter.github "example" {
@@ -75,11 +78,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = PROMETHEUS_REMOTE_WRITE_URL
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = USERNAME
-      password = PASSWORD
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -87,9 +90,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- `PROMETHEUS_REMOTE_WRITE_URL`: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- `USERNAME`: The username to use for authentication to the remote_write API.
-- `PASSWORD`: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

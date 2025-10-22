@@ -5,15 +5,20 @@ on:
     paths:
       - 'tools/build-image/windows/**'
 
+permissions:
+  contents: read
+
 jobs:
   check-windows-build-image:
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Create test Windows build image
-        uses: mr-smithers-excellent/docker-build-push@v6
+        uses: mr-smithers-excellent/docker-build-push@a4dc055191e5c80b01c04d2525d545efb5712b2b # v6.7
         with:
           image: grafana/alloy-build-image
           tags: latest

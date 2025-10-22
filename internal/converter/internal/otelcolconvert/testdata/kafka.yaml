@@ -4,6 +4,19 @@ receivers:
     protocol_version: 2.0.0
     session_timeout: 11s
     heartbeat_interval: 4s
+    min_fetch_size: 2
+    default_fetch_size: 1048575
+    max_fetch_size: 2000000
+    max_fetch_wait: 11s
+    group_rebalance_strategy: roundrobin
+    group_instance_id: fakeinstanceid
+    error_backoff:
+      enabled: true
+      initial_interval: 1s
+      randomization_factor: 0.1
+      multiplier: 1
+      max_interval: 1s
+      max_elapsed_time: 1m
     auth:
       plain_text:
         username: fakeusername
@@ -11,11 +24,10 @@ receivers:
       sasl:
         username: fakeusername
         password: fakepassword
-        mechanism: AWS_MSK_IAM
+        mechanism: AWS_MSK_IAM_OAUTHBEARER
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:
@@ -35,7 +47,6 @@ exporters:
     partition_traces_by_id: true
     partition_metrics_by_resource_attributes: true
     timeout: 11s
-    encoding: otlp_json
     auth:
       plain_text:
         username: fakeusername
@@ -47,7 +58,6 @@ exporters:
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:
@@ -57,9 +67,11 @@ exporters:
         realm: myrealm
     producer:
       max_message_bytes: 1000001
-      compression: snappy
+      compression: gzip
       required_acks: 0
       flush_max_messages: 11
+      compression_params:
+        level: 9
 
 service:
   pipelines:

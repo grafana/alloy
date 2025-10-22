@@ -1,7 +1,6 @@
 package write
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -10,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	loki_util "github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -137,10 +136,10 @@ func TestWriteToSingleEndpoint(t *testing.T) {
 
 func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	// Set up the server that will receive the log entry, and expose it on ch.
-	ch := make(chan logproto.PushRequest)
+	ch := make(chan push.PushRequest)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
-		err := loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
+		var pushReq push.PushRequest
+		err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -177,7 +176,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	// Send two log entries to the component's receiver
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Now(),
 			Line:      "very important log",
 		},
@@ -189,16 +188,21 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	// Make sure the log entries were received correctly.
-	select {
-	case <-time.After(2 * time.Second):
-		require.FailNow(t, "failed waiting for logs")
-	case req := <-ch:
-		require.Len(t, req.Streams, 1)
-		require.Equal(t, req.Streams[0].Labels, logEntry.Labels.String())
-		require.Len(t, req.Streams[0].Entries, 2)
-		require.Equal(t, req.Streams[0].Entries[0].Line, logEntry.Line)
-		require.Equal(t, req.Streams[0].Entries[1].Line, logEntry.Line)
+	entries := []push.Entry{}
+LOOP:
+	for {
+		select {
+		case <-time.After(500 * time.Millisecond):
+			break LOOP
+		case req := <-ch:
+			require.Len(t, req.Streams, 1)
+			require.Equal(t, req.Streams[0].Labels, logEntry.Labels.String())
+			entries = append(entries, req.Streams[0].Entries...)
+		}
 	}
+	require.Len(t, entries, 2)
+	require.Equal(t, entries[0].Line, logEntry.Entry.Line)
+	require.Equal(t, entries[1].Line, logEntry.Entry.Line)
 }
 
 func TestEntrySentToTwoWriteComponents(t *testing.T) {
@@ -214,15 +218,15 @@ func TestEntrySentToTwoWriteComponents(t *testing.T) {
 }
 
 func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
-	ch1, ch2 := make(chan logproto.PushRequest), make(chan logproto.PushRequest)
+	ch1, ch2 := make(chan push.PushRequest), make(chan push.PushRequest)
 	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+		var pushReq push.PushRequest
+		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch1 <- pushReq
 	}))
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+		var pushReq push.PushRequest
+		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
 		ch2 <- pushReq
 	}))
 	defer srv1.Close()
@@ -271,8 +275,8 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	require.NoError(t, err)
 
 	go func() {
-		err := ctrl.Run(context.Background(), lsf.Arguments{
-			Targets: []discovery.Target{{"__path__": f.Name(), "somelbl": "somevalue"}},
+		err := ctrl.Run(t.Context(), lsf.Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
@@ -335,7 +339,7 @@ func BenchmarkLokiWrite(b *testing.B) {
 func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *Arguments)) {
 	// Set up the server that will receive the log entry, and expose it on ch.
 	var seenLines atomic.Int64
-	ch := make(chan logproto.PushRequest)
+	ch := make(chan push.PushRequest)
 
 	// just count seenLines for each entry received
 	go func() {
@@ -349,8 +353,8 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 	}()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq logproto.PushRequest
-		err := loki_util.ParseProtoReader(context.Background(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
+		var pushReq push.PushRequest
+		err := loki_util.ParseProtoReader(b.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -391,7 +395,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		for j := 0; j < tc.linesCount; j++ {
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%tc.seriesCount))},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      "very important log",
 				},

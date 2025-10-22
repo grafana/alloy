@@ -23,7 +23,7 @@ Strings resulting from calls to `convert.nonsensitive` are displayed in plain te
 
 ### Examples
 
-```
+```alloy
 // Assuming `sensitive_value` is a secret:
 
 > sensitive_value

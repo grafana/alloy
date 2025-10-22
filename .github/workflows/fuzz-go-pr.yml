@@ -1,9 +1,12 @@
 name: Run Go fuzz tests (PR)
 on:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   fuzz:
     uses: ./.github/workflows/fuzz-go.yml
     with:
       fuzz-time: 5m
-

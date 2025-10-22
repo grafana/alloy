@@ -14,6 +14,9 @@ type Arguments struct {
 
 	TmpDir          string          `alloy:"tmp_dir,attr,optional"`
 	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
+
+	// undocumented
+	Dist string `alloy:"dist,attr,optional"`
 }
 
 type ProfilingConfig struct {
@@ -24,10 +27,12 @@ type ProfilingConfig struct {
 	CPU        bool          `alloy:"cpu,attr,optional"`
 	Event      string        `alloy:"event,attr,optional"`
 	PerThread  bool          `alloy:"per_thread,attr,optional"`
+	LogLevel   string        `alloy:"log_level,attr,optional"`
+	Quiet      bool          `alloy:"quiet,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
-	*rc = defaultArguments()
+	*rc = DefaultArguments()
 	type config Arguments
 	return f((*config)(rc))
 }
@@ -41,7 +46,7 @@ func (arg *Arguments) Validate() error {
 	}
 }
 
-func defaultArguments() Arguments {
+func DefaultArguments() Arguments {
 	return Arguments{
 		TmpDir: "/tmp",
 		ProfilingConfig: ProfilingConfig{
@@ -52,6 +57,8 @@ func defaultArguments() Arguments {
 			CPU:        true,
 			Event:      "itimer",
 			PerThread:  false,
+			LogLevel:   "INFO",
+			Quiet:      false,
 		},
 	}
 }

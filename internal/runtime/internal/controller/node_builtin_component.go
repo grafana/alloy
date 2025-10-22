@@ -18,6 +18,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
@@ -60,20 +61,29 @@ func (id ComponentID) Equals(other ComponentID) bool {
 // DialFunc is a function to establish a network connection.
 type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
+type ModuleControllerOpts struct {
+	Id string
+
+	// When RegOverride is nil, the registry used in the module will the usual one.
+	// When RegOverride is not nil, the registry used in the module will be RegOverride.
+	// This can be used to disable metrics for modules by giving them a no-op registry.
+	RegOverride prometheus.Registerer
+}
+
 // ComponentGlobals are used by BuiltinComponentNodes to build managed components. All
 // BuiltinComponentNodes should use the same ComponentGlobals.
 type ComponentGlobals struct {
-	Logger               *logging.Logger                        // Logger shared between all managed components.
-	TraceProvider        trace.TracerProvider                   // Tracer shared between all managed components.
-	DataPath             string                                 // Shared directory where component data may be stored
-	MinStability         featuregate.Stability                  // Minimum allowed stability level for features
-	OnBlockNodeUpdate    func(cn BlockNode)                     // Informs controller that we need to reevaluate
-	OnExportsChange      func(exports map[string]any)           // Invoked when the managed component updated its exports
-	Registerer           prometheus.Registerer                  // Registerer for serving Alloy and component metrics
-	ControllerID         string                                 // ID of controller.
-	NewModuleController  func(id string) ModuleController       // Func to generate a module controller.
-	GetServiceData       func(name string) (interface{}, error) // Get data for a service.
-	EnableCommunityComps bool                                   // Enables the use of community components.
+	Logger               *logging.Logger                                  // Logger shared between all managed components.
+	TraceProvider        trace.TracerProvider                             // Tracer shared between all managed components.
+	DataPath             string                                           // Shared directory where component data may be stored
+	MinStability         featuregate.Stability                            // Minimum allowed stability level for features
+	OnBlockNodeUpdate    func(cn BlockNode)                               // Informs controller that we need to reevaluate
+	OnExportsChange      func(exports map[string]any)                     // Invoked when the managed component updated its exports
+	Registerer           prometheus.Registerer                            // Registerer for serving Alloy and component metrics
+	ControllerID         string                                           // ID of controller.
+	NewModuleController  func(opts ModuleControllerOpts) ModuleController // Func to generate a module controller.
+	GetServiceData       func(name string) (interface{}, error)           // Get data for a service.
+	EnableCommunityComps bool                                             // Enables the use of community components.
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.
@@ -110,6 +120,9 @@ type BuiltinComponentNode struct {
 
 	exportsMut sync.RWMutex
 	exports    component.Exports // Evaluated exports for the managed component
+
+	dataFlowEdgeMut  sync.RWMutex
+	dataFlowEdgeRefs []string
 }
 
 var _ ComponentNode = (*BuiltinComponentNode)(nil)
@@ -146,7 +159,7 @@ func NewBuiltinComponentNode(globals ComponentGlobals, reg component.Registratio
 		componentName:     strings.Join(b.Name, "."),
 		reg:               reg,
 		exportsType:       getExportsType(reg),
-		moduleController:  globals.NewModuleController(globalID),
+		moduleController:  globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate: globals.OnBlockNodeUpdate,
 
 		block: b,
@@ -158,6 +171,8 @@ func NewBuiltinComponentNode(globals ComponentGlobals, reg component.Registratio
 
 		evalHealth: initHealth,
 		runHealth:  initHealth,
+
+		dataFlowEdgeRefs: []string{},
 	}
 	cn.managedOpts = getManagedOptions(globals, cn)
 
@@ -282,7 +297,7 @@ func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
 		return nil
 	}
 
-	if reflect.DeepEqual(cn.args, argsCopyValue) {
+	if equality.DeepEqual(cn.args, argsCopyValue) {
 		// Ignore components which haven't changed. This reduces the cost of
 		// calling evaluate for components where evaluation is expensive (e.g., if
 		// re-evaluating requires re-starting some internal logic).
@@ -371,7 +386,7 @@ func (cn *BuiltinComponentNode) setExports(e component.Exports) {
 	var changed bool
 
 	cn.exportsMut.Lock()
-	if !reflect.DeepEqual(cn.exports, e) {
+	if !equality.DeepEqual(cn.exports, e) {
 		changed = true
 		cn.exports = e
 	}
@@ -448,4 +463,22 @@ func (cn *BuiltinComponentNode) setRunHealth(t component.HealthType, msg string)
 // managing.
 func (cn *BuiltinComponentNode) ModuleIDs() []string {
 	return cn.moduleController.ModuleIDs()
+}
+
+func (cn *BuiltinComponentNode) AddDataFlowEdgeTo(nodeID string) {
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
+	cn.dataFlowEdgeRefs = append(cn.dataFlowEdgeRefs, nodeID)
+}
+
+func (cn *BuiltinComponentNode) GetDataFlowEdgesTo() []string {
+	cn.dataFlowEdgeMut.RLock()
+	defer cn.dataFlowEdgeMut.RUnlock()
+	return cn.dataFlowEdgeRefs
+}
+
+func (cn *BuiltinComponentNode) ResetDataFlowEdgeTo() {
+	cn.dataFlowEdgeMut.Lock()
+	defer cn.dataFlowEdgeMut.Unlock()
+	cn.dataFlowEdgeRefs = []string{}
 }

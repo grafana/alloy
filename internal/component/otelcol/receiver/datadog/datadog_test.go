@@ -11,12 +11,11 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRun(t *testing.T) {
-	httpAddr := getFreeAddr(t)
+	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -43,7 +42,7 @@ func TestRun(t *testing.T) {
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	t.Run("grpc", func(t *testing.T) {
-		httpAddr := getFreeAddr(t)
+		httpAddr := componenttest.GetFreeAddr(t)
 		in := fmt.Sprintf(`
 		endpoint = "%s"
 		cors {
@@ -70,20 +69,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 		// Check the arguments
 		require.Equal(t, otelArgs.Endpoint, httpAddr)
-		require.Equal(t, len(otelArgs.CORS.AllowedOrigins), 2)
-		require.Equal(t, otelArgs.CORS.AllowedOrigins[0], "https://*.test.com")
-		require.Equal(t, otelArgs.CORS.AllowedOrigins[1], "https://test.com")
+		require.Equal(t, len(otelArgs.CORS.Get().AllowedOrigins), 2)
+		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[0], "https://*.test.com")
+		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[1], "https://test.com")
 		require.Equal(t, otelArgs.ReadTimeout, time.Hour)
 	})
-}
-
-func getFreeAddr(t *testing.T) string {
-	t.Helper()
-
-	portNumber, err := freeport.GetFreePort()
-	require.NoError(t, err)
-
-	return fmt.Sprintf("localhost:%d", portNumber)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

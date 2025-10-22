@@ -12,7 +12,7 @@ If no argument is non-empty or non-zero, the last argument is returned.
 
 ## Examples
 
-```
+```alloy
 > coalesce("a", "b")
 a
 > coalesce("", "b")

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -137,10 +137,78 @@ func simpleEntry(line, label string) Entry {
 		Extracted: map[string]interface{}{},
 		Entry: loki.Entry{
 			Labels: model.LabelSet{"value": model.LabelValue(label)},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},
 		},
 	}
+}
+
+func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
+	logger := util.TestAlloyLogger(t)
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
+	regex, err := validateMultilineConfig(mcfg)
+	require.NoError(t, err)
+
+	stage := &multilineStage{
+		cfg:    mcfg,
+		regex:  regex,
+		logger: logger,
+	}
+
+	line1 := Entry{
+		Extracted: map[string]interface{}{},
+		Entry: loki.Entry{
+			Labels: model.LabelSet{"value": "one"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "START line 1",
+				StructuredMetadata: push.LabelsAdapter{
+					push.LabelAdapter{
+						Name:  "sm-key1",
+						Value: "sm-value1",
+					},
+				},
+			},
+		},
+	}
+	time.Sleep(1 * time.Millisecond)
+	line2 := Entry{
+		Extracted: map[string]interface{}{},
+		Entry: loki.Entry{
+			Labels: model.LabelSet{"value": "one"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "START line 2",
+				StructuredMetadata: push.LabelsAdapter{
+					push.LabelAdapter{
+						Name:  "sm-key2",
+						Value: "sm-value2",
+					},
+				},
+			},
+		},
+	}
+
+	out := processEntries(stage,
+		line1,
+		line2,
+	)
+
+	sort.Slice(out, func(l, r int) bool {
+		return out[l].Timestamp.Before(out[r].Timestamp)
+	})
+
+	require.Len(t, out, 2)
+
+	require.Equal(t, "START line 1", out[0].Line)
+	require.Equal(t, model.LabelValue("one"), out[0].Labels["value"])
+	require.Equal(t, "sm-key1", out[0].StructuredMetadata[0].Name)
+	require.Equal(t, "sm-value1", out[0].StructuredMetadata[0].Value)
+
+	require.Equal(t, "START line 2", out[1].Line)
+	require.Equal(t, model.LabelValue("one"), out[1].Labels["value"])
+	require.Equal(t, "sm-key2", out[1].StructuredMetadata[0].Name)
+	require.Equal(t, "sm-value2", out[1].StructuredMetadata[0].Value)
 }

@@ -9,10 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 // finalEntryTimeout is how long NewEntryMutatorHandler will wait before giving
@@ -50,7 +49,7 @@ func NewLogsReceiverWithChannel(c chan Entry) LogsReceiver {
 // Entry is a log entry with labels.
 type Entry struct {
 	Labels model.LabelSet
-	logproto.Entry
+	push.Entry
 }
 
 // Clone returns a copy of the entry so that it can be safely fanned out.
@@ -170,7 +169,20 @@ func NewEntryMutatorHandler(next EntryHandler, f EntryMutatorFunc) EntryHandler 
 func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 	return EntryMiddlewareFunc(func(eh EntryHandler) EntryHandler {
 		return NewEntryMutatorHandler(eh, func(e Entry) Entry {
-			e.Labels = additionalLabels.Merge(e.Labels)
+			if len(additionalLabels) == 0 {
+				return e
+			}
+
+			if e.Labels == nil {
+				e.Labels = make(model.LabelSet, len(additionalLabels))
+			}
+
+			// Iterate and mutate the labels in place to avoid allocations.
+			for k, v := range additionalLabels {
+				if _, ok := e.Labels[k]; !ok {
+					e.Labels[k] = v
+				}
+			}
 			return e
 		})
 	})

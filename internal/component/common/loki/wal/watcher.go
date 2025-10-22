@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal/internal"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -205,7 +207,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(w.logger, nil, segment)
+	reader := wlog.NewLiveReader(slog.New(logging.NewSlogGoKitHandler(w.logger)), nil, segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 

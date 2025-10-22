@@ -6,6 +6,9 @@ import (
 	"slices"
 	"time"
 
+	snmp_config "github.com/prometheus/snmp_exporter/config"
+	"gopkg.in/yaml.v2"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -13,8 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	snmp_config "github.com/prometheus/snmp_exporter/config"
-	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -28,13 +29,15 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 // buildSNMPTargets creates the exporter's discovery targets based on the defined SNMP targets.
 func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []discovery.Target {
+	// TODO: This implementation of targets manipulation may not be optimal. If it's a hot spot, we should optimise it.
 	var targets []discovery.Target
 
 	snmpTargets := args.(Arguments).Targets
@@ -44,14 +47,15 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 	}
 
 	for _, tgt := range snmpTargets {
-		target := make(discovery.Target)
+		target := make(map[string]string, len(tgt.Labels)+baseTarget.Len())
 		// Set extra labels first, meaning that any other labels will override
 		for k, v := range tgt.Labels {
 			target[k] = v
 		}
-		for k, v := range baseTarget {
-			target[k] = v
-		}
+		baseTarget.ForEachLabel(func(key string, value string) bool {
+			target[key] = value
+			return true
+		})
 
 		target["job"] = target["job"] + "/" + tgt.Name
 		target["__param_target"] = tgt.Target
@@ -69,7 +73,7 @@ func buildSNMPTargets(baseTarget discovery.Target, args component.Arguments) []d
 			target["__param_auth"] = tgt.Auth
 		}
 
-		targets = append(targets, target)
+		targets = append(targets, discovery.NewTargetFromMap(target))
 	}
 
 	return targets
@@ -129,12 +133,26 @@ func (w WalkParams) Convert() map[string]snmp_config.WalkParams {
 	return walkParams
 }
 
+// DefaultArguments holds non-zero default options for Arguments when it is
+// unmarshaled from Alloy.
+var DefaultArguments = Arguments{
+	SnmpConcurrency:     1,
+	ConfigMergeStrategy: "replace",
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (a *Arguments) SetToDefault() {
+	*a = DefaultArguments
+}
+
 type Arguments struct {
-	ConfigFile   string                    `alloy:"config_file,attr,optional"`
-	Config       alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	Targets      TargetBlock               `alloy:"target,block,optional"`
-	WalkParams   WalkParams                `alloy:"walk_param,block,optional"`
-	ConfigStruct snmp_config.Config
+	ConfigFile          string                    `alloy:"config_file,attr,optional"`
+	SnmpConcurrency     int                       `alloy:"concurrency,attr,optional"`
+	Config              alloytypes.OptionalSecret `alloy:"config,attr,optional"`
+	ConfigMergeStrategy string                    `alloy:"config_merge_strategy,attr,optional"`
+	Targets             TargetBlock               `alloy:"target,block,optional"`
+	WalkParams          WalkParams                `alloy:"walk_param,block,optional"`
+	ConfigStruct        snmp_config.Config
 
 	// New way of passing targets. This allows the component to receive targets from other components.
 	TargetsList TargetsList `alloy:"targets,attr,optional"`
@@ -194,6 +212,8 @@ func (t TargetsList) convert() []SNMPTarget {
 
 // UnmarshalAlloy implements Alloy unmarshalling for Arguments.
 func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
+	a.SetToDefault()
+
 	type args Arguments
 	if err := f((*args)(a)); err != nil {
 		return err
@@ -201,6 +221,10 @@ func (a *Arguments) UnmarshalAlloy(f func(interface{}) error) error {
 
 	if a.ConfigFile != "" && a.Config.Value != "" {
 		return errors.New("config and config_file are mutually exclusive")
+	}
+
+	if a.ConfigMergeStrategy != "replace" && a.ConfigMergeStrategy != "merge" {
+		return errors.New("config_merge_strategy must be `replace` or `merge`")
 	}
 
 	if len(a.Targets) != 0 && len(a.TargetsList) != 0 {
@@ -233,10 +257,12 @@ func (a *Arguments) Convert() *snmp_exporter.Config {
 		targets = a.TargetsList.Convert()
 	}
 	return &snmp_exporter.Config{
-		SnmpConfigFile: a.ConfigFile,
-		SnmpTargets:    targets,
-		WalkParams:     a.WalkParams.Convert(),
-		SnmpConfig:     a.ConfigStruct,
+		SnmpConfigFile:          a.ConfigFile,
+		SnmpConfigMergeStrategy: a.ConfigMergeStrategy,
+		SnmpConcurrency:         a.SnmpConcurrency,
+		SnmpTargets:             targets,
+		WalkParams:              a.WalkParams.Convert(),
+		SnmpConfig:              a.ConfigStruct,
 	}
 }
 

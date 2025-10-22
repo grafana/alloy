@@ -1,4 +1,4 @@
-(Error) The converter does not support handling integrations which are not being scraped: mssql.
+(Critical) The converter does not support handling integrations which are not being scraped: mssql.
 (Error) mapping_config is not supported in statsd_exporter integrations config
 (Error) The service_graphs processor for traces has no direct Alloy equivalent. This configuration appends metrics to the /metrics endpoint of the agent which is not possible in Alloy. Alternatively, you can use the otelcol.connector.servicegraph component to build a pipeline which generates and forwards service graph metrics.
 (Error) automatic_logging for traces has no direct Alloy equivalent. A best effort translation can be made which only outputs to stdout and not directly to loki by bypassing errors.

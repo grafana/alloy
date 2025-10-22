@@ -9,12 +9,70 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/syntax"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configretry"
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
+	defaultExpected := func() kafkareceiver.Config {
+		return kafkareceiver.Config{
+			ClientConfig: configkafka.ClientConfig{
+				Brokers:         []string{"10.10.10.10:9092"},
+				ProtocolVersion: "2.0.0",
+				ClientID:        "otel-collector",
+				Metadata: configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
+						Max:     3,
+						Backoff: 250 * time.Millisecond,
+					},
+				},
+			},
+			ConsumerConfig: configkafka.ConsumerConfig{
+				SessionTimeout:    10 * time.Second,
+				HeartbeatInterval: 3 * time.Second,
+				GroupID:           "otel-collector",
+				InitialOffset:     "latest",
+				AutoCommit: configkafka.AutoCommitConfig{
+					Enable:   true,
+					Interval: 1 * time.Second,
+				},
+				MinFetchSize:           1,
+				DefaultFetchSize:       1048576,
+				MaxFetchSize:           0,
+				MaxFetchWait:           250 * time.Millisecond,
+				GroupRebalanceStrategy: "range",
+			},
+			Logs: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_logs",
+				Encoding: "otlp_proto",
+			},
+			Metrics: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_metrics",
+				Encoding: "otlp_proto",
+			},
+			Traces: kafkareceiver.TopicEncodingConfig{
+				Topic:    "otlp_spans",
+				Encoding: "otlp_proto",
+			},
+			HeaderExtraction: kafkareceiver.HeaderExtraction{
+				ExtractHeaders: false,
+				Headers:        []string{},
+			},
+			ErrorBackOff: configretry.BackOffConfig{
+				Enabled:             false,
+				InitialInterval:     0,
+				RandomizationFactor: 0,
+				Multiplier:          0,
+				MaxInterval:         0,
+				MaxElapsedTime:      0,
+			},
+		}
+	}
+
 	tests := []struct {
 		testName string
 		cfg      string
@@ -27,31 +85,87 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				protocol_version = "2.0.0"
 				output {}
 			`,
-			expected: kafkareceiver.Config{
-				Brokers:           []string{"10.10.10.10:9092"},
-				ProtocolVersion:   "2.0.0",
-				SessionTimeout:    10 * time.Second,
-				HeartbeatInterval: 3 * time.Second,
-				Encoding:          "otlp_proto",
-				GroupID:           "otel-collector",
-				ClientID:          "otel-collector",
-				InitialOffset:     "latest",
-				Metadata: kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
-						Max:     3,
-						Backoff: 250 * time.Millisecond,
-					},
-				},
-				AutoCommit: kafkareceiver.AutoCommit{
-					Enable:   true,
-					Interval: 1 * time.Second,
-				},
-				HeaderExtraction: kafkareceiver.HeaderExtraction{
-					ExtractHeaders: false,
-					Headers:        []string{},
-				},
-			},
+			expected: defaultExpected(),
+		},
+
+		{
+			testName: "Deprecated topic",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+				topic = "test_default_topic"
+				metrics {
+					topic = "test_metrics_topic"
+				}
+				output {}
+			`,
+			expected: func() kafkareceiver.Config {
+				cfg := defaultExpected()
+
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "test_default_topic"
+				cfg.Logs.Encoding = "otlp_proto"
+
+				cfg.Metrics.Topic = "test_metrics_topic"
+				cfg.Metrics.Encoding = "otlp_proto"
+
+				cfg.Traces.Topic = "test_default_topic"
+				cfg.Traces.Encoding = "otlp_proto"
+
+				return cfg
+			}(),
+		},
+		{
+			testName: "Deprecated topic and encoding and empty blocks",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+
+				// Neither "topic" nor "encoding" will be used,
+				// because the default values from the enpty blocks should be used.
+				// Making those blocks empty means their thefault values should be used,
+				// and they have precedence over those deprecared arguments.
+				topic = "test_default_topic"
+				encoding = "otlp_json"
+
+				metrics {}
+				logs {}
+				traces {}
+
+				output {}
+			`,
+			expected: defaultExpected(),
+		},
+		{
+			testName: "Deprecated encoding",
+			cfg: `
+				brokers = ["10.10.10.10:9092"]
+				protocol_version = "2.0.0"
+				encoding = "otlp_json"
+				traces {
+					encoding = "zipkin_thrift"
+				}
+				output {}
+			`,
+			expected: func() kafkareceiver.Config {
+				cfg := defaultExpected()
+
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "otlp_logs"
+				cfg.Logs.Encoding = "otlp_json"
+
+				cfg.Metrics.Topic = "otlp_metrics"
+				cfg.Metrics.Encoding = "otlp_json"
+
+				cfg.Traces.Topic = "otlp_spans"
+				cfg.Traces.Encoding = "zipkin_thrift"
+
+				return cfg
+			}(),
 		},
 		{
 			testName: "ExplicitValues_AuthPlaintext",
@@ -60,13 +174,24 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				protocol_version = "2.0.0"
 				session_timeout = "11s"
 				heartbeat_interval = "4s"
-				topic = "test_topic"
-				encoding = "test_encoding"
 				group_id = "test_group_id"
 				client_id = "test_client_id"
 				initial_offset = "test_offset"
+				group_rebalance_strategy = "roundrobin"
+				max_fetch_wait = "2s"
+				logs {
+					topic = "test_logs_topic"
+					encoding = "raw"
+				}
+				metrics {
+					topic = "test_metrics_topic"
+					encoding = "otlp_json"
+				}
+				traces {
+					topic = "test_spans_topic"
+					encoding = "zipkin_json"
+				}
 				metadata {
-					include_all_topics = true
 					retry {
 						max_retries = 9
 						backoff = "11s"
@@ -84,28 +209,59 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					extract_headers = true
 					headers = ["foo", "bar"]
 				}
+				error_backoff {
+					enabled = true
+					initial_interval = "1s"
+					randomization_factor = 0.1
+					multiplier = 1.2
+					max_interval = "1s"
+					max_elapsed_time = "1m"
+				}
+				min_fetch_size = 2
+				default_fetch_size = 10000
+				max_fetch_size = 20
 				output {}
 			`,
 			expected: kafkareceiver.Config{
-				Brokers:           []string{"10.10.10.10:9092"},
-				ProtocolVersion:   "2.0.0",
-				SessionTimeout:    11 * time.Second,
-				HeartbeatInterval: 4 * time.Second,
-				Topic:             "test_topic",
-				Encoding:          "test_encoding",
-				GroupID:           "test_group_id",
-				ClientID:          "test_client_id",
-				InitialOffset:     "test_offset",
-				Metadata: kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
-						Max:     9,
-						Backoff: 11 * time.Second,
+				Logs: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_logs_topic",
+					Encoding: "raw",
+				},
+				Metrics: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_metrics_topic",
+					Encoding: "otlp_json",
+				},
+				Traces: kafkareceiver.TopicEncodingConfig{
+					Topic:    "test_spans_topic",
+					Encoding: "zipkin_json",
+				},
+				ClientConfig: configkafka.ClientConfig{
+					Brokers:         []string{"10.10.10.10:9092"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "test_client_id",
+					Metadata: configkafka.MetadataConfig{
+						Full:            true,
+						RefreshInterval: 10 * time.Minute,
+						Retry: configkafka.MetadataRetryConfig{
+							Max:     9,
+							Backoff: 11 * time.Second,
+						},
 					},
 				},
-				AutoCommit: kafkareceiver.AutoCommit{
-					Enable:   true,
-					Interval: 12 * time.Second,
+				ConsumerConfig: configkafka.ConsumerConfig{
+					SessionTimeout:    11 * time.Second,
+					HeartbeatInterval: 4 * time.Second,
+					GroupID:           "test_group_id",
+					InitialOffset:     "test_offset",
+					AutoCommit: configkafka.AutoCommitConfig{
+						Enable:   true,
+						Interval: 12 * time.Second,
+					},
+					MinFetchSize:           2,
+					DefaultFetchSize:       10000,
+					MaxFetchSize:           20,
+					MaxFetchWait:           2 * time.Second,
+					GroupRebalanceStrategy: "roundrobin",
 				},
 				MessageMarking: kafkareceiver.MessageMarking{
 					After:   true,
@@ -114,6 +270,14 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				HeaderExtraction: kafkareceiver.HeaderExtraction{
 					ExtractHeaders: true,
 					Headers:        []string{"foo", "bar"},
+				},
+				ErrorBackOff: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     1 * time.Second,
+					RandomizationFactor: 0.1,
+					Multiplier:          1.2,
+					MaxInterval:         1 * time.Second,
+					MaxElapsedTime:      1 * time.Minute,
 				},
 			},
 		},
@@ -157,28 +321,53 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":            []string{"10.10.10.10:9092"},
-				"protocol_version":   "2.0.0",
-				"session_timeout":    10 * time.Second,
-				"heartbeat_interval": 3 * time.Second,
-				"encoding":           "otlp_proto",
-				"group_id":           "otel-collector",
-				"client_id":          "otel-collector",
-				"initial_offset":     "latest",
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"brokers":                  []string{"10.10.10.10:9092"},
+				"protocol_version":         "2.0.0",
+				"session_timeout":          10 * time.Second,
+				"heartbeat_interval":       3 * time.Second,
+				"encoding":                 "",
+				"group_id":                 "otel-collector",
+				"client_id":                "otel-collector",
+				"initial_offset":           "latest",
+				"min_fetch_size":           1,
+				"default_fetch_size":       1048576,
+				"max_fetch_wait":           250 * time.Millisecond,
+				"group_rebalance_strategy": "range",
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"logs": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_logs",
+					Encoding: "otlp_proto",
+				},
+				"metrics": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_metrics",
+					Encoding: "otlp_proto",
+				},
+				"traces": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_spans",
+					Encoding: "otlp_proto",
+				},
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"plain_text": map[string]interface{}{
@@ -202,7 +391,6 @@ func TestArguments_Auth(t *testing.T) {
 						version = 9
 						aws_msk {
 							region = "test_region"
-							broker_addr = "test_broker_addr"
 						}
 					}
 				}
@@ -210,28 +398,53 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":            []string{"10.10.10.10:9092"},
-				"protocol_version":   "2.0.0",
-				"session_timeout":    10 * time.Second,
-				"heartbeat_interval": 3 * time.Second,
-				"encoding":           "otlp_proto",
-				"group_id":           "otel-collector",
-				"client_id":          "otel-collector",
-				"initial_offset":     "latest",
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"brokers":                  []string{"10.10.10.10:9092"},
+				"protocol_version":         "2.0.0",
+				"session_timeout":          10 * time.Second,
+				"heartbeat_interval":       3 * time.Second,
+				"encoding":                 "",
+				"group_id":                 "otel-collector",
+				"client_id":                "otel-collector",
+				"initial_offset":           "latest",
+				"min_fetch_size":           1,
+				"default_fetch_size":       1048576,
+				"max_fetch_wait":           250 * time.Millisecond,
+				"group_rebalance_strategy": "range",
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"logs": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_logs",
+					Encoding: "otlp_proto",
+				},
+				"metrics": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_metrics",
+					Encoding: "otlp_proto",
+				},
+				"traces": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_spans",
+					Encoding: "otlp_proto",
+				},
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"sasl": map[string]interface{}{
@@ -240,8 +453,7 @@ func TestArguments_Auth(t *testing.T) {
 						"mechanism": "test_mechanism",
 						"version":   9,
 						"aws_msk": map[string]interface{}{
-							"region":      "test_region",
-							"broker_addr": "test_broker_addr",
+							"region": "test_region",
 						},
 					},
 				},
@@ -269,28 +481,53 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":            []string{"10.10.10.10:9092"},
-				"protocol_version":   "2.0.0",
-				"session_timeout":    10 * time.Second,
-				"heartbeat_interval": 3 * time.Second,
-				"encoding":           "otlp_proto",
-				"group_id":           "otel-collector",
-				"client_id":          "otel-collector",
-				"initial_offset":     "latest",
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"brokers":                  []string{"10.10.10.10:9092"},
+				"protocol_version":         "2.0.0",
+				"session_timeout":          10 * time.Second,
+				"heartbeat_interval":       3 * time.Second,
+				"encoding":                 "",
+				"group_id":                 "otel-collector",
+				"client_id":                "otel-collector",
+				"initial_offset":           "latest",
+				"min_fetch_size":           1,
+				"default_fetch_size":       1048576,
+				"max_fetch_wait":           250 * time.Millisecond,
+				"group_rebalance_strategy": "range",
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"logs": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_logs",
+					Encoding: "otlp_proto",
+				},
+				"metrics": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_metrics",
+					Encoding: "otlp_proto",
+				},
+				"traces": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_spans",
+					Encoding: "otlp_proto",
+				},
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"tls": map[string]interface{}{
@@ -328,28 +565,53 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]interface{}{
-				"brokers":            []string{"10.10.10.10:9092"},
-				"protocol_version":   "2.0.0",
-				"session_timeout":    10 * time.Second,
-				"heartbeat_interval": 3 * time.Second,
-				"encoding":           "otlp_proto",
-				"group_id":           "otel-collector",
-				"client_id":          "otel-collector",
-				"initial_offset":     "latest",
-				"metadata": kafkaexporter.Metadata{
-					Full: true,
-					Retry: kafkaexporter.MetadataRetry{
+				"brokers":                  []string{"10.10.10.10:9092"},
+				"protocol_version":         "2.0.0",
+				"session_timeout":          10 * time.Second,
+				"heartbeat_interval":       3 * time.Second,
+				"encoding":                 "",
+				"group_id":                 "otel-collector",
+				"client_id":                "otel-collector",
+				"initial_offset":           "latest",
+				"min_fetch_size":           1,
+				"default_fetch_size":       1048576,
+				"max_fetch_wait":           250 * time.Millisecond,
+				"group_rebalance_strategy": "range",
+				"metadata": configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
 						Max:     3,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
-				"autocommit": kafkareceiver.AutoCommit{
+				"logs": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_logs",
+					Encoding: "otlp_proto",
+				},
+				"metrics": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_metrics",
+					Encoding: "otlp_proto",
+				},
+				"traces": kafkareceiver.TopicEncodingConfig{
+					Topic:    "otlp_spans",
+					Encoding: "otlp_proto",
+				},
+				"autocommit": configkafka.AutoCommitConfig{
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
 				"header_extraction": kafkareceiver.HeaderExtraction{
 					ExtractHeaders: false,
 					Headers:        []string{},
+				},
+				"error_backoff": configretry.BackOffConfig{
+					Enabled:             false,
+					InitialInterval:     0,
+					RandomizationFactor: 0,
+					Multiplier:          0,
+					MaxInterval:         0,
+					MaxElapsedTime:      0,
 				},
 				"auth": map[string]interface{}{
 					"kerberos": map[string]interface{}{

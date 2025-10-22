@@ -17,25 +17,31 @@ import (
 )
 
 var testMetadata = map[string]scrape.MetricMetadata{
-	"counter_test":    {Metric: "counter_test", Type: model.MetricTypeCounter, Help: "", Unit: ""},
-	"counter_test2":   {Metric: "counter_test2", Type: model.MetricTypeCounter, Help: "", Unit: ""},
-	"gauge_test":      {Metric: "gauge_test", Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"gauge_test2":     {Metric: "gauge_test2", Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"hist_test":       {Metric: "hist_test", Type: model.MetricTypeHistogram, Help: "", Unit: ""},
-	"hist_test2":      {Metric: "hist_test2", Type: model.MetricTypeHistogram, Help: "", Unit: ""},
-	"ghist_test":      {Metric: "ghist_test", Type: model.MetricTypeGaugeHistogram, Help: "", Unit: ""},
-	"summary_test":    {Metric: "summary_test", Type: model.MetricTypeSummary, Help: "", Unit: ""},
-	"summary_test2":   {Metric: "summary_test2", Type: model.MetricTypeSummary, Help: "", Unit: ""},
-	"unknown_test":    {Metric: "unknown_test", Type: model.MetricTypeUnknown, Help: "", Unit: ""},
-	"poor_name":       {Metric: "poor_name", Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"poor_name_count": {Metric: "poor_name_count", Type: model.MetricTypeCounter, Help: "", Unit: ""},
-	"scrape_foo":      {Metric: "scrape_foo", Type: model.MetricTypeCounter, Help: "", Unit: ""},
-	"example_process_start_time_seconds": {Metric: "example_process_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"process_start_time_seconds": {Metric: "process_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
-	"subprocess_start_time_seconds": {Metric: "subprocess_start_time_seconds",
-		Type: model.MetricTypeGauge, Help: "", Unit: ""},
+	"counter_test":    {MetricFamily: "counter_test", Type: model.MetricTypeCounter, Help: "", Unit: ""},
+	"counter_test2":   {MetricFamily: "counter_test2", Type: model.MetricTypeCounter, Help: "", Unit: ""},
+	"gauge_test":      {MetricFamily: "gauge_test", Type: model.MetricTypeGauge, Help: "", Unit: ""},
+	"gauge_test2":     {MetricFamily: "gauge_test2", Type: model.MetricTypeGauge, Help: "", Unit: ""},
+	"hist_test":       {MetricFamily: "hist_test", Type: model.MetricTypeHistogram, Help: "", Unit: ""},
+	"hist_test2":      {MetricFamily: "hist_test2", Type: model.MetricTypeHistogram, Help: "", Unit: ""},
+	"ghist_test":      {MetricFamily: "ghist_test", Type: model.MetricTypeGaugeHistogram, Help: "", Unit: ""},
+	"summary_test":    {MetricFamily: "summary_test", Type: model.MetricTypeSummary, Help: "", Unit: ""},
+	"summary_test2":   {MetricFamily: "summary_test2", Type: model.MetricTypeSummary, Help: "", Unit: ""},
+	"unknown_test":    {MetricFamily: "unknown_test", Type: model.MetricTypeUnknown, Help: "", Unit: ""},
+	"poor_name":       {MetricFamily: "poor_name", Type: model.MetricTypeGauge, Help: "", Unit: ""},
+	"poor_name_count": {MetricFamily: "poor_name_count", Type: model.MetricTypeCounter, Help: "", Unit: ""},
+	"scrape_foo":      {MetricFamily: "scrape_foo", Type: model.MetricTypeCounter, Help: "", Unit: ""},
+	"example_process_start_time_seconds": {
+		MetricFamily: "example_process_start_time_seconds",
+		Type:         model.MetricTypeGauge, Help: "", Unit: "",
+	},
+	"process_start_time_seconds": {
+		MetricFamily: "process_start_time_seconds",
+		Type:         model.MetricTypeGauge, Help: "", Unit: "",
+	},
+	"subprocess_start_time_seconds": {
+		MetricFamily: "subprocess_start_time_seconds",
+		Type:         model.MetricTypeGauge, Help: "", Unit: "",
+	},
 }
 
 func TestTimestampFromMs(t *testing.T) {
@@ -57,49 +63,49 @@ func TestConvToMetricType(t *testing.T) {
 		wantMonotonic bool
 	}{
 		{
-			name:          "textparse.counter",
+			name:          "model.counter",
 			mtype:         model.MetricTypeCounter,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.gauge",
+			name:          "model.gauge",
 			mtype:         model.MetricTypeGauge,
 			want:          pmetric.MetricTypeGauge,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.unknown",
+			name:          "model.unknown",
 			mtype:         model.MetricTypeUnknown,
 			want:          pmetric.MetricTypeGauge,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.histogram",
+			name:          "model.histogram",
 			mtype:         model.MetricTypeHistogram,
 			want:          pmetric.MetricTypeHistogram,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.summary",
+			name:          "model.summary",
 			mtype:         model.MetricTypeSummary,
 			want:          pmetric.MetricTypeSummary,
 			wantMonotonic: true,
 		},
 		{
-			name:          "textparse.metric_type_info",
+			name:          "model.metric_type_info",
 			mtype:         model.MetricTypeInfo,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.metric_state_set",
+			name:          "model.metric_state_set",
 			mtype:         model.MetricTypeStateset,
 			want:          pmetric.MetricTypeSum,
 			wantMonotonic: false,
 		},
 		{
-			name:          "textparse.metric_gauge_hostogram",
+			name:          "model.metric_gauge_histogram",
 			mtype:         model.MetricTypeGaugeHistogram,
 			want:          pmetric.MetricTypeEmpty,
 			wantMonotonic: false,
@@ -107,11 +113,10 @@ func TestConvToMetricType(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, monotonic := convToMetricType(tt.mtype)
 			require.Equal(t, got.String(), tt.want.String())
-			require.Equal(t, monotonic, tt.wantMonotonic)
+			require.Equal(t, tt.wantMonotonic, monotonic)
 		})
 	}
 }
@@ -163,7 +168,6 @@ func TestGetBoundary(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			value, err := getBoundary(tt.mtype, tt.labels)
 			if tt.wantErr != nil {
@@ -172,7 +176,7 @@ func TestGetBoundary(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, value, tt.wantValue)
+			assert.Equal(t, tt.wantValue, value)
 		})
 	}
 }

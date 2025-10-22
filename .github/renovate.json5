@@ -1,0 +1,132 @@
+//
+// Renovate config options: https://docs.renovatebot.com/configuration-options/
+//
+// To validate config, run:
+// npx --package renovate -- renovate-config-validator --strict ./.github/renovate.json5
+//
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+  ],
+
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{manager}} dependency {{depName}}",
+
+  // Updates must be published for at least 7 to be considered
+  "minimumReleaseAge": "7 days",
+
+  "prConcurrentLimit": 5,
+
+  // Move dependency files forward along with lock files
+  "rangeStrategy": "bump",
+
+  // Allow PR creation between 06:00 and 10:00 UTC on Mondays
+  "schedule": ["* 6-10 * * 1"],
+
+  // Open security-related PRs irrespective of other settings
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      // "groupName": "docker-compose dependencies",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      // "groupName": "dockerfile dependencies",
+      // "pinDigests": true,
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions dependencies",
+      "pinDigests": true,
+    },
+    {
+      "matchManagers": ["gomod"],
+      "groupName": "go dependencies",
+      "postUpdateOptions": ["gomodTidy"]
+    },
+    {
+      // Group and hold some otel-specific go dependencies
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        // OpenTelemetry needs special handling due to a temporary fork
+        "github.com/open-telemetry/opentelemetry-collector-contrib/**",
+        "go.opentelemetry.io/collector/**"
+      ],
+      "groupName": "go otel collector dependencies",
+      "dependencyDashboardApproval": true
+    },
+    {
+      // Hold unstable deps
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector",
+        "github.com/KimMachineGun/automemlimit",
+        "github.com/prometheus-community/elasticsearch_exporter", // Introduces breaking changes in minor versions
+        "github.com/google/cadvisor",
+        "github.com/grafana/beyla/v2",
+        "github.com/grafana/jfr-parser/pprof",
+        "github.com/hashicorp/vault/api/**",
+        "github.com/heroku/x",
+        "github.com/jaegertracing/jaeger-idl",
+        "github.com/mackerelio/go-osstat",
+        "github.com/ncabatoff/process-exporter",
+        "github.com/nerdswords/yet-another-cloudwatch-exporter",
+        "github.com/prometheus-operator/**",
+        "github.com/prometheus/consul_exporter",
+        "github.com/prometheus/memcached_exporter",
+        "github.com/prometheus/procfs",
+        "github.com/prometheus/sigv4",
+        "github.com/testcontainers/testcontainers-go",
+        "github.com/testcontainers/testcontainers-go/**",
+        "go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux",
+        "go.opentelemetry.io/otel/exporters/prometheus",
+        "google.golang.org/api",
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go",
+        "k8s.io/component-base",
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each unstable update
+      // having its own PR.
+      "groupName": "{{manager}} unstable dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} unstable dependency {{depName}}"
+    },
+    {
+      "matchManagers": ["helm-values"],
+      // "groupName": "helm-values dependencies",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["helmv3"],
+      // "groupName": "helmv3 dependencies",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["jsonnet-bundler"],
+      // "groupName": "jsonnet-bundler dependencies",
+      "enabled": false // TODO: remove to enable when ready
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+    },
+    {
+      // Supersede previous rules to require PR creation approval for major versions
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each major update
+      // having its own PR.
+      "groupName": "{{manager}} dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} dependency {{depName}}"
+    }
+  ],
+}

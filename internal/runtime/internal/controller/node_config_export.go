@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/grafana/alloy/internal/nodeconf/export"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
@@ -35,10 +36,6 @@ func NewExportConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Export
 	}
 }
 
-type exportBlock struct {
-	Value any `alloy:"value,attr"`
-}
-
 // Evaluate implements BlockNode and updates the arguments for the managed config block
 // by re-evaluating its Alloy block with the provided scope. The managed config block
 // will be built the first time Evaluate is called.
@@ -49,11 +46,11 @@ func (cn *ExportConfigNode) Evaluate(scope *vm.Scope) error {
 	cn.mut.Lock()
 	defer cn.mut.Unlock()
 
-	var export exportBlock
-	if err := cn.eval.Evaluate(scope, &export); err != nil {
+	var args export.Arguments
+	if err := cn.eval.Evaluate(scope, &args); err != nil {
 		return fmt.Errorf("decoding configuration: %w", err)
 	}
-	cn.value = export.Value
+	cn.value = args.Value
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package node_exporter //nolint:golint
+package node_exporter
 
 import (
 	"fmt"
@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
-	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
-	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/node_exporter/collector"
 	"github.com/prometheus/procfs"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 var (
@@ -252,9 +253,8 @@ func (c *Config) Name() string {
 	return "node_exporter"
 }
 
-// InstanceKey returns the hostname:port of the agent process.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration converts this config into an instance of an integration.
@@ -496,11 +496,6 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 
 	cfg.Stat = collector.StatConfig{
 		Softirq: &blankBool,
-	}
-
-	cfg.HwMon = collector.HwMonConfig{
-		ChipInclude: &blankString,
-		ChipExclude: &blankString,
 	}
 
 	cfg.Qdisc = collector.QdiscConfig{

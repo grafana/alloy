@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-// This code is copied from Promtail v1.6.2-0.20231004111112-07cbef92268a with minor changes.
+// This code is adapted from loki/promtail. Last revision used to port changes to Alloy was v1.6.2-0.20231004111112-07cbef92268a.
 
 package windowsevent
 
@@ -49,6 +49,7 @@ func NewTarget(
 	handler api.EntryHandler,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
+	bookmarkSyncPeriod time.Duration,
 ) (*Target, error) {
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
 	if err != nil {
@@ -91,6 +92,7 @@ func NewTarget(
 		t.cfg.PollInterval = 3 * time.Second
 	}
 	go t.loop()
+	go t.updateBookmark(bookmarkSyncPeriod)
 	return t, nil
 }
 
@@ -120,15 +122,17 @@ func (t *Target) loop() {
 			}
 			t.err = nil
 			// we have received events to handle.
-			for i, entry := range t.renderEntries(events) {
+			for _, entry := range t.renderEntries(events) {
 				t.handler.Chan() <- entry
-				if err := t.bm.save(handles[i]); err != nil {
+			}
+			if len(handles) != 0 {
+				err = t.bm.update(handles[len(handles)-1])
+				if err != nil {
 					t.err = err
-					level.Error(util_log.Logger).Log("msg", "error saving bookmark", "err", err)
+					level.Error(util_log.Logger).Log("msg", "error updating in-memory bookmark", "err", err)
 				}
 			}
 			win_eventlog.Close(handles)
-
 		}
 		// no more messages we wait for next poll timer tick.
 		select {
@@ -136,6 +140,32 @@ func (t *Target) loop() {
 			return
 		case <-interval.C:
 		}
+	}
+}
+
+func (t *Target) updateBookmark(bookmarkSyncPeriod time.Duration) {
+	t.wg.Add(1)
+
+	bookmarkTick := time.NewTicker(bookmarkSyncPeriod)
+	defer func() {
+		bookmarkTick.Stop()
+		t.wg.Done()
+	}()
+
+	for {
+		select {
+		case <-bookmarkTick.C:
+			t.saveBookmarkPosition()
+		case <-t.done:
+			return
+		}
+	}
+}
+
+func (t *Target) saveBookmarkPosition() {
+	if err := t.bm.save(); err != nil {
+		t.err = err
+		level.Error(util_log.Logger).Log("msg", "error saving bookmark", "err", err)
 	}
 }
 
@@ -226,5 +256,6 @@ func (t *Target) Stop() error {
 	close(t.done)
 	t.wg.Wait()
 	t.handler.Stop()
+	t.saveBookmarkPosition()
 	return t.err
 }

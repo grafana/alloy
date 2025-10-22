@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/collector/client"
@@ -17,6 +18,8 @@ import (
 )
 
 const apiKeyHeader = "x-api-key"
+
+var defaultAllowedHeaders = []string{"content-type", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
 
 type handler struct {
 	log         log.Logger
@@ -36,7 +39,7 @@ func newHandler(l log.Logger, reg prometheus.Registerer, exporters []exporter) *
 		Name: "faro_receiver_exporter_errors_total",
 		Help: "Total number of errors produced by a receiver exporter",
 	}, []string{"exporter"})
-	reg.MustRegister(errorsTotal)
+	errorsTotal = util.MustRegisterOrGet(reg, errorsTotal).(*prometheus.CounterVec)
 
 	return &handler{
 		log:         l,
@@ -70,7 +73,7 @@ func (h *handler) Update(args ServerArguments) {
 	if len(args.CORSAllowedOrigins) > 0 {
 		h.cors = cors.New(cors.Options{
 			AllowedOrigins: args.CORSAllowedOrigins,
-			AllowedHeaders: []string{apiKeyHeader, "content-type", "x-faro-session-id"},
+			AllowedHeaders: defaultAllowedHeaders,
 		})
 	} else {
 		h.cors = nil // Disable cors.

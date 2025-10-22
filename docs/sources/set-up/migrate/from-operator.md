@@ -12,7 +12,7 @@ weight: 120
 
 You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
-- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
+- The Monitor types (`PodMonitor`, `ServiceMonitor`, `Probe`, `ScrapeConfig`, and `PodLogs`) are all supported natively by {{< param "PRODUCT_NAME" >}}.
 - The parts of Grafana Agent Operator that deploy Grafana Agent, `GrafanaAgent`, `MetricsInstance`, and `LogsInstance` CRDs, are deprecated.
 
 ## Deploy {{% param "PRODUCT_NAME" %}} with Helm
@@ -44,7 +44,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 
 1. Install the Grafana Helm repository:
 
-    ```
+    ```shell
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
     ```
@@ -62,7 +62,7 @@ You can migrate from Grafana Agent Operator to {{< param "PRODUCT_NAME" >}}.
 A `MetricsInstance` resource primarily defines:
 
 - The remote endpoints Grafana Agent should send metrics to.
-- The `PodMonitor`, `ServiceMonitor`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
+- The `PodMonitor`, `ServiceMonitor`, `ScrapeConfig`, and `Probe` resources this {{< param "PRODUCT_NAME" >}} should discover.
 
 You can use these functions in {{< param "PRODUCT_NAME" >}} with the `prometheus.remote_write`, `prometheus.operator.podmonitors`, `prometheus.operator.servicemonitors`, and `prometheus.operator.probes` components respectively.
 
@@ -108,25 +108,26 @@ Replace the following:
 
 - _`<PROMETHEUS_URL>`_: The endpoint you want to send metrics to.
 
-This configuration discovers all `PodMonitor`, `ServiceMonitor`, and `Probe` resources in your cluster that match the label selector `instance=primary`.
+This configuration discovers all `PodMonitor`, `ServiceMonitor`, `ScrapeConfig`, and `Probe` resources in your cluster that match the label selector `instance=primary`.
 It then scrapes metrics from the targets and forward them to your remote write endpoint.
 
 You may need to customize this configuration further if you use additional features in your `MetricsInstance` resources.
 Refer to the documentation for the relevant components for additional information:
 
-- [remote.kubernetes.secret][]
-- [prometheus.remote_write][]
-- [prometheus.operator.podmonitors][]
-- [prometheus.operator.servicemonitors][]
-- [prometheus.operator.probes][]
-- [prometheus.scrape][]
+- [`remote.kubernetes.secret`][remote.kubernetes.secret]
+- [`prometheus.remote_write`][prometheus.remote_write]
+- [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
+- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
+- [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]
+- [`prometheus.operator.probes`][prometheus.operator.probes]
+- [`prometheus.scrape`][prometheus.scrape]
 
-## Collecting logs
+## Collect logs
 
 The current recommendation is to create an additional DaemonSet deployment of {{< param "PRODUCT_NAME" >}} to scrape logs.
 
 > {{< param "PRODUCT_NAME" >}} has components that can scrape Pod logs directly from the Kubernetes API without needing a DaemonSet deployment.
-> These are still considered experimental, but if you would like to try them, see the documentation for [loki.source.kubernetes][] and [loki.source.podlogs][].
+> These are still considered experimental, but if you would like to try them, see the documentation for [`loki.source.kubernetes`][loki.source.kubernetes] and [`loki.source.podlogs`][loki.source.podlogs].
 
 These values are close to what Grafana Agent Operator deploys for logs:
 
@@ -145,7 +146,7 @@ alloy:
 
 This command installs a release named `alloy-logs` in the `monitoring` namespace:
 
-```
+```shell
 helm upgrade alloy-logs grafana/alloy -i -n monitoring -f values-logs.yaml --set-file alloy.configMap.content=config-logs.alloy
 ```
 
@@ -277,11 +278,11 @@ The [reference documentation][component documentation] should help convert those
 [clustering]: ../../../get-started/clustering/
 [deployment guide]: ../../../set-up/deploy/
 [operator guide]: https://grafana.com/docs/agent/latest/operator/deploy-agent-operator-resources/#deploy-a-metricsinstance-resource
-[Helm chart]: ../../../set-up/install/kubernetes/
 [remote.kubernetes.secret]: ../../../reference/components/remote/remote.kubernetes.secret/
 [prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [prometheus.operator.podmonitors]: ../../../reference/components/prometheus/prometheus.operator.podmonitors/
 [prometheus.operator.servicemonitors]: ../../../reference/components/prometheus/prometheus.operator.servicemonitors/
+[prometheus.operator.scrapeconfigs]: ../../../reference/components/prometheus/prometheus.operator.scrapeconfigs/
 [prometheus.operator.probes]: ../../../reference/components/prometheus/prometheus.operator.probes/
 [prometheus.scrape]: ../../../reference/components/prometheus/prometheus.scrape/
 [loki.source.kubernetes]: ../../../reference/components/loki/loki.source.kubernetes/

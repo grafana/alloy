@@ -4,12 +4,14 @@ package process
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 func init() {
@@ -26,22 +28,36 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	c := &Component{
-		l:             opts.Logger,
-		onStateChange: opts.OnStateChange,
-		argsUpdates:   make(chan Arguments),
-		args:          args,
+	debugDataPublisher, err := opts.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
 	}
+
+	c := &Component{
+		opts:               opts,
+		l:                  opts.Logger,
+		onStateChange:      opts.OnStateChange,
+		argsUpdates:        make(chan Arguments),
+		args:               args,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
+
 	return c, nil
 }
 
 type Component struct {
+	opts          component.Options
 	l             log.Logger
 	onStateChange func(e component.Exports)
 	processes     []discovery.Target
 	argsUpdates   chan Arguments
 	args          Arguments
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
+
+var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 func (c *Component) Run(ctx context.Context) error {
 	doDiscover := func() error {
@@ -51,6 +67,15 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 		c.processes = convertProcesses(processes)
 		c.changed()
+
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(c.processes)),
+			func() string { return fmt.Sprintf("%s", c.processes) },
+		))
+
 		return nil
 	}
 	if err := doDiscover(); err != nil {
@@ -86,3 +111,5 @@ func (c *Component) changed() {
 		Targets: join(c.processes, c.args.Join),
 	})
 }
+
+func (c *Component) LiveDebugging() {}

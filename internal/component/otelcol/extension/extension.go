@@ -15,9 +15,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazycollector"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/util/zapadapter"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
@@ -29,19 +31,41 @@ type Arguments interface {
 
 	// Convert converts the Arguments into an OpenTelemetry Collector
 	// extension configuration.
-	Convert() (otelcomponent.Config, error)
+	Convert(component.Options) (otelcomponent.Config, error)
 
 	// Extensions returns the set of extensions that the configured component is
 	// allowed to use.
-	Extensions() map[otelcomponent.ID]otelextension.Extension
+	Extensions() map[otelcomponent.ID]otelcomponent.Component
 
 	// Exporters returns the set of exporters that are exposed to the configured
 	// component.
-	Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component
+	Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 
 	// DebugMetricsConfig returns the configuration for debug metrics
 	DebugMetricsConfig() otelcolCfg.DebugMetricsArguments
+
+	// ExportsHandler returns a boolean indicating whether the component
+	// should export the handler for other components to reference.
+	ExportsHandler() bool
 }
+
+// Exports is a common Exports type for Alloy components which expose
+// OpenTelemetry Collector storage extensions.
+type Exports struct {
+	// Handler is the managed component. Handler is updated any time the
+	// extension is updated.
+	Handler *ExtensionHandler `alloy:"handler,attr"`
+}
+
+type ExtensionHandler struct {
+	ID        otelcomponent.ID
+	Extension otelextension.Extension
+}
+
+var _ syntax.Capsule = ExtensionHandler{}
+
+// AlloyCapsule marks Handler as a capsule type.
+func (ExtensionHandler) AlloyCapsule() {}
 
 // Extension is an Alloy component shim which manages an OpenTelemetry
 // Collector extension.
@@ -90,6 +114,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 
 // Run starts the Extension component.
 func (e *Extension) Run(ctx context.Context) error {
+	e.opts.Logger.Log("level", "info", "msg", "starting extension", "component", e.opts.ID)
 	defer e.cancel()
 	return e.sched.Run(ctx)
 }
@@ -114,18 +139,14 @@ func (e *Extension) Update(args component.Arguments) error {
 		return err
 	}
 
-	metricsLevel, err := rargs.DebugMetricsConfig().Level.Convert()
-	if err != nil {
-		return err
-	}
-
+	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
 	settings := otelextension.Settings{
+		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(e.opts.Logger),
 
 			TracerProvider: e.opts.Tracer,
-			MeterProvider:  metric.NewMeterProvider(metric.WithReader(promExporter)),
-			MetricsLevel:   metricsLevel,
+			MeterProvider:  mp,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{
@@ -135,7 +156,7 @@ func (e *Extension) Update(args component.Arguments) error {
 		},
 	}
 
-	extensionConfig, err := rargs.Convert()
+	extensionConfig, err := rargs.Convert(e.opts)
 	if err != nil {
 		return err
 	}
@@ -143,15 +164,28 @@ func (e *Extension) Update(args component.Arguments) error {
 	// Create instances of the extension from our factory.
 	var components []otelcomponent.Component
 
-	ext, err := e.factory.CreateExtension(e.ctx, settings, extensionConfig)
+	ext, err := e.factory.Create(e.ctx, settings, extensionConfig)
 	if err != nil {
 		return err
 	} else if ext != nil {
 		components = append(components, ext)
 	}
 
+	if rargs.ExportsHandler() {
+		// Registers the extension for the otel collector plugin
+		handler := &ExtensionHandler{
+			ID:        settings.ID,
+			Extension: ext,
+		}
+
+		// Inform listeners that our handler changed.
+		e.opts.OnStateChange(Exports{
+			Handler: handler,
+		})
+	}
+
 	// Schedule the components to run once our component is running.
-	e.sched.Schedule(host, components...)
+	e.sched.Schedule(e.ctx, func() {}, host, components...)
 	return nil
 }
 

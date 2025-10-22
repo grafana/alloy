@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-// This code is copied from Promtail v1.6.2-0.20231004111112-07cbef92268a with minor changes.
+// This code is adapted from loki/promtail. Last revision used to port changes to Alloy was v1.6.2-0.20231004111112-07cbef92268a.
 
 package windowsevent
 
@@ -12,9 +12,10 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/natefinch/atomic"
+	uberAtomic "go.uber.org/atomic"
 
 	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
+	"github.com/natefinch/atomic"
 )
 
 type bookMark struct {
@@ -22,6 +23,8 @@ type bookMark struct {
 	isNew  bool
 	path   string
 	buf    []byte
+
+	bookmarkStr *uberAtomic.String
 }
 
 // newBookMark creates a new windows event bookmark.
@@ -33,19 +36,21 @@ func newBookMark(path string) (*bookMark, error) {
 	_, err := os.Stat(path)
 	// creates a new bookmark file if none exists.
 	if errors.Is(err, fs.ErrNotExist) {
-		_, err := os.Create(path)
+		f, err := os.Create(path)
 		if err != nil {
 			return nil, err
 		}
+		defer f.Close()
 		bm, err := win_eventlog.CreateBookmark("")
 		if err != nil {
 			return nil, err
 		}
 		return &bookMark{
-			handle: bm,
-			path:   path,
-			isNew:  true,
-			buf:    buf,
+			handle:      bm,
+			path:        path,
+			isNew:       true,
+			buf:         buf,
+			bookmarkStr: uberAtomic.NewString(""),
 		}, nil
 	}
 	if err != nil {
@@ -74,18 +79,24 @@ func newBookMark(path string) (*bookMark, error) {
 		}
 	}
 	return &bookMark{
-		handle: bm,
-		path:   path,
-		isNew:  fileString == "",
-		buf:    buf,
+		handle:      bm,
+		path:        path,
+		isNew:       fileString == "",
+		buf:         buf,
+		bookmarkStr: uberAtomic.NewString(""),
 	}, nil
 }
 
-// save Saves the bookmark at the current event position.
-func (b *bookMark) save(event win_eventlog.EvtHandle) error {
+func (b *bookMark) update(event win_eventlog.EvtHandle) error {
 	newBookmark, err := win_eventlog.UpdateBookmark(b.handle, event, b.buf)
 	if err != nil {
 		return err
 	}
-	return atomic.WriteFile(b.path, bytes.NewReader([]byte(newBookmark)))
+	b.bookmarkStr.Store(newBookmark)
+	return nil
+}
+
+// save Saves the bookmark at the current event position.
+func (b *bookMark) save() error {
+	return atomic.WriteFile(b.path, bytes.NewReader([]byte(b.bookmarkStr.Load())))
 }

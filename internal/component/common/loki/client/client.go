@@ -60,7 +60,6 @@ type Metrics struct {
 	mutatedBytes                 *prometheus.CounterVec
 	requestDuration              *prometheus.HistogramVec
 	batchRetries                 *prometheus.CounterVec
-	countersWithHost             []*prometheus.CounterVec
 	countersWithHostTenant       []*prometheus.CounterVec
 	countersWithHostTenantReason []*prometheus.CounterVec
 }
@@ -71,11 +70,11 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.encodedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_encoded_bytes_total",
 		Help: "Number of bytes encoded and ready to send.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_bytes_total",
 		Help: "Number of bytes sent.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_bytes_total",
 		Help: "Number of bytes dropped because failed to be sent to the ingester after all retries.",
@@ -83,7 +82,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_entries_total",
 		Help: "Number of log entries sent to the ingester.",
-	}, []string{HostLabel})
+	}, []string{HostLabel, TenantLabel})
 	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_entries_total",
 		Help: "Number of log entries dropped because failed to be sent to the ingester after all retries.",
@@ -99,18 +98,14 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "loki_write_request_duration_seconds",
 		Help: "Duration of send requests.",
-	}, []string{"status_code", HostLabel})
+	}, []string{"status_code", HostLabel, TenantLabel})
 	m.batchRetries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_batch_retries_total",
 		Help: "Number of times batches has had to be retried.",
 	}, []string{HostLabel, TenantLabel})
 
-	m.countersWithHost = []*prometheus.CounterVec{
-		m.encodedBytes, m.sentBytes, m.sentEntries,
-	}
-
 	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries,
+		m.batchRetries, m.encodedBytes, m.sentBytes, m.sentEntries,
 	}
 
 	m.countersWithHostTenantReason = []*prometheus.CounterVec{
@@ -152,25 +147,18 @@ type client struct {
 	once sync.Once
 	wg   sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	maxStreams int
 }
-
-// Tripperware can wrap a roundtripper.
-type Tripperware func(http.RoundTripper) http.RoundTripper
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
+func New(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, maxStreams, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (*client, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -181,18 +169,14 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:  log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:     cfg,
-		entries: make(chan loki.Entry),
-		metrics: metrics,
-		name:    GetClientName(cfg),
-
-		externalLabels:      cfg.ExternalLabels.LabelSet,
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		logger:     log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:        cfg,
+		entries:    make(chan loki.Entry),
+		metrics:    metrics,
+		name:       GetClientName(cfg),
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 	if cfg.Name != "" {
 		c.name = cfg.Name
@@ -210,28 +194,8 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 
 	c.client.Timeout = cfg.Timeout
 
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range c.metrics.countersWithHost {
-		counter.WithLabelValues(c.cfg.URL.Host).Add(0)
-	}
-
 	c.wg.Add(1)
 	go c.run()
-	return c, nil
-}
-
-// NewWithTripperware creates a new Loki client with a custom tripperware.
-func NewWithTripperware(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, tp Tripperware) (Client, error) {
-	c, err := newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	if tp != nil {
-		c.client.Transport = tp(c.client.Transport)
-	}
-
 	return c, nil
 }
 
@@ -259,10 +223,7 @@ func (c *client) run() {
 	// We apply a cap of 10ms to the ticker, to avoid too frequent checks in
 	// case the BatchWait is very low.
 	minWaitCheckFrequency := 10 * time.Millisecond
-	maxWaitCheckFrequency := c.cfg.BatchWait / 10
-	if maxWaitCheckFrequency < minWaitCheckFrequency {
-		maxWaitCheckFrequency = minWaitCheckFrequency
-	}
+	maxWaitCheckFrequency := max(c.cfg.BatchWait/10, minWaitCheckFrequency)
 
 	maxWaitCheck := time.NewTicker(maxWaitCheckFrequency)
 
@@ -284,20 +245,6 @@ func (c *client) run() {
 			}
 
 			e, tenantID := c.processEntry(e)
-
-			// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-			if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-				if !c.maxLineSizeTruncate {
-					c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-					c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-					break
-				}
-
-				c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-				c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-				e.Line = e.Line[:c.maxLineSize]
-			}
-
 			batch, ok := batches[tenantID]
 
 			// If the batch doesn't exist yet, we create a new one with the entry
@@ -321,7 +268,7 @@ func (c *client) run() {
 			if err != nil {
 				level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 				reason := ReasonGeneric
-				if err.Error() == errMaxStreamsLimitExceeded {
+				if errors.Is(err, errMaxStreamsLimitExceeded) {
 					reason = ReasonStreamLimited
 				}
 				c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Add(float64(len(e.Line)))
@@ -357,7 +304,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		return
 	}
 	bufBytes := float64(len(buf))
-	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
+	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
 
 	backoff := backoff.New(c.ctx, c.cfg.BackoffConfig)
 	var status int
@@ -366,7 +313,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		// send uses `timeout` internally, so `context.Background` is good enough.
 		status, err = c.send(context.Background(), tenantID, buf)
 
-		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host).Observe(time.Since(start).Seconds())
+		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if c.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
@@ -377,8 +324,8 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 
 		if err == nil {
-			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host).Add(bufBytes)
-			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host).Add(float64(entriesCount))
+			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
+			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
 
 			return
 		}
@@ -388,7 +335,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 			break
 		}
 
-		level.Warn(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
+		level.Debug(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
 		c.metrics.batchRetries.WithLabelValues(c.cfg.URL.Host, tenantID).Inc()
 		backoff.Wait()
 
@@ -398,17 +345,15 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 	}
 
-	if err != nil {
-		level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
-		// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
-		// were for a different reason
-		dropReason := ReasonGeneric
-		if batchIsRateLimited(status) {
-			dropReason = ReasonRateLimited
-		}
-		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-		c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	level.Error(c.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
+	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
+	// were for a different reason
+	dropReason := ReasonGeneric
+	if batchIsRateLimited(status) {
+		dropReason = ReasonRateLimited
 	}
+	c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
+	c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
 func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
@@ -485,9 +430,6 @@ func (c *client) StopNow() {
 }
 
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
-	}
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
 }

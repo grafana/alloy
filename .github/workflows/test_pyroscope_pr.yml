@@ -1,0 +1,29 @@
+name: Test Pyroscope PR
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test_pyroscope:
+    name: Test pyroscope packages on Linux
+    runs-on: ubuntu-latest
+    if: >
+      github.actor == 'korniltsev-grafanista' ||
+      github.actor == 'simonswine' ||
+      github.actor == 'aleks-p' ||
+      github.actor == 'marcsanmi'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - run: sudo make test-pyroscope

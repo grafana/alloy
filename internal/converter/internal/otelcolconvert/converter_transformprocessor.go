@@ -7,9 +7,11 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -45,9 +47,9 @@ func (transformProcessorConverter) ConvertAndAppend(state *State, id componentst
 
 func toTransformProcessor(state *State, id componentstatus.InstanceID, cfg *transformprocessor.Config) *transform.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &transform.Arguments{
@@ -70,6 +72,8 @@ func toContextStatements(in []map[string]any) []transform.ContextStatements {
 		res = append(res, transform.ContextStatements{
 			Context:    transform.ContextID(encodeString(s["context"])),
 			Statements: s["statements"].([]string),
+			Conditions: s["conditions"].([]string),
+			ErrorMode:  s["error_mode"].(ottl.ErrorMode),
 		})
 	}
 

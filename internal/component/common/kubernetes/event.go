@@ -22,10 +22,10 @@ const (
 
 type queuedEventHandler struct {
 	log   log.Logger
-	queue workqueue.RateLimitingInterface
+	queue workqueue.TypedRateLimitingInterface[Event]
 }
 
-func NewQueuedEventHandler(log log.Logger, queue workqueue.RateLimitingInterface) *queuedEventHandler {
+func NewQueuedEventHandler(log log.Logger, queue workqueue.TypedRateLimitingInterface[Event]) *queuedEventHandler {
 	return &queuedEventHandler{
 		log:   log,
 		queue: queue,

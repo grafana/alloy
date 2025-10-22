@@ -3,76 +3,66 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.snowflake/ # /docs/alloy/latest/reference/components/prometheus.exporter.snowflake/
 description: Learn about prometheus.exporter.snowflake
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: prometheus.exporter.snowflake
 ---
 
-# prometheus.exporter.snowflake
+# `prometheus.exporter.snowflake`
 
-The `prometheus.exporter.snowflake` component embeds
-[snowflake_exporter](https://github.com/grafana/snowflake-prometheus-exporter) for collecting warehouse, database, table, and replication statistics from a Snowflake account via HTTP for Prometheus consumption.
+The `prometheus.exporter.snowflake` component embeds the [`snowflake_exporter`](https://github.com/grafana/snowflake-prometheus-exporter) for collecting warehouse, database, table, and replication statistics from a Snowflake account via HTTP for Prometheus consumption.
 
 ## Usage
+
+You can use the `prometheus.exporter.snowflake` component with password or RSA authentication.
 
 ### Password Authentication
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
-    account_name = <ACCOUNT_NAME>
-    username =     <USERNAME>
-    password =     <PASSWORD>
-    warehouse =    <WAREHOUSE>
+    account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
+    username =     "<USERNAME>"
+    password =     "<PASSWORD>"
+    warehouse =    "<VIRTUAL_WAREHOUSE>"
 }
 ```
-
-Replace the following:
-
-- _`<ACCOUNT_NAME>`_: The Snowflake account name you are collecting metrics from.
-- _`<USERNAME>`_: The username used to query metrics.
-- _`<PASSWORD>`_: The password for the user used to query metrics.
-- _`<WAREHOUSE>`_: The virtual warehouse to use when querying metrics.
 
 ### RSA Authentication
 
 ```alloy
 prometheus.exporter.snowflake "LABEL" {
-    account_name =         <ACCOUNT_NAME>
-    username =             <USERNAME>
-    private_key_path =     <PRIVATE_KEY_PATH>
-    private_key_password = <PRIVATE_KEY_PASSWORD>
-    warehouse =            <WAREHOUSE>
+    account_name =         "<SNOWFLAKE_ACCOUNT_NAME>"
+    username =             "<USERNAME>"
+    private_key_path =     "<RSA_PRIVATE_KEY_PATH>"
+    private_key_password = "<RSA_PRIVATE_KEY_PASSWORD>"
+    warehouse =            "<VIRTUAL_WAREHOUSE>"
 }
 ```
 
-Replace the following:
-
-- _`<ACCOUNT_NAME>`_: The Snowflake account name you are collecting metrics from.
-- _`<USERNAME>`_: The username used to query metrics.
-- _`<PRIVATE_KEY_PATH>`_: The path to the user's RSA private key file.
-- _`<PRIVATE_KEY_PASSWORD>`_: The password for the user's RSA private key.
-- _`<WAREHOUSE>`_: The virtual warehouse to use when querying metrics.
-
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.snowflake`:
+
+| Name                       | Type     | Description                                                                                       | Default          | Required |
+|----------------------------|----------|---------------------------------------------------------------------------------------------------|------------------|----------|
+| `account_name`             | `string` | The account to collect metrics from.                                                              |                  | yes      |
+| `username`                 | `string` | The username for the user used when querying metrics.                                             |                  | yes      |
+| `warehouse`                | `string` | The warehouse to use when querying metrics.                                                       |                  | yes      |
+| `enable_tracing`           | `bool`   | Whether to have the snowflake database driver provide trace logging.                              | `false`          | no       |
+| `exclude_deleted_tables`   | `bool`   | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
+| `password`                 | `secret` | The password for the user used when querying metrics (required for password authentication).      |                  | no       |
+| `private_key_password`     | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
+| `private_key_path`         | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
+| `role`                     | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
+
 One of `password` or `private_key_path` must be specified to authenticate.
 Users with an encrypted private key will also need to provide a `private_key_password`.
 
-| Name                     | Type     | Description                                                                                       | Default          | Required |
-| ------------------------ | -------- | ------------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `account_name`           | `string` | The account to collect metrics from.                                                              |                  | yes      |
-| `username`               | `string` | The username for the user used when querying metrics.                                             |                  | yes      |
-| `password`               | `secret` | The password for the user used when querying metrics (required for password authentication).      |                  | no       |
-| `private_key_path`       | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
-| `private_key_password`   | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
-| `role`                   | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
-| `warehouse`              | `string` | The warehouse to use when querying metrics.                                                       |                  | yes      |
-| `exclude_deleted_tables` |  `bool`  | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
-
 ## Blocks
 
-The `prometheus.exporter.snowflake` component does not support any blocks, and is configured
-fully through arguments.
+The `prometheus.exporter.snowflake` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -80,24 +70,20 @@ fully through arguments.
 
 ## Component health
 
-`prometheus.exporter.snowflake` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.snowflake` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.snowflake` does not expose any component-specific
-debug information.
+`prometheus.exporter.snowflake` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.snowflake` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.snowflake` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.snowflake`:
+The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.snowflake`:
 
 ```alloy
 prometheus.exporter.snowflake "example" {
@@ -115,11 +101,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
@@ -127,9 +113,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the remote_write API.
-- _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

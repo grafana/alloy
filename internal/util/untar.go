@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Untar untars a tarball to the provided destination path.
@@ -29,6 +30,14 @@ func Untar(tarPath string, destPath string) error {
 			break
 		} else if err != nil {
 			return err
+		}
+
+		// Protect from a zip slip.
+		// https://security.snyk.io/research/zip-slip-vulnerability
+		if strings.Contains(header.Name, `../`) ||
+			strings.Contains(header.Name, `..\`) {
+
+			return fmt.Errorf("tar: invalid file path: %s", header.Name)
 		}
 
 		fullPath := filepath.Join(destPath, header.Name)

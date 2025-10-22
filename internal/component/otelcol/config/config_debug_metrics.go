@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/collector/config/configtelemetry"
 )
 
+// Deprecated
 type Level string
 
 const (
@@ -26,6 +27,7 @@ var levels = map[Level]bool{
 	LevelDetailed: true,
 }
 
+// Deprecated
 func (l Level) Convert() (configtelemetry.Level, error) {
 	switch l {
 	case LevelNone:
@@ -41,7 +43,7 @@ func (l Level) Convert() (configtelemetry.Level, error) {
 	}
 }
 
-// UnmarshalText implements encoding.TextUnmarshaler for Level.
+// Deprecated: UnmarshalText implements encoding.TextUnmarshaler for Level.
 func (l *Level) UnmarshalText(text []byte) error {
 	alloyLevelStr := Level(text)
 	if _, exists := levels[alloyLevelStr]; exists {
@@ -53,8 +55,9 @@ func (l *Level) UnmarshalText(text []byte) error {
 
 // DebugMetricsArguments configures internal metrics of the components
 type DebugMetricsArguments struct {
-	DisableHighCardinalityMetrics bool  `alloy:"disable_high_cardinality_metrics,attr,optional"`
-	Level                         Level `alloy:"level,attr,optional"`
+	DisableHighCardinalityMetrics bool `alloy:"disable_high_cardinality_metrics,attr,optional"`
+	// Deprecated: the level cannot be set per component anymore. The field is kept as a no-op to avoid breaking changes.
+	Level Level `alloy:"level,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.

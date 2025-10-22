@@ -1,5 +1,16 @@
 package otelcol
 
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+const (
+	delete = "delete"
+	hash   = "hash"
+)
+
 type AttrActionKeyValueSlice []AttrActionKeyValue
 
 func (actions AttrActionKeyValueSlice) Convert() []interface{} {
@@ -15,10 +26,27 @@ func (actions AttrActionKeyValueSlice) Convert() []interface{} {
 	return res
 }
 
+func (actions AttrActionKeyValueSlice) Validate() error {
+	var validationErrors []error
+
+	for i, action := range actions {
+		if err := action.validate(); err != nil {
+			wrappedErr := fmt.Errorf("validation failed for action block number %d: %w", i+1, err)
+			validationErrors = append(validationErrors, wrappedErr)
+		}
+	}
+
+	if len(validationErrors) > 0 {
+		return errors.Join(validationErrors...)
+	}
+	return nil
+}
+
 type AttrActionKeyValue struct {
 	// Key specifies the attribute to act upon.
-	// This is a required field.
-	Key string `alloy:"key,attr"`
+	// The actions `delete` and `hash` can use the `pattern`` argument instead of/with the `key` argument.
+	// The field is required for all other actions.
+	Key string `alloy:"key,attr,optional"`
 
 	// Value specifies the value to populate for the key.
 	// The type of the value is inferred from the configuration.
@@ -90,4 +118,18 @@ func (args *AttrActionKeyValue) convert() map[string]interface{} {
 		"from_context":   args.FromContext,
 		"converted_type": args.ConvertedType,
 	}
+}
+
+func (args *AttrActionKeyValue) validate() error {
+	switch strings.ToLower(args.Action) {
+	case delete, hash:
+		if args.Key == "" && args.RegexPattern == "" {
+			return fmt.Errorf("the action %s requires at least the key argument or the pattern argument to be set", args.Action)
+		}
+	default:
+		if args.Key == "" {
+			return fmt.Errorf("the action %s requires the key argument to be set", args.Action)
+		}
+	}
+	return nil
 }

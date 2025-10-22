@@ -4,13 +4,14 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"log/slog"
 	"time"
 
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+
 	"github.com/go-kit/log"
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
-	"github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
-	yaceModel "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/model"
+	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -126,7 +127,7 @@ func (c *Config) Name() string {
 	return "cloudwatch_exporter"
 }
 
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return getHash(c)
 }
 
@@ -167,7 +168,7 @@ func ToYACEConfig(c *Config, logger log.Logger) (yaceModel.JobsConfig, bool, err
 }
 
 // convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
-// This function is added for the backward compatibility of the deprecated service aliases. This compatability
+// This function is added for the backward compatibility of the deprecated service aliases. This compatibility
 // may be removed in the future.
 func convertAliasesToNamespaces(c *Config, logger log.Logger) {
 	for i, job := range c.Discovery.Jobs {
@@ -226,7 +227,7 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 
 	// Run the exporter's config validation. Between other things, it will check that the service for which a discovery
 	// job is instantiated, it's supported.
-	modelConf, err := conf.Validate(logging.NewNopLogger())
+	modelConf, err := conf.Validate(slog.New(slog.DiscardHandler))
 	if err != nil {
 		return yaceModel.JobsConfig{}, fipsEnabled, err
 	}
@@ -239,7 +240,7 @@ func toYACEConfig(c *Config) (yaceModel.JobsConfig, bool, error) {
 func PatchYACEDefaults(yc *yaceModel.JobsConfig) {
 	// YACE doesn't allow during validation a zero-delay in each metrics scrape. Override this behaviour since it's taken
 	// into account by the rounding period.
-	// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/7e5949124bb5f26353eeff298724a5897de2a2a4/pkg/config/config.go#L320
+	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/7e5949124bb5f26353eeff298724a5897de2a2a4/pkg/config/config.go#L320
 	for _, job := range yc.DiscoveryJobs {
 		for _, metric := range job.Metrics {
 			metric.Delay = 0
@@ -341,7 +342,7 @@ func toYACEMetrics(metrics []Metric, jobNilToZero *bool) []*yaceConf.Metric {
 func toYACERoles(roles []Role) []yaceConf.Role {
 	yaceRoles := []yaceConf.Role{}
 	// YACE defaults to an empty role, which means the environment configured role is used
-	// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
+	// https://github.com/prometheus-community/yet-another-cloudwatch-exporter/blob/30aeceb2324763cdd024a1311045f83a09c1df36/pkg/config/config.go#L111
 	if len(roles) == 0 {
 		yaceRoles = append(yaceRoles, yaceConf.Role{})
 	}

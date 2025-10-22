@@ -29,6 +29,6 @@ func main() {
 		}
 
 		stability, _ := strconv.Unquote(reg.Stability.String())
-		fmt.Fprintf(tw, "%s \t%s\n", reg.Name, stability)
+		_, _ = fmt.Fprintf(tw, "%s \t%s\n", reg.Name, stability)
 	}
 }

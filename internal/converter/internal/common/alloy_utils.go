@@ -21,7 +21,7 @@ import (
 // NewBlockWithOverride generates a new [*builder.Block] using a hook to
 // override specific types.
 func NewBlockWithOverride(name []string, label string, args component.Arguments) *builder.Block {
-	return NewBlockWithOverrideFn(name, label, args, getValueOverrideHook())
+	return NewBlockWithOverrideFn(name, label, args, GetAlloyTypesOverrideHook())
 }
 
 // NewBlockWithOverrideFn generates a new [*builder.Block] using a hook fn to
@@ -33,9 +33,9 @@ func NewBlockWithOverrideFn(name []string, label string, args component.Argument
 	return block
 }
 
-// GetValueOverrideHook returns a hook for overriding the go value of
+// GetAlloyTypesOverrideHook returns a hook for overriding the go value of
 // specific go types for converting configs from one type to another.
-func getValueOverrideHook() builder.ValueOverrideHook {
+func GetAlloyTypesOverrideHook() builder.ValueOverrideHook {
 	return func(val interface{}) interface{} {
 		switch value := val.(type) {
 		case alloytypes.Secret:

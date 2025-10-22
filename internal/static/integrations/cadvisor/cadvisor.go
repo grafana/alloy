@@ -1,6 +1,6 @@
 //go:build linux
 
-package cadvisor //nolint:golint
+package cadvisor
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/go-logr/logr"
 	"github.com/google/cadvisor/cache/memory"
 	"github.com/google/cadvisor/container"
 	v2 "github.com/google/cadvisor/info/v2"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 
 	// Register container providers
@@ -84,7 +86,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	// Do gross global configs. This works, so long as there is only one instance of the cAdvisor integration
 	// per host.
 
-	klog.SetLogger(c.logger)
+	klog.SetLogger(logr.FromSlogHandler(logging.NewSlogGoKitHandler(logger)))
 	plugins := map[string]container.Plugin{
 		"containerd": containerd.NewPluginWithOptions(&containerd.Options{
 			ContainerdEndpoint:  c.Containerd,

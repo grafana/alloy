@@ -28,13 +28,14 @@ func GetOrAllocIndex(value reflect.Value, index []int) reflect.Value {
 	}
 
 	for _, next := range index {
-		value = deferencePointer(value).Field(next)
+		value = DeferencePointer(value).Field(next)
 	}
 
 	return value
 }
 
-func deferencePointer(value reflect.Value) reflect.Value {
+// DeferencePointer fully deference value and allocate as necessary.
+func DeferencePointer(value reflect.Value) reflect.Value {
 	for value.Kind() == reflect.Pointer {
 		if value.IsNil() {
 			value.Set(reflect.New(value.Type().Elem()))

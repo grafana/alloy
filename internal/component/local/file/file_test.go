@@ -124,7 +124,7 @@ func TestFile_ExistOnLoad(t *testing.T) {
 	tc, err := componenttest.NewControllerFromID(nil, "local.file")
 	require.NoError(t, err)
 
-	err = tc.Run(canceledContext(), file.Arguments{
+	err = tc.Run(canceledContext(t), file.Arguments{
 		Filename:      testFile,
 		Type:          filedetector.DetectorPoll,
 		PollFrequency: 1 * time.Hour,
@@ -135,8 +135,8 @@ func TestFile_ExistOnLoad(t *testing.T) {
 }
 
 // canceledContext creates a context which is already canceled.
-func canceledContext() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
+func canceledContext(t *testing.T) context.Context {
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	return ctx
 }

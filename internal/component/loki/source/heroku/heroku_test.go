@@ -1,7 +1,6 @@
 package heroku
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -34,7 +33,7 @@ func TestPush(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	go func() { require.NoError(t, c.Run(context.Background())) }()
+	go func() { require.NoError(t, c.Run(t.Context())) }()
 	waitForServerToBeReady(t, c)
 
 	// Create a Heroku Drain Request and send it to the launched server.

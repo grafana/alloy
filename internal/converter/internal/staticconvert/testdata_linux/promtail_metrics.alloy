@@ -1,0 +1,35 @@
+discovery.kubernetes "logs_config_with_metrics" {
+	role = "pod"
+}
+
+local.file_match "logs_config_with_metrics" {
+	path_targets = discovery.kubernetes.logs_config_with_metrics.targets
+}
+
+loki.process "logs_config_with_metrics" {
+	forward_to = [loki.write.logs_config.receiver]
+
+	stage.metrics {
+		metric.counter {
+			name              = "byte_count_total"
+			description       = "A running counter of all bytes per stream with their corresponding labels"
+			max_idle_duration = "0s"
+			action            = "add"
+			match_all         = true
+			count_entry_bytes = true
+		}
+	}
+}
+
+loki.source.file "logs_config_with_metrics" {
+	targets               = local.file_match.logs_config_with_metrics.targets
+	forward_to            = [loki.process.logs_config_with_metrics.receiver]
+	legacy_positions_file = "/path/config.yml"
+}
+
+loki.write "logs_config" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

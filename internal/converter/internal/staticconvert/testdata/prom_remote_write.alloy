@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_test1" {
 	endpoint {
-		name = "test1-149bbd"
+		name = "test1-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -11,7 +11,7 @@ prometheus.remote_write "metrics_test1" {
 
 prometheus.remote_write "metrics_test2" {
 	endpoint {
-		name           = "test2-c6d55a"
+		name           = "test2-df90be"
 		url            = "http://localhost:9010/api/prom/push"
 		send_exemplars = false
 
@@ -23,7 +23,7 @@ prometheus.remote_write "metrics_test2" {
 
 prometheus.remote_write "metrics_test3" {
 	endpoint {
-		name = "test3-aa96fd"
+		name = "test3-ab9c68"
 		url  = "http://localhost:9011/api/prom/push"
 
 		queue_config { }
@@ -32,7 +32,7 @@ prometheus.remote_write "metrics_test3" {
 	}
 
 	endpoint {
-		name = "test3-a93240"
+		name = "test3-0a2228"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config {
@@ -45,7 +45,7 @@ prometheus.remote_write "metrics_test3" {
 
 prometheus.remote_write "metrics_test4_sigv4_defaults" {
 	endpoint {
-		name = "test4_sigv4_defaults-f815bf"
+		name = "test4_sigv4_defaults-601bd8"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }
@@ -58,7 +58,7 @@ prometheus.remote_write "metrics_test4_sigv4_defaults" {
 
 prometheus.remote_write "metrics_test5_sigv4_explicit" {
 	endpoint {
-		name = "test5_sigv4_explicit-bc8fca"
+		name = "test5_sigv4_explicit-422454"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }
@@ -77,7 +77,7 @@ prometheus.remote_write "metrics_test5_sigv4_explicit" {
 
 prometheus.remote_write "metrics_test6_azuread_defaults" {
 	endpoint {
-		name = "test6_azuread_defaults-cc4e7e"
+		name = "test6_azuread_defaults-1291c2"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }
@@ -94,7 +94,7 @@ prometheus.remote_write "metrics_test6_azuread_defaults" {
 
 prometheus.remote_write "metrics_test7_azuread_explicit" {
 	endpoint {
-		name = "test7_azuread_explicit-9e1a3e"
+		name = "test7_azuread_explicit-d98cd2"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }

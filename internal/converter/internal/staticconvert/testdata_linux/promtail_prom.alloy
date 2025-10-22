@@ -18,7 +18,7 @@ prometheus.scrape "metrics_name_jobName" {
 
 prometheus.remote_write "metrics_name" {
 	endpoint {
-		name = "name-149bbd"
+		name = "name-04b53d"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
