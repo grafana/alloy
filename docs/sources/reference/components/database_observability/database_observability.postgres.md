@@ -87,7 +87,6 @@ You can use the following blocks with `database_observability.postgres`:
 |--------------------------------|----------------|------------------------------------------------------|---------|----------|
 | `collect_interval`             | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio`            | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
-| `initial_lookback`             | `duration`     | The amount of time to look back for explain plans.   | `24h`   | no       |
 | `explain_plan_exclude_schemas` | `list(string)` | Schemas to exclude from explain plans.               | `[]`    | no       |
 
 ## Example
