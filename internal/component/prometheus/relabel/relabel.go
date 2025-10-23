@@ -157,7 +157,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
 		ls,
-		prometheus.WithName(c.opts.ID),
+		prometheus.WithComponentID(c.opts.ID),
 		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)

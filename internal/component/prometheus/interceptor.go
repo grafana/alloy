@@ -32,7 +32,7 @@ type Interceptor struct {
 	// much memory to allocate for the staleness trackers.
 	lastSeriesCount atomic.Int64
 
-	name string
+	componentID string
 }
 
 var _ storage.Appendable = (*Interceptor)(nil)
@@ -93,11 +93,11 @@ func WithCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct i
 	}
 }
 
-// WithName returns an InterceptorOptions whish allows to set the name of the Interceptor.
-// Name will be sufficed with `.receiver`.
-func WithName(name string) InterceptorOption {
+// WithName returns an InterceptorOptions whish allows to set the componentID of the Interceptor.
+// This is useful for debugging
+func WithComponentID(id string) InterceptorOption {
 	return func(i *Interceptor) {
-		i.name = name + ".receiver"
+		i.componentID = id
 	}
 }
 
@@ -115,7 +115,7 @@ func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
 }
 
 func (f *Interceptor) String() string {
-	return f.name
+	return f.componentID + ".receiver"
 }
 
 type interceptappender struct {
