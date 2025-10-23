@@ -1,7 +1,6 @@
-//copied from https://github.com/weaveworks/common/blob/master/http/client/client_test.go
+// copied from https://github.com/weaveworks/common/blob/master/http/client/client_test.go
 // because it is not included in dskit
-
-package internal
+package lokiclient
 
 import (
 	"context"

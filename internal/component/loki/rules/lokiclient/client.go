@@ -1,4 +1,4 @@
-package client
+package lokiclient
 
 import (
 	"bufio"
@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	log "github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
@@ -50,7 +49,7 @@ type LokiClient struct {
 	id string
 
 	endpoint *url.URL
-	client   internal.Requester
+	client   Requester
 	apiPath  string
 	logger   log.Logger
 }
@@ -72,7 +71,7 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 	}
 
 	collector := instrument.NewHistogramCollector(timingHistogram)
-	timedClient := internal.NewTimedClient(client, collector)
+	timedClient := NewTimedClient(client, collector)
 
 	return &LokiClient{
 		id:       cfg.ID,
@@ -154,7 +153,7 @@ func buildRequest(op, p, m string, endpoint url.URL, payload []byte) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
-	r = r.WithContext(context.WithValue(r.Context(), internal.OperationNameContextKey, op))
+	r = r.WithContext(context.WithValue(r.Context(), OperationNameContextKey, op))
 
 	return r, nil
 }
