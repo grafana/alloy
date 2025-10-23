@@ -21,6 +21,17 @@ import (
 // to an outage or erroring (such as limits being hit).
 const finalEntryTimeout = 5 * time.Second
 
+// LogsReceiver is an interface providing `chan Entry` which is used for component
+// communication.
+type LogsReceiver interface {
+	// Send tries to send entry but will abort if context is canceled.
+	Send(ctx context.Context, entry Entry) bool
+	// Recv tries to receive entry but will abort if context is canceled.
+	Recv(ctx context.Context) (Entry, bool)
+	// TODO: Deprecate and move to only use Send/Recv
+	Chan() chan Entry
+}
+
 // LogReceiverOption is an option argument passed to NewLogsReceiver.
 type LogReceiverOption func(*logsReceiver)
 
@@ -36,25 +47,6 @@ func WithComponentID(id string) LogReceiverOption {
 	}
 }
 
-// LogsReceiver is an interface providing `chan Entry` which is used for component
-// communication.
-type LogsReceiver interface {
-	Chan() chan Entry
-}
-
-type logsReceiver struct {
-	entries     chan Entry
-	componentID string
-}
-
-func (l *logsReceiver) Chan() chan Entry {
-	return l.entries
-}
-
-func (l *logsReceiver) String() string {
-	return l.componentID + ".receiver"
-}
-
 func NewLogsReceiver(opts ...LogReceiverOption) LogsReceiver {
 	l := &logsReceiver{}
 
@@ -67,6 +59,37 @@ func NewLogsReceiver(opts ...LogReceiverOption) LogsReceiver {
 	}
 
 	return l
+}
+
+type logsReceiver struct {
+	entries     chan Entry
+	componentID string
+}
+
+func (l *logsReceiver) Send(ctx context.Context, entry Entry) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case l.entries <- entry:
+		return true
+	}
+}
+
+func (l *logsReceiver) Recv(ctx context.Context) (Entry, bool) {
+	select {
+	case <-ctx.Done():
+		return Entry{}, false
+	case entry := <-l.entries:
+		return entry, true
+	}
+}
+
+func (l *logsReceiver) Chan() chan Entry {
+	return l.entries
+}
+
+func (l *logsReceiver) String() string {
+	return l.componentID + ".receiver"
 }
 
 // Entry is a log entry with labels.
