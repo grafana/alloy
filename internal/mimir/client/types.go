@@ -50,8 +50,8 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 				Alert:  yaml.Node{Value: r.Alert},
 			}
 
-			// Use UTF8Validation for Mimir which supports UTF-8 metric/label names
-			for _, node := range r.Validate(ruleNode, model.UTF8Validation) {
+			// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
+			for _, node := range r.Validate(ruleNode, model.LegacyValidation) {
 				var ruleName string
 				if r.Alert != "" {
 					ruleName = r.Alert

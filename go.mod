@@ -73,10 +73,11 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20251021174646-053429db2124
-	github.com/grafana/loki/v3 v3.0.0-20251021174646-053429db2124 // main branch (commit 053429db212405966051e8410ccf786db26065f1) - replace once there is a release that Loki's Prometheus.
+	github.com/grafana/loki/v3 v3.0.0-20251021174646-053429db2124 // main branch (commit 053429db212405966051e8410ccf786db26065f1) - replace once there is a release that upgrades Loki's Prometheus.
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
+	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
@@ -197,7 +198,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.17.2
 	github.com/prometheus/node_exporter v1.9.1
 	github.com/prometheus/procfs v0.17.0
-	github.com/prometheus/prometheus v0.305.1-0.20250806170547-208187eaa19b // replaced by a fork of v3.4.2 further down this file
+	github.com/prometheus/prometheus v0.305.1-0.20250806170547-208187eaa19b // replaced by a fork of v3.7.1 further down this file
 	github.com/prometheus/sigv4 v0.2.1
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
 	github.com/prometheus/statsd_exporter v0.28.0
@@ -491,6 +492,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.8.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/lightsail v1.49.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.27.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/shield v1.29.8 // indirect
@@ -807,6 +809,7 @@ require (
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/percona/percona-backup-mongodb v1.8.1-0.20250218045950-7e9f38fe06ab // indirect
+	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
@@ -852,6 +855,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/stackitcloud/stackit-sdk-go/core v0.17.3 // indirect
 	github.com/stormcat24/protodep v0.1.8 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635 // indirect
@@ -984,16 +988,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.33.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
-)
-
-require (
-	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
-	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
-)
-
-require (
-	github.com/aws/aws-sdk-go-v2/service/lightsail v1.49.1 // indirect
-	github.com/stackitcloud/stackit-sdk-go/core v0.17.3 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
@@ -1037,8 +1031,6 @@ replace (
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
 	// leodido fork his project to continue support
 	github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.2.0
-	// NOTE: Removed otlptranslator replace - we now use v1.0.0 which is compatible with Prometheus v3.7.1
-	// The NormalizeLabel function that was previously needed is actually from opentelemetry-collector-contrib, not otlptranslator
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 )
 
@@ -1094,12 +1086,7 @@ replace (
 	go.opentelemetry.io/proto/slim/otlp/profiles/v1development => go.opentelemetry.io/proto/slim/otlp/profiles/v1development v0.0.1
 )
 
-// Don't downgrade k8s packages - use the versions from require section (v0.34.1)
-// This is needed for Prometheus fork's kubernetes discovery
-// OTel Collector v0.134.0 works fine with newer k8s versions
-
 // Use the kube-openapi version that matches k8s.io/apimachinery v0.34.1
-// This version uses go.yaml.in/yaml/v3, so we also need gnostic-models to use it
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b
 
 // Update openshift/client-go to a version compatible with structured-merge-diff v6

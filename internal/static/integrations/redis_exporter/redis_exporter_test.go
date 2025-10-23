@@ -176,23 +176,23 @@ func TestRedisCases(t *testing.T) {
 			body, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-		foundMetricNames := map[string]bool{}
-		for _, name := range test.expectedMetrics {
-			foundMetricNames[name] = false
-		}
-
-		p := textparse.NewPromParser(body, nil, false)
-		for {
-			entry, err := p.Next()
-			if err == io.EOF {
-				break
+			foundMetricNames := map[string]bool{}
+			for _, name := range test.expectedMetrics {
+				foundMetricNames[name] = false
 			}
-			require.NoError(t, err)
 
-			if entry == textparse.EntryHelp {
-				matchMetricNames(foundMetricNames, p)
+			p := textparse.NewPromParser(body, nil, false)
+			for {
+				entry, err := p.Next()
+				if err == io.EOF {
+					break
+				}
+				require.NoError(t, err)
+
+				if entry == textparse.EntryHelp {
+					matchMetricNames(foundMetricNames, p)
+				}
 			}
-		}
 
 			for metric, exists := range foundMetricNames {
 				require.True(t, exists, "could not find metric %s", metric)
