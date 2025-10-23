@@ -51,6 +51,8 @@ Main (unreleased)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
+- pyroscope.java: update async-profiler to 4.2 (@korniltsev-grafanista)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
