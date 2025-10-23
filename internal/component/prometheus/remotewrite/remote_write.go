@@ -128,7 +128,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	res.receiver = prometheus.NewInterceptor(
 		res.storage,
 		ls,
-
+		prometheus.WithName(res.opts.ID),
 		// In the methods below, conversion is needed because remote_writes assume
 		// they are responsible for generating ref IDs. This means two
 		// remote_writes may return the same ref ID for two different series. We
