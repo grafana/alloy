@@ -1,6 +1,6 @@
 name: Publish alloy-devel containers
 on:
-  pull_request:
+  pull_request_target:
     types: [labeled]
 
 permissions:
