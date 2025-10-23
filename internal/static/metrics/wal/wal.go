@@ -21,8 +21,6 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/model/timestamp"
-	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
@@ -52,6 +50,7 @@ type storageMetrics struct {
 	totalRemovedSeries     prometheus.Counter
 	totalAppendedSamples   prometheus.Counter
 	totalAppendedExemplars prometheus.Counter
+	totalAppendedMetadata  prometheus.Counter
 }
 
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
@@ -91,6 +90,11 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		Help: "Total number of exemplars appended to the WAL",
 	})
 
+	m.totalAppendedMetadata = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_metadata_appended_total",
+		Help: "Total number of metadata entries appended to the WAL",
+	})
+
 	if r != nil {
 		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
 		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
@@ -99,6 +103,7 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		m.totalRemovedSeries = util.MustRegisterOrGet(r, m.totalRemovedSeries).(prometheus.Counter)
 		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
 		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
+		m.totalAppendedMetadata = util.MustRegisterOrGet(r, m.totalAppendedMetadata).(prometheus.Counter)
 	}
 
 	return &m
@@ -116,6 +121,7 @@ func (m *storageMetrics) Unregister() {
 		m.totalRemovedSeries,
 		m.totalAppendedSamples,
 		m.totalAppendedExemplars,
+		m.totalAppendedMetadata,
 	}
 	for _, c := range cs {
 		m.r.Unregister(c)
@@ -191,6 +197,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 			pendingHistograms:      make([]record.RefHistogramSample, 0, 100),
 			pendingFloatHistograms: make([]record.RefFloatHistogramSample, 0, 100),
 			pendingExamplars:       make([]record.RefExemplar, 0, 10),
+			pendingMetadata:        make([]record.RefMetadata, 0, 10),
 		}
 	}
 
@@ -365,8 +372,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					return
 				}
 				decoded <- floatHistograms
-			case record.Tombstones, record.Exemplars:
-				// We don't care about decoding tombstones or exemplars
+			case record.Tombstones, record.Exemplars, record.Metadata:
+				// We don't care about loading tombstones, exemplars, or metadata in the WAL
 				// TODO: If decide to decode exemplars, we should make sure to prepopulate
 				// stripeSeries.exemplars in the next block by using setLatestExemplar.
 				continue
@@ -610,66 +617,6 @@ func (w *Storage) gc(mint int64) {
 	w.metrics.numDeletedSeries.Set(float64(len(w.deleted)))
 }
 
-// WriteStalenessMarkers appends a staleness sample for all active series.
-func (w *Storage) WriteStalenessMarkers(remoteTsFunc func() int64) error {
-	var lastErr error
-	var lastTs int64
-
-	app := w.Appender(context.Background())
-	it := w.series.iterator()
-	for series := range it.Channel() {
-		var (
-			ref  = series.ref
-			lset = series.lset
-		)
-
-		ts := timestamp.FromTime(time.Now())
-		_, err := app.Append(storage.SeriesRef(ref), lset, ts, math.Float64frombits(value.StaleNaN))
-		if err != nil {
-			lastErr = err
-		}
-
-		// Remove millisecond precision; the remote write timestamp we get
-		// only has second precision.
-		lastTs = (ts / 1000) * 1000
-	}
-
-	if lastErr == nil {
-		if err := app.Commit(); err != nil {
-			return fmt.Errorf("failed to commit staleness markers: %w", err)
-		}
-
-		// Wait for remote write to write the lastTs, but give up after 1m
-		level.Info(w.logger).Log("msg", "waiting for remote write to write staleness markers...")
-
-		stopCh := time.After(1 * time.Minute)
-		start := time.Now()
-
-	Outer:
-		for {
-			select {
-			case <-stopCh:
-				level.Error(w.logger).Log("msg", "timed out waiting for staleness markers to be written")
-				break Outer
-			default:
-				writtenTs := remoteTsFunc()
-				if writtenTs >= lastTs {
-					duration := time.Since(start)
-					level.Info(w.logger).Log("msg", "remote write wrote staleness markers", "duration", duration)
-					break Outer
-				}
-
-				level.Info(w.logger).Log("msg", "remote write hasn't written staleness markers yet", "remoteTs", writtenTs, "lastTs", lastTs)
-
-				// Wait a bit before reading again
-				time.Sleep(5 * time.Second)
-			}
-		}
-	}
-
-	return lastErr
-}
-
 // Close closes the storage and all its underlying resources.
 func (w *Storage) Close() error {
 	w.walMtx.Lock()
@@ -693,6 +640,7 @@ type appender struct {
 	pendingExamplars       []record.RefExemplar
 	pendingHistograms      []record.RefHistogramSample
 	pendingFloatHistograms []record.RefFloatHistogramSample
+	pendingMetadata        []record.RefMetadata
 
 	// Pointers to the series referenced by each element of pendingSamples.
 	// Series lock is not held on elements.
@@ -893,9 +841,29 @@ func (a *appender) AppendCTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ in
 	return 0, nil
 }
 
-func (a *appender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
-	// TODO(rfratto): implement pushing metadata to WAL
-	return 0, nil
+func (a *appender) UpdateMetadata(ref storage.SeriesRef, labels labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	// Ensure the series exists by id or by labels before we try to update metadata.
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		series = a.w.series.GetByHash(labels.Hash(), labels)
+		if series != nil {
+			ref = storage.SeriesRef(series.ref)
+		}
+	}
+	if series == nil {
+		return 0, fmt.Errorf("unknown series when trying to add metadata with SeriesRef: %d and labels: %s", ref, labels)
+	}
+
+	a.pendingMetadata = append(a.pendingMetadata, record.RefMetadata{
+		Ref:  chunks.HeadSeriesRef(ref),
+		Type: record.GetMetricType(m.Type),
+		Unit: m.Unit,
+		Help: m.Help,
+	})
+
+	// TODO does this need to track the metadata in the series like https://github.com/prometheus/prometheus/blob/89f011ba1348b1b7ec60b73650343be34d2d525c/tsdb/head_append.go#L881-L893?
+
+	return ref, nil
 }
 
 func (a *appender) SetOptions(_ *storage.AppendOptions) {
@@ -939,6 +907,16 @@ func (a *appender) log() error {
 
 	if len(a.pendingSeries) > 0 {
 		buf = encoder.Series(a.pendingSeries, buf)
+		if err := a.w.wal.Log(buf); err != nil {
+			return err
+		}
+		buf = buf[:0]
+	}
+
+	// Metadata needs to be written after series but before samples so we have a valid series ref for the metadata data
+	// and that series ref can be associated to samples for metadata.
+	if len(a.pendingMetadata) > 0 {
+		buf = encoder.Metadata(a.pendingMetadata, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
@@ -1011,6 +989,7 @@ func (a *appender) clearData() {
 	a.pendingHistograms = a.pendingHistograms[:0]
 	a.pendingFloatHistograms = a.pendingFloatHistograms[:0]
 	a.pendingExamplars = a.pendingExamplars[:0]
+	a.pendingMetadata = a.pendingMetadata[:0]
 	a.sampleSeries = a.sampleSeries[:0]
 	a.histogramSeries = a.histogramSeries[:0]
 	a.floatHistogramSeries = a.floatHistogramSeries[:0]

@@ -146,6 +146,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+
+			level.Info(o.Logger).Log("msg", "appended sample", "global_ref", globalRef, "local_ref", localID, "new_ref", newRef, "labels", l)
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -194,6 +197,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			if localID == 0 {
 				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
 			}
+
+			level.Info(o.Logger).Log("msg", "updated remote store metadata", "global_ref", globalRef, "local_ref", localID, "new_ref", newRef, "labels", l, "metadata", m)
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,

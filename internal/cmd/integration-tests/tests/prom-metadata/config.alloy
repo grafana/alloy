@@ -30,3 +30,32 @@ prometheus.write.queue "prom_metadata" {
         }
     }
 }
+
+prometheus.scrape "prom_metadata_remote_write" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+  params = { "metric-prefix" = ["prom_metadata_remote_write_"] }
+  forward_to = [
+    prometheus.remote_write.prom_metadata.receiver,
+  ]
+  scrape_classic_histograms = true
+  scrape_native_histograms = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  // Required for metadata support
+  honor_metadata = true
+}
+
+prometheus.remote_write "prom_metadata" {
+    external_labels = {
+      test_name = "prom_metadata_remote_write",
+    }
+    endpoint {
+        url = "http://mimir:9009/api/v1/push"
+        protobuf_message = "io.prometheus.write.v2.Request"
+        metadata_config {
+            send = true
+        }
+    }
+}

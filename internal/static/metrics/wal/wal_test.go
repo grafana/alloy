@@ -1,7 +1,6 @@
 package wal
 
 import (
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
@@ -416,58 +414,6 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	}
 
 	require.NoError(t, s.Close())
-}
-
-func TestStorage_WriteStalenessMarkers(t *testing.T) {
-	walDir := t.TempDir()
-
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, s.Close())
-	}()
-
-	app := s.Appender(t.Context())
-
-	// Write some samples
-	payload := seriesList{
-		{name: "foo", samples: []sample{{1, 10.0}, {10, 100.0}}},
-		{name: "bar", samples: []sample{{2, 20.0}, {20, 200.0}}},
-		{name: "baz", samples: []sample{{3, 30.0}, {30, 300.0}}},
-	}
-	for _, metric := range payload {
-		metric.Write(t, app)
-	}
-
-	require.NoError(t, app.Commit())
-
-	// Write staleness markers for every series
-	require.NoError(t, s.WriteStalenessMarkers(func() int64 {
-		// Pass math.MaxInt64 so it seems like everything was written already
-		return math.MaxInt64
-	}))
-
-	// Read back the WAL, collect series and samples.
-	collector := walDataCollector{}
-	replayer := walReplayer{w: &collector}
-	require.NoError(t, replayer.Replay(s.wal.Dir()))
-
-	actual := collector.samples
-	sort.Sort(byRefSample(actual))
-
-	staleMap := map[chunks.HeadSeriesRef]bool{}
-	for _, sample := range actual {
-		if _, ok := staleMap[sample.Ref]; !ok {
-			staleMap[sample.Ref] = false
-		}
-		if value.IsStaleNaN(sample.V) {
-			staleMap[sample.Ref] = true
-		}
-	}
-
-	for ref, v := range staleMap {
-		require.True(t, v, "ref %d doesn't have stale marker", ref)
-	}
 }
 
 func TestStorage_TruncateAfterClose(t *testing.T) {
