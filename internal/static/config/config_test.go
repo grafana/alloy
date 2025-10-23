@@ -79,7 +79,8 @@ metrics:
 			ScrapeTimeout:              model.Duration(33 * time.Second),
 			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
 			EvaluationInterval:         model.Duration(1 * time.Minute),
-			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
 		},
 	}
 
@@ -103,7 +104,8 @@ metrics:
 			ScrapeTimeout:              model.Duration(33 * time.Second),
 			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
 			EvaluationInterval:         model.Duration(1 * time.Minute),
-			MetricNameValidationScheme: promCfg.UTF8ValidationConfig,
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
