@@ -115,6 +115,10 @@ PROPAGATE_VARS := \
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
+# IMPORTANT: slicelabels tag is required for Prometheus v3.7.1 compatibility
+# It enables backward-compatible labels.Labels slice implementation
+# See go.mod for details
+GO_TAGS      ?= slicelabels
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
@@ -166,7 +170,7 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags="slicelabels,packaging"  ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test

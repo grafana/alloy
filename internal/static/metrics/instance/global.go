@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 )
 
@@ -15,7 +16,8 @@ func globalConfig() GlobalConfig {
 	// We use `DefaultScrapeProtocols` to keep the native histograms disabled by default.
 	// See https://github.com/prometheus/prometheus/pull/12738/files#diff-17f1012e0c2fbd9bcd8dff3c23b18ff4b6676eef3beca6f8a3e72e6a36633334R64-R68
 	cfg.Prometheus.ScrapeProtocols = config.DefaultScrapeProtocols
-	cfg.Prometheus.MetricNameValidationScheme = config.UTF8ValidationConfig
+	// Prometheus v3.7+ moved validation scheme from config to model package
+	cfg.Prometheus.MetricNameValidationScheme = model.UTF8Validation
 	return cfg
 }
 

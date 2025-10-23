@@ -1,4 +1,9 @@
 version: "2"
+# Build tags required for Prometheus v3.7.1 compatibility
+# See go.mod for details on why slicelabels is required
+run:
+  build-tags:
+    - slicelabels
 linters:
   enable:
     - depguard    # Allow/denylist specific imports
