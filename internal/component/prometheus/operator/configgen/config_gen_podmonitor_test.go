@@ -94,7 +94,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -220,7 +220,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -281,7 +281,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -344,7 +344,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -513,7 +513,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 	}

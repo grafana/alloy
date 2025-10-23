@@ -92,7 +92,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -168,7 +168,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -244,7 +244,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -320,7 +320,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -522,7 +522,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -590,7 +590,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       "underscores",
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
