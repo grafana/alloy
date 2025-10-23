@@ -71,5 +71,5 @@ func (c *Client) Clear() {
 
 // LogsReceiver returns this client as a LogsReceiver, which is useful in testing.
 func (c *Client) LogsReceiver() loki.LogsReceiver {
-	return loki.NewLogsReceiverWithChannel(c.entries)
+	return loki.NewLogsReceiver(loki.WithChannel(c.entries))
 }
