@@ -1,8 +1,6 @@
 package wal
 
 import (
-	"log/slog"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -67,7 +65,7 @@ func (r walReplayer) Replay(dir string) error {
 }
 
 func (r walReplayer) replayWAL(reader *wlog.Reader) error {
-	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	var dec record.Decoder
 
 	for reader.Next() {
 		rec := reader.Record()

@@ -143,7 +143,6 @@ func TestAlloyConfig(t *testing.T) {
 				relabelCfg.SourceLabels = model.LabelNames{"instance"}
 				relabelCfg.TargetLabel = "instance"
 				relabelCfg.Action = "lowercase"
-				relabelCfg.NameValidationScheme = model.LegacyValidation
 
 				c.GlobalConfig.ExternalLabels = labels.FromMap(map[string]string{
 					"cluster": "local",

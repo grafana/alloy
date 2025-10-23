@@ -84,12 +84,11 @@ func Test_NewTarget(t *testing.T) {
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{
-					SourceLabels:         model.LabelNames{"__meta_kafka_topic"},
-					TargetLabel:          "topic",
-					Replacement:          "$1",
-					Action:               relabel.Replace,
-					Regex:                relabel.MustNewRegexp("(.*)"),
-					NameValidationScheme: model.LegacyValidation,
+					SourceLabels: model.LabelNames{"__meta_kafka_topic"},
+					TargetLabel:  "topic",
+					Replacement:  "$1",
+					Action:       relabel.Replace,
+					Regex:        relabel.MustNewRegexp("(.*)"),
 				},
 			},
 			KafkaConfig: TargetConfig{
