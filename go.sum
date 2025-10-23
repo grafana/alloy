@@ -2074,8 +2074,8 @@ github.com/prometheus-community/prom-label-proxy v0.11.0 h1:IO02WiiFMfcIqvjhwMbC
 github.com/prometheus-community/prom-label-proxy v0.11.0/go.mod h1:lfvrG70XqsxWDrSh1843QXBG0fSg8EbIXmAo8xGsvw8=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
-github.com/prometheus-community/windows_exporter v0.31.1 h1:5U4KpdOJBSfk8uDkBv/H4dFaYhxgwPcr9eyat7ESmlY=
-github.com/prometheus-community/windows_exporter v0.31.1/go.mod h1:x36gwD+pgt+0hxZhQvJewoMns0mWL0syTPKcAhgAGrk=
+github.com/prometheus-community/windows_exporter v0.31.3 h1:v5HRhiSL/AgFtp96GjUATrtRMedNhjaMHogJBecgFSE=
+github.com/prometheus-community/windows_exporter v0.31.3/go.mod h1:tlw5aYgPu1kFassCBSBwnDBFHUlwznekAVJ0xiDuIko=
 github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1 h1:tPCmjxeBXKAw9lShPqomjo38urqGK8+vuuoc4ZDbAA8=
 github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1/go.mod h1:fiLXxDhLUhecZIOLStoYBYObHdycsWhhTmjP+b8Hkh4=
 github.com/prometheus-operator/prometheus-operator v0.82.2 h1:qalPLM8wkvCtu9aHcoSKGDpCZR3aWRMKeHev5WomTBQ=
