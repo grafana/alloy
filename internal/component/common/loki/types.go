@@ -21,7 +21,7 @@ import (
 // to an outage or erroring (such as limits being hit).
 const finalEntryTimeout = 5 * time.Second
 
-// InterceptorOption is an option argument passed to NewInterceptor.
+// LogReceiverOption is an option argument passed to NewLogsReceiver.
 type LogReceiverOption func(*logsReceiver)
 
 func WithChannel(c chan Entry) LogReceiverOption {
