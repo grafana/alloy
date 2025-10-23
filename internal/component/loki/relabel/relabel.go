@@ -106,7 +106,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReciverFor(o.ID)
+	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.RelabelConfigs})
 
 	// Call to Update() to set the relabelling rules once at the start.

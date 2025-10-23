@@ -224,7 +224,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
-		receiver:           loki.NewLogsReciverFor(o.ID),
+		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		metrics:            newMetrics(o.Registerer, args.OriginLabel),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}

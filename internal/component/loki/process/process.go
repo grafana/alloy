@@ -84,7 +84,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReciverFor(o.ID)
+	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	c.processOut = make(chan loki.Entry)
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
