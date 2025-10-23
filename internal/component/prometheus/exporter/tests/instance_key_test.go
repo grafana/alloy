@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snowflake"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/squid"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/ssh"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/statsd"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/unix"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/windows"
@@ -396,6 +397,21 @@ func TestInstanceKey(t *testing.T) {
 			},
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",
+		},
+		{
+			testName:      "ssh",
+			componentName: "prometheus.exporter.ssh",
+			args: ssh.Arguments{
+				Targets: []ssh.Target{
+					{
+						Address:        "host01",
+						Port:           22,
+						Username:       "user",
+						CommandTimeout: 5 * time.Second,
+					},
+				},
+			},
+			expectedInstanceLabel: "ssh_exporter",
 		},
 	}
 
