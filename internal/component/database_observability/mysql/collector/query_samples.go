@@ -67,8 +67,8 @@ LEFT JOIN
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	%s %s`
+	AND statements.CURRENT_SCHEMA NOT IN ` + EXCLUDED_SCHEMAS +
+	` %s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
