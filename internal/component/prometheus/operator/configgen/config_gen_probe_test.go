@@ -27,7 +27,6 @@ import (
 
 // see https://github.com/prometheus-operator/prometheus-operator/blob/aa8222d7e9b66e9293ed11c9291ea70173021029/pkg/prometheus/promcfg_test.go#L423
 func TestGenerateProbeConfig(t *testing.T) {
-	var falsePtr = ptr.To(false)
 	suite := []struct {
 		name                   string
 		m                      *promopv1.Probe
@@ -81,19 +80,15 @@ func TestGenerateProbeConfig(t *testing.T) {
   replacement: foo.bar
 `),
 			expected: &config.ScrapeConfig{
-				JobName:                        "probe/operator/myprobe",
-				HonorTimestamps:                true,
-				ScrapeInterval:                 model.Duration(time.Minute),
-				ScrapeTimeout:                  model.Duration(10 * time.Second),
-				ScrapeProtocols:                config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				EnableCompression:              true,
-				MetricsPath:                    "",
-				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				JobName:                "probe/operator/myprobe",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Minute),
+				ScrapeTimeout:          model.Duration(10 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "",
+				Scheme:                 "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -107,6 +102,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -166,20 +164,16 @@ func TestGenerateProbeConfig(t *testing.T) {
   action: replace
 `),
 			expected: &config.ScrapeConfig{
-				JobName:                        "probe/default/testprobe1",
-				HonorTimestamps:                true,
-				ScrapeInterval:                 model.Duration(time.Minute),
-				ScrapeTimeout:                  model.Duration(10 * time.Second),
-				ScrapeProtocols:                config.DefaultScrapeProtocols,
-				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				EnableCompression:              true,
-				MetricsPath:                    "/probe",
-				Scheme:                         "http",
-				Params:                         url.Values{"module": []string{"http_2xx"}},
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				JobName:                "probe/default/testprobe1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Minute),
+				ScrapeTimeout:          model.Duration(10 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/probe",
+				Scheme:                 "http",
+				Params:                 url.Values{"module": []string{"http_2xx"}},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -201,6 +195,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -265,20 +262,16 @@ func TestGenerateProbeConfig(t *testing.T) {
   action: replace
 `),
 			expected: &config.ScrapeConfig{
-				JobName:                        "probe/default/testprobe1",
-				HonorTimestamps:                true,
-				ScrapeInterval:                 model.Duration(30 * time.Second),
-				ScrapeTimeout:                  model.Duration(15 * time.Second),
-				ScrapeProtocols:                []config.ScrapeProtocol{config.PrometheusProto},
-				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				EnableCompression:              true,
-				MetricsPath:                    "/probe",
-				Scheme:                         "http",
-				Params:                         url.Values{"module": []string{"http_2xx"}},
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				JobName:                "probe/default/testprobe1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(30 * time.Second),
+				ScrapeTimeout:          model.Duration(15 * time.Second),
+				ScrapeProtocols:        []config.ScrapeProtocol{config.PrometheusProto},
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/probe",
+				Scheme:                 "http",
+				Params:                 url.Values{"module": []string{"http_2xx"}},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -300,6 +293,9 @@ func TestGenerateProbeConfig(t *testing.T) {
 						},
 					},
 				},
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}

@@ -103,7 +103,7 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto     \
-      --build-arg GO_TAGS="cngcrypto slicelabels" \
+      --build-arg GO_TAGS=cngcrypto          \
       -f ./Dockerfile.windows                \
       .
 
@@ -143,7 +143,7 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_GO="$BASE_IMAGE_GO" \
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       --build-arg GOEXPERIMENT=cngcrypto   \
-      --build-arg GO_TAGS="cngcrypto slicelabels" \
+      --build-arg GO_TAGS=cngcrypto        \
       -f ./Dockerfile.windows              \
       .
 
