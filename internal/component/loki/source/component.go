@@ -28,6 +28,8 @@ type Arguments interface {
 type Component struct {
 	opts component.Options
 
+	factory SourceFactory
+
 	// recv is the channel source component will consume from
 	// and is static for the lifetime of the component.
 	recv loki.LogsReceiver
@@ -40,8 +42,6 @@ type Component struct {
 	forwardToMut sync.RWMutex
 
 	pos positions.Positions
-
-	factory SourceFactory
 
 	stopping atomic.Bool
 }
@@ -70,10 +70,10 @@ func New(opts component.Options, args Arguments, factory SourceFactory) (compone
 
 	c := &Component{
 		opts:           opts,
+		factory:        factory,
 		recv:           loki.NewLogsReceiver(),
 		pos:            pos,
 		targetsUpdated: make(chan struct{}, 1),
-		factory:        factory,
 	}
 
 	if err := c.Update(args); err != nil {
