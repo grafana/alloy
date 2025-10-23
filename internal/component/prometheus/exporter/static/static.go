@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -47,7 +48,8 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	var p expfmt.TextParser
+	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
+	p := expfmt.NewTextParser(model.LegacyValidation)
 	_, err := p.TextToMetricFamilies(strings.NewReader(a.Text))
 	if err != nil {
 		return fmt.Errorf("failed to parse prom text: %w", err)
