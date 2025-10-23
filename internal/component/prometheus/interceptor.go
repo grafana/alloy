@@ -31,6 +31,8 @@ type Interceptor struct {
 	// lastSeriesCount stores the number of series that were sent through the last interceptappender. It helps to estimate how
 	// much memory to allocate for the staleness trackers.
 	lastSeriesCount atomic.Int64
+
+	componentID string
 }
 
 var _ storage.Appendable = (*Interceptor)(nil)
@@ -91,6 +93,14 @@ func WithCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct i
 	}
 }
 
+// WithComponentID returns an InterceptorOptions which is used to set the componentID of the Interceptor.
+// This is useful for debugging
+func WithComponentID(id string) InterceptorOption {
+	return func(i *Interceptor) {
+		i.componentID = id
+	}
+}
+
 // Appender satisfies the Appendable interface.
 func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
 	app := &interceptappender{
@@ -102,6 +112,10 @@ func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
 		app.child = f.next.Appender(ctx)
 	}
 	return app
+}
+
+func (f *Interceptor) String() string {
+	return f.componentID + ".receiver"
 }
 
 type interceptappender struct {

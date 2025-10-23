@@ -54,6 +54,8 @@ Main (unreleased)
 - 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
+- Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)

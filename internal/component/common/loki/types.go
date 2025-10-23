@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 )
 
@@ -22,6 +21,21 @@ import (
 // to an outage or erroring (such as limits being hit).
 const finalEntryTimeout = 5 * time.Second
 
+// LogReceiverOption is an option argument passed to NewLogsReceiver.
+type LogReceiverOption func(*logsReceiver)
+
+func WithChannel(c chan Entry) LogReceiverOption {
+	return func(l *logsReceiver) {
+		l.entries = c
+	}
+}
+
+func WithComponentID(id string) LogReceiverOption {
+	return func(l *logsReceiver) {
+		l.componentID = id
+	}
+}
+
 // LogsReceiver is an interface providing `chan Entry` which is used for component
 // communication.
 type LogsReceiver interface {
@@ -29,21 +43,30 @@ type LogsReceiver interface {
 }
 
 type logsReceiver struct {
-	entries chan Entry
+	entries     chan Entry
+	componentID string
 }
 
 func (l *logsReceiver) Chan() chan Entry {
 	return l.entries
 }
 
-func NewLogsReceiver() LogsReceiver {
-	return NewLogsReceiverWithChannel(make(chan Entry))
+func (l *logsReceiver) String() string {
+	return l.componentID + ".receiver"
 }
 
-func NewLogsReceiverWithChannel(c chan Entry) LogsReceiver {
-	return &logsReceiver{
-		entries: c,
+func NewLogsReceiver(opts ...LogReceiverOption) LogsReceiver {
+	l := &logsReceiver{}
+
+	for _, o := range opts {
+		o(l)
 	}
+
+	if l.entries == nil {
+		l.entries = make(chan Entry)
+	}
+
+	return l
 }
 
 // Entry is a log entry with labels.
@@ -58,12 +81,6 @@ func (e *Entry) Clone() Entry {
 		Labels: e.Labels.Clone(),
 		Entry:  e.Entry,
 	}
-}
-
-// InstrumentedEntryHandler ...
-type InstrumentedEntryHandler interface {
-	EntryHandler
-	UnregisterLatencyMetric(prometheus.Labels)
 }
 
 // EntryHandler is something that can "handle" entries via a channel.
