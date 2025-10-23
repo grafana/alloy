@@ -1208,8 +1208,8 @@ github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrR
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3/go.mod h1:iZiiwNT4HbtGRVqCQu7uJPEZCuEE5sfSSttcnePkDl4=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700 h1:2WcTPnt3H8OEPJvA5fDQk7dgIPWSAGr8xBBlm0zXm4w=
-github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
+github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251016132346-6d442402afb2 h1:Adchz4O0C13520kAihpBrmheVOfuZK9/e+6R+Hhovf8=
+github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251016132346-6d442402afb2/go.mod h1:TLf/gsyKggD6qiTXOC9dlTDFR0c3v6r/0Ufs6s9+xBc=
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPFYJmAmJNrWPgnVjuSdYJGHmtFU=
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
