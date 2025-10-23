@@ -1,9 +1,6 @@
 package waltools
 
 import (
-	"log/slog"
-	"os"
-
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 )
@@ -42,7 +39,7 @@ func FindCardinality(walDir string, job string, instance string) ([]Cardinality,
 }
 
 func collectCardinality(r *wlog.Reader, job, instance string, cardinality map[string]int) error {
-	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	var dec record.Decoder
 
 	for r.Next() {
 		rec := r.Record()

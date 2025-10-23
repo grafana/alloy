@@ -262,7 +262,8 @@ func (c *queueClient) StoreSeries(series []record.RefSeries, segment int) {
 	defer c.seriesLock.Unlock()
 	for _, seriesRec := range series {
 		c.seriesSegment[seriesRec.Ref] = segment
-		c.series[seriesRec.Ref] = promLabelsToModelLabels(seriesRec.Labels)
+		labels := lokiutil.MapToModelLabelSet(seriesRec.Labels.Map())
+		c.series[seriesRec.Ref] = labels
 	}
 }
 

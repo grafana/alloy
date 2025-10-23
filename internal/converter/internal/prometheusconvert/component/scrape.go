@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"golang.org/x/exp/maps"
 
 	prom_config "github.com/prometheus/prometheus/config"
@@ -49,14 +48,13 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 	}
 
 	histogramsToNHCB := scrapeConfig.ConvertClassicHistogramsToNHCB != nil && *scrapeConfig.ConvertClassicHistogramsToNHCB
-	scrapeClassicHistograms := scrapeConfig.AlwaysScrapeClassicHistograms != nil && *scrapeConfig.AlwaysScrapeClassicHistograms
 	fallbackProtocol := string(scrapeConfig.ScrapeFallbackProtocol)
 	if fallbackProtocol == "" {
 		fallbackProtocol = string(prom_config.PrometheusText0_0_4)
 	}
 
 	// Set the escaping and validation scheme to default values in Alloy for maximum compatibility with backends.
-	scrapeConfig.MetricNameValidationScheme = model.LegacyValidation
+	scrapeConfig.MetricNameValidationScheme = prom_config.LegacyValidationConfig
 	scrapeConfig.MetricNameEscapingScheme = "" // this will default to underscores given the legacy validation scheme
 
 	alloyArgs := &scrape.Arguments{
@@ -67,7 +65,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		HonorTimestamps:                scrapeConfig.HonorTimestamps,
 		TrackTimestampsStaleness:       scrapeConfig.TrackTimestampsStaleness,
 		Params:                         scrapeConfig.Params,
-		ScrapeClassicHistograms:        scrapeClassicHistograms,
+		ScrapeClassicHistograms:        scrapeConfig.AlwaysScrapeClassicHistograms,
 		ScrapeNativeHistograms:         false, // this is controlled by a Prometheus feature, not the config file
 		ScrapeInterval:                 time.Duration(scrapeConfig.ScrapeInterval),
 		ScrapeTimeout:                  time.Duration(scrapeConfig.ScrapeTimeout),
@@ -88,7 +86,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		EnableCompression:              scrapeConfig.EnableCompression,
 		NativeHistogramBucketLimit:     scrapeConfig.NativeHistogramBucketLimit,
 		NativeHistogramMinBucketFactor: scrapeConfig.NativeHistogramMinBucketFactor,
-		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme.String(),
+		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme,
 		MetricNameEscapingScheme:       scrapeConfig.MetricNameEscapingScheme,
 		ScrapeFallbackProtocol:         fallbackProtocol,
 		Clustering:                     cluster.ComponentBlock{Enabled: false},

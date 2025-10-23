@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/scrape"
@@ -138,7 +137,7 @@ func (c *Config) ApplyDefaults(global GlobalConfig) error {
 		if sc.ScrapeProtocols == nil {
 			sc.ScrapeProtocols = c.global.Prometheus.ScrapeProtocols
 		}
-		if sc.MetricNameValidationScheme == model.UnsetValidation {
+		if sc.MetricNameValidationScheme == "" {
 			sc.MetricNameValidationScheme = c.global.Prometheus.MetricNameValidationScheme
 		}
 		if sc.MetricNameEscapingScheme == "" {

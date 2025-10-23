@@ -2,8 +2,6 @@ package waltools
 
 import (
 	"fmt"
-	"log/slog"
-	"os"
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -77,7 +75,7 @@ func FindSamples(walDir string, selectorStr string) ([]*SampleStats, error) {
 }
 
 func collectSeries(r *wlog.Reader, selector labels.Selector, labelsByRef map[chunks.HeadSeriesRef]labels.Labels) error {
-	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	var dec record.Decoder
 
 	for r.Next() {
 		rec := r.Record()
@@ -100,7 +98,7 @@ func collectSeries(r *wlog.Reader, selector labels.Selector, labelsByRef map[chu
 }
 
 func collectSamples(r *wlog.Reader, labelsByRef map[chunks.HeadSeriesRef]labels.Labels, minTS, maxTS, sampleCount map[chunks.HeadSeriesRef]int64) error {
-	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	var dec record.Decoder
 
 	for r.Next() {
 		rec := r.Record()

@@ -159,7 +159,7 @@ func (arg *Arguments) SetToDefault() {
 		ScrapeFallbackProtocol:   string(config.PrometheusText0_0_4), // Use the same fallback protocol as Prometheus v2
 		ScrapeNativeHistograms:   false,
 		// NOTE: the MetricNameEscapingScheme depends on this, so its default must be set in Validate() function.
-		MetricNameValidationScheme:     model.LegacyValidation.String(),
+		MetricNameValidationScheme:     config.LegacyValidationConfig,
 		ConvertClassicHistogramsToNHCB: false,
 		EnableCompression:              true,
 		NativeHistogramBucketLimit:     0,
@@ -220,14 +220,14 @@ func (arg *Arguments) Validate() error {
 	}
 
 	switch arg.MetricNameValidationScheme {
-	case model.UTF8Validation.String(), model.LegacyValidation.String():
+	case config.UTF8ValidationConfig, config.LegacyValidationConfig:
 	default:
-		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, model.UTF8Validation.String(), model.LegacyValidation.String())
+		return fmt.Errorf("invalid metric_name_validation_scheme %q: must be either %q or %q", arg.MetricNameValidationScheme, config.UTF8ValidationConfig, config.LegacyValidationConfig)
 	}
 
 	switch arg.MetricNameEscapingScheme {
 	case "":
-		if arg.MetricNameValidationScheme == model.LegacyValidation.String() {
+		if arg.MetricNameValidationScheme == config.LegacyValidationConfig {
 			arg.MetricNameEscapingScheme = model.EscapeUnderscores
 		} else {
 			arg.MetricNameEscapingScheme = model.AllowUTF8
@@ -238,7 +238,7 @@ func (arg *Arguments) Validate() error {
 		return fmt.Errorf("invalid metric_name_escaping_scheme: %q, supported values: %v", arg.MetricNameEscapingScheme, supportedValues)
 	}
 
-	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != model.UTF8Validation.String() {
+	if arg.MetricNameEscapingScheme == model.AllowUTF8 && arg.MetricNameValidationScheme != config.UTF8ValidationConfig {
 		return fmt.Errorf("metric_name_escaping_scheme cannot be set to 'allow-utf-8' while metric_name_validation_scheme is not set to 'utf8'")
 	}
 
@@ -535,12 +535,11 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	} else {
 		dec.JobName = jobName
 	}
-	copyScrapeClassicHistograms := c.ScrapeClassicHistograms // make a copy as Prometheus wants a pointer.
 	dec.HonorLabels = c.HonorLabels
 	dec.HonorTimestamps = c.HonorTimestamps
 	dec.TrackTimestampsStaleness = c.TrackTimestampsStaleness
 	dec.Params = c.Params
-	dec.AlwaysScrapeClassicHistograms = &copyScrapeClassicHistograms
+	dec.AlwaysScrapeClassicHistograms = c.ScrapeClassicHistograms
 	dec.ScrapeInterval = model.Duration(c.ScrapeInterval)
 	dec.ScrapeTimeout = model.Duration(c.ScrapeTimeout)
 	dec.ScrapeFailureLogFile = c.ScrapeFailureLogFile
@@ -563,13 +562,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	// HTTP scrape client settings
 	dec.HTTPClientConfig = *c.HTTPClientConfig.Convert()
 
-	validationScheme := model.UnsetValidation
-	if model.LegacyValidation.String() == c.MetricNameValidationScheme {
-		validationScheme = model.LegacyValidation
-	} else if model.UTF8Validation.String() == c.MetricNameValidationScheme {
-		validationScheme = model.UTF8Validation
-	}
-	dec.MetricNameValidationScheme = validationScheme
+	dec.MetricNameValidationScheme = c.MetricNameValidationScheme
 	dec.MetricNameEscapingScheme = c.MetricNameEscapingScheme
 	dec.ScrapeFallbackProtocol = config.ScrapeProtocol(c.ScrapeFallbackProtocol)
 	convertToNHCB := c.ConvertClassicHistogramsToNHCB

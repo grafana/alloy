@@ -227,10 +227,6 @@ func (r *relabeler) add(cfgs ...*relabel.Config) {
 		if cfg.Replacement == "" {
 			cfg.Replacement = relabel.DefaultRelabelConfig.Replacement
 		}
-		// Set NameValidationScheme to LegacyValidation to maintain compatibility
-		if cfg.NameValidationScheme == model.UnsetValidation {
-			cfg.NameValidationScheme = model.LegacyValidation
-		}
 		r.configs = append(r.configs, cfg)
 	}
 }
