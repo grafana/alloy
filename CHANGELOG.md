@@ -49,6 +49,9 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- Update Beyla component to 2.7.4. (@grcevski)
+- 
+- Support delimiters in `stage.luhn`. (@dehaansa)
 
 ### Bugfixes
 

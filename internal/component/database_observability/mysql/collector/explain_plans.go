@@ -41,7 +41,7 @@ const selectDigestsForExplainPlan = `
 	WHERE LAST_SEEN > ?
 	AND QUERY_SAMPLE_TEXT IS NOT NULL
 	AND DIGEST IS NOT NULL
-	AND SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`
+	AND SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
