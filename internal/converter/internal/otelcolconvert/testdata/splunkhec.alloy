@@ -52,4 +52,11 @@ otelcol.exporter.splunkhec "default" {
 			}
 		}
 	}
+
+	otel_attrs_to_hec_metadata {
+		source     = "mysource"
+		sourcetype = "mysourcetype"
+		index      = "myindex"
+		host       = "myhost"
+	}
 }

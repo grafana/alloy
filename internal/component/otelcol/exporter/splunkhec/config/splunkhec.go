@@ -1,16 +1,19 @@
-package splunkhec_config
+package config
 
 import (
 	"errors"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
+	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
-	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // OtelAttrsToHecArguments defines the mapping of attributes to HEC specific metadata.
@@ -201,13 +204,16 @@ func (args *SplunkHecTelemetry) Convert() *splunkhecexporter.HecTelemetry {
 
 // SplunkHecClientArguments defines the configuration for the Splunk HEC exporter.
 type SplunkHecArguments struct {
-	SplunkHecClientArguments SplunkHecClientArguments        `alloy:"client,block"`
-	QueueSettings            exporterhelper.QueueBatchConfig `alloy:"queue,block,optional"`
-	RetrySettings            configretry.BackOffConfig       `alloy:"retry_on_failure,block,optional"`
-	Splunk                   SplunkConf                      `alloy:"splunk,block"`
+	SplunkHecClientArguments SplunkHecClientArguments `alloy:"client,block"`
+	QueueSettings            otelcol.QueueArguments   `alloy:"sending_queue,block,optional"`
+	RetrySettings            otelcol.RetryArguments   `alloy:"retry_on_failure,block,optional"`
+	Splunk                   SplunkConf               `alloy:"splunk,block"`
 
 	// OtelAttrsToHec creates a mapping from attributes to HEC specific metadata: source, sourcetype, index and host. Optional.
 	OtelAttrsToHec OtelAttrsToHecArguments `alloy:"otel_attrs_to_hec_metadata,block,optional"`
+
+	// DebugMetrics configures component internal metrics. Optional.
+	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
@@ -290,14 +296,10 @@ func (args *SplunkConf) Validate() error {
 }
 
 // Convert converts args into the upstream type
-func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
-	if args == nil {
-		return nil
-	}
-	config := &splunkhecexporter.Config{
+func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
+	cfg := &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
-		QueueSettings:           args.QueueSettings,
-		BackOffConfig:           args.RetrySettings,
+		BackOffConfig:           *args.RetrySettings.Convert(),
 		DeprecatedBatcher:       args.Splunk.DeprecatedBatcher.Convert(),
 		LogDataEnabled:          args.Splunk.LogDataEnabled,
 		ProfilingDataEnabled:    args.Splunk.ProfilingDataEnabled,
@@ -321,18 +323,52 @@ func (args *SplunkHecArguments) Convert() *splunkhecexporter.Config {
 		Telemetry:               *args.Splunk.Telemetry.Convert(),
 	}
 
-	config.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
-	config.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
-	config.OtelAttrsToHec.Index = args.OtelAttrsToHec.Index
-	config.OtelAttrsToHec.Host = args.OtelAttrsToHec.Host
+	q, err := args.QueueSettings.Convert()
+	if err != nil {
+		return nil, err
+	}
+	cfg.QueueSettings = *q
 
-	return config
+	cfg.OtelAttrsToHec.Source = args.OtelAttrsToHec.Source
+	cfg.OtelAttrsToHec.SourceType = args.OtelAttrsToHec.SourceType
+	cfg.OtelAttrsToHec.Index = args.OtelAttrsToHec.Index
+	cfg.OtelAttrsToHec.Host = args.OtelAttrsToHec.Host
+
+	return cfg, nil
 }
 
 func (args *SplunkHecArguments) SetToDefault() {
+	args.DebugMetrics.SetToDefault()
 	args.SplunkHecClientArguments.SetToDefault()
-	args.QueueSettings = exporterhelper.NewDefaultQueueConfig()
-	args.RetrySettings = configretry.NewDefaultBackOffConfig()
+	args.QueueSettings.SetToDefault()
+	args.RetrySettings.SetToDefault()
 	args.Splunk.SetToDefault()
 	args.OtelAttrsToHec.SetToDefault()
+}
+
+func (args *SplunkHecArguments) Validate() error {
+	if err := args.SplunkHecClientArguments.Validate(); err != nil {
+		return err
+	}
+	if err := args.Splunk.Validate(); err != nil {
+		return err
+	}
+	if err := args.QueueSettings.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (args SplunkHecArguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
+	return args.DebugMetrics
+}
+
+// Extensions implements exporter.Arguments.
+func (args SplunkHecArguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	return args.QueueSettings.Extensions()
+}
+
+// Exporters implements exporter.Arguments.
+func (args SplunkHecArguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
+	return nil
 }

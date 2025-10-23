@@ -1,9 +1,9 @@
-package splunkhec_config_test
+package config_test
 
 import (
 	"testing"
 
-	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func TestUnmarshalSplunkHecClientArguments(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkHecClientArguments
+			var sl config.SplunkHecClientArguments
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
@@ -115,7 +115,7 @@ func TestUnmarshalSplunkConf(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkConf
+			var sl config.SplunkConf
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)
@@ -204,11 +204,35 @@ func TestUnmarshalSplunkHecArguments(t *testing.T) {
 		`,
 			expectErr: false,
 		},
+		{
+			name: "valid splunkhec arguments, with otelattrs",
+			cfg: `
+			splunk {
+				log_data_enabled = true
+				profiling_data_enabled = true
+				source = "def"
+				token = "abc"
+	     	}
+	     	client  {
+			    endpoint = "http://localhost:8088"
+	     		timeout = "10s"
+	     		insecure_skip_verify = true
+	     		max_idle_conns = 10
+			}
+			otel_attrs_to_hec_metadata {
+				source = "mysource"
+				sourcetype = "mysourcetype"
+				index = "myindex"
+				host = "myhost"
+			}
+		`,
+			expectErr: false,
+		},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var sl splunkhec_config.SplunkHecArguments
+			var sl config.SplunkHecArguments
 			err := syntax.Unmarshal([]byte(tt.cfg), &sl)
 			if tt.expectErr {
 				require.Error(t, err)

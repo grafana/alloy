@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec"
 	splunkhec_config "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -52,14 +51,22 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 	return diags
 }
 
-func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec.Arguments {
-	return &splunkhec.Arguments{
-		Client:       toSplunkHecHTTPClientArguments(cfg),
-		Retry:        toRetryArguments(cfg.BackOffConfig),
-		Queue:        toQueueArguments(cfg.QueueSettings),
-		Splunk:       toSplunkConfig(cfg),
-		DebugMetrics: common.DefaultValue[splunkhec.Arguments]().DebugMetrics,
+func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.SplunkHecArguments {
+	v := &splunkhec_config.SplunkHecArguments{
+		SplunkHecClientArguments: toSplunkHecHTTPClientArguments(cfg),
+		RetrySettings:            toRetryArguments(cfg.BackOffConfig),
+		QueueSettings:            toQueueArguments(cfg.QueueSettings),
+		Splunk:                   toSplunkConfig(cfg),
+		DebugMetrics:             common.DefaultValue[splunkhec_config.SplunkHecArguments]().DebugMetrics,
 	}
+
+	// As the OTelAttrsToHec type is internal we can't build a function to convert it
+	v.OtelAttrsToHec.Host = cfg.OtelAttrsToHec.Host
+	v.OtelAttrsToHec.Source = cfg.OtelAttrsToHec.Source
+	v.OtelAttrsToHec.SourceType = cfg.OtelAttrsToHec.SourceType
+	v.OtelAttrsToHec.Index = cfg.OtelAttrsToHec.Index
+
+	return v
 }
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
