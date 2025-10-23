@@ -147,11 +147,11 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
