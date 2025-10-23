@@ -111,7 +111,7 @@ GRANT UPDATE ON performance_schema.setup_consumers TO 'db-o11y'@'%';
 
 and additionally enable these options:
 
-```
+```alloy
 database_observability.mysql "mysql_<your_DB_name>" {
   enable_collectors = ["query_samples"]
 
@@ -150,7 +150,7 @@ As noted in the step above, these consumers will be disabled again when the data
 
 3. Copy this block for each DB you'd like to monitor.
 
-```
+```alloy
 local.file "mysql_secret_<your_DB_name>" {
   filename  = "/var/lib/alloy/mysql_secret_<your_DB_name>"
   is_secret = true
@@ -227,7 +227,7 @@ prometheus.scrape "database_observability_mysql_<your_DB_name>" {
 
 4. Add Prometheus remote_write and Loki write config, if not present already. From the Grafana Cloud home, click on your stack and view URLs under Prometheus and Loki details where API tokens may also be generated.
 
-```
+```alloy
 prometheus.remote_write "metrics_service" {
   endpoint {
     url = sys.env("GCLOUD_HOSTED_METRICS_URL")
@@ -279,7 +279,7 @@ extraConfig: |
 
 This is a complete example of Alloy Database Observability configuration using two different databases:
 
-```
+```alloy
 prometheus.remote_write "metrics_service" {
   endpoint {
     url = sys.env("GCLOUD_HOSTED_METRICS_URL")
@@ -453,7 +453,7 @@ GRANT pg_read_all_data TO "db-o11y";
 
 3. Copy this block for each DB you'd like to monitor.
 
-```
+```alloy
 local.file "postgres_secret_<your_DB_name>" {
   filename  = "/var/lib/alloy/postgres_secret_<your_DB_name>"
   is_secret = true
@@ -537,7 +537,7 @@ prometheus.scrape "database_observability_postgres_<your_DB_name>" {
 
 4. Add Prometheus remote_write and Loki write config, if not present already. From the Grafana Cloud home, click on your stack and view URLs under Prometheus and Loki details where API tokens may also be generated.
 
-```
+```alloy
 prometheus.remote_write "metrics_service" {
   endpoint {
     url = sys.env("GCLOUD_HOSTED_METRICS_URL")
