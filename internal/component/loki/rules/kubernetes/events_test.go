@@ -23,7 +23,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
+	"github.com/grafana/alloy/internal/component/loki/rules/lokiclient"
 )
 
 type fakeLokiClient struct {
@@ -31,7 +31,7 @@ type fakeLokiClient struct {
 	rules    map[string][]rulefmt.RuleGroup
 }
 
-var _ lokiClient.Interface = &fakeLokiClient{}
+var _ lokiclient.Interface = &fakeLokiClient{}
 
 func newFakeLokiClient() *fakeLokiClient {
 	return &fakeLokiClient{
