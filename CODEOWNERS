@@ -23,4 +23,4 @@
 # Components:
 /internal/component/pyroscope/              @grafana/grafana-alloy-profiling-maintainers
 /internal/component/beyla/                  @grafana/beyla
-/internal/component/database_observability/ @cristiangreco @matthewnolf @fridgepoet @rgeyer @gaantunes
+/internal/component/database_observability/ @grafana/db-o11y-squad-backend
