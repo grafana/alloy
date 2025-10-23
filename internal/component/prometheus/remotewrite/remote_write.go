@@ -92,6 +92,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			log.With(o.Logger, "subcomponent", "rw"),
 		),
 	)
+	// TODO: Expose the option to enable type and unit labels: https://github.com/grafana/alloy/issues/4659
 	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
