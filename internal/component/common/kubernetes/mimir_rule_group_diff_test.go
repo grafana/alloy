@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/alloy/internal/mimir/client"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/mimir/mimirclient"
 )
 
-func parseMimirRuleGroups(t *testing.T, buf []byte) []client.MimirRuleGroup {
+func parseMimirRuleGroups(t *testing.T, buf []byte) []mimirclient.MimirRuleGroup {
 	t.Helper()
 
-	groups, errs := client.Parse(buf)
+	groups, errs := mimirclient.Parse(buf)
 	require.Empty(t, errs)
 
 	return groups.Groups
@@ -41,24 +42,24 @@ groups:
 
 	type testCase struct {
 		name     string
-		desired  map[string][]client.MimirRuleGroup
-		actual   map[string][]client.MimirRuleGroup
+		desired  map[string][]mimirclient.MimirRuleGroup
+		actual   map[string][]mimirclient.MimirRuleGroup
 		expected map[string][]MimirRuleGroupDiff
 	}
 
 	testCases := []testCase{
 		{
 			name:     "empty sets",
-			desired:  map[string][]client.MimirRuleGroup{},
-			actual:   map[string][]client.MimirRuleGroup{},
+			desired:  map[string][]mimirclient.MimirRuleGroup{},
+			actual:   map[string][]mimirclient.MimirRuleGroup{},
 			expected: map[string][]MimirRuleGroupDiff{},
 		},
 		{
 			name: "add rule group",
-			desired: map[string][]client.MimirRuleGroup{
+			desired: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
-			actual: map[string][]client.MimirRuleGroup{},
+			actual: map[string][]mimirclient.MimirRuleGroup{},
 			expected: map[string][]MimirRuleGroupDiff{
 				managedNamespace: {
 					{
@@ -70,8 +71,8 @@ groups:
 		},
 		{
 			name:    "remove rule group",
-			desired: map[string][]client.MimirRuleGroup{},
-			actual: map[string][]client.MimirRuleGroup{
+			desired: map[string][]mimirclient.MimirRuleGroup{},
+			actual: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
 			expected: map[string][]MimirRuleGroupDiff{
@@ -85,10 +86,10 @@ groups:
 		},
 		{
 			name: "update rule group",
-			desired: map[string][]client.MimirRuleGroup{
+			desired: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
-			actual: map[string][]client.MimirRuleGroup{
+			actual: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsAModified,
 			},
 			expected: map[string][]MimirRuleGroupDiff{
@@ -103,10 +104,10 @@ groups:
 		},
 		{
 			name: "unchanged rule groups",
-			desired: map[string][]client.MimirRuleGroup{
+			desired: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
-			actual: map[string][]client.MimirRuleGroup{
+			actual: map[string][]mimirclient.MimirRuleGroup{
 				managedNamespace: ruleGroupsA,
 			},
 			expected: map[string][]MimirRuleGroupDiff{},
