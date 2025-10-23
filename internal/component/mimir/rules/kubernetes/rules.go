@@ -28,8 +28,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/mimir/mimirclient"
 	"github.com/grafana/alloy/internal/featuregate"
-	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
@@ -60,7 +60,7 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	mimirClient       mimirClient.Interface
+	mimirClient       mimirclient.Interface
 	k8sClient         kubernetes.Interface
 	promClient        promVersioned.Interface
 	namespaceSelector labels.Selector
@@ -370,7 +370,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.mimirClient, err = mimirClient.New(c.log, mimirClient.Config{
+	c.mimirClient, err = mimirclient.New(c.log, mimirclient.Config{
 		ID:                   c.args.TenantID,
 		Address:              c.args.Address,
 		UseLegacyRoutes:      c.args.UseLegacyRoutes,

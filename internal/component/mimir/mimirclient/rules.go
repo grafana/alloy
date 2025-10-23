@@ -1,4 +1,4 @@
-package client
+package mimirclient
 
 import (
 	"context"

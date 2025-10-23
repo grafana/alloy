@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/component/mimir/mimirclient"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -35,7 +35,7 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   healthReporter
 
-	mimirClient        client.Interface
+	mimirClient        mimirclient.Interface
 	namespaceLister    coreListers.NamespaceLister
 	ruleLister         promListers.PrometheusRuleLister
 	namespaceSelector  labels.Selector
@@ -65,7 +65,7 @@ func (e *eventProcessor) run(ctx context.Context) {
 
 		if err != nil {
 			retries := e.queue.NumRequeues(evt)
-			if retries < 5 && client.IsRecoverable(err) {
+			if retries < 5 && mimirclient.IsRecoverable(err) {
 				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				e.queue.AddRateLimited(evt)
 				level.Error(e.logger).Log(
@@ -297,13 +297,13 @@ func labelsSetPromQL(query, labelMatchType, name, value string) (string, error) 
 	return expr.String(), nil
 }
 
-func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]client.MimirRuleGroup, error) {
+func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]mimirclient.MimirRuleGroup, error) {
 	buf, err := yaml.Marshal(crd)
 	if err != nil {
 		return nil, err
 	}
 
-	groups, errs := client.Parse(buf)
+	groups, errs := mimirclient.Parse(buf)
 	if len(errs) > 0 {
 		return nil, multierror.Append(nil, errs...)
 	}

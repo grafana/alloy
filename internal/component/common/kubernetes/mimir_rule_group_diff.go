@@ -5,16 +5,16 @@ import (
 
 	"gopkg.in/yaml.v3" // Used for prometheus rulefmt compatibility instead of gopkg.in/yaml.v2
 
-	"github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/component/mimir/mimirclient"
 )
 
 type MimirRuleGroupDiff struct {
 	Kind    RuleGroupDiffKind
-	Actual  client.MimirRuleGroup
-	Desired client.MimirRuleGroup
+	Actual  mimirclient.MimirRuleGroup
+	Desired mimirclient.MimirRuleGroup
 }
 
-type MimirRuleGroupsByNamespace map[string][]client.MimirRuleGroup
+type MimirRuleGroupsByNamespace map[string][]mimirclient.MimirRuleGroup
 type MimirRuleGroupDiffsByNamespace map[string][]MimirRuleGroupDiff
 
 func DiffMimirRuleGroupState(desired, actual MimirRuleGroupsByNamespace) MimirRuleGroupDiffsByNamespace {
@@ -48,7 +48,7 @@ func DiffMimirRuleGroupState(desired, actual MimirRuleGroupsByNamespace) MimirRu
 	return diff
 }
 
-func diffMimirRuleGroupNamespaceState(desired []client.MimirRuleGroup, actual []client.MimirRuleGroup) []MimirRuleGroupDiff {
+func diffMimirRuleGroupNamespaceState(desired []mimirclient.MimirRuleGroup, actual []mimirclient.MimirRuleGroup) []MimirRuleGroupDiff {
 	var diff []MimirRuleGroupDiff
 
 	seenGroups := map[string]bool{}
@@ -92,7 +92,7 @@ desiredGroups:
 	return diff
 }
 
-func equalMimirRuleGroups(a, b client.MimirRuleGroup) bool {
+func equalMimirRuleGroups(a, b mimirclient.MimirRuleGroup) bool {
 	aBuf, err := yaml.Marshal(a)
 	if err != nil {
 		return false
