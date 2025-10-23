@@ -50,7 +50,7 @@ func TestRunnerTailer(t *testing.T) {
 		},
 		false,
 		false,
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestRunnerDecompressor(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return true },
 	)
 	require.NoError(t, err)

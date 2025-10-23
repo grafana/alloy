@@ -89,15 +89,15 @@ func newDecompressor(
 		case OnPositionsFileErrorSkip:
 			return nil, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
-			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `skip`")
-			return nil, fmt.Errorf("failed to get file position: %w", err)
-		case OnPositionsFileErrorRestartStart:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `restart_from_beginning`")
+			fallthrough
+		default:
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
 			pos = 0
 			positions.Put(path, labelsStr, pos)
 			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
-		default:
-			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", onPositionsFileError)
-			return nil, fmt.Errorf("failed to get file position: %w", err)
 		}
 	}
 

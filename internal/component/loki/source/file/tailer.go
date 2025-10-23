@@ -184,7 +184,6 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 
 	pos, err := t.positions.Get(t.path, t.labelsStr)
 	if err != nil {
-		level.Error(t.logger).Log("msg", "failed to get file position", "file", t.path, "error", err)
 		switch t.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
 			return nil, fmt.Errorf("failed to get file position: %w", err)
@@ -195,13 +194,13 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 			}
 			t.positions.Put(t.path, t.labelsStr, pos)
 			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line after positions error")
-		case OnPositionsFileErrorRestartStart:
+		default:
+			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
 			pos = 0
 			t.positions.Put(t.path, t.labelsStr, pos)
 			level.Info(t.logger).Log("msg", "reset position to start of file after positions error")
-		default:
-			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `skip`", "option", t.onPositionsFileError)
-			return nil, fmt.Errorf("failed to get file position: %w", err)
 		}
 	}
 

@@ -57,9 +57,9 @@ type Arguments struct {
 type OnPositionsFileError string
 
 const (
-	OnPositionsFileErrorSkip         OnPositionsFileError = "skip"
-	OnPositionsFileErrorRestartEnd   OnPositionsFileError = "restart_from_end"
-	OnPositionsFileErrorRestartStart OnPositionsFileError = "restart_from_start"
+	OnPositionsFileErrorSkip             OnPositionsFileError = "skip"
+	OnPositionsFileErrorRestartEnd       OnPositionsFileError = "restart_from_end"
+	OnPositionsFileErrorRestartBeginning OnPositionsFileError = "restart_from_beginning"
 )
 
 func (o OnPositionsFileError) MarshalText() ([]byte, error) {
@@ -69,7 +69,7 @@ func (o OnPositionsFileError) MarshalText() ([]byte, error) {
 func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 	s := OnPositionsFileError(text)
 	switch s {
-	case OnPositionsFileErrorSkip, OnPositionsFileErrorRestartEnd, OnPositionsFileErrorRestartStart:
+	case OnPositionsFileErrorSkip, OnPositionsFileErrorRestartEnd, OnPositionsFileErrorRestartBeginning:
 		*o = s
 	default:
 		return fmt.Errorf("unknown OnPositionsFileError value: %s", s)
@@ -87,7 +87,7 @@ var DefaultArguments = Arguments{
 		MinPollFrequency: 250 * time.Millisecond,
 		MaxPollFrequency: 250 * time.Millisecond,
 	},
-	OnPositionsFileError: OnPositionsFileErrorRestartStart,
+	OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -312,8 +312,7 @@ func (c *Component) Update(args component.Arguments) error {
 			fileWatch:            newArgs.FileWatch,
 			tailFromEnd:          newArgs.TailFromEnd,
 			onPositionsFileError: newArgs.OnPositionsFileError,
-
-			legacyPositionUsed: newArgs.LegacyPositionsFile != "",
+			legacyPositionUsed:   newArgs.LegacyPositionsFile != "",
 		})
 		if err != nil {
 			continue

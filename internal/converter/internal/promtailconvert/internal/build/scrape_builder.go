@@ -78,7 +78,7 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 		DecompressionConfig:  convertDecompressionConfig(s.cfg.DecompressionCfg),
 		FileWatch:            convertFileWatchConfig(watchConfig),
 		LegacyPositionsFile:  positionsCfg.PositionsFile,
-		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartStart,
+		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartBeginning,
 	}
 	overrideHook := func(val interface{}) interface{} {
 		if _, ok := val.([]discovery.Target); ok {

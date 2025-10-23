@@ -243,7 +243,7 @@ func TestDecompressor(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestDecompressorCorruptedPositionFile(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
@@ -358,7 +358,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -406,7 +406,7 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 		labels,
 		"",
 		DecompressionConfig{Format: "gz"},
-		OnPositionsFileErrorRestartStart,
+		OnPositionsFileErrorRestartBeginning,
 		func() bool { return true },
 	)
 	require.NoError(t, err)
