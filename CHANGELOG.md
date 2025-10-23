@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
 
+- Add `u_probe_links` & `load_probe` configuration fields to alloy pyroscope.ebpf to extend configuration of the opentelemetry-ebpf-profiler to allow uprobe profiling and dynamic probing. (@luweglarz)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
