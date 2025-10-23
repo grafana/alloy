@@ -161,6 +161,8 @@ v1.11.0
 
 - Add `encoding.url_encode` and `encoding.url_decode` std lib functions. (@kalleep)
 
+- (_Experimental_) Add `otelcol.exporter.azureblob` component to export telemetry data to Azure Blob Storage. (@nicholasgibson2)
+
 ### Enhancements
 
 - Ensure text in the UI does not overflow node boundaries in the graph. (@blewis12)
