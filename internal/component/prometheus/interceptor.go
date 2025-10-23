@@ -93,7 +93,7 @@ func WithCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct i
 	}
 }
 
-// WithName returns an InterceptorOptions whish allows to set the componentID of the Interceptor.
+// WithComponentID returns an InterceptorOptions which is used to set the componentID of the Interceptor.
 // This is useful for debugging
 func WithComponentID(id string) InterceptorOption {
 	return func(i *Interceptor) {
