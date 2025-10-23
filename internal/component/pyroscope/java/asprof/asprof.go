@@ -83,7 +83,7 @@ func ExtractDistribution(a Archive, tmpDir, distName string) (Distribution, erro
 
 	var launcher, lib []byte
 	err := readArchive(a.data, a.format, func(name string, fi fs.FileInfo, data []byte) error {
-		if strings.Contains(name, "asprof") {
+		if strings.HasSuffix(name, "/asprof") {
 			launcher = data
 		}
 		if strings.Contains(name, "libasyncProfiler") {
