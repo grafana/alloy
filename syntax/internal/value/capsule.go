@@ -51,12 +51,3 @@ type ConvertibleIntoCapsule interface {
 	// available.
 	ConvertInto(dst interface{}) error
 }
-
-// NamedCapsule is a Capsule that have been assigned a name. This is
-// useful to give a better description for a capsule e.g. when debugging.
-type NamedCapsule interface {
-	Capsule
-
-	// CapsuleName should return the name of the capsule.
-	CapsuleName() string
-}

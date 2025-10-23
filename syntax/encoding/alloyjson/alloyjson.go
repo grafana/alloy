@@ -292,8 +292,9 @@ func buildJSONValue(v value.Value) jsonValue {
 			return tokenizeObject(value.Encode(newVal))
 		}
 
-		if name, ok := v.NamedCapsule(); ok {
-			return jsonValue{Type: "capsule", Value: name}
+		// If capsule implements fmt.Stringer we use that as value.
+		if s, ok := reflect.TypeAssert[fmt.Stringer](v.Reflect()); ok {
+			return jsonValue{Type: "capsule", Value: s.String()}
 		}
 
 		// Otherwise, describe the value

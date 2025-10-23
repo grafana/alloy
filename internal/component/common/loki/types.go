@@ -62,8 +62,10 @@ type namedReceiver struct {
 func (r *namedReceiver) Chan() chan Entry {
 	return r.inner.Chan()
 }
-func (namedReceiver) AlloyCapsule()          {}
-func (r *namedReceiver) CapsuleName() string { return r.name }
+
+func (r *namedReceiver) String() string {
+	return r.name
+}
 
 // Entry is a log entry with labels.
 type Entry struct {
