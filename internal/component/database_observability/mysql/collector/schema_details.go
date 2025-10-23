@@ -33,7 +33,7 @@ const (
 	FROM
 		information_schema.schemata
 	WHERE
-		SCHEMA_NAME NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')`
+		SCHEMA_NAME NOT IN ` + EXCLUDED_SCHEMAS
 
 	selectTableName = `
 	SELECT
