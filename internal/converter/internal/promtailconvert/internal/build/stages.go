@@ -102,7 +102,7 @@ func convertStructuredMetadata(cfg interface{}, diags *diag.Diagnostics) (stages
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{StructuredMetadata: &stages.LabelsConfig{
+	return stages.StageConfig{StructuredMetadata: &stages.StructuredMetadataConfig{
 		Values: *pLabels,
 	}}, true
 }
