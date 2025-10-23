@@ -125,6 +125,25 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	componentID := livedebugging.ComponentID(res.opts.ID)
+
+	handleLocalLink := func(globalRef uint64, l labels.Labels, cachedLocalRef uint64, newLocalRef uint64) {
+		// We had a local ref that was still valid nothing to do
+		if cachedLocalRef != 0 && cachedLocalRef == newLocalRef {
+			return
+		}
+		// This should never happen in a proper appender chain. Since we cannot enforce it, we are extra defensive.
+		if globalRef == 0 {
+			level.Warn(o.Logger).Log("msg", "received append with zero global ref, generating new global ref", "component", o.ID)
+			globalRef = ls.GetOrAddGlobalRefID(l)
+		}
+
+		if cachedLocalRef == 0 {
+			ls.AddLocalLink(res.opts.ID, globalRef, newLocalRef)
+		} else {
+			ls.ReplaceLocalLink(res.opts.ID, globalRef, cachedLocalRef, newLocalRef)
+		}
+	}
+
 	res.receiver = prometheus.NewInterceptor(
 		res.storage,
 		ls,
@@ -142,9 +161,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
 			newRef, nextErr := next.Append(storage.SeriesRef(localID), l, t, v)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
+			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -162,9 +180,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
 			newRef, nextErr := next.AppendHistogram(storage.SeriesRef(localID), l, t, h, fh)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
+			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -190,9 +207,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
 			newRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localID), l, m)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
+			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
@@ -210,9 +226,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
 			newRef, nextErr := next.AppendExemplar(storage.SeriesRef(localID), l, e)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
+			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
 				livedebugging.PrometheusMetric,
