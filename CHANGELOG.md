@@ -49,10 +49,8 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Schedule new path targets faster in `loki.source.file`. (@kalleep)
-
 - Update Beyla component to 2.7.4. (@grcevski)
-- 
+
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
 - Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
@@ -67,13 +65,22 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
-- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+v1.11.3
+-----------------
 
-- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+### Enhancements
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+### Bugfixes
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
 
-- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
 v1.11.2
 -----------------
