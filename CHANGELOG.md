@@ -67,7 +67,9 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
-- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was confgiured. (@kalleep)
+
+- Fix prometheus.exporter.process ignoring the `remove_empty_groups` argument. (@mhamzahkhan)
 
 - Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
 
