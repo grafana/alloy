@@ -80,6 +80,7 @@ type AutoDiscovery struct {
 type StatStatementFlags struct {
 	IncludeQuery bool `alloy:"include_query,attr,optional"`
 	QueryLength  uint `alloy:"query_length,attr,optional"`
+	Limit        uint `alloy:"limit,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -109,6 +110,7 @@ func (s *StatStatementFlags) Convert() *postgres_exporter.StatStatementFlags {
 	return &postgres_exporter.StatStatementFlags{
 		IncludeQuery: s.IncludeQuery,
 		QueryLength:  s.QueryLength,
+		Limit:        s.Limit,
 	}
 }
 
