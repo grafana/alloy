@@ -29,4 +29,4 @@ jobs:
         go-version-file: go.mod
         cache: true
     - name: Test
-      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
+      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker,slicelabels" test
