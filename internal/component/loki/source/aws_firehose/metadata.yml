@@ -1,0 +1,39 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.source.awsfirehose."
+  required:
+    - forward_to
+  allOf:
+    - "$ref": "../../../../../internal/component/common/net/schema.yml"
+  properties:
+    forward_to:
+      description: >-
+        List of receivers to send log entries to.
+      type: array
+      alloy:
+        type_override: "list(LogsReceiver)"
+
+    access_key:
+      description: >-
+        If set, require Data Firehose to provide a matching key.
+      type: string
+      alloy:
+        type_override: "secret"
+        default_override: '""'
+
+    relabel_rules:
+      description: >-
+        Relabeling rules to apply on log entries.
+      type: array
+      items:
+        type: object
+      alloy:
+        type_override: "RelabelRules"
+        default_override: "{}"
+
+    use_incoming_timestamp:
+      description: >-
+        Whether to use the timestamp received from the request.
+      type: boolean
+      alloy:
+        default_override: false
