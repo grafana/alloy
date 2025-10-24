@@ -32,7 +32,7 @@ spec:
       protocol: "TCP"
 {{- range $portMap := $values.extraPorts }}
     - name: {{ $portMap.name }}
-      port: {{ $portMap.port }}
+      port: {{ $portMap.hostPort }}
       targetPort: {{ $portMap.targetPort }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
       {{- if not (empty $portMap.appProtocol) }}
