@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	alloy_service "github.com/grafana/alloy/internal/service"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
+
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	alloy_service "github.com/grafana/alloy/internal/service"
 )
 
 const ServiceName = "labelstore"
@@ -122,11 +123,15 @@ func (s *Service) Data() any {
 	return s
 }
 
-// GetOrAddLink is called by a remote_write endpoint component to add mapping and get back the global id.
-func (s *Service) GetOrAddLink(componentID string, localRefID uint64, lbls labels.Labels) uint64 {
+// AddLocalLink is called by a remote_write endpoint component to add mapping from local ref and global ref
+func (s *Service) AddLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
+	s.addLocalLink(componentID, globalRefID, localRefID)
+}
+
+func (s *Service) addLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
 	// If the mapping doesn't exist then we need to create it
 	m, found := s.mappings[componentID]
 	if !found {
@@ -138,19 +143,27 @@ func (s *Service) GetOrAddLink(componentID string, localRefID uint64, lbls label
 		s.mappings[componentID] = m
 	}
 
-	labelHash := lbls.Hash()
-	globalID, found := s.labelsHashToGlobal[labelHash]
-	if found {
-		m.localToGlobal[localRefID] = globalID
-		m.globalToLocal[globalID] = localRefID
-		return globalID
+	m.localToGlobal[localRefID] = globalRefID
+	m.globalToLocal[globalRefID] = localRefID
+}
+
+// ReplaceLocalLink updates an existing local to global mapping for a component.
+func (s *Service) ReplaceLocalLink(componentID string, globalRefID uint64, cachedLocalRef uint64, newLocalRef uint64) {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+
+	m, found := s.mappings[componentID]
+	// If we don't have a mapping yet there's nothing to replace
+	if !found {
+		s.addLocalLink(componentID, globalRefID, newLocalRef)
+		return
 	}
-	// We have a value we have never seen before so increment the globalrefid and assign
-	s.globalRefID++
-	s.labelsHashToGlobal[labelHash] = s.globalRefID
-	m.localToGlobal[localRefID] = s.globalRefID
-	m.globalToLocal[s.globalRefID] = localRefID
-	return s.globalRefID
+
+	// Delete the old mapping
+	delete(m.localToGlobal, cachedLocalRef)
+	// Add the new mapping
+	m.localToGlobal[newLocalRef] = globalRefID
+	m.globalToLocal[globalRefID] = newLocalRef
 }
 
 // GetOrAddGlobalRefID is used to create a global refid for a labelset
@@ -171,19 +184,6 @@ func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	s.globalRefID++
 	s.labelsHashToGlobal[labelHash] = s.globalRefID
 	return s.globalRefID
-}
-
-// GetGlobalRefID returns the global refid for a component local combo, or 0 if not found
-func (s *Service) GetGlobalRefID(componentID string, localRefID uint64) uint64 {
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
-	m, found := s.mappings[componentID]
-	if !found {
-		return 0
-	}
-	global := m.localToGlobal[localRefID]
-	return global
 }
 
 // GetLocalRefID returns the local refid for a component global combo, or 0 if not found

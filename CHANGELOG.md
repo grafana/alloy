@@ -7,6 +7,60 @@ This document contains a historical list of changes between releases. Only
 changes that impact end-user behavior are listed; changes to documentation or
 internal API changes are not present.
 
+Main (unreleased)
+-----------------
+
+### Breaking changes
+
+- `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
+  with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
+  set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
+
+### Features
+
+- (_Experimental_) Additions to experimental `database_observability.mysql` component:
+  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+
+- (_Experimental_) Additions to experimental `database_observability.postgres` component:
+  - `explain_plans` added the explain plan collector (@rgeyer)
+  - add `user` field to wait events within `query_samples` collector (@gaantunes)
+  - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+
+- Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
+
+- Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
+
+- Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+
+### Enhancements
+
+- Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
+
+- Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
+
+- Reduce memory overhead of `prometheus.remote_write`'s WAL by lowering the size of the allocated series storage. (@kgeckhart)
+
+- Reduce lock wait/contention on the labelstore.LabelStore by removing unecessary usage from `prometheus.relabel`. (@kgeckhart)
+
+- `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+### Bugfixes
+
+- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
+
+- Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
+
+- Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Attempt to fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
 v1.11.2
 -----------------
 
@@ -87,7 +141,7 @@ v1.11.0
   - add `query_tables` collector for postgres (@matthewnolf)
   - add `cloud_provider.aws` configuration that enables optionally supplying the ARN of the database under observation. The ARN is appended to metric samples as labels for easier filtering and grouping of resources.
   - add `query_sample` collector for postgres (@gaantunes)
-  - add `schema_table` collector for postgres (@fridgepoet)
+  - add `schema_details` collector for postgres (@fridgepoet)
   - include `server_id` label on logs and metrics (@matthewnolf)
 
 - Add `otelcol.receiver.googlecloudpubsub` community component to receive metrics, traces, and logs from Google Cloud Pub/Sub subscription. (@eraac)
@@ -192,6 +246,8 @@ v1.11.0
 
 - Fix race conditions in `loki.source.syslog` where it could deadlock or cause port bind errors during config reload or shutdown. (@thampiotr)
 
+- Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
+
 - **Fix `loki.source.podlogs` component to properly collect logs from Kubernetes Jobs and CronJobs.** Previously, the component would fail to scrape logs from short-lived or terminated jobs due to race conditions between job completion and pod discovery. The fix includes:
   - Job-aware termination logic with extended grace periods (10-60 seconds) to ensure all logs are captured
   - Proper handling of pod deletion and race conditions between job completion and controller cleanup
@@ -199,8 +255,6 @@ v1.11.0
   - Enhanced deduplication mechanisms to prevent duplicate log collection while ensuring comprehensive coverage
   - Comprehensive test coverage including unit tests and deduplication validation
   This resolves the issue where job logs were being missed, particularly for fast-completing jobs or jobs that terminated before discovery. (@QuentinBisson)
-
-- Fix `prometheus.exporter.redis` component so that it no longer ignores the `MaxDistinctKeyGroups` configuration option. If key group metrics are enabled, this will increase the cardinality of the generated metrics. (@stegosaurus21)
 
 - Fix `loki.source.journal` creation failing with an error when the journal file is not found. (@thampiotr)
 
