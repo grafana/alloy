@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
-
-	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
 const ConnectionInfoName = "connection_info"

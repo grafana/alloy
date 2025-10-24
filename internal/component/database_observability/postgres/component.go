@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,11 +68,19 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
+	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
+	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+}
 
-	ExplainPlanArguments ExplainPlanArguments `alloy:"explain_plans,block,optional"`
+type CloudProvider struct {
+	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
 }
 
 type QuerySampleArguments struct {
@@ -342,6 +351,19 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		startErrors = append(startErrors, errorString)
 	}
 
+	var cloudProviderInfo *database_observability.CloudProvider
+	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
+		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
+		}
+		cloudProviderInfo = &database_observability.CloudProvider{
+			AWS: &database_observability.AWSCloudProviderInfo{
+				ARN: arn,
+			},
+		}
+	}
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -384,6 +406,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
