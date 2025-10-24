@@ -33,7 +33,15 @@ The list of arguments that can be used to configure the block is presented below
 
 The scrape job name defaults to the component's unique identifier.
 
-If conflicting attributes are passed, for example, defining both a BearerToken and BearerTokenFile or configuring both Basic Authorization and OAuth2 at the same time, the component reports an error.
+One of the following can be provided:
+
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
+* [`oauth2`][oauth2] block
+
+If conflicting attributes are passed, e.g., defining both a `bearer_token` and `bearer_token_file` or configuring both `basic_auth` and `oauth2` at the same time, the component reports an error.
 
 You can use the following arguments with `prometheus.scrape`:
 
@@ -69,7 +77,7 @@ You can use the following arguments with `prometheus.scrape`:
 | `proxy_from_environment`             | `bool`                  | Use the proxy URL indicated by environment variables.                                                                    | `false`                                                                                          | no       |
 | `proxy_url`                          | `string`                | HTTP proxy to send requests through.                                                                                     |                                                                                                  | no       |
 | `sample_limit`                       | `uint`                  | More than this many samples post metric-relabeling causes the scrape to fail                                             |                                                                                                  | no       |
-| `scheme`                             | `string`                | The URL scheme with which to fetch metrics from targets.                                                                 |                                                                                                  | no       |
+| `scheme`                             | `string`                | The URL protocol scheme with which to fetch metrics from targets.                                                        |                                                                                                  | no       |
 | `scrape_classic_histograms`          | `bool`                  | Whether to scrape a classic histogram that's also exposed as a native histogram.                                         | `false`                                                                                          | no       |
 | `scrape_failure_log_file`            | `string`                | File to which scrape failures are logged.                                                                                | `""`                                                                                             | no       |
 | `scrape_fallback_protocol`           | `string`                | The fallback protocol to use if the target does not provide a valid Content-Type header. See below for available values. | `PrometheusText0_0_4`                                                                            | no       |
@@ -90,14 +98,6 @@ You can use the following arguments with `prometheus.scrape`:
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-
-At most, one of the following can be provided:
-
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#arguments) argument
-* [`bearer_token`](#arguments) argument
-* [`oauth2`][oauth2] block
 
 The `scrape_protocols` controls the preferred order of protocols to negotiate during a scrape.
 The following values are supported:
@@ -342,7 +342,7 @@ The following special labels can change the behavior of `prometheus.scrape`:
 * `__address__`: The name of the label that holds the `<host>:<port>` address of a scrape target.
 * `__metrics_path__`: The name of the label that holds the path on which to scrape a target.
 * `__param_<name>`: A prefix for labels that provide URL parameters `<name>` used to scrape a target.
-* `__scheme__`: the name of the label that holds the scheme (http,https) on which to  scrape a target.
+* `__scheme__`: the name of the label that holds the protocol scheme (`http`, `https`) on which to scrape a target.
 * `__scrape_interval__`: The name of the label that holds the scrape interval used to scrape a target.
 * `__scrape_timeout__`: The name of the label that holds the scrape timeout used to scrape a target.
 
