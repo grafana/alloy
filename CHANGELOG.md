@@ -14,6 +14,8 @@ v1.11.3
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
+
 ### Bugfixes
 
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
