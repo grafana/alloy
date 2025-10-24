@@ -41,7 +41,7 @@ One of the following can be provided:
 * [`bearer_token`](#arguments) argument
 * [`oauth2`][oauth2] block
 
-If conflicting attributes are passed, e.g., defining both a `bearer_token` and `bearer_token_file` or configuring both `basic_auth` and `oauth2` at the same time, the component reports an error.
+If conflicting attributes are passed, for example, defining both a `bearer_token` and `bearer_token_file` or configuring both `basic_auth` and `oauth2` at the same time, the component reports an error.
 
 You can use the following arguments with `prometheus.scrape`:
 
