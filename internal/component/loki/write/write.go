@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -227,11 +228,46 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
+
+	if len(externalLabels) > 0 {
+		externalLabels, _ = splitLabels(externalLabels)
+	}
+
 	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
-		if len(externalLabels) == 0 {
-			return e
+
+		entryLabels, internalEntryLabels := splitLabels(e.Labels)
+
+		// if we have both safe external and entry labels, merge them
+		if len(externalLabels) > 0 && len(entryLabels) > 0 {
+			e.Labels = externalLabels.Merge(entryLabels)
+
+			// if we only have safe external labels, use those
+		} else if len(externalLabels) > 0 {
+			e.Labels = externalLabels
+
+			// if we have internal entry labels, we drop them and keep only non-internal entry labels
+		} else if len(internalEntryLabels) > 0 && len(entryLabels) > 0 {
+			e.Labels = entryLabels
+
+		} else if len(entryLabels) == 0 {
+			e.Labels = model.LabelSet{}
 		}
-		e.Labels = externalLabels.Merge(e.Labels)
+
 		return e
 	})
+}
+
+func splitLabels(input model.LabelSet) (model.LabelSet, model.LabelSet) {
+	labels := make(model.LabelSet)
+	internalLabels := make(model.LabelSet)
+
+	for k, v := range input {
+		if strings.HasPrefix(string(k), "__") {
+			internalLabels[k] = v
+		} else {
+			labels[k] = v
+		}
+	}
+
+	return labels, internalLabels
 }
