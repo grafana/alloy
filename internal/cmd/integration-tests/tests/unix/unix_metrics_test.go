@@ -149,6 +149,8 @@ func TestUnixMetrics(t *testing.T) {
 		"node_vmstat_pgpgout",
 		"node_vmstat_pswpin",
 		"node_vmstat_pswpout",
+		"custom_metric_total",
+		"custom_gauge_value",
 	}
 
 	switch runtime.GOOS {
