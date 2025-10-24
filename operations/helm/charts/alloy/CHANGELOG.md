@@ -9,6 +9,7 @@ internal API changes are not present.
 
 Unreleased
 ----------
+- Add clustering waitForSize and waitTimeout. (@evanfreed)
 
 - Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
 
