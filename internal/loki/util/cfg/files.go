@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/drone/envsubst"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -25,7 +26,7 @@ func JSON(f *string) Source {
 		}
 
 		err = dJSON(j)(dst)
-		return fmt.Errorf("failed to unmarshal JSON from %q: %w", *f, err)
+		return errors.Wrap(err, *f)
 	}
 }
 
@@ -58,7 +59,7 @@ func YAML(f string, expandEnvVars bool, strict bool) Source {
 			err = dYAML(y)(dst)
 		}
 
-		return fmt.Errorf("failed to unmarshal YAML from %q: %w", f, err)
+		return errors.Wrap(err, f)
 	}
 }
 
