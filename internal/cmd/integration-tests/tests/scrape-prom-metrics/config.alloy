@@ -18,6 +18,9 @@ prometheus.scrape "scrape_prom_metrics" {
   scrape_native_histograms = true
   scrape_interval = "1s"
   scrape_timeout = "500ms"
+  // Without this the histogram will appear as a gauge
+  // TODO: Why do we have to set this explicitly? Is it a sign of a breaking change?
+  honor_metadata = true
 }
 
 prometheus.write.queue "scrape_prom_metrics" {

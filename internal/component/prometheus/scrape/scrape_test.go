@@ -747,6 +747,27 @@ func setupTestNativeHistogram() prometheus_client.Histogram {
 	return nativeHistogram
 }
 
+// setupTestMixedHistogram creates and initializes a test histogram with both classic and native buckets
+func setupTestMixedHistogram() prometheus_client.Histogram {
+	mixedHistogram := prometheus_client.NewHistogram(prometheus_client.HistogramOpts{
+		Name: "test_mixed_histogram",
+		Help: "A test histogram metric with both classic and native buckets",
+		// TODO: This is not a classic histogram?
+		Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0}, // Classic buckets
+		// Native histogram configuration
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
+	})
+	// Add observations to create both classic and native data
+	mixedHistogram.Observe(0.3) // Falls in 0.5 bucket
+	mixedHistogram.Observe(0.7) // Falls in 1.0 bucket
+	mixedHistogram.Observe(1.2) // Falls in 2.5 bucket
+	mixedHistogram.Observe(4.5) // Falls in 5.0 bucket
+	mixedHistogram.Observe(8.1) // Falls in 10.0 bucket
+	return mixedHistogram
+}
+
 // setupTestSummary creates and initializes a test summary metric
 func setupTestSummary() prometheus_client.Summary {
 	summary := prometheus_client.NewSummary(prometheus_client.SummaryOpts{
@@ -774,9 +795,10 @@ func setupTestMetrics() *prometheus_client.Registry {
 	gauge := setupTestGauge()
 	histogram := setupTestHistogram()
 	nativeHistogram := setupTestNativeHistogram()
+	mixedHistogram := setupTestMixedHistogram()
 	summary := setupTestSummary()
 
-	reg.MustRegister(counter, gauge, histogram, nativeHistogram, summary)
+	reg.MustRegister(counter, gauge, histogram, nativeHistogram, mixedHistogram, summary)
 	return reg
 }
 
@@ -793,6 +815,9 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 		// Histogram samples
 		{name: "test_histogram_count", value: 4.0},
 		{name: "test_histogram_sum", value: 6.7}, // 0.3 + 0.7 + 1.2 + 4.5
+		// Mixed histogram samples (classic samples expected for mixed histograms with both classic and native buckets)
+		{name: "test_mixed_histogram_count", value: 5.0},
+		{name: "test_mixed_histogram_sum", value: 14.8}, // 0.3 + 0.7 + 1.2 + 4.5 + 8.1
 		// Summary samples
 		{name: "test_summary_count", value: 4.0},
 		{name: "test_summary_sum", value: 2.9}, // 0.5 + 0.9 + 1.5 + 0.0
@@ -824,6 +849,11 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 			expectedHelp: "A test native histogram metric",
 		},
 		{
+			name:         "test_mixed_histogram",
+			expectedType: model.MetricTypeHistogram,
+			expectedHelp: "A test histogram metric with both classic and native buckets",
+		},
+		{
 			name:         "test_summary",
 			expectedType: model.MetricTypeSummary,
 			expectedHelp: "A test summary metric",
@@ -839,6 +869,11 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 			name:          "test_native_histogram",
 			expectedCount: 3,
 			expectedSum:   7.8,
+		},
+		{
+			name:          "test_mixed_histogram",
+			expectedCount: 5,
+			expectedSum:   14.8,
 		},
 	}
 
@@ -922,7 +957,8 @@ func TestScrapingAllMetricTypes(t *testing.T) {
 	args.ScrapeTimeout = 25 * time.Millisecond
 	args.JobName = "test_job"
 	args.MetricsPath = "/metrics"
-	args.ScrapeNativeHistograms = true // Enable native histogram scraping
+	args.ScrapeNativeHistograms = true  // Enable native histogram scraping
+	args.ScrapeClassicHistograms = true // Enable classic histogram scraping
 	args.ScrapeProtocols = []string{
 		"PrometheusProto",
 		"OpenMetricsText1.0.0",
