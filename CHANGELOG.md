@@ -75,6 +75,8 @@ Main (unreleased)
 
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
+- Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
+
 v1.11.2
 -----------------
 
