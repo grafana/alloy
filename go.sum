@@ -1148,8 +1148,8 @@ github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2 h1:ju6EcY2aEobeBg
 github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2/go.mod h1:8sLW/G7rcFe1CKMaA4pYT4mX3P1xQVGqM6luzEzx/2g=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 h1:dPJOIEwtQ8uR3Qa79pb/lsSFJQ6j4P9vpCUQ4fKimG4=
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761/go.mod h1:S/M+H/0B7LSWtXbvzEOwqCl96xP6c1NOInW21+bzol0=
-github.com/grafana/ckit v0.0.0-20250825110114-3ee952343746 h1:M38XP642rwteNZz0tEwsiTAiulw4z554nSEPMdJexS8=
-github.com/grafana/ckit v0.0.0-20250825110114-3ee952343746/go.mod h1:THPMJBdU2XgYUsYCG/PvtaYj1/NH4uNjw7U5kNohrLY=
+github.com/grafana/ckit v0.0.0-20251024151910-87043f5a3cf7 h1:ht6BCnZ9DBo+ZjeyxB7aungT/HtDwlWNJypHkKrL1kk=
+github.com/grafana/ckit v0.0.0-20251024151910-87043f5a3cf7/go.mod h1:OoVSd3NXKXf5Bz47bvWyO1yZBVImyTrHHgw0wW5eIrU=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/dskit v0.0.0-20250828173137-de14cf923eeb h1:/7k3iGtgl99mhmsaMpB8REUEj8uEh6Nwo74fK342Gsc=
