@@ -167,3 +167,15 @@ func (c *Component) shutdownServer() {
 		c.server = nil
 	}
 }
+
+func (c *Component) getServer() *fnet.TargetServer {
+	c.updateMut.RLock()
+	defer c.updateMut.RUnlock()
+	return c.server
+}
+
+func (c *Component) getArgs() Arguments {
+	c.updateMut.RLock()
+	defer c.updateMut.RUnlock()
+	return c.args
+}
