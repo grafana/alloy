@@ -24,6 +24,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -44,6 +45,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_details"]
 	`
 
@@ -65,6 +67,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		disable_collectors = ["query_details"]
 	`
 
@@ -86,6 +89,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		disable_collectors = ["query_details"]
 		enable_collectors = ["query_details"]
 	`
@@ -108,6 +112,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["some_string"]
 		disable_collectors = ["another_string"]
 	`
@@ -130,6 +135,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_samples"]
 	`
 
@@ -151,6 +157,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["schema_details"]
 	`
 
@@ -172,6 +179,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_details", "query_samples"]
 	`
 
@@ -193,6 +201,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		disable_collectors = ["query_samples"]
 	`
 
@@ -216,6 +225,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_samples"]
 	`
 
@@ -229,6 +239,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_samples"]
 		query_samples {
 			disable_query_redaction = true
@@ -245,6 +256,7 @@ func TestQueryRedactionConfig(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_samples"]
 		query_samples {
 			disable_query_redaction = false
@@ -263,6 +275,7 @@ func TestCollectionIntervals(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		`
 
 		var args Arguments
@@ -275,6 +288,7 @@ func TestCollectionIntervals(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		query_samples {
 			collect_interval = "5s"
 		}
@@ -318,8 +332,6 @@ func Test_addLokiLabels(t *testing.T) {
 }
 
 func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
-	t.Parallel()
-
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
 		ID:     "test.postgres",
@@ -337,11 +349,10 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 }
 
 func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {
-	t.Parallel()
-
 	exampleDBO11yAlloyConfig := `
 	data_source_name = "postgres://db"
 	forward_to = []
+	targets = []
 	schema_details {
 		collect_interval = "11s"
 	}
@@ -359,6 +370,7 @@ func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *te
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		`
 
 		var args Arguments
@@ -374,6 +386,7 @@ func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *te
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
 		forward_to = []
+		targets = []
 		schema_details {
 			collect_interval = "30s"
 			cache_enabled = false

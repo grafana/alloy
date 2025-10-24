@@ -158,7 +158,7 @@ local.file "mysql_secret_<your_DB_name>" {
 
 prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
-  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
+  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 database_observability.mysql "mysql_<your_DB_name>" {
@@ -510,7 +510,7 @@ loki.relabel "database_observability_postgres_<your_DB_name>" {
 }
 
 discovery.relabel "database_observability_postgres_<your_DB_name>" {
-  targets = concat(prometheus.exporter.postgres.integrations_postgres_exporter_<your_DB_name>.targets, database_observability.postgres.postgres_<your_DB_name>.targets)
+  targets = database_observability.postgres.postgres_<your_DB_name>.targets
 
   rule {
     target_label = "job"
