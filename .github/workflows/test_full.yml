@@ -34,4 +34,4 @@ jobs:
         go-version-file: go.mod
         # TODO: Enable caching later.
         cache: false
-    - run: K8S_USE_DOCKER_NETWORK=1 make test
+    - run: K8S_USE_DOCKER_NETWORK=1 GO_TAGS="slicelabels" make test

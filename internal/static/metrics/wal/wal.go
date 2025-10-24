@@ -286,7 +286,7 @@ func (w *Storage) replayWAL() error {
 // but has not been fully removed from the WAL via a wlog.Checkpoint yet.
 func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
-		dec     record.Decoder
+		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
 		decoded    = make(chan interface{}, 10)
@@ -549,7 +549,7 @@ func (w *Storage) Truncate(mint int64) error {
 		return nil
 	}
 
-	keep := func(id chunks.HeadSeriesRef, _ int) bool {
+	keep := func(id chunks.HeadSeriesRef) bool {
 		if w.series.GetByID(id) != nil {
 			return true
 		}

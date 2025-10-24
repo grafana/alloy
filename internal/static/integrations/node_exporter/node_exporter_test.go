@@ -55,7 +55,7 @@ func TestNodeExporter(t *testing.T) {
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 
-	p := textparse.NewPromParser(body, nil)
+	p := textparse.NewPromParser(body, nil, false)
 	for {
 		_, err := p.Next()
 		if err == io.EOF {

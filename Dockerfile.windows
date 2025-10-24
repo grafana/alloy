@@ -79,7 +79,7 @@ SHELL ["cmd", "/S", "/C"]
 # we can before moving on to the next step.
 RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} make generate-ui && rm -rf web/ui/node_modules && yarn cache clean --all""
 
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"builtinassets ${GO_TAGS}\" make alloy""
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"builtinassets slicelabels ${GO_TAGS}\" make alloy""
 # In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
 # files is denied immediately after make alloy, for example:
 # "go: remove C:\go\pkg\mod\golang.org\toolchain@v0.0.1-go1.22.3.windows-amd64\bin\go.exe: Access is denied."
