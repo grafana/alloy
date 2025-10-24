@@ -78,6 +78,10 @@ func (b *ProfileBuilders) BuilderForSample(
 	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
+	case support.TraceOriginUProbe:
+		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
+		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
+		period = 1
 	default:
 		panic(fmt.Sprintf("unknown sample type %v", sampleType))
 	}

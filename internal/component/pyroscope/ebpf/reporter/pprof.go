@@ -211,6 +211,8 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				sum += t
 			}
 			b.AddValue(sum, s)
+		case support.TraceOriginUProbe:
+			b.AddValue(int64(len(traceInfo.Timestamps)), s)
 		}
 
 		for i := range traceInfo.Frames {
