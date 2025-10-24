@@ -440,18 +440,19 @@ func TestServerRestarts(t *testing.T) {
 				serverExit <- comp.Run(ctx)
 			}()
 
-			waitForServerToBeReady(t, comp.args)
+			waitForServerToBeReady(t, comp.getArgs())
 
-			initialServer := comp.server
+			initialServer := comp.getServer()
 			require.NotNil(t, initialServer)
 
 			err = comp.Update(tc.newArgs)
 			require.NoError(t, err)
 
-			waitForServerToBeReady(t, comp.args)
+			waitForServerToBeReady(t, comp.getArgs())
 
-			require.NotNil(t, comp.server)
-			restarted := initialServer != comp.server
+			currentServer := comp.getServer()
+			require.NotNil(t, currentServer)
+			restarted := initialServer != currentServer
 
 			require.Equal(t, tc.shouldRestart, restarted)
 
@@ -564,7 +565,6 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 		val float64,
 		next storage.Appender,
 	) (storage.SeriesRef, error) {
-
 		actualSamples <- testSample{ts: ts, val: val, l: l}
 		return ref, nil
 	}
