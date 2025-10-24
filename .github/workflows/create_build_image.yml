@@ -39,7 +39,7 @@ jobs:
       run: echo "image_tag=${FULL_TAG##*/}${{ matrix.build.suffix }}" >> $GITHUB_OUTPUT
 
     - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@13fb504e3bfe323c1188bf244970d94b2d336e86 # dockerhub-login-v1.0.1
+      uses: grafana/shared-workflows/actions/dockerhub-login@c6d954f7cd9c0022018982e01268de6cb75b913c # dockerhub-login/v1.0.2
 
     - name: Setup QEMU
       uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
