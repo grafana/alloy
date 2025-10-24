@@ -73,6 +73,8 @@ Main (unreleased)
 
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
+- Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
+
 v1.11.2
 -----------------
 
