@@ -75,6 +75,10 @@ Main (unreleased)
 
 - `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
+### Other changes
+
+- Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
+
 v1.11.2
 -----------------
 
