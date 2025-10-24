@@ -57,6 +57,8 @@ Main (unreleased)
 
 - Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
 
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
