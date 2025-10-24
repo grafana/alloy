@@ -329,6 +329,111 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[7].Line)
 	})
 
+	t.Run("collector discovers and collects from multiple databases", func(t *testing.T) {
+		t.Parallel()
+
+		initialConnectionDb, initialConnectionMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer initialConnectionDb.Close()
+
+		db1, db1Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db1.Close()
+
+		db2, db2Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db2.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              initialConnectionDb,
+			DSN:             "postgres://user:pass@localhost:5432/postgres",
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				switch dsn {
+				case "postgres://user:pass@localhost:5432/db1":
+					return db1, nil
+				case "postgres://user:pass@localhost:5432/db2":
+					return db2, nil
+				default:
+					return nil, fmt.Errorf("unexpected DSN: %s", dsn)
+				}
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		initialConnectionMock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"datname"}).
+					AddRow("db1").
+					AddRow("db2"),
+			)
+
+		db1Mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		db1Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("users"))
+		db1Mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "integer", true, nil, "", true),
+			)
+		db1Mock.ExpectQuery(selectIndexes).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		db1Mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}))
+
+		db2Mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		db2Mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("metrics"))
+		db2Mock.ExpectQuery(selectColumnNames).WithArgs("public.metrics").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "bigint", true, nil, "", true),
+			)
+		db2Mock.ExpectQuery(selectIndexes).WithArgs("public", "metrics").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		db2Mock.ExpectQuery(selectForeignKeys).WithArgs("public", "metrics").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}))
+
+		err = collector.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 6
+		}, 2*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.NoError(t, initialConnectionMock.ExpectationsWereMet())
+		require.NoError(t, db1Mock.ExpectationsWereMet())
+		require.NoError(t, db2Mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		assert.Len(t, lokiEntries, 6)
+
+		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" datname="db1" schema="public"`, lokiEntries[0].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		assert.Equal(t, `level="info" datname="db1" schema="public" table="users"`, lokiEntries[1].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db1" schema="public" table="users" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))), lokiEntries[2].Line)
+
+		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[3].Labels)
+		assert.Equal(t, `level="info" datname="db2" schema="public"`, lokiEntries[3].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[4].Labels)
+		assert.Equal(t, `level="info" datname="db2" schema="public" table="metrics"`, lokiEntries[4].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db2" schema="public" table="metrics" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"bigint","not_null":true,"primary_key":true}]}`))), lokiEntries[5].Line)
+	})
+
 	t.Run("collector handles multiple indexes on single table", func(t *testing.T) {
 		t.Parallel()
 

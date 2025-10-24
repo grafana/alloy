@@ -246,7 +246,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		initialConnection:   args.DB,
 		dbDSN:               args.DSN,
-		dbConnectionFactory: defaultDbConnectionFactory,
+		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		entryHandler:        args.EntryHandler,
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
@@ -494,11 +494,11 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 	return table, nil
 }
 
-func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, schemaName, tableName string, dbConnection *sql.DB) (*tableSpec, error) {
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string, dbConnection *sql.DB) (*tableSpec, error) {
 	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
 	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
@@ -510,7 +510,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 		var columnDefault sql.NullString
 		var notNullable, isPrimaryKey bool
 		if err := colRS.Scan(&columnName, &columnType, &notNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan table columns", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -535,13 +535,13 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
 	indexesRS, err := dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query indexes", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer indexesRS.Close()
@@ -552,7 +552,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 		var columns, expressions pq.StringArray
 
 		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions, &hasNullableColumn); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan indexes", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -570,13 +570,13 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 	}
 
 	if err := indexesRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over indexes", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "error during iterating over indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
 	fkRS, err := dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer fkRS.Close()
@@ -584,7 +584,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 	for fkRS.Next() {
 		var constraintName, columnName, referencedTableName, referencedColumnName string
 		if err := fkRS.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -597,7 +597,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, dbName, sch
 	}
 
 	if err := fkRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", dbName, "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 	}
 
 	return tblSpec, nil
