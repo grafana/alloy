@@ -19,6 +19,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-kit/log"
+	"github.com/google/cadvisor/manager"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,20 +56,23 @@ import (
 
 func runCommand() *cobra.Command {
 	r := &alloyRun{
-		inMemoryAddr:          "alloy.internal:12345",
-		httpListenAddr:        "127.0.0.1:12345",
-		storagePath:           "data-alloy/",
-		minStability:          featuregate.StabilityGenerallyAvailable,
-		uiPrefix:              "/",
-		disableReporting:      false,
-		enablePprof:           true,
-		configFormat:          "alloy",
-		clusterAdvInterfaces:  advertise.DefaultInterfaces,
-		clusterMaxJoinPeers:   5,
-		clusterRejoinInterval: 60 * time.Second,
-		disableSupportBundle:  false,
-		windowsPriority:       windowspriority.PriorityNormal,
-		taskShutdownDeadline:  10 * time.Minute,
+		inMemoryAddr:                     "alloy.internal:12345",
+		httpListenAddr:                   "127.0.0.1:12345",
+		storagePath:                      "data-alloy/",
+		minStability:                     featuregate.StabilityGenerallyAvailable,
+		uiPrefix:                         "/",
+		disableReporting:                 false,
+		enablePprof:                      true,
+		configFormat:                     "alloy",
+		clusterAdvInterfaces:             advertise.DefaultInterfaces,
+		clusterMaxJoinPeers:              5,
+		clusterRejoinInterval:            60 * time.Second,
+		disableSupportBundle:             false,
+		windowsPriority:                  windowspriority.PriorityNormal,
+		taskShutdownDeadline:             10 * time.Minute,
+		cadvisorHousekeepingInterval:     1 * time.Second,
+		cadvisorAllowDynamicHousekeeping: true,
+		cadvisorMaxHousekeepingInterval:  60 * time.Second,
 	}
 
 	cmd := &cobra.Command{
@@ -168,42 +172,48 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	cmd.Flags().DurationVar(&r.cadvisorHousekeepingInterval, "cadvisor.housekeeping-interval", r.cadvisorHousekeepingInterval, "Interval between cadvisor container housekeepings")
+	cmd.Flags().BoolVar(&r.cadvisorAllowDynamicHousekeeping, "cadvisor.allow-dynamic-housekeeping", r.cadvisorAllowDynamicHousekeeping, "Whether to allow the cadvisor housekeeping interval to be dynamic")
+	cmd.Flags().DurationVar(&r.cadvisorMaxHousekeepingInterval, "cadvisor.max-housekeeping-interval", r.cadvisorMaxHousekeepingInterval, "Largest interval to allow between cadvisor container housekeepings")
 
 	addDeprecatedFlags(cmd)
 	return cmd
 }
 
 type alloyRun struct {
-	inMemoryAddr                 string
-	httpListenAddr               string
-	storagePath                  string
-	minStability                 featuregate.Stability
-	uiPrefix                     string
-	enablePprof                  bool
-	disableReporting             bool
-	clusterEnabled               bool
-	clusterNodeName              string
-	clusterAdvAddr               string
-	clusterJoinAddr              string
-	clusterDiscoverPeers         string
-	clusterAdvInterfaces         []string
-	clusterRejoinInterval        time.Duration
-	clusterMaxJoinPeers          int
-	clusterName                  string
-	clusterEnableTLS             bool
-	clusterTLSCAPath             string
-	clusterTLSCertPath           string
-	clusterTLSKeyPath            string
-	clusterTLSServerName         string
-	clusterWaitForSize           int
-	clusterWaitTimeout           time.Duration
-	configFormat                 string
-	configBypassConversionErrors bool
-	configExtraArgs              string
-	enableCommunityComps         bool
-	disableSupportBundle         bool
-	windowsPriority              string
-	taskShutdownDeadline         time.Duration
+	inMemoryAddr                     string
+	httpListenAddr                   string
+	storagePath                      string
+	minStability                     featuregate.Stability
+	uiPrefix                         string
+	enablePprof                      bool
+	disableReporting                 bool
+	clusterEnabled                   bool
+	clusterNodeName                  string
+	clusterAdvAddr                   string
+	clusterJoinAddr                  string
+	clusterDiscoverPeers             string
+	clusterAdvInterfaces             []string
+	clusterRejoinInterval            time.Duration
+	clusterMaxJoinPeers              int
+	clusterName                      string
+	clusterEnableTLS                 bool
+	clusterTLSCAPath                 string
+	clusterTLSCertPath               string
+	clusterTLSKeyPath                string
+	clusterTLSServerName             string
+	clusterWaitForSize               int
+	clusterWaitTimeout               time.Duration
+	configFormat                     string
+	configBypassConversionErrors     bool
+	configExtraArgs                  string
+	enableCommunityComps             bool
+	disableSupportBundle             bool
+	windowsPriority                  string
+	taskShutdownDeadline             time.Duration
+	cadvisorHousekeepingInterval     time.Duration
+	cadvisorAllowDynamicHousekeeping bool
+	cadvisorMaxHousekeepingInterval  time.Duration
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -269,6 +279,12 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			level.Error(l).Log("msg", "running tracer returned an error", "err", err)
 		}
 	}()
+
+	manager.HousekeepingInterval = &fr.cadvisorHousekeepingInterval
+	manager.HousekeepingConfigFlags = manager.HouskeepingConfig{
+		Interval:     &fr.cadvisorMaxHousekeepingInterval,
+		AllowDynamic: &fr.cadvisorAllowDynamicHousekeeping,
+	}
 
 	// TODO(rfratto): many of the dependencies we import register global metrics,
 	// even when their code isn't being used. To reduce the number of series
