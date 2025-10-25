@@ -539,12 +539,12 @@ func TestLabelsByProfiles(t *testing.T) {
 		},
 		{
 			name: "no duplicates",
-			target: labels.Labels{
-				{Name: model.AddressLabel, Value: "localhost:9090"},
-				{Name: ProfilePath, Value: "/debug/pprof/custom_profile"},
-				{Name: ProfileName, Value: "custom_process_cpu"},
-				{Name: ProfilePathPrefix, Value: "/prefix"},
-			},
+			target: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+				ProfilePath:        "/debug/pprof/custom_profile",
+				ProfileName:        "custom_process_cpu",
+				ProfilePathPrefix:  "/prefix",
+			}),
 			cfg: &ProfilingConfig{
 				ProcessCPU: ProfilingTarget{
 					Enabled: true,
@@ -554,18 +554,18 @@ func TestLabelsByProfiles(t *testing.T) {
 				PathPrefix: "/foo",
 			},
 			expected: []labels.Labels{
-				{
-					{Name: model.AddressLabel, Value: "localhost:9090"},
-					{Name: ProfileName, Value: "custom_process_cpu"},
-					{Name: ProfilePath, Value: "/debug/pprof/custom_profile"},
-					{Name: ProfilePathPrefix, Value: "/prefix"},
-				},
+				labels.FromMap(map[string]string{
+					model.AddressLabel: "localhost:9090",
+					ProfilePath:        "/debug/pprof/custom_profile",
+					ProfileName:        "custom_process_cpu",
+					ProfilePathPrefix:  "/prefix",
+				}),
 			},
 		},
 	}
 	for _, td := range testdata {
 		t.Run(td.name, func(t *testing.T) {
-			actualBuilders := labelsByProfiles(labels.New(td.target...), td.cfg)
+			actualBuilders := labelsByProfiles(labels.NewBuilder(td.target).Labels(), td.cfg)
 			actual := make([]labels.Labels, len(actualBuilders))
 			for i, b := range actualBuilders {
 				actual[i] = b.Labels()

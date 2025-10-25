@@ -17,9 +17,8 @@ import (
 )
 
 func TestDeltaProfilerAppender(t *testing.T) {
-	lbs := labels.Labels{
-		{Name: model.MetricNameLabel, Value: pprofMemory},
-	}
+
+	lbs := labels.FromStrings(model.MetricNameLabel, pprofMemory)
 
 	outSamples := []*pyroscope.RawSample{}
 	appender := NewDeltaAppender(
@@ -58,9 +57,9 @@ func TestDeltaProfilerAppenderNoop(t *testing.T) {
 		pyroscope.AppendableFunc(func(ctx context.Context, lbs labels.Labels, samples []*pyroscope.RawSample) error {
 			actual = append(actual, samples...)
 			return nil
-		}), nil)
+		}), labels.EmptyLabels())
 	in := newMemoryProfile(0, 0)
-	err := appender.Append(t.Context(), nil, []*pyroscope.RawSample{{RawProfile: marshal(t, in)}})
+	err := appender.Append(t.Context(), labels.EmptyLabels(), []*pyroscope.RawSample{{RawProfile: marshal(t, in)}})
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
 	require.Equal(t, in, unmarshal(t, actual[0].RawProfile))
