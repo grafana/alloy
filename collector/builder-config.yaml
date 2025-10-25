@@ -1,3 +1,5 @@
+# TODO what happens if we fork the builder instead
+# TODO look into workspace files (collector go.mod is actually the "root")
 dist:
   module: github.com/grafana/alloy/otelcol
   name: alloy
@@ -29,13 +31,15 @@ connectors:
 
 replaces:
   # Local modules.
+  # TODO: what does this hierarchy look like now / what could it look like
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyflow => ../extension/alloyflow
-  
+
+  # TODO: add components that exist in flow engine (inherit replaces)
   # Replace directives required for additional OCB components added above to be compatible with the rest of Alloy's dependencies.
   - github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite => github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.130.0
-  - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/thampiotr/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20250916102911-5cee7db06eb3
+  - github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver => github.com/thampiotr/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20250916102911-5cee7db06eb3 # TODO: check out fork
   - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.130.0
   
   # Replace directives copied from main go.mod of Alloy
