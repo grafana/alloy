@@ -59,6 +59,8 @@ Main (unreleased)
 
 - `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
 
+- Make cAdvisor housekeeping configurable via flags for the `run` command (@into-the-v0id)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
