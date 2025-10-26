@@ -351,6 +351,208 @@ func TestRateLimiter(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, reqs[4].Result().StatusCode)
 }
 
+func TestHandler_RateLimitingPerApp(t *testing.T) {
+	tests := []struct {
+		name           string
+		app            string
+		env            string
+		requests       int
+		expectedStatus []int
+	}{
+		{
+			name:           "within burst limit for app1",
+			app:            "app1",
+			env:            "production",
+			requests:       2,
+			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted},
+		},
+		{
+			name:           "exceed burst limit for app1",
+			app:            "app1",
+			env:            "production",
+			requests:       3,
+			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted, http.StatusTooManyRequests},
+		},
+		{
+			name:           "app2 should have its own quota",
+			app:            "app2",
+			env:            "production",
+			requests:       2,
+			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted},
+		},
+		{
+			name:           "same app different env should have separate quota",
+			app:            "app1",
+			env:            "staging",
+			requests:       2,
+			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a fresh handler for each test to avoid interference
+			handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+
+			args := ServerArguments{
+				RateLimiting: RateLimitingArguments{
+					Enabled:         true,
+					Rate:            1.0,  // 1 request per second (global)
+					BurstSize:       2.0,  // burst of 2 requests (global)
+					PerAppEnabled:   true, // Enable per-app rate limiting
+					PerAppRate:      1.0,  // 1 request per second per app
+					PerAppBurstSize: 2.0,  // burst of 2 requests per app
+				},
+			}
+			handler.Update(args)
+
+			for i := 0; i < tt.requests; i++ {
+				// Create payload with app/env metadata
+				payloadStr := `{
+					"traces": {"resourceSpans": []},
+					"logs": [],
+					"exceptions": [],
+					"measurements": [],
+					"meta": {
+						"app": {
+							"name": "` + tt.app + `",
+							"environment": "` + tt.env + `"
+						}
+					}
+				}`
+
+				req := httptest.NewRequest("POST", "/", strings.NewReader(payloadStr))
+				req.Header.Set("Content-Type", "application/json")
+
+				rr := httptest.NewRecorder()
+				handler.handleRequest(rr, req)
+
+				assert.Equal(t, tt.expectedStatus[i], rr.Code, "request %d for %s:%s", i+1, tt.app, tt.env)
+			}
+		})
+	}
+}
+
+func TestHandler_RateLimitingGlobal(t *testing.T) {
+	// Create a test handler with global rate limiting (per-app disabled)
+	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+
+	args := ServerArguments{
+		RateLimiting: RateLimitingArguments{
+			Enabled:       true,
+			Rate:          1.0,   // 1 request per second
+			BurstSize:     2.0,   // burst of 2 requests
+			PerAppEnabled: false, // Disable per-app rate limiting
+		},
+	}
+	handler.Update(args)
+
+	// Create payloads for different apps
+	apps := []struct {
+		name string
+		env  string
+	}{
+		{"app1", "production"},
+		{"app2", "production"},
+	}
+
+	successCount := 0
+
+	for _, app := range apps {
+		for i := 0; i < 2; i++ { // 2 requests per app = 4 total
+			payloadStr := `{
+				"traces": {"resourceSpans": []},
+				"logs": [],
+				"exceptions": [],
+				"measurements": [],
+				"meta": {
+					"app": {
+						"name": "` + app.name + `",
+						"environment": "` + app.env + `"
+					}
+				}
+			}`
+
+			req := httptest.NewRequest("POST", "/", strings.NewReader(payloadStr))
+			req.Header.Set("Content-Type", "application/json")
+
+			rr := httptest.NewRecorder()
+			handler.handleRequest(rr, req)
+
+			if rr.Code == http.StatusAccepted {
+				successCount++
+			}
+		}
+	}
+
+	// With global rate limiting (burst=2), only 2 requests should succeed
+	// regardless of which app they come from
+	assert.Equal(t, 2, successCount, "Expected only 2 requests to succeed with global rate limiting")
+}
+
+func TestHandler_ExtractAppEnv(t *testing.T) {
+	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+
+	tests := []struct {
+		name        string
+		payload     payload.Payload
+		expectedApp string
+		expectedEnv string
+	}{
+		{
+			name: "valid app and env",
+			payload: payload.Payload{
+				Meta: payload.Meta{
+					App: payload.App{
+						Name:        "myapp",
+						Environment: "production",
+					},
+				},
+			},
+			expectedApp: "myapp",
+			expectedEnv: "production",
+		},
+		{
+			name: "missing app name",
+			payload: payload.Payload{
+				Meta: payload.Meta{
+					App: payload.App{
+						Environment: "production",
+					},
+				},
+			},
+			expectedApp: "unknown",
+			expectedEnv: "production",
+		},
+		{
+			name: "missing environment",
+			payload: payload.Payload{
+				Meta: payload.Meta{
+					App: payload.App{
+						Name: "myapp",
+					},
+				},
+			},
+			expectedApp: "myapp",
+			expectedEnv: "unknown",
+		},
+		{
+			name:        "empty payload",
+			payload:     payload.Payload{},
+			expectedApp: "unknown",
+			expectedEnv: "unknown",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, env := handler.extractAppEnv(tt.payload)
+			assert.Equal(t, tt.expectedApp, app)
+			assert.Equal(t, tt.expectedEnv, env)
+		})
+	}
+}
+
 type testExporter struct {
 	name     string
 	broken   bool

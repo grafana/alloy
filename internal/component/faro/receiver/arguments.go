@@ -55,16 +55,22 @@ func (s *ServerArguments) SetToDefault() {
 
 // RateLimitingArguments configures rate limiting for the HTTP server.
 type RateLimitingArguments struct {
-	Enabled   bool    `alloy:"enabled,attr,optional"`
-	Rate      float64 `alloy:"rate,attr,optional"`
-	BurstSize float64 `alloy:"burst_size,attr,optional"`
+	Enabled         bool    `alloy:"enabled,attr,optional"`
+	Rate            float64 `alloy:"rate,attr,optional"`
+	BurstSize       float64 `alloy:"burst_size,attr,optional"`
+	PerAppEnabled   bool    `alloy:"per_app_enabled,attr,optional"`
+	PerAppRate      float64 `alloy:"per_app_rate,attr,optional"`
+	PerAppBurstSize float64 `alloy:"per_app_burst_size,attr,optional"`
 }
 
 func (r *RateLimitingArguments) SetToDefault() {
 	*r = RateLimitingArguments{
-		Enabled:   true,
-		Rate:      50,
-		BurstSize: 100,
+		Enabled:         true,
+		Rate:            50,
+		BurstSize:       100,
+		PerAppEnabled:   false,
+		PerAppRate:      50,
+		PerAppBurstSize: 100,
 	}
 }
 

@@ -22,10 +22,11 @@ const apiKeyHeader = "x-api-key"
 var defaultAllowedHeaders = []string{"content-type", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
 
 type handler struct {
-	log         log.Logger
-	rateLimiter *rate.Limiter
-	exporters   []exporter
-	errorsTotal *prometheus.CounterVec
+	log            log.Logger
+	rateLimiter    *rate.Limiter
+	appRateLimiter *AppRateLimitingConfig
+	exporters      []exporter
+	errorsTotal    *prometheus.CounterVec
 
 	argsMut sync.RWMutex
 	args    ServerArguments
@@ -64,10 +65,24 @@ func (h *handler) Update(args ServerArguments) {
 
 		h.rateLimiter.SetLimitAt(t, rate.Limit(args.RateLimiting.Rate))
 		h.rateLimiter.SetBurstAt(t, int(args.RateLimiting.BurstSize))
+
+		// Initialize or update the per-app rate limiter if enabled
+		if args.RateLimiting.PerAppEnabled {
+			if h.appRateLimiter == nil {
+				h.appRateLimiter = NewAppRateLimitingConfig(args.RateLimiting.PerAppRate, int(args.RateLimiting.PerAppBurstSize))
+			} else {
+				// Update existing rate limiter with new values
+				h.appRateLimiter.rate = rate.Limit(args.RateLimiting.PerAppRate)
+				h.appRateLimiter.burst = int(args.RateLimiting.PerAppBurstSize)
+			}
+		} else {
+			h.appRateLimiter = nil
+		}
 	} else {
 		// Set to infinite rate limit.
 		h.rateLimiter.SetLimit(rate.Inf)
 		h.rateLimiter.SetBurst(0) // 0 burst is ignored when using rate.Inf.
+		h.appRateLimiter = nil
 	}
 
 	if len(args.CORSAllowedOrigins) > 0 {
@@ -99,11 +114,47 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
-	if !h.rateLimiter.Allow() {
-		http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
+	// Apply rate limiting
+	if h.appRateLimiter != nil {
+		// Per-app rate limiting: decode payload first to extract app/env information
+		var p payload.Payload
+		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
 
+		app, env := h.extractAppEnv(p)
+		if !h.appRateLimiter.Allow(app, env) {
+			level.Debug(h.log).Log(
+				"msg", "rate limit exceeded",
+				"app", app,
+				"env", env,
+			)
+			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			return
+		}
+
+		// Continue with the already decoded payload
+		h.processRequest(rw, req, p)
+	} else {
+		// Global rate limiting: check first, then decode
+		if !h.rateLimiter.Allow() {
+			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			return
+		}
+
+		// Decode payload now
+		var p payload.Payload
+		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		h.processRequest(rw, req, p)
+	}
+}
+
+func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p payload.Payload) {
 	// If an API key is configured, ensure the request has a matching key.
 	if len(h.args.APIKey) > 0 {
 		apiHeader := req.Header.Get(apiKeyHeader)
@@ -117,12 +168,6 @@ func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 	// Validate content length.
 	if h.args.MaxAllowedPayloadSize > 0 && req.ContentLength > int64(h.args.MaxAllowedPayloadSize) {
 		http.Error(rw, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
-		return
-	}
-
-	var p payload.Payload
-	if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -142,4 +187,21 @@ func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 
 	rw.WriteHeader(http.StatusAccepted)
 	_, _ = rw.Write([]byte("ok"))
+}
+
+// extractAppEnv extracts the app and environment from the Faro payload metadata.
+// Returns "unknown" for missing values to ensure isolation.
+func (h *handler) extractAppEnv(p payload.Payload) (string, string) {
+	app := "unknown"
+	env := "unknown"
+
+	if p.Meta.App.Name != "" {
+		app = p.Meta.App.Name
+	}
+
+	if p.Meta.App.Environment != "" {
+		env = p.Meta.App.Environment
+	}
+
+	return app, env
 }
