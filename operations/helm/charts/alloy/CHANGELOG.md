@@ -10,6 +10,11 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.4.0 (2025-10-27)
+----------
+
+- Update to Grafana Alloy v1.11.3. (@kalleep)
+
 - Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
 
 - Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
