@@ -1902,7 +1902,7 @@ The following arguments are supported:
 | `suffix`      | `string` | Suffix to append to truncated values.                        | ``       | no       |
 
 The `limit` attribute should be expressed in logical units, for example `"1KiB"`.
-The stage checks the length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
+The stage checks the byte length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
 If you provide a `suffix`, the limit is reduced by the length of the `suffix`, and the `suffix` is appended to the truncated value.
 
 The `source_type` attribute must be one of `"line"`, `"label"`, `"structured_metadata"`, or `"extracted"`.
