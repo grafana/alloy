@@ -54,7 +54,7 @@ You can click and drag the components to move them around.
 
 To access the graph page of a module, click on the **Graph** button on the module's detail page.
 
-The amount of data that exits a component that supports [live debugging][#live-debugging-page] is shown on the outgoing edges of the component.
+The amount of data that exits a component that supports [live debugging](#live-debugging-page) is shown on the outgoing edges of the component.
 The data is refreshed according to the `window` parameter.
 ### Component detail page
 

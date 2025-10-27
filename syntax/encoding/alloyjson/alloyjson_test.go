@@ -106,6 +106,18 @@ func TestValues(t *testing.T) {
 			}`,
 		},
 		{
+			name: "capsule with stringer",
+			input: capsuleWithStringer{
+				name: "MyName",
+			},
+			expectJSON: `{ "type": "capsule", "value": "MyName" }`,
+		},
+		{
+			name:       "capsule with stringer and empty string",
+			input:      capsuleWithStringer{},
+			expectJSON: `{ "type": "capsule", "value": "capsule(\"alloyjson_test.capsuleWithStringer\")" }`,
+		},
+		{
 			// nil arrays and objects must always be [] instead of null as that's
 			// what the API definition says they should be.
 			name:       "nil array",
@@ -402,3 +414,11 @@ var (
 	_ syntax.Capsule                = capsuleConvertibleToObject{}
 	_ syntax.ConvertibleIntoCapsule = capsuleConvertibleToObject{}
 )
+
+type capsuleWithStringer struct {
+	name string
+}
+
+func (c capsuleWithStringer) String() string {
+	return c.name
+}

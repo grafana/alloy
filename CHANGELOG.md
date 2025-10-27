@@ -47,9 +47,15 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
-- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+- Update Beyla component to 2.7.4. (@grcevski)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
+
+- Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
+
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
+
+- `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
 ### Bugfixes
 
@@ -59,13 +65,26 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
-- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+v1.11.3
+-----------------
 
-- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+### Enhancements
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
+
+### Bugfixes
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
 
-- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
 
 - Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
 
