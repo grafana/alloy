@@ -122,6 +122,12 @@ database_observability.postgres "orders_db" {
   targets          = prometheus.exporter.postgres.orders_db.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
+
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
 }
 
 prometheus.exporter.postgres "orders_db" {
@@ -142,7 +148,7 @@ loki.relabel "orders_db" {
 }
 
 discovery.relabel "orders_db" {
-  targets = database_observability.mysql.orders_db.targets
+  targets = database_observability.postgres.orders_db.targets
 
   rule {
     target_label = "job"
