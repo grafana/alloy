@@ -99,6 +99,9 @@ type Config struct {
 	SetCollectors flagext.StringSlice `yaml:"set_collectors,omitempty"`
 
 	// Collector-specific config options
+	ArpDeviceExclude                 string              `yaml:"arp_device_exclude,omitempty"`
+	ArpDeviceInclude                 string              `yaml:"arp_device_include,omitempty"`
+	ArpNetlink                       bool                `yaml:"arp_netlink,omitempty"`
 	BcachePriorityStats              bool                `yaml:"enable_bcache_priority_stats,omitempty"`
 	CPUBugsInclude                   string              `yaml:"cpu_bugs_include,omitempty"`
 	CPUEnableCPUGuest                bool                `yaml:"enable_cpu_guest_seconds_metric,omitempty"`
@@ -489,9 +492,9 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 	}
 
 	cfg.Arp = collector.ArpConfig{
-		DeviceInclude: &blankString,
-		DeviceExclude: &blankString,
-		Netlink:       &blankBool,
+		DeviceInclude: &c.ArpDeviceInclude,
+		DeviceExclude: &c.ArpDeviceExclude,
+		Netlink:       &c.ArpNetlink,
 	}
 
 	cfg.Stat = collector.StatConfig{
