@@ -309,14 +309,12 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 	}
 
 	res = lb.Labels()
-	res.Range(func(l labels.Label) {
-		// Check label values are valid, drop the target if not.
-		// return the first validation error found
-		if !model.LabelValue(l.Value).IsValid() && err == nil {
-			res = labels.EmptyLabels()
-			err = fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
-			return
+	err = res.Validate(func(l labels.Label) error {
+		if !model.LabelValue(l.Value).IsValid() {
+			return fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
 		}
+
+		return nil
 	})
 
 	return res, err
