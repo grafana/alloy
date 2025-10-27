@@ -93,10 +93,10 @@ alloy:
   # -- Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/
   extraArgs: []
 
-  # -- Extra ports to expose on the Alloy container.
+  # -- Extra ports to expose on the Alloy container. See [alloy.extraPorts][#alloy.extraPorts]
   extraPorts: []
   # - name: "faro"
-  #   port: 12347
+  #   hostPort: 12347
   #   targetPort: 12347
   #   protocol: "TCP"
   #   appProtocol: "h2c"

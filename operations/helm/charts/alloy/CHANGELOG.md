@@ -1,6 +1,7 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
+> _Contributors should read our [contributors guide](../../../../docs/developer/contributing.md#updating-the-changelog
+) for instructions on how
 > to update the changelog._
 
 This document contains a historical list of changes between releases. Only
@@ -13,6 +14,9 @@ Unreleased
 - Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
 
 - Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
+
+- Fix alloy container template and documentation for `alloy.extraPorts` to contain `port` 
+  instead of unsupported `hostPort` (@jkruke)
 
 1.3.1 (2025-10-10)
 ----------
@@ -195,6 +199,11 @@ Unreleased
 
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
 - Update to Grafana Alloy v1.5.0. (@thampiotr)
+
+### Bugfixes
+
+- Fix alloy container template and documentation for `alloy.extraPorts` to contain `port` 
+  instead of unsupported `hostPort` (@jkruke)
 
 0.9.2 (2024-10-18)
 ------------------
