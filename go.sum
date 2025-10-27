@@ -1186,8 +1186,8 @@ github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe h1:yIXAAbLswn
 github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd h1:FW1Km8Z1mE8r/WLBAbX3LYv14DEZehdZTWOfF4qsqOY=
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd/go.mod h1:iEFA+REkm+0WRvVxy0cA1bBhJlFcQB998yymb45TqMU=
-github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec h1:0IKKoe10XCjjHNajIjMfZR3LMJvzbltZmBmSD9EAP/0=
-github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec/go.mod h1:1qoZ74W1muNrTyeP2fUzUbg2UKD8AeX435xSCJNub7Y=
+github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024133138-bfa3c0a61c7a h1:lm2JF7rk5KAeSufsk5bVkqKGDdYMtEhePUmwwLbHLtY=
+github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024133138-bfa3c0a61c7a/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2 h1:mg90SB3x+FADo1eBA+x111TiaoHG8nPsebA16CCspxg=
@@ -2080,8 +2080,8 @@ github.com/prometheus-community/prom-label-proxy v0.11.0 h1:IO02WiiFMfcIqvjhwMbC
 github.com/prometheus-community/prom-label-proxy v0.11.0/go.mod h1:lfvrG70XqsxWDrSh1843QXBG0fSg8EbIXmAo8xGsvw8=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
-github.com/prometheus-community/windows_exporter v0.31.1 h1:5U4KpdOJBSfk8uDkBv/H4dFaYhxgwPcr9eyat7ESmlY=
-github.com/prometheus-community/windows_exporter v0.31.1/go.mod h1:x36gwD+pgt+0hxZhQvJewoMns0mWL0syTPKcAhgAGrk=
+github.com/prometheus-community/windows_exporter v0.31.3 h1:v5HRhiSL/AgFtp96GjUATrtRMedNhjaMHogJBecgFSE=
+github.com/prometheus-community/windows_exporter v0.31.3/go.mod h1:tlw5aYgPu1kFassCBSBwnDBFHUlwznekAVJ0xiDuIko=
 github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1 h1:tPCmjxeBXKAw9lShPqomjo38urqGK8+vuuoc4ZDbAA8=
 github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1/go.mod h1:fiLXxDhLUhecZIOLStoYBYObHdycsWhhTmjP+b8Hkh4=
 github.com/prometheus-operator/prometheus-operator v0.82.2 h1:qalPLM8wkvCtu9aHcoSKGDpCZR3aWRMKeHev5WomTBQ=
