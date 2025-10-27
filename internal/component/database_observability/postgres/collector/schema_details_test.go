@@ -332,14 +332,19 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 	t.Run("collector discovers and collects from multiple databases", func(t *testing.T) {
 		t.Parallel()
 
+		/*
+			This is the only test that sets up 3 mock connections representing a Postgres instance with 3 separate databases,
+			better representing the individual connections of database discovery.
+			ExpectationsWereMet() is called on each connection at end of the test, asserting that the connections are
+			correctly used.
+			This is the only test that will fail if distinct connections are not made.
+		*/
 		initialConnectionDb, initialConnectionMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer initialConnectionDb.Close()
-
 		db1, db1Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db1.Close()
-
 		db2, db2Mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db2.Close()
