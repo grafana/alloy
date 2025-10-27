@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 
+- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
@@ -49,9 +51,14 @@ Main (unreleased)
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
 
+- Update Beyla component to 2.7.4. (@grcevski)
+- 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
 - pyroscope.java: update async-profiler to 4.2 (@korniltsev-grafanista)
+- Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
+
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
 
 ### Bugfixes
 
