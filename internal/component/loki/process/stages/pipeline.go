@@ -45,6 +45,7 @@ type StageConfig struct {
 	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
 	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
 	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
+	UserAgentConfig              *UserAgentConfig              `alloy:"useragent,block,optional"`
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }
 
