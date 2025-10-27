@@ -35,8 +35,6 @@ Main (unreleased)
 
 - Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 
-- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
-
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
@@ -71,6 +69,8 @@ v1.11.3
 ### Enhancements
 
 - Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
 
 ### Bugfixes
 
