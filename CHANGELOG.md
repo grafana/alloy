@@ -56,6 +56,8 @@ Main (unreleased)
 
 - `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
 
+- `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
