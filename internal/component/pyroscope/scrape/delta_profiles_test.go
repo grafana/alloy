@@ -17,7 +17,6 @@ import (
 )
 
 func TestDeltaProfilerAppender(t *testing.T) {
-
 	lbs := labels.FromStrings(model.MetricNameLabel, pprofMemory)
 
 	outSamples := []*pyroscope.RawSample{}
