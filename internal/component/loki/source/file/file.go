@@ -171,7 +171,6 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 	wg.Go(func() {
 		for {
 			select {
@@ -224,6 +223,7 @@ func (c *Component) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
+				fmt.Println("Stop sync")
 				return
 			case <-ticker.C:
 				c.sync()
