@@ -65,7 +65,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	cfg.FileObserver = nfs
+	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -75,6 +75,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 
 	res := &Component{
 		cfg:                    cfg,
+		symbolizer:             nfs,
 		logger:                 logger,
 		metrics:                ms,
 		appendable:             appendable,
@@ -114,6 +115,8 @@ type Component struct {
 
 	healthMut sync.RWMutex
 	health    component.Health
+
+	symbolizer *irsymcache.Resolver
 }
 
 func (c *Component) Run(ctx context.Context) error {
@@ -138,8 +141,8 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
+		if c.symbolizer != nil {
+			c.symbolizer.Cleanup()
 		}
 	}()
 
@@ -253,6 +256,7 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfgProtoType.MaxRPCMsgSize = 32 << 20 // just to silence the validation error, it is unused
 
 	if err = cfgProtoType.Validate(); err != nil {
 		return nil, err

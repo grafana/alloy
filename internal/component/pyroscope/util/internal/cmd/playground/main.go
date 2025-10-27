@@ -17,6 +17,8 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/ebpf-profiler/metrics"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 var (
@@ -66,6 +68,7 @@ func newEbpf(forward pyroscope.Appendable) *ebpf.Component {
 }
 
 func main() {
+	metrics.Start(noop.Meter{})
 	g := run.Group{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

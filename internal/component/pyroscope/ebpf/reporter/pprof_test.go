@@ -72,10 +72,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 
@@ -128,10 +125,7 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 			Timestamps: []uint64{789},
 		},
 	}
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
@@ -171,10 +165,7 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 
@@ -229,10 +220,7 @@ func TestPPROFReporter_Bug(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 
@@ -315,10 +303,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 
@@ -378,10 +363,7 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
-		support.TraceOriginSampling,
-		events,
-	)
+	profiles := rep.createProfile(support.TraceOriginSampling, events, "")
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 
