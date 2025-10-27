@@ -197,7 +197,7 @@ func parseExtraArgs(extraArgs string) ([]string, error) {
 	arguments := strings.Fields(extraArgs)
 	for i, arg := range arguments {
 		fs := pflag.NewFlagSet("extra-args", pflag.ExitOnError)
-		fs.ParseErrorsWhitelist.UnknownFlags = true
+		fs.ParseErrorsAllowlist.UnknownFlags = true
 		keyStartIndex := 0
 		doParseFlagValue := false
 

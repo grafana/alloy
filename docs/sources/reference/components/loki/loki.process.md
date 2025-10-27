@@ -697,14 +697,19 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                    | Default          | Required |
-| ------------- | -------- | ---------------------------------------------- | ---------------- | -------- |
-| `min_length`  | `int`    | Minimum length of digits to consider           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                   | `""`             | no       |
+| Name          | Type     | Description                                                    | Default          | Required |
+| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
+| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
+| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
+
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
+
+#### Example
 
 The following example log line contains an approved credit card number.
 
@@ -713,6 +718,25 @@ time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit 
 
 stage.luhn {
     replacement = "**DELETED**"
+}
+```
+
+The stage parses the log line, redacts the credit card number, and produces the following updated log line:
+
+```text
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=example_name"
+```
+
+#### Example with `delimiters`
+
+The following example log line contains an approved credit card number, represented with dash characters between each group of four digits.
+
+```alloy
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032-0325-1354-8443" extra="user=example_name"
+
+stage.luhn {
+    replacement = "**DELETED**"
+    delimiters = "-"
 }
 ```
 
