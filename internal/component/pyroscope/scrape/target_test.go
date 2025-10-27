@@ -575,6 +575,56 @@ func TestLabelsByProfiles(t *testing.T) {
 	}
 }
 
+func TestPopulateLabels_Validation(t *testing.T) {
+	testdata := []struct {
+		name        string
+		baseLabels  labels.Labels
+		args        Arguments
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid labels with ASCII, UTF-8, and control characters",
+			baseLabels: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+				"ascii_label":      "valid-ascii-value",
+				"utf8_label":       "valid-utf8-值-🚀",
+				"control_label":    "value\nwith\nnewlines\tand\ttabs",
+			}),
+			args:        NewDefaultArguments(),
+			expectError: false,
+		},
+		{
+			name: "invalid UTF-8 sequence",
+			baseLabels: labels.FromMap(map[string]string{
+				model.AddressLabel: "localhost:9090",
+				"custom_label":     "invalid\xff\xfeutf8",
+			}),
+			args:        NewDefaultArguments(),
+			expectError: true,
+			errorMsg:    "invalid label value",
+		},
+	}
+
+	for _, td := range testdata {
+		t.Run(td.name, func(t *testing.T) {
+			builder := labels.NewBuilder(td.baseLabels)
+			result, err := populateLabels(builder, td.baseLabels, td.args)
+
+			if td.expectError {
+				require.Error(t, err)
+				if td.errorMsg != "" {
+					require.Contains(t, err.Error(), td.errorMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.False(t, result.IsEmpty())
+			}
+		})
+	}
+}
+
 func BenchmarkPopulateLabels(b *testing.B) {
 	args := NewDefaultArguments()
 	tg := &targetgroup.Group{
