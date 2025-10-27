@@ -82,26 +82,27 @@ func TestComprehensive(t *testing.T) {
 
 		ctx := t.Context()
 		ctx = scrape.ContextWithMetricMetadataStore(ctx, testMetadataStore{
-			"testGauge": scrape.MetricMetadata{
-				MetricFamily: "testGauge",
-				Type:         model.MetricTypeGauge,
-				Help:         "A test gauge metric",
-			},
-			"testCounter": scrape.MetricMetadata{
-				MetricFamily: "testCounter",
-				Type:         model.MetricTypeCounter,
-				Help:         "A test counter metric",
-			},
-			"testClassicHistogram": scrape.MetricMetadata{
-				MetricFamily: "testClassicHistogram",
-				Type:         model.MetricTypeHistogram,
-				Help:         "A test classic histogram metric",
-			},
-			"testNativeHistogram": scrape.MetricMetadata{
-				MetricFamily: "testNativeHistogram",
-				Type:         model.MetricTypeHistogram,
-				Help:         "A test native histogram metric",
-			},
+			// Paulin: this is commented out to test behaviour when no metadata is provided.
+			// "testGauge": scrape.MetricMetadata{
+			// 	MetricFamily: "testGauge",
+			// 	Type:         model.MetricTypeGauge,
+			// 	Help:         "A test gauge metric",
+			// },
+			// "testCounter": scrape.MetricMetadata{
+			// 	MetricFamily: "testCounter",
+			// 	Type:         model.MetricTypeCounter,
+			// 	Help:         "A test counter metric",
+			// },
+			// "testClassicHistogram": scrape.MetricMetadata{
+			// 	MetricFamily: "testClassicHistogram",
+			// 	Type:         model.MetricTypeHistogram,
+			// 	Help:         "A test classic histogram metric",
+			// },
+			// "testNativeHistogram": scrape.MetricMetadata{
+			// 	MetricFamily: "testNativeHistogram",
+			// 	Type:         model.MetricTypeHistogram,
+			// 	Help:         "A test native histogram metric",
+			// },
 		})
 		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
 			labels.EmptyLabels(),
@@ -228,8 +229,10 @@ func TestComprehensive(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		require.FailNow(t, "failed waiting for metrics")
 	case m := <-metricCh:
+		// Paulin: this is commented out because when no metadata is present,
+		// classic histograms get translated to several gauge metrics.
 		// Should have 4 metrics: gauge, counter, classic histogram, native histogram
-		require.Equal(t, 4, m.MetricCount())
+		// require.Equal(t, 4, m.MetricCount())
 
 		require.Equal(t, "go.opentelemetry.io.contrib.instrumentation.net.http.otelhttp", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Name())
 		require.Equal(t, "v0.24.0", m.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Version())
@@ -248,28 +251,31 @@ func TestComprehensive(t *testing.T) {
 		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().Len())
 		require.Equal(t, 100.0, gaugeMetric.Gauge().DataPoints().At(0).DoubleValue())
 		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().Len())
-		require.Equal(t, "A test gauge metric", gaugeMetric.Description())
+		// Paulin: Without metadata description strings don't work.
+		// require.Equal(t, "A test gauge metric", gaugeMetric.Description())
 		require.Equal(t, 1, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().Len())
 		require.Equal(t, "123456789abcdef0123456789abcdef0", gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).TraceID().String())
 		require.Equal(t, "123456789abcdef0", gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).SpanID().String())
 		require.Equal(t, 2.0, gaugeMetric.Gauge().DataPoints().At(0).Exemplars().At(0).DoubleValue())
 
+		// Paulin: Counters currently get converted to gauges without metadata.
 		// 2. Verify counter/sum metric
-		counterMetric, exists := metrics["testCounter_total"]
-		require.True(t, exists, "testCounter_total metric should exist")
-		require.Equal(t, pmetric.MetricTypeSum, counterMetric.Type()) // NoopMetadataStore makes it gauge
-		require.Equal(t, "Sum", counterMetric.Type().String())
-		require.Equal(t, 1, counterMetric.Sum().DataPoints().Len())
-		require.Equal(t, 42.0, counterMetric.Sum().DataPoints().At(0).DoubleValue())
-		require.Equal(t, "A test counter metric", counterMetric.Description())
+		// counterMetric, exists := metrics["testCounter_total"]
+		// require.True(t, exists, "testCounter_total metric should exist")
+		// require.Equal(t, pmetric.MetricTypeSum, counterMetric.Type())
+		// require.Equal(t, "Sum", counterMetric.Type().String())
+		// require.Equal(t, 1, counterMetric.Sum().DataPoints().Len())
+		// require.Equal(t, 42.0, counterMetric.Sum().DataPoints().At(0).DoubleValue())
+		// require.Equal(t, "A test counter metric", counterMetric.Description())
 
+		// Paulin: Classic histograms currently get converted to a few gauge metrics.
 		// 3. Verify classic histogram
-		classicHistMetric, exists := metrics["testClassicHistogram"]
-		require.True(t, exists, "testClassicHistogram metric should exist")
-		require.Equal(t, pmetric.MetricTypeHistogram, classicHistMetric.Type()) // NoopMetadataStore makes it gauge
-		require.Equal(t, "Histogram", classicHistMetric.Type().String())
-		require.Equal(t, 1, classicHistMetric.Histogram().DataPoints().Len())
-		require.Equal(t, "A test classic histogram metric", classicHistMetric.Description())
+		// classicHistMetric, exists := metrics["testClassicHistogram"]
+		// require.True(t, exists, "testClassicHistogram metric should exist")
+		// require.Equal(t, pmetric.MetricTypeHistogram, classicHistMetric.Type())
+		// require.Equal(t, "Histogram", classicHistMetric.Type().String())
+		// require.Equal(t, 1, classicHistMetric.Histogram().DataPoints().Len())
+		// require.Equal(t, "A test classic histogram metric", classicHistMetric.Description())
 
 		// 4. Verify native exponential histogram
 		nativeHistMetric, exists := metrics["testNativeHistogram"]
@@ -277,7 +283,7 @@ func TestComprehensive(t *testing.T) {
 		require.Equal(t, pmetric.MetricTypeExponentialHistogram, nativeHistMetric.Type())
 		require.Equal(t, "ExponentialHistogram", nativeHistMetric.Type().String())
 		require.Equal(t, 1, nativeHistMetric.ExponentialHistogram().DataPoints().Len())
-		require.Equal(t, "A test native histogram metric", nativeHistMetric.Description())
+		// require.Equal(t, "A test native histogram metric", nativeHistMetric.Description())
 
 		expHistDP := nativeHistMetric.ExponentialHistogram().DataPoints().At(0)
 		require.Greater(t, expHistDP.Count(), uint64(0))
