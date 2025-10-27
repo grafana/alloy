@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/loki/v3/pkg/logql/syntax"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -223,8 +222,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 	}
 
 	var errs error
-	// TODO: Expose validation scheme setting https://github.com/grafana/alloy/issues/4122
-	groups, _ := rulefmt.Parse(buf, false, model.LegacyValidation)
+	groups, _ := rulefmt.Parse(buf, false)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr); err != nil {

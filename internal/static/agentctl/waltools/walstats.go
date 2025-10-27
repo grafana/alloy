@@ -1,9 +1,7 @@
 package waltools
 
 import (
-	"log/slog"
 	"math"
-	"os"
 	"time"
 
 	"github.com/prometheus/prometheus/model/timestamp"
@@ -167,7 +165,7 @@ func (c *walStatsCalculator) Calculate() (WALStats, error) {
 }
 
 func (c *walStatsCalculator) readWAL(r *wlog.Reader) error {
-	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	var dec record.Decoder
 
 	for r.Next() {
 		rec := r.Record()

@@ -463,11 +463,6 @@ func relabelConfig(t *testing.T) []*relabel.Config {
 	err := yaml.Unmarshal([]byte(relabelCfg), &relabels)
 	require.NoError(t, err)
 
-	// Set the validation scheme for all relabel configs
-	for _, cfg := range relabels {
-		cfg.NameValidationScheme = model.LegacyValidation
-	}
-
 	return relabels
 }
 

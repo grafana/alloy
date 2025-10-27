@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"gopkg.in/yaml.v3"
 )
@@ -50,8 +49,7 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 				Alert:  yaml.Node{Value: r.Alert},
 			}
 
-			// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-			for _, node := range r.Validate(ruleNode, model.LegacyValidation) {
+			for _, node := range r.Validate(ruleNode) {
 				var ruleName string
 				if r.Alert != "" {
 					ruleName = r.Alert

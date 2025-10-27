@@ -28,10 +28,8 @@ import (
 )
 
 func TestGeneratePodMonitorConfig(t *testing.T) {
-	var (
-		falsePtr = ptr.To(false)
-		proxyURL = "https://proxy:8080"
-	)
+	var falseVal = false
+	var proxyURL = "https://proxy:8080"
 	suite := []struct {
 		name                   string
 		m                      *promopv1.PodMonitor
@@ -91,10 +89,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -154,10 +151,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -217,10 +213,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -278,10 +273,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -341,10 +335,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 		{
@@ -392,17 +385,17 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.PodMetricsEndpoint{
 				Port:            stringPtr("metrics"),
-				EnableHttp2:     falsePtr,
+				EnableHttp2:     &falseVal,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: falsePtr,
+				FollowRedirects: &falseVal,
 				ProxyURL:        &proxyURL,
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
-				HonorTimestamps: falsePtr,
-				FilterRunning:   falsePtr,
+				HonorTimestamps: &falseVal,
+				FilterRunning:   &falseVal,
 				TLSConfig: &promopv1.SafeTLSConfig{
 					ServerName:         stringPtr("foo.com"),
 					InsecureSkipVerify: boolPtr(true),
@@ -485,7 +478,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					"a": []string{"b"},
 				},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
-					FollowRedirects: false,
+					FollowRedirects: falseVal,
 					EnableHTTP2:     false,
 					TLSConfig: commonConfig.TLSConfig{
 						ServerName:         "foo.com",
@@ -510,10 +503,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
-				AlwaysScrapeClassicHistograms:  falsePtr,
-				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
-				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				ConvertClassicHistogramsToNHCB: ptr.To(false),
+				MetricNameValidationScheme:     "legacy",
+				MetricNameEscapingScheme:       "underscores",
 			},
 		},
 	}
