@@ -85,7 +85,8 @@ type Integration struct {
 }
 
 func (i *Integration) MetricsHandler() (http.Handler, error) {
-	var p expfmt.TextParser
+	// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
+	p := expfmt.NewTextParser(model.LegacyValidation)
 	mf, err := p.TextToMetricFamilies(strings.NewReader(i.cfg.text))
 	// This should not happen because we have already validated that it is possible to parse it.
 	if err != nil {

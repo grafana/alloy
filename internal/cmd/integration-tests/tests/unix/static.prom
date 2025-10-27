@@ -1,0 +1,7 @@
+# HELP custom_metric_total A custom counter metric for testing
+# TYPE custom_metric_total counter
+custom_metric_total{environment="dev",service="test"} 42
+
+# HELP custom_gauge_value A custom gauge metric for testing
+# TYPE custom_gauge_value gauge
+custom_gauge_value{environment="dev",service="test"} 123.45

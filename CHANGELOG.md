@@ -55,6 +55,8 @@ Main (unreleased)
 
 - `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
 
+- `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
+
 - Add support of `map` paramaeter in `loki.process` `stage.labels` and `stage.structured_metadata` for regexp based label selection. (@fnerdwq)
 
 ### Bugfixes
@@ -83,6 +85,8 @@ v1.11.3
 - Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
 
 v1.11.2
 -----------------
