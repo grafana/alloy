@@ -9,14 +9,14 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/ebpf-profiler/host"
-	"go.opentelemetry.io/ebpf-profiler/libpf/pfelf"
 
+	"go.opentelemetry.io/ebpf-profiler/host"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
+	"go.opentelemetry.io/ebpf-profiler/libpf/pfelf"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
-
-	discovery "go.opentelemetry.io/ebpf-profiler/pyroscope/discovery"
 )
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
@@ -247,12 +247,12 @@ Mappings
 func TestPPROFReporter_Demangle(t *testing.T) {
 	fid := libpf.NewFileID(7, 13)
 	key := symbolizerKey{
-		fid:  host.FileIDFromLibpf(fid),
+		fid:  fid,
 		addr: 0xcafe00de,
 	}
 	rep := newReporter()
 	rep.cfg.ExtraNativeSymbolResolver = &symbolizer{
-		symbols: map[symbolizerKey]samples.SourceInfo{
+		symbols: map[symbolizerKey]irsymcache.SourceInfo{
 			key: {
 				LineNumber:   9,
 				FunctionName: libpf.Intern("_ZN15PlatformMonitor4waitEm"),
@@ -388,11 +388,11 @@ Mappings
 }
 
 type symbolizer struct {
-	symbols map[symbolizerKey]samples.SourceInfo
+	symbols map[symbolizerKey]irsymcache.SourceInfo
 }
 
 type symbolizerKey struct {
-	fid  host.FileID
+	fid  libpf.FileID
 	addr uint64
 }
 
@@ -404,7 +404,7 @@ func (s symbolizer) ObserveExecutable(id host.FileID, ref *pfelf.Reference) erro
 	return nil
 }
 
-func (s symbolizer) ResolveAddress(file host.FileID, addr uint64) (samples.SourceInfo, error) {
+func (s symbolizer) ResolveAddress(file libpf.FileID, addr uint64) (irsymcache.SourceInfo, error) {
 	return s.symbols[symbolizerKey{fid: file, addr: addr}], nil
 }
 
