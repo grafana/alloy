@@ -297,8 +297,9 @@ When the `match_labels` argument is empty, all resources are matched.
 ## Exported fields
 
 
+When `preserve_discovered_labels` is set to `false`, `loki.source.podlogs` doesn't export any discovered fields (`__meta` labels).
 
-When `preserve_discovered_labels` is disabled (the default), `loki.source.podlogs` doesn't export any fields.
+When `preserve_discovered_labels` is set to `true`, `loki.source.podlogs` sends the discovered labels to the downstream components, and then the labels are dropped by either `loki.process` or `loki.write` when the pipeline is completed.
 
 ## Component health
 
