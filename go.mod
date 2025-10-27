@@ -77,9 +77,8 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8
 	github.com/grafana/pyroscope/api v1.2.0
 	github.com/grafana/pyroscope/ebpf v0.4.11
-	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251016132346-6d442402afb2
 	github.com/grafana/regexp v0.0.0-20240607082908-2cb410fa05da
-	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
+	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
 	github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304
