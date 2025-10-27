@@ -18,6 +18,7 @@ labels:
 database_observability.postgres "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
+  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -116,9 +117,11 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 ```alloy
 database_observability.postgres "orders_db" {
-  data_source_name = "postgres://user:pass@localhost:5432/mydb"
-  forward_to = [loki.write.logs_service.receiver]
-  enable_collectors = ["query_details", "query_samples", "schema_details"]
+  data_source_name = "postgres://user:pass@localhost:5432/dbname"
+  forward_to       = [loki.relabel.orders_db.receiver]
+  targets          = prometheus.exporter.postgres.orders_db.targets
+
+  enable_collectors = ["query_samples", "explain_plans"]
 
   cloud_provider {
     aws {
@@ -127,9 +130,39 @@ database_observability.postgres "orders_db" {
   }
 }
 
-prometheus.scrape "orders_db" {
+prometheus.exporter.postgres "orders_db" {
+  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
+  enabled_collectors = ["stat_statements"]
+}
+
+loki.relabel "orders_db" {
+  forward_to = [loki.write.logs_service.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+discovery.relabel "orders_db" {
   targets = database_observability.postgres.orders_db.targets
-  honor_labels = true // required to keep job and instance labels
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+prometheus.scrape "orders_db" {
+  targets    = discovery.relabel.orders_db.targets
+  job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 
