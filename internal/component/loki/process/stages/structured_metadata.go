@@ -1,24 +1,28 @@
 package stages
 
 import (
+	"regexp"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 )
 
 func newStructuredMetadataStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
-	labelsConfig, err := validateLabelsConfig(configs)
+	labelsConfig, mapRegexp, err := validateLabelsConfig(configs)
 	if err != nil {
 		return nil, err
 	}
 	return &structuredMetadataStage{
 		labelsConfig: labelsConfig,
+		mapRegexp:    mapRegexp,
 		logger:       logger,
 	}, nil
 }
 
 type structuredMetadataStage struct {
 	labelsConfig map[string]string
+	mapRegexp    *regexp.Regexp
 	logger       log.Logger
 }
 
@@ -33,7 +37,7 @@ func (*structuredMetadataStage) Cleanup() {
 
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
-		processLabelsConfigs(s.logger, e.Extracted, s.labelsConfig, func(labelName model.LabelName, labelValue model.LabelValue) {
+		processLabelsConfigs(s.logger, e.Extracted, s.labelsConfig, s.mapRegexp, func(labelName model.LabelName, labelValue model.LabelValue) {
 			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
 		})
 		return s.extractFromLabels(e)
@@ -43,6 +47,16 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
 	labels := e.Labels
 	foundLabels := []model.LabelName{}
+
+	if s.mapRegexp != nil {
+		for l, v := range labels {
+			if sub := s.mapRegexp.FindSubmatch([]byte(l)); sub != nil {
+				labelKey := model.LabelName(sub[1])
+				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelKey), Value: string(v)})
+				foundLabels = append(foundLabels, l)
+			}
+		}
+	}
 
 	for lName, lSrc := range s.labelsConfig {
 		labelKey := model.LabelName(lSrc)

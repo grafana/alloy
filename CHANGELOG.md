@@ -55,6 +55,8 @@ Main (unreleased)
 
 - `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
 
+- Add support of `map` paramaeter in `loki.process` `stage.labels` and `stage.structured_metadata` for regexp based label selection. (@fnerdwq)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)

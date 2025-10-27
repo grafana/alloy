@@ -92,6 +92,22 @@ stage.structured_metadata {
 }
 `
 
+var pipelineStagesStructuredMetadataFromMapRgexp = `
+stage.static_labels {
+	values = {
+	  "component" = "querier",
+	  "pod" = "loki-querier-664f97db8d-qhnwg",
+	  "structured_keyA" = "valueA",
+	  "structured_keyB" = "valueB",
+	}
+}
+
+stage.structured_metadata {
+    values = {}
+	map = "structured_(.+)"
+}
+`
+
 func Test_StructuredMetadataStage(t *testing.T) {
 	tests := map[string]struct {
 		pipelineStagesYaml         string
@@ -136,6 +152,18 @@ func Test_StructuredMetadataStage(t *testing.T) {
 			logLine:                    `sample log line`,
 			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}},
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
+		},
+		"expected structured metadata and regular labels to be extracted with static labels stage using a map regexp": {
+			pipelineStagesYaml: pipelineStagesStructuredMetadataFromMapRgexp,
+			logLine:            `sample log line`,
+			expectedStructuredMetadata: push.LabelsAdapter{
+				push.LabelAdapter{Name: "keyA", Value: "valueA"},
+				push.LabelAdapter{Name: "keyB", Value: "valueB"},
+			},
+			expectedLabels: model.LabelSet{
+				model.LabelName("component"): model.LabelValue("querier"),
+				model.LabelName("pod"):       model.LabelValue("loki-querier-664f97db8d-qhnwg"),
+			},
 		},
 	}
 	for name, test := range tests {
