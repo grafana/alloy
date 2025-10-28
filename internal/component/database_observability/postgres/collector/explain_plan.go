@@ -15,11 +15,12 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.uber.org/atomic"
 )
 
 const (
@@ -46,7 +47,6 @@ var unrecoverablePostgresSQLErrors = []string{
 	"pq: pg_hba.conf rejects connection for host",
 }
 
-var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
 
 type PgSQLExplainplan struct {

@@ -598,6 +598,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 
 	if err := fkRS.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		return nil, err
 	}
 
 	return tblSpec, nil

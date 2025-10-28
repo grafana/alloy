@@ -3,10 +3,12 @@ package collector
 import (
 	"database/sql"
 	"errors"
+	"regexp"
 )
 
 type databaseConnectionFactory func(dsn string) (*sql.DB, error)
 
+var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
 var defaultDbConnectionFactory = func(dsn string) (*sql.DB, error) {
 	return sql.Open("postgres", dsn)
 }

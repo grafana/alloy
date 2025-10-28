@@ -449,7 +449,7 @@ GRANT pg_read_all_data TO "db-o11y";
 
 2. Add the following configuration block to Alloy.
 - Replace `<your_DB_name>`
-- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
+- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/postgres?sslmode=require"`.
 
 3. Copy this block for each DB you'd like to monitor.
 
