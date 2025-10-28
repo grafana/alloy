@@ -694,6 +694,16 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
 				"SELECT * FROM t",
 			))
+		// Scrape 3: still idle -> must not emit again
+		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 2000, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{Int32: 11, Valid: true}, sql.NullInt32{Int32: 22, Valid: true},
+				xactStartTime, "idle", stateChangeTime, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
+				"SELECT * FROM t",
+			))
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 

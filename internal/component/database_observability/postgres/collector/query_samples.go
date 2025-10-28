@@ -113,7 +113,7 @@ type QuerySamples struct {
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
 	// keys that were already emitted (e.g., idle-only or after idle transition), to avoid duplicates
-	emitted map[SampleKey]struct{}
+	emitted map[SampleKey]time.Time // value is last-seen time for TTL cleanup
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -189,7 +189,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
-		emitted:               map[SampleKey]struct{}{},
+		emitted:               map[SampleKey]time.Time{},
 	}, nil
 }
 
@@ -271,12 +271,16 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		if _, hadActive := c.samples[key]; hadActive {
 			c.emitAtIdleTransition(key, sample)
 			activeKeys[key] = struct{}{}
+			c.emitted[key] = sample.Now
 			continue
 		}
 
 		if _, already := c.emitted[key]; !already {
 			c.emitIdleOnlySample(key, sample)
-			c.emitted[key] = struct{}{}
+			c.emitted[key] = sample.Now
+		} else {
+			// refresh last seen time for this idle-only key
+			c.emitted[key] = sample.Now
 		}
 	}
 
@@ -292,7 +296,17 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
+	c.cleanupEmitted(time.Now())
 	return nil
+}
+
+func (c *QuerySamples) cleanupEmitted(now time.Time) {
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -463,7 +477,6 @@ func (c *QuerySamples) emitAtIdleTransition(key SampleKey, idleRow QuerySamplesI
 	}
 
 	delete(c.samples, key)
-	c.emitted[key] = struct{}{}
 }
 
 // emitIdleOnlySample emits a one-off sample for a query that is only observed
