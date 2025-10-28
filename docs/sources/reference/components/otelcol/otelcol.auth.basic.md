@@ -37,8 +37,7 @@ otelcol.auth.basic "<LABEL>" {
 ## Arguments
 
 {{< admonition type="caution" >}}
-The top-level `username` and `password` arguments are deprecated and should not be used for new configurations. Use 
-the `client_auth` block for client authentication and the `htpasswd` block for server authentication instead.
+Don't use the top-level `username` and `password` arguments for new configurations as they are deprecated. Use the `client_auth` block for client authentication and the `htpasswd` block for server authentication instead.
 {{< /admonition >}}
 
 You can use the following arguments with `otelcol.auth.basic`:
@@ -55,9 +54,10 @@ You can use the following block with `otelcol.auth.basic`:
 
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
-| [`client_auth`][client_auth]     | Configures client authentication credentials for exporters                 | no       |
+| [`client_auth`][client_auth]     | Configures client authentication credentials for exporters.                | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`htpasswd`][htpasswd]           | Configures server authentication using htpasswd format for receivers       | no       |
+| [`htpasswd`][htpasswd]           | Configures server authentication using htpasswd format for receivers.      | no       |
+
 
 [client_auth]: #client_auth
 [debug_metrics]: #debug_metrics
@@ -65,16 +65,15 @@ You can use the following block with `otelcol.auth.basic`:
 
 ### `client_auth`
 
-The `client_auth` block configures credentials that client extensions (such as exporters) will use to authenticate to servers.
+The `client_auth` block configures credentials that client extensions (such as exporters) use to authenticate to servers.
 
-| Name       | Type     | Description                                         | Default | Required |
-|------------|----------|-----------------------------------------------------|---------|----------|
-| `password` | `string` | Password to use for basic authentication requests   |         | yes      |
-| `username` | `string` | Username to use for basic authentication requests   |         | yes      |
+| Name       | Type     | Description                                        | Default | Required |
+| ---------- | -------- | -------------------------------------------------- | ------- | -------- |
+| `password` | `string` | Password to use for basic authentication requests. |         | yes      |
+| `username` | `string` | Username to use for basic authentication requests. |         | yes      |
 
 {{< admonition type="note" >}}
-If both the `client_auth` block and the deprecated top-level `username` and `password` attributes are specified, the 
-`client_auth` block takes precedence and the top-level attributes are ignored for client authentication.
+When you specify both the `client_auth` block and the deprecated top-level `username` and `password` attributes, the `client_auth` block takes precedence and {{< param "PRODUCT_NAME" >}} ignores the top-level attributes for client authentication.
 {{< /admonition >}}
 
 ### `debug_metrics`
@@ -83,24 +82,20 @@ If both the `client_auth` block and the deprecated top-level `username` and `pas
 
 ### `htpasswd`
 
-The `htpasswd` block configures how the server extensions (such as receivers) will authenticate incoming requests using
-the htpasswd format.
+The `htpasswd` block configures how server extensions (such as receivers) authenticate incoming requests using the `htpasswd` format.
 
-| Name     | Type     | Description                                                        | Default | Required |
-|----------|----------|--------------------------------------------------------------------|---------|----------|
-| `file`   | `string` | Path to the htpasswd file to use for basic authentication requests | `""`    | no       |
-| `inline` | `string` | The htpasswd file content in inline format                         | `""`    | no       |
+| Name     | Type     | Description                                                           | Default | Required |
+| -------- | -------- | --------------------------------------------------------------------- | ------- | -------- |
+| `file`   | `string` | Path to the `htpasswd` file to use for basic authentication requests. | `""`    | no       |
+| `inline` | `string` | The `htpasswd` file content in inline format.                         | `""`    | no       |
 
-You can specify either `file`, `inline`, or both. When using `inline`, the format should be `username:password` with 
-each user on a new line.
+You can specify either `file`, `inline`, or both.
+When you use `inline`, the format should be `username:password` with each user on a new line.
 
 {{< admonition type="note" >}}
-When both the `htpasswd` block and the deprecated top-level `username` and `password` attributes are specified, the 
-deprecated credentials are automatically appended to the `inline` content. This allows authentication using credentials
-from both the htpasswd configuration and the deprecated attributes.
-
-If the same username appears in both the `file` and `inline` content, including appended deprecated credentials,
-the entry in the `inline` content takes precedence.
+When you specify both the `htpasswd` block and the deprecated top-level `username` and `password` attributes, {{< param "PRODUCT_NAME" >}} automatically appends the deprecated credentials to the `inline` content.
+This allows authentication using credentials from both the `htpasswd` configuration and the deprecated attributes.
+If the same username appears in both the `file` and `inline` content, including appended deprecated credentials, the entry in the `inline` content takes precedence.
 {{< /admonition >}}
 
 ## Exported fields
@@ -121,7 +116,10 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
+This section includes examples to help you configure basic authentication for exporters and receivers.
+
 ### Forward signals to exporters
+
 This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication:
 
 ```alloy
@@ -140,13 +138,11 @@ otelcol.auth.basic "creds" {
 
 ### Authenticating requests for receivers
 
-These examples show how to perform basic authentication using the `client_auth` block for exporters or the `htpasswd`
-block for receivers.
+These examples show how to perform basic authentication using the `client_auth` block for exporters or the `htpasswd` block for receivers.
 
 #### Use client authentication
 
-This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication using a single
-username and password combination
+This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use basic authentication with a single username and password combination:
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -177,15 +173,13 @@ otelcol.auth.basic "creds" {
 ```
 
 {{< admonition type="note" >}}
-To migrate from the deprecated `username` and `password` attributes, move them into the `client_auth` block for client 
-authentication.
+To migrate from the deprecated `username` and `password` attributes, move them into the `client_auth` block for client authentication.
 {{< /admonition >}}
 
 
 #### Use htpasswd file
 
-This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use basic authentication using an htpasswd 
-file containing the users to use for basic auth:
+This example configures [`otelcol.receiver.otlp`][otelcol.receiver.otlp] to use basic authentication using an `htpasswd` file containing the users to use for basic authentication:
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -213,7 +207,7 @@ otelcol.auth.basic "creds" {
 
 #### Use htpasswd inline content
 
-This example shows how to specify htpasswd content directly in the configuration:
+This example shows how to specify `htpasswd` content directly in the configuration:
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -240,9 +234,8 @@ otelcol.auth.basic "creds" {
 ```
 
 {{< admonition type="note" >}}
-To make the migration from the deprecated `username` and `password` attributes easier, you can specify both the 
-deprecated attributes and the `htpasswd` block in the same configuration. The deprecated attributes will be appended 
-to the `htpasswd` content.
+To make the migration from the deprecated `username` and `password` attributes easier, you can specify both the deprecated attributes and the `htpasswd` block in the same configuration.
+{{< param "PRODUCT_NAME" >}} appends the deprecated attributes to the `htpasswd` content.
 
 ```alloy
 otelcol.receiver.otlp "example" {
