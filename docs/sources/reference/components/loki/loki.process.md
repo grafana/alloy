@@ -595,7 +595,7 @@ In a labels stage, the `values` map's keys define the label to set and the value
 If the value is empty, it's inferred to be the same as the key.
 
 The `map` regexp will pattern match labels which will be added a new label. The regexp must include a group match bracket. This match
-will be used as new key name with the original value.
+This match is used as new key name with the original value.
 
 ```alloy
 stage.labels {
