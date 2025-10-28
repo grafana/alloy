@@ -165,7 +165,6 @@ type WaitEventOccurrence struct {
 	WaitEvent     string
 	BlockedByPIDs []int64 // normalized set (sorted, unique)
 	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastState     string
 	LastTimestamp time.Time
 }
 
@@ -379,7 +378,6 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
 			if existing.Equal(current) {
 				we.LastWaitTime = calculateDuration(sample.StateChange, now)
-				we.LastState = sample.State.String
 				we.LastTimestamp = now
 				t.waitEvents[t.openIdx] = we
 				return
@@ -392,7 +390,6 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			WaitEvent:     current.event,
 			BlockedByPIDs: current.blockedBy,
 			LastWaitTime:  calculateDuration(sample.StateChange, now),
-			LastState:     sample.State.String,
 			LastTimestamp: now,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
