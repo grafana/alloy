@@ -133,7 +133,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 		// This should never happen in a proper appender chain. Since we cannot enforce it, we are extra defensive.
 		if globalRef == 0 {
-			level.Warn(o.Logger).Log("msg", "received append with zero global ref, generating new global ref", "component", o.ID)
 			globalRef = ls.GetOrAddGlobalRefID(l)
 		}
 
@@ -159,9 +158,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.Append(storage.SeriesRef(localID), l, t, v)
-			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+			localRef := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
+			newLocalRef, nextErr := next.Append(storage.SeriesRef(localRef), l, t, v)
+			if nextErr == nil {
+				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			}
 
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
@@ -178,9 +179,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.AppendHistogram(storage.SeriesRef(localID), l, t, h, fh)
-			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+			localRef := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
+			newLocalRef, nextErr := next.AppendHistogram(storage.SeriesRef(localRef), l, t, h, fh)
+			if nextErr == nil {
+				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			}
 
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
@@ -205,9 +208,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localID), l, m)
-			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+			localRef := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
+			newLocalRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localRef), l, m)
+			if nextErr == nil {
+				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			}
 
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
@@ -224,9 +229,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
 
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.AppendExemplar(storage.SeriesRef(localID), l, e)
-			handleLocalLink(uint64(globalRef), l, localID, uint64(newRef))
+			localRef := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
+			newLocalRef, nextErr := next.AppendExemplar(storage.SeriesRef(localRef), l, e)
+
+			// We shouldn't add a local link if there was an error or the new local ref was zero which can happen for duplicate exemplars
+			if nextErr == nil && newLocalRef != 0 {
+				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
+			}
 
 			res.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 				componentID,
