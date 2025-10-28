@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
-
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -37,8 +37,9 @@ func init() {
 }
 
 const (
-	pathLabel     = "__path__"
-	filenameLabel = "filename"
+	labelPath        = "__path__"
+	labelPathExclude = "__path_exclude__"
+	labelFileName    = "filename"
 )
 
 // Arguments holds values which are used to configure the loki.source.file
@@ -84,6 +85,7 @@ type Component struct {
 	metrics *metrics
 
 	tasksMut sync.RWMutex
+	args     Arguments
 	tasks    map[positions.Entry]runnerTask
 
 	handler loki.LogsReceiver
@@ -170,9 +172,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -189,11 +189,9 @@ func (c *Component) Run(ctx context.Context) error {
 				c.receiversMut.RUnlock()
 			}
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -217,7 +215,21 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}
-	}()
+	})
+
+	wg.Go(func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.sync()
+			}
+		}
+	})
 
 	wg.Wait()
 	return nil
@@ -243,65 +255,97 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	c.tasks = make(map[positions.Entry]runnerTask)
+	c.args = newArgs
+	c.createTasks(newArgs)
+	return nil
+}
 
+func (c *Component) sync() {
+	c.tasksMut.Lock()
+	defer c.tasksMut.Unlock()
+	c.createTasks(c.args)
+}
+
+func (c *Component) createTasks(args Arguments) {
 	// There are cases where we have several targets with the same path + public labels
 	// but the path no longer exist so we cannot create a task for it. So we need to track
 	// what we have checked separately from the task map to prevent performing checks that
 	// will fail multiple times.
 	checked := make(map[positions.Entry]struct{})
+	c.tasks = make(map[positions.Entry]runnerTask)
 
-	for _, target := range newArgs.Targets {
-		path, _ := target.Get(pathLabel)
-
+	for _, target := range args.Targets {
+		targetPath, _ := target.Get(labelPath)
 		labels := target.NonReservedLabelSet()
 
-		// Deduplicate targets which have the same public label set.
-		key := positions.Entry{Path: path, Labels: labels.String()}
-		if _, exists := checked[key]; exists {
-			continue
-		}
-
-		checked[key] = struct{}{}
-
-		fi, err := os.Stat(path)
+		// FIXME handle single file
+		matches, err := doublestar.Glob(targetPath)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
-			c.metrics.totalBytes.DeleteLabelValues(path)
+			level.Error(c.opts.Logger).Log("msg", "failed expanding paths")
 			continue
 		}
 
-		if fi.IsDir() {
-			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
-			c.metrics.totalBytes.DeleteLabelValues(path)
-			continue
-		}
+		exclude, _ := target.Get(labelPathExclude)
 
-		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+		for _, m := range matches {
+			if exclude != "" {
+				if match, _ := doublestar.PathMatch(exclude, m); match {
+					continue
+				}
+			}
 
-		reader, err := c.createReader(readerOptions{
-			path:                path,
-			labels:              labels,
-			encoding:            newArgs.Encoding,
-			decompressionConfig: newArgs.DecompressionConfig,
-			fileWatch:           newArgs.FileWatch,
-			tailFromEnd:         newArgs.TailFromEnd,
-			legacyPositionUsed:  newArgs.LegacyPositionsFile != "",
-		})
-		if err != nil {
-			continue
-		}
+			path, err := filepath.Abs(m)
+			if err != nil {
+				level.Error(c.opts.Logger).Log("msg", "error getting absolute path", "path", m, "err", err)
+			}
 
-		c.tasks[key] = runnerTask{
-			reader: reader,
-			path:   path,
-			labels: labels.String(),
-			// TODO: Could fastFingerPrint work?
-			readerHash: uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
+			// Deduplicate targets which have the same public label set.
+			key := positions.Entry{Path: path, Labels: labels.String()}
+			if _, exists := checked[key]; exists {
+				continue
+			}
+
+			checked[key] = struct{}{}
+
+			fi, err := os.Stat(path)
+			if err != nil {
+				level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
+				c.metrics.totalBytes.DeleteLabelValues(path)
+				continue
+			}
+
+			if fi.IsDir() {
+				level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
+				c.metrics.totalBytes.DeleteLabelValues(path)
+				continue
+			}
+
+			c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+
+			reader, err := c.createReader(readerOptions{
+				path:                path,
+				labels:              labels,
+				encoding:            args.Encoding,
+				decompressionConfig: args.DecompressionConfig,
+				fileWatch:           args.FileWatch,
+				tailFromEnd:         args.TailFromEnd,
+				legacyPositionUsed:  args.LegacyPositionsFile != "",
+			})
+			if err != nil {
+				continue
+			}
+
+			c.tasks[key] = runnerTask{
+				reader: reader,
+				path:   path,
+				labels: labels.String(),
+				// TODO: Could fastFingerPrint work?
+				readerHash: uint64(labels.Merge(model.LabelSet{labelFileName: model.LabelValue(path)}).Fingerprint()),
+			}
 		}
 	}
 
-	if len(newArgs.Targets) == 0 {
+	if len(args.Targets) == 0 {
 		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
 	}
 
@@ -309,8 +353,6 @@ func (c *Component) Update(args component.Arguments) error {
 	case c.updateReaders <- struct{}{}:
 	default:
 	}
-
-	return nil
 }
 
 // DebugInfo returns information about the status of tailed targets.
@@ -417,3 +459,4 @@ func receiversChanged(prev, next []loki.LogsReceiver) bool {
 	}
 	return false
 }
+

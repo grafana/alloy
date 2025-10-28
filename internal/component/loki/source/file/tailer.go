@@ -233,7 +233,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 
 	t.tail = tail
 
-	labelsMiddleware := t.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(t.path)})
+	labelsMiddleware := t.labels.Merge(model.LabelSet{labelFileName: model.LabelValue(t.path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
 
 	return handler, nil

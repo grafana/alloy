@@ -158,7 +158,7 @@ func (d *decompressor) Run(ctx context.Context) {
 	default:
 	}
 
-	labelsMiddleware := d.labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(d.path)})
+	labelsMiddleware := d.labels.Merge(model.LabelSet{labelFileName: model.LabelValue(d.path)})
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(d.receiver.Chan(), func() {}))
 	defer handler.Stop()
 
