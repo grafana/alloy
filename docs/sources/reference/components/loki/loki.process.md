@@ -586,10 +586,10 @@ For labels that are static, refer to [`stage.static_labels`][stage.static_labels
 
 The following arguments are supported:
 
-| Name     | Type          | Description                                                                             | Default | Required |
-| -------- | ------------- | --------------------------------------------------------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Configures a `labels` processing stage.                                                 | `{}`    | no       |
-| `map`    | `string`      | Regexp labels processing. The first group match '(...)' will indicate the new key name. | `""`    | no       |
+| Name     | Type          | Description                                                                                     | Default | Required |
+| -------- | ------------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+| `values` | `map(string)` | Configures a `labels` processing stage.                                                         | `{}`    | no       |
+| `map`    | `string`      | Regular expression labels processing. The first group match '(...)' indicates the new key name. | `""`    | no       |
 
 In a labels stage, the `values` map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
