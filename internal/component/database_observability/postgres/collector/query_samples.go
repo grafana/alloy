@@ -25,8 +25,9 @@ const (
 )
 
 const (
-	stateActive = "active"
-	stateIdle   = "idle"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
 )
 
 const selectPgStatActivity = `
@@ -490,13 +491,14 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
-	// Attach finished_with_error when finalized as idle aborted
-	if isIdleAborted(state.LastRow.State.String) && endOverride != nil {
+
+	if strings.EqualFold(strings.TrimSpace(state.LastRow.State.String), stateIdleTxnAborted) {
 		labels = fmt.Sprintf(`%s finished_with_error="true"`, labels)
 	}
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
+
 	return labels
 }
 
@@ -527,6 +529,15 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
+}
+
+func (c *QuerySamples) cleanupEmitted(now time.Time) {
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
 
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
@@ -563,23 +574,8 @@ func equalPIDSets(a, b []int64) bool {
 }
 
 func isIdleState(state string) bool {
-	if state == stateIdle {
+	if state == stateIdle || state == stateIdleTxnAborted {
 		return true
 	}
-	return strings.HasPrefix(strings.ToLower(state), "idle")
-}
-
-// isIdleAborted returns true when the state indicates an aborted idle-in-transaction.
-func isIdleAborted(state string) bool {
-	// Match case-insensitively on the canonical Postgres state string
-	return strings.EqualFold(strings.TrimSpace(state), "idle in transaction (aborted)")
-}
-
-func (c *QuerySamples) cleanupEmitted(now time.Time) {
-	const ttl = 10 * time.Minute
-	for k, lastSeen := range c.emitted {
-		if now.Sub(lastSeen) > ttl {
-			delete(c.emitted, k)
-		}
-	}
+	return false
 }
