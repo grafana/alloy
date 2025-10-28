@@ -594,7 +594,8 @@ The following arguments are supported:
 In a labels stage, the `values` map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
 
-The `map` regexp will pattern match labels which will be added a new label. The regexp must include a group match bracket. This match
+The `map` regular expression pattern matches labels which are added a new label.
+The regular expression must include a group match bracket.
 This match is used as new key name with the original value.
 
 ```alloy
