@@ -1525,8 +1525,9 @@ The following arguments are supported:
 In a `structured_metadata` stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
 
-The `map` regexp will pattern match labels which will be added as new structured metadata. The regexp must include a group match bracket. This match
-will be used as new key name with the original value.
+The `map` regular expression pattern matches labels added as new structured metadata.
+The regular expression must include a group match bracket.
+This match is used as new key name with the original value.
 
 The original labels are removed after beeing added to the structered metadata set.
 
