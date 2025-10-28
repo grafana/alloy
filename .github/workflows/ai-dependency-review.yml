@@ -1,0 +1,39 @@
+name: AI Dependency Change Review
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - '**/go.mod'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-deps-review-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  analyze-dependencies:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Analyze go.mod changes with OpenAI and comment
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go run ./tools/ai-review/ai-review.go \
+            --prompt-file=".github/ai-review-prompts/dependency-review.md" \
+            --marker="<!-- ai-deps-review -->" \
+            --slug="${{ github.repository }}" \
+            --pr-number="${{ github.event.pull_request.number }}"
