@@ -126,11 +126,17 @@ The `rate_limiting` block configures rate limiting for client requests.
 
 Rate limiting functions as a [token bucket algorithm][token-bucket], where a bucket has a maximum capacity for up to `burst_size` requests and refills at a rate of `rate` per second.
 
-Each HTTP request drains the capacity of the bucket by one. After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
+Each HTTP request drains the capacity of the bucket by one. 
+
+After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
 
 Configuring the `rate` argument determines how fast the bucket refills, and configuring the `burst_size` argument determines how many requests can be received in a burst before the bucket is empty and starts rejecting requests.
 
-When `per_app_enabled` is `true`, rate limiting is applied per application and environment combination. Each unique combination of application and environment gets its own rate limiter with the limits specified by `per_app_rate` and `per_app_burst_size`. This prevents one application from affecting the rate limits of other applications sending their data on the same gateway.
+When `per_app_enabled` is `true`, rate limiting is applied per application and environment combination. 
+
+Each unique combination of application and environment gets its own rate limiter with the limits specified by `per_app_rate` and `per_app_burst_size`. 
+
+This prevents one application from affecting the rate limits of other applications sending their data on the same gateway.
 
 The application and environment are extracted from the Faro payload metadata using the `app.name` and `app.environment` fields.
 
