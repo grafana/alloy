@@ -1529,7 +1529,7 @@ The `map` regular expression pattern matches labels added as new structured meta
 The regular expression must include a group match bracket.
 This match is used as new key name with the original value.
 
-The original labels are removed after beeing added to the structered metadata set.
+The original labels are removed after being added to the structured metadata set.
 
 ```alloy
 stage.structured_metadata {
