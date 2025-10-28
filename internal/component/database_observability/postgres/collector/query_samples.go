@@ -271,17 +271,10 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		if _, hadActive := c.samples[key]; hadActive {
 			c.emitAtIdleTransition(key, sample)
 			activeKeys[key] = struct{}{}
-			c.emitted[key] = sample.Now
-			continue
-		}
-
-		if _, already := c.emitted[key]; !already {
+		} else if _, already := c.emitted[key]; !already {
 			c.emitIdleOnlySample(key, sample)
-			c.emitted[key] = sample.Now
-		} else {
-			// refresh last seen time for this idle-only key
-			c.emitted[key] = sample.Now
 		}
+		c.emitted[key] = sample.Now
 	}
 
 	if err := rows.Err(); err != nil {
