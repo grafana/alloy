@@ -1028,7 +1028,7 @@ replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
 // for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20251024172658-ed9a9373f990 // staleness_disabling_v3.7.1 branch
+replace github.com/prometheus/prometheus => github.com/kgeckhart/prometheus v0.304.2-0.20251028132500-64c517c682a8 // staleness_disabling_v3.7.1 branch
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 

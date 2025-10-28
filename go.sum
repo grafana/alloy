@@ -1194,8 +1194,6 @@ github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363/go.mod h1:dOdKpz09HRMtkSs8kba90eNmrL81E+LMotcP7eW9/ek=
-github.com/grafana/prometheus v1.8.2-0.20251024172658-ed9a9373f990 h1:d5VwD7T8RbDP1OkPnoxkMcyJ2ZpY085kmPPYs3+gTo0=
-github.com/grafana/prometheus v1.8.2-0.20251024172658-ed9a9373f990/go.mod h1:/7YQG/jOLg7ktxGritmdkZvezE1fa6aWDj0MGDIZvcY=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
@@ -1538,6 +1536,8 @@ github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/keybase/go-keychain v0.0.1 h1:way+bWYa6lDppZoZcgMbYsvC7GxljxrskdNInRtuthU=
 github.com/keybase/go-keychain v0.0.1/go.mod h1:PdEILRW3i9D8JcdM+FmY6RwkHGnhHxXwkPPMeUgOK1k=
+github.com/kgeckhart/prometheus v0.304.2-0.20251028132500-64c517c682a8 h1:Y1Akan/9YOLP2REgs+NahxGI3uJegYDbrZaH8cQw6B4=
+github.com/kgeckhart/prometheus v0.304.2-0.20251028132500-64c517c682a8/go.mod h1:/7YQG/jOLg7ktxGritmdkZvezE1fa6aWDj0MGDIZvcY=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
