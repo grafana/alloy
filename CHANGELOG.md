@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
 
+- Add a new component `loki.source.string` (@ravishankar15)
+
 - Add `u_probe_links` & `load_probe` configuration fields to alloy pyroscope.ebpf to extend configuration of the opentelemetry-ebpf-profiler to allow uprobe profiling and dynamic probing. (@luweglarz)
 
 ### Enhancements
