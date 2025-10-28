@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -25,6 +26,7 @@ const (
 
 const (
 	stateActive = "active"
+	stateIdle   = "idle"
 )
 
 const selectPgStatActivity = `
@@ -54,7 +56,6 @@ const selectPgStatActivity = `
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
 		s.pid != pg_backend_pid() AND
-		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
 			(				
@@ -111,6 +112,8 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
+	// keys that were already emitted (e.g., idle-only or after idle transition), to avoid duplicates
+	emitted map[SampleKey]struct{}
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -186,6 +189,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
+		emitted:               map[SampleKey]struct{}{},
 	}, nil
 }
 
@@ -258,8 +262,22 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		c.upsertActiveSample(key, sample)
-		activeKeys[key] = struct{}{}
+		if !isIdleState(sample.State.String) {
+			c.upsertActiveSample(key, sample)
+			activeKeys[key] = struct{}{}
+			continue
+		}
+
+		if _, hadActive := c.samples[key]; hadActive {
+			c.emitAtIdleTransition(key, sample)
+			activeKeys[key] = struct{}{}
+			continue
+		}
+
+		if _, already := c.emitted[key]; !already {
+			c.emitIdleOnlySample(key, sample)
+			c.emitted[key] = struct{}{}
+		}
 	}
 
 	if err := rows.Err(); err != nil {
@@ -380,7 +398,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state)
+	sampleLabels := c.buildQuerySampleLabels(state, nil)
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_QUERY_SAMPLE,
@@ -404,19 +422,91 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
+// emitAtIdleTransition finalizes a running sample when its state becomes idle.
+func (c *QuerySamples) emitAtIdleTransition(key SampleKey, idleRow QuerySamplesInfo) {
+	state, ok := c.samples[key]
+	if !ok {
+		return
+	}
+
+	finalState := *state
+	finalState.LastRow.State = sql.NullString{String: stateIdle, Valid: true}
+	endTs := idleRow.StateChange
+	if endTs.Valid {
+		finalState.LastSeenAt = endTs.Time
+	}
+
+	var endOverride *time.Time
+	if endTs.Valid {
+		t := endTs.Time
+		endOverride = &t
+	}
+	sampleLabels := c.buildQuerySampleLabels(&finalState, endOverride)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE,
+		sampleLabels,
+		finalState.LastSeenAt.UnixNano(),
+	)
+
+	for _, we := range state.tracker.WaitEvents() {
+		if we.WaitEventType == "" || we.WaitEvent == "" {
+			continue
+		}
+		waitEventLabels := c.buildWaitEventLabels(state, we)
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			OP_WAIT_EVENT,
+			waitEventLabels,
+			we.LastTimestamp.UnixNano(),
+		)
+	}
+
+	delete(c.samples, key)
+	c.emitted[key] = struct{}{}
+}
+
+// emitIdleOnlySample emits a one-off sample for a query that is only observed
+// as idle (we didn't catch it while active).
+func (c *QuerySamples) emitIdleOnlySample(key SampleKey, idleRow QuerySamplesInfo) {
+	dummy := &SampleState{LastRow: idleRow, LastSeenAt: idleRow.Now, tracker: newWaitEventTracker()}
+	endTs := idleRow.StateChange
+	if endTs.Valid {
+		dummy.LastSeenAt = endTs.Time
+	}
+	var endOverride *time.Time
+	if endTs.Valid {
+		t := endTs.Time
+		endOverride = &t
+	}
+	labels := c.buildQuerySampleLabels(dummy, endOverride)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE,
+		labels,
+		dummy.LastSeenAt.UnixNano(),
+	)
+}
+
 func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
 }
 
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
+func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *time.Time) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
+
+	end := state.LastRow.Now
+	if endOverride != nil {
+		end = *endOverride
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -515,4 +605,11 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle {
+		return true
+	}
+	return strings.HasPrefix(strings.ToLower(state), "idle")
 }
