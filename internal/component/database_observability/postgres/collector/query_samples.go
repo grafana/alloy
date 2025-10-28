@@ -112,8 +112,8 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
-	// keys that were already emitted (e.g., idle-only or after idle transition), to avoid duplicates
-	emitted map[SampleKey]time.Time // value is last-seen time for TTL cleanup
+	// keep track of keys that were already emitted to avoid duplicates
+	emitted map[SampleKey]time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -139,6 +139,9 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
+	// EndOverride is used to compute durations and timestamps when a query
+	// transitioned to idle or was only observed as idle.
+	EndOverride sql.NullTime
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -268,12 +271,23 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		if _, hadActive := c.samples[key]; hadActive {
-			c.emitAtIdleTransition(key, sample)
+		if st, hadActive := c.samples[key]; hadActive {
+			end := sample.StateChange
+			if end.Valid {
+				st.EndOverride = end
+				st.LastSeenAt = end.Time
+			}
+			st.LastRow.State = sample.State
 			activeKeys[key] = struct{}{}
 		} else if _, already := c.emitted[key]; !already {
-			c.emitIdleOnlySample(key, sample)
+			dummy := &SampleState{LastRow: sample, LastSeenAt: sample.Now, tracker: newWaitEventTracker()}
+			if sample.StateChange.Valid {
+				dummy.EndOverride = sample.StateChange
+				dummy.LastSeenAt = sample.StateChange.Time
+			}
+			c.samples[key] = dummy
 		}
+		// refresh emitted last seen for idle keys (dedupe & TTL)
 		c.emitted[key] = sample.Now
 	}
 
@@ -282,24 +296,15 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	// finalize samples that are no longer active
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
+	// finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
 	}
 	c.cleanupEmitted(time.Now())
 	return nil
-}
-
-func (c *QuerySamples) cleanupEmitted(now time.Time) {
-	const ttl = 10 * time.Minute
-	for k, lastSeen := range c.emitted {
-		if now.Sub(lastSeen) > ttl {
-			delete(c.emitted, k)
-		}
-	}
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -405,12 +410,22 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state, nil)
+
+	var endOverride *time.Time
+	if state.EndOverride.Valid {
+		t := state.EndOverride.Time
+		endOverride = &t
+	}
+	sampleLabels := c.buildQuerySampleLabels(state, endOverride)
+	ts := state.LastSeenAt.UnixNano()
+	if endOverride != nil {
+		ts = endOverride.UnixNano()
+	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_QUERY_SAMPLE,
 		sampleLabels,
-		state.LastSeenAt.UnixNano(),
+		ts,
 	)
 
 	for _, we := range state.tracker.WaitEvents() {
@@ -427,71 +442,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 
 	delete(c.samples, key)
-}
-
-// emitAtIdleTransition finalizes a running sample when its state becomes idle.
-func (c *QuerySamples) emitAtIdleTransition(key SampleKey, idleRow QuerySamplesInfo) {
-	state, ok := c.samples[key]
-	if !ok {
-		return
-	}
-
-	finalState := *state
-	finalState.LastRow.State = sql.NullString{String: stateIdle, Valid: true}
-	endTs := idleRow.StateChange
-	if endTs.Valid {
-		finalState.LastSeenAt = endTs.Time
-	}
-
-	var endOverride *time.Time
-	if endTs.Valid {
-		t := endTs.Time
-		endOverride = &t
-	}
-	sampleLabels := c.buildQuerySampleLabels(&finalState, endOverride)
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		finalState.LastSeenAt.UnixNano(),
-	)
-
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
-		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
-		)
-	}
-
-	delete(c.samples, key)
-}
-
-// emitIdleOnlySample emits a one-off sample for a query that is only observed
-// as idle (we didn't catch it while active).
-func (c *QuerySamples) emitIdleOnlySample(key SampleKey, idleRow QuerySamplesInfo) {
-	dummy := &SampleState{LastRow: idleRow, LastSeenAt: idleRow.Now, tracker: newWaitEventTracker()}
-	endTs := idleRow.StateChange
-	if endTs.Valid {
-		dummy.LastSeenAt = endTs.Time
-	}
-	var endOverride *time.Time
-	if endTs.Valid {
-		t := endTs.Time
-		endOverride = &t
-	}
-	labels := c.buildQuerySampleLabels(dummy, endOverride)
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		labels,
-		dummy.LastSeenAt.UnixNano(),
-	)
 }
 
 func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
@@ -528,7 +478,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -536,7 +486,6 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 		state.LastRow.ApplicationName.String,
 		clientAddr,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		xactDuration,
@@ -544,6 +493,10 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 		state.LastRow.QueryID.Int64,
 		queryText,
 	)
+	// Attach finished_with_error when finalized as idle aborted
+	if isIdleAborted(state.LastRow.State.String) && endOverride != nil {
+		labels = fmt.Sprintf(`%s finished_with_error="true"`, labels)
+	}
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
@@ -561,13 +514,12 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		queryText = redact(queryText)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
@@ -618,4 +570,19 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return strings.HasPrefix(strings.ToLower(state), "idle")
+}
+
+// isIdleAborted returns true when the state indicates an aborted idle-in-transaction.
+func isIdleAborted(state string) bool {
+	// Match case-insensitively on the canonical Postgres state string
+	return strings.EqualFold(strings.TrimSpace(state), "idle in transaction (aborted)")
+}
+
+func (c *QuerySamples) cleanupEmitted(now time.Time) {
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
