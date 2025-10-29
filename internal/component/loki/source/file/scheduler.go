@@ -24,7 +24,7 @@ func NewScheduler[K comparable]() *Scheduler[K] {
 	return &Scheduler[K]{
 		ctx:     ctx,
 		cancel:  cancel,
-		sources: map[K]scheduledSource[K]{},
+		sources: make(map[K]scheduledSource[K]),
 	}
 }
 
@@ -79,10 +79,16 @@ func (s *Scheduler[K]) Contains(k K) bool {
 	return ok
 }
 
+// Len returns number of scheduled sources
+func (s *Scheduler[K]) Len() int {
+	return len(s.sources)
+}
+
 // Stop will stop all running sources and wait for them to finish.
 func (s *Scheduler[K]) Stop() {
 	s.cancel()
 	s.running.Wait()
+	s.sources = make(map[K]scheduledSource[K])
 }
 
 type Source[K comparable] interface {
