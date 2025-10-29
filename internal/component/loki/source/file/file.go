@@ -137,7 +137,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
-		// We need to stop posFile first so we don't record entries we are draning
+		// We need to stop posFile first so we don't record entries we are draining
 		c.posFile.Stop()
 
 		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
