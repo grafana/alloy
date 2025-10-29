@@ -4,7 +4,6 @@ import (
 	"context"
 	"iter"
 	"sync"
-	"time"
 
 	"github.com/grafana/dskit/backoff"
 )
@@ -47,24 +46,7 @@ func (s *Scheduler[K]) ApplySource(source Source[K]) {
 	s.sources[k] = st
 
 	s.running.Go(func() {
-		// We use a backoff with inifite retries here.
-		// This is useful to handle log file rotation when
-		// a file might be gone for a very short amount of time.
-		// It will only stop retrying when the source is stopped.
-		// FIXME: We should be able to configure this per source.
-		// e.g. decompressor does not really need it.
-		backoff := backoff.New(
-			ctx,
-			backoff.Config{
-				MinBackoff: 1 * time.Second,
-				MaxBackoff: 10 * time.Second,
-			},
-		)
-
-		for backoff.Ongoing() {
-			st.source.Run(st.ctx)
-			backoff.Wait()
-		}
+		st.source.Run(st.ctx)
 	})
 }
 
@@ -109,7 +91,36 @@ type Source[K comparable] interface {
 	Run(ctx context.Context)
 	// Key is used to uniquely identity the source.
 	Key() K
+	// IsRunning reports if source is still running.
 	IsRunning() bool
+}
+
+func NewSourceWithRetry[K comparable](source Source[K], config backoff.Config) *SourceWithRetry[K] {
+	return &SourceWithRetry[K]{source, config}
+}
+
+// SourceWithRetry is used to wrap another source and apply retries
+// when running.
+type SourceWithRetry[K comparable] struct {
+	source Source[K]
+	config backoff.Config
+}
+
+func (s *SourceWithRetry[K]) Run(ctx context.Context) {
+	backoff := backoff.New(ctx, s.config)
+
+	for backoff.Ongoing() {
+		s.source.Run(ctx)
+		backoff.Wait()
+	}
+}
+
+func (s *SourceWithRetry[K]) Key() K {
+	return s.source.Key()
+}
+
+func (s *SourceWithRetry[K]) IsRunning() bool {
+	return s.source.IsRunning()
 }
 
 // scheduledSource is a source that is already scheduled.
