@@ -6,6 +6,7 @@ package file
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -366,18 +367,15 @@ func (t *tailer) markPositionAndSize() error {
 func (t *tailer) stop(done chan struct{}) {
 	// Save the current position before shutting down tailer to ensure that if the file is tailed again
 	// it start where it left off.
-	err := t.markPositionAndSize()
-	if err != nil {
+	if err := t.markPositionAndSize(); err != nil {
 		level.Error(t.logger).Log("msg", "error marking file position when stopping tailer", "path", t.key.Path, "error", err)
 	}
-
-	err = t.tail.Stop()
-	if err != nil {
+	if err := t.tail.Stop(); err != nil {
 		if utils.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
 			level.Debug(t.logger).Log("msg", "tailer stopped with file I/O error", "path", t.key.Path, "error", err)
-		} else {
+		} else if !errors.Is(err, os.ErrNotExist) {
 			// Log as error for other reasons, as a resource leak may have happened.
 			level.Error(t.logger).Log("msg", "error stopping tailer", "path", t.key.Path, "error", err)
 		}
