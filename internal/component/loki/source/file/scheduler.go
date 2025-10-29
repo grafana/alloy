@@ -51,7 +51,7 @@ func (s *Scheduler[K]) ApplySource(source Source[K]) {
 }
 
 // StopSource will unregister provided source and cancel it
-// without wating for it to stop.
+// without waiting for it to stop.
 func (s *Scheduler[K]) StopSource(source Source[K]) {
 	k := source.Key()
 	scheduledTask, ok := s.sources[k]
