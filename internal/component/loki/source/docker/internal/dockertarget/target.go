@@ -349,13 +349,9 @@ func (fw *dockerChunkWriter) Close() error {
 
 func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
 	if !fw.isBuffering {
-		if len(p) < dockerMaxChunkSize {
-			// Short frame: write directly without buffering.
-			_, err := fw.writer.Write(p)
-			if err != nil {
-				return 0, err
-			}
-			return len(p), nil
+		if len(p) < dockerMaxChunkSize || p[len(p)-1] == 0x0A {
+			// Short or complete frame: write directly without buffering.
+			return fw.writer.Write(p)
 		}
 		// Long frame start: buffer the first chunk.
 		fw.buffer.Write(p)
@@ -372,14 +368,13 @@ func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
 	} else {
 		fw.buffer.Write(content)
 	}
-	if len(p) < dockerMaxChunkSize {
-		// Last chunk: flush the reassembled buffer.
-		fw.isBuffering = false
-		_, err := fw.writer.Write(fw.buffer.Bytes())
-		if err != nil {
+	// If this is the last continuation chunk (ends with newline), flush the buffer
+	if len(p) > 0 && p[len(p)-1] == 0x0A {
+		if _, err := fw.writer.Write(fw.buffer.Bytes()); err != nil {
 			return 0, err
 		}
 		fw.buffer.Reset()
+		fw.isBuffering = false
 	}
 	return len(p), nil
 }
