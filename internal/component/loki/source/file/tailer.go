@@ -165,7 +165,7 @@ func (t *tailer) Run(ctx context.Context) {
 	}
 	defer handler.Stop()
 
-	// We call report so that retires won't log.
+	// We call report so that retries won't log.
 	t.report.Do(func() {})
 
 	t.metrics.filesActive.Add(1.)
