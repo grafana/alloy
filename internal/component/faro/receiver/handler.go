@@ -63,18 +63,13 @@ func (h *handler) Update(args ServerArguments) {
 		// burst to be filled.
 		t := time.Now().Add(-time.Duration(float64(time.Second) * args.RateLimiting.Rate * args.RateLimiting.BurstSize))
 
+		// Always set the global rate limiter for fallback protection
 		h.rateLimiter.SetLimitAt(t, rate.Limit(args.RateLimiting.Rate))
 		h.rateLimiter.SetBurstAt(t, int(args.RateLimiting.BurstSize))
 
-		// Initialize or update the per-app rate limiter if enabled
-		if args.RateLimiting.PerAppEnabled {
-			if h.appRateLimiter == nil {
-				h.appRateLimiter = NewAppRateLimitingConfig(args.RateLimiting.PerAppRate, int(args.RateLimiting.PerAppBurstSize))
-			} else {
-				// Update existing rate limiter with new values
-				h.appRateLimiter.rate = rate.Limit(args.RateLimiting.PerAppRate)
-				h.appRateLimiter.burst = int(args.RateLimiting.PerAppBurstSize)
-			}
+		// Initialize or update the per-app rate limiter if strategy is per_app
+		if args.RateLimiting.Strategy == RateLimitingStrategyPerApp {
+			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize))
 		} else {
 			h.appRateLimiter = nil
 		}
@@ -114,10 +109,10 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
-	// Apply rate limiting
+	var p payload.Payload
+
 	if h.appRateLimiter != nil {
-		// Per-app rate limiting: decode payload first to extract app/env information
-		var p payload.Payload
+		// Per-app strategy: decode first to extract app/env, then apply per-app rate limiting
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
@@ -126,32 +121,26 @@ func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 		app, env := h.extractAppEnv(p)
 		if !h.appRateLimiter.Allow(app, env) {
 			level.Debug(h.log).Log(
-				"msg", "rate limit exceeded",
+				"msg", "per-app rate limit exceeded",
 				"app", app,
 				"env", env,
 			)
 			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
 		}
-
-		// Continue with the already decoded payload
-		h.processRequest(rw, req, p)
 	} else {
-		// Global rate limiting: check first, then decode
 		if !h.rateLimiter.Allow() {
 			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
 		}
 
-		// Decode payload now
-		var p payload.Payload
 		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
 		}
-
-		h.processRequest(rw, req, p)
 	}
+
+	h.processRequest(rw, req, p)
 }
 
 func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p payload.Payload) {

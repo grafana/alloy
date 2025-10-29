@@ -39,7 +39,7 @@ Main (unreleased)
 
 ### Enhancements
 
-- Add per-application rate limiting with `per_app_enabled`, `per_app_rate`, and `per_app_burst_size` in component `faro.receiver` configuration options to prevent one application from consuming the rate limit quota of other applications. (@hhertout)
+- Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 

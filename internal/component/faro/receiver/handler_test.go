@@ -396,12 +396,10 @@ func TestHandler_RateLimitingPerApp(t *testing.T) {
 
 			args := ServerArguments{
 				RateLimiting: RateLimitingArguments{
-					Enabled:         true,
-					Rate:            1.0,  // 1 request per second (global)
-					BurstSize:       2.0,  // burst of 2 requests (global)
-					PerAppEnabled:   true, // Enable per-app rate limiting
-					PerAppRate:      1.0,  // 1 request per second per app
-					PerAppBurstSize: 2.0,  // burst of 2 requests per app
+					Enabled:   true,
+					Strategy:  "per_app", // Enable per-app rate limiting
+					Rate:      1.0,       // 1 request per second per app
+					BurstSize: 2.0,       // burst of 2 requests per app
 				},
 			}
 			handler.Update(args)
@@ -439,10 +437,10 @@ func TestHandler_RateLimitingGlobal(t *testing.T) {
 
 	args := ServerArguments{
 		RateLimiting: RateLimitingArguments{
-			Enabled:       true,
-			Rate:          1.0,   // 1 request per second
-			BurstSize:     2.0,   // burst of 2 requests
-			PerAppEnabled: false, // Disable per-app rate limiting
+			Enabled:   true,
+			Strategy:  "global", // Global rate limiting (default)
+			Rate:      1.0,      // 1 request per second
+			BurstSize: 2.0,      // burst of 2 requests
 		},
 	}
 	handler.Update(args)

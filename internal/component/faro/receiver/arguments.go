@@ -55,22 +55,18 @@ func (s *ServerArguments) SetToDefault() {
 
 // RateLimitingArguments configures rate limiting for the HTTP server.
 type RateLimitingArguments struct {
-	Enabled         bool    `alloy:"enabled,attr,optional"`
-	Rate            float64 `alloy:"rate,attr,optional"`
-	BurstSize       float64 `alloy:"burst_size,attr,optional"`
-	PerAppEnabled   bool    `alloy:"per_app_enabled,attr,optional"`
-	PerAppRate      float64 `alloy:"per_app_rate,attr,optional"`
-	PerAppBurstSize float64 `alloy:"per_app_burst_size,attr,optional"`
+	Enabled   bool                 `alloy:"enabled,attr,optional"`
+	Strategy  RateLimitingStrategy `alloy:"strategy,attr,optional"`
+	Rate      float64              `alloy:"rate,attr,optional"`
+	BurstSize float64              `alloy:"burst_size,attr,optional"`
 }
 
 func (r *RateLimitingArguments) SetToDefault() {
 	*r = RateLimitingArguments{
-		Enabled:         true,
-		Rate:            50,
-		BurstSize:       100,
-		PerAppEnabled:   false,
-		PerAppRate:      50,
-		PerAppBurstSize: 100,
+		Enabled:   true,
+		Strategy:  RateLimitingStrategyGlobal,
+		Rate:      50,
+		BurstSize: 100,
 	}
 }
 
@@ -130,6 +126,36 @@ func (ll *LogFormat) UnmarshalText(text []byte) error {
 		*ll = LogFormat(text)
 	default:
 		return fmt.Errorf("unrecognized log format %q", string(text))
+	}
+	return nil
+}
+
+type RateLimitingStrategy string
+
+const (
+	RateLimitingStrategyGlobal RateLimitingStrategy = "global"
+	RateLimitingStrategyPerApp RateLimitingStrategy = "per_app"
+
+	RateLimitingStrategyDefault = RateLimitingStrategyGlobal
+)
+
+var (
+	_ encoding.TextMarshaler   = RateLimitingStrategyDefault
+	_ encoding.TextUnmarshaler = (*RateLimitingStrategy)(nil)
+)
+
+func (ll RateLimitingStrategy) MarshalText() (text []byte, err error) {
+	return []byte(ll), nil
+}
+
+func (ll *RateLimitingStrategy) UnmarshalText(text []byte) error {
+	switch RateLimitingStrategy(text) {
+	case "":
+		*ll = RateLimitingStrategyDefault
+	case RateLimitingStrategyGlobal, RateLimitingStrategyPerApp:
+		*ll = RateLimitingStrategy(text)
+	default:
+		return fmt.Errorf("unrecognized rate limiting strategy %q", string(text))
 	}
 	return nil
 }
