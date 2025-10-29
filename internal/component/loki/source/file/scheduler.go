@@ -9,7 +9,7 @@ import (
 )
 
 // Scheduler is used to manage sources.
-// So it up to the users to ensure proper synchronization.
+// So it is up to the users to ensure proper synchronization.
 type Scheduler[K comparable] struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
