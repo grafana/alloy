@@ -354,4 +354,3 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 	decompressor.Run(t.Context())
 	positionsFile.Stop()
 }
-
