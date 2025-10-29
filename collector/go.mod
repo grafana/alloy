@@ -354,6 +354,17 @@ require (
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/go-openapi/strfmt v0.23.0 // indirect
 	github.com/go-openapi/swag v0.25.1 // indirect
+	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect
+	github.com/go-openapi/swag/conv v0.25.1 // indirect
+	github.com/go-openapi/swag/fileutils v0.25.1 // indirect
+	github.com/go-openapi/swag/jsonname v0.25.1 // indirect
+	github.com/go-openapi/swag/jsonutils v0.25.1 // indirect
+	github.com/go-openapi/swag/loading v0.25.1 // indirect
+	github.com/go-openapi/swag/mangling v0.25.1 // indirect
+	github.com/go-openapi/swag/netutils v0.25.1 // indirect
+	github.com/go-openapi/swag/stringutils v0.25.1 // indirect
+	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
+	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
 	github.com/go-openapi/validate v0.24.0 // indirect
 	github.com/go-redsync/redsync/v4 v4.13.0 // indirect
 	github.com/go-resty/resty/v2 v2.16.5 // indirect
@@ -506,7 +517,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
-	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/joyent/triton-go v1.8.5 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
@@ -591,6 +601,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.134.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.134.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0 // indirect
@@ -1018,19 +1029,19 @@ replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-2025
 
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
 
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250714124518-c5d0a4dad445
+replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
 
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
 
-replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec
+replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024133138-bfa3c0a61c7a
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250903104920-08eeb4019222
+replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c
 
 replace k8s.io/client-go => k8s.io/client-go v0.32.6
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.2.4
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2
 
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.6
 
@@ -1039,3 +1050,18 @@ replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
 replace github.com/prometheus/otlptranslator => github.com/prometheus/otlptranslator v0.0.0-20250414121140-35db323fe9fb
+
+replace k8s.io/api => k8s.io/api v0.32.6
+
+replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.135.0
+
+replace go.opentelemetry.io/collector/pdata => go.opentelemetry.io/collector/pdata v1.41.0
+
+replace go.opentelemetry.io/collector/pdata/testdata => go.opentelemetry.io/collector/pdata/testdata v0.135.0
+
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.33.5
+
+// AI suggestion
+replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
+
+replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
