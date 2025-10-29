@@ -281,14 +281,17 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 			LocalAttributes:    s.attrs,
 			Hash:               s.cm.getRemoteHash(),
 			RemoteConfigStatus: s.cm.getRemoteConfigStatusForRequest(),
+			EffectiveConfig:    s.cm.getEffectiveConfigForRequest(),
 		},
 	})
 
 	if err != nil {
 		// Don't log error or reset status for "not modified" responses
 		if !errors.Is(err, errNotModified) {
-			// Reset lastSentConfigStatus since the API request failed and status wasn't actually sent
+			// Reset lastSentConfigStatus and lastSentEffectiveConfig since the API request failed
+			// and they weren't actually sent
 			s.cm.resetLastSentConfigStatus()
+			s.cm.resetLastSentEffectiveConfig()
 			s.opts.Logger.Log("level", "error", "msg", "failed to get configuration from remote server", "id", s.args.ID, "err", err)
 		}
 		return nil, err
