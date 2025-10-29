@@ -369,7 +369,7 @@ discovery.relabel "database_observability_mysql_example_db_2" {
 }
 
 prometheus.scrape "database_observability_mysql_example_db_2" {
-  targets    = discovery.relabel.database_observability_mysql_example_db_2.targets
+  targets    = discovery.relabel.database_observability_mysql_example_db_2.output
   job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
