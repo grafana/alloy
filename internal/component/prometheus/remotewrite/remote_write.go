@@ -131,6 +131,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		if cachedLocalRef != 0 && cachedLocalRef == newLocalRef {
 			return
 		}
+
+		// There are some unique scenarios that can have an append end with no error but the returned localRef is zero (duplicate exemplars).
+		// We don't want to update a valid link to an invalid link
+		if cachedLocalRef != 0 && newLocalRef == 0 {
+			return
+		}
+
 		// This should never happen in a proper appender chain. Since we cannot enforce it, we are extra defensive.
 		if globalRef == 0 {
 			globalRef = ls.GetOrAddGlobalRefID(l)
@@ -231,9 +238,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			localRef := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
 			newLocalRef, nextErr := next.AppendExemplar(storage.SeriesRef(localRef), l, e)
-
-			// We shouldn't add a local link if there was an error or the new local ref was zero which can happen for duplicate exemplars
-			if nextErr == nil && newLocalRef != 0 {
+			if nextErr == nil {
 				handleLocalLink(uint64(globalRef), l, localRef, uint64(newLocalRef))
 			}
 
