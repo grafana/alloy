@@ -162,6 +162,8 @@ v1.11.0
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
 
+- Add the `otelcol.receiver.awsecscontainermetrics` receiver (from upstream OTEL contrib) to read AWS ECS task- and container-level resource usage metrics. (@gregbrowndev)
+
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
