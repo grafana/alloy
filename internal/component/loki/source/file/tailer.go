@@ -156,7 +156,7 @@ func (t *tailer) Run(ctx context.Context) {
 
 	if err != nil {
 		// We are retrying tailers until the target has disappeared.
-		// We are mostly intrested in this log if this happens directly when
+		// We are mostly interested in this log if this happens directly when
 		// the tailer is scheduled and not on retries.
 		t.report.Do(func() {
 			level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
