@@ -95,7 +95,7 @@ type Source[K comparable] interface {
 	// Run should start the source.
 	// It should run until there is no more work or context is canceled.
 	Run(ctx context.Context)
-	// Key is used to uniquely identity the source.
+	// Key is used to uniquely identify the source.
 	Key() K
 	// IsRunning reports if source is still running.
 	IsRunning() bool
