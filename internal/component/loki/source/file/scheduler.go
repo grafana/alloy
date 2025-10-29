@@ -28,7 +28,7 @@ func NewScheduler[K comparable]() *Scheduler[K] {
 	}
 }
 
-// ApplySource will register and start run povided source.
+// ApplySource will register and start run provided source.
 // If a source with the same key already exists it will do nothing.
 func (s *Scheduler[K]) ApplySource(source Source[K]) {
 	k := source.Key()
