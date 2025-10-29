@@ -11,6 +11,7 @@ import (
 	prom_config "github.com/prometheus/prometheus/config"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
@@ -101,6 +102,13 @@ func appendStaticPrometheus(f *builder.File, staticConfig *config.Config) diag.D
 			return name
 		}
 
+		// Extract WAL settings from instance config
+		walOptions := &remotewrite.WALOptions{
+			TruncateFrequency: instance.WALTruncateFrequency,
+			MinKeepaliveTime:  instance.MinWALTime,
+			MaxKeepaliveTime:  instance.MaxWALTime,
+		}
+
 		// There is an edge case here with label collisions that will be caught
 		// by a validation [common.ValidateNodes].
 		// For example,
@@ -111,7 +119,7 @@ func appendStaticPrometheus(f *builder.File, staticConfig *config.Config) diag.D
 		//   scrape config job_name = "test_prometheus"
 		//
 		//   results in two prometheus.scrape components with the label "metrics_agent_test_prometheus"
-		diags.AddAll(prometheusconvert.AppendAllNested(f, promConfig, jobNameToCompLabelsFunc, []discovery.Target{}, nil))
+		diags.AddAll(prometheusconvert.AppendAllNested(f, promConfig, jobNameToCompLabelsFunc, []discovery.Target{}, nil, walOptions))
 	}
 
 	return diags

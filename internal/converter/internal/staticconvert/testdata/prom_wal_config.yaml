@@ -1,0 +1,13 @@
+metrics:
+  wal_directory: /tmp/wal
+  configs:
+    - name: test_wal
+      wal_truncate_frequency: 30m
+      min_wal_time: 10m
+      max_wal_time: 2h
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+      remote_write:
+        - url: http://localhost:9009/api/prom/push
