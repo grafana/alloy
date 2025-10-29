@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 
@@ -331,7 +332,7 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 			c.IsStopping,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create decompressor %s", err)
+			return nil, fmt.Errorf("failed to create decompressor %w", err)
 		}
 		return decompressor, nil
 	}
@@ -352,9 +353,12 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 		c.IsStopping,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tailer %s", err)
+		return nil, fmt.Errorf("failed to create tailer %w", err)
 	}
-	return tailer, nil
+	return NewSourceWithRetry(tailer, backoff.Config{
+		MinBackoff: 1 * time.Second,
+		MaxBackoff: 10 * time.Second,
+	}), nil
 }
 
 func (c *Component) IsStopping() bool {
