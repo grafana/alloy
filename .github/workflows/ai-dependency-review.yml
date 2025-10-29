@@ -42,7 +42,7 @@ jobs:
           OPENAI_API_KEY: ${{ fromJSON(steps.get-secrets.outputs.secrets).OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          go run ./tools/ai-review/ai-review.go \
+          go run ./tools/ai-review \
             --prompt-file=".github/ai-review-prompts/dependency-review.md" \
             --marker="<!-- ai-deps-review -->" \
             --slug="${{ github.repository }}" \
