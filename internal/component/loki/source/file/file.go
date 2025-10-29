@@ -213,7 +213,9 @@ func (c *Component) scheduleTasks(args Arguments) {
 
 		// Deduplicate targets which have the same public label set.
 		key := positions.Entry{Path: path, Labels: labels.String()}
-		// FIXME(kalleep): reason for this check
+		// Avoid scheduling multiple tasks for the same file and label set.
+		// This ensures that each unique file/label combination is only tailed once,
+		// preventing redundant processing and resource contention.
 		if _, ok := shouldRun[key]; ok {
 			continue
 		}
