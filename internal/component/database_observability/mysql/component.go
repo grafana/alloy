@@ -143,7 +143,7 @@ var DefaultArguments = Arguments{
 	},
 
 	QuerySamplesArguments: QuerySamplesArguments{
-		CollectInterval:             1 * time.Minute,
+		CollectInterval:             10 * time.Second,
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
