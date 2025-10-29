@@ -93,6 +93,8 @@ v1.11.3
 
 - Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
 
+- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
+
 v1.11.2
 -----------------
 
