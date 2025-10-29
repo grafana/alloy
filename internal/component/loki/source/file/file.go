@@ -183,22 +183,19 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	})
 
-	// FIXME Setup scheduling
-	/*
-		wg.Go(func() {
-				ticker := time.NewTicker(10 * time.Second)
-				defer ticker.Stop()
+	wg.Go(func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
 
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-						c.sync()
-					}
-				}
-			})
-	*/
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.sync()
+			}
+		}
+	})
 
 	wg.Wait()
 	return nil
@@ -229,13 +226,11 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-/*
 func (c *Component) sync() {
 	c.schedulerMut.Lock()
 	defer c.schedulerMut.Unlock()
-	c.createTasks(c.args)
+	c.scheduleTasks()
 }
-*/
 
 func (c *Component) scheduleTasks() {
 	// shouldRun is used to track sources that should be runnig, either source we will schedule or
