@@ -144,7 +144,7 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	if spaceIdx == -1 {
 		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
 	}
-	// We know that bytes are valid UTF-8, so it's safe to use unsafe.String here
+	// We know that the bytes won't be modified during the time.Parse call, so it's safe to use unsafe.String here
 	ts, err := time.Parse(timestampLayout, unsafe.String(&line[0], spaceIdx))
 	if err != nil {
 		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
