@@ -8,7 +8,7 @@ import (
 )
 
 // analyzeWithAI sends the prompt and diff to OpenAI and returns the response
-func analyzeWithAI(ctx context.Context, client openai.Client, model, prompt, diff string) (string, error) {
+func analyzeWithAI(ctx context.Context, client openai.Client, model openai.ChatModel, prompt, diff string) (string, error) {
 	// Construct the full message
 	fullPrompt := fmt.Sprintf("%s\n\n---\n\nPull Request Diff:\n\n```diff\n%s\n```", prompt, diff)
 

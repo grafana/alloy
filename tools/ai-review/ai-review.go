@@ -17,7 +17,7 @@ import (
 func main() {
 	// Parse command-line flags
 	var (
-		model      = flag.String("model", "gpt-5", "OpenAI model to use")
+		model      = flag.String("model", openai.ChatModelGPT5, "OpenAI model to use")
 		promptFile = flag.String("prompt-file", "", "Path to file containing AI prompt/rules")
 		marker     = flag.String("marker", "<!-- ai-review -->", "HTML comment marker to identify bot comments")
 		slug       = flag.String("slug", "", "Repository slug (owner/repo) - required for GitHub mode")
@@ -59,7 +59,7 @@ func main() {
 		// Parse repository owner and name
 		parts := strings.Split(*slug, "/")
 		if len(parts) != 2 {
-			log.Fatalf("Invalid --repo format: %s (expected: owner/repo)", *slug)
+			log.Fatalf("Invalid --slug format: %s (expected: owner/repo)", *slug)
 		}
 		owner, repoName := parts[0], parts[1]
 

@@ -27,9 +27,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@5d7e361bc7e0a183cde8afe9899fb7b596d2659b # get-vault-secrets-v1.2.0
+        with:
+          repo_secrets: |
+            OPENAI_API_KEY=openai:api-key
+          export_env: false
+
       - name: Analyze go.mod changes with OpenAI and comment
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ fromJSON(steps.get-secrets.outputs.secrets).OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           go run ./tools/ai-review/ai-review.go \
