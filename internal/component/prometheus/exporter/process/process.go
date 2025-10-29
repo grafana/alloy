@@ -66,12 +66,13 @@ func (a *Arguments) SetToDefault() {
 
 func (a *Arguments) Convert() *process_exporter.Config {
 	return &process_exporter.Config{
-		ProcessExporter: convertMatcherGroups(a.ProcessExporter),
-		ProcFSPath:      a.ProcFSPath,
-		Children:        a.Children,
-		Threads:         a.Threads,
-		SMaps:           a.SMaps,
-		Recheck:         a.Recheck,
+		ProcessExporter:   convertMatcherGroups(a.ProcessExporter),
+		ProcFSPath:        a.ProcFSPath,
+		Children:          a.Children,
+		Threads:           a.Threads,
+		SMaps:             a.SMaps,
+		Recheck:           a.Recheck,
+		RemoveEmptyGroups: a.RemoveEmptyGroups,
 	}
 }
 
