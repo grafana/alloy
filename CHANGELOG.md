@@ -69,6 +69,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
 v1.11.3
 -----------------
 
