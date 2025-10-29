@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/dskit/user"
 	lokipush "github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
+	"github.com/grafana/loki/v3/pkg/util/constants"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -174,6 +175,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		nil, // usage tracker
 		nil,
 		"",
+		constants.Loki,
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
