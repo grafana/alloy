@@ -7,6 +7,7 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"go.uber.org/goleak"
 )
 
@@ -16,21 +17,21 @@ func newTestSource(key int, exit bool) *testSource {
 	return &testSource{
 		key:        key,
 		shouldExit: exit,
-		running:    false,
+		running:    *atomic.NewBool(false),
 	}
 }
 
 type testSource struct {
 	key        int
 	shouldExit bool
-	numStarts  int
-	running    bool
+	numStarts  atomic.Int32
+	running    atomic.Bool
 }
 
 func (t *testSource) Run(ctx context.Context) {
-	t.numStarts += 1
-	t.running = true
-	defer func() { t.running = false }()
+	t.numStarts.Inc()
+	t.running.Store(true)
+	defer t.running.Store(false)
 
 	if t.shouldExit {
 		return
@@ -43,7 +44,7 @@ func (t *testSource) Key() int {
 }
 
 func (t *testSource) IsRunning() bool {
-	return t.running
+	return t.running.Load()
 }
 
 func TestScheduler(t *testing.T) {
@@ -85,6 +86,7 @@ func TestScheduler(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return !s.IsRunning()
 		}, 3*time.Second, 10*time.Millisecond)
+
 		scheduler.Stop()
 	})
 }
@@ -101,6 +103,6 @@ func TestScheduler_SourceWithRetry(t *testing.T) {
 	}))
 
 	time.Sleep(1 * time.Second)
-	require.True(t, s.numStarts > 1)
+	require.True(t, s.numStarts.Load() > 1)
 	scheduler.Stop()
 }
