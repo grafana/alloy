@@ -66,6 +66,9 @@ var ExplainReservedWordDenyList = []string{
 	// PostgreSQL specific write operations
 	"COPY", "VACUUM", "CLUSTER", "LISTEN", "NOTIFY", "DISCARD",
 	"PREPARE", "EXECUTE", "DEALLOCATE", "RESET", "SET",
+
+	// dbo11 specific operations we'd like to exclude
+	"EXPLAIN",
 }
 
 type ExplainPlanOutput struct {
