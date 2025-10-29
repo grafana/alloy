@@ -91,7 +91,7 @@ func BenchmarkReadlines(b *testing.B) {
 				logger:    log.NewNopLogger(),
 				running:   atomic.NewBool(false),
 				receiver:  loki.NewLogsReceiver(),
-				path:      tc.file,
+				key:       positions.Entry{Path: tc.file},
 				positions: &noopPositions{},
 				labels:    model.LabelSet{"foo": "bar", "baz": "boo"},
 			}
@@ -116,7 +116,7 @@ func TestGigantiqueGunzipFile(t *testing.T) {
 		logger:    log.NewNopLogger(),
 		running:   atomic.NewBool(false),
 		receiver:  loki.NewLogsReceiver(),
-		path:      file,
+		key:       positions.Entry{Path: file},
 		metrics:   newMetrics(prometheus.NewRegistry()),
 		cfg:       DecompressionConfig{Format: "gz"},
 		positions: &noopPositions{},
@@ -146,7 +146,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -171,7 +171,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "bz2"},
 			positions: &noopPositions{},
@@ -197,7 +197,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -354,3 +354,4 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 	decompressor.Run(t.Context())
 	positionsFile.Stop()
 }
+
