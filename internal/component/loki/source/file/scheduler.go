@@ -4,6 +4,9 @@ import (
 	"context"
 	"iter"
 	"sync"
+	"time"
+
+	"github.com/grafana/dskit/backoff"
 )
 
 // Scheduler is used to manage `Source`s.
@@ -45,7 +48,24 @@ func (s *Scheduler[K]) ApplySource(source Source[K]) {
 	s.sources[k] = st
 
 	s.running.Go(func() {
-		st.source.Run(st.ctx)
+		// We use a backoff with inifite retries here.
+		// This is useful to handle log file rotation when
+		// a file might be gone for a very short amount of time.
+		// It will only stop retrying when the source is stopped.
+		// FIXME: We should be able to configure this per source.
+		// e.g. decompressor does not really need it.
+		backoff := backoff.New(
+			ctx,
+			backoff.Config{
+				MinBackoff: 1 * time.Second,
+				MaxBackoff: 10 * time.Second,
+			},
+		)
+
+		for backoff.Ongoing() {
+			st.source.Run(st.ctx)
+			backoff.Wait()
+		}
 	})
 }
 

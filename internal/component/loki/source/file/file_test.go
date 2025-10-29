@@ -431,8 +431,11 @@ func TestDeleteRecreateFile(t *testing.T) {
 	_, err = f.Write([]byte("writing some text\n"))
 	require.NoError(t, err)
 
+	abs, err := filepath.Abs(f.Name())
+	require.NoError(t, err)
+
 	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
+		"filename": model.LabelValue(abs),
 		"foo":      "bar",
 	}
 
