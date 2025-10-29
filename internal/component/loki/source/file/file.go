@@ -202,7 +202,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) scheduleTasks(args Arguments) {
-	// shouldRun is used to track sources that should be runnig, either source we will schedule or
+	// shouldRun is used to track sources that should be running, either source we will schedule or
 	// sources that are already scheduled and should continue.
 	shouldRun := make(map[positions.Entry]struct{}, len(args.Targets))
 
