@@ -49,6 +49,8 @@ type tailer struct {
 
 	componentStopping func() bool
 
+	report sync.Once
+
 	tail    *tail.Tail
 	decoder *encoding.Decoder
 }
@@ -70,6 +72,7 @@ func newTailer(
 		legacyPositionUsed: legacyPositonUsed,
 		pollOptions:        pollOptions,
 		componentStopping:  componentStopping,
+		report:             sync.Once{},
 	}
 
 	if encoding != "" {
@@ -150,11 +153,20 @@ func (t *tailer) Run(ctx context.Context) {
 	}
 
 	handler, err := t.initRun()
+
 	if err != nil {
-		level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
+		// We are retrying tailers until the target has disappeared.
+		// We are mostly intrested in this log if this happens directly when
+		// the tailer is scheduled and not on retries.
+		t.report.Do(func() {
+			level.Error(t.logger).Log("msg", "failed to run tailer", "err", err)
+		})
 		return
 	}
 	defer handler.Stop()
+
+	// We call report so that retires won't log.
+	t.report.Do(func() {})
 
 	t.metrics.filesActive.Add(1.)
 
