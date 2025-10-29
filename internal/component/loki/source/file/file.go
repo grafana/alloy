@@ -125,7 +125,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		scheduler: NewScheduler[positions.Entry](),
 	}
 
-	// Call to Update() to start readers and set receivers once at the start.
+	// Call to Update() to start sources and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
+		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
 		// We need to stop posFile first so we don't record entries we are draning
 		c.posFile.Stop()
 
@@ -175,7 +175,6 @@ func (c *Component) Run(ctx context.Context) error {
 			c.receiversMut.RUnlock()
 		}
 	}
-
 }
 
 // Update implements component.Component.
@@ -241,7 +240,7 @@ func (c *Component) scheduleTasks(args Arguments) {
 
 		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 
-		reader, err := c.newSource(sourceOptions{
+		source, err := c.newSource(sourceOptions{
 			path:                path,
 			labels:              labels,
 			encoding:            args.Encoding,
@@ -255,7 +254,7 @@ func (c *Component) scheduleTasks(args Arguments) {
 			continue
 		}
 
-		c.scheduler.ApplySource(reader)
+		c.scheduler.ApplySource(source)
 	}
 
 	// Stop all sources that we no longer should consume.
@@ -267,7 +266,7 @@ func (c *Component) scheduleTasks(args Arguments) {
 	}
 }
 
-type readerDebugInfo struct {
+type debugInfo struct {
 	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
@@ -284,7 +283,7 @@ type targetInfo struct {
 func (c *Component) DebugInfo() any {
 	c.schedulerMut.RLock()
 	defer c.schedulerMut.RUnlock()
-	var res readerDebugInfo
+	var res debugInfo
 	for s := range c.scheduler.Sources() {
 		offset, _ := c.posFile.Get(s.Key().Path, s.Key().Labels)
 		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
@@ -295,16 +294,6 @@ func (c *Component) DebugInfo() any {
 		})
 	}
 	return res
-}
-
-type readerOptions struct {
-	path                string
-	labels              model.LabelSet
-	encoding            string
-	decompressionConfig DecompressionConfig
-	fileWatch           FileWatch
-	tailFromEnd         bool
-	legacyPositionUsed  bool
 }
 
 type sourceOptions struct {
