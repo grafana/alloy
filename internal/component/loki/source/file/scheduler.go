@@ -28,9 +28,9 @@ func NewScheduler[K comparable]() *Scheduler[K] {
 	}
 }
 
-// ApplySource will register and run the provided source in a goroutine.
+// ScheduleSource will register and run the provided source in a goroutine.
 // If a source with the same key already exists it will do nothing.
-func (s *Scheduler[K]) ApplySource(source Source[K]) {
+func (s *Scheduler[K]) ScheduleSource(source Source[K]) {
 	k := source.Key()
 	if _, ok := s.sources[k]; ok {
 		return

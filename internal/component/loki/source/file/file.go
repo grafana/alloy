@@ -168,6 +168,7 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, receiver := range c.receivers {
 				select {
 				case <-ctx.Done():
+					c.receiversMut.RUnlock()
 					return nil
 				case receiver.Chan() <- entry:
 				}
@@ -256,7 +257,7 @@ func (c *Component) scheduleSources(args Arguments) {
 			continue
 		}
 
-		c.scheduler.ApplySource(source)
+		c.scheduler.ScheduleSource(source)
 	}
 
 	// Stop all sources that we no longer should consume.

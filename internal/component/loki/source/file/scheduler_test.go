@@ -52,8 +52,8 @@ func TestScheduler(t *testing.T) {
 
 	t.Run("should ignore duplicated keys", func(t *testing.T) {
 		scheduler := NewScheduler[int]()
-		scheduler.ApplySource(newTestSource(1, false))
-		scheduler.ApplySource(newTestSource(1, false))
+		scheduler.ScheduleSource(newTestSource(1, false))
+		scheduler.ScheduleSource(newTestSource(1, false))
 		require.Equal(t, 1, scheduler.Len())
 		scheduler.Stop()
 		require.Equal(t, 0, scheduler.Len())
@@ -62,8 +62,8 @@ func TestScheduler(t *testing.T) {
 	t.Run("should stop running source", func(t *testing.T) {
 		scheduler := NewScheduler[int]()
 		source1, source2 := newTestSource(1, false), newTestSource(2, false)
-		scheduler.ApplySource(source1)
-		scheduler.ApplySource(source2)
+		scheduler.ScheduleSource(source1)
+		scheduler.ScheduleSource(source2)
 		require.Equal(t, 2, scheduler.Len())
 
 		scheduler.StopSource(source1)
@@ -81,7 +81,7 @@ func TestScheduler(t *testing.T) {
 	t.Run("source that stops", func(t *testing.T) {
 		scheduler := NewScheduler[int]()
 		s := newTestSource(1, true)
-		scheduler.ApplySource(s)
+		scheduler.ScheduleSource(s)
 
 		require.Eventually(t, func() bool {
 			return !s.IsRunning()
@@ -97,7 +97,7 @@ func TestScheduler_SourceWithRetry(t *testing.T) {
 	scheduler := NewScheduler[int]()
 	s := newTestSource(1, true)
 
-	scheduler.ApplySource(NewSourceWithRetry(s, backoff.Config{
+	scheduler.ScheduleSource(NewSourceWithRetry(s, backoff.Config{
 		MinBackoff: 20 * time.Millisecond,
 		MaxBackoff: 10 * time.Second,
 	}))
