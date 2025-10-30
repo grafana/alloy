@@ -111,36 +111,40 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 	var p payload.Payload
 
-	if h.appRateLimiter != nil {
-		// Per-app strategy: decode first to extract app/env, then apply per-app rate limiting
-		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-			return
-		}
+	if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	if !h.isWithinRateLimits(p) {
+		http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	h.processRequest(rw, req, p)
+}
+
+func (h *handler) isWithinRateLimits(p payload.Payload) bool {
+	if !h.args.RateLimiting.Enabled {
+		return true
+	}
+
+	switch h.args.RateLimiting.Strategy {
+	case RateLimitingStrategyPerApp:
 		app, env := h.extractAppEnv(p)
-		if !h.appRateLimiter.Allow(app, env) {
+		allowed := h.appRateLimiter.Allow(app, env)
+		if !allowed {
 			level.Debug(h.log).Log(
 				"msg", "per-app rate limit exceeded",
 				"app", app,
 				"env", env,
 			)
-			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-			return
 		}
-	} else {
-		if !h.rateLimiter.Allow() {
-			http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-			return
-		}
-
-		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-			return
-		}
+		return allowed
+	default:
+		// Fallback to global rate limiter with infinite rate if not set.
+		return h.rateLimiter.Allow()
 	}
-
-	h.processRequest(rw, req, p)
 }
 
 func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p payload.Payload) {
