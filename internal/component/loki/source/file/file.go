@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 
 	"go.uber.org/atomic"
@@ -317,11 +316,8 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 			c.opts.Logger,
 			c.handler,
 			c.posFile,
-			opts.path,
-			opts.labels,
-			opts.encoding,
-			opts.decompressionConfig,
 			c.IsStopping,
+			opts,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create decompressor %w", err)
@@ -333,16 +329,8 @@ func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], erro
 		c.opts.Logger,
 		c.handler,
 		c.posFile,
-		opts.path,
-		opts.labels,
-		opts.encoding,
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: opts.fileWatch.MinPollFrequency,
-			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
-		},
-		opts.tailFromEnd,
-		opts.legacyPositionUsed,
 		c.IsStopping,
+		opts,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tailer %w", err)

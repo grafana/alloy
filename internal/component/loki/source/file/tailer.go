@@ -56,8 +56,12 @@ type tailer struct {
 }
 
 func newTailer(
-	metrics *metrics, logger log.Logger, receiver loki.LogsReceiver, pos positions.Positions, path string, labels model.LabelSet,
-	encoding string, pollOptions watch.PollingFileWatcherOptions, tailFromEnd bool, legacyPositonUsed bool, componentStopping func() bool,
+	metrics *metrics,
+	logger log.Logger,
+	receiver loki.LogsReceiver,
+	pos positions.Positions,
+	componentStopping func() bool,
+	opts sourceOptions,
 ) (*tailer, error) {
 
 	tailer := &tailer{
@@ -65,21 +69,24 @@ func newTailer(
 		logger:             log.With(logger, "component", "tailer"),
 		receiver:           receiver,
 		positions:          pos,
-		key:                positions.Entry{Path: path, Labels: labels.String()},
-		labels:             labels,
+		key:                positions.Entry{Path: opts.path, Labels: opts.labels.String()},
+		labels:             opts.labels,
 		running:            atomic.NewBool(false),
-		tailFromEnd:        tailFromEnd,
-		legacyPositionUsed: legacyPositonUsed,
-		pollOptions:        pollOptions,
-		componentStopping:  componentStopping,
-		report:             sync.Once{},
+		tailFromEnd:        opts.tailFromEnd,
+		legacyPositionUsed: opts.legacyPositionUsed,
+		pollOptions: watch.PollingFileWatcherOptions{
+			MinPollFrequency: opts.fileWatch.MinPollFrequency,
+			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
+		},
+		componentStopping: componentStopping,
+		report:            sync.Once{},
 	}
 
-	if encoding != "" {
-		level.Info(tailer.logger).Log("msg", "Will decode messages", "from", encoding, "to", "UTF8")
-		encoder, err := ianaindex.IANA.Encoding(encoding)
+	if opts.encoding != "" {
+		level.Info(tailer.logger).Log("msg", "Will decode messages", "from", opts.encoding, "to", "UTF8")
+		encoder, err := ianaindex.IANA.Encoding(opts.encoding)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encoding, err)
+			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", opts.encoding, err)
 		}
 		decoder := encoder.NewDecoder()
 		tailer.decoder = decoder

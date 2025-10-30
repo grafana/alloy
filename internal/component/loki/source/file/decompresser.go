@@ -68,28 +68,25 @@ func newDecompressor(
 	logger log.Logger,
 	receiver loki.LogsReceiver,
 	pos positions.Positions,
-	path string,
-	labels model.LabelSet,
-	encodingFormat string,
-	cfg DecompressionConfig,
 	componentStopping func() bool,
+	opts sourceOptions,
 ) (*decompressor, error) {
 
-	labelsStr := labels.String()
+	labelsStr := opts.labels.String()
 
 	logger = log.With(logger, "component", "decompressor")
 
-	position, err := pos.Get(path, labelsStr)
+	position, err := pos.Get(opts.path, labelsStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get positions: %w", err)
 	}
 
 	var decoder *encoding.Decoder
-	if encodingFormat != "" {
-		level.Info(logger).Log("msg", "decompressor will decode messages", "from", encodingFormat, "to", "UTF8")
-		encoder, err := ianaindex.IANA.Encoding(encodingFormat)
+	if opts.encoding != "" {
+		level.Info(logger).Log("msg", "decompressor will decode messages", "from", opts.encoding, "to", "UTF8")
+		encoder, err := ianaindex.IANA.Encoding(opts.encoding)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encodingFormat, err)
+			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", opts.encoding, err)
 		}
 		decoder = encoder.NewDecoder()
 	}
@@ -99,12 +96,12 @@ func newDecompressor(
 		logger:            logger,
 		receiver:          receiver,
 		positions:         pos,
-		key:               positions.Entry{Path: path, Labels: labelsStr},
-		labels:            labels,
+		key:               positions.Entry{Path: opts.path, Labels: labelsStr},
+		labels:            opts.labels,
 		running:           atomic.NewBool(false),
 		position:          position,
 		decoder:           decoder,
-		cfg:               cfg,
+		cfg:               opts.decompressionConfig,
 		componentStopping: componentStopping,
 	}
 
