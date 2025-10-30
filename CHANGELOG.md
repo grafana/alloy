@@ -62,8 +62,6 @@ Main (unreleased)
 
 - `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
-- Schedule new path targets faster in `loki.source.file`. (@kalleep)
-
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
@@ -73,6 +71,8 @@ Main (unreleased)
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
 - Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
+- Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
 v1.11.3
 -----------------
