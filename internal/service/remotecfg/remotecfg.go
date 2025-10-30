@@ -72,7 +72,7 @@ func New(opts Options) (*Service, error) {
 		opts:        opts,
 		systemAttrs: getSystemAttributes(),
 		metrics:     metrics,
-		cm:          newConfigManager(metrics, opts.Logger, remotecfgPath, nil, opts.ConfigPath),
+		cm:          newConfigManager(metrics, opts.Logger, remotecfgPath, opts.ConfigPath),
 	}
 
 	return svc, nil
@@ -208,7 +208,7 @@ func (s *Service) updateHandleEmptyUrl(args Arguments) {
 		configPath = s.cm.getConfigPath()
 		s.cm.cleanup()
 	}
-	s.cm = newConfigManager(s.metrics, s.opts.Logger, remotecfgPath, nil, configPath)
+	s.cm = newConfigManager(s.metrics, s.opts.Logger, remotecfgPath, configPath)
 	s.cm.setLastLoadedCfgHash("")
 	s.cm.setLastReceivedCfgHash("")
 	s.cm.setPollFrequency(disablePollingFrequency)

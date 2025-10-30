@@ -334,7 +334,7 @@ func TestCopyEffectiveConfig(t *testing.T) {
 }
 
 func TestSetEffectiveConfig(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), nil, "")
+	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
 
 	config := []byte("test config content")
 	cm.setEffectiveConfig(config)
@@ -351,7 +351,7 @@ func TestSetEffectiveConfig(t *testing.T) {
 }
 
 func TestGetEffectiveConfigForRequest(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), nil, "")
+	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
 
 	// First call - should return nil because effective config is not set
 	result := cm.getEffectiveConfigForRequest()
@@ -385,7 +385,7 @@ func TestGetEffectiveConfigForRequest(t *testing.T) {
 }
 
 func TestResetLastSentEffectiveConfig(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), nil, "")
+	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
 
 	// Set effective config
 	config := []byte("test config")

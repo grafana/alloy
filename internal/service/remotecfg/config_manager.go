@@ -91,12 +91,11 @@ type configManager struct {
 	lastSentEffectiveConfig *collectorv1.EffectiveConfig
 }
 
-func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, ctrl service.Controller, configPath string) *configManager {
+func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, configPath string) *configManager {
 	return &configManager{
 		metrics:          metrics,
 		logger:           logger,
 		remotecfgPath:    remotecfgPath,
-		ctrl:             ctrl,
 		configPath:       configPath,
 		updateTickerChan: make(chan struct{}, 1),
 		pollFrequency:    disablePollingFrequency,
@@ -214,7 +213,7 @@ func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetCo
 	if err := cm.fetchLoadRemoteConfig(getAPIConfig); err != nil && err != errNotModified {
 		if useCacheAsFallback {
 			level.Error(cm.logger).Log("msg", "failed to fetch remote config, falling back to cache", "err", err)
-			cm.fetchLoadLocalConfig(getAPIConfig)
+			cm.fetchLoadLocalConfig()
 		} else {
 			level.Error(cm.logger).Log("msg", "failed to fetch remote config, continuing with current config", "err", err)
 		}
@@ -367,7 +366,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	return nil
 }
 
-func (cm *configManager) fetchLoadLocalConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) {
+func (cm *configManager) fetchLoadLocalConfig() {
 	b, err := cm.getCachedConfig()
 	if err != nil {
 		level.Error(cm.logger).Log("msg", "failed to read from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
@@ -469,12 +468,6 @@ func (cm *configManager) setRemoteHash(hash string) {
 	cm.remoteHash = hash
 }
 
-func (cm *configManager) resetRemoteHash() {
-	cm.mut.Lock()
-	defer cm.mut.Unlock()
-	cm.remoteHash = ""
-}
-
 // setRemoteConfigStatus updates the remote config status.
 func (cm *configManager) setRemoteConfigStatus(status collectorv1.RemoteConfigStatuses, errorMessage string) {
 	cm.mut.Lock()
@@ -550,12 +543,6 @@ func (cm *configManager) setEffectiveConfig(config []byte) {
 			},
 		},
 	}
-}
-
-func (cm *configManager) getEffectiveConfigBody() []byte {
-	cm.mut.RLock()
-	defer cm.mut.RUnlock()
-	return cm.effectiveConfig.ConfigMap.ConfigMap[""].Body
 }
 
 // getEffectiveConfigForRequest returns the effective config if it has changed
