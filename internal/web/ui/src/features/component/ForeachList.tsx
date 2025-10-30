@@ -21,11 +21,14 @@ const ForeachList = ({ foreach, useRemotecfg, handleSorting }: ComponentListProp
   const urlPrefix = useRemotecfg ? '/remotecfg' : '';
 
   // Group components by foreach children ids
-  const moduleComponents = foreach.createdModuleIDs?.reduce((acc, moduleId) => {
-    const components = foreach.moduleInfo?.filter((comp) => comp.moduleID === moduleId) || [];
-    acc[moduleId] = components;
-    return acc;
-  }, {} as Record<string, ComponentInfo[]>);
+  const moduleComponents = foreach.createdModuleIDs?.reduce(
+    (acc, moduleId) => {
+      const components = foreach.moduleInfo?.filter((comp) => comp.moduleID === moduleId) || [];
+      acc[moduleId] = components;
+      return acc;
+    },
+    {} as Record<string, ComponentInfo[]>
+  );
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) => {

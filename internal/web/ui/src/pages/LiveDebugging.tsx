@@ -109,11 +109,11 @@ function PageLiveDebugging() {
     <Page name="Live Debugging" desc="Live feed of debug data" icon={faBug} controls={controls}>
       {loading && <p>Listening for incoming data...</p>}
       {error && <p>Error: {error}</p>}
-        {filteredData.map((msg, index) => (
-          <div className={styles.logLine} key={index}>
-            {msg}
-          </div>
-        ))}
+      {filteredData.map((msg, index) => (
+        <div className={styles.logLine} key={index}>
+          {msg}
+        </div>
+      ))}
     </Page>
   );
 }

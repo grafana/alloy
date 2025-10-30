@@ -22,8 +22,8 @@ export const useComponentInfo = (
             ? './api/v0/web/remotecfg/components'
             : `./api/v0/web/remotecfg/modules/${moduleID}/components`
           : moduleID === ''
-          ? './api/v0/web/components'
-          : `./api/v0/web/modules/${moduleID}/components`;
+            ? './api/v0/web/components'
+            : `./api/v0/web/modules/${moduleID}/components`;
 
         // Request is relative to the <base> tag inside of <head>.
         const resp = await fetch(infoPath, {
