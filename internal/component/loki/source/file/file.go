@@ -263,7 +263,7 @@ func (c *Component) scheduleSources(args Arguments) {
 
 	// It's a bad pattern to mutate a collection
 	// while iterating over it so we collect them here
-	// and stop them in a seperate loop after.
+	// and stop them in a separate loop after.
 	for source := range c.scheduler.Sources() {
 		if _, ok := shouldRun[source.Key()]; ok {
 			continue
