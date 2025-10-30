@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
 
+- `faro.receiver` can now fetch sourcemaps from remote locations. When multiple locations are configured, local on-disk paths will be checked before remote paths. (@Oxel40)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
