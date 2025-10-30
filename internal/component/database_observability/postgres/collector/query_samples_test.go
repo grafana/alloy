@@ -72,7 +72,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" query="SELECT * FROM users" engine="postgres" cpu_time="10s"`,
 			},
 		},
 		{
@@ -110,7 +110,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				fmt.Sprintf(`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" xid="0" xmin="0" xact_time="%s" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
+				fmt.Sprintf(`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" state="active" xid="0" xmin="0" xact_time="%s" query_time="%s" queryid="123" query="SELECT * FROM large_table" engine="postgres" cpu_time="%s"`,
 					time.Duration(0).String(),
 					time.Duration(0).String(),
 					time.Duration(0).String(),
@@ -153,8 +153,8 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_WAIT_EVENT},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
-				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query="UPDATE users SET status = ?" engine="postgres"`,
 			},
 		},
 		{
@@ -260,7 +260,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
+				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" engine="postgres" cpu_time="10s"`,
 			},
 		},
 	}
@@ -390,7 +390,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			entries := lokiClient.Received()
 			require.Len(t, entries, 1)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" query="SELECT * FROM t" engine="postgres" cpu_time="10s"`)
+			require.Contains(t, entries[0].Line, `datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" query="SELECT * FROM t" engine="postgres" cpu_time="10s"`)
 			expectedTimestamp := time.Unix(0, now.UnixNano())
 			require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
 		}, 5*time.Second, 50*time.Millisecond)
@@ -656,51 +656,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		"query",
 	}
 
-	// Abort case should mark finished_with_error
-	t.Run("idle in transaction (aborted) marks finished_with_error", func(t *testing.T) {
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
-
-		logBuffer := syncbuffer.Buffer{}
-		lokiClient := loki_fake.NewClient(func() {})
-
-		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			CollectInterval: 10 * time.Millisecond,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-		})
-		require.NoError(t, err)
-
-		// Single scrape with idle aborted state
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
-			WillReturnRows(sqlmock.NewRows(columns).AddRow(
-				now, "testdb", 7777, sql.NullInt64{},
-				"testuser", "testapp", "127.0.0.1", 5432,
-				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
-				xactStartTime, "idle in transaction (aborted)", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 777701, Valid: true},
-				"SELECT * FROM t",
-			))
-
-		require.NoError(t, sampleCollector.Start(t.Context()))
-
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			entries := lokiClient.Received()
-			require.Len(t, entries, 1)
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-			require.Contains(t, entries[0].Line, `finished_with_error="true"`)
-		}, 5*time.Second, 50*time.Millisecond)
-
-		sampleCollector.Stop()
-		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-		lokiClient.Stop()
-		time.Sleep(100 * time.Millisecond)
-		require.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("emit at idle transition with end at state_change", func(t *testing.T) {
+	t.Run("emit at idle state with end at state_change", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()

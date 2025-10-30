@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -117,72 +116,6 @@ type QuerySamples struct {
 	emitted map[SampleKey]time.Time
 }
 
-// SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
-// query across backends/transactions are uniquely tracked between scrapes.
-type SampleKey struct {
-	PID          int
-	QueryID      int64
-	QueryStartNs int64
-}
-
-func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
-	key := SampleKey{PID: pid, QueryID: queryID, QueryStartNs: 0}
-	if queryStart.Valid {
-		key.QueryStartNs = queryStart.Time.UnixNano()
-	}
-	return key
-}
-
-// SampleState buffers state across scrapes and is emitted once the query
-// turns idle or disappears, avoiding partial/duplicate emissions.
-type SampleState struct {
-	LastRow     QuerySamplesInfo
-	LastSeenAt  time.Time
-	LastCpuTime string // last cpu_time observed under CPU condition
-	tracker     WaitEventTracker
-	// EndOverride is used to compute durations and timestamps when a query
-	// transitioned to idle or was only observed as idle.
-	EndOverride sql.NullTime
-}
-
-// WaitEventTracker coalesces consecutive identical wait events
-// to reduce log volume while preserving timing.
-type WaitEventTracker struct {
-	waitEvents []WaitEventOccurrence
-	openIdx    int // -1 means none open
-}
-
-func newWaitEventTracker() WaitEventTracker {
-	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
-}
-
-func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
-func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
-
-// WaitEventOccurrence tracks a continuous occurrence of the same wait event
-// with the same blocked_by_pids set.
-type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastTimestamp time.Time
-}
-
-// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
-type WaitEventIdentity struct {
-	eventType string
-	event     string
-	blockedBy []int64 // normalized
-}
-
-func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
-	if w.eventType != other.eventType || w.event != other.event {
-		return false
-	}
-	return equalPIDSets(w.blockedBy, other.blockedBy)
-}
-
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
 		dbConnection:          args.DB,
@@ -242,6 +175,90 @@ func (c *QuerySamples) Stop() {
 	c.cancel()
 }
 
+// SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
+// query across backends/transactions are uniquely tracked between scrapes.
+type SampleKey struct {
+	PID          int
+	QueryID      int64
+	QueryStartNs int64
+}
+
+func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
+	key := SampleKey{PID: pid, QueryID: queryID, QueryStartNs: 0}
+	if queryStart.Valid {
+		key.QueryStartNs = queryStart.Time.UnixNano()
+	}
+	return key
+}
+
+// SampleState buffers state across scrapes and is emitted once the query
+// turns idle or disappears, avoiding partial/duplicate emissions.
+type SampleState struct {
+	LastRow     QuerySamplesInfo
+	LastSeenAt  time.Time
+	LastCpuTime string // last cpu_time observed under CPU condition
+	tracker     WaitEventTracker
+	// EndOverride is used to compute durations and timestamps when a query
+	// transitioned to idle or was only observed as idle.
+	EndOverride sql.NullTime
+}
+
+func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// markEndedAt sets EndOverride and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) markEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndOverride = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
+}
+
+// WaitEventTracker coalesces consecutive identical wait events
+// to reduce log volume while preserving timing.
+type WaitEventTracker struct {
+	waitEvents []WaitEventOccurrence
+	openIdx    int // -1 means none open
+}
+
+func newWaitEventTracker() WaitEventTracker {
+	return WaitEventTracker{waitEvents: []WaitEventOccurrence{}, openIdx: -1}
+}
+
+func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
+func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
+
+// WaitEventOccurrence tracks a continuous occurrence of the same wait event
+// with the same blocked_by_pids set.
+type WaitEventOccurrence struct {
+	WaitEventType string
+	WaitEvent     string
+	BlockedByPIDs []int64 // normalized set (sorted, unique)
+	LastWaitTime  string  // last stateDuration seen for this wait event
+	LastState     string
+	LastTimestamp time.Time
+}
+
+// WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
+type WaitEventIdentity struct {
+	eventType string
+	event     string
+	blockedBy []int64 // normalized
+}
+
+func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
+	if w.eventType != other.eventType || w.event != other.event {
+		return false
+	}
+	return equalPIDSets(w.blockedBy, other.blockedBy)
+}
+
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
 	if err != nil {
@@ -272,23 +289,18 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 
 		if st, hadActive := c.samples[key]; hadActive {
-			end := sample.StateChange
-			if end.Valid {
-				st.EndOverride = end
-				st.LastSeenAt = end.Time
-			}
+			st.markEndedAt(sample)
 			st.LastRow.State = sample.State
 			activeKeys[key] = struct{}{}
+			c.emitted[key] = sample.Now
 		} else if _, already := c.emitted[key]; !already {
-			dummy := &SampleState{LastRow: sample, LastSeenAt: sample.Now, tracker: newWaitEventTracker()}
-			if sample.StateChange.Valid {
-				dummy.EndOverride = sample.StateChange
-				dummy.LastSeenAt = sample.StateChange.Time
-			}
-			c.samples[key] = dummy
+			// new idle sample not yet seen -> create a new sample state to track and emit it
+			newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+			newIdleState.markEndedAt(sample)
+			newIdleState.LastRow.State = sample.State
+			c.samples[key] = newIdleState
+			c.emitted[key] = sample.Now
 		}
-		// refresh emitted last seen for idle keys (dedupe & TTL)
-		c.emitted[key] = sample.Now
 	}
 
 	if err := rows.Err(); err != nil {
@@ -364,6 +376,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTimeIfActive(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -379,6 +392,7 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
 			if existing.Equal(current) {
 				we.LastWaitTime = calculateDuration(sample.StateChange, now)
+				we.LastState = sample.State.String
 				we.LastTimestamp = now
 				t.waitEvents[t.openIdx] = we
 				return
@@ -391,6 +405,7 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			WaitEvent:     current.event,
 			BlockedByPIDs: current.blockedBy,
 			LastWaitTime:  calculateDuration(sample.StateChange, now),
+			LastState:     sample.State.String,
 			LastTimestamp: now,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
@@ -442,12 +457,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
 func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *time.Time) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -476,7 +485,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -484,6 +493,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 		state.LastRow.ApplicationName.String,
 		clientAddr,
 		state.LastRow.BackendType.String,
+		state.LastRow.State.String,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		xactDuration,
@@ -492,9 +502,6 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *t
 		queryText,
 	)
 
-	if strings.EqualFold(strings.TrimSpace(state.LastRow.State.String), stateIdleTxnAborted) {
-		labels = fmt.Sprintf(`%s finished_with_error="true"`, labels)
-	}
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
@@ -513,12 +520,13 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		queryText = redact(queryText)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
+		we.LastState,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
