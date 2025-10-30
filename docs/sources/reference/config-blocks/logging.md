@@ -88,7 +88,7 @@ You can retrieve the logs in different ways depending on your platform and insta
 
 **All platforms:**
 
-* {{< param "PRODUCT_NAME" >}} writes logs to `stdout` if started directly without a service manager.
+* {{< param "PRODUCT_NAME" >}} writes logs to `stderr` if started directly without a service manager.
 
 ## Example
 
