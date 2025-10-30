@@ -18,6 +18,7 @@ labels:
 database_observability.mysql "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
+  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -129,7 +130,7 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 | Name                             | Type       | Description                                                                    | Default | Required |
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
-| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"1m"`  | no       |
+| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Whether to enable some specific `performance_schema.setup_consumers` settings. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
@@ -139,9 +140,10 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 ```alloy
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
-  forward_to       = [loki.write.logs_service.receiver]
+  forward_to       = [loki.relabel.orders_db.receiver]
+  targets          = prometheus.exporter.mysql.orders_db.targets
 
-  enable_collectors = ["query_samples"]
+  enable_collectors = ["query_samples", "explain_plans"]
 
   cloud_provider {
     aws {
@@ -150,9 +152,39 @@ database_observability.mysql "orders_db" {
   }
 }
 
-prometheus.scrape "orders_db" {
+prometheus.exporter.mysql "orders_db" {
+  data_source_name  = "user:pass@tcp(mysql:3306)/"
+  enable_collectors = ["perf_schema.eventsstatements"]
+}
+
+loki.relabel "orders_db" {
+  forward_to = [loki.write.logs_service.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+discovery.relabel "orders_db" {
   targets = database_observability.mysql.orders_db.targets
-  honor_labels = true // required to keep job and instance labels
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+prometheus.scrape "orders_db" {
+  targets    = discovery.relabel.orders_db.targets
+  job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 

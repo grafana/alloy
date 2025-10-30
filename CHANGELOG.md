@@ -35,6 +35,8 @@ Main (unreleased)
 
 - Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 
+- Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
@@ -47,13 +49,57 @@ Main (unreleased)
 
 - `prometheus.exporter.postgres` dependency has been updated to v0.18.1. This includes new `stat_progress_vacuum` and `buffercache_summary` collectors, as well as other bugfixes and enhancements. (@cristiangreco)
 
+- Update Beyla component to 2.7.4. (@grcevski)
+
+- Support delimiters in `stage.luhn`. (@dehaansa)
+
+- pyroscope.java: update async-profiler to 4.2 (@korniltsev-grafanista)
+- Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
+
+- `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
+
+- `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
+
 - `loki.source.podlogs` now supports `preserve_discovered_labels` parameter to preserve discovered pod metadata labels for use by downstream components. (@QuentinBisson)
 
 ### Bugfixes
 
+- Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
+
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
+
+- Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
+- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
+
+v1.11.3
+-----------------
+
+### Enhancements
+
+- Schedule new path targets faster in `loki.source.file`. (@kalleep)
+
+- Add `prometheus.static.exporter` that exposes metrics specified in a text file in Prometheus exposition format. (@kalleep)
+
+### Bugfixes
+
+- `local.file_match` now publish targets faster whenever targets in arguments changes. (@kalleep)
+
+- Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
+
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+
+- Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
+
+- Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
+
+### Other changes
+
+- Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
+
+- Stop `faro.receiver` losing trace context when exception has stack trace. (@duartesaraiva98)
 
 v1.11.2
 -----------------
@@ -121,6 +167,8 @@ v1.11.0
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
+
+- Add the `otelcol.receiver.awsecscontainermetrics` receiver (from upstream OTEL contrib) to read AWS ECS task- and container-level resource usage metrics. (@gregbrowndev)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 

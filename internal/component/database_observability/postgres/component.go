@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/blang/semver/v4"
 	"github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -62,15 +64,23 @@ var (
 type Arguments struct {
 	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
+	Targets           []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
+	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
 	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
+	ExplainPlanArguments   ExplainPlanArguments   `alloy:"explain_plans,block,optional"`
+}
 
-	ExplainPlanArguments ExplainPlanArguments `alloy:"explain_plans,block,optional"`
+type CloudProvider struct {
+	AWS *AWSCloudProviderInfo `alloy:"aws,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
 }
 
 type QuerySampleArguments struct {
@@ -106,14 +116,12 @@ var DefaultArguments = Arguments{
 	ExplainPlanArguments: ExplainPlanArguments{
 		CollectInterval: 1 * time.Minute,
 		PerCollectRatio: 1.0,
-		InitialLookback: 24 * time.Hour,
 	},
 }
 
 type ExplainPlanArguments struct {
 	CollectInterval           time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio           float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback           time.Duration `alloy:"initial_lookback,attr,optional"`
 	ExplainPlanExcludeSchemas []string      `alloy:"explain_plan_exclude_schemas,attr,optional"`
 }
 
@@ -343,6 +351,19 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		startErrors = append(startErrors, errorString)
 	}
 
+	var cloudProviderInfo *database_observability.CloudProvider
+	if c.args.CloudProvider != nil && c.args.CloudProvider.AWS != nil {
+		arn, err := arn.Parse(c.args.CloudProvider.AWS.ARN)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to parse AWS cloud provider ARN", "err", err)
+		}
+		cloudProviderInfo = &database_observability.CloudProvider{
+			AWS: &database_observability.AWSCloudProviderInfo{
+				ARN: arn,
+			},
+		}
+	}
+
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	collectors := enableOrDisableCollectors(c.args)
@@ -385,6 +406,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
@@ -398,6 +420,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
+			DSN:             string(c.args.DataSourceName),
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
@@ -415,15 +438,18 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	}
 
 	if collectors[collector.ExplainPlanCollector] {
+		engineSemver, err := semver.ParseTolerant(engineVersion)
+		if err != nil {
+			logStartError(collector.ExplainPlanCollector, "parse version", err)
+		}
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlanArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			ScrapeInterval:  c.args.ExplainPlanArguments.CollectInterval,
-			PerScrapeRatio:  c.args.ExplainPlanArguments.PerCollectRatio,
-			Logger:          c.opts.Logger,
-			DBVersion:       engineVersion,
-			EntryHandler:    entryHandler,
-			InitialLookback: time.Now().Add(-c.args.ExplainPlanArguments.InitialLookback),
+			DB:             c.dbConnection,
+			DSN:            string(c.args.DataSourceName),
+			ScrapeInterval: c.args.ExplainPlanArguments.CollectInterval,
+			PerScrapeRatio: c.args.ExplainPlanArguments.PerCollectRatio,
+			Logger:         c.opts.Logger,
+			DBVersion:      engineSemver,
+			EntryHandler:   entryHandler,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)

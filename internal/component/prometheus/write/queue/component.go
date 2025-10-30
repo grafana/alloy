@@ -153,3 +153,7 @@ func (c *Queue) Appender(ctx context.Context) storage.Appender {
 	}
 	return &fanout{children: children}
 }
+
+func (c *Queue) String() string {
+	return c.opts.ID + ".receiver"
+}
