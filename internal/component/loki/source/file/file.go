@@ -264,7 +264,7 @@ func (c *Component) scheduleSources(args Arguments) {
 		if _, ok := shouldRun[source.Key()]; ok {
 			continue
 		}
-		c.scheduler.StopSource(source)
+		c.scheduler.StopSource(source) // stops without blocking
 	}
 }
 
