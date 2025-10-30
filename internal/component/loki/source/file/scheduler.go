@@ -62,7 +62,7 @@ func (s *Scheduler[K]) StopSource(source Source[K]) {
 	scheduledTask.cancel()
 }
 
-// Sources returns a iterator of all scheduled sources.
+// Sources returns an iterator of all scheduled sources.
 func (s *Scheduler[K]) Sources() iter.Seq[Source[K]] {
 	return func(yield func(Source[K]) bool) {
 		for _, scheduledSource := range s.sources {
