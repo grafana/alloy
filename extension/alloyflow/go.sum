@@ -1155,8 +1155,8 @@ github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe h1:yIXAAbLswn
 github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd h1:FW1Km8Z1mE8r/WLBAbX3LYv14DEZehdZTWOfF4qsqOY=
 github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd/go.mod h1:iEFA+REkm+0WRvVxy0cA1bBhJlFcQB998yymb45TqMU=
-github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024133138-bfa3c0a61c7a h1:lm2JF7rk5KAeSufsk5bVkqKGDdYMtEhePUmwwLbHLtY=
-github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024133138-bfa3c0a61c7a/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
+github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 h1:Ab3Z4AXC1Hffr4NbeYq0vTQhJbiGTTO2xd0ZV0kC1v8=
+github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2 h1:mg90SB3x+FADo1eBA+x111TiaoHG8nPsebA16CCspxg=
@@ -1882,6 +1882,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformpro
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.134.0/go.mod h1:7MO+zGYumZSBDa963QgxEnP5WwyRuwvlts4EGKki1l0=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.134.0 h1:pCuO5Q95uy/adfDB3uW6Jru7Wd9i37/l9DtG1G0S2Ek=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.134.0/go.mod h1:B2A6+/+hiHqnRosscKXeupWmRdYxayXjB+Muu7EMqRw=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0 h1:e2OWWuo7c83jTDjOPq2Wj2jLFNuzAIuuGheQksS9mdc=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0/go.mod h1:4j8SsaglqpF/F875+s+21S4+bvK7F2kcTZGeW5L8tq4=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0 h1:+fmQLSvtARPeqAmKZb+ph6KZnZQwgtcZ8vkK735ZYEc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0/go.mod h1:OVi4ezn2HvWvvQsfrQZ4xGhSaEGJg2R+x18jrJysg8E=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.134.0 h1:De16DTKSyXcHNGfGtyBZrqzVrAF0Gyt+X+mUdZhMhII=
