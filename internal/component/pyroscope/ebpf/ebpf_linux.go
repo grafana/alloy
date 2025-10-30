@@ -235,6 +235,8 @@ func NewDefaultArguments() Arguments {
 		DotNetEnabled:   true,
 		OffCPUThreshold: 0,
 		GoEnabled:       true,
+		LoadProbe:       false,
+		UProbeLinks:     []string{},
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
@@ -263,6 +265,8 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.LoadProbe = args.LoadProbe
+	cfg.UProbeLinks = args.UProbeLinks
 	return cfg, nil
 }
 
