@@ -62,6 +62,8 @@ Main (unreleased)
 
 - `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
+- Moved AutoScroll from `@brianmcallister/react-auto-scroll` into repo, moved checkbox from bottom of the page to the header and styled it with `@grafana/ui`. (@adnan-sujak)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
