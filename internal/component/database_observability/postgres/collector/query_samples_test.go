@@ -566,6 +566,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Contains(t, entries[0].Line, `cpu_time="10s"`)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+			require.Contains(t, entries[1].Line, `state="waiting"`)
 			require.Contains(t, entries[1].Line, `wait_time="7s"`)
 		}, 5*time.Second, 50*time.Millisecond)
 
@@ -624,6 +625,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Len(t, entries, 3)
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+			require.Contains(t, entries[1].Line, `state="waiting"`)
 			require.Contains(t, entries[1].Line, `blocked_by_pids="[103]"`)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
 			require.Contains(t, entries[2].Line, `blocked_by_pids="[103 104]"`)
