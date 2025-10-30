@@ -1,0 +1,40 @@
+livedebugging {
+  enabled = true
+}
+
+prometheus.exporter.static "default" {
+    text = `
+# HELP http_requests_total The total number of HTTP requests.
+# TYPE http_requests_total counter
+http_requests_total{method="post",code="200"} 1027
+http_requests_total{method="post",code="400"}    3
+
+# HELP http_request_duration_seconds A histogram of the request duration.
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.05"} 24054
+http_request_duration_seconds_bucket{le="0.1"} 33444
+http_request_duration_seconds_bucket{le="0.2"} 100392
+http_request_duration_seconds_bucket{le="0.5"} 129389
+http_request_duration_seconds_bucket{le="1"} 133988
+http_request_duration_seconds_bucket{le="+Inf"} 144320
+http_request_duration_seconds_sum 53423
+http_request_duration_seconds_count 144320
+    `
+}
+
+prometheus.scrape "default" {
+  targets    = prometheus.exporter.static.default.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+  external_labels = {
+    test_name = "static_exporter_test",
+  }
+}

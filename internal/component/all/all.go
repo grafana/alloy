@@ -102,6 +102,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch"           // Import otelcol.receiver.awscloudwatch
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awsecscontainermetrics"  // Import otelcol.receiver.awsecscontainermetrics
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/faro"                    // Import otelcol.receiver.faro
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats

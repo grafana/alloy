@@ -79,7 +79,7 @@ require (
 	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/grafana/pyroscope/lidia v0.0.0-20250716102313-506840f4afcd
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
-	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20250627131542-0c2feac3a700
+	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20251023151319-9baba332b98a
 	github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0
 	github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329
 	github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304
@@ -156,6 +156,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.134.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.134.0
@@ -184,7 +185,7 @@ require (
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.18.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
-	github.com/prometheus-community/windows_exporter v0.31.1 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
+	github.com/prometheus-community/windows_exporter v0.31.3 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.62.1
 	github.com/prometheus-operator/prometheus-operator v0.82.2
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2
@@ -1063,7 +1064,7 @@ replace (
 
 	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 	// this commit is on the refactor_collectors branch in the grafana fork.
-	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20250806062222-612bdf9540ec //refactor_collectors
+	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 //refactor_collectors
 )
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
