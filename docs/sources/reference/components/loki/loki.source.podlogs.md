@@ -10,7 +10,7 @@ labels:
 title: loki.source.podlogs
 ---
 
-# `loki.source.podlog
+# `loki.source.podlogs`
 
 `loki.source.podlogs` discovers `PodLogs` resources on Kubernetes.
 The `PodLogs` resources provide rules for which Kubernetes Pods to discover on your cluster.
