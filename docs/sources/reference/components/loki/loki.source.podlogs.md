@@ -54,8 +54,8 @@ Set `tail_from_end` to `true` to only read new logs from the point of discovery,
 If a last-read offset is already saved for a Pod, `loki.source.podlogs` will resume from that position and ignore the `tail_from_end` argument.
 
 When `preserve_discovered_labels` is `true`, `loki.source.podlogs` preserves discovered pod metadata labels so they can be accessed by downstream components.
-This enables component chaining where discovered pod metadata labels can be accessed by components like `loki.relabel`.
-The preserved labels include all the pod metadata labels that are available for relabeling within PodLogs custom resources.
+This enables component chaining where discovered Pod metadata labels can be accessed by components like `loki.relabel`.
+The preserved labels include all the Pod metadata labels that are available for relabeling within PodLogs custom resources.
 
 ## `PodLogs` custom resource
 
