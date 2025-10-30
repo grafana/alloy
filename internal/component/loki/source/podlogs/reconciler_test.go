@@ -7,6 +7,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/strutil"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -463,4 +464,17 @@ func TestNodeFilterConfiguration(t *testing.T) {
 	if r.getNodeFilterName() != "explicit-node" {
 		t.Errorf("expected explicit node name to take precedence, got '%s'", r.getNodeFilterName())
 	}
+}
+
+func TestPreserveDiscoveredLabels_MetaLabelPreservation(t *testing.T) {
+	// Create a reconciler with preserve discovered labels enabled
+	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r.UpdatePreserveMetaLabels(true)
+
+	// Verify the preserveMetaLabels field is set correctly
+	require.True(t, r.preserveMetaLabels)
+
+	// Test disabling meta label preservation
+	r.UpdatePreserveMetaLabels(false)
+	require.False(t, r.preserveMetaLabels)
 }
