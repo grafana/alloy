@@ -26,7 +26,6 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
   const [data, setData] = useState<DebugData[]>([]);
   const { error } = useGraph(setData, moduleID, window, enabled);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nodes, _, onNodesChange] = useNodesState(baseNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
 
