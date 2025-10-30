@@ -1,4 +1,5 @@
 import { BaseEdge, type EdgeProps, EdgeText, getBezierPath, getStraightPath } from '@xyflow/react';
+import { getSpecialPath } from './getSpecialPath';
 
 export type GetSpecialPathParams = {
   sourceX: number;
@@ -62,10 +63,3 @@ export default function CustomEdge({
     </>
   );
 }
-
-export const getSpecialPath = ({ sourceX, sourceY, targetX, targetY }: GetSpecialPathParams, offset: number) => {
-  const centerX = (sourceX + targetX) / 2;
-  const centerY = (sourceY + targetY) / 2;
-
-  return `M ${sourceX} ${sourceY} Q ${centerX} ${centerY + offset} ${targetX} ${targetY}`;
-};

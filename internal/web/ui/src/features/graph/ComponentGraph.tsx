@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { type Edge, type Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
 
-import { usePathPrefix } from '../../contexts/PathPrefixContext';
 import { useGraph } from '../../hooks/graph';
 import { parseID } from '../../utils/id';
 import type { ComponentInfo } from '../component/types';
@@ -11,6 +10,7 @@ import { type DebugData, DebugDataType, DebugDataTypeColorMap } from './debugDat
 import MultiEdge from './MultiEdge';
 
 import '@xyflow/react/dist/style.css';
+import { usePathPrefix } from '../../contexts/usePathPrefix';
 
 type GraphProps = {
   components: ComponentInfo[];

@@ -59,7 +59,7 @@ const ValueRenderer: FC<valueRendererProps> = (props) => {
       );
 
     case ValueType.OBJECT:
-      if (value.value.length === 0) {
+      { if (value.value.length === 0) {
         // No elements; return `{}` without any line breaks.
         return (
           <>
@@ -95,7 +95,7 @@ const ValueRenderer: FC<valueRendererProps> = (props) => {
           {getLinePrefix(props.indentLevel)}
           <span>&#125;</span>
         </>
-      );
+      ); }
 
     case ValueType.FUNCTION:
       return <span className={styles.special}>{value.value}</span>;
