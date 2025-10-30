@@ -316,7 +316,7 @@ type sourceOptions struct {
 	legacyPositionUsed  bool
 }
 
-// newSource will return return a decompressor source if enabeld, otherwise a tailer source.
+// newSource will return a decompressor source if enabled, otherwise a tailer source.
 func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], error) {
 	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
