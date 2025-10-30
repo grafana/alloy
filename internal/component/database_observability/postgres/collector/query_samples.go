@@ -428,7 +428,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 
 	queryText := state.LastRow.Query.String
 	if !c.disableQueryRedaction {
-		queryText = redact(queryText)
+		queryText = database_observability.RedactSql(queryText)
 	}
 
 	labels := fmt.Sprintf(
@@ -462,7 +462,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	}
 	queryText := state.LastRow.Query.String
 	if !c.disableQueryRedaction {
-		queryText = redact(queryText)
+		queryText = database_observability.RedactSql(queryText)
 	}
 	return fmt.Sprintf(
 		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,

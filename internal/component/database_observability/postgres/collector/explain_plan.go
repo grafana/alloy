@@ -130,7 +130,7 @@ func (p *PlanNode) ToExplainPlanOutputNode() (database_observability.ExplainPlan
 	}
 
 	if !strings.EqualFold(p.Filter, "") {
-		redacted := redact(p.Filter)
+		redacted := database_observability.RedactSql(p.Filter)
 		output.Details.Condition = &redacted
 	}
 
@@ -417,17 +417,10 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		uppercaseQueryText := strings.ToUpper(qi.queryText)
-		containsReservedWord := false
-		for _, word := range database_observability.ExplainReservedWordDenyList {
-			if strings.Contains(uppercaseQueryText, word) {
-				containsReservedWord = true
-				break
-			}
-		}
+		containsReservedWord := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList)
 
 		if containsReservedWord {
-			level.Debug(logger).Log("msg", "skipping query containing reserved word")
+			level.Debug(logger).Log("msg", "skipping query containing reserved word", "query", qi.queryText)
 			continue
 		}
 
@@ -457,7 +450,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		redactedByteExplainPlanJSON := redact(string(byteExplainPlanJSON))
+		redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
 
 		level.Debug(logger).Log("msg", "db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
 
@@ -527,8 +520,9 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 	defer conn.Close()
 
 	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
-	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName)
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)); err != nil {
+	preparedStatementText := fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)
+	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName, "preparedStatementText", preparedStatementText)
+	if _, err := conn.ExecContext(ctx, preparedStatementText); err != nil {
 		return nil, fmt.Errorf("failed to prepare explain plan: %w", err)
 	}
 

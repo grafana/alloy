@@ -568,14 +568,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		uppercaseQueryText := strings.ToUpper(qi.queryText)
-		containsReservedWord := false
-		for _, word := range database_observability.ExplainReservedWordDenyList {
-			if strings.Contains(uppercaseQueryText, word) {
-				containsReservedWord = true
-				break
-			}
-		}
+		containsReservedWord := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList)
 
 		if containsReservedWord {
 			level.Debug(logger).Log("msg", "skipping query containing reserved word")

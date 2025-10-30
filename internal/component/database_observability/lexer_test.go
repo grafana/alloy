@@ -1,4 +1,4 @@
-package collector
+package database_observability
 
 import (
 	"testing"
@@ -174,7 +174,7 @@ func TestPgSqlParser_Redact(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := redact(tt.sql)
+			got := RedactSql(tt.sql)
 			if got != tt.want {
 				t.Errorf("\nRedact()\nGOT:\n%s\nWANT:\n%s", got, tt.want)
 			}
@@ -276,7 +276,7 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := extractTableNames(tt.sql)
+			got, err := ExtractTableNames(tt.sql)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractTableNames() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -305,6 +305,164 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 						t.Errorf("ExtractTableNames() missing expected table = %v", table)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestContainsReservedKeywords(t *testing.T) {
+	reservedWords := []string{"INSERT", "UPDATE", "DELETE", "CREATE", "DROP"}
+
+	tests := []struct {
+		name     string
+		query    string
+		expected bool
+	}{
+		{
+			name:     "actual INSERT statement",
+			query:    "INSERT INTO users (name) VALUES ('John')",
+			expected: true,
+		},
+		{
+			name:     "SELECT with INSERT in string literal",
+			query:    "SELECT 'INSERT INTO table' FROM users",
+			expected: false,
+		},
+		{
+			name:     "SELECT with insert in column name",
+			query:    "SELECT insert_date FROM users",
+			expected: false,
+		},
+		{
+			name:     "SELECT with INSERT in comment",
+			query:    "SELECT * FROM users -- INSERT comment",
+			expected: false,
+		},
+		{
+			name:     "SELECT with INSERT in block comment",
+			query:    "SELECT * FROM users /* INSERT block comment */",
+			expected: false,
+		},
+		{
+			name:     "CREATE TABLE statement",
+			query:    "CREATE TABLE users (id INT, name VARCHAR(50))",
+			expected: true,
+		},
+		{
+			name:     "SELECT with CREATE in quoted identifier",
+			query:    `SELECT "create_date" FROM users`,
+			expected: false,
+		},
+		{
+			name:     "UPDATE statement",
+			query:    "UPDATE users SET name = 'John' WHERE id = 1",
+			expected: true,
+		},
+		{
+			name:     "SELECT with update in string",
+			query:    "SELECT * FROM users WHERE status = 'update_pending'",
+			expected: false,
+		},
+		{
+			name:     "DELETE statement",
+			query:    "DELETE FROM users WHERE id = 1",
+			expected: true,
+		},
+		{
+			name:     "SELECT with delete in table name",
+			query:    "SELECT * FROM delete_log",
+			expected: false,
+		},
+		{
+			name:     "plain SELECT statement",
+			query:    "SELECT * FROM users WHERE name = 'John'",
+			expected: false,
+		},
+		{
+			name:     "complex SELECT with joins",
+			query:    "SELECT u.name, p.title FROM users u JOIN posts p ON u.id = p.user_id",
+			expected: false,
+		},
+		{
+			name:     "SELECT with reserved word in WHERE clause string",
+			query:    "SELECT * FROM users WHERE description LIKE '%CREATE%'",
+			expected: false,
+		},
+		{
+			name:     "DROP statement",
+			query:    "DROP TABLE users",
+			expected: true,
+		},
+		{
+			name:     "SELECT with drop in column alias",
+			query:    "SELECT name AS drop_reason FROM users",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ContainsReservedKeywords(tt.query, reservedWords)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
+			}
+		})
+	}
+}
+
+func TestContainsReservedKeywords_WithActualDenyList(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    string
+		expected bool
+	}{
+		{
+			name:     "EXPLAIN statement should be detected",
+			query:    "EXPLAIN SELECT * FROM users",
+			expected: true,
+		},
+		{
+			name:     "SELECT with explain in string should not be detected",
+			query:    "SELECT 'explain this' FROM users",
+			expected: false,
+		},
+		{
+			name:     "PREPARE statement should be detected",
+			query:    "PREPARE stmt AS SELECT * FROM users WHERE id = $1",
+			expected: true,
+		},
+		{
+			name:     "SELECT with prepare in column name should not be detected",
+			query:    "SELECT prepare_date FROM users",
+			expected: false,
+		},
+		{
+			name:     "SET statement should be detected",
+			query:    "SET search_path TO public",
+			expected: true,
+		},
+		{
+			name:     "SELECT with set in string should not be detected",
+			query:    "SELECT 'set this value' FROM users",
+			expected: false,
+		},
+		{
+			name:     "SELECT with reserved word in quoted identifier",
+			query:    `SELECT "insert" FROM users`,
+			expected: false,
+		},
+		{
+			name:     "SELECT with reserved word in table alias",
+			query:    "SELECT * FROM users AS insert_table",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
 			}
 		})
 	}
