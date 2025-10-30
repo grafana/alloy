@@ -8,8 +8,9 @@ import (
 	"github.com/grafana/dskit/backoff"
 )
 
-// Scheduler is used to manage sources.
-// So it is up to the users to ensure proper synchronization.
+// Scheduler manages the lifecycle of sources.
+// It is not safe for concurrent use: callers must ensure proper synchronization
+// when accessing or modifying Scheduler and its sources from multiple goroutines.
 type Scheduler[K comparable] struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
