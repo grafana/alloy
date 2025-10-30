@@ -1194,8 +1194,8 @@ github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363/go.mod h1:dOdKpz09HRMtkSs8kba90eNmrL81E+LMotcP7eW9/ek=
-github.com/grafana/prometheus v1.8.2-0.20251020143145-59659a23710a h1:8sZp6S6gz2pk75KdsbszVyYWuIZhpMb71tElS6wpELk=
-github.com/grafana/prometheus v1.8.2-0.20251020143145-59659a23710a/go.mod h1:/7YQG/jOLg7ktxGritmdkZvezE1fa6aWDj0MGDIZvcY=
+github.com/grafana/prometheus v1.8.2-0.20251030104821-c9e0b31e9aeb h1:2xCFYA+z/QalOeJPq9FGQNI8Wv0YVzDtmPbYnWreoKs=
+github.com/grafana/prometheus v1.8.2-0.20251030104821-c9e0b31e9aeb/go.mod h1:sPbNW+KTS7WmzFIafC3Inzb6oZVaGLnSvwqTdz2jxRQ=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8 h1:iwOtYXeeVSAeYefJNaxDytgjKtUuKQbJqgAIjlnicKg=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.8/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.2.0 h1:SfHDZcEZ4Vbj/Jj3bTOSpm4IDB33wLA2xBYxROhiL4U=
@@ -2107,8 +2107,8 @@ github.com/prometheus/common v0.26.0/go.mod h1:M7rCNAaPfAosfx8veZJCuw84e35h3Cfd9
 github.com/prometheus/common v0.29.0/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.31.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.32.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
-github.com/prometheus/common v0.66.1 h1:h5E0h5/Y8niHc5DlaLlWLArTQI7tMrsfQjHV+d9ZoGs=
-github.com/prometheus/common v0.66.1/go.mod h1:gcaUsgf3KfRSwHY4dIMXLPV0K/Wg1oZ8+SbZk/HH/dA=
+github.com/prometheus/common v0.67.1 h1:OTSON1P4DNxzTg4hmKCc37o4ZAZDv0cfXLkOt0oEowI=
+github.com/prometheus/common v0.67.1/go.mod h1:RpmT9v35q2Y+lsieQsdOh5sXZ6ajUGC8NjZAmr8vb0Q=
 github.com/prometheus/common/assets v0.2.0 h1:0P5OrzoHrYBOSM1OigWL3mY8ZvV2N4zIE/5AahrSrfM=
 github.com/prometheus/common/assets v0.2.0/go.mod h1:D17UVUE12bHbim7HzwUvtqm6gwBEaDQ0F+hIGbFbccI=
 github.com/prometheus/common/sigv4 v0.1.0 h1:qoVebwtwwEhS85Czm2dSROY5fTo2PAPEVdDeppTwGX4=
