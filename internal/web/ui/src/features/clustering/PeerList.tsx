@@ -1,4 +1,4 @@
-import { PeerInfo } from '../clustering/types';
+import { type PeerInfo } from '../clustering/types';
 
 import Table from './Table';
 

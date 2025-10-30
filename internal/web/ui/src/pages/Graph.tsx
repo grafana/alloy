@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
 
 import { Slider } from '@grafana/ui';

@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import AutoScroll from '@brianmcallister/react-auto-scroll';
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -10,6 +8,7 @@ import Page from '../features/layout/Page';
 import { useLiveDebugging } from '../hooks/liveDebugging';
 
 import styles from './LiveDebugging.module.css';
+import { useParams } from 'react-router';
 
 function PageLiveDebugging() {
   const { '*': componentID } = useParams();
@@ -110,13 +109,11 @@ function PageLiveDebugging() {
     <Page name="Live Debugging" desc="Live feed of debug data" icon={faBug} controls={controls}>
       {loading && <p>Listening for incoming data...</p>}
       {error && <p>Error: {error}</p>}
-      <AutoScroll className={styles.autoScroll} height={document.body.scrollHeight - 260}>
         {filteredData.map((msg, index) => (
           <div className={styles.logLine} key={index}>
             {msg}
           </div>
         ))}
-      </AutoScroll>
     </Page>
   );
 }

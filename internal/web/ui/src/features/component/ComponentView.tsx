@@ -1,6 +1,6 @@
-import { FC, Fragment, ReactElement } from 'react';
-import { Link } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { type FC, Fragment, type ReactElement } from 'react';
+import { Link } from 'react-router';
+import { useLocation } from 'react-router';
 import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -10,7 +10,7 @@ import ComponentBody from './ComponentBody';
 import ComponentList from './ComponentList';
 import ForeachList from './ForeachList';
 import { HealthLabel } from './HealthLabel';
-import { ComponentDetail, ComponentInfo, PartitionedBody } from './types';
+import type { ComponentDetail, ComponentInfo, PartitionedBody } from './types';
 
 import styles from './ComponentView.module.css';
 

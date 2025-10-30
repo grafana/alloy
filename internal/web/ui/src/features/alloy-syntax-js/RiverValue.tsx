@@ -1,6 +1,6 @@
-import { FC, Fragment, ReactElement } from 'react';
+import { type FC, Fragment, type ReactElement } from 'react';
 
-import { ObjectField, Value, ValueType } from './types';
+import { type ObjectField, type Value, ValueType } from './types';
 
 import styles from './AlloyValue.module.css';
 

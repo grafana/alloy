@@ -34,6 +34,7 @@ RUN choco install make --version 4.3 -y
 RUN choco install docker-cli --version 20.10.22 -y
 RUN choco install git --version 2.39.0 -y
 
+# TODOJOE: Switch to npm
 #
 # React App Dependencies
 #

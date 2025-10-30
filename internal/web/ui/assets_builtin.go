@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-//go:generate yarn
-//go:generate yarn run build
+//go:generate npm install
+//go:generate npm run build
 
 //go:embed build
 var builtinAssetsTarball embed.FS

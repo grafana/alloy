@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 
 import { HealthLabel } from '../component/HealthLabel';
-import { ComponentDetail, ComponentInfo, SortOrder } from '../component/types';
+import { type ComponentDetail, type ComponentInfo, SortOrder } from '../component/types';
 
 import Table from './Table';
 

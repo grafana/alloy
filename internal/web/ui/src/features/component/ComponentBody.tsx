@@ -3,7 +3,7 @@ import { Fragment } from 'react';
 import { alloyStringify } from '../alloy-syntax-js/stringify';
 
 import Table from './Table';
-import { PartitionedBody } from './types';
+import { type PartitionedBody } from './types';
 
 import styles from './ComponentView.module.css';
 
@@ -17,7 +17,7 @@ const ComponentBody = ({ partition }: ComponentBodyProps) => {
   const sectionClass = partition.key.length === 1 ? '' : styles.nested;
 
   const renderTableData = () => {
-    return partition.attrs.map(({ name, value }, index) => {
+    return partition.attrs.map(({ name, value }) => {
       const stringifiedValue = alloyStringify(value);
 
       return (

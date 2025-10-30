@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { DebugData } from '../features/graph/debugDataType';
+import { type DebugData } from '../features/graph/debugDataType';
 
 export const useGraph = (
   setData: React.Dispatch<React.SetStateAction<DebugData[]>>,

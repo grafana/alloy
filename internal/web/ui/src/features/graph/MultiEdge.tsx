@@ -9,8 +9,6 @@ export type GetSpecialPathParams = {
 
 // This is a custom edge because by default the xyflow library does not support multi-edges between two nodes.
 export default function CustomEdge({
-  source,
-  target,
   sourceX,
   sourceY,
   targetX,

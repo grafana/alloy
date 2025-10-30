@@ -1,4 +1,4 @@
-import { CSSProperties } from 'react';
+import { type CSSProperties } from 'react';
 
 import TableHead from './TableHead';
 import { SortOrder } from './types';

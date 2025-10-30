@@ -1,7 +1,7 @@
 import dagre from '@dagrejs/dagre';
-import { Edge, Node, Position } from '@xyflow/react';
+import { type Edge, type Node, Position } from '@xyflow/react';
 
-import { ComponentInfo } from '../component/types';
+import type { ComponentInfo } from '../component/types';
 
 import { DebugDataType } from './debugDataType';
 import { estimatedWidthOfNode } from './nodeUtils';

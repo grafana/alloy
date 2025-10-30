@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ComponentInfo } from '../features/component/types';
+import { type ComponentInfo } from '../features/component/types';
 
 /**
  * useComponentInfo retrieves the list of components from the API.
