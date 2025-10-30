@@ -310,12 +310,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
-	var metadataStore prometheus.UpdateableMetadataStore
-	if args.HonorMetadata {
-		metadataStore = prometheus.NewMetadataStore()
-	} else {
-		metadataStore = prometheus.NoopMetadataStore{}
-	}
+	metadataStore := prometheus.NoopMetadataStore{}
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls, metadataStore)
 	scrapeOptions := &scrape.Options{
