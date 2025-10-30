@@ -32,7 +32,8 @@ const (
 	selectAllDatabases = `
 		SELECT datname 
 		FROM pg_database 
-		WHERE datistemplate = false`
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')`
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
