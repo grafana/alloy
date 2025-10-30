@@ -97,6 +97,8 @@ v1.11.3
 
 - Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
 
+- Stop `faro.receiver` losing trace context when exception has stack trace. (@duartesaraiva98)
+
 v1.11.2
 -----------------
 
