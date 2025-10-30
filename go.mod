@@ -14,7 +14,7 @@ require (
 	github.com/DataDog/go-sqllexer v0.1.6
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector v0.53.0
 	github.com/IBM/sarama v1.46.0
-	github.com/KimMachineGun/automemlimit v0.7.1
+	github.com/KimMachineGun/automemlimit v0.7.3
 	github.com/Lusitaniae/apache_exporter v0.11.1-0.20220518131644-f9522724dab4
 	github.com/Masterminds/goutils v1.1.1
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -57,7 +57,7 @@ require (
 	github.com/google/cadvisor v0.47.0
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
 	github.com/google/go-cmp v0.7.0
-	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6
+	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a
 	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -503,7 +503,7 @@ require (
 	github.com/axiomhq/hyperloglog v0.2.5 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bboreham/go-loser v0.0.0-20230920113527-fcc2c21820a3 // indirect
-	github.com/beevik/ntp v1.3.0 // indirect
+	github.com/beevik/ntp v1.4.3 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
@@ -539,7 +539,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/deneonet/benc v1.1.7 // indirect
-	github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 // indirect
+	github.com/dennwc/btrfs v0.0.0-20240418142341-0167142bde7a // indirect
 	github.com/dennwc/ioctl v1.0.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
@@ -698,7 +698,6 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/joyent/triton-go v1.8.5 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/jsimonetti/rtnetlink v1.4.2 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/kamstrup/intmap v0.5.1 // indirect
 	github.com/karrick/godirwalk v1.17.0 // indirect
@@ -724,13 +723,13 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-xmlrpc v0.0.3 // indirect
-	github.com/mdlayher/ethtool v0.1.0 // indirect
+	github.com/mdlayher/ethtool v0.2.0 // indirect
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/kobject v0.0.0-20200520190114-19ca17470d7d // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/mdlayher/vsock v1.2.1 // indirect
-	github.com/mdlayher/wifi v0.1.0 // indirect
+	github.com/mdlayher/wifi v0.3.1 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
 	github.com/microsoft/go-mssqldb v1.9.2 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
@@ -982,7 +981,7 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/zorkian/go-datadog-api.v2 v2.30.0 // indirect
-	howett.net/plist v1.0.0 // indirect
+	howett.net/plist v1.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.33.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
@@ -996,6 +995,7 @@ require (
 )
 
 require (
+	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect
 	github.com/go-openapi/swag/conv v0.25.1 // indirect
 	github.com/go-openapi/swag/fileutils v0.25.1 // indirect
@@ -1007,6 +1007,10 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.1 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
+	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
+	github.com/jsimonetti/rtnetlink/v2 v2.0.3 // indirect
+	github.com/stackitcloud/stackit-sdk-go/core v0.17.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.
@@ -1022,58 +1026,10 @@ require (
 // (i.e., creating a new Go module with the same source) or picking a different
 // dependency.
 
-// TODO: remove this replace directive once the upstream issue is fixed: https://github.com/prometheus/prometheus/issues/13842
-replace go.opentelemetry.io/collector/featuregate => github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 // feature-gate-registration-error-handler branch
-
 // Replace directives from Prometheus
-replace github.com/fsnotify/fsnotify v1.8.0 => github.com/fsnotify/fsnotify v1.7.0
-
 // TODO: remove replace directive once:
 // * There is a release of Prometheus which addresses https://github.com/prometheus/prometheus/issues/14049,
 // for example, via this implementation: https://github.com/grafana/prometheus/pull/34
-replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20250811161144-6e21f656d8e5 // staleness_disabling_v3.4.2 branch
-
-replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
-
-// Replace directives from Loki
-replace (
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
-	github.com/Azure/azure-storage-blob-go => github.com/MasslessParticle/azure-storage-blob-go v0.14.1-0.20240322194317-344980fda573
-	// Use fork of gocql that has gokit logs and Prometheus metrics.
-	github.com/gocql/gocql => github.com/grafana/gocql v0.0.0-20200605141915-ba5dc39ece85
-	// Insist on the optimised version of grafana/regexp
-	github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
-	// Replace memberlist with our fork which includes some fixes that haven't been
-	// merged upstream yet.
-	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
-	// leodido fork his project to continue support
-	github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.2.0
-	// Loki needs a NormalizeLabel function which has been removed from the latest version of the translator
-	github.com/prometheus/otlptranslator => github.com/prometheus/otlptranslator v0.0.0-20250414121140-35db323fe9fb
-	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
-)
-
-// TODO(rfratto): remove forks when changes are merged upstream
-replace (
-	// TODO(tpaschalis) this is to remove global instantiation of plugins
-	// and allow non-singleton components.
-	// https://github.com/grafana/cadvisor/tree/grafana-v0.47-noglobals
-	github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
-
-	// TODO(dehaansa,cristiangreco): this tracks the exporter-package-v0.18.1 branch of the grafana fork,
-	// which we could get rid of once the changes are merged upstream.
-	github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
-
-	// TODO(marctc): remove once this PR is merged upstream: https://github.com/prometheus/mysqld_exporter/pull/774
-	github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
-
-	// TODO(marctc, mattdurham): Replace node_export with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
-	// this commit is on the refactor_collectors branch in the grafana fork.
-	github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 //refactor_collectors
-)
-
-replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
-
 // Submodules.
 replace github.com/grafana/alloy/syntax => ./syntax
 
@@ -1088,34 +1044,6 @@ replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrum
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c
 
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace k8s.io/client-go => k8s.io/client-go v0.32.6
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace k8s.io/api => k8s.io/api v0.32.6
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace go.opentelemetry.io/collector/pdata/pprofile => go.opentelemetry.io/collector/pdata/pprofile v0.135.0
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace go.opentelemetry.io/collector/pdata => go.opentelemetry.io/collector/pdata v1.41.0
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace go.opentelemetry.io/collector/pdata/testdata => go.opentelemetry.io/collector/pdata/testdata v0.135.0
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace k8s.io/apimachinery => k8s.io/apimachinery v0.33.5
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
-
-// TODO - remove this once otel updates to go 1.24 & k8s client 0.33.x
-replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
-
 // Do not remove this until the bug breaking backwards compatibility is resolved & included in walqueue: https://github.com/deneonet/benc/issues/13
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
-
 // Pin runc to v1.1.12 to maintain compatibility with cadvisor that requires libcontainer/cgroups packages
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.6
-
-replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
