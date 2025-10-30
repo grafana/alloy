@@ -334,7 +334,7 @@ loki.write "local" {
 }
 ```
 
-This example shows how to preserve discovered pod labels for use by downstream components:
+This example shows how to preserve discovered Pod labels for use by downstream components:
 
 ```alloy
 loki.source.podlogs "with_label_preservation" {
