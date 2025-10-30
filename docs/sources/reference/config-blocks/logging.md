@@ -83,7 +83,7 @@ You can retrieve the logs in different ways depending on your platform and insta
 **Windows:**
 
 * If you're running {{< param "PRODUCT_NAME" >}} as a Windows service, check the Windows Event Viewer under **Windows Logs** > **Application** for Alloy-related events.
-* If you're running {{< param "PRODUCT_NAME" >}} with Chocolatey or manually installed, check the log files in `%PROGRAMDATA%\Grafana\Alloy\logs\` or the directory specified in your configuration.
+* If you manually installed {{< param "PRODUCT_NAME" >}}, check the log files in `%PROGRAMDATA%\Grafana\Alloy\logs\` or the directory specified in your configuration.
 * If you're running {{< param "PRODUCT_NAME" >}} in a Docker container, use `docker logs CONTAINER_ID`.
 
 **All platforms:**
