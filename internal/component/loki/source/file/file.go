@@ -151,11 +151,11 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}()
-		c.schedulerMut.RLock()
+		c.schedulerMut.Lock()
 		c.stopping.Store(true)
 		c.scheduler.Stop()
 		close(c.handler.Chan())
-		c.schedulerMut.RUnlock()
+		c.schedulerMut.Unlock()
 	}()
 
 	for {
@@ -259,12 +259,20 @@ func (c *Component) scheduleSources(args Arguments) {
 		c.scheduler.ScheduleSource(source)
 	}
 
-	// Stop all sources that we no longer should consume.
+	var toDelete []Source[positions.Entry]
+
+	// It's a bad pattern to mutate a collection
+	// while iterating over it so we collect them here
+	// and stop them in a seperate loop after.
 	for source := range c.scheduler.Sources() {
 		if _, ok := shouldRun[source.Key()]; ok {
 			continue
 		}
-		c.scheduler.StopSource(source) // stops without blocking
+		toDelete = append(toDelete, source)
+	}
+
+	for _, s := range toDelete {
+		c.scheduler.StopSource(s) // stops without blocking
 	}
 }
 
