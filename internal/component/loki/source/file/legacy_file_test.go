@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -51,7 +52,7 @@ log 5
 	require.NoError(t, logFile.Close())
 
 	ctx := componenttest.TestContext(t)
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
 	require.NoError(t, err)
 
 	rec := loki.NewLogsReceiver()
