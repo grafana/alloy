@@ -276,7 +276,7 @@ func TestForwardingToAppendable(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, timestamp, receivedTs)
-	require.Len(t, receivedSamples, 1)
+	require.Equal(t, receivedSamples.Len(), 1)
 	require.Equal(t, sample, receivedSamples)
 
 	// Verify metadata was received correctly

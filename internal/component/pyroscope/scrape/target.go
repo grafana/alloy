@@ -19,7 +19,6 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,30 +60,40 @@ type Target struct {
 // NewTarget creates a reasonably configured target for querying.
 func NewTarget(lbls labels.Labels, params url.Values) *Target {
 	godeltaprof := false
-	var publicLabels labels.Labels
+
 	// lbls are sorted. Private labels goes before public labels.
 	// find pivot to calculate publicLabels as subslice, with no allocations
-	for i, l := range lbls {
+
+	lblsBuilder := labels.NewBuilder(lbls)
+	publicLabelsBuilder := labels.NewScratchBuilder(0)
+
+	lbls.Range(func(l labels.Label) {
 		if strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
 			// the fact that godeltaprof was used scraping should not be user visible
 			if l.Name == model.MetricNameLabel {
 				switch l.Value {
 				case pprofGoDeltaProfMemory:
-					lbls[i].Value = pprofMemory
+					lblsBuilder.Set(l.Name, pprofMemory)
 					godeltaprof = true
 				case pprofGoDeltaProfBlock:
-					lbls[i].Value = pprofBlock
+					lblsBuilder.Set(l.Name, pprofBlock)
 					godeltaprof = true
 				case pprofGoDeltaProfMutex:
-					lbls[i].Value = pprofMutex
+					lblsBuilder.Set(l.Name, pprofMutex)
 					godeltaprof = true
 				}
 			}
-			continue
+			return
 		}
-		publicLabels = lbls[i:]
-		break
-	}
+
+		publicLabelsBuilder.Add(l.Name, l.Value)
+	})
+
+	lbls = lblsBuilder.Labels()
+
+	publicLabelsBuilder.Sort()
+	publicLabels := publicLabelsBuilder.Labels()
+
 	url := urlFromTarget(lbls, params)
 
 	h := fnv.New64a()
@@ -108,9 +117,9 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 		newParams[k] = make([]string, len(v))
 		copy(newParams[k], v)
 	}
-	for _, l := range lbls {
+	lbls.Range(func(l labels.Label) {
 		if !strings.HasPrefix(l.Name, model.ParamLabelPrefix) {
-			continue
+			return
 		}
 		ks := l.Name[len(model.ParamLabelPrefix):]
 
@@ -119,7 +128,7 @@ func urlFromTarget(lbls labels.Labels, params url.Values) string {
 		} else {
 			newParams[ks] = []string{l.Value}
 		}
-	}
+	})
 
 	return (&url.URL{
 		Scheme:   lbls.Get(model.SchemeLabel),
@@ -256,7 +265,7 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 	}
 	addr := lb.Get(model.AddressLabel)
 	if addr == "" {
-		return nil, errors.New("no address")
+		return labels.EmptyLabels(), errors.New("no address")
 	}
 
 	// addPort checks whether we should add a default port to the address.
@@ -281,13 +290,13 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 		case "https": //nolint:goconst
 			addr = addr + ":443"
 		default:
-			return nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)
+			return labels.EmptyLabels(), fmt.Errorf("invalid scheme: %q", cfg.Scheme)
 		}
 		lb.Set(model.AddressLabel, addr)
 	}
 
 	if err := config.CheckTargetAddress(model.LabelValue(addr)); err != nil {
-		return nil, err
+		return labels.EmptyLabels(), err
 	}
 
 	// Default the instance label to the target address.
@@ -300,14 +309,15 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 	}
 
 	res = lb.Labels()
-	for _, l := range res {
-		// Check label values are valid, drop the target if not.
+	err = res.Validate(func(l labels.Label) error {
 		if !model.LabelValue(l.Value).IsValid() {
-			return nil, fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
+			return fmt.Errorf("invalid label value for %q: %q", l.Name, l.Value)
 		}
-	}
 
-	return res, nil
+		return nil
+	})
+
+	return res, err
 }
 
 // targetsFromGroup builds targets based on the given TargetGroup, config and target types map.
@@ -317,17 +327,20 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 	)
 
 	for i, tlset := range group.Targets {
-		lbls := make(labels.Labels, 0, len(tlset)+len(group.Labels))
+		builder := labels.NewScratchBuilder(len(tlset) + len(group.Labels))
 
 		for ln, lv := range tlset {
-			lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
+			builder.Add(string(ln), string(lv))
 		}
+
 		for ln, lv := range group.Labels {
 			if _, ok := tlset[ln]; !ok {
-				lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
+				builder.Add(string(ln), string(lv))
 			}
 		}
-		slices.SortFunc(lbls, func(a, b labels.Label) int { return strings.Compare(a.Name, b.Name) })
+
+		builder.Sort()
+		lbls := builder.Labels()
 
 		lsets := labelsByProfiles(lbls, &cfg.ProfilingConfig)
 

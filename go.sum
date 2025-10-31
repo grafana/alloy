@@ -1214,8 +1214,8 @@ github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0 h1:bjh0PVYSVVFxzINqPF
 github.com/grafana/tail v0.0.0-20230510142333-77b18831edf0/go.mod h1:7t5XR+2IA8P2qggOAHTj/GCZfoLBle3OvNSYh1VkRBU=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
-github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304 h1:0Mllr6XQcAzwxGh/zHQbL/BtVGNRzRmIRBZRHqTiG3E=
-github.com/grafana/walqueue v0.0.0-20250919134944-0471c03aa304/go.mod h1:RokiltsxYrF3qitnIdaFBGLz5UrCo7DZMMoJrrzHyPc=
+github.com/grafana/walqueue v0.0.0-20251021201828-bb0dba7569b6 h1:BZiTUhZ9DDm9rjf/MP+zdTwnjhwatuLCu6zJv/1qzQ0=
+github.com/grafana/walqueue v0.0.0-20251021201828-bb0dba7569b6/go.mod h1:RokiltsxYrF3qitnIdaFBGLz5UrCo7DZMMoJrrzHyPc=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=

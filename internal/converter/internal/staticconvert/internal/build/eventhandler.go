@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	eventhandler_v2 "github.com/grafana/alloy/internal/static/integrations/v2/eventhandler"
 	"github.com/grafana/alloy/syntax/scanner"
+	"github.com/prometheus/prometheus/model/labels"
 )
 
 func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
@@ -31,7 +32,7 @@ func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 	}
 
 	receiver := getLogsReceiver(config)
-	if len(config.ExtraLabels) > 0 {
+	if config.ExtraLabels.Len() > 0 {
 		receiver = b.injectExtraLabels(config, receiver, compLabel)
 	}
 
@@ -46,7 +47,7 @@ func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 
 func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver, compLabel string) common.ConvertLogsReceiver {
 	var relabelConfigs []*alloy_relabel.Config
-	for _, extraLabel := range config.ExtraLabels {
+	config.ExtraLabels.Range(func(extraLabel labels.Label) {
 		defaultConfig := alloy_relabel.DefaultRelabelConfig
 		relabelConfig := &defaultConfig
 		relabelConfig.SourceLabels = []string{"__address__"}
@@ -54,7 +55,7 @@ func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiv
 		relabelConfig.Replacement = extraLabel.Value
 
 		relabelConfigs = append(relabelConfigs, relabelConfig)
-	}
+	})
 
 	relabelArgs := relabel.Arguments{
 		ForwardTo:      []loki.LogsReceiver{receiver},
