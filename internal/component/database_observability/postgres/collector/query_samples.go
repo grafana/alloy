@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -109,6 +110,10 @@ type QuerySamples struct {
 	disableQueryRedaction bool
 	throttleInterval      time.Duration
 	lastEmittedByQueryID  map[int64]time.Time
+	adptiveShortInterval  time.Duration
+	adaptiveRemaining     int
+	adaptiveCooldown      int
+	adaptiveCycles        int
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -122,6 +127,8 @@ type QuerySamples struct {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	// Compute adaptive short-polling parameters based on the collection interval.
+	shortInterval, cycles := computeAdaptiveShortPolling(args.CollectInterval)
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -133,6 +140,9 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		emitted:               map[SampleKey]time.Time{},
 		throttleInterval:      args.ThrottleInterval,
 		lastEmittedByQueryID:  map[int64]time.Time{},
+		adptiveShortInterval:  shortInterval,
+		adaptiveCooldown:      0,
+		adaptiveCycles:        cycles,
 	}, nil
 }
 
@@ -147,6 +157,12 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
 
+	if c.throttleInterval < 30*time.Second {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.throttleInterval))
+	}
+
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with throttle interval: %s", c.throttleInterval))
+
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -158,17 +174,29 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 			c.running.Store(false)
 		}()
 
-		ticker := time.NewTicker(c.collectInterval)
-
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
+			// Decide next interval (adaptive short polling when active)
+			interval := c.collectInterval
+			if c.adaptiveRemaining > 0 {
+				interval = c.adptiveShortInterval
+				c.adaptiveRemaining--
+				// Arm a cooldown once the last short cycle completes
+				if c.adaptiveRemaining == 0 && c.adaptiveCooldown == 0 {
+					c.adaptiveCooldown = 1
+				}
+			} else if c.adaptiveCooldown > 0 {
+				// Enforce at least one base interval before re-arming
+				interval = c.collectInterval
+				c.adaptiveCooldown--
+			}
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-ticker.C:
+			case <-time.After(interval):
 				// continue loop
 			}
 		}
@@ -331,6 +359,12 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
+
+	if len(activeKeys) > 0 && c.adaptiveCooldown == 0 {
+		if c.adaptiveRemaining < c.adaptiveCycles {
+			c.adaptiveRemaining = c.adaptiveCycles
+		}
+	}
 	c.cleanupEmitted(time.Now())
 	return nil
 }
@@ -457,7 +491,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 
 	shouldEmit := true
-	if !isThrottleExempt(*state) && c.throttleInterval > 0 {
+	if !isThrottleExempt(state) && c.throttleInterval > 0 {
 		qid := state.LastRow.QueryID.Int64
 		if last, ok := c.lastEmittedByQueryID[qid]; ok {
 			if time.Since(last) < c.throttleInterval {
@@ -468,6 +502,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			c.lastEmittedByQueryID[qid] = time.Now()
 		}
 	}
+
 	if shouldEmit {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
@@ -475,19 +510,19 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			sampleLabels,
 			ts,
 		)
-	}
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
-		)
 	}
 
 	delete(c.samples, key)
@@ -615,9 +650,81 @@ func isIdleState(state string) bool {
 	return false
 }
 
-func isThrottleExempt(sample SampleState) bool {
-	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || sample.tracker.WaitEvents() == nil || sample.LastCpuTime == "" {
+func isThrottleExempt(sample *SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
 		return true
 	}
 	return false
+}
+
+// computeAdaptiveShortPolling derives the short-interval (s) and number of
+// short cycles (r) for adaptive polling, given the base collection interval (CI).
+//
+// Goals:
+//   - Adaptively increase sampling density when there is activity, to better
+//     approximate query end times that occur between scrapes.
+//   - Keep overhead bounded: total short-poll window T = r*s must be < CI/2 to
+//     avoid race conditions with concurrent collectors and to limit DB load.
+//   - Ensure the short interval does not become too aggressive: floor at 100ms,
+//     and cap at 300ms for stability across large CIs.
+//
+// Heuristic (amplified root/log scaling):
+//
+//	s = clamp(CI/35, 100ms, 300ms)
+//	r_cap   = floor((CI/2 - 50ms) / s)
+//	r_shape = floor(2.5*sqrt(CI_seconds) + 1.2*log2(1 + CI_seconds) + 1)
+//	r       = min(r_cap, r_shape)
+//
+// Properties:
+//   - r*s is guaranteed < CI/2 via r_cap (with a small 50ms guard band).
+//   - s never increases as CI decreases due to the 100ms floor.
+//   - r grows sublinearly with CI (sqrt+log), which increases coverage for larger
+//     CIs without exploding the number of short cycles.
+
+// Examples:
+
+// CI=1s  → s=100ms, r=4  → T=400ms (40%)
+// CI=2s  → s=100ms, r=6  → T=600ms (30%)
+// CI=5s  → s≈143ms, r=9  → T≈1.29s (25.8%)
+// CI=10s → s≈286ms, r=13 → T≈3.72s (37.2%)
+// CI=30s → s=300ms, r=20 → T=6.0s (20%)
+
+func computeAdaptiveShortPolling(collectInterval time.Duration) (time.Duration, int) {
+	if collectInterval <= 0 {
+		return 150 * time.Millisecond, 0
+	}
+
+	ciSeconds := float64(collectInterval) / float64(time.Second)
+
+	// Short interval: clamp(CI/35, 100ms, 300ms)
+	s := time.Duration(float64(collectInterval) / 35.0)
+	if s < 100*time.Millisecond {
+		s = 100 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+
+	// Maximum cycles such that r*s < CI/2 (with 50ms guard)
+	guard := 50 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+	rCap := int(math.Floor(float64(capWindow) / float64(s)))
+	if rCap < 0 {
+		rCap = 0
+	}
+
+	// Shape-driven cycles: 2.5*sqrt(CI_s) + 1.2*log2(1+CI_s) + 1
+	rShape := int(math.Floor(2.5*math.Sqrt(ciSeconds) + 1.2*math.Log2(1.0+ciSeconds) + 1.0))
+	if rShape < 0 {
+		rShape = 0
+	}
+
+	r := rShape
+	if r > rCap {
+		r = rCap
+	}
+
+	return s, r
 }
