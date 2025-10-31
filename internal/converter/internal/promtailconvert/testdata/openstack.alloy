@@ -42,7 +42,9 @@ local.file_match "prometheus1" {
 }
 
 loki.source.file "prometheus1" {
-	targets               = local.file_match.prometheus1.targets
-	forward_to            = []
+	targets    = local.file_match.prometheus1.targets
+	forward_to = []
+
+	file_match { }
 	legacy_positions_file = "/var/log/positions.yaml"
 }

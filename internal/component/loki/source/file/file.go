@@ -248,10 +248,9 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// Choose resolver on FileMatch.
-	if newArgs.FileMatch.Enabled && !c.args.FileMatch.Enabled {
+	if newArgs.FileMatch.Enabled {
 		c.resolver = newGlobResolver()
-
-	} else if !newArgs.FileMatch.Enabled && c.args.FileMatch.Enabled {
+	} else {
 		c.resolver = newStaticResolver()
 	}
 
