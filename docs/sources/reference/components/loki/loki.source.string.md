@@ -7,9 +7,6 @@ labels:
   stage: general-availability
   products:
     - oss
-  stage: general-availability
-  products:
-    - oss
   tags:
     - text: Community
       tooltip: This component is developed, maintained, and supported by the Alloy user community.
