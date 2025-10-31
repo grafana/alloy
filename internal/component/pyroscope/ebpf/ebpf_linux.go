@@ -259,6 +259,7 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	}
 
 	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
