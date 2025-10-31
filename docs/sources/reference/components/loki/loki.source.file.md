@@ -19,9 +19,7 @@ You can specify multiple `loki.source.file` components by giving them different 
 
 {{< admonition type="note" >}}
 By default, `loki.source.file` requires absolute file paths in the `targets` argument.
-To discover files using glob patterns, you can either:
-- Enable the [`file_match`](#file_match) block (recommended) for built-in file discovery
-- Use the `local.file_match` component for file discovery and pass its targets to `loki.source.file`
+To discover files using glob patterns, you can either enable the [`file_match`](#file_match) block (recommended) for built-in file discovery, or use the `local.file_match` component for file discovery and pass its targets to `loki.source.file`.
 
 Refer to the [File globbing](#file-globbing) example for more information.
 {{< /admonition >}}
