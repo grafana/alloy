@@ -5,8 +5,8 @@ import (
 
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/util"
+	"github.com/grafana/alloy/internal/loki/ingester/wal"
+	"github.com/grafana/alloy/internal/loki/util"
 	walUtils "github.com/grafana/loki/v3/pkg/util/wal"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
