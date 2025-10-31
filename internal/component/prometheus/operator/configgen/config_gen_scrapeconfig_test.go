@@ -217,8 +217,9 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 					{TargetLabel: "__meta_foo", Replacement: "bar"},
 				},
 				ScrapeOptions: operator.ScrapeOptions{
-					DefaultScrapeInterval: time.Hour,
-					DefaultScrapeTimeout:  42 * time.Second,
+					DefaultScrapeInterval:  time.Hour,
+					DefaultScrapeTimeout:   42 * time.Second,
+					EnableNativeHistograms: false,
 				},
 			}
 			cfg, err := cg.generateStaticScrapeConfigConfig(tc.m, tc.ep, 1)

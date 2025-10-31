@@ -76,6 +76,8 @@ Main (unreleased)
 
 - Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
+- Fix the `prometheus.operator.*` components internal scrape manager now having a way to enable ingesting native histograms. (@dehaansa)
+
 v1.11.3
 -----------------
 
