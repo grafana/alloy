@@ -196,7 +196,7 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples might include query parameters.")
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
@@ -330,7 +330,7 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	if c.disableQueryRedaction {
 		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-			return fmt.Errorf("insufficient privilege to access query. sample set: %+v", sample)
+			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
 		}
 	}
 
