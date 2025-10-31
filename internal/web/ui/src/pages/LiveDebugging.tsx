@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import AutoScroll from '@brianmcallister/react-auto-scroll';
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import { Field, Input, Slider } from '@grafana/ui';
+import { Checkbox, Field, Input, Slider } from '@grafana/ui';
 
+import AutoScroll from '../features/component/auto-scroll/AutoScroll';
 import Page from '../features/layout/Page';
 import { useLiveDebugging } from '../hooks/liveDebugging';
 
@@ -19,6 +19,7 @@ function PageLiveDebugging() {
   const [sliderProb, setSliderProb] = useState(100);
   const [filterValue, setFilterValue] = useState('');
   const { loading, error } = useLiveDebugging(String(componentID), enabled, sampleProb, setData);
+  const [autoScroll, setAutoScroll] = useState(true);
 
   const filteredData = data.filter((n) => n.toLowerCase().includes(filterValue.toLowerCase()));
 
@@ -90,6 +91,14 @@ function PageLiveDebugging() {
 
   const controls = (
     <>
+      <Checkbox
+        value={autoScroll}
+        onChange={(event) => {
+          setAutoScroll(event.currentTarget.checked);
+        }}
+        label="Auto scroll"
+        className={styles.autoScrollCheckbox}
+      />
       {filterControl}
       {samplingControl}
       {toggleEnableButton()}
@@ -110,7 +119,12 @@ function PageLiveDebugging() {
     <Page name="Live Debugging" desc="Live feed of debug data" icon={faBug} controls={controls}>
       {loading && <p>Listening for incoming data...</p>}
       {error && <p>Error: {error}</p>}
-      <AutoScroll className={styles.autoScroll} height={document.body.scrollHeight - 260}>
+      <AutoScroll
+        className={styles.autoScroll}
+        height={document.body.scrollHeight - 182}
+        autoScroll={autoScroll}
+        setAutoScroll={setAutoScroll}
+      >
         {filteredData.map((msg, index) => (
           <div className={styles.logLine} key={index}>
             {msg}

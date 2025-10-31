@@ -105,3 +105,12 @@
   .autoScroll .logLine:nth-child(even) {
     background-color: rgb(250, 250, 250);
   }
+
+  .autoScrollCheckbox {
+    margin-right: 15px;
+
+    span {
+      font-size: 1em;
+      font-weight: normal;
+    }
+  }
