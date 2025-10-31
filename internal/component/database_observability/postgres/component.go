@@ -420,6 +420,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
+			DSN:             string(c.args.DataSourceName),
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
