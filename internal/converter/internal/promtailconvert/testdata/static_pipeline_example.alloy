@@ -79,8 +79,6 @@ loki.source.file "example" {
 		initial_delay = "30s"
 		format        = "z"
 	}
-
-	file_match { }
 	legacy_positions_file = "/var/log/positions.yaml"
 }
 

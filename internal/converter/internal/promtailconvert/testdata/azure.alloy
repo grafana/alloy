@@ -17,9 +17,7 @@ local.file_match "fun" {
 }
 
 loki.source.file "fun" {
-	targets    = local.file_match.fun.targets
-	forward_to = []
-
-	file_match { }
+	targets               = local.file_match.fun.targets
+	forward_to            = []
 	legacy_positions_file = "/var/log/positions.yaml"
 }
