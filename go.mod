@@ -994,11 +994,6 @@ require (
 )
 
 require (
-	github.com/google/go-github/v57 v57.0.0
-	github.com/openai/openai-go/v3 v3.6.1
-)
-
-require (
 	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect
 	github.com/go-openapi/swag/conv v0.25.1 // indirect
 	github.com/go-openapi/swag/fileutils v0.25.1 // indirect
@@ -1010,7 +1005,6 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.1 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
-	github.com/tidwall/sjson v1.2.5 // indirect
 )
 
 // NOTE: replace directives below must always be *temporary*.

@@ -6,7 +6,7 @@ Uses OpenAI to analyze PR diffs and post review comments on GitHub.
 
 **GitHub Mode** - Fetch diff from PR and post comment:
 ```bash
-go run ./tools/ai-review/ \
+go run -C tools ./ai-review \
   --slug="owner/repo" \
   --pr-number=123 \
   --prompt-file=".github/ai-review-prompts/dependency-review.md" \
@@ -15,7 +15,7 @@ go run ./tools/ai-review/ \
 
 **GitHub Mode (no comment)** - Fetch diff from PR but output to stdout (testing):
 ```bash
-go run ./tools/ai-review/ \
+go run -C tools ./ai-review \
   --slug="owner/repo" \
   --pr-number=123 \
   --prompt-file=".github/ai-review-prompts/dependency-review.md" \
@@ -24,7 +24,7 @@ go run ./tools/ai-review/ \
 
 **Stdin Mode** - Read diff from stdin and output to stdout:
 ```bash
-git diff main | go run ./tools/ai-review/ \
+git diff main | go run -C tools ./ai-review/ \
   --prompt-file=".github/ai-review-prompts/dependency-review.md"
 ```
 
