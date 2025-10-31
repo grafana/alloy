@@ -76,6 +76,9 @@ Main (unreleased)
 
 - Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
+- `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
+  A mixed histogram is one which has both classic and exponential buckets.
+
 v1.11.3
 -----------------
 
