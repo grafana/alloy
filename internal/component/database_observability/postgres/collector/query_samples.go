@@ -302,7 +302,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		if st, hadActive := c.samples[key]; hadActive {
 			st.markEndedAt(sample)
 			st.LastRow.State = sample.State
-			activeKeys[key] = struct{}{}
 			c.emitted[key] = sample.Now
 		} else if _, already := c.emitted[key]; !already {
 			// new idle sample not yet seen -> create a new sample state to track and emit it
