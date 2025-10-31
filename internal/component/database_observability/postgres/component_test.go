@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -363,6 +365,170 @@ func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testi
 	require.NoError(t, err)
 
 	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
+}
+
+func TestPostgres_schema_details_before_query_details_initialization(t *testing.T) {
+	t.Run("query_details receives tableRegistry when schema_details is enabled", func(t *testing.T) {
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+		}
+		args.SetToDefault()
+
+		mockDB := &sql.DB{}
+		c := &Component{
+			opts: cmp.Options{
+				ID:     "test.postgres",
+				Logger: kitlog.NewNopLogger(),
+				GetServiceData: func(name string) (interface{}, error) {
+					return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+				},
+			},
+			args:         args,
+			dbConnection: mockDB,
+			handler:      loki.NewLogsReceiver(),
+			instanceKey:  "test-instance",
+		}
+
+		entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, "test-system-id")
+		collectors := enableOrDisableCollectors(c.args)
+
+		var tableRegistry *collector.TableRegistry
+		if collectors[collector.SchemaDetailsCollector] {
+			stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
+				DB:              c.dbConnection,
+				DSN:             string(c.args.DataSourceName),
+				CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+				CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+				CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+				CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
+				EntryHandler:    entryHandler,
+				Logger:          c.opts.Logger,
+			})
+			require.NoError(t, err)
+			c.collectors = append(c.collectors, stCollector)
+			tableRegistry = stCollector.GetTableRegistry()
+		}
+
+		if collectors[collector.QueryDetailsCollector] {
+			qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+				DB:              c.dbConnection,
+				CollectInterval: c.args.QueryTablesArguments.CollectInterval,
+				EntryHandler:    entryHandler,
+				TableRegistry:   tableRegistry,
+				Logger:          c.opts.Logger,
+			})
+			require.NoError(t, err)
+			c.collectors = append(c.collectors, qCollector)
+		}
+
+		var schemaDetailsCollector *collector.SchemaDetails
+		var queryDetailsCollector *collector.QueryDetails
+
+		for _, col := range c.collectors {
+			switch c := col.(type) {
+			case *collector.SchemaDetails:
+				schemaDetailsCollector = c
+			case *collector.QueryDetails:
+				queryDetailsCollector = c
+			}
+		}
+
+		require.NotNil(t, schemaDetailsCollector, "schema_details collector should be created")
+		require.NotNil(t, queryDetailsCollector, "query_details collector should be created")
+
+		schemaRegistry := schemaDetailsCollector.GetTableRegistry()
+		require.NotNil(t, schemaRegistry, "schema_details should have a tableRegistry")
+
+		queryRegistry := queryDetailsCollector.GetTableRegistry()
+		require.NotNil(t, queryRegistry, "query_details should have a tableRegistry when schema_details is enabled")
+		assert.Same(t, schemaRegistry, queryRegistry, "query_details should receive the same tableRegistry instance from schema_details")
+
+		schemaIndex := -1
+		queryIndex := -1
+		for i, col := range c.collectors {
+			if _, ok := col.(*collector.SchemaDetails); ok {
+				schemaIndex = i
+			}
+			if _, ok := col.(*collector.QueryDetails); ok {
+				queryIndex = i
+			}
+		}
+		assert.True(t, schemaIndex < queryIndex, "schema_details should be initialized before query_details (schema_index=%d, query_index=%d)", schemaIndex, queryIndex)
+	})
+
+	t.Run("query_details has nil tableRegistry when schema_details is disabled", func(t *testing.T) {
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+		}
+		args.SetToDefault()
+		args.DisableCollectors = []string{collector.SchemaDetailsCollector}
+
+		mockDB := &sql.DB{}
+		c := &Component{
+			opts: cmp.Options{
+				ID:     "test.postgres",
+				Logger: kitlog.NewNopLogger(),
+				GetServiceData: func(name string) (interface{}, error) {
+					return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+				},
+			},
+			args:         args,
+			dbConnection: mockDB,
+			handler:      loki.NewLogsReceiver(),
+			instanceKey:  "test-instance",
+		}
+
+		entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, "test-system-id")
+		collectors := enableOrDisableCollectors(c.args)
+
+		require.False(t, collectors[collector.SchemaDetailsCollector], "schema_details should be disabled")
+		require.True(t, collectors[collector.QueryDetailsCollector], "query_details should be enabled")
+
+		var tableRegistry *collector.TableRegistry
+		if collectors[collector.SchemaDetailsCollector] {
+			stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
+				DB:              c.dbConnection,
+				DSN:             string(c.args.DataSourceName),
+				CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+				CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+				CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+				CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
+				EntryHandler:    entryHandler,
+				Logger:          c.opts.Logger,
+			})
+			require.NoError(t, err)
+			c.collectors = append(c.collectors, stCollector)
+			tableRegistry = stCollector.GetTableRegistry()
+		}
+
+		assert.Nil(t, tableRegistry, "tableRegistry should be nil when schema_details is disabled")
+
+		if collectors[collector.QueryDetailsCollector] {
+			qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+				DB:              c.dbConnection,
+				CollectInterval: c.args.QueryTablesArguments.CollectInterval,
+				EntryHandler:    entryHandler,
+				TableRegistry:   tableRegistry,
+				Logger:          c.opts.Logger,
+			})
+			require.NoError(t, err)
+			c.collectors = append(c.collectors, qCollector)
+		}
+
+		var queryDetailsCollector *collector.QueryDetails
+
+		for _, col := range c.collectors {
+			if qd, ok := col.(*collector.QueryDetails); ok {
+				queryDetailsCollector = qd
+				break
+			}
+		}
+
+		require.NotNil(t, queryDetailsCollector, "query_details collector should be created")
+
+		queryRegistry := queryDetailsCollector.GetTableRegistry()
+		assert.Nil(t, queryRegistry, "query_details should have a nil tableRegistry when schema_details is disabled")
+	})
 }
 
 func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *testing.T) {

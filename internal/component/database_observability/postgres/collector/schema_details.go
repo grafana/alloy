@@ -471,7 +471,6 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 			})
 
 			c.tableRegistry.AddTable(dbName, schema, tableName)
-			level.Debug(c.logger).Log("msg", "added table to registry", "table", tableName, "schema", schema, "datname", dbName)
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,

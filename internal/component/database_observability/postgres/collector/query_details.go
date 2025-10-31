@@ -77,6 +77,10 @@ func (c *QueryDetails) Name() string {
 	return QueryDetailsCollector
 }
 
+func (c *QueryDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
+}
+
 func (c *QueryDetails) Start(ctx context.Context) error {
 	level.Debug(c.logger).Log("msg", "collector started")
 
@@ -150,24 +154,11 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		if len(tables) == 0 {
-			level.Debug(c.logger).Log("msg", "no tables parsed from query", "queryid", queryID, "datname", databaseName)
-			continue
-		}
-
 		for _, table := range tables {
-			level.Debug(c.logger).Log("msg", "parsed table from query", "table", table, "datname", databaseName, "queryid", queryID)
-
-			if c.tableRegistry == nil {
-				level.Debug(c.logger).Log("msg", "tableRegistry is nil, allowing table through", "table", table, "datname", databaseName)
-			} else if !c.tableRegistry.HasDatabase(databaseName) {
-				level.Debug(c.logger).Log("msg", "database not in registry yet, allowing table through", "table", table, "datname", databaseName)
-			} else if !c.tableRegistry.IsValidTableInDatabase(databaseName, table) {
-				validTables := c.tableRegistry.GetAllTablesInDatabase(databaseName)
-				level.Debug(c.logger).Log("msg", "table not found in registry, skipping", "table", table, "datname", databaseName, "queryid", queryID, "valid_tables_in_db", validTables)
-				continue
-			} else {
-				level.Debug(c.logger).Log("msg", "table validated, emitting log", "table", table, "datname", databaseName, "queryid", queryID)
+			if c.tableRegistry != nil && c.tableRegistry.HasDatabase(databaseName) {
+				if !c.tableRegistry.IsValidTableInDatabase(databaseName, table) {
+					continue
+				}
 			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
