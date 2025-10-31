@@ -7,10 +7,15 @@ labels:
   stage: general-availability
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: loki.source.string
 ---
 
 # `loki.source.string`
+
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.source.string` receives log entries as string from other components and can be ingested to any loki component.
 
@@ -31,8 +36,8 @@ The components consumes the value from the source and converts them to log entri
 
 | Name                    | Type                 | Description                                                | Default | Required |
 | ----------------------- | -------------------- | ---------------------------------------------------------- | ------- | -------- |
-| `source`                | `string`             | A value pointing to a string source.                       |         | yes      |
 | `forward_to`            | `LogsReceiver`       | Receiver to send log entries to.                           |         | yes      |
+| `source`                | `string`             | A value pointing to a string source.                       |         | yes      |
 
 ## Blocks
 
@@ -64,3 +69,19 @@ loki.source.string "stringer" {
 }
 loki.echo "print" { }
 ```
+
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`loki.source.string` can accept arguments from the following components:
+
+- Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
+
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->
