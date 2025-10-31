@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -24,8 +25,11 @@ const (
 )
 
 const (
-	queryTextClause = ", s.query"
-	stateActive     = "active"
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -55,7 +59,6 @@ const selectPgStatActivity = `
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
 		s.pid != pg_backend_pid() AND
-		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
 			(
@@ -97,6 +100,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	ThrottleInterval      time.Duration
 }
 
 type QuerySamples struct {
@@ -104,6 +108,12 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	throttleInterval      time.Duration
+	lastEmittedByQueryID  map[int64]time.Time
+	adptiveShortInterval  time.Duration
+	adaptiveRemaining     int
+	adaptiveCooldown      int
+	adaptiveCycles        int
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -112,6 +122,96 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
+	// keep track of keys that were already emitted to avoid duplicates
+	emitted map[SampleKey]time.Time
+}
+
+func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	// Compute adaptive short-polling parameters based on the collection interval.
+	shortInterval, cycles := computeAdaptiveShortPolling(args.CollectInterval)
+	return &QuerySamples{
+		dbConnection:          args.DB,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:               &atomic.Bool{},
+		samples:               map[SampleKey]*SampleState{},
+		emitted:               map[SampleKey]time.Time{},
+		throttleInterval:      args.ThrottleInterval,
+		lastEmittedByQueryID:  map[int64]time.Time{},
+		adptiveShortInterval:  shortInterval,
+		adaptiveCooldown:      0,
+		adaptiveCycles:        cycles,
+	}, nil
+}
+
+func (c *QuerySamples) Name() string {
+	return QuerySamplesCollector
+}
+
+func (c *QuerySamples) Start(ctx context.Context) error {
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
+
+	if c.throttleInterval < 30*time.Second {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.throttleInterval))
+	}
+
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with throttle interval: %s", c.throttleInterval))
+
+	c.running.Store(true)
+	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
+	c.cancel = cancel
+
+	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}()
+
+		for {
+			if err := c.fetchQuerySample(c.ctx); err != nil {
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
+			}
+
+			// Decide next interval (adaptive short polling when active)
+			interval := c.collectInterval
+			if c.adaptiveRemaining > 0 {
+				interval = c.adptiveShortInterval
+				c.adaptiveRemaining--
+				// Arm a cooldown once the last short cycle completes
+				if c.adaptiveRemaining == 0 && c.adaptiveCooldown == 0 {
+					c.adaptiveCooldown = 1
+				}
+			} else if c.adaptiveCooldown > 0 {
+				// Enforce at least one base interval before re-arming
+				interval = c.collectInterval
+				c.adaptiveCooldown--
+			}
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-time.After(interval):
+				// continue loop
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (c *QuerySamples) Stopped() bool {
+	return !c.running.Load()
+}
+
+// Stop should be kept idempotent
+func (c *QuerySamples) Stop() {
+	c.cancel()
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -137,6 +237,26 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
+	// EndOverride is used to compute durations and timestamps when a query
+	// transitioned to idle or was only observed as idle.
+	EndOverride sql.NullTime
+}
+
+func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// markEndedAt sets EndOverride and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) markEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndOverride = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -178,68 +298,6 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 	return equalPIDSets(w.blockedBy, other.blockedBy)
 }
 
-func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-	}, nil
-}
-
-func (c *QuerySamples) Name() string {
-	return QuerySamplesCollector
-}
-
-func (c *QuerySamples) Start(ctx context.Context) error {
-	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
-	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
-	}
-
-	c.running.Store(true)
-	ctx, cancel := context.WithCancel(ctx)
-	c.ctx = ctx
-	c.cancel = cancel
-
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
-
-		ticker := time.NewTicker(c.collectInterval)
-
-		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
-			}
-
-			select {
-			case <-c.ctx.Done():
-				return
-			case <-ticker.C:
-				// continue loop
-			}
-		}
-	}()
-
-	return nil
-}
-
-func (c *QuerySamples) Stopped() bool {
-	return !c.running.Load()
-}
-
-// Stop should be kept idempotent
-func (c *QuerySamples) Stop() {
-	c.cancel()
-}
-
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	queryTextField := ""
 	if c.disableQueryRedaction {
@@ -269,8 +327,24 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		c.upsertActiveSample(key, sample)
-		activeKeys[key] = struct{}{}
+		if !isIdleState(sample.State.String) {
+			c.upsertActiveSample(key, sample)
+			activeKeys[key] = struct{}{}
+			continue
+		}
+
+		if st, hadActive := c.samples[key]; hadActive {
+			st.markEndedAt(sample)
+			st.LastRow.State = sample.State
+			c.emitted[key] = sample.Now
+		} else if _, already := c.emitted[key]; !already {
+			// new idle sample not yet seen -> create a new sample state to track and emit it
+			newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+			newIdleState.markEndedAt(sample)
+			newIdleState.LastRow.State = sample.State
+			c.samples[key] = newIdleState
+			c.emitted[key] = sample.Now
+		}
 	}
 
 	if err := rows.Err(); err != nil {
@@ -278,13 +352,20 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	// finalize samples that are no longer active
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
+	// finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
 	}
+
+	if len(activeKeys) > 0 && c.adaptiveCooldown == 0 {
+		if c.adaptiveRemaining < c.adaptiveCycles {
+			c.adaptiveRemaining = c.adaptiveCycles
+		}
+	}
+	c.cleanupEmitted(time.Now())
 	return nil
 }
 
@@ -350,6 +431,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTimeIfActive(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -396,43 +478,69 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state)
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		state.LastSeenAt.UnixNano(),
-	)
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+	var endOverride *time.Time
+	if state.EndOverride.Valid {
+		t := state.EndOverride.Time
+		endOverride = &t
+	}
+	sampleLabels := c.buildQuerySampleLabels(state, endOverride)
+	ts := state.LastSeenAt.UnixNano()
+	if endOverride != nil {
+		ts = endOverride.UnixNano()
+	}
+
+	shouldEmit := true
+	if !isThrottleExempt(state) && c.throttleInterval > 0 {
+		qid := state.LastRow.QueryID.Int64
+		if last, ok := c.lastEmittedByQueryID[qid]; ok {
+			if time.Since(last) < c.throttleInterval {
+				shouldEmit = false
+			}
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
+		if shouldEmit {
+			c.lastEmittedByQueryID[qid] = time.Now()
+		}
+	}
+
+	if shouldEmit {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
+			OP_QUERY_SAMPLE,
+			sampleLabels,
+			ts,
 		)
+
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
+func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *time.Time) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
+
+	end := state.LastRow.Now
+	if endOverride != nil {
+		end = *endOverride
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -458,6 +566,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		queryDuration,
 		state.LastRow.QueryID.Int64,
 	)
+
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
@@ -480,7 +589,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		we.LastState,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
@@ -490,6 +599,15 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
+}
+
+func (c *QuerySamples) cleanupEmitted(now time.Time) {
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
 
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
@@ -523,4 +641,90 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
+}
+
+func isThrottleExempt(sample *SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
+		return true
+	}
+	return false
+}
+
+// computeAdaptiveShortPolling derives the short-interval (s) and number of
+// short cycles (r) for adaptive polling, given the base collection interval (CI).
+//
+// Goals:
+//   - Adaptively increase sampling density when there is activity, to better
+//     approximate query end times that occur between scrapes.
+//   - Keep overhead bounded: total short-poll window T = r*s must be < CI/2 to
+//     avoid race conditions with concurrent collectors and to limit DB load.
+//   - Ensure the short interval does not become too aggressive: floor at 100ms,
+//     and cap at 300ms for stability across large CIs.
+//
+// Heuristic (amplified root/log scaling):
+//
+//	s = clamp(CI/35, 100ms, 300ms)
+//	r_cap   = floor((CI/2 - 50ms) / s)
+//	r_shape = floor(2.5*sqrt(CI_seconds) + 1.2*log2(1 + CI_seconds) + 1)
+//	r       = min(r_cap, r_shape)
+//
+// Properties:
+//   - r*s is guaranteed < CI/2 via r_cap (with a small 50ms guard band).
+//   - s never increases as CI decreases due to the 100ms floor.
+//   - r grows sublinearly with CI (sqrt+log), which increases coverage for larger
+//     CIs without exploding the number of short cycles.
+
+// Examples:
+
+// CI=1s  → s=100ms, r=4  → T=400ms (40%)
+// CI=2s  → s=100ms, r=6  → T=600ms (30%)
+// CI=5s  → s≈143ms, r=9  → T≈1.29s (25.8%)
+// CI=10s → s≈286ms, r=13 → T≈3.72s (37.2%)
+// CI=30s → s=300ms, r=20 → T=6.0s (20%)
+
+func computeAdaptiveShortPolling(collectInterval time.Duration) (time.Duration, int) {
+	if collectInterval <= 0 {
+		return 150 * time.Millisecond, 0
+	}
+
+	ciSeconds := float64(collectInterval) / float64(time.Second)
+
+	// Short interval: clamp(CI/35, 100ms, 300ms)
+	s := time.Duration(float64(collectInterval) / 35.0)
+	if s < 100*time.Millisecond {
+		s = 100 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+
+	// Maximum cycles such that r*s < CI/2 (with 50ms guard)
+	guard := 50 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+	rCap := int(math.Floor(float64(capWindow) / float64(s)))
+	if rCap < 0 {
+		rCap = 0
+	}
+
+	// Shape-driven cycles: 2.5*sqrt(CI_s) + 1.2*log2(1+CI_s) + 1
+	rShape := int(math.Floor(2.5*math.Sqrt(ciSeconds) + 1.2*math.Log2(1.0+ciSeconds) + 1.0))
+	if rShape < 0 {
+		rShape = 0
+	}
+
+	r := rShape
+	if r > rCap {
+		r = rCap
+	}
+
+	return s, r
 }

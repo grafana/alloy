@@ -26,6 +26,7 @@ Main (unreleased)
   - `explain_plans` added the explain plan collector (@rgeyer)
   - add `user` field to wait events within `query_samples` collector (@gaantunes)
   - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+  - consider idle states to calculate query sample times (@gaantunes)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
