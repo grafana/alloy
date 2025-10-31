@@ -232,10 +232,8 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	c.args = newArgs
-
 	// Choose resolver and watcher behavior based on FileMatch.
-	if newArgs.FileMatch.Enabled {
+	if newArgs.FileMatch.Enabled && !c.args.FileMatch.Enabled {
 		c.resolver = newGlobResolver()
 		// It is safe to take the lock in the callback function.
 		// We never invoke it directly and it's only called by the watcher.
@@ -244,10 +242,12 @@ func (c *Component) Update(args component.Arguments) error {
 			defer c.mut.Unlock()
 			c.scheduleSources()
 		})
-	} else {
+	} else if !newArgs.FileMatch.Enabled && c.args.FileMatch.Enabled {
 		c.resolver = newStaticResolver()
 		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {})
 	}
+
+	c.args = newArgs
 
 	c.scheduleSources()
 	return nil
