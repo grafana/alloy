@@ -14,14 +14,14 @@ func newWatcher(tick time.Duration, syncFn func()) *watcher {
 	return &watcher{
 		tick:   tick,
 		syncFn: syncFn,
-		ticker: *time.NewTicker(tick),
+		ticker: time.NewTicker(tick),
 	}
 }
 
 type watcher struct {
 	mu     sync.Mutex
 	tick   time.Duration
-	ticker time.Ticker
+	ticker *time.Ticker
 	syncFn func()
 }
 
