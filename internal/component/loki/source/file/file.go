@@ -35,8 +35,9 @@ func init() {
 }
 
 const (
-	labelPath     = "__path__"
-	labelFilename = "filename"
+	labelPath        = "__path__"
+	labelPathExclude = "__path_exclude__"
+	labelFilename    = "filename"
 )
 
 // Arguments holds values which are used to configure the loki.source.file
@@ -47,6 +48,7 @@ type Arguments struct {
 	Encoding            string              `alloy:"encoding,attr,optional"`
 	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
 	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
+	FileMatch           FileMatch           `alloy:"file_match,block,optional"`
 	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
 }
@@ -56,10 +58,20 @@ type FileWatch struct {
 	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
 }
 
+type FileMatch struct {
+	Enabled         bool          `alloy:"enabled,attr,optional"`
+	SyncPeriod      time.Duration `alloy:"sync_period,attr,optional"`
+	IgnoreOlderThan time.Duration `alloy:"ignore_older_than,attr,optional"`
+}
+
 var DefaultArguments = Arguments{
 	FileWatch: FileWatch{
 		MinPollFrequency: 250 * time.Millisecond,
 		MaxPollFrequency: 250 * time.Millisecond,
+	},
+	FileMatch: FileMatch{
+		Enabled:    false,
+		SyncPeriod: 10 * time.Second,
 	},
 }
 
@@ -78,11 +90,26 @@ var _ component.Component = (*Component)(nil)
 
 // Component implements the loki.source.file component.
 type Component struct {
-	opts    component.Options
+	opts component.Options
+
 	metrics *metrics
 
-	schedulerMut sync.RWMutex
-	scheduler    *Scheduler[positions.Entry]
+	// mut is used to protect access to args, resolver and scheduler.
+	mut sync.RWMutex
+	// args stores the latest configuration used by the component.
+	// Note: receivers are stored separately with their own lock to avoid
+	// unnecessary contention with scheduling operations.
+	args Arguments
+	// resolver translates discovery targets into concrete file paths. It can
+	// be swapped at runtime (e.g., static vs. globbing) when Update() applies
+	// new arguments.
+	resolver resolver
+	// scheduler owns the lifecycle of sources.
+	scheduler *Scheduler[positions.Entry]
+
+	// watcher is a background trigger that periodically invokes
+	// scheduling when file matching is enabled.
+	watcher *watcher
 
 	handler loki.LogsReceiver
 	posFile positions.Positions
@@ -115,13 +142,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:    o,
-		metrics: newMetrics(o.Registerer),
-
+		opts:      o,
+		metrics:   newMetrics(o.Registerer),
 		handler:   loki.NewLogsReceiver(),
 		receivers: args.ForwardTo,
 		posFile:   positionsFile,
 		scheduler: NewScheduler[positions.Entry](),
+		watcher:   newWatcher(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -136,9 +163,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
+
 		// We need to stop posFile first so we don't record entries we are draining
 		c.posFile.Stop()
-
 		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
 		drainCtx, cancelDrain := context.WithCancel(context.Background())
 		defer cancelDrain()
@@ -151,30 +178,40 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}()
-		c.schedulerMut.Lock()
+		c.mut.Lock()
 		c.stopping.Store(true)
 		c.scheduler.Stop()
 		close(c.handler.Chan())
-		c.schedulerMut.Unlock()
+		c.mut.Unlock()
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			for _, receiver := range c.receivers {
-				select {
-				case <-ctx.Done():
-					c.receiversMut.RUnlock()
-					return nil
-				case receiver.Chan() <- entry:
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case entry := <-c.handler.Chan():
+				c.receiversMut.RLock()
+				for _, receiver := range c.receivers {
+					select {
+					case <-ctx.Done():
+						c.receiversMut.RUnlock()
+						return
+					case receiver.Chan() <- entry:
+					}
 				}
+				c.receiversMut.RUnlock()
 			}
-			c.receiversMut.RUnlock()
 		}
-	}
+
+	})
+
+	wg.Go(func() { c.watcher.Run(ctx) })
+
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
@@ -183,8 +220,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// It's important to have the same lock order in Update and Run to avoid
 	// deadlocks.
-	c.schedulerMut.Lock()
-	defer c.schedulerMut.Unlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
 	c.receiversMut.RLock()
 	if receiversChanged(c.receivers, newArgs.ForwardTo) {
@@ -197,25 +234,41 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	c.scheduleSources(newArgs)
+	c.args = newArgs
+
+	// Choose resolver and watcher behavior based on FileMatch.
+	if newArgs.FileMatch.Enabled {
+		c.resolver = newGlobResolver()
+		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			c.scheduleSources()
+		})
+	} else {
+		c.resolver = newStaticResolver()
+		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {})
+	}
+
+	c.scheduleSources()
 	return nil
 }
 
-func (c *Component) scheduleSources(args Arguments) {
-	// shouldRun is used to track sources that should be running, either source we will schedule or
-	// sources that are already scheduled and should continue.
-	shouldRun := make(map[positions.Entry]struct{}, len(args.Targets))
+// scheduleSources resolves desired targets and reconciles the scheduler to
+// match the desired state.
+// Caller must hold write lock on c.mut before calling this function.
+func (c *Component) scheduleSources() {
+	// shouldRun tracks the set of unique (path, labels) pairs that should be
+	// active after this reconciliation pass, used to identify stale sources.
+	shouldRun := make(map[positions.Entry]struct{}, len(c.args.Targets))
 
-	for _, target := range args.Targets {
-		path, _ := target.Get(labelPath)
-
-		labels := target.NonReservedLabelSet()
+	for target, err := range c.resolver.Resolve(c.args.Targets) {
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to resolve target", "error", err)
+			continue
+		}
 
 		// Deduplicate targets which have the same public label set.
-		key := positions.Entry{Path: path, Labels: labels.String()}
-		// Avoid scheduling multiple tasks for the same file and label set.
-		// This ensures that each unique file/label combination is only tailed once,
-		// preventing redundant processing and resource contention.
+		key := positions.Entry{Path: target.Path, Labels: target.Labels.String()}
 		if _, ok := shouldRun[key]; ok {
 			continue
 		}
@@ -227,32 +280,37 @@ func (c *Component) scheduleSources(args Arguments) {
 			continue
 		}
 
-		fi, err := os.Stat(path)
+		fi, err := os.Stat(target.Path)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
-			c.metrics.totalBytes.DeleteLabelValues(path)
+			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", target.Path)
+			c.metrics.totalBytes.DeleteLabelValues(target.Path)
 			continue
 		}
 
 		if fi.IsDir() {
-			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
-			c.metrics.totalBytes.DeleteLabelValues(path)
+			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", target.Path)
+			c.metrics.totalBytes.DeleteLabelValues(target.Path)
 			continue
 		}
 
-		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+		if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 &&
+			fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
+			continue
+		}
+
+		c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
 		source, err := c.newSource(sourceOptions{
-			path:                path,
-			labels:              labels,
-			encoding:            args.Encoding,
-			decompressionConfig: args.DecompressionConfig,
-			fileWatch:           args.FileWatch,
-			tailFromEnd:         args.TailFromEnd,
-			legacyPositionUsed:  args.LegacyPositionsFile != "",
+			path:                target.Path,
+			labels:              target.Labels,
+			encoding:            c.args.Encoding,
+			decompressionConfig: c.args.DecompressionConfig,
+			fileWatch:           c.args.FileWatch,
+			tailFromEnd:         c.args.TailFromEnd,
+			legacyPositionUsed:  c.args.LegacyPositionsFile != "",
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create file source", "error", err, "filename", path)
+			level.Error(c.opts.Logger).Log("msg", "failed to create file source", "error", err, "filename", target.Path)
 			continue
 		}
 
@@ -261,9 +319,8 @@ func (c *Component) scheduleSources(args Arguments) {
 
 	var toDelete []Source[positions.Entry]
 
-	// It's a bad pattern to mutate a collection
-	// while iterating over it so we collect them here
-	// and stop them in a separate loop after.
+	// Avoid mutating the scheduler state during iteration. Collect sources to
+	// remove and stop them in a separate loop.
 	for source := range c.scheduler.Sources() {
 		if _, ok := shouldRun[source.Key()]; ok {
 			continue
@@ -291,8 +348,8 @@ type targetInfo struct {
 // TODO(@tpaschalis) Decorate with more debug information once it's made
 // available, such as the last time a log line was read.
 func (c *Component) DebugInfo() any {
-	c.schedulerMut.RLock()
-	defer c.schedulerMut.RUnlock()
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	var res debugInfo
 	for s := range c.scheduler.Sources() {
 		offset, _ := c.posFile.Get(s.Key().Path, s.Key().Labels)
