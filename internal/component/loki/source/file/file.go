@@ -141,6 +141,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	if args.FileMatch.SyncPeriod < 1 {
+		args.FileMatch.SyncPeriod = DefaultArguments.FileMatch.SyncPeriod
+	}
+
 	c := &Component{
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
@@ -254,7 +258,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.resolver = newStaticResolver()
 	}
 
-	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod {
+	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod && newArgs.FileMatch.SyncPeriod < 0 {
 		c.watcher.Reset(newArgs.FileMatch.SyncPeriod)
 	}
 
