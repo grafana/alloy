@@ -30,3 +30,47 @@ prometheus.write.queue "prom_metadata" {
         }
     }
 }
+
+prometheus.scrape "prom_metadata_otlp" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+  params = { "metric-prefix" = ["prom_metadata_otlp_"] }
+  forward_to = [
+    otelcol.receiver.prometheus.prom_metadata.receiver,
+  ]
+  scrape_classic_histograms = true
+  scrape_native_histograms = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  // Required for metadata support
+  honor_metadata = true
+}
+
+otelcol.receiver.prometheus "prom_metadata" {
+  output {
+    metrics = [otelcol.processor.attributes.prom_metadata.input]
+  }
+}
+
+otelcol.processor.attributes "prom_metadata" {
+  action {
+    key = "test_name"
+    value = "prom_metadata_otlp"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.prom_metadata.input]
+  }
+}
+
+otelcol.exporter.otlphttp "prom_metadata" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}
