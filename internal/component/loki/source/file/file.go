@@ -199,9 +199,9 @@ func (c *Component) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-c.updateReaders:
+				c.tasksMut.RLock()
 				level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
 
-				c.tasksMut.RLock()
 				var tasks []*runnerTask
 				for _, entry := range c.tasks {
 					tasks = append(tasks, &entry)
