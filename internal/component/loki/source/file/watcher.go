@@ -29,13 +29,15 @@ type watcher struct {
 func (w *watcher) Run(ctx context.Context) {
 	defer w.ticker.Stop()
 
-	select {
-	case <-w.ticker.C:
-		w.mu.Lock()
-		w.syncFn()
-		w.mu.Unlock()
-	case <-ctx.Done():
-		return
+	for {
+		select {
+		case <-w.ticker.C:
+			w.mu.Lock()
+			w.syncFn()
+			w.mu.Unlock()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
