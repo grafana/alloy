@@ -55,7 +55,7 @@ type Arguments struct {
 
 func (a *Arguments) SetToDefault() {
 	a.FileWatch.SetToDefault()
-	a.FileWatch.SetToDefault()
+	a.FileMatch.SetToDefault()
 }
 
 type FileWatch struct {

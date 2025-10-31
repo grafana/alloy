@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/grafana/alloy/internal/loki/promtail/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
@@ -77,6 +78,10 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 		Encoding:            s.cfg.Encoding,
 		DecompressionConfig: convertDecompressionConfig(s.cfg.DecompressionCfg),
 		FileWatch:           convertFileWatchConfig(watchConfig),
+		FileMatch: lokisourcefile.FileMatch{
+			Enabled:    false,
+			SyncPeriod: 10 * time.Second,
+		},
 		LegacyPositionsFile: positionsCfg.PositionsFile,
 	}
 	overrideHook := func(val interface{}) interface{} {
