@@ -265,14 +265,10 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 
 	return &config.Config{
 		GlobalConfig: config.GlobalConfig{
-			ExternalLabels: toLabels(cfg.ExternalLabels),
+			ExternalLabels: labels.FromMap(cfg.ExternalLabels),
 		},
 		RemoteWriteConfigs: rwConfigs,
 	}, nil
-}
-
-func toLabels(in map[string]string) labels.Labels {
-	return labels.FromMap(in)
 }
 
 // ManagedIdentityConfig is used to store managed identity config values
