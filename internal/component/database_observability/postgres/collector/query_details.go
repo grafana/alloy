@@ -166,7 +166,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 func (c QueryDetails) tryTokenizeTableNames(sqlText string) ([]string, error) {
 	sqlText = strings.TrimSuffix(sqlText, "...")
-	tables, err := extractTableNames(sqlText)
+	tables, err := database_observability.ExtractTableNames(sqlText)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract table names: %w", err)
 	}
