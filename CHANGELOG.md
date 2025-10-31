@@ -73,6 +73,8 @@ Main (unreleased)
 
 - Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
 
+- Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
+
 v1.11.3
 -----------------
 
