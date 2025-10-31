@@ -29,7 +29,7 @@ func RedactSql(sql string) string {
 
 // ContainsReservedKeywords checks if the SQL query contains any reserved keywords
 // that indicate write operations, excluding those in string literals or comments
-func ContainsReservedKeywords(query string, reservedWords []string) bool {
+func ContainsReservedKeywords(query string, reservedWords []string, dbms sqllexer.DBMSType) bool {
 	// Create a map for faster lookup
 	reservedMap := make(map[string]bool)
 	for _, word := range reservedWords {
@@ -37,7 +37,7 @@ func ContainsReservedKeywords(query string, reservedWords []string) bool {
 	}
 
 	// Use the lexer to tokenize the query
-	lexer := sqllexer.New(query, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	lexer := sqllexer.New(query, sqllexer.WithDBMS(dbms))
 
 	// Scan all tokens
 	for {

@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -417,7 +418,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			continue
 		}
 
-		containsReservedWord := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList)
+		containsReservedWord := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
 
 		if containsReservedWord {
 			level.Debug(logger).Log("msg", "skipping query containing reserved word", "query", qi.queryText)

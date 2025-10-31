@@ -2,6 +2,8 @@ package database_observability
 
 import (
 	"testing"
+
+	"github.com/DataDog/go-sqllexer"
 )
 
 func TestPgSqlParser_Redact(t *testing.T) {
@@ -402,7 +404,7 @@ func TestContainsReservedKeywords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ContainsReservedKeywords(tt.query, reservedWords)
+			result := ContainsReservedKeywords(tt.query, reservedWords, sqllexer.DBMSMySQL)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
 			}
@@ -469,8 +471,14 @@ func TestContainsReservedKeywords_WithActualDenyList(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList)
+		t.Run("MySQL: "+tt.name, func(t *testing.T) {
+			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+			if result != tt.expected {
+				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
+			}
+		})
+		t.Run("PostgreSQL: "+tt.name, func(t *testing.T) {
+			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
 			}
