@@ -148,7 +148,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		receivers: args.ForwardTo,
 		posFile:   positionsFile,
 		scheduler: NewScheduler[positions.Entry](),
-		watcher:   newWatcher(args.FileMatch.SyncPeriod),
+		watcher:   newWatcher(args.FileMatch.SyncPeriod, func() {}),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
