@@ -237,6 +237,8 @@ func (c *Component) Update(args component.Arguments) error {
 	// Choose resolver and watcher behavior based on FileMatch.
 	if newArgs.FileMatch.Enabled {
 		c.resolver = newGlobResolver()
+		// It is safe to take the lock in the callback function.
+		// We never invoke it directly and it's only called by the watcher.
 		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
