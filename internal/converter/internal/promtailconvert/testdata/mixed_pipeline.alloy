@@ -37,8 +37,10 @@ loki.process "uber_pipeline" {
 }
 
 loki.source.file "uber_pipeline" {
-	targets               = local.file_match.uber_pipeline.targets
-	forward_to            = [loki.process.uber_pipeline.receiver]
+	targets    = local.file_match.uber_pipeline.targets
+	forward_to = [loki.process.uber_pipeline.receiver]
+
+	file_match { }
 	legacy_positions_file = "/tmp/positions.yaml"
 }
 

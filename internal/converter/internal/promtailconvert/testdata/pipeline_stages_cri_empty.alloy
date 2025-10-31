@@ -14,8 +14,10 @@ loki.process "example" {
 }
 
 loki.source.file "example" {
-	targets               = local.file_match.example.targets
-	forward_to            = [loki.process.example.receiver]
+	targets    = local.file_match.example.targets
+	forward_to = [loki.process.example.receiver]
+
+	file_match { }
 	legacy_positions_file = "/var/log/positions.yaml"
 }
 

@@ -38,8 +38,10 @@ loki.process "funny_one" {
 }
 
 loki.source.file "funny_one" {
-	targets               = local.file_match.funny_one.targets
-	forward_to            = [loki.process.funny_one.receiver]
+	targets    = local.file_match.funny_one.targets
+	forward_to = [loki.process.funny_one.receiver]
+
+	file_match { }
 	legacy_positions_file = "/var/log/positions.yaml"
 }
 
