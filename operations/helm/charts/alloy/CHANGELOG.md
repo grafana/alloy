@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Expand `extraObjects` to have more flexibility in templating (@TheRealNoob)
 
 1.4.0 (2025-10-27)
 ----------
