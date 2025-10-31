@@ -16,11 +16,7 @@ import (
 
 func TestAddingMarker(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	shouldBeSameGlobalID := mapping.GetOrAddGlobalRefID(l)
 	require.True(t, globalID == shouldBeSameGlobalID)
@@ -29,16 +25,8 @@ func TestAddingMarker(t *testing.T) {
 
 func TestAddingDifferentMarkers(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
-	l2 := labels.Labels{}
-	l2 = append(l2, labels.Label{
-		Name:  "__name__",
-		Value: "roar",
-	})
+	l := labels.FromStrings("__name__", "test")
+	l2 := labels.FromStrings("__name__", "roar")
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	shouldBeDifferentID := mapping.GetOrAddGlobalRefID(l2)
 	require.True(t, globalID != shouldBeDifferentID)
@@ -47,11 +35,7 @@ func TestAddingDifferentMarkers(t *testing.T) {
 
 func TestAddingLocalMapping(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	mapping.AddLocalLink("1", globalID, 1)
@@ -66,11 +50,7 @@ func TestAddingLocalMapping(t *testing.T) {
 
 func TestAddingLocalMappings(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	localRefID := uint64(1)
@@ -92,11 +72,7 @@ func TestAddingLocalMappings(t *testing.T) {
 
 func TestReplaceLocalMappings(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	localRefID := uint64(1)
@@ -141,16 +117,9 @@ func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
 
 func TestStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
-	l2 := labels.Labels{}
-	l2 = append(l2, labels.Label{
-		Name:  "__name__",
-		Value: "test2",
-	})
+	l := labels.FromStrings("__name__", "test")
+	l2 := labels.FromStrings("__name__", "test2")
+
 	global1 := mapping.GetOrAddGlobalRefID(l)
 	global2 := mapping.GetOrAddGlobalRefID(l2)
 	mapping.AddLocalLink("1", global1, 1)
@@ -173,11 +142,7 @@ func TestStaleness(t *testing.T) {
 
 func TestRemovingStaleness(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 
 	global1 := mapping.GetOrAddGlobalRefID(l)
 	mapping.AddLocalLink("1", global1, 1)
