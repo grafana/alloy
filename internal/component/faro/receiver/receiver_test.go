@@ -144,6 +144,7 @@ func Test(t *testing.T) {
 }
 
 type fakeLogsReceiver struct {
+	loki.LogsReceiver
 	ch chan loki.Entry
 
 	entriesMut sync.RWMutex
