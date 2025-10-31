@@ -772,3 +772,179 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestQuerySamples_Throttling(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	now := time.Now()
+	stateChangeTime := now.Add(-10 * time.Second)
+	queryStartTime1 := now.Add(-30 * time.Second)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	t.Run("suppresses second emission within window for same queryid", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       10 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+			ThrottleInterval:      500 * time.Millisecond,
+		})
+		require.NoError(t, err)
+
+		// First occurrence: active -> idle (emits)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8000, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "active", stateChangeTime, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 777, Valid: true},
+				"SELECT 1",
+			))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8000, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 777, Valid: true},
+				"SELECT 1",
+			))
+
+		// Second occurrence (same queryid): active -> idle within throttle window (should be suppressed)
+		queryStartTime2 := now.Add(100 * time.Millisecond)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8000, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "active", now.Add(-50*time.Millisecond), sql.NullString{},
+				sql.NullString{}, nil, queryStartTime2, sql.NullInt64{Int64: 777, Valid: true},
+				"SELECT 1",
+			))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8000, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime2, sql.NullInt64{Int64: 777, Valid: true},
+				"SELECT 1",
+			))
+
+		// Allow subsequent scrapes to proceed without new rows
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.EventuallyWithT(t, func(t *assert.CollectT) {
+			entries := lokiClient.Received()
+			// Only the first emission should pass
+			require.Len(t, entries, 1)
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		}, 5*time.Second, 50*time.Millisecond)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		lokiClient.Stop()
+		time.Sleep(100 * time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("does not throttle idle in transaction emissions", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       10 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+			ThrottleInterval:      500 * time.Millisecond,
+		})
+		require.NoError(t, err)
+
+		// First occurrence: active -> idle (emits)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8100, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "active", stateChangeTime, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
+				"SELECT 1",
+			))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8100, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
+				"SELECT 1",
+			))
+
+		// Second occurrence (same queryid): active -> idle in transaction -> disappear (should emit despite throttle)
+		queryStartTime3 := now.Add(100 * time.Millisecond)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8100, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "active", now.Add(-50*time.Millisecond), sql.NullString{},
+				sql.NullString{}, nil, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
+				"SELECT 1",
+			))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8100, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "idle in transaction", now, sql.NullString{},
+				sql.NullString{}, nil, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
+				"SELECT 1",
+			))
+		// Disappear to finalize
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.EventuallyWithT(t, func(t *assert.CollectT) {
+			entries := lokiClient.Received()
+			// Both emissions should be present
+			require.Len(t, entries, 2)
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[1].Labels)
+		}, 5*time.Second, 50*time.Millisecond)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		lokiClient.Stop()
+		time.Sleep(100 * time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}

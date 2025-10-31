@@ -28,6 +28,7 @@ const (
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -98,6 +99,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	ThrottleInterval      time.Duration
 }
 
 type QuerySamples struct {
@@ -105,6 +107,8 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	throttleInterval      time.Duration
+	lastEmittedByQueryID  map[int64]time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -127,6 +131,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
 		emitted:               map[SampleKey]time.Time{},
+		throttleInterval:      args.ThrottleInterval,
+		lastEmittedByQueryID:  map[int64]time.Time{},
 	}, nil
 }
 
@@ -449,12 +455,27 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if endOverride != nil {
 		ts = endOverride.UnixNano()
 	}
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		ts,
-	)
+
+	shouldEmit := true
+	if !isThrottleExempt(state.LastRow.State.String) && c.throttleInterval > 0 {
+		qid := state.LastRow.QueryID.Int64
+		if last, ok := c.lastEmittedByQueryID[qid]; ok {
+			if time.Since(last) < c.throttleInterval {
+				shouldEmit = false
+			}
+		}
+		if shouldEmit {
+			c.lastEmittedByQueryID[qid] = time.Now()
+		}
+	}
+	if shouldEmit {
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			OP_QUERY_SAMPLE,
+			sampleLabels,
+			ts,
+		)
+	}
 
 	for _, we := range state.tracker.WaitEvents() {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
@@ -589,6 +610,13 @@ func equalPIDSets(a, b []int64) bool {
 
 func isIdleState(state string) bool {
 	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
+}
+
+func isThrottleExempt(state string) bool {
+	if state == stateIdleTxn || state == stateIdleTxnAborted {
 		return true
 	}
 	return false
