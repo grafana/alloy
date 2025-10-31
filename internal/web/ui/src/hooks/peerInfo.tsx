@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { PeerInfo } from '../features/clustering/types';
+import { type PeerInfo } from '../features/clustering/types';
 
 /**
  * usePeerInfo retrieves the list of clustering peers from the API.

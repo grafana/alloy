@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Edge, Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
-import { usePathPrefix } from '../../contexts/PathPrefixContext';
+import { type Edge, type Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { usePathPrefix } from '../../contexts/usePathPrefix';
 import { useGraph } from '../../hooks/graph';
 import { parseID } from '../../utils/id';
-import { ComponentInfo } from '../component/types';
-
+import type { ComponentInfo } from '../component/types';
 import { buildGraph } from './buildGraph';
-import { DebugData, DebugDataType, DebugDataTypeColorMap } from './debugDataType';
+import { type DebugData, DebugDataType, DebugDataTypeColorMap } from './debugDataType';
 import MultiEdge from './MultiEdge';
-
-import '@xyflow/react/dist/style.css';
 
 type GraphProps = {
   components: ComponentInfo[];
@@ -26,8 +25,7 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
   const [data, setData] = useState<DebugData[]>([]);
   const { error } = useGraph(setData, moduleID, window, enabled);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [nodes, setNodes, onNodesChange] = useNodesState(baseNodes);
+  const [nodes, _, onNodesChange] = useNodesState(baseNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
 
   const edgeTypes = {

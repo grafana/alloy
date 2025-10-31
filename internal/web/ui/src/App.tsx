@@ -1,7 +1,6 @@
+import styles from './App.module.css';
 import { PathPrefixContext } from './contexts/PathPrefixContext';
 import Router from './Router';
-
-import styles from './App.module.css';
 
 /**
  * getBasePath retrieves the base path of the application by looking at the

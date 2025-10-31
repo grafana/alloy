@@ -18,7 +18,7 @@ data-alloy/
 /dist.temp/
 /packaging/windows/LICENSE
 /packaging/windows/agent-windows-amd64.exe
-internal/web/ui/build
+internal/web/ui/dist
 
 .DS_Store
 buildx-v*

@@ -1,7 +1,7 @@
 import { faCubes } from '@fortawesome/free-solid-svg-icons';
 
 import ComponentList from '../features/component/ComponentList';
-import { ComponentInfo, SortOrder } from '../features/component/types';
+import { type ComponentInfo, SortOrder } from '../features/component/types';
 import Page from '../features/layout/Page';
 import { useComponentInfo } from '../hooks/componentInfo';
 

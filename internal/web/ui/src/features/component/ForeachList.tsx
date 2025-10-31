@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 
 import { HealthLabel } from '../component/HealthLabel';
-import { ComponentDetail, ComponentInfo, SortOrder } from '../component/types';
-
-import Table from './Table';
-
+import { type ComponentDetail, type ComponentInfo, SortOrder } from '../component/types';
 import styles from './ComponentList.module.css';
 import foreachStyles from './ForeachList.module.css';
+import Table from './Table';
 
 interface ComponentListProps {
   foreach: ComponentDetail;
@@ -21,11 +19,14 @@ const ForeachList = ({ foreach, useRemotecfg, handleSorting }: ComponentListProp
   const urlPrefix = useRemotecfg ? '/remotecfg' : '';
 
   // Group components by foreach children ids
-  const moduleComponents = foreach.createdModuleIDs?.reduce((acc, moduleId) => {
-    const components = foreach.moduleInfo?.filter((comp) => comp.moduleID === moduleId) || [];
-    acc[moduleId] = components;
-    return acc;
-  }, {} as Record<string, ComponentInfo[]>);
+  const moduleComponents = foreach.createdModuleIDs?.reduce(
+    (acc, moduleId) => {
+      const components = foreach.moduleInfo?.filter((comp) => comp.moduleID === moduleId) || [];
+      acc[moduleId] = components;
+      return acc;
+    },
+    {} as Record<string, ComponentInfo[]>
+  );
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) => {
