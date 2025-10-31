@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -449,8 +450,15 @@ func TestDeleteRecreateFile(t *testing.T) {
 		_, err = f.Write([]byte("writing some text\n"))
 		require.NoError(t, err)
 
+		filename := model.LabelValue(f.Name())
+		if match.Enabled {
+			dir, err := os.Getwd()
+			require.NoError(t, err)
+			filename = model.LabelValue(path.Join(dir, f.Name()))
+		}
+
 		wantLabelSet := model.LabelSet{
-			"filename": model.LabelValue(f.Name()),
+			"filename": filename,
 			"foo":      "bar",
 		}
 
