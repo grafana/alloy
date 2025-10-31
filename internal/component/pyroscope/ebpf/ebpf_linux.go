@@ -237,6 +237,7 @@ func NewDefaultArguments() Arguments {
 		GoEnabled:       true,
 		LoadProbe:       false,
 		UProbeLinks:     []string{},
+		VerboseMode:     false,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
@@ -267,6 +268,7 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.OffCPUThreshold = args.OffCPUThreshold
 	cfg.LoadProbe = args.LoadProbe
 	cfg.UProbeLinks = args.UProbeLinks
+	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
 }
 

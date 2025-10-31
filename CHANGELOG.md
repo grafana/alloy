@@ -39,6 +39,8 @@ Main (unreleased)
 
 - Add `u_probe_links` & `load_probe` configuration fields to alloy pyroscope.ebpf to extend configuration of the opentelemetry-ebpf-profiler to allow uprobe profiling and dynamic probing. (@luweglarz)
 
+- Add `verbose_mode` configuration fields to alloy pyroscope.ebpf to be enable ebpf-profiler verbose mode. (@luweglarz)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
