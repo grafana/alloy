@@ -88,8 +88,6 @@ func TestResolver(t *testing.T) {
 				require.Equal(t, tt.expected[i].err, err)
 				i += 1
 			}
-
 		})
 	}
-
 }
