@@ -6,13 +6,14 @@ import (
 	"time"
 )
 
-func newWatcher(tick time.Duration) *watcher {
+func newWatcher(tick time.Duration, syncFn func()) *watcher {
 	if tick == 0 {
 		tick = 10 * time.Second
 	}
 
 	return &watcher{
 		tick:   tick,
+		syncFn: syncFn,
 		ticker: *time.NewTicker(tick),
 	}
 }
