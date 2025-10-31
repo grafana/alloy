@@ -457,7 +457,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 
 	shouldEmit := true
-	if !isThrottleExempt(state.LastRow.State.String) && c.throttleInterval > 0 {
+	if !isThrottleExempt(*state) && c.throttleInterval > 0 {
 		qid := state.LastRow.QueryID.Int64
 		if last, ok := c.lastEmittedByQueryID[qid]; ok {
 			if time.Since(last) < c.throttleInterval {
@@ -615,8 +615,8 @@ func isIdleState(state string) bool {
 	return false
 }
 
-func isThrottleExempt(state string) bool {
-	if state == stateIdleTxn || state == stateIdleTxnAborted {
+func isThrottleExempt(sample SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || sample.tracker.WaitEvents() == nil || sample.LastCpuTime == "" {
 		return true
 	}
 	return false

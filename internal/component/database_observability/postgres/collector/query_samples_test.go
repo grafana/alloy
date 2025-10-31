@@ -947,4 +947,72 @@ func TestQuerySamples_Throttling(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
+
+	t.Run("does not throttle when no CPU captured (waiting-only occurrences)", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       10 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+			ThrottleInterval:      500 * time.Millisecond,
+		})
+		require.NoError(t, err)
+
+		// Occurrence 1: waiting only
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8200, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "waiting", now.Add(-5*time.Second), sql.NullString{String: "Lock", Valid: true},
+				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{1}, queryStartTime1, sql.NullInt64{Int64: 999, Valid: true},
+				"UPDATE t SET c=1",
+			))
+		// Disappear
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		// Occurrence 2: waiting only with different query_start but same queryid (within throttle window)
+		queryStartTime4 := now.Add(100 * time.Millisecond)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8200, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				now.Add(-2*time.Minute), "waiting", now.Add(-2*time.Second), sql.NullString{String: "Lock", Valid: true},
+				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{1}, queryStartTime4, sql.NullInt64{Int64: 999, Valid: true},
+				"UPDATE t SET c=1",
+			))
+		// Disappear
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.EventuallyWithT(t, func(t *assert.CollectT) {
+			entries := lokiClient.Received()
+			// Expect two query sample emissions (throttle bypass due to no CPU captured)
+			numSamples := 0
+			for _, e := range entries {
+				if reflect.DeepEqual(e.Labels, model.LabelSet{"op": OP_QUERY_SAMPLE}) {
+					numSamples++
+				}
+			}
+			require.Equal(t, 2, numSamples)
+		}, 5*time.Second, 50*time.Millisecond)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		lokiClient.Stop()
+		time.Sleep(100 * time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }
