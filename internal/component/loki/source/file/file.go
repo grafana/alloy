@@ -220,7 +220,6 @@ func (c *Component) Run(ctx context.Context) error {
 				c.scheduleSources()
 			}
 		}
-
 	})
 
 	wg.Wait()
