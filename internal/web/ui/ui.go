@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
-	"path"
 	"strings"
 	"sync"
 	"text/template"
@@ -21,7 +20,7 @@ import (
 // Grafana Alloy UI. The UI will be served relative to pathPrefix. If no
 // pathPrefix is specified, the UI will be served at root.
 //
-// By default, the UI is retrieved from the ./internal/web/ui/build directory
+// By default, the UI is retrieved from the ./internal/web/ui/dist directory
 // relative to working directory, assuming that Alloy is run from the repo
 // root. However, if the builtinassets Go tag is present, the built UI will be
 // embedded into the binary; run go generate -tags builtinassets for this
@@ -37,8 +36,6 @@ func RegisterRoutes(pathPrefix string, router *mux.Router) {
 		pathPrefix = pathPrefix + "/"
 	}
 
-	publicPath := path.Join(pathPrefix, "public")
-
 	renderer := &templateRenderer{
 		pathPrefix: strings.TrimSuffix(pathPrefix, "/"),
 		inner:      Assets(),
@@ -47,15 +44,35 @@ func RegisterRoutes(pathPrefix string, router *mux.Router) {
 		contentCacheTime: make(map[string]time.Time),
 	}
 
-	router.PathPrefix(publicPath).Handler(http.StripPrefix(publicPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		server.StaticFileServer(renderer).ServeHTTP(w, r)
-	})))
-
+	// Redirect root without trailing slash to version with slash
 	router.HandleFunc(strings.TrimSuffix(pathPrefix, "/"), func(w http.ResponseWriter, r *http.Request) {
-		// Redirect to form with /
+		fmt.Println("redirecting to", pathPrefix)
 		http.Redirect(w, r, pathPrefix, http.StatusFound)
 	})
+
+	// Serve all static files from dist, with SPA fallback to index.html
 	router.PathPrefix(pathPrefix).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("raw url path", r.URL.Path)
+
+		// Strip the prefix to get the file path
+		filePath := strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(pathPrefix, "/"))
+		if filePath == "" {
+			filePath = "/"
+		}
+
+		fmt.Println("parsed url path", filePath)
+
+		// Try to serve the requested file
+		f, err := renderer.Open(filePath)
+		if err == nil {
+			// File exists, serve it
+			defer f.Close()
+			r.URL.Path = filePath
+			server.StaticFileServer(renderer).ServeHTTP(w, r)
+			return
+		}
+
+		// File not found, serve index.html for SPA routing
 		r.URL.Path = "/"
 		server.StaticFileServer(renderer).ServeHTTP(w, r)
 	})

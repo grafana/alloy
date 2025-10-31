@@ -1,6 +1,6 @@
-import { type FC, type ReactNode } from 'react';
 import { type IconProp } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { type FC, type ReactNode } from 'react';
 
 import styles from './Page.module.css';
 
@@ -24,7 +24,7 @@ const Page: FC<PageProps> = (props) => {
           <h1>{props.name}</h1>
           <h2>{props.desc}</h2>
         </div>
-        {/* <div className={styles.controls}>{props.controls}</div> */}
+        <div className={styles.controls}>{props.controls}</div>
       </header>
       <div className={styles.infoText}>{props.infoText}</div>
       <main>{props.children}</main>

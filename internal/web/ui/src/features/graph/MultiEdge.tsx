@@ -1,4 +1,5 @@
 import { BaseEdge, type EdgeProps, EdgeText, getBezierPath, getStraightPath } from '@xyflow/react';
+
 import { getSpecialPath } from './getSpecialPath';
 
 export type GetSpecialPathParams = {

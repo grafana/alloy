@@ -1,14 +1,12 @@
-import { useState } from 'react';
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
 import { Field, Input, Slider } from '@grafana/ui';
+import { useState } from 'react';
+import { useParams } from 'react-router';
 
 import Page from '../features/layout/Page';
 import { useLiveDebugging } from '../hooks/liveDebugging';
-
 import styles from './LiveDebugging.module.css';
-import { useParams } from 'react-router';
 
 function PageLiveDebugging() {
   const { '*': componentID } = useParams();

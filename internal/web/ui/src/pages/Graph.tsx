@@ -1,14 +1,12 @@
+import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
+import { Slider } from '@grafana/ui';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
-
-import { Slider } from '@grafana/ui';
 
 import ComponentGraph from '../features/graph/ComponentGraph';
 import { Legend } from '../features/graph/Legend';
 import Page from '../features/layout/Page';
 import { useComponentInfo } from '../hooks/componentInfo';
-
 import styles from './LiveDebugging.module.css';
 
 const DEFAULT_WINDOW = 5;

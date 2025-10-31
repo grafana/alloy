@@ -11,12 +11,12 @@ import (
 //go:generate npm install
 //go:generate npm run build
 
-//go:embed build
+//go:embed dist
 var builtinAssetsTarball embed.FS
 
 // Assets contains the UI's assets.
 func Assets() http.FileSystem {
-	inner, err := fs.Sub(builtinAssetsTarball, "build")
+	inner, err := fs.Sub(builtinAssetsTarball, "dist")
 	if err != nil {
 		panic(err)
 	}

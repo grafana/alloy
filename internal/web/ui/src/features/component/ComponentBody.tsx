@@ -1,11 +1,9 @@
 import { Fragment } from 'react';
 
 import { alloyStringify } from '../alloy-syntax-js/stringify';
-
+import styles from './ComponentView.module.css';
 import Table from './Table';
 import { type PartitionedBody } from './types';
-
-import styles from './ComponentView.module.css';
 
 interface ComponentBodyProps {
   partition: PartitionedBody;

@@ -34,14 +34,11 @@ RUN choco install make --version 4.3 -y
 RUN choco install docker-cli --version 20.10.22 -y
 RUN choco install git --version 2.39.0 -y
 
-# TODOJOE: Switch to npm
 #
 # React App Dependencies
 #
 # nodejs - node server
-# yarn - installs node dependencies
-RUN choco install nodejs.install --version 19.2.0 -y
-RUN choco install yarn --version 1.22.19 -y
+RUN choco install nodejs.install --version 24.4.0 -y
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository

@@ -1,18 +1,16 @@
+import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { type FC, Fragment, type ReactElement } from 'react';
 import { Link } from 'react-router';
 import { useLocation } from 'react-router';
-import { faBug, faCubes, faDiagramProject, faLink } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { partitionBody } from '../../utils/partition';
-
 import ComponentBody from './ComponentBody';
 import ComponentList from './ComponentList';
+import styles from './ComponentView.module.css';
 import ForeachList from './ForeachList';
 import { HealthLabel } from './HealthLabel';
 import type { ComponentDetail, ComponentInfo, PartitionedBody } from './types';
-
-import styles from './ComponentView.module.css';
 
 export interface ComponentViewProps {
   component: ComponentDetail;

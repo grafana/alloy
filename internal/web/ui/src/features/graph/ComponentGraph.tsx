@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { type Edge, type Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
+import { type Edge, type Node, ReactFlow, useEdgesState, useNodesState } from '@xyflow/react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { usePathPrefix } from '../../contexts/usePathPrefix';
 import { useGraph } from '../../hooks/graph';
 import { parseID } from '../../utils/id';
 import type { ComponentInfo } from '../component/types';
-
 import { buildGraph } from './buildGraph';
 import { type DebugData, DebugDataType, DebugDataTypeColorMap } from './debugDataType';
 import MultiEdge from './MultiEdge';
-
-import '@xyflow/react/dist/style.css';
-import { usePathPrefix } from '../../contexts/usePathPrefix';
 
 type GraphProps = {
   components: ComponentInfo[];

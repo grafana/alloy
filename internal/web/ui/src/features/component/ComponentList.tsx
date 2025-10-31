@@ -2,10 +2,8 @@ import { NavLink } from 'react-router';
 
 import { HealthLabel } from '../component/HealthLabel';
 import { type ComponentInfo, SortOrder } from '../component/types';
-
-import Table from './Table';
-
 import styles from './ComponentList.module.css';
+import Table from './Table';
 
 interface ComponentListProps {
   components: ComponentInfo[];

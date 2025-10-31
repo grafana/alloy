@@ -1,5 +1,4 @@
 import { DebugDataTypeColorMap } from './debugDataType';
-
 import styles from './Legend.module.css';
 
 export const Legend: React.FC = () => {
