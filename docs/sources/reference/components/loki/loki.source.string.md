@@ -18,9 +18,11 @@ title: loki.source.string
 
 # `loki.source.string`
 
+# `loki.source.string`
+
 {{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`loki.source.string` receives log entries as string from other components and can be ingested to any loki component.
+`loki.source.string` receives log entries as string from other components and can be ingested to any Loki component.
 
 You can specify multiple `loki.source.string` components by giving them different labels.
 
