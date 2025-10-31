@@ -340,6 +340,7 @@ func TestQueryDetails(t *testing.T) {
 				DB:              db,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
+				TableRegistry:   nil,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
 			})
 			require.NoError(t, err)

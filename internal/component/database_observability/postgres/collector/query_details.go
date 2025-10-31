@@ -45,6 +45,7 @@ type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
+	TableRegistry   *TableRegistry
 
 	Logger log.Logger
 }
@@ -53,6 +54,7 @@ type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+	tableRegistry   *TableRegistry
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -65,6 +67,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		tableRegistry:   args.TableRegistry,
 		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}, nil
@@ -147,7 +150,26 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		if len(tables) == 0 {
+			level.Debug(c.logger).Log("msg", "no tables parsed from query", "queryid", queryID, "datname", databaseName)
+			continue
+		}
+
 		for _, table := range tables {
+			level.Debug(c.logger).Log("msg", "parsed table from query", "table", table, "datname", databaseName, "queryid", queryID)
+
+			if c.tableRegistry == nil {
+				level.Debug(c.logger).Log("msg", "tableRegistry is nil, allowing table through", "table", table, "datname", databaseName)
+			} else if !c.tableRegistry.HasDatabase(databaseName) {
+				level.Debug(c.logger).Log("msg", "database not in registry yet, allowing table through", "table", table, "datname", databaseName)
+			} else if !c.tableRegistry.IsValidTableInDatabase(databaseName, table) {
+				validTables := c.tableRegistry.GetAllTablesInDatabase(databaseName)
+				level.Debug(c.logger).Log("msg", "table not found in registry, skipping", "table", table, "datname", databaseName, "queryid", queryID, "valid_tables_in_db", validTables)
+				continue
+			} else {
+				level.Debug(c.logger).Log("msg", "table validated, emitting log", "table", table, "datname", databaseName, "queryid", queryID)
+			}
+
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
