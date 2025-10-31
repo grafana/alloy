@@ -61,7 +61,7 @@ otelcol.processor.attributes "prom_metadata" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlphttp.prom_metadata.input]
+    metrics = [otelcol.exporter.otlphttp.prom_metadata.input, otelcol.exporter.debug.default.input]
   }
 }
 
@@ -73,4 +73,10 @@ otelcol.exporter.otlphttp "prom_metadata" {
       insecure_skip_verify = true
     }
   }
+}
+
+otelcol.exporter.debug "default" {
+  sampling_initial = 10000
+  sampling_thereafter = 100
+  verbosity = "detailed"
 }

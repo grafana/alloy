@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,17 +13,17 @@ import (
 
 // Default metrics metadata
 var PromDefaultMetricMetadata = map[string]Metadata{
-	"golang_counter":          {Type: "counter"},
-	"golang_gauge":            {Type: "gauge"},
-	"golang_histogram_bucket": {Type: "histogram"},
-	"golang_histogram_count":  {Type: "histogram"},
-	"golang_histogram_sum":    {Type: "histogram"},
-	"golang_summary":          {Type: "summary"},
+	"golang_counter":          {Type: "counter", Help: "A counter metric"},
+	"golang_gauge":            {Type: "gauge", Help: "A gauge metric"},
+	"golang_histogram_bucket": {Type: "histogram", Help: "A histogram metric"},
+	"golang_histogram_count":  {Type: "histogram", Help: "A histogram metric"},
+	"golang_histogram_sum":    {Type: "histogram", Help: "A histogram metric"},
+	"golang_summary":          {Type: "summary", Help: "A summary metric"},
 }
 
 // Default native histogram metadata
 var PromDefaultNativeHistogramMetadata = map[string]Metadata{
-	"golang_native_histogram": {Type: "histogram"},
+	"golang_native_histogram": {Type: "histogram", Help: "A native histogram metric"},
 }
 
 func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
@@ -39,15 +40,15 @@ func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
 		metricMetadata, err = GetMetadata()
 		assert.NoError(c, err)
 		assert.Subset(c, maps.Keys(metricMetadata.Data), expectedMetricsWithMetadata, "did not find metadata for the expected metrics")
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
-	for metricName, expectedMeta := range expectedMetadata {
-		actualMetas := metricMetadata.Data[metricName]
-		if assert.Len(t, actualMetas, 1, "expected exactly one metadata entry for metric %s but found %d", metricName, len(actualMetas)) {
-			actualMeta := actualMetas[0]
-			assert.Equal(t, expectedMeta, actualMeta, "metadata for metric %s did not match the expected metadata", metricName)
+		for metricName, expectedMeta := range expectedMetadata {
+			actualMetas := metricMetadata.Data[metricName]
+			if assert.Len(c, actualMetas, 1, "expected exactly one metadata entry for metric %s but found %d", metricName, len(actualMetas)) {
+				actualMeta := actualMetas[0]
+				assert.Equal(c, expectedMeta, actualMeta, "metadata for metric %s did not match the expected metadata", metricName)
+			}
 		}
-	}
+	}, 5*time.Minute, DefaultRetryInterval)
 
 	if IsStatefulTest() {
 		assert.Fail(t, "Metadata queries cannot be done with a timestamp so if we found data it's possible it's from a previous test run. This test fails so you can consider if this is a problem for you or not")

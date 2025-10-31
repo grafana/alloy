@@ -31,6 +31,7 @@ func FetchDataFromURL(url string, target Unmarshaler) error {
 		return err
 	}
 
+	fmt.Printf("received response from %s: %s\n", url, string(bodyBytes))
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Non-OK HTTP status: %s, body: %s, url: %s", resp.Status, string(bodyBytes), url)
 	}
