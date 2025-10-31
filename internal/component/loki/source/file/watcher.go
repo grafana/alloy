@@ -47,6 +47,7 @@ func (w *watcher) Update(tick time.Duration, syncFn func()) {
 	defer w.mu.Unlock()
 	w.syncFn = syncFn
 	if w.tick != tick && tick != 0 {
+		w.tick = tick
 		w.ticker.Reset(tick)
 	}
 }
