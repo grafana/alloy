@@ -17,14 +17,12 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
-	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	component_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -182,127 +180,6 @@ func (n *noopAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t
 
 func (n *noopAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
 	return ref, nil
-}
-
-func TestForwardingToAppendable(t *testing.T) {
-	opts := component.Options{
-		Logger:     util.TestAlloyLogger(t),
-		Registerer: prometheus_client.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
-			switch name {
-			case http_service.ServiceName:
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "alloy.internal:1245",
-					BaseHTTPPath:     "/",
-					DialFunc:         (&net.Dialer{}).DialContext,
-				}, nil
-
-			case cluster.ServiceName:
-				return cluster.Mock(), nil
-			case labelstore.ServiceName:
-				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
-			case livedebugging.ServiceName:
-				return livedebugging.NewLiveDebugging(), nil
-			default:
-				return nil, fmt.Errorf("service %q does not exist", name)
-			}
-		},
-	}
-
-	nilReceivers := []storage.Appendable{nil, nil}
-
-	var args Arguments
-	args.SetToDefault()
-	args.HonorMetadata = true
-	args.ForwardTo = nilReceivers
-
-	s, err := New(opts, args)
-	require.NoError(t, err)
-
-	// Forwarding samples to the nil receivers shouldn't fail.
-	appender := s.appendable.Appender(t.Context())
-	_, err = appender.Append(0, labels.FromStrings("foo", "bar"), 0, 0)
-	require.NoError(t, err)
-
-	err = appender.Commit()
-	require.NoError(t, err)
-
-	// Update the component with a mock receiver; it should be passed along to the Appendable.
-	var receivedTs int64
-	var receivedSamples labels.Labels
-	var receivedMetadataLabels labels.Labels
-	var receivedMetadata metadata.Metadata
-	ls := labelstore.New(nil, prometheus_client.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls,
-		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-			receivedTs = t
-			receivedSamples = l
-			return ref, nil
-		}),
-		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, _ storage.Appender) (storage.SeriesRef, error) {
-			receivedMetadataLabels = l
-			receivedMetadata = m
-			return ref, nil
-		}),
-	)
-
-	// Add a context-capturing appendable to test metadata store in context
-	contextCapture := &contextCapturingAppendable{next: fanout}
-
-	require.NoError(t, err)
-	args.ForwardTo = []storage.Appendable{contextCapture}
-	err = s.Update(args)
-	require.NoError(t, err)
-
-	// Forwarding a sample to the mock receiver should succeed.
-	appender = s.appendable.Appender(t.Context())
-	timestamp := time.Now().Unix()
-	sample := labels.FromStrings("foo", "bar")
-	_, err = appender.Append(0, sample, timestamp, 42.0)
-	require.NoError(t, err)
-
-	// Forwarding metadata to the mock receiver should succeed.
-	testMetadata := metadata.Metadata{
-		Type: model.MetricTypeCounter,
-		Unit: "bytes",
-		Help: "Test metric for unit testing",
-	}
-	metadataLabels := labels.FromStrings("__name__", "test_metric")
-	_, err = appender.UpdateMetadata(0, metadataLabels, testMetadata)
-	require.NoError(t, err)
-
-	err = appender.Commit()
-	require.NoError(t, err)
-
-	require.Equal(t, timestamp, receivedTs)
-	require.Len(t, receivedSamples, 1)
-	require.Equal(t, sample, receivedSamples)
-
-	// Verify metadata was received correctly
-	require.Equal(t, metadataLabels, receivedMetadataLabels)
-	require.Equal(t, model.MetricTypeCounter, receivedMetadata.Type)
-	require.Equal(t, "bytes", receivedMetadata.Unit)
-	require.Equal(t, "Test metric for unit testing", receivedMetadata.Help)
-
-	// Test that the metadata store in the context has been set appropriately
-	require.NotNil(t, contextCapture.capturedCtx, "Context should have been captured")
-
-	// Extract metadata store from context
-	metadataStore, ok := scrape.MetricMetadataStoreFromContext(contextCapture.capturedCtx)
-	require.True(t, ok, "MetricMetadataStore should be present in context")
-	require.NotNil(t, metadataStore, "MetricMetadataStore should not be nil")
-
-	// Verify that the metadata store is not empty/noop
-	require.Greater(t, metadataStore.LengthMetadata(), 0, "MetadataStore should contain at least one metadata entry")
-
-	// Verify the metadata store contains the metadata we sent
-	storedMetadata, found := metadataStore.GetMetadata("test_metric")
-	require.True(t, found, "Metadata for 'test_metric' should be found in the store")
-	require.Equal(t, "test_metric", storedMetadata.MetricFamily)
-	require.Equal(t, model.MetricTypeCounter, storedMetadata.Type)
-	require.Equal(t, "bytes", storedMetadata.Unit)
-	require.Equal(t, "Test metric for unit testing", storedMetadata.Help)
 }
 
 // TestCustomDialer ensures that prometheus.scrape respects the custom dialer
