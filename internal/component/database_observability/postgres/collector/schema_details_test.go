@@ -1268,3 +1268,260 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		lokiClient.Stop()
 	})
 }
+
+func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
+	t.Run("getAllDatabases returns error when there is an error iterating database rows", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectAllDatabases).
+			WillReturnRows(
+				sqlmock.NewRows([]string{"datname"}).
+					AddRow("testdb").
+					RowError(0, fmt.Errorf("row iteration error")))
+
+		collector := &SchemaDetails{
+			logger:            log.NewNopLogger(),
+			initialConnection: db,
+		}
+		_, err = collector.getAllDatabases(context.Background())
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("extractSchemas returns error when there is an error iterating over pg_namespace result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectSchemaNames).
+			WillReturnRows(
+				sqlmock.NewRows([]string{"nspname"}).
+					AddRow("public").
+					RowError(0, fmt.Errorf("schema iteration error")))
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		err = collector.extractSchemas(context.Background(), "testdb", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchTableDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+			WillReturnError(fmt.Errorf("column query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchTableDefinitions(context.Background(), &tableInfo{
+			database:  "testdb",
+			schema:    "public",
+			tableName: "test_table",
+		}, db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+			WillReturnError(fmt.Errorf("column query error"))
+
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectColumnNames rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		collector := &SchemaDetails{
+			logger: log.NewNopLogger(),
+		}
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation"}).
+				AddRow("id", "integer", true, nil, ""))
+
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectColumnNames result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+					AddRow("id", "integer", true, nil, "", true).
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectIndexes returns an error", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("index query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectIndexes rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions"}).
+				AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectIndexes result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}).
+					AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false).
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectForeignKeys query fails", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").
+			WillReturnError(fmt.Errorf("foreign key query error"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when selectForeignKeys rows fail to scan", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name"}).
+				AddRow("fk_test", "author_id", "authors"))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fetchColumnsDefinitions returns error when there is an error iterating selectForeignKeys result set", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"column_name", "column_type", "not_nullable", "column_default", "identity_generation", "is_primary_key"}).
+				AddRow("id", "integer", true, nil, "", true))
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions", "has_nullable_column"}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name", "referenced_column_name"}).
+					AddRow("fk_test", "author_id", "authors", "id").
+					RowError(0, fmt.Errorf("result set error")))
+
+		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
+
+		require.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
