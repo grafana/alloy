@@ -6,7 +6,7 @@ import { createTheme, ThemeContext } from '@grafana/data';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import App from './App.tsx';
+import App from './App';
 
 createRoot(document.getElementById('root')!).render(
   <ThemeContext.Provider value={createTheme({ colors: { mode: 'light' } })}>

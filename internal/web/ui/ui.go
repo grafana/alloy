@@ -46,21 +46,16 @@ func RegisterRoutes(pathPrefix string, router *mux.Router) {
 
 	// Redirect root without trailing slash to version with slash
 	router.HandleFunc(strings.TrimSuffix(pathPrefix, "/"), func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("redirecting to", pathPrefix)
 		http.Redirect(w, r, pathPrefix, http.StatusFound)
 	})
 
 	// Serve all static files from dist, with SPA fallback to index.html
 	router.PathPrefix(pathPrefix).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("raw url path", r.URL.Path)
-
 		// Strip the prefix to get the file path
 		filePath := strings.TrimPrefix(r.URL.Path, strings.TrimSuffix(pathPrefix, "/"))
 		if filePath == "" {
 			filePath = "/"
 		}
-
-		fmt.Println("parsed url path", filePath)
 
 		// Try to serve the requested file
 		f, err := renderer.Open(filePath)
