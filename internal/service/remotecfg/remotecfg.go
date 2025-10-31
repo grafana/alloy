@@ -72,7 +72,7 @@ func New(opts Options) (*Service, error) {
 		opts:        opts,
 		systemAttrs: getSystemAttributes(),
 		metrics:     metrics,
-		cm:          newConfigManager(metrics, opts.Logger, remotecfgPath, nil, opts.ConfigPath),
+		cm:          newConfigManager(metrics, opts.Logger, remotecfgPath, opts.ConfigPath),
 	}
 
 	return svc, nil
@@ -208,7 +208,7 @@ func (s *Service) updateHandleEmptyUrl(args Arguments) {
 		configPath = s.cm.getConfigPath()
 		s.cm.cleanup()
 	}
-	s.cm = newConfigManager(s.metrics, s.opts.Logger, remotecfgPath, nil, configPath)
+	s.cm = newConfigManager(s.metrics, s.opts.Logger, remotecfgPath, configPath)
 	s.cm.setLastLoadedCfgHash("")
 	s.cm.setLastReceivedCfgHash("")
 	s.cm.setPollFrequency(disablePollingFrequency)
@@ -281,14 +281,17 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 			LocalAttributes:    s.attrs,
 			Hash:               s.cm.getRemoteHash(),
 			RemoteConfigStatus: s.cm.getRemoteConfigStatusForRequest(),
+			EffectiveConfig:    s.cm.getEffectiveConfigForRequest(),
 		},
 	})
 
 	if err != nil {
 		// Don't log error or reset status for "not modified" responses
 		if !errors.Is(err, errNotModified) {
-			// Reset lastSentConfigStatus since the API request failed and status wasn't actually sent
+			// Reset lastSentConfigStatus and lastSentEffectiveConfig since the API request failed
+			// and they weren't actually sent
 			s.cm.resetLastSentConfigStatus()
+			s.cm.resetLastSentEffectiveConfig()
 			s.opts.Logger.Log("level", "error", "msg", "failed to get configuration from remote server", "id", s.args.ID, "err", err)
 		}
 		return nil, err
