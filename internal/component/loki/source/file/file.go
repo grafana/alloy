@@ -109,7 +109,7 @@ type Component struct {
 
 	// watcher is a background trigger that periodically invokes
 	// scheduling when file matching is enabled.
-	watcher *watcher
+	watcher *time.Ticker
 
 	handler loki.LogsReceiver
 	posFile positions.Positions
@@ -148,7 +148,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		receivers: args.ForwardTo,
 		posFile:   positionsFile,
 		scheduler: NewScheduler[positions.Entry](),
-		watcher:   newWatcher(args.FileMatch.SyncPeriod, func() {}),
+		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -206,7 +206,22 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	})
 
-	wg.Go(func() { c.watcher.Run(ctx) })
+	wg.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.watcher.C:
+				c.mut.Lock()
+				defer c.mut.Unlock()
+				if !c.args.FileMatch.Enabled {
+					return
+				}
+				c.scheduleSources()
+			}
+		}
+
+	})
 
 	wg.Wait()
 	return nil
@@ -232,19 +247,16 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	// Choose resolver and watcher behavior based on FileMatch.
+	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled && !c.args.FileMatch.Enabled {
 		c.resolver = newGlobResolver()
-		// It is safe to take the lock in the callback function.
-		// We never invoke it directly and it's only called by the watcher.
-		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {
-			c.mut.Lock()
-			defer c.mut.Unlock()
-			c.scheduleSources()
-		})
+
 	} else if !newArgs.FileMatch.Enabled && c.args.FileMatch.Enabled {
 		c.resolver = newStaticResolver()
-		c.watcher.Update(newArgs.FileMatch.SyncPeriod, func() {})
+	}
+
+	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod {
+		c.watcher.Reset(newArgs.FileMatch.SyncPeriod)
 	}
 
 	c.args = newArgs
