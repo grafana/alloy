@@ -37,6 +37,8 @@ Main (unreleased)
 
 - Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
 
+- Add `u_probe_links` & `load_probe` configuration fields to alloy pyroscope.ebpf to extend configuration of the opentelemetry-ebpf-profiler to allow uprobe profiling and dynamic probing. (@luweglarz)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
@@ -53,6 +55,7 @@ Main (unreleased)
 
 - Support delimiters in `stage.luhn`. (@dehaansa)
 
+- pyroscope.java: update async-profiler to 4.2 (@korniltsev-grafanista)
 - Improve debug info output from exported receivers (loki, prometheus and pyroscope). (@kalleep)
 
 - `prometheus.exporter.unix`: Add an `arp` config block to configure the ARP collector. (@ptodev)
@@ -66,6 +69,10 @@ Main (unreleased)
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
+
+- Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
+
+- Fix issue in `loki.source.file` where scheduling files could take too long. (@kalleep)
 
 v1.11.3
 -----------------
@@ -91,6 +98,10 @@ v1.11.3
 ### Other changes
 
 - Augment prometheus.scrape 'scheme' argument strengthening link to protocol. (@lewismc)
+
+- Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
+
+- Stop `faro.receiver` losing trace context when exception has stack trace. (@duartesaraiva98)
 
 v1.11.2
 -----------------
@@ -158,6 +169,8 @@ v1.11.0
 
 - Add the `otelcol.receiver.fluentforward` receiver to receive logs via Fluent Forward Protocol. (@rucciva)
 - Add the `prometheus.enrich` component to enrich metrics using labels from `discovery.*` components. (@ArkovKonstantin)
+
+- Add the `otelcol.receiver.awsecscontainermetrics` receiver (from upstream OTEL contrib) to read AWS ECS task- and container-level resource usage metrics. (@gregbrowndev)
 
 - Add `node_filter` configuration block to `loki.source.podlogs` component to enable node-based filtering for pod discovery. When enabled, only pods running on the specified node will be discovered and monitored, significantly reducing API server load and network traffic in DaemonSet deployments. (@QuentinBisson)
 

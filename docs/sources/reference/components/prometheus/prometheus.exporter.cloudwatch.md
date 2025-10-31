@@ -424,7 +424,6 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Cognito`
 * Namespace: `AWS/DataSync`
 * Namespace: `AWS/DDoSProtection`
-* Namespace: `AWS/DirectoryService`
 * Namespace: `AWS/DMS`
 * Namespace: `AWS/DocDB`
 * Namespace: `AWS/DX`
@@ -466,9 +465,9 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/MWAA`
 * Namespace: `AWS/NATGateway`
 * Namespace: `AWS/Neptune`
+* Namespace: `AWS/Network Manager`
 * Namespace: `AWS/NetworkELB`
 * Namespace: `AWS/NetworkFirewall`
-* Namespace: `AWS/Network Manager`
 * Namespace: `AWS/PrivateLinkEndpoints`
 * Namespace: `AWS/PrivateLinkServices`
 * Namespace: `AWS/Prometheus`
@@ -476,7 +475,6 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/QuickSight`
 * Namespace: `AWS/RDS`
 * Namespace: `AWS/Redshift`
-* Namespace: `AWS/Redshift-Serverless`
 * Namespace: `AWS/Route53`
 * Namespace: `AWS/Route53Resolver`
 * Namespace: `AWS/RUM`
@@ -504,6 +502,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `Glue`
 
 {{< /column-list >}}
+
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

@@ -324,13 +324,14 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 		}
 
 		res[i] = &relabel.Config{
-			SourceLabels: sourceLabels,
-			Separator:    rc.Separator,
-			Modulus:      rc.Modulus,
-			TargetLabel:  rc.TargetLabel,
-			Replacement:  rc.Replacement,
-			Action:       relabel.Action(rc.Action),
-			Regex:        relabel.Regexp{Regexp: rc.Regex.Regexp},
+			SourceLabels:         sourceLabels,
+			Separator:            rc.Separator,
+			Modulus:              rc.Modulus,
+			TargetLabel:          rc.TargetLabel,
+			Replacement:          rc.Replacement,
+			Action:               relabel.Action(rc.Action),
+			Regex:                relabel.Regexp{Regexp: rc.Regex.Regexp},
+			NameValidationScheme: model.LegacyValidation,
 		}
 	}
 
