@@ -1,11 +1,10 @@
-package client
+package mimirclient
 
 import (
 	"context"
 	"io"
 	"net/url"
 
-	"github.com/prometheus/prometheus/model/rulefmt"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,7 +14,7 @@ type RemoteWriteConfig struct {
 }
 
 // CreateRuleGroup creates a new rule group
-func (r *LokiClient) CreateRuleGroup(ctx context.Context, namespace string, rg rulefmt.RuleGroup) error {
+func (r *MimirClient) CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error {
 	payload, err := yaml.Marshal(&rg)
 	if err != nil {
 		return err
@@ -29,13 +28,14 @@ func (r *LokiClient) CreateRuleGroup(ctx context.Context, namespace string, rg r
 	if err != nil {
 		return err
 	}
+
 	res.Body.Close()
 
 	return nil
 }
 
 // DeleteRuleGroup deletes a rule group
-func (r *LokiClient) DeleteRuleGroup(ctx context.Context, namespace, groupName string) error {
+func (r *MimirClient) DeleteRuleGroup(ctx context.Context, namespace, groupName string) error {
 	escapedNamespace := url.PathEscape(namespace)
 	escapedGroupName := url.PathEscape(groupName)
 	path := r.apiPath + "/" + escapedNamespace + "/" + escapedGroupName
@@ -52,7 +52,7 @@ func (r *LokiClient) DeleteRuleGroup(ctx context.Context, namespace, groupName s
 }
 
 // ListRules retrieves a rule group
-func (r *LokiClient) ListRules(ctx context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error) {
+func (r *MimirClient) ListRules(ctx context.Context, namespace string) (map[string][]MimirRuleGroup, error) {
 	path := r.apiPath
 	op := r.apiPath
 	if namespace != "" {
@@ -67,12 +67,11 @@ func (r *LokiClient) ListRules(ctx context.Context, namespace string) (map[strin
 
 	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
-
 	if err != nil {
 		return nil, err
 	}
 
-	ruleSet := map[string][]rulefmt.RuleGroup{}
+	ruleSet := map[string][]MimirRuleGroup{}
 	err = yaml.Unmarshal(body, &ruleSet)
 	if err != nil {
 		return nil, err

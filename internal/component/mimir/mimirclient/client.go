@@ -1,4 +1,4 @@
-package client
+package mimirclient
 
 import (
 	"bufio"
@@ -11,52 +11,50 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/client/internal"
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
-	"github.com/prometheus/prometheus/model/rulefmt"
-)
-
-const (
-	rulerAPIPath  = "/loki/api/v1/rules"
-	legacyAPIPath = "/api/v1/rules"
 )
 
 var (
-	ErrNoConfig         = errors.New("no config exists for this user")
-	ErrResourceNotFound = errors.New("requested resource not found")
+	ErrUnrecoverable = errors.New("unrecoverable error response")
 )
 
-// Config is used to configure a LokiClient.
+// IsRecoverable returns true for errors from API requests that can be retried, false otherwise.
+func IsRecoverable(err error) bool {
+	return !errors.Is(err, ErrUnrecoverable)
+}
+
+// Config is used to configure a MimirClient.
 type Config struct {
-	ID               string
-	Address          string
-	UseLegacyRoutes  bool
-	HTTPClientConfig config.HTTPClientConfig
+	ID                   string
+	Address              string
+	UseLegacyRoutes      bool
+	HTTPClientConfig     config.HTTPClientConfig
+	PrometheusHTTPPrefix string
 }
 
 type Interface interface {
-	CreateRuleGroup(ctx context.Context, namespace string, rg rulefmt.RuleGroup) error
+	CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error
 	DeleteRuleGroup(ctx context.Context, namespace, groupName string) error
-	ListRules(ctx context.Context, namespace string) (map[string][]rulefmt.RuleGroup, error)
+	ListRules(ctx context.Context, namespace string) (map[string][]MimirRuleGroup, error)
 }
 
-// LokiClient is a client to the Loki API.
-type LokiClient struct {
+// MimirClient is a client to the Mimir API.
+type MimirClient struct {
 	id string
 
 	endpoint *url.URL
-	client   internal.Requester
+	client   Requester
 	apiPath  string
 	logger   log.Logger
 }
 
-// New returns a new LokiClient.
-func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec) (*LokiClient, error) {
+// New returns a new MimirClient.
+func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec) (*MimirClient, error) {
 	endpoint, err := url.Parse(cfg.Address)
 	if err != nil {
 		return nil, err
@@ -66,15 +64,18 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 		return nil, err
 	}
 
-	path := rulerAPIPath
+	path, err := url.JoinPath(cfg.PrometheusHTTPPrefix, "/config/v1/rules")
+	if err != nil {
+		return nil, err
+	}
 	if cfg.UseLegacyRoutes {
-		path = legacyAPIPath
+		path = "/api/v1/rules"
 	}
 
 	collector := instrument.NewHistogramCollector(timingHistogram)
-	timedClient := internal.NewTimedClient(client, collector)
+	timedClient := NewTimedClient(client, collector)
 
-	return &LokiClient{
+	return &MimirClient{
 		id:       cfg.ID,
 		endpoint: endpoint,
 		client:   timedClient,
@@ -83,7 +84,7 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 	}, nil
 }
 
-func (r *LokiClient) doRequest(operation, path, method string, payload []byte) (*http.Response, error) {
+func (r *MimirClient) doRequest(operation, path, method string, payload []byte) (*http.Response, error) {
 	req, err := buildRequest(operation, path, method, *r.endpoint, payload)
 	if err != nil {
 		return nil, err
@@ -124,9 +125,8 @@ func checkResponse(r *http.Response) error {
 		errMsg = fmt.Sprintf("server returned HTTP status %s: %s", r.Status, msg)
 	}
 
-	// Loki ruler currently if there are no rules throws a 404, issue has been created to track that
-	if r.StatusCode == http.StatusNotFound {
-		return nil
+	if r.StatusCode/100 == 4 && r.StatusCode != http.StatusTooManyRequests {
+		return fmt.Errorf("%w: %s", ErrUnrecoverable, errMsg)
 	}
 
 	return errors.New(errMsg)
@@ -154,7 +154,7 @@ func buildRequest(op, p, m string, endpoint url.URL, payload []byte) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
-	r = r.WithContext(context.WithValue(r.Context(), internal.OperationNameContextKey, op))
+	r = r.WithContext(context.WithValue(r.Context(), OperationNameContextKey, op))
 
 	return r, nil
 }

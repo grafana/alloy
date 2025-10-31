@@ -9,8 +9,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/loki/rules/lokiclient"
 	"github.com/grafana/alloy/internal/featuregate"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
@@ -48,7 +48,7 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	lokiClient   lokiClient.Interface
+	lokiClient   lokiclient.Interface
 	k8sClient    kubernetes.Interface
 	promClient   promVersioned.Interface
 	ruleLister   promListers.PrometheusRuleLister
@@ -263,7 +263,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.lokiClient, err = lokiClient.New(c.log, lokiClient.Config{
+	c.lokiClient, err = lokiclient.New(c.log, lokiclient.Config{
 		ID:               c.args.TenantID,
 		Address:          c.args.Address,
 		UseLegacyRoutes:  c.args.UseLegacyRoutes,
