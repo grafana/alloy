@@ -19,8 +19,10 @@ import (
 var testLabelsYaml = ` stage.json {
                            expressions = { level = "", app_rename = "app" }
                        }
-                       stage.labels { 
+
+                       stage.labels {
                            values = {"level" = "", "app" = "app_rename" }
+						   map = "some_(key\\d+)"
                        }`
 
 var testLabelsLogLine = `
@@ -45,11 +47,16 @@ func TestLabelsPipeline_Labels(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectedLbls := model.LabelSet{
-		"level": "WARN",
-		"app":   "loki",
+		"level":     "WARN",
+		"app":       "loki",
+		"key1":      "value1",
+		"some_key1": "value1",
 	}
 
-	out := processEntries(pl, newEntry(nil, nil, testLabelsLogLine, time.Now()))[0]
+	out := processEntries(pl,
+		newEntry(nil, model.LabelSet{model.LabelName("some_key1"): model.LabelValue("value1")}, testLabelsLogLine, time.Now()),
+	)[0]
+	print(out.Labels)
 	assert.Equal(t, expectedLbls, out.Labels)
 }
 
@@ -76,7 +83,7 @@ var (
 	lv3 = ""
 )
 
-var emptyLabelsConfig = LabelsConfig{nil}
+var emptyLabelsConfig = LabelsConfig{nil, ""}
 
 func TestLabels(t *testing.T) {
 	tests := map[string]struct {
@@ -114,7 +121,7 @@ func TestLabels(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := validateLabelsConfig(test.config)
+			actual, _, err := validateLabelsConfig(test.config)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return

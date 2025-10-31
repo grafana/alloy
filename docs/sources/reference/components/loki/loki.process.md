@@ -588,12 +588,17 @@ For labels that are static, refer to [`stage.static_labels`][stage.static_labels
 
 The following arguments are supported:
 
-| Name     | Type          | Description                             | Default | Required |
-| -------- | ------------- | --------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Configures a `labels` processing stage. | `{}`    | no       |
+| Name     | Type          | Description                                                                                     | Default | Required |
+| -------- | ------------- | ----------------------------------------------------------------------------------------------- | ------- | -------- |
+| `values` | `map(string)` | Configures a `labels` processing stage.                                                         | `{}`    | no       |
+| `map`    | `string`      | Regular expression labels processing. The first group match '(...)' indicates the new key name. | `""`    | no       |
 
-In a labels stage, the map's keys define the label to set and the values are how to look them up.
+In a labels stage, the `values` map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
+
+The `map` regular expression pattern matches labels which are added a new label.
+The regular expression must include a group match bracket.
+This match is used as new key name with the original value.
 
 ```alloy
 stage.labels {
@@ -601,6 +606,8 @@ stage.labels {
       env  = "",         // Sets up an 'env' label, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' label, based on the 'username' extracted value.
     }
+
+    map = "structured_(key.+)" // will map the values e.g. `structured_key1 to `key1` - the original key is kept.
 }
 ```
 
@@ -1512,12 +1519,19 @@ The `stage.structured_metadata` inner block configures a stage that can read dat
 
 The following arguments are supported:
 
-| Name     | Type          | Description                                                                 | Default | Required |
-| -------- | ------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry. | `{}`    | no       |
+| Name     | Type          | Description                                                                                                                                                   | Default | Required |
+| -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry. The original label is removed.                                                    | `{}`    | no       |
+| `map`    | `string`      | Regular expression labels processing. The first group match '(...)' is used as key names for the values added as new metadata. The original label is removed. | `""`    | no       |
 
 In a `structured_metadata` stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
+
+The `map` regular expression pattern matches labels added as new structured metadata.
+The regular expression must include a group match bracket.
+This match is used as new key name with the original value.
+
+The original labels are removed after being added to the structured metadata set.
 
 ```alloy
 stage.structured_metadata {
@@ -1525,6 +1539,8 @@ stage.structured_metadata {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
     }
+
+    map = "structured_(key.+)" // will map the values e.g. `structured_key1 to `key1`
 }
 ```
 

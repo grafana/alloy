@@ -64,6 +64,8 @@ Main (unreleased)
 
 - `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
+- Add support of `map` paramaeter in `loki.process` `stage.labels` and `stage.structured_metadata` for regexp based label selection. (@fnerdwq)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
