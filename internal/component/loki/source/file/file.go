@@ -186,7 +186,6 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-
 	wg.Go(func() {
 		for {
 			select {
@@ -205,7 +204,6 @@ func (c *Component) Run(ctx context.Context) error {
 				c.receiversMut.RUnlock()
 			}
 		}
-
 	})
 
 	wg.Go(func() { c.watcher.Run(ctx) })
@@ -293,8 +291,7 @@ func (c *Component) scheduleSources() {
 			continue
 		}
 
-		if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 &&
-			fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
+		if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
 			continue
 		}
 

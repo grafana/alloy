@@ -343,7 +343,6 @@ func TestTwoTargets(t *testing.T) {
 			return true
 		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
 	})
-
 }
 
 func TestEncoding(t *testing.T) {
@@ -413,7 +412,6 @@ func TestEncoding(t *testing.T) {
 			return true
 		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
 	})
-
 }
 
 func TestDeleteRecreateFile(t *testing.T) {
@@ -472,7 +470,6 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
 	})
-
 }
 
 func runTests(t *testing.T, run func(t *testing.T, match FileMatch)) {
