@@ -429,6 +429,7 @@ func (c *Component) startCollectors(serverUUID string, engineVersion string, par
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
+			EngineVersion:   parsedEngineVersion,
 			CollectInterval: c.args.SchemaTablesArguments.CollectInterval,
 			CacheEnabled:    c.args.SchemaTablesArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaTablesArguments.CacheSize,
