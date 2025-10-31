@@ -24,7 +24,8 @@ const (
 )
 
 const (
-	stateActive = "active"
+	queryTextClause = ", s.query"
+	stateActive     = "active"
 )
 
 const selectPgStatActivity = `
@@ -48,8 +49,8 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id,
-		s.query
+		s.query_id
+		%s
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
@@ -57,7 +58,7 @@ const selectPgStatActivity = `
 		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
-			(				
+			(
 				coalesce(TRIM(s.query), '') != '' AND
 				s.query_id != 0
 			)
@@ -194,7 +195,11 @@ func (c *QuerySamples) Name() string {
 }
 
 func (c *QuerySamples) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -236,7 +241,13 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	rows, err := c.dbConnection.QueryContext(ctx, selectPgStatActivity)
+	queryTextField := ""
+	if c.disableQueryRedaction {
+		queryTextField = queryTextClause
+	}
+
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
@@ -279,7 +290,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 	sample := QuerySamplesInfo{}
-	err := rows.Scan(
+	scanArgs := []interface{}{
 		&sample.Now,
 		&sample.DatabaseName,
 		&sample.PID,
@@ -300,8 +311,11 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-		&sample.Query,
-	)
+	}
+	if c.disableQueryRedaction {
+		scanArgs = append(scanArgs, &sample.Query)
+	}
+	err := rows.Scan(scanArgs...)
 	return sample, err
 }
 
@@ -314,8 +328,10 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 }
 
 func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-		return fmt.Errorf("insufficient privilege to access query. sample set: %+v", sample)
+	if c.disableQueryRedaction {
+		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
+		}
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -426,13 +442,8 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		}
 	}
 
-	queryText := state.LastRow.Query.String
-	if !c.disableQueryRedaction {
-		queryText = database_observability.RedactSql(queryText)
-	}
-
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -446,10 +457,12 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		xactDuration,
 		queryDuration,
 		state.LastRow.QueryID.Int64,
-		queryText,
 	)
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
 	return labels
 }
@@ -460,12 +473,8 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	queryText := state.LastRow.Query.String
-	if !c.disableQueryRedaction {
-		queryText = database_observability.RedactSql(queryText)
-	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d" query="%s" engine="postgres"`,
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -480,7 +489,6 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		waitEventFullName,
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
-		queryText,
 	)
 }
 

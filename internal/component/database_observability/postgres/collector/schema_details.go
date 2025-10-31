@@ -28,7 +28,12 @@ const (
 )
 
 const (
-	selectDatabaseName = `SELECT current_database()`
+	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
+	selectAllDatabases = `
+		SELECT datname 
+		FROM pg_database 
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')`
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
@@ -202,6 +207,7 @@ type foreignKey struct {
 
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
+	DSN             string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
@@ -210,12 +216,16 @@ type SchemaDetailsArguments struct {
 	CacheTTL     time.Duration
 
 	Logger log.Logger
+
+	dbConnectionFactory databaseConnectionFactory
 }
 
 type SchemaDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
+	initialConnection   *sql.DB
+	dbDSN               string
+	dbConnectionFactory databaseConnectionFactory
+	collectInterval     time.Duration
+	entryHandler        loki.EntryHandler
 
 	// Cache of table definitions. Entries are removed after a configurable TTL.
 	// Key is a string of the form "database.schema.table".
@@ -229,12 +239,19 @@ type SchemaDetails struct {
 }
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
+	factory := args.dbConnectionFactory
+	if factory == nil {
+		factory = defaultDbConnectionFactory
+	}
+
 	c := &SchemaDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
-		running:         &atomic.Bool{},
+		initialConnection:   args.DB,
+		dbDSN:               args.DSN,
+		dbConnectionFactory: factory,
+		collectInterval:     args.CollectInterval,
+		entryHandler:        args.EntryHandler,
+		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
+		running:             &atomic.Bool{},
 	}
 
 	if args.CacheEnabled {
@@ -290,14 +307,34 @@ func (c *SchemaDetails) Stop() {
 	c.cancel()
 }
 
-func (c *SchemaDetails) extractNames(ctx context.Context) error {
-	rs := c.dbConnection.QueryRowContext(ctx, selectDatabaseName)
-	var dbName string
-	if err := rs.Scan(&dbName); err != nil {
-		return fmt.Errorf("failed to scan database name: %w", err)
+func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
+	rows, err := c.initialConnection.QueryContext(ctx, selectAllDatabases)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		return nil, fmt.Errorf("failed to discover databases: %w", err)
+	}
+	defer rows.Close()
+
+	var databases []string
+	for rows.Next() {
+		var datname string
+		if err := rows.Scan(&datname); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
+			continue
+		}
+		databases = append(databases, datname)
 	}
 
-	schemaRs, err := c.dbConnection.QueryContext(ctx, selectSchemaNames)
+	if err := rows.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "error iterating database rows", "err", err)
+		return nil, fmt.Errorf("error iterating database rows: %w", err)
+	}
+
+	return databases, nil
+}
+
+func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
 	}
@@ -331,7 +368,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	tables := []*tableInfo{}
 
 	for _, schema := range schemas {
-		rs, err := c.dbConnection.QueryContext(ctx, selectTableNames, schema)
+		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schema)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to query tables", "datname", dbName, "schema", schema, "err", err)
 			break
@@ -380,7 +417,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		}
 
 		if !cacheHit {
-			table, err = c.fetchTableDefinitions(ctx, table)
+			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
 			if err != nil {
 				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "err", err)
 				continue
@@ -403,8 +440,46 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	return nil
 }
 
-func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo) (*tableInfo, error) {
-	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName)
+func (c *SchemaDetails) extractNames(ctx context.Context) error {
+	databases, err := c.getAllDatabases(ctx)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		return fmt.Errorf("failed to discover databases: %w", err)
+	}
+
+	for _, dbName := range databases {
+		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to create DSN for database", "datname", dbName, "err", err)
+			continue
+		}
+
+		conn, err := c.dbConnectionFactory(databaseDSN)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to create connection to database", "datname", dbName, "err", err)
+			continue
+		}
+
+		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
+			level.Error(c.logger).Log("msg", "failed to collect schema from database", "datname", dbName, "err", err)
+			if conn != c.initialConnection {
+				conn.Close()
+			}
+			continue
+		}
+
+		if conn != c.initialConnection {
+			if err := conn.Close(); err != nil {
+				level.Warn(c.logger).Log("msg", "failed to close database connection", "datname", dbName, "err", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo, dbConnection *sql.DB) (*tableInfo, error) {
+	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName, dbConnection)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to analyze table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 		return table, err
@@ -420,9 +495,9 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 	return table, nil
 }
 
-func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string) (*tableSpec, error) {
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string, dbConnection *sql.DB) (*tableSpec, error) {
 	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
-	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
+	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
@@ -465,7 +540,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		return nil, err
 	}
 
-	indexesRS, err := c.dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
+	indexesRS, err := dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
@@ -500,7 +575,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		return nil, err
 	}
 
-	fkRS, err := c.dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	fkRS, err := dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err

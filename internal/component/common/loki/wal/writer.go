@@ -261,8 +261,7 @@ func newEntryWriter() *entryWriter {
 // write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
 func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error {
 	// Reset wal record slices
-	ew.reusableWALRecord.RefEntries = ew.reusableWALRecord.RefEntries[:0]
-	ew.reusableWALRecord.Series = ew.reusableWALRecord.Series[:0]
+	ew.reusableWALRecord.Reset()
 
 	var fp uint64
 	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
