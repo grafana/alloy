@@ -12,17 +12,33 @@ import (
 
 // Default metrics metadata
 var PromDefaultMetricMetadata = map[string]Metadata{
-	"golang_counter":          {Type: "counter"},
-	"golang_gauge":            {Type: "gauge"},
-	"golang_histogram_bucket": {Type: "histogram"},
-	"golang_histogram_count":  {Type: "histogram"},
-	"golang_histogram_sum":    {Type: "histogram"},
-	"golang_summary":          {Type: "summary"},
+	"golang_counter":                {Type: "counter", Help: "The counter description string"},
+	"golang_gauge":                  {Type: "gauge", Help: "The gauge description string"},
+	"golang_histogram_bucket":       {Type: "histogram", Help: "The histogram description string"},
+	"golang_histogram_count":        {Type: "histogram", Help: "The histogram description string"},
+	"golang_histogram_sum":          {Type: "histogram", Help: "The histogram description string"},
+	"golang_mixed_histogram_bucket": {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_mixed_histogram_count":  {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_mixed_histogram_sum":    {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_summary":                {Type: "summary", Help: "The summary description string"},
+}
+
+// Default metrics metadata for OTLP generated metrics.
+// When you send metrics to Mimir's OTLP endpoint,
+// Mimir doesn't generate metadata for
+// _bucket, _count, and _sum metrics of classic histograms.
+var OtlpDefaultMetricMetadata = map[string]Metadata{
+	"golang_counter":         {Type: "counter", Help: "The counter description string"},
+	"golang_gauge":           {Type: "gauge", Help: "The gauge description string"},
+	"golang_histogram":       {Type: "histogram", Help: "The histogram description string"},
+	"golang_mixed_histogram": {Type: "histogram", Help: "The mixed_histogram description string"},
+	"golang_summary":         {Type: "summary", Help: "The summary description string"},
 }
 
 // Default native histogram metadata
 var PromDefaultNativeHistogramMetadata = map[string]Metadata{
-	"golang_native_histogram": {Type: "histogram"},
+	"golang_native_histogram": {Type: "histogram", Help: "The native_histogram description string"},
+	"golang_mixed_histogram":  {Type: "histogram", Help: "The mixed_histogram description string"},
 }
 
 func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
@@ -78,6 +94,6 @@ func MetadataQuery() string {
 func GetMetadata() (MetadataResponse, error) {
 	var metadataResponse MetadataResponse
 	query := MetadataQuery()
-	err := FetchDataFromURL(query, &metadataResponse)
+	_, err := FetchDataFromURL(query, &metadataResponse)
 	return metadataResponse, err
 }

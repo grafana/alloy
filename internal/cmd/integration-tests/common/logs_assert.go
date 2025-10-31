@@ -31,7 +31,7 @@ func AssertLogsPresent(t *testing.T, testName string, expectedLabels map[string]
 
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(LogQuery(testName), &logResponse)
+		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
 		assert.NoError(c, err)
 		if len(logResponse.Data.Result) == 0 {
 			return
@@ -54,7 +54,7 @@ func AssertLogsMissing(t *testing.T, testName string, labels ...string) {
 
 	var logResponse LogResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(LogQuery(testName), &logResponse)
+		_, err := FetchDataFromURL(LogQuery(testName), &logResponse)
 		assert.NoError(c, err)
 		if len(logResponse.Data.Result) == 0 {
 			return
