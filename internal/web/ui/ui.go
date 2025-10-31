@@ -23,8 +23,8 @@ import (
 //
 // By default, the UI is retrieved from the ./internal/web/ui/build directory
 // relative to working directory, assuming that Alloy is run from the repo
-// root. However, if the builtinassets Go tag is present, the built UI will be
-// embedded into the binary; run go generate -tags builtinassets for this
+// root. However, if the embedalloyui Go tag is present, the built UI will be
+// embedded into the binary; run go generate -tags embedalloyui for this
 // package to generate the assets to embed.
 //
 // RegisterRoutes catches all requests from pathPrefix and so should only be

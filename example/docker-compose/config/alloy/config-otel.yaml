@@ -1,0 +1,93 @@
+# OpenTelemetry Collector configuration demonstrating how the new Alloy OTel mode works.
+
+extensions:
+  alloyflow:
+    config_path: /etc/alloy/config.alloy
+    flags:
+      storage.path: /var/lib/alloy/data
+      server.http.listen-addr: 0.0.0.0:12345
+      stability.level: experimental
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317 # Default OTLP/gRPC port
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "otel-scrapes-alloy-runtime"
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["localhost:12345"]
+          metrics_path: "/metrics"
+          # Add labels to distinguish from Flow runtime scraping
+          relabel_configs:
+            - target_label: "source"
+              replacement: "otel_mode_scraping_flow_mode"
+        - job_name: "otel-scrapes-otel-runtime"
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["localhost:8888"]
+          metrics_path: "/metrics"
+          # Add labels to distinguish from Flow runtime scraping
+          relabel_configs:
+            - target_label: "source"
+              replacement: "otel_mode_scraping_otel_mode"
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/tempo:
+    # Use TEMPO_HOST if set, otherwise default to tempo:4317 (common in Docker Compose).
+    # You can also point this to a remote Tempo gateway.
+    endpoint: ${env:TEMPO_HOST:-tempo:4317}
+    tls:
+      insecure: true
+  prometheusremotewrite:
+    endpoint: http://${env:REMOTE_WRITE_HOST:-localhost:9009}/api/v1/push
+    tls:
+      insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
+    target_info:
+      enabled: false
+
+processors:
+  batch: {}
+
+service:
+  telemetry:
+    logs:
+      level: "debug"
+      encoding: "json"  # JSON encoding for better structured logs
+      development: true
+    metrics:
+      level: detailed
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+    # Configure resource attributes for internal telemetry
+    resource:
+      service.name: "otel-collector"
+      service.instance.id: "otel-collector-docker-compose"
+      service.version: "latest"
+      deployment.environment: "docker-compose"
+      component: "otel-collector"
+  extensions: [alloyflow, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [prometheusremotewrite]

@@ -42,7 +42,7 @@ tracing {
 	sampling_fraction = 1.0
 
 	// Forward internal spans to the local Tempo instance.
-	write_to = [otelcol.exporter.otlp.tempo.input]
+	write_to = [otelcol.exporter.otlp.local.input]
 }
 
 // Collect metrics from the local running Alloy instance and forward to
@@ -50,7 +50,33 @@ tracing {
 prometheus.exporter.self "alloy" {}
 prometheus.scrape "alloy" {
 	targets    = prometheus.exporter.self.alloy.targets
-	forward_to = [prometheus.remote_write.mimir.receiver]
+	forward_to = [prometheus.relabel.alloy_metrics.receiver]
+}
+
+// Additional scraping of Alloy's HTTP metrics endpoint for conflict testing
+prometheus.scrape "alloy_http_endpoint" {
+	job_name = "alloy_scrapes_flow_runtime"
+	targets = [
+		{
+			"__address__" = "localhost:12345",
+			"__metrics_path__" = "/metrics",
+		},
+	]
+	scrape_interval = "15s"
+	forward_to = [prometheus.relabel.alloy_http_metrics.receiver]	
+}
+
+// Scrape OTel Collector's Prometheus metrics endpoint for cross-runtime testing
+prometheus.scrape "otel_collector_metrics" {
+	job_name = "alloy_scrapes_otel_runtime"
+	targets = [
+		{
+			"__address__" = "localhost:8888",
+			"__metrics_path__" = "/metrics",
+		},
+	]
+	scrape_interval = "15s"
+	forward_to = [prometheus.relabel.otel_collector_metrics.receiver]	
 }
 
 // Collect profiles from the local running Alloy instance and forward to
@@ -60,6 +86,36 @@ pyroscope.scrape "default" {
     {"__address__" = "localhost:12345", "service_name" = "alloy"},
   ]
   forward_to = [pyroscope.write.pyroscope.receiver]
+}
+
+// Relabel rules for Alloy self-monitoring metrics
+prometheus.relabel "alloy_metrics" {
+	rule {
+		target_label = "source"
+		replacement = "flow_mode_scraping_flow_mode_self_exporter"
+	}
+
+	forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+// Relabel rules for Alloy HTTP endpoint metrics
+prometheus.relabel "alloy_http_metrics" {
+	rule {
+		target_label = "source"
+		replacement = "flow_mode_scraping_flow_mode"
+	}
+
+	forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+// Relabel rules for OTel Collector metrics
+prometheus.relabel "otel_collector_metrics" {
+	rule {
+		target_label = "source"
+		replacement = "flow_mode_scraping_otel_mode"
+	}
+
+	forward_to = [prometheus.remote_write.mimir.receiver]
 }
 
 prometheus.remote_write "mimir" {
@@ -80,9 +136,10 @@ loki.write "loki" {
 	}
 }
 
-otelcol.exporter.otlp "tempo" {
+otelcol.exporter.otlp "local" {
 	client {
-		endpoint = coalesce(sys.env("TEMPO_HOST"), "localhost:4317")
+		// Send to local OTLP receiver (as defined in config-otel.yaml).
+		endpoint = "localhost:4317"
 
 		tls {
 			insecure = true

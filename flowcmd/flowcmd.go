@@ -1,7 +1,8 @@
-package main
+package flowcmd
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
@@ -31,6 +32,11 @@ func init() {
 	prometheus.MustRegister(build.NewCollector("alloy"))
 }
 
-func main() {
-	alloycli.Run()
+// RootCommand exposes the root Cobra command constructed by the internal alloy CLI.
+func RootCommand() *cobra.Command {
+	return alloycli.Command()
+}
+
+func RunCommand() *cobra.Command {
+	return alloycli.RunCommand()
 }
