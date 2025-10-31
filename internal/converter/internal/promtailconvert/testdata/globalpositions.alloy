@@ -15,10 +15,8 @@ local.file_match "fun" {
 }
 
 loki.source.file "fun" {
-	targets    = local.file_match.fun.targets
-	forward_to = []
-
-	file_match { }
+	targets               = local.file_match.fun.targets
+	forward_to            = []
 	legacy_positions_file = "/good/positions.yml"
 }
 
@@ -39,9 +37,7 @@ local.file_match "fun2" {
 }
 
 loki.source.file "fun2" {
-	targets    = local.file_match.fun2.targets
-	forward_to = []
-
-	file_match { }
+	targets               = local.file_match.fun2.targets
+	forward_to            = []
 	legacy_positions_file = "/good/positions.yml"
 }

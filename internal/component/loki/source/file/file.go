@@ -53,9 +53,21 @@ type Arguments struct {
 	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
 }
 
+func (a *Arguments) SetToDefault() {
+	a.FileWatch.SetToDefault()
+	a.FileWatch.SetToDefault()
+}
+
 type FileWatch struct {
 	MinPollFrequency time.Duration `alloy:"min_poll_frequency,attr,optional"`
 	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
+}
+
+func (a *FileWatch) SetToDefault() {
+	*a = FileWatch{
+		MinPollFrequency: 250 * time.Millisecond,
+		MaxPollFrequency: 250 * time.Millisecond,
+	}
 }
 
 type FileMatch struct {
@@ -64,20 +76,11 @@ type FileMatch struct {
 	IgnoreOlderThan time.Duration `alloy:"ignore_older_than,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	FileWatch: FileWatch{
-		MinPollFrequency: 250 * time.Millisecond,
-		MaxPollFrequency: 250 * time.Millisecond,
-	},
-	FileMatch: FileMatch{
+func (a *FileMatch) SetToDefault() {
+	*a = FileMatch{
 		Enabled:    false,
 		SyncPeriod: 10 * time.Second,
-	},
-}
-
-// SetToDefault implements syntax.Defaulter.
-func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	}
 }
 
 type DecompressionConfig struct {
@@ -142,7 +145,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	if args.FileMatch.SyncPeriod < 1 {
-		args.FileMatch.SyncPeriod = DefaultArguments.FileMatch.SyncPeriod
+		args.FileMatch.SyncPeriod = 10 * time.Second
 	}
 
 	c := &Component{
