@@ -456,6 +456,16 @@ func TestContainsReservedKeywords_WithActualDenyList(t *testing.T) {
 			query:    "SELECT * FROM users AS insert_table",
 			expected: false,
 		},
+		{
+			name:     "SELECT with legacy LOCK IN SHARE MODE",
+			query:    "SELECT name FROM users LOCK IN SHARE MODE",
+			expected: true,
+		},
+		{
+			name:     "SELECT with FOR UPDATE",
+			query:    "SELECT name FROM users FOR UPDATE",
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {

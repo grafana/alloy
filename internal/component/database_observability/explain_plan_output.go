@@ -43,6 +43,7 @@ const (
 var ExplainReservedWordDenyList = []string{
 	// Data Manipulation Language (DML) - Write operations
 	"INSERT", "UPDATE", "DELETE", "REPLACE", "MERGE", "UPSERT",
+	"FOR UPDATE",
 
 	// Data Definition Language (DDL) - Schema modifications
 	"CREATE", "ALTER", "DROP", "RENAME", "TRUNCATE",
@@ -62,6 +63,7 @@ var ExplainReservedWordDenyList = []string{
 	// MySQL specific write operations
 	"LOAD", "REPLACE", "DELAYED", "IGNORE", "ON DUPLICATE KEY",
 	"LOW_PRIORITY", "HIGH_PRIORITY", "QUICK", "LOCK", "UNLOCK",
+	"LOCK IN SHARE MODE",
 
 	// PostgreSQL specific write operations
 	"COPY", "VACUUM", "CLUSTER", "LISTEN", "NOTIFY", "DISCARD",
