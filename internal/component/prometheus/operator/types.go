@@ -49,6 +49,9 @@ type ScrapeOptions struct {
 
 	// DefaultScrapeTimeout is the default timeout to scrape targets.
 	DefaultScrapeTimeout time.Duration `alloy:"default_scrape_timeout,attr,optional"`
+
+	// EnableNativeHistograms enables scraping of Prometheus native histograms.
+	EnableNativeHistograms bool `alloy:"enable_native_histograms,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
