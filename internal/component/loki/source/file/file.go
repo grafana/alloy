@@ -180,6 +180,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}()
 		c.mut.Lock()
 		c.stopping.Store(true)
+		c.watcher.Stop()
 		c.scheduler.Stop()
 		close(c.handler.Chan())
 		c.mut.Unlock()
@@ -213,11 +214,11 @@ func (c *Component) Run(ctx context.Context) error {
 				return
 			case <-c.watcher.C:
 				c.mut.Lock()
-				defer c.mut.Unlock()
 				if !c.args.FileMatch.Enabled {
 					return
 				}
 				c.scheduleSources()
+				c.mut.Unlock()
 			}
 		}
 	})
