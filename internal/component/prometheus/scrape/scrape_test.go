@@ -13,10 +13,6 @@ import (
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 
@@ -129,57 +125,6 @@ func TestBadAlloyConfig(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
-}
-
-// contextCapturingAppendable is a test helper that captures the context when Appender is called
-type contextCapturingAppendable struct {
-	capturedCtx context.Context
-	next        storage.Appendable
-}
-
-func (c *contextCapturingAppendable) Appender(ctx context.Context) storage.Appender {
-	c.capturedCtx = ctx
-	if c.next != nil {
-		return c.next.Appender(ctx)
-	}
-	return &noopAppender{}
-}
-
-// noopAppender is a minimal appender implementation for testing
-type noopAppender struct{}
-
-func (n *noopAppender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return ref, nil
-}
-
-func (n *noopAppender) SetOptions(opts *storage.AppendOptions) {}
-
-func (n *noopAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	return ref, nil
-}
-
-func (n *noopAppender) Commit() error {
-	return nil
-}
-
-func (n *noopAppender) Rollback() error {
-	return nil
-}
-
-func (n *noopAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
-	return ref, nil
-}
-
-func (n *noopAppender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
-	return ref, nil
-}
-
-func (n *noopAppender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return ref, nil
-}
-
-func (n *noopAppender) AppendCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64) (storage.SeriesRef, error) {
-	return ref, nil
 }
 
 // TestCustomDialer ensures that prometheus.scrape respects the custom dialer
