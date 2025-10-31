@@ -495,7 +495,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
+			require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -653,15 +653,16 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			CollectInterval: 10 * time.Millisecond,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DB:                    db,
+			CollectInterval:       10 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: active row
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -671,7 +672,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Scrape 2: same key turns idle; state_change denotes end
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -681,7 +682,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT * FROM t",
 			))
 		// Scrape 3: still idle -> must not emit again
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2000, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -722,15 +723,16 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		lokiClient := loki_fake.NewClient(func() {})
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:              db,
-			CollectInterval: 10 * time.Millisecond,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DB:                    db,
+			CollectInterval:       10 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
 
 		// Scrape 1: only idle row
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2001, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
@@ -740,7 +742,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"SELECT * FROM users",
 			))
 		// Scrape 2: same idle row again -> should not re-emit
-		mock.ExpectQuery(selectPgStatActivity).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 2001, sql.NullInt64{},
 				"testuser", "testapp", "127.0.0.1", 5432,
