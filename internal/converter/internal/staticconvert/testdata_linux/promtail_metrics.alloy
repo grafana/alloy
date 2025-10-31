@@ -22,10 +22,8 @@ loki.process "logs_config_with_metrics" {
 }
 
 loki.source.file "logs_config_with_metrics" {
-	targets    = local.file_match.logs_config_with_metrics.targets
-	forward_to = [loki.process.logs_config_with_metrics.receiver]
-
-	file_match { }
+	targets               = local.file_match.logs_config_with_metrics.targets
+	forward_to            = [loki.process.logs_config_with_metrics.receiver]
 	legacy_positions_file = "/path/config.yml"
 }
 
