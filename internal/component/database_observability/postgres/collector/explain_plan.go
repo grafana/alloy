@@ -421,7 +421,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 		containsReservedWord := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
 
 		if containsReservedWord {
-			level.Debug(logger).Log("msg", "skipping query containing reserved word", "query", qi.queryText)
+			level.Debug(logger).Log("msg", "skipping query containing reserved word")
 			continue
 		}
 
