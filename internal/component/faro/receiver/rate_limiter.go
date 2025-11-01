@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/time/rate"
 )
 
@@ -41,14 +43,30 @@ type AppRateLimitingConfig struct {
 	rate  rate.Limit
 	burst int
 	mu    sync.RWMutex
+
+	// Metrics
+	activeApp          prometheus.Gauge
+	rateLimitDecisions *prometheus.CounterVec
 }
 
 // NewAppRateLimitingConfig creates a new AppRateLimitingConfig with the given rate limit and burst size.
-func NewAppRateLimitingConfig(rateLimit float64, burst int) *AppRateLimitingConfig {
+func NewAppRateLimitingConfig(rateLimit float64, burst int, reg prometheus.Registerer) *AppRateLimitingConfig {
 	return &AppRateLimitingConfig{
 		rate:  rate.Limit(rateLimit),
 		burst: burst,
 		pool:  make(map[AppRateLimitingConfigKey]*AppRateLimiter),
+
+		activeApp: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "faro_receiver_rate_limiter_active_app",
+			Help: "Number of active applications with rate limiters. Inactive limiters are cleaned up every 10 minutes.",
+		}),
+		rateLimitDecisions: promauto.With(reg).NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "faro_receiver_rate_limiter_requests_total",
+				Help: "Total number of requests processed by the rate limiter per app/environment.",
+			},
+			[]string{"app", "env", "allowed"},
+		),
 	}
 }
 
@@ -74,6 +92,7 @@ func (r *AppRateLimitingConfig) SetPoolLimiter(key AppRateLimitingConfigKey, lim
 		limiter:  limiter,
 		lastUsed: time.Now(),
 	}
+	r.activeApp.Set(float64(len(r.pool)))
 	return limiter
 }
 
@@ -100,10 +119,17 @@ func (r *AppRateLimitingConfig) cleanupExpiredLimiters() {
 	defer r.mu.Unlock()
 
 	now := time.Now()
+	removed := 0
 	for key, appLimiter := range r.pool {
 		if now.Sub(appLimiter.lastUsed) > DEFAULT_LIMITER_EXPIRY {
 			delete(r.pool, key)
+			removed++
 		}
+	}
+
+	// Update pool size metric if limiters were removed
+	if removed > 0 {
+		r.activeApp.Set(float64(len(r.pool)))
 	}
 }
 
@@ -122,14 +148,14 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 		newLimiter.SetBurstAt(t, r.burst)
 
 		limiter = r.SetPoolLimiter(key, newLimiter)
-
-		return limiter.Allow()
+	} else {
+		// Update last used time
+		r.mu.Lock()
+		r.pool[key].lastUsed = time.Now()
+		r.mu.Unlock()
 	}
 
-	// Update last used time
-	r.mu.Lock()
-	r.pool[key].lastUsed = time.Now()
-	r.mu.Unlock()
-
-	return limiter.Allow()
+	allowed := limiter.Allow()
+	r.rateLimitDecisions.WithLabelValues(app, env, fmt.Sprintf("%t", allowed)).Inc()
+	return allowed
 }

@@ -23,6 +23,7 @@ var defaultAllowedHeaders = []string{"content-type", "traceparent", apiKeyHeader
 
 type handler struct {
 	log            log.Logger
+	reg            prometheus.Registerer
 	rateLimiter    *rate.Limiter
 	appRateLimiter *AppRateLimitingConfig
 	exporters      []exporter
@@ -44,6 +45,7 @@ func newHandler(l log.Logger, reg prometheus.Registerer, exporters []exporter) *
 
 	return &handler{
 		log:         l,
+		reg:         reg,
 		rateLimiter: rate.NewLimiter(rate.Inf, 0),
 		exporters:   exporters,
 		errorsTotal: errorsTotal,
@@ -69,7 +71,7 @@ func (h *handler) Update(args ServerArguments) {
 
 		// Initialize or update the per-app rate limiter if strategy is per_app
 		if args.RateLimiting.Strategy == RateLimitingStrategyPerApp {
-			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize))
+			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize), h.reg)
 		} else {
 			h.appRateLimiter = nil
 		}

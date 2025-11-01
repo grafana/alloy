@@ -6,10 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 )
+
+// testReg returns a new Prometheus registerer for testing
+func testReg() prometheus.Registerer {
+	return prometheus.NewRegistry()
+}
 
 func TestParseAppRateLimitingConfigKey(t *testing.T) {
 	tests := []struct {
@@ -70,9 +76,8 @@ func TestNewAppRateLimitingConfig(t *testing.T) {
 		burst     int
 	}{
 		{
-			name:      "standard rate",
-			rateLimit: 100.0,
-			burst:     200,
+			name: "standard rate", rateLimit: 100.0,
+			burst: 200,
 		},
 		{
 			name:      "fractional rate",
@@ -88,7 +93,7 @@ func TestNewAppRateLimitingConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := NewAppRateLimitingConfig(tt.rateLimit, tt.burst)
+			config := NewAppRateLimitingConfig(tt.rateLimit, tt.burst, testReg())
 
 			require.NotNil(t, config)
 			assert.NotNil(t, config.pool)
@@ -99,7 +104,7 @@ func TestNewAppRateLimitingConfig(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_GetPoolLimiter(t *testing.T) {
-	config := NewAppRateLimitingConfig(10.0, 20)
+	config := NewAppRateLimitingConfig(10.0, 20, testReg())
 	key := ParseAppRateLimitingConfigKey("myapp", "production")
 
 	// Test getting non-existent limiter
@@ -115,7 +120,7 @@ func TestAppRateLimitingConfig_GetPoolLimiter(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_SetPoolLimiter(t *testing.T) {
-	config := NewAppRateLimitingConfig(10.0, 20)
+	config := NewAppRateLimitingConfig(10.0, 20, testReg())
 	key := ParseAppRateLimitingConfigKey("myapp", "production")
 
 	// Create a new limiter
@@ -172,7 +177,7 @@ func TestAppRateLimitingConfig_Allow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := NewAppRateLimitingConfig(tt.rateLimit, tt.burst)
+			config := NewAppRateLimitingConfig(tt.rateLimit, tt.burst, testReg())
 
 			for i := 0; i < tt.requests; i++ {
 				result := config.Allow(tt.app, tt.env)
@@ -183,7 +188,7 @@ func TestAppRateLimitingConfig_Allow(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_Allow_DifferentApps(t *testing.T) {
-	config := NewAppRateLimitingConfig(1.0, 2)
+	config := NewAppRateLimitingConfig(1.0, 2, testReg())
 
 	// Each app should have its own rate limiter
 	app1Result1 := config.Allow("app1", "production")
@@ -204,7 +209,7 @@ func TestAppRateLimitingConfig_Allow_DifferentApps(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_Allow_DifferentEnvironments(t *testing.T) {
-	config := NewAppRateLimitingConfig(1.0, 2)
+	config := NewAppRateLimitingConfig(1.0, 2, testReg())
 
 	// Same app, different environments should have separate rate limiters
 	prodResult1 := config.Allow("myapp", "production")
@@ -225,7 +230,7 @@ func TestAppRateLimitingConfig_Allow_DifferentEnvironments(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_ConcurrentAccess(t *testing.T) {
-	config := NewAppRateLimitingConfig(100.0, 200)
+	config := NewAppRateLimitingConfig(100.0, 200, testReg())
 	numGoroutines := 10
 	requestsPerGoroutine := 100
 
@@ -264,7 +269,7 @@ func TestAppRateLimitingConfig_ConcurrentAccess(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_RateRecovery(t *testing.T) {
-	config := NewAppRateLimitingConfig(10.0, 1) // 10 requests per second, burst of 1
+	config := NewAppRateLimitingConfig(10.0, 1, testReg()) // 10 requests per second, burst of 1
 
 	// Use up the initial burst
 	assert.True(t, config.Allow("myapp", "production"))
@@ -278,7 +283,7 @@ func TestAppRateLimitingConfig_RateRecovery(t *testing.T) {
 }
 
 func BenchmarkAppRateLimitingConfig_Allow(b *testing.B) {
-	config := NewAppRateLimitingConfig(1000.0, 2000)
+	config := NewAppRateLimitingConfig(1000.0, 2000, testReg())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -287,7 +292,7 @@ func BenchmarkAppRateLimitingConfig_Allow(b *testing.B) {
 }
 
 func BenchmarkAppRateLimitingConfig_Allow_Concurrent(b *testing.B) {
-	config := NewAppRateLimitingConfig(1000.0, 2000)
+	config := NewAppRateLimitingConfig(1000.0, 2000, testReg())
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -298,7 +303,7 @@ func BenchmarkAppRateLimitingConfig_Allow_Concurrent(b *testing.B) {
 }
 
 func TestAppRateLimitingConfig_CleanupExpiredLimiters(t *testing.T) {
-	config := NewAppRateLimitingConfig(10.0, 2)
+	config := NewAppRateLimitingConfig(10.0, 2, testReg())
 
 	// Create some rate limiters
 	config.Allow("app1", "prod")
@@ -335,7 +340,7 @@ func TestAppRateLimitingConfig_CleanupRoutine_RemovesOldLimiters(t *testing.T) {
 		_ = originalExpiry
 	}()
 
-	config := NewAppRateLimitingConfig(10.0, 2)
+	config := NewAppRateLimitingConfig(10.0, 2, testReg())
 
 	// Create a rate limiter
 	config.Allow("app1", "prod")
@@ -368,7 +373,7 @@ func TestAppRateLimitingConfig_CleanupRoutine_RemovesOldLimiters(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_CleanupDoesNotRemoveRecentlyUsed(t *testing.T) {
-	config := NewAppRateLimitingConfig(10.0, 2)
+	config := NewAppRateLimitingConfig(10.0, 2, testReg())
 
 	// Create and use some rate limiters
 	config.Allow("app1", "prod")
@@ -384,4 +389,44 @@ func TestAppRateLimitingConfig_CleanupDoesNotRemoveRecentlyUsed(t *testing.T) {
 	config.mu.RLock()
 	defer config.mu.RUnlock()
 	assert.Len(t, config.pool, 3, "No limiters should be cleaned up when recently used")
+}
+
+func TestAppRateLimitingConfig_Metrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	config := NewAppRateLimitingConfig(10.0, 2, reg)
+
+	// Create some limiters and use them
+	config.Allow("app1", "prod")
+	config.Allow("app1", "prod") // Should be allowed
+	config.Allow("app1", "prod") // Should be denied (burst exceeded)
+	config.Allow("app2", "staging")
+
+	// Manually expire one limiter
+	config.mu.Lock()
+	config.pool[ParseAppRateLimitingConfigKey("app2", "staging")].lastUsed = time.Now().Add(-15 * time.Minute)
+	config.mu.Unlock()
+
+	// Run cleanup
+	config.cleanupExpiredLimiters()
+
+	// Gather metrics
+	metrics, err := reg.Gather()
+	require.NoError(t, err)
+
+	// Check that metrics are present
+	metricNames := make(map[string]bool)
+	for _, metric := range metrics {
+		metricNames[metric.GetName()] = true
+	}
+
+	// Verify expected metrics exist
+	assert.True(t, metricNames["faro_receiver_rate_limiter_active_app"], "active_app metric should exist")
+	assert.True(t, metricNames["faro_receiver_rate_limiter_requests_total"], "requests_total metric should exist")
+
+	// Verify active app metric value (should be 1 after cleanup)
+	for _, metric := range metrics {
+		if metric.GetName() == "faro_receiver_rate_limiter_active_app" {
+			assert.Equal(t, 1.0, metric.GetMetric()[0].GetGauge().GetValue(), "active app should be 1 after cleanup")
+		}
+	}
 }
