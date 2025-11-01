@@ -34,3 +34,7 @@ node_modules
 .tag-only
 .image-tag
 alloy
+
+# local testing files
+/targets.yaml
+/config.alloy
