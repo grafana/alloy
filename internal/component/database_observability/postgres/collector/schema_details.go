@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -205,6 +206,59 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[string]map[string]map[string]bool
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[string]map[string]map[string]bool),
+	}
+}
+
+func (tr *TableRegistry) AddTable(database, schema, table string) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	if _, ok := tr.tables[database]; !ok {
+		tr.tables[database] = make(map[string]map[string]bool)
+	}
+	if _, ok := tr.tables[database][schema]; !ok {
+		tr.tables[database][schema] = make(map[string]bool)
+	}
+	tr.tables[database][schema][table] = true
+}
+
+func (tr *TableRegistry) IsValidTableInDatabase(database, table string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	if schemas, ok := tr.tables[database]; ok {
+		for _, tables := range schemas {
+			if tables[table] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (tr *TableRegistry) HasDatabase(database string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	_, ok := tr.tables[database]
+	return ok
+}
+
+func (tr *TableRegistry) Clear(database string) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	delete(tr.tables, database)
+}
+
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	DSN             string
@@ -232,6 +286,9 @@ type SchemaDetails struct {
 	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
 	cache *expirable.LRU[string, *tableInfo]
 
+	tableRegistry *TableRegistry
+	initialized   chan struct{}
+
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -250,6 +307,8 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		entryHandler:        args.EntryHandler,
+		tableRegistry:       NewTableRegistry(),
+		initialized:         make(chan struct{}),
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:             &atomic.Bool{},
 	}
@@ -263,6 +322,19 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
+}
+
+func (c *SchemaDetails) WaitForInitialization(ctx context.Context) error {
+	select {
+	case <-c.initialized:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -279,18 +351,21 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 			c.running.Store(false)
 		}()
 
+		if err := c.extractNames(c.ctx); err != nil {
+			level.Error(c.logger).Log("msg", "initial collection error", "err", err)
+		}
+		close(c.initialized)
+
 		ticker := time.NewTicker(c.collectInterval)
 
 		for {
-			if err := c.extractNames(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
-			}
-
 			select {
 			case <-c.ctx.Done():
 				return
 			case <-ticker.C:
-				// continue loop
+				if err := c.extractNames(c.ctx); err != nil {
+					level.Error(c.logger).Log("msg", "collector error", "err", err)
+				}
 			}
 		}
 	}()
@@ -334,6 +409,10 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 }
 
 func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+	if c.tableRegistry != nil {
+		c.tableRegistry.Clear(dbName)
+	}
+
 	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
@@ -387,6 +466,10 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 				tableName:  tableName,
 				updateTime: time.Now(),
 			})
+
+			if c.tableRegistry != nil {
+				c.tableRegistry.AddTable(dbName, schema, tableName)
+			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
