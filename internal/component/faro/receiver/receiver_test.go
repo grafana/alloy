@@ -194,3 +194,117 @@ func (lr *fakeLogsReceiver) GetEntries() []loki.Entry {
 	defer lr.entriesMut.RUnlock()
 	return lr.entries
 }
+
+// Test_PerAppRateLimiting_CleanupRoutine verifies that the cleanup mechanism
+// works correctly in an end-to-end scenario with per-app rate limiting enabled
+// Test_PerAppRateLimiting_CleanupRoutine verifies that:
+// - Rate limiters are created for each app
+// - The cleanup routine removes expired limiters
+// - Active limiters are preserved
+func Test_PerAppRateLimiting_CleanupRoutine(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	ctrl, err := componenttest.NewControllerFromID(
+		util.TestLogger(t),
+		"faro.receiver",
+	)
+	require.NoError(t, err)
+
+	freePort, err := freeport.GetFreePort()
+	require.NoError(t, err)
+
+	go func() {
+		err := ctrl.Run(ctx, Arguments{
+			Server: ServerArguments{
+				Host: "127.0.0.1",
+				Port: freePort,
+				RateLimiting: RateLimitingArguments{
+					Enabled:   true,
+					Strategy:  RateLimitingStrategyPerApp,
+					Rate:      100,
+					BurstSize: 10,
+				},
+				MaxAllowedPayloadSize: 5 * 1024 * 1024,
+			},
+			Output: OutputArguments{
+				Logs:   []loki.LogsReceiver{},
+				Traces: []otelcol.Consumer{},
+			},
+		})
+		require.NoError(t, err)
+	}()
+
+	// Wait for the server to be running
+	util.Eventually(t, func(t require.TestingT) {
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/-/ready", freePort))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	// Send requests from different apps to create rate limiters
+	apps := []struct {
+		name string
+		env  string
+	}{
+		{"app1", "prod"},
+		{"app2", "staging"},
+		{"app3", "dev"},
+	}
+
+	for _, app := range apps {
+		payload := fmt.Sprintf(`{
+			"meta": {
+				"app": {"name": "%s", "environment": "%s"}
+			},
+			"measurements": []
+		}`, app.name, app.env)
+
+		req, err := http.NewRequest(
+			"POST",
+			fmt.Sprintf("http://localhost:%d/collect", freePort),
+			strings.NewReader(payload),
+		)
+		require.NoError(t, err)
+		req.Header.Add("Content-Type", "application/json")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		resp.Body.Close()
+		require.Equal(t, http.StatusAccepted, resp.StatusCode)
+	}
+
+	// Get the component to inspect rate limiters status
+	comp, err := ctrl.GetComponent()
+	require.NoError(t, err)
+	faroComp := comp.(*Component)
+
+	// Check 3 rate limiters were successfully created
+	faroComp.handler.appRateLimiter.mu.RLock()
+	initialCount := len(faroComp.handler.appRateLimiter.pool)
+	faroComp.handler.appRateLimiter.mu.RUnlock()
+	require.Equal(t, 3, initialCount, "should have created 3 rate limiters")
+
+	// Manually expire 2 limiters to test cleanup
+	faroComp.handler.appRateLimiter.mu.Lock()
+	faroComp.handler.appRateLimiter.pool[AppRateLimitingConfigKey("app1:prod")].lastUsed = time.Now().Add(-15 * time.Minute)
+	faroComp.handler.appRateLimiter.pool[AppRateLimitingConfigKey("app2:staging")].lastUsed = time.Now().Add(-15 * time.Minute)
+	faroComp.handler.appRateLimiter.mu.Unlock()
+
+	// Trigger cleanup manually
+	faroComp.handler.appRateLimiter.cleanupExpiredLimiters()
+
+	// Verify cleanup is successful: expired limiters should be removed, but the active one is preserved
+	faroComp.handler.appRateLimiter.mu.RLock()
+	finalCount := len(faroComp.handler.appRateLimiter.pool)
+	_, app3Exists := faroComp.handler.appRateLimiter.pool[AppRateLimitingConfigKey("app3:dev")]
+	_, app1Exists := faroComp.handler.appRateLimiter.pool[AppRateLimitingConfigKey("app1:prod")]
+	_, app2Exists := faroComp.handler.appRateLimiter.pool[AppRateLimitingConfigKey("app2:staging")]
+	faroComp.handler.appRateLimiter.mu.RUnlock()
+
+	require.Equal(t, 1, finalCount, "should have 1 limiter after cleanup")
+	require.True(t, app3Exists, "app3:dev should still exist (not expired)")
+	require.False(t, app1Exists, "app1:prod should be removed (expired)")
+	require.False(t, app2Exists, "app2:staging should be removed (expired)")
+}
