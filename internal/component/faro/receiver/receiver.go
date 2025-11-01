@@ -154,6 +154,11 @@ func (c *Component) Update(args component.Arguments) error {
 		)
 		c.argsMut.RUnlock()
 
+		// Start cleanup routine if per-app rate limiting is enabled
+		if c.handler.appRateLimiter != nil {
+			go c.handler.appRateLimiter.CleanupRoutine(ctx, DEFAULT_CLEANUP_INTERVAL)
+		}
+
 		srv := newServer(
 			log.With(c.log, "subcomponent", "server"),
 			args.Server,

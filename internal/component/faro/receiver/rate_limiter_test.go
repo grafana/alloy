@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -294,4 +295,93 @@ func BenchmarkAppRateLimitingConfig_Allow_Concurrent(b *testing.B) {
 			config.Allow("benchapp", "production")
 		}
 	})
+}
+
+func TestAppRateLimitingConfig_CleanupExpiredLimiters(t *testing.T) {
+	config := NewAppRateLimitingConfig(10.0, 2)
+
+	// Create some rate limiters
+	config.Allow("app1", "prod")
+	config.Allow("app2", "prod")
+	config.Allow("app3", "dev")
+
+	// Verify all limiters exist
+	require.Len(t, config.pool, 3)
+
+	// Manually set lastUsed to old time for app1 and app2
+	config.mu.Lock()
+	config.pool[ParseAppRateLimitingConfigKey("app1", "prod")].lastUsed = time.Now().Add(-15 * time.Minute)
+	config.pool[ParseAppRateLimitingConfigKey("app2", "prod")].lastUsed = time.Now().Add(-12 * time.Minute)
+	// app3 stays recent
+	config.mu.Unlock()
+
+	// Run cleanup
+	config.cleanupExpiredLimiters()
+
+	// Only app3 should remain (others are older than DEFAULT_LIMITER_EXPIRY)
+	config.mu.RLock()
+	defer config.mu.RUnlock()
+
+	assert.Len(t, config.pool, 1, "Should have cleaned up 2 expired limiters")
+	_, exists := config.pool[ParseAppRateLimitingConfigKey("app3", "dev")]
+	assert.True(t, exists, "app3:dev should still exist")
+}
+
+func TestAppRateLimitingConfig_CleanupRoutine_RemovesOldLimiters(t *testing.T) {
+	// Use very short intervals for faster test
+	originalExpiry := DEFAULT_LIMITER_EXPIRY
+	defer func() {
+		// Note: Can't actually reset the const, but documenting intent
+		_ = originalExpiry
+	}()
+
+	config := NewAppRateLimitingConfig(10.0, 2)
+
+	// Create a rate limiter
+	config.Allow("app1", "prod")
+	config.Allow("app2", "prod")
+
+	require.Len(t, config.pool, 2)
+
+	// Set app1 to old time (older than DEFAULT_LIMITER_EXPIRY of 10 minutes)
+	config.mu.Lock()
+	config.pool[ParseAppRateLimitingConfigKey("app1", "prod")].lastUsed = time.Now().Add(-15 * time.Minute)
+	config.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	// Start cleanup routine with short interval
+	go config.CleanupRoutine(ctx, 50*time.Millisecond)
+
+	// Wait for at least one cleanup cycle
+	time.Sleep(100 * time.Millisecond)
+
+	// app1 should be cleaned up, app2 should remain
+	config.mu.RLock()
+	poolSize := len(config.pool)
+	_, app2Exists := config.pool[ParseAppRateLimitingConfigKey("app2", "prod")]
+	config.mu.RUnlock()
+
+	assert.Equal(t, 1, poolSize, "Should have cleaned up expired limiter")
+	assert.True(t, app2Exists, "app2:prod should still exist")
+}
+
+func TestAppRateLimitingConfig_CleanupDoesNotRemoveRecentlyUsed(t *testing.T) {
+	config := NewAppRateLimitingConfig(10.0, 2)
+
+	// Create and use some rate limiters
+	config.Allow("app1", "prod")
+	config.Allow("app2", "prod")
+	config.Allow("app3", "prod")
+
+	require.Len(t, config.pool, 3)
+
+	// Run cleanup immediately (all should be recent)
+	config.cleanupExpiredLimiters()
+
+	// All limiters should still exist
+	config.mu.RLock()
+	defer config.mu.RUnlock()
+	assert.Len(t, config.pool, 3, "No limiters should be cleaned up when recently used")
 }

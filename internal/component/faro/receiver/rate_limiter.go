@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -8,11 +9,21 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	DEFAULT_CLEANUP_INTERVAL = 10 * time.Minute
+	DEFAULT_LIMITER_EXPIRY   = 10 * time.Minute
+)
+
 // AppRateLimitingConfigKey represents a unique key for an app/environment combination.
 // Used for rate limiting purposes.
 // Example: "myApp:production"
 // Segregates rate limiting configurations per application and environment.
 type AppRateLimitingConfigKey string
+
+type AppRateLimiter struct {
+	limiter  *rate.Limiter
+	lastUsed time.Time
+}
 
 // String returns the string representation of the AppRateLimitingConfigKey.
 func (k AppRateLimitingConfigKey) String() string {
@@ -26,7 +37,7 @@ func ParseAppRateLimitingConfigKey(app, env string) AppRateLimitingConfigKey {
 
 // AppRateLimitingConfig manages rate limiters per application/environment combination.
 type AppRateLimitingConfig struct {
-	pool  map[AppRateLimitingConfigKey]*rate.Limiter
+	pool  map[AppRateLimitingConfigKey]*AppRateLimiter
 	rate  rate.Limit
 	burst int
 	mu    sync.RWMutex
@@ -37,7 +48,7 @@ func NewAppRateLimitingConfig(rateLimit float64, burst int) *AppRateLimitingConf
 	return &AppRateLimitingConfig{
 		rate:  rate.Limit(rateLimit),
 		burst: burst,
-		pool:  make(map[AppRateLimitingConfigKey]*rate.Limiter),
+		pool:  make(map[AppRateLimitingConfigKey]*AppRateLimiter),
 	}
 }
 
@@ -47,8 +58,11 @@ func (r *AppRateLimitingConfig) GetPoolLimiter(key AppRateLimitingConfigKey) (*r
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	limiter, exists := r.pool[key]
-	return limiter, exists
+	appLimiter, exists := r.pool[key]
+	if !exists {
+		return nil, false
+	}
+	return appLimiter.limiter, true
 }
 
 // SetPoolLimiter sets a rate limiter for the given key and returns it.
@@ -56,8 +70,41 @@ func (r *AppRateLimitingConfig) SetPoolLimiter(key AppRateLimitingConfigKey, lim
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.pool[key] = limiter
+	r.pool[key] = &AppRateLimiter{
+		limiter:  limiter,
+		lastUsed: time.Now(),
+	}
 	return limiter
+}
+
+// CleanupRoutine starts a goroutine that periodically removes inactive rate limiters.
+// It prevents memory leaks by deleting limiters that haven't been used within the expiry duration.
+// The routine runs until the context is cancelled.
+func (r *AppRateLimitingConfig) CleanupRoutine(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			r.cleanupExpiredLimiters()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// cleanupExpiredLimiters removes rate limiters that haven't been used recently.
+func (r *AppRateLimitingConfig) cleanupExpiredLimiters() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	for key, appLimiter := range r.pool {
+		if now.Sub(appLimiter.lastUsed) > DEFAULT_LIMITER_EXPIRY {
+			delete(r.pool, key)
+		}
+	}
 }
 
 // Allow checks if a request is allowed for the given app/environment combination.
@@ -75,7 +122,14 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 		newLimiter.SetBurstAt(t, r.burst)
 
 		limiter = r.SetPoolLimiter(key, newLimiter)
+
+		return limiter.Allow()
 	}
+
+	// Update last used time
+	r.mu.Lock()
+	r.pool[key].lastUsed = time.Now()
+	r.mu.Unlock()
 
 	return limiter.Allow()
 }
