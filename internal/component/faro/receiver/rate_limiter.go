@@ -47,6 +47,9 @@ type AppRateLimitingConfig struct {
 	// Metrics
 	activeApp          prometheus.Gauge
 	rateLimitDecisions *prometheus.CounterVec
+
+	// Self rate limiter to avoid overload
+	selfLimiter *rate.Limiter
 }
 
 // NewAppRateLimitingConfig creates a new AppRateLimitingConfig with the given rate limit and burst size.
@@ -67,6 +70,8 @@ func NewAppRateLimitingConfig(rateLimit float64, burst int, reg prometheus.Regis
 			},
 			[]string{"app", "env", "allowed"},
 		),
+
+		selfLimiter: rate.NewLimiter(rate.Limit(rateLimit), burst),
 	}
 }
 
@@ -141,6 +146,11 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 	limiter, exists := r.GetPoolLimiter(key)
 
 	if !exists {
+		// Self rate limiting to avoid memory overload on app creation
+		if !r.selfLimiter.Allow() {
+			return false
+		}
+
 		// Create new rate limiter with pre-filled bucket (similar to handler.Update)
 		t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
 		newLimiter := rate.NewLimiter(r.rate, r.burst)
