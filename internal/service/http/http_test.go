@@ -421,3 +421,4 @@ func (f fakeRemotecfg) Definition() service.Definition {
 func (f fakeRemotecfg) Run(ctx context.Context, host service.Host) error { return nil }
 func (f fakeRemotecfg) Update(newConfig any) error                       { return nil }
 func (f fakeRemotecfg) Data() any                                        { return remotecfg.Data{} }
+func (s fakeRemotecfg) Exports() component.Exports                       { return nil }

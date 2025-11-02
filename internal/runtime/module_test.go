@@ -346,3 +346,7 @@ func (t *testService) Update(newConfig any) error {
 func (t *testService) Data() any {
 	return nil
 }
+
+func (t *testService) Exports() component.Exports {
+	return nil
+}

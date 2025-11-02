@@ -46,6 +46,14 @@ type Definition struct {
 	// an attempt to configure it via the controller will fail.
 	// This field must be set to a non-zero value.
 	Stability featuregate.Stability
+
+	// ExportsType is an optional config type that exports
+	// the data available for external components.
+	// If nil, the service does not export any value
+	//
+	// When non-nil, ExportsType must be a struct type with alloy
+	// tags for decoding
+	ExportsType component.Exports
 }
 
 // CloneConfig returns a new zero value of the registered config type.
@@ -149,4 +157,9 @@ type Service interface {
 	//
 	// Data may be invoked before Run.
 	Data() any
+
+	// Exports returns the data that needs to be exported
+	// for this service so that they can be referenced in
+	// other compoentns
+	Exports() component.Exports
 }

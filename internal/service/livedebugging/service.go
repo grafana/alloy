@@ -4,6 +4,7 @@ package livedebugging
 import (
 	"context"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 )
@@ -53,5 +54,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 func (s *Service) Update(args any) error {
 	newArgs := args.(Arguments)
 	s.liveDebugging.SetEnabled(newArgs.Enabled)
+	return nil
+}
+
+func (s *Service) Exports() component.Exports {
 	return nil
 }

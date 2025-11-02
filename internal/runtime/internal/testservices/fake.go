@@ -3,6 +3,7 @@ package testservices
 import (
 	"context"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
 )
 
@@ -54,5 +55,9 @@ func (f *Fake) Data() any {
 		return f.DataFunc()
 	}
 
+	return nil
+}
+
+func (f *Fake) Exports() component.Exports {
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -73,6 +74,10 @@ func (s *Service) Update(newConfig any) error {
 // Data implements [service.Service]. It returns nil, as the UI service does
 // not have any runtime data.
 func (s *Service) Data() any {
+	return nil
+}
+
+func (s *Service) Exports() component.Exports {
 	return nil
 }
 

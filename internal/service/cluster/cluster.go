@@ -511,6 +511,10 @@ func (s *Service) Data() any {
 	return s.alloyCluster
 }
 
+func (s *Service) Exports() component.Exports {
+	return nil
+}
+
 func (s *Service) logPeers(msg string, peers []string) {
 	// Truncate peers list on info level.
 	level.Info(s.log).Log(

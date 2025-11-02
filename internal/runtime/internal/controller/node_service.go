@@ -23,6 +23,8 @@ type ServiceNode struct {
 	block *ast.BlockStmt // Current Alloy block to derive args from
 	eval  *vm.Evaluator
 	args  component.Arguments // Evaluated arguments for the managed component
+
+	exports component.Exports // Evaluated exports for the managed component
 }
 
 var _ RunnableNode = (*ServiceNode)(nil)
@@ -30,11 +32,14 @@ var _ RunnableNode = (*ServiceNode)(nil)
 // NewServiceNode creates a new instance of a ServiceNode from an instance of a
 // Service. The provided host is used when running the service.
 func NewServiceNode(host service.Host, svc service.Service) *ServiceNode {
-	return &ServiceNode{
-		host: host,
-		svc:  svc,
-		def:  svc.Definition(),
+	def := svc.Definition()
+	s := &ServiceNode{
+		host:    host,
+		svc:     svc,
+		def:     def,
+		exports: svc.Exports(),
 	}
+	return s
 }
 
 // Service returns the service instance associated with the node.
@@ -118,9 +123,29 @@ func (sn *ServiceNode) Evaluate(scope *vm.Scope) error {
 	}
 
 	sn.args = argsCopyValue
+
+	// Update exports to the service node
+	var expectedExportsType reflect.Type
+	if sn.def.ExportsType != nil {
+		expectedExportsType = reflect.TypeOf(sn.def.ExportsType)
+	}
+
+	exp := sn.svc.Exports()
+
+	if expectedExportsType != reflect.TypeOf(exp) {
+		return fmt.Errorf("service %s changed Exports types from %T to %T", sn.NodeID(), sn.exports, exp)
+	}
+
+	sn.exports = exp
 	return nil
 }
 
 func (sn *ServiceNode) Run(ctx context.Context) error {
 	return sn.svc.Run(ctx, sn.host)
+}
+
+func (sn *ServiceNode) Exports() component.Exports {
+	sn.mut.RLock()
+	defer sn.mut.RUnlock()
+	return sn.exports
 }
