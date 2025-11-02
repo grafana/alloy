@@ -193,7 +193,14 @@ func (b *ConfigBuilder) appendExporter(commonConfig *int_config.Common, name str
 		return b.jobNameToCompLabel(jobName)
 	}
 
-	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, b.globalCtx.IntegrationsRemoteWriteExports))
+	// Extract WAL settings from common config
+	walOptions := &remotewrite.WALOptions{
+		TruncateFrequency: commonConfig.WALTruncateFrequency,
+		MinKeepaliveTime:  remotewrite.DefaultWALOptions.MinKeepaliveTime,
+		MaxKeepaliveTime:  remotewrite.DefaultWALOptions.MaxKeepaliveTime,
+	}
+
+	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, b.globalCtx.IntegrationsRemoteWriteExports, walOptions))
 	b.globalCtx.InitializeIntegrationsRemoteWriteExports()
 }
 
@@ -316,6 +323,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	scrapeConfigs := []*prom_config.ScrapeConfig{&scrapeConfig}
 
 	var remoteWriteExports *remotewrite.Exports
+	var walOptions *remotewrite.WALOptions
 	for _, metrics := range b.cfg.Metrics.Configs {
 		if metrics.Name == commonConfig.Autoscrape.MetricsInstance {
 			// This must match the name of the existing remote write config in the metrics config:
@@ -326,6 +334,13 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 
 			remoteWriteExports = &remotewrite.Exports{
 				Receiver: common.ConvertAppendable{Expr: "prometheus.remote_write." + label + ".receiver"},
+			}
+
+			// Extract WAL settings from metrics instance config
+			walOptions = &remotewrite.WALOptions{
+				TruncateFrequency: metrics.WALTruncateFrequency,
+				MinKeepaliveTime:  metrics.MinWALTime,
+				MaxKeepaliveTime:  metrics.MaxWALTime,
 			}
 			break
 		}
@@ -345,7 +360,7 @@ func (b *ConfigBuilder) appendExporterV2(commonConfig *common_v2.MetricsConfig, 
 	}
 
 	// Need to pass in the remote write reference from the metrics config here:
-	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, remoteWriteExports))
+	b.diags.AddAll(prometheusconvert.AppendAllNested(b.f, promConfig, jobNameToCompLabelsFunc, extraTargets, remoteWriteExports, walOptions))
 }
 
 func (b *ConfigBuilder) jobNameToCompLabel(jobName string) string {
