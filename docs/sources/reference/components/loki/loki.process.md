@@ -1874,7 +1874,7 @@ The stage extracts the following fields into the shared map:
 - `useragent_device_brand`: The device brand. For example, "Apple", "Samsung".
 - `useragent_device_model`: The device model. For example, "iPhone", "Galaxy S21".
 
-#### Example usage
+#### Example
 
 ```alloy
 stage.useragent {}
