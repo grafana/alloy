@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
 
 	lokiutil "github.com/grafana/loki/v3/pkg/util"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var testTenantAlloyExtractedData = `
@@ -129,7 +128,7 @@ func TestTenantStage_Validation(t *testing.T) {
 		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(util_log.Logger, testData.config)
+			stage, err := newTenantStage(log.NewNopLogger(), testData.config)
 
 			if testData.expectedErr != nil {
 				assert.EqualError(t, err, testData.expectedErr.Error())
@@ -205,7 +204,7 @@ func TestTenantStage_Process(t *testing.T) {
 		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(util_log.Logger, testData.config)
+			stage, err := newTenantStage(log.NewNopLogger(), testData.config)
 			require.NoError(t, err)
 
 			// Process and dummy line and ensure nothing has changed except

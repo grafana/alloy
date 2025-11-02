@@ -14,6 +14,8 @@ title: prometheus.exporter.process
 
 The `prometheus.exporter.process` component embeds the [`process_exporter`](https://github.com/ncabatoff/process-exporter) for collecting process stats from `/proc`.
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy

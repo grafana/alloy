@@ -19,6 +19,8 @@ For more information on collectors, refer to the [`collectors-list`](#collectors
 
 You can specify multiple `prometheus.exporter.unix` components by giving them different labels.
 
+{{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Usage
 
 ```alloy
@@ -56,6 +58,7 @@ You can use the following blocks with `prometheus.exporter.unix`:
 
 | Name                         | Description                             | Required |
 | ---------------------------- | --------------------------------------- | -------- |
+| [`arp`][arp]                 | Configures the `arp` collector.         | no       |
 | [`bcache`][bcache]           | Configures the `bcache` collector.      | no       |
 | [`cpu`][cpu]                 | Configures the `cpu` collector.         | no       |
 | [`disk`][disk]               | Configures the `diskstats` collector.   | no       |
@@ -77,6 +80,7 @@ You can use the following blocks with `prometheus.exporter.unix`:
 | [`textfile`][textfile]       | Configures the `textfile` collector.    | no       |
 | [`vmstat`][vmstat]           | Configures the `vmstat` collector.      | no       |
 
+[arp]: #arp
 [bcache]: #bcache
 [cpu]: #cpu
 [disk]: #disk
@@ -97,6 +101,16 @@ You can use the following blocks with `prometheus.exporter.unix`:
 [tapestats]: #tapestats
 [textfile]: #textfile
 [vmstat]: #vmstat
+
+### `arp`
+
+| Name             | Type      | Description                                                                                             | Default | Required |
+| ---------------- | --------- | --------------------------------------------------------------------------------------------------------| ------- | -------- |
+| `device_exclude` | `string`  | Regular expression of devices to exclude for `arp` collector. Mutually exclusive with `device_include`. |         | no       |
+| `device_include` | `string`  | Regular expression of devices to include for `arp` collector. Mutually exclusive with `device_exclude`. |         | no       |
+| `netlink`        | `boolean` | Use netlink to gather ARP stats instead of `/proc/net/arp`.                                             | `false` | no       |
+
+It is recommended to set `netlink` to `true` on systems with InfiniBand or other non-Ethernet devices.
 
 ### `bcache`
 
@@ -321,7 +335,7 @@ You can choose to enable a subset of collectors to limit the amount of metrics e
 
 | Name               | Description                                                                                                                                                                     | OS                                                                 | Enabled by default |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------ |
-| `arp`              | Exposes ARP statistics from `/proc/net/arp`.                                                                                                                                    | Linux                                                              | yes                |
+| `arp`              | Exposes ARP statistics from `/proc/net/arp` or via netlink.                                                     | Linux                                                              | yes                |
 | `bcache`           | Exposes bcache statistics from `/sys/fs/bcache`.                                                                                                                                | Linux                                                              | yes                |
 | `bonding`          | Exposes the number of configured and active slaves of Linux bonding interfaces.                                                                                                 | Linux                                                              | yes                |
 | `boottime`         | Exposes system boot time derived from the `kern.boottime sysctl`.                                                                                                               | Darwin, Dragonfly, FreeBSD, NetBSD, OpenBSD, Oracle Solaris        | yes                |

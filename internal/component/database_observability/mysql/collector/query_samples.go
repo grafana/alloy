@@ -67,8 +67,8 @@ LEFT JOIN
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	%s %s`
+	AND statements.CURRENT_SCHEMA NOT IN ` + EXCLUDED_SCHEMAS +
+	` %s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -127,7 +127,7 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -105,7 +104,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver()
+	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -211,9 +210,7 @@ func (c *Component) Update(args component.Arguments) error {
 		notifier = c.walWriter
 	}
 
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, limit.Config{
-		MaxStreams: newArgs.MaxStreams,
-	}, c.opts.Registerer, walCfg, notifier, cfgs...)
+	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, newArgs.MaxStreams, c.opts.Registerer, walCfg, notifier, cfgs...)
 	if err != nil {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}

@@ -116,6 +116,9 @@ You can use expressions for any attribute in a component definition.
 The most common expression references a component's exports, such as `local.file.password_file.content`.
 You form a reference by combining the component's name (for example, `local.file`), label (for example, `password_file`), and export name (for example, `content`), separated by periods.
 
+While a label is an arbitrary designation you can choose yourself, the component's name and its exports are predefined.
+Refer to the list of [components](https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components) for more information about the available components, their descriptions, and the exported fields.
+
 ## Configuration syntax design goals
 
 {{< param "PRODUCT_NAME" >}} is:

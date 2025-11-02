@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/tail/watch"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 
 	"go.uber.org/atomic"
@@ -19,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -36,8 +35,8 @@ func init() {
 }
 
 const (
-	pathLabel     = "__path__"
-	filenameLabel = "filename"
+	labelPath     = "__path__"
+	labelFilename = "filename"
 )
 
 // Arguments holds values which are used to configure the loki.source.file
@@ -82,8 +81,8 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	tasksMut sync.RWMutex
-	tasks    map[positions.Entry]runnerTask
+	schedulerMut sync.RWMutex
+	scheduler    *Scheduler[positions.Entry]
 
 	handler loki.LogsReceiver
 	posFile positions.Positions
@@ -92,8 +91,6 @@ type Component struct {
 	receivers    []loki.LogsReceiver
 
 	stopping atomic.Bool
-
-	updateReaders chan struct{}
 }
 
 // New creates a new loki.source.file component.
@@ -121,14 +118,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:    o,
 		metrics: newMetrics(o.Registerer),
 
-		handler:       loki.NewLogsReceiver(),
-		receivers:     args.ForwardTo,
-		posFile:       positionsFile,
-		tasks:         make(map[positions.Entry]runnerTask),
-		updateReaders: make(chan struct{}, 1),
+		handler:   loki.NewLogsReceiver(),
+		receivers: args.ForwardTo,
+		posFile:   positionsFile,
+		scheduler: NewScheduler[positions.Entry](),
 	}
 
-	// Call to Update() to start readers and set receivers once at the start.
+	// Call to Update() to start sources and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -138,19 +134,28 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	runner := runner.New(func(t *runnerTask) runner.Worker {
-		return &runnerReader{
-			reader: t.reader,
-		}
-	})
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping readers and positions file")
-		c.tasksMut.RLock()
-		c.stopping.Store(true)
-		runner.Stop()
+		level.Info(c.opts.Logger).Log("msg", "loki.source.file component shutting down, stopping sources and positions file")
+		// We need to stop posFile first so we don't record entries we are draining
 		c.posFile.Stop()
+
+		// Start black hole drain routine to prevent deadlock when we call c.t.Stop().
+		drainCtx, cancelDrain := context.WithCancel(context.Background())
+		defer cancelDrain()
+		go func() {
+			for {
+				select {
+				case <-drainCtx.Done():
+					return
+				case <-c.handler.Chan(): // Ignore the remaining entries
+				}
+			}
+		}()
+		c.schedulerMut.Lock()
+		c.stopping.Store(true)
+		c.scheduler.Stop()
 		close(c.handler.Chan())
-		c.tasksMut.RUnlock()
+		c.schedulerMut.Unlock()
 	}()
 
 	for {
@@ -160,49 +165,14 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.handler.Chan():
 			c.receiversMut.RLock()
 			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
-			}
-			c.receiversMut.RUnlock()
-		case <-c.updateReaders:
-			// It's important to have the same lock order in Update and Run to avoid
-			// deadlocks.
-			c.tasksMut.Lock()
-			c.receiversMut.RLock()
-
-			// When we are updating tasks we need to continue to read from handler.Chan().
-			// This is done to avoid a race condition where stopping a reader is
-			// flushing its data, but nothing is reading from handler.Chan().
-			readCtx, cancel := context.WithCancel(ctx)
-			go func() {
-				for {
-					select {
-					case entry := <-c.handler.Chan():
-						for _, receiver := range c.receivers {
-							receiver.Chan() <- entry
-						}
-					case <-readCtx.Done():
-						return
-					}
+				select {
+				case <-ctx.Done():
+					c.receiversMut.RUnlock()
+					return nil
+				case receiver.Chan() <- entry:
 				}
-			}()
-
-			var tasks []*runnerTask
-			level.Debug(c.opts.Logger).Log("msg", "updating tasks", "tasks", len(c.tasks))
-			for _, entry := range c.tasks {
-				tasks = append(tasks, &entry)
 			}
-			err := runner.ApplyTasks(ctx, tasks)
-
-			// We cancel readCtx because we are done updating tasks and the main loop will continue to
-			// read from it.
-			cancel()
-			level.Debug(c.opts.Logger).Log("msg", "workers successfully updated", "workers", len(runner.Workers()))
 			c.receiversMut.RUnlock()
-			c.tasksMut.Unlock()
-
-			if err != nil && err != context.Canceled {
-				return err
-			}
 		}
 	}
 }
@@ -213,8 +183,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// It's important to have the same lock order in Update and Run to avoid
 	// deadlocks.
-	c.tasksMut.Lock()
-	defer c.tasksMut.Unlock()
+	c.schedulerMut.Lock()
+	defer c.schedulerMut.Unlock()
 
 	c.receiversMut.RLock()
 	if receiversChanged(c.receivers, newArgs.ForwardTo) {
@@ -227,74 +197,86 @@ func (c *Component) Update(args component.Arguments) error {
 		c.receiversMut.RUnlock()
 	}
 
-	c.tasks = make(map[positions.Entry]runnerTask)
-	if len(newArgs.Targets) == 0 {
-		level.Debug(c.opts.Logger).Log("msg", "no files targets were passed, nothing will be tailed")
-	}
+	c.scheduleSources(newArgs)
+	return nil
+}
 
-	for _, target := range newArgs.Targets {
-		path, _ := target.Get(pathLabel)
+func (c *Component) scheduleSources(args Arguments) {
+	// shouldRun is used to track sources that should be running, either source we will schedule or
+	// sources that are already scheduled and should continue.
+	shouldRun := make(map[positions.Entry]struct{}, len(args.Targets))
+
+	for _, target := range args.Targets {
+		path, _ := target.Get(labelPath)
 
 		labels := target.NonReservedLabelSet()
 
 		// Deduplicate targets which have the same public label set.
-		readersKey := positions.Entry{Path: path, Labels: labels.String()}
-		if _, exist := c.tasks[readersKey]; exist {
+		key := positions.Entry{Path: path, Labels: labels.String()}
+		// Avoid scheduling multiple tasks for the same file and label set.
+		// This ensures that each unique file/label combination is only tailed once,
+		// preventing redundant processing and resource contention.
+		if _, ok := shouldRun[key]; ok {
 			continue
 		}
 
-		c.reportSize(path)
+		shouldRun[key] = struct{}{}
 
-		reader, err := c.createReader(readerOptions{
+		// Task is already scheduled
+		if c.scheduler.Contains(key) {
+			continue
+		}
+
+		fi, err := os.Stat(path)
+		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		if fi.IsDir() {
+			level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", path)
+			c.metrics.totalBytes.DeleteLabelValues(path)
+			continue
+		}
+
+		c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
+
+		source, err := c.newSource(sourceOptions{
 			path:                path,
 			labels:              labels,
-			encoding:            newArgs.Encoding,
-			decompressionConfig: newArgs.DecompressionConfig,
-			fileWatch:           newArgs.FileWatch,
-			tailFromEnd:         newArgs.TailFromEnd,
-			legacyPositionUsed:  newArgs.LegacyPositionsFile != "",
+			encoding:            args.Encoding,
+			decompressionConfig: args.DecompressionConfig,
+			fileWatch:           args.FileWatch,
+			tailFromEnd:         args.TailFromEnd,
+			legacyPositionUsed:  args.LegacyPositionsFile != "",
 		})
 		if err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to create file source", "error", err, "filename", path)
 			continue
 		}
 
-		c.tasks[readersKey] = runnerTask{
-			reader: reader,
-			path:   path,
-			labels: labels.String(),
-			// TODO: Could fastFingerPrint work?
-			readerHash: uint64(labels.Merge(model.LabelSet{filenameLabel: model.LabelValue(path)}).Fingerprint()),
+		c.scheduler.ScheduleSource(source)
+	}
+
+	var toDelete []Source[positions.Entry]
+
+	// It's a bad pattern to mutate a collection
+	// while iterating over it so we collect them here
+	// and stop them in a separate loop after.
+	for source := range c.scheduler.Sources() {
+		if _, ok := shouldRun[source.Key()]; ok {
+			continue
 		}
+		toDelete = append(toDelete, source)
 	}
 
-	select {
-	case c.updateReaders <- struct{}{}:
-	default:
+	for _, s := range toDelete {
+		c.scheduler.StopSource(s) // stops without blocking
 	}
-
-	return nil
 }
 
-// DebugInfo returns information about the status of tailed targets.
-// TODO(@tpaschalis) Decorate with more debug information once it's made
-// available, such as the last time a log line was read.
-func (c *Component) DebugInfo() any {
-	c.tasksMut.RLock()
-	defer c.tasksMut.RUnlock()
-	var res readerDebugInfo
-	for e, task := range c.tasks {
-		offset, _ := c.posFile.Get(e.Path, e.Labels)
-		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
-			Path:       e.Path,
-			Labels:     e.Labels,
-			IsRunning:  task.reader.IsRunning(),
-			ReadOffset: offset,
-		})
-	}
-	return res
-}
-
-type readerDebugInfo struct {
+type debugInfo struct {
 	TargetsInfo []targetInfo `alloy:"targets_info,block"`
 }
 
@@ -305,7 +287,26 @@ type targetInfo struct {
 	ReadOffset int64  `alloy:"read_offset,attr"`
 }
 
-type readerOptions struct {
+// DebugInfo returns information about the status of tailed targets.
+// TODO(@tpaschalis) Decorate with more debug information once it's made
+// available, such as the last time a log line was read.
+func (c *Component) DebugInfo() any {
+	c.schedulerMut.RLock()
+	defer c.schedulerMut.RUnlock()
+	var res debugInfo
+	for s := range c.scheduler.Sources() {
+		offset, _ := c.posFile.Get(s.Key().Path, s.Key().Labels)
+		res.TargetsInfo = append(res.TargetsInfo, targetInfo{
+			Path:       s.Key().Path,
+			Labels:     s.Key().Labels,
+			IsRunning:  s.IsRunning(),
+			ReadOffset: offset,
+		})
+	}
+	return res
+}
+
+type sourceOptions struct {
 	path                string
 	labels              model.LabelSet
 	encoding            string
@@ -315,78 +316,41 @@ type readerOptions struct {
 	legacyPositionUsed  bool
 }
 
-// For most files, createReader returns a tailer implementation. If the file suffix alludes to it being
-// a compressed file, then a decompressor will be created instead.
-func (c *Component) createReader(opts readerOptions) (reader, error) {
-	fi, err := os.Stat(opts.path)
-	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to tail file, stat failed", "error", err, "filename", opts.path)
-		c.metrics.totalBytes.DeleteLabelValues(opts.path)
-		return nil, fmt.Errorf("failed to stat path %s", opts.path)
-	}
-
-	if fi.IsDir() {
-		level.Info(c.opts.Logger).Log("msg", "failed to tail file", "error", "file is a directory", "filename", opts.path)
-		c.metrics.totalBytes.DeleteLabelValues(opts.path)
-		return nil, fmt.Errorf("failed to tail file, it was a directory %s", opts.path)
-	}
-
-	var reader reader
+// newSource will return a decompressor source if enabled, otherwise a tailer source.
+func (c *Component) newSource(opts sourceOptions) (Source[positions.Entry], error) {
 	if opts.decompressionConfig.Enabled {
 		decompressor, err := newDecompressor(
 			c.metrics,
 			c.opts.Logger,
 			c.handler,
 			c.posFile,
-			opts.path,
-			opts.labels,
-			opts.encoding,
-			opts.decompressionConfig,
 			c.IsStopping,
+			opts,
 		)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create decompressor", "error", err, "filename", opts.path)
-			return nil, fmt.Errorf("failed to create decompressor %s", err)
+			return nil, fmt.Errorf("failed to create decompressor %w", err)
 		}
-		reader = decompressor
-	} else {
-		pollOptions := watch.PollingFileWatcherOptions{
-			MinPollFrequency: opts.fileWatch.MinPollFrequency,
-			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
-		}
-		tailer, err := newTailer(
-			c.metrics,
-			c.opts.Logger,
-			c.handler,
-			c.posFile,
-			opts.path,
-			opts.labels,
-			opts.encoding,
-			pollOptions,
-			opts.tailFromEnd,
-			opts.legacyPositionUsed,
-			c.IsStopping,
-		)
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create tailer", "error", err, "filename", opts.path)
-			return nil, fmt.Errorf("failed to create tailer %s", err)
-		}
-		reader = tailer
+		return decompressor, nil
 	}
-
-	return reader, nil
+	tailer, err := newTailer(
+		c.metrics,
+		c.opts.Logger,
+		c.handler,
+		c.posFile,
+		c.IsStopping,
+		opts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tailer %w", err)
+	}
+	return NewSourceWithRetry(tailer, backoff.Config{
+		MinBackoff: 1 * time.Second,
+		MaxBackoff: 10 * time.Second,
+	}), nil
 }
 
 func (c *Component) IsStopping() bool {
 	return c.stopping.Load()
-}
-
-func (c *Component) reportSize(path string) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return
-	}
-	c.metrics.totalBytes.WithLabelValues(path).Set(float64(fi.Size()))
 }
 
 func receiversChanged(prev, next []loki.LogsReceiver) bool {

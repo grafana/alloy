@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
@@ -32,36 +32,40 @@ func TestFormat(t *testing.T) {
 			},
 			relabel: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__gcp_resource_labels_backend_service_name"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "backend_service_name",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_resource_labels_backend_service_name"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "backend_service_name",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_resource_labels_bucket_name"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "bucket_name",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_resource_labels_bucket_name"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "bucket_name",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_severity"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "severity",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_severity"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "severity",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__gcp_labels_dataflow_googleapis_com_region"},
-					Separator:    ";",
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "region",
-					Action:       "replace",
-					Replacement:  "$1",
+					SourceLabels:         model.LabelNames{"__gcp_labels_dataflow_googleapis_com_region"},
+					Separator:            ";",
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "region",
+					Action:               "replace",
+					Replacement:          "$1",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			useIncomingTimestamp: true,
@@ -73,7 +77,7 @@ func TestFormat(t *testing.T) {
 					"severity":             "INFO",
 					"region":               "europe-west1",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: mustTime(t, "2020-12-22T15:01:23.045123456Z"),
 					Line:      withAllFields,
 				},
@@ -92,7 +96,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: mustTime(t, "2020-12-22T15:01:23.045123456Z"),
 					Line:      withAllFields,
 				},
@@ -110,7 +114,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      withAllFields,
 				},
@@ -129,7 +133,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      withTextPayload,
 				},
@@ -147,7 +151,7 @@ func TestFormat(t *testing.T) {
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      logTextPayload,
 				},

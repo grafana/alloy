@@ -15,7 +15,7 @@ jobs:
   build_linux:
     name: Build on Linux
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
     strategy:
       matrix:
         os: [linux]
@@ -37,12 +37,12 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
+    - run: GO_TAGS="builtinassets promtail_journal_enabled slicelabels" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.21-boringcrypto@sha256:a6fa44bb736498737c17aaeada5d237572be1af9f24849ab3b557692b46be57e
+    container: grafana/alloy-build-image:v0.1.22-boringcrypto@sha256:a6fa44bb736498737c17aaeada5d237572be1af9f24849ab3b557692b46be57e
     strategy:
       matrix:
         os: [linux]
@@ -64,7 +64,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
+    - run: GO_TAGS="builtinassets promtail_journal_enabled slicelabels" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
   build_mac_intel:
     name: Build on MacOS (Intel)
@@ -81,7 +81,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=darwin GOARCH=amd64 GOARM= make alloy
+    - run: GO_TAGS="builtinassets slicelabels" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
   build_mac_arm:
     name: Build on MacOS (ARM)
@@ -98,7 +98,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+    - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="builtinassets slicelabels" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
   build_windows:
     name: Build on Windows (AMD64)
@@ -115,7 +115,7 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: echo "GO_TAGS=builtinassets" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GO_TAGS=builtinassets slicelabels" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: make alloy
@@ -123,7 +123,7 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.21@sha256:36b1e621f32f46aa1de58843b885f0885faabe7b29468462d36a60bea1245e33
+    container: grafana/alloy-build-image:v0.1.22@sha256:a797a8e2efdf6e2c8280e91a50dc79418f8efb56d4a591f04c8f2435b78154ab
     steps:
     - name: Checkout code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -141,4 +141,4 @@ jobs:
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: make generate-ui
-    - run: GO_TAGS="builtinassets" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
+    - run: GO_TAGS="builtinassets slicelabels" GOOS=freebsd GOARCH=amd64 GOARM= make alloy

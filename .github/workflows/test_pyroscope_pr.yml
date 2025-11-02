@@ -26,4 +26,4 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - run: make GO_TAGS="nodocker" test-pyroscope
+      - run: sudo GO_TAGS="slicelabels" make test-pyroscope

@@ -30,8 +30,8 @@ const selectQueryTablesSamples = `
 		schema_name,
 		query_sample_text
 	FROM performance_schema.events_statements_summary_by_digest
-	WHERE schema_name NOT IN ('mysql', 'performance_schema', 'information_schema')
-	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
+	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)
+	AND schema_name NOT IN ` + EXCLUDED_SCHEMAS
 
 type QueryDetailsArguments struct {
 	DB              *sql.DB

@@ -75,6 +75,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.template`][stage.template]                           | Configures a `template` processing stage.                      | no       |
 | [`stage.tenant`][stage.tenant]                               | Configures a `tenant` processing stage.                        | no       |
 | [`stage.timestamp`][stage.timestamp]                         | Configures a `timestamp` processing stage.                     | no       |
+| [`stage.truncate`][stage.truncate]                           | Configures a `truncate` processing stage.                      | no       |
 | [`stage.useragent`][stage.useragent]                         | Configures a `useragent` processing stage.                     | no       |
 | [`stage.windowsevent`][stage.windowsevent]                   | Configures a `windowsevent` processing stage.                  | no       |
 
@@ -107,6 +108,7 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.structured_metadata_drop]: #stagestructured_metadata_drop
 [stage.template]: #stagetemplate
 [stage.tenant]: #stagetenant
+[stage.truncate]: #stagetruncate
 [stage.timestamp]: #stagetimestamp
 [stage.useragent]: #stageuseragent
 [stage.windowsevent]: #stagewindowsevent
@@ -584,6 +586,8 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map and set new labels on incoming log entries.
 
+For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+
 The following arguments are supported:
 
 | Name     | Type          | Description                             | Default | Required |
@@ -695,14 +699,19 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                    | Default          | Required |
-| ------------- | -------- | ---------------------------------------------- | ---------------- | -------- |
-| `min_length`  | `int`    | Minimum length of digits to consider           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                   | `""`             | no       |
+| Name          | Type     | Description                                                    | Default          | Required |
+| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
+| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
+| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
+
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
+
+#### Example
 
 The following example log line contains an approved credit card number.
 
@@ -711,6 +720,25 @@ time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit 
 
 stage.luhn {
     replacement = "**DELETED**"
+}
+```
+
+The stage parses the log line, redacts the credit card number, and produces the following updated log line:
+
+```text
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=example_name"
+```
+
+#### Example with `delimiters`
+
+The following example log line contains an approved credit card number, represented with dash characters between each group of four digits.
+
+```alloy
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032-0325-1354-8443" extra="user=example_name"
+
+stage.luhn {
+    replacement = "**DELETED**"
+    delimiters = "-"
 }
 ```
 
@@ -1463,6 +1491,8 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
 
+For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+
 The following arguments are supported:
 
 | Name     | Type          | Description                                    | Default | Required |
@@ -1846,6 +1876,82 @@ stage.timestamp {
 }
 ```
 
+### `stage.truncate`
+
+The `stage.truncate` inner block configures a processing stage that truncates log entries, labels, extracted map fields, or structured metadata that exceed configured limits.
+
+The `stage.truncate` block doesn't support any arguments and is only configured via a number of nested inner `rule` blocks.
+
+The following block is supported inside the definition of `stage.truncate`:
+
+| Block              | Description                   | Required |
+| ------------------ | ----------------------------- | -------- |
+| [`rule`][rule]     | Defines a truncation rule.    | yes      |
+
+[rule]: #rule
+
+#### `rule`
+
+Defines a truncation rule that will apply to the log line, labels, structured_metadata, or extracted map.
+
+The following arguments are supported:
+
+| Name          | Type     | Description                                                  | Default  | Required |
+|---------------|----------|--------------------------------------------------------------|----------|----------|
+| `limit`       | `string` | Maximum length before truncating.                            | `""`     | yes      |
+| `source`      | `string` | Source of the data to truncate. If empty, will truncate all. | `""`     | no       |
+| `source_type` | `string` | Source location of the data to truncate.                     | `"line"` | no       |
+| `suffix`      | `string` | Suffix to append to truncated values.                        | ``       | no       |
+
+The `limit` attribute should be expressed in logical units, for example `"1KiB"`.
+The stage checks the byte length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
+If you provide a `suffix`, the limit is reduced by the length of the `suffix`, and the `suffix` is appended to the truncated value.
+
+The `source_type` attribute must be one of `"line"`, `"label"`, `"structured_metadata"`, or `"extracted"`.
+If the `source` attribute is specified, the stage will only truncate a label, structured_metadata, or extracted field of the same name.
+If `source` is empty, all labels, structured_metadata, or extracted fields will be truncated if they exceed the limit.
+
+Whenever a line, label, extracted field, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
+The `field` label will either be `line`, `label`, `extracted`, or `structured_metadata`.
+
+If anything has been truncated, the extracted map for the entry contains a `"truncated"` field with a comma delimited list of field types that have been truncated.
+
+#### Example
+
+```alloy
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+  stage.truncate {
+    rule {
+      limit = "12B"
+      suffix = "..."
+    }
+
+    rule {
+      limit = "12B"
+      suffix = "..."
+      source_type = "label"
+    }
+  }
+}
+```
+
+Given the following input entry, the first rule in the stage truncates the entry `"I'm a log message!"` into `"I'm a log..."`.
+The second rule truncates the `"label2"` label's value `"hello world"` to `"hello..."`.
+
+```text
+entry: "I'm a log message!"
+labels: { "label1": "hi", "label2": "hello world" }
+structured_metadata: { "metadata1": "here is some metadata", "metadata2": "and here is some more"}
+```
+
+The extracted map for the entry contains the `"truncated"` field.
+You can use this entry to add a label in `stage.labels` or structured metadata in `stage.structured_metadata` to the entry so you can identify the logs as truncated after processing.
+
+```text
+truncated: label,line
+```
+
 ### `stage.useragent`
 
 The `stage.useragent` inner block configures a processing stage that parses user-agent strings and extracts browser, operating system, and device information using the uap-core library.
@@ -2024,6 +2130,7 @@ The following fields are exported and can be referenced by other components:
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured_metadata values truncated as part of a `truncate` stage.
 
 ## Example
 

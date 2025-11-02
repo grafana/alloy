@@ -1,0 +1,7 @@
+# Base GraphQL schema
+# Root types that other schemas extend
+
+type Query
+# type Mutation
+
+scalar Time
