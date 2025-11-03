@@ -39,10 +39,11 @@ The component starts a new reader for each of the given `targets` and fans out l
 
 You can use the following arguments with `loki.source.podlogs`:
 
-| Name            | Type                 | Description                                                                       | Default | Required |
-| ------------    | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.                                         |         | yes      |
-| `tail_from_end` | `bool`               | Start reading from the end of the log stream for newly discovered Pod containers. | `false` | no       |
+| Name                        | Type                 | Description                                                                       | Default | Required |
+| --------------------------- | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                         |         | yes      |
+| `preserve_discovered_labels` | `bool`               | Preserve discovered pod metadata labels for use by downstream components.        | `false` | no       |
+| `tail_from_end`             | `bool`               | Start reading from the end of the log stream for newly discovered Pod containers. | `false` | no       |
 
 `loki.source.podlogs` searches for `PodLogs` resources on Kubernetes.
 Each `PodLogs` resource describes a set of pods to tail logs from.
@@ -51,6 +52,10 @@ When `tail_from_end` is `false` (the default), `loki.source.podlogs` reads all a
 For long-running Pods, this can result in a large volume of logs being processed, which may be rejected by the downstream Loki instance if they are too old.
 Set `tail_from_end` to `true` to only read new logs from the point of discovery, ignoring the historical log buffer. 
 If a last-read offset is already saved for a Pod, `loki.source.podlogs` will resume from that position and ignore the `tail_from_end` argument.
+
+When `preserve_discovered_labels` is `true`, `loki.source.podlogs` preserves discovered Pod metadata labels so they can be accessed by downstream components.
+This enables component chaining where discovered Pod metadata labels can be accessed by components like `loki.relabel`.
+The preserved labels include all the Pod metadata labels that are available for relabeling within PodLogs custom resources.
 
 ## `PodLogs` custom resource
 
@@ -130,6 +135,7 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`namespace_selector`][selector]                              | Label selector for which namespaces to discover `PodLogs` in.                               | no       |
 | `namespace_selector` > [`match_expression`][match_expression] | Label selector expression for which namespaces to discover `PodLogs` in.                    | no       |
 | [`node_filter`][node_filter]                                  | Filter Pods by node to limit discovery scope.                                               | no       |
+| [`relabel_configs`][relabel_configs]                          | Relabel rules to apply to discovered targets before forwarding to downstream components.    | no       |
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
@@ -290,7 +296,10 @@ When the `match_labels` argument is empty, all resources are matched.
 
 ## Exported fields
 
-`loki.source.podlogs` doesn't export any fields.
+
+When `preserve_discovered_labels` is set to `false`, `loki.source.podlogs` doesn't export any discovered fields (`__meta` labels).
+
+When `preserve_discovered_labels` is set to `true`, `loki.source.podlogs` sends the discovered labels to the downstream components, and then the labels are dropped by either `loki.process` or `loki.write` when the pipeline is completed.
 
 ## Component health
 
@@ -316,6 +325,35 @@ This example discovers all `PodLogs` resources and forwards collected logs to a 
 ```alloy
 loki.source.podlogs "default" {
   forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+}
+```
+
+This example shows how to preserve discovered Pod labels for use by downstream components:
+
+```alloy
+loki.source.podlogs "with_label_preservation" {
+  forward_to                  = [loki.write.local.receiver]
+  preserve_discovered_labels  = true
+}
+
+loki.relabel "pod_relabeling" {
+  forward_to = [loki.write.local.receiver]
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "app"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_annotation_version"]
+    target_label  = "version"
+  }
 }
 
 loki.write "local" {
