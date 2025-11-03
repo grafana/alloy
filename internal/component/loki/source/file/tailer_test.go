@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,16 +113,15 @@ func TestTailer(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
-		false,
 		func() bool { return true },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 
@@ -210,16 +208,15 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
-		false,
 		func() bool { return false },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
@@ -275,16 +272,15 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
-		false,
 		func() bool { return true },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 
