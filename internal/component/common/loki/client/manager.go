@@ -157,6 +157,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 		pairs:   pairs,
 		entries: make(chan loki.Entry),
 	}
+
 	if walCfg.Enabled {
 		manager.name = buildManagerName("wal", clientCfgs...)
 		manager.startWithConsume()

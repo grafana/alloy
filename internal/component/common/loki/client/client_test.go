@@ -598,13 +598,13 @@ func TestClient_StopNow(t *testing.T) {
 
 			// StopNow should have cancelled client's ctx
 			cc := cl.(*client)
-			require.NoError(t, cc.ctx.Err())
+			require.NoError(t, cc.bc.ctx.Err())
 
 			// Stop the client: it waits until the current batch is sent
 			cl.StopNow()
 			close(receivedReqsChan)
 
-			require.Error(t, cc.ctx.Err()) // non-nil error if its cancelled.
+			require.Error(t, cc.bc.ctx.Err()) // non-nil error if its cancelled.
 
 			// Get all push requests received on the server side
 			receivedReqs := make([]utils.RemoteWriteRequest, 0)

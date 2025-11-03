@@ -1,31 +1,22 @@
 package client
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/dskit/backoff"
-	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
-	"github.com/grafana/alloy/internal/useragent"
 
 	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
 )
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.
@@ -136,7 +127,7 @@ func (q *queue) closeAndDrain(ctx context.Context) {
 // sendAndReport attempts to send the batch for the given tenant, and either way that operation succeeds or fails, reports
 // the data as sent.
 func (q *queue) sendAndReport(ctx context.Context, tenantId string, b *batch) {
-	q.client.sendBatch(ctx, tenantId, b)
+	q.client.bc.sendBatch(ctx, tenantId, b)
 	// mark segment data for that batch as sent, even if the send operation failed
 	b.reportAsSentData(q.client.markerHandler)
 }
@@ -156,7 +147,7 @@ type queueClient struct {
 	qcMetrics *QueueClientMetrics
 	logger    log.Logger
 	cfg       Config
-	client    *http.Client
+	bc        *batchClient
 
 	batches      map[string]*batch
 	batchesMtx   sync.Mutex
@@ -170,9 +161,6 @@ type queueClient struct {
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
-	// ctx is used in any upstream calls from the `client`.
-	ctx           context.Context
-	cancel        context.CancelFunc
 	maxStreams    int
 	quit          chan struct{}
 	markerHandler MarkerHandler
@@ -184,8 +172,11 @@ func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Conf
 }
 
 func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
-	if cfg.URL.URL == nil {
-		return nil, errors.New("client needs target URL")
+	logger = log.With(logger, "component", "client", "host", cfg.URL.Host)
+
+	bc, err := newBatchClient(metrics, logger, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -195,6 +186,7 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		cfg:          cfg,
 		metrics:      metrics,
 		qcMetrics:    qcMetrics,
+		bc:           bc,
 		drainTimeout: cfg.Queue.DrainTimeout,
 		quit:         make(chan struct{}),
 
@@ -213,18 +205,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 	// the send queue can consume.
 	var queueBufferSize = cfg.Queue.Capacity / cfg.BatchSize
 	c.sendQueue = newQueue(c, queueBufferSize, logger)
-
-	err := cfg.Client.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	c.client, err = config.NewClientFromConfig(cfg.Client, useragent.ProductName, config.WithHTTP2Disabled())
-	if err != nil {
-		return nil, err
-	}
-
-	c.client.Timeout = cfg.Timeout
 
 	c.wg.Add(1)
 	go c.runSendOldBatches()
@@ -353,10 +333,7 @@ func (c *queueClient) runSendOldBatches() {
 	// We apply a cap of 10ms to the ticker, to avoid too frequent checks in
 	// case the BatchWait is very low.
 	minWaitCheckFrequency := 10 * time.Millisecond
-	maxWaitCheckFrequency := c.cfg.BatchWait / 10
-	if maxWaitCheckFrequency < minWaitCheckFrequency {
-		maxWaitCheckFrequency = minWaitCheckFrequency
-	}
+	maxWaitCheckFrequency := max(c.cfg.BatchWait/10, minWaitCheckFrequency)
 
 	maxWaitCheck := time.NewTicker(maxWaitCheckFrequency)
 
@@ -422,112 +399,6 @@ func (c *queueClient) enqueuePendingBatches(ctx context.Context) {
 	}
 }
 
-func (c *queueClient) sendBatch(ctx context.Context, tenantID string, batch *batch) {
-	buf, entriesCount, err := batch.encode()
-	if err != nil {
-		level.Error(c.logger).Log("msg", "error encoding batch", "error", err)
-		return
-	}
-	bufBytes := float64(len(buf))
-	c.metrics.encodedBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
-
-	backoff := backoff.New(c.ctx, c.cfg.BackoffConfig)
-	var status int
-	for {
-		start := time.Now()
-		// send uses `timeout` internally, so `context.Background` is good enough.
-		status, err = c.send(ctx, tenantID, buf)
-
-		c.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), c.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
-
-		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
-		if c.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
-			level.Warn(c.logger).Log("msg", "dropping batch due to rate limiting applied at ingester")
-			c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonRateLimited).Add(bufBytes)
-			c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonRateLimited).Add(float64(entriesCount))
-			return
-		}
-
-		if err == nil {
-			c.metrics.sentBytes.WithLabelValues(c.cfg.URL.Host, tenantID).Add(bufBytes)
-			c.metrics.sentEntries.WithLabelValues(c.cfg.URL.Host, tenantID).Add(float64(entriesCount))
-
-			return
-		}
-
-		// Only retry 429s, 500s and connection-level errors.
-		if status > 0 && !batchIsRateLimited(status) && status/100 != 5 {
-			break
-		}
-
-		level.Warn(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
-		c.metrics.batchRetries.WithLabelValues(c.cfg.URL.Host, tenantID).Inc()
-		backoff.Wait()
-
-		// Make sure it sends at least once before checking for retry.
-		if !backoff.Ongoing() {
-			break
-		}
-	}
-
-	if err != nil {
-		level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
-		// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
-		// were for a different reason
-		dropReason := ReasonGeneric
-		if batchIsRateLimited(status) {
-			dropReason = ReasonRateLimited
-		}
-		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-		c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
-	}
-}
-
-func (c *queueClient) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
-	defer cancel()
-	req, err := http.NewRequest("POST", c.cfg.URL.String(), bytes.NewReader(buf))
-	if err != nil {
-		return -1, err
-	}
-	req = req.WithContext(ctx)
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("User-Agent", userAgent)
-
-	// If the tenant ID is not empty promtail is running in multi-tenant mode, so
-	// we should send it to Loki
-	if tenantID != "" {
-		req.Header.Set("X-Scope-OrgID", tenantID)
-	}
-
-	// Add custom headers on request
-	if len(c.cfg.Headers) > 0 {
-		for k, v := range c.cfg.Headers {
-			if req.Header.Get(k) == "" {
-				req.Header.Add(k, v)
-			} else {
-				level.Warn(c.logger).Log("msg", "custom header key already exists, skipping", "key", k)
-			}
-		}
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return -1, err
-	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
-
-	if resp.StatusCode/100 != 2 {
-		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))
-		line := ""
-		if scanner.Scan() {
-			line = scanner.Text()
-		}
-		err = fmt.Errorf("server returned HTTP status %s (%d): %s", resp.Status, resp.StatusCode, line)
-	}
-	return resp.StatusCode, err
-}
-
 func (c *queueClient) getTenantID(labels model.LabelSet) string {
 	// Check if it has been overridden while processing the pipeline stages
 	if value, ok := labels[ReservedLabelTenantID]; ok {
@@ -562,15 +433,15 @@ func (c *queueClient) Stop() {
 	c.sendQueue.closeAndDrain(ctx)
 
 	// stop request after drain times out or exits
-	c.cancel()
+	c.bc.stop()
 
 	c.markerHandler.Stop()
 }
 
 // StopNow stops the client without retries or draining the send queue
 func (c *queueClient) StopNow() {
-	// cancel will stop retrying http requests.
-	c.cancel()
+	// stop batch client from retrying requests.
+	c.bc.stop()
 	close(c.quit)
 	c.sendQueue.closeNow()
 	c.wg.Wait()
