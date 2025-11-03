@@ -11,7 +11,6 @@ import (
 	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
-// NOTE the helm chart for promtail and fluent-bit also have defaults for these values, please update to match if you make changes here.
 const (
 	BatchWait      = 1 * time.Second
 	BatchSize  int = 1024 * 1024

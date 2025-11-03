@@ -1,5 +1,7 @@
 
-**NOTE**: This fork is currently being maintained for use in the promtail agent of the [Loki](https://github.com/grafana/loki) project.
+**NOTE**: This is a fork of https://github.com/grafana/tail, which is a fork of https://github.com/hpcloud/tail.
+The `grafana/tail` repo is no longer mainained because the Loki team has deprecated the Promtail project.
+It is easier for the Alloy team to maintain this tail package inside the Alloy repo than to have a separate repository for it.
 
 Use outside of that context is not tested or supported.
 
