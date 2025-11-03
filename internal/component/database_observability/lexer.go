@@ -29,13 +29,7 @@ func RedactSql(sql string) string {
 
 // ContainsReservedKeywords checks if the SQL query contains any reserved keywords
 // that indicate write operations, excluding those in string literals or comments
-func ContainsReservedKeywords(query string, reservedWords []string, dbms sqllexer.DBMSType) bool {
-	// Create a map for faster lookup
-	reservedMap := make(map[string]bool)
-	for _, word := range reservedWords {
-		reservedMap[strings.ToUpper(word)] = true
-	}
-
+func ContainsReservedKeywords(query string, reservedWords map[string]bool, dbms sqllexer.DBMSType) bool {
 	// Use the lexer to tokenize the query
 	lexer := sqllexer.New(query, sqllexer.WithDBMS(dbms))
 
@@ -48,7 +42,7 @@ func ContainsReservedKeywords(query string, reservedWords []string, dbms sqllexe
 		if token.Type == sqllexer.ERROR {
 			// If lexing fails, fall back to simple string search for safety
 			uppercaseQuery := strings.ToUpper(query)
-			for _, word := range reservedWords {
+			for word, _ := range reservedWords {
 				if strings.Contains(uppercaseQuery, word) {
 					return true
 				}
@@ -59,7 +53,7 @@ func ContainsReservedKeywords(query string, reservedWords []string, dbms sqllexe
 		// Check commands, keywords, and identifiers (since some reserved words might be classified as identifiers)
 		// but exclude string literals, comments, and other non-SQL-keyword tokens
 		if token.Type == sqllexer.COMMAND || token.Type == sqllexer.KEYWORD || token.Type == sqllexer.IDENT {
-			if reservedMap[strings.ToUpper(token.Value)] {
+			if _, ok := reservedWords[strings.ToUpper(token.Value)]; ok {
 				return true
 			}
 		}

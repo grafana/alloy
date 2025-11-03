@@ -40,37 +40,37 @@ const (
 // (Data Definition Language) commands that modify database state.
 // This was extracted from the MySQL and PostgreSQL documentation by Claude Sonnet 4 on Oct 28, 2025
 // and audited by @rgeyer and others in the dbo11y team.
-var ExplainReservedWordDenyList = []string{
+var ExplainReservedWordDenyList = map[string]bool{
 	// Data Manipulation Language (DML) - Write operations
-	"INSERT", "UPDATE", "DELETE", "REPLACE", "MERGE", "UPSERT",
-	"FOR UPDATE",
+	"INSERT": true, "UPDATE": true, "DELETE": true, "REPLACE": true, "MERGE": true, "UPSERT": true,
+	"FOR UPDATE": true,
 
 	// Data Definition Language (DDL) - Schema modifications
-	"CREATE", "ALTER", "DROP", "RENAME", "TRUNCATE",
+	"CREATE": true, "ALTER": true, "DROP": true, "RENAME": true, "TRUNCATE": true,
 
 	// Transaction control that can commit writes
-	"COMMIT", "ROLLBACK", "SAVEPOINT",
+	"COMMIT": true, "ROLLBACK": true, "SAVEPOINT": true,
 
 	// Database/Schema management
-	"USE", "DATABASE", "SCHEMA",
+	"USE": true, "DATABASE": true, "SCHEMA": true,
 
 	// Index operations
-	"REINDEX", "ANALYZE", "OPTIMIZE",
-
+	"REINDEX": true, "ANALYZE": true, "OPTIMIZE": true,
+	"REINDEX TABLE": true, "ANALYZE TABLE": true, "OPTIMIZE TABLE": true,
 	// User/Permission management
-	"GRANT", "REVOKE", "CREATE USER", "DROP USER", "ALTER USER",
+	"GRANT": true, "REVOKE": true, "CREATE USER": true, "DROP USER": true, "ALTER USER": true,
 
 	// MySQL specific write operations
-	"LOAD", "REPLACE", "DELAYED", "IGNORE", "ON DUPLICATE KEY",
-	"LOW_PRIORITY", "HIGH_PRIORITY", "QUICK", "LOCK", "UNLOCK",
-	"LOCK IN SHARE MODE",
+	"LOAD": true, "DELAYED": true, "IGNORE": true, "ON DUPLICATE KEY": true,
+	"LOW_PRIORITY": true, "HIGH_PRIORITY": true, "QUICK": true, "LOCK": true, "UNLOCK": true,
+	"LOCK IN SHARE MODE": true,
 
 	// PostgreSQL specific write operations
-	"COPY", "VACUUM", "CLUSTER", "LISTEN", "NOTIFY", "DISCARD",
-	"PREPARE", "EXECUTE", "DEALLOCATE", "RESET", "SET",
+	"COPY": true, "VACUUM": true, "CLUSTER": true, "LISTEN": true, "NOTIFY": true, "DISCARD": true,
+	"PREPARE": true, "EXECUTE": true, "DEALLOCATE": true, "RESET": true, "SET": true,
 
 	// dbo11 specific operations we'd like to exclude
-	"EXPLAIN",
+	"EXPLAIN": true,
 }
 
 type ExplainPlanOutput struct {

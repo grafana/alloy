@@ -313,7 +313,7 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 }
 
 func TestContainsReservedKeywords(t *testing.T) {
-	reservedWords := []string{"INSERT", "UPDATE", "DELETE", "CREATE", "DROP"}
+	reservedWords := map[string]bool{"INSERT": true, "UPDATE": true, "DELETE": true, "CREATE": true, "DROP": true}
 
 	tests := []struct {
 		name     string
