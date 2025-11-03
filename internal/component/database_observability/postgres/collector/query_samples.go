@@ -712,31 +712,28 @@ func isThrottleExempt(sample *SampleState) bool {
 // observed latency. W is bounded by 20*s to limit the number of short polls.
 //
 // Rules:
-//   - s_base = clamp(CI/35, 100ms..300ms)
+//   - s_base = clamp(CI/30, 50ms..300ms)
 //   - s = max(s_base, observedLatency)
-//   - W = min(CI/2 - 50ms, 3s)
-//   - N ≤ 20 ⇒ for a short interval s, the window ≤ 20*s
+//   - W = min(CI/2 - 100ms)
+//   - N ≤ 25 ⇒ for a short interval s, the window ≤ 25*s
 func computeShortWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
-	if collectInterval <= 0 {
-		return 150 * time.Millisecond, 0
-	}
-	s := time.Duration(float64(collectInterval) / 35.0)
-	if s < 100*time.Millisecond {
-		s = 100 * time.Millisecond
+	s := time.Duration(float64(collectInterval) / 30.0)
+	if s < 50*time.Millisecond {
+		s = 50 * time.Millisecond
 	} else if s > 300*time.Millisecond {
 		s = 300 * time.Millisecond
 	}
 	if observedLatency > s {
 		s = observedLatency
 	}
-	guard := 50 * time.Millisecond
+	guard := 100 * time.Millisecond
 	capWindow := collectInterval/2 - guard
 	if capWindow < 0 {
 		capWindow = 0
 	}
-	// Limit number of short polls: N ≤ 20 ⇒ window ≤ 20*s
+	// Limit number of short polls: N ≤ 25 ⇒ window ≤ 25*s
 	if s > 0 {
-		nCap := 20 * s
+		nCap := 25 * s
 		if nCap < capWindow {
 			capWindow = nCap
 		}
