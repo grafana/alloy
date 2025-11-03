@@ -123,6 +123,7 @@ The following arguments are supported:
 | `sync_period`       | `duration`          | How often to sync filesystem and targets.                   | `"10s"` | no       |
 
 Benefits of using `file_match` over `local.file_match`:
+
 - Simplified configuration: No need for a separate `local.file_match` component
 - Reduced overhead: File discovery is integrated directly into `loki.source.file`, eliminating the need for component-to-component communication
 - Same functionality: Supports the same glob patterns and features, including `__path_exclude__` for excluding files
