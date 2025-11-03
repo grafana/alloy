@@ -179,7 +179,6 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
-			// Measure elapsed time for this cycle
 			elapsed := time.Since(loopStart)
 			if elapsed < 0 {
 				elapsed = 0
@@ -193,7 +192,6 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				c.shortWindowUntil = now.Add(window)
 			}
 
-			// Decide next interval: short during window, otherwise base interval
 			period := c.collectInterval
 			if now.Before(c.shortWindowUntil) {
 				period = c.adaptiveShortInterval
@@ -205,6 +203,15 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 			if interval < 0 {
 				interval = 0
 			}
+
+			// On errors, enforce a 1s floor sleep to avoid tight loops on error conditions.
+			if err != nil {
+				const errorFloor = time.Second
+				if interval < errorFloor {
+					interval = errorFloor
+				}
+			}
+
 			select {
 			case <-c.ctx.Done():
 				return
