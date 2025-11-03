@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/strutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,10 +71,10 @@ func TestBuildPodLogsTargetLabels(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := buildPodLogsTargetLabels(tc.podLogs)
-			gotMap := make(map[string]string, len(got))
-			for _, lbl := range got {
+			gotMap := make(map[string]string, got.Len())
+			got.Range(func(lbl labels.Label) {
 				gotMap[lbl.Name] = lbl.Value
-			}
+			})
 
 			// Verify each expected key is present with its value.
 			for k, v := range tc.expectedLabels {
