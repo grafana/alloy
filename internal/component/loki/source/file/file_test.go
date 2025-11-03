@@ -82,6 +82,9 @@ func Test(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestUpdateRemoveFileWhileReading(t *testing.T) {
@@ -166,6 +169,9 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 	cancel()
 	ctrlWg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestFileWatch(t *testing.T) {
@@ -225,6 +231,11 @@ func TestFileWatch(t *testing.T) {
 	// Shut down the component and wait for it to complete.
 	cancel()
 	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit.
+	// The PollingFileWatcher goroutine may be sleeping for up to MaxPollFrequency
+	// when Stop() is called, especially on Windows where cleanup is slower.
+	time.Sleep(args.FileWatch.MaxPollFrequency + 100*time.Millisecond)
 }
 
 // Test that updating the component does not leak goroutines.
@@ -271,6 +282,9 @@ func TestUpdate_NoLeak(t *testing.T) {
 	// take longer than on Unix systems.
 	cancel()
 	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestTwoTargets(t *testing.T) {
@@ -477,6 +491,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	cancel()
 	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
