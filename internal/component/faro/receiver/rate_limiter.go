@@ -12,8 +12,10 @@ import (
 )
 
 const (
+	// DEFAULT_CLEANUP_INTERVAL is the interval at which the cleanup routine runs to remove inactive rate limiters.
 	DEFAULT_CLEANUP_INTERVAL = 10 * time.Minute
-	DEFAULT_LIMITER_EXPIRY   = 10 * time.Minute
+	// DEFAULT_LIMITER_EXPIRY is the duration after which an inactive rate limiter is considered expired and removed.
+	DEFAULT_LIMITER_EXPIRY = 10 * time.Minute
 )
 
 // AppRateLimitingConfigKey represents a unique key for an app/environment combination.
@@ -22,6 +24,11 @@ const (
 // Segregates rate limiting configurations per application and environment.
 type AppRateLimitingConfigKey string
 
+// AppRateLimiter wraps a rate limiter with metadata for cleanup purposes.
+// The lastUsed field tracks when the limiter was last accessed, allowing
+// the cleanup routine to remove limiters that haven't been used within
+// DEFAULT_LIMITER_EXPIRY duration (10 minutes by default).
+// This prevents memory leaks from applications that stop sending requests.
 type AppRateLimiter struct {
 	limiter  *rate.Limiter
 	lastUsed time.Time
@@ -38,6 +45,9 @@ func ParseAppRateLimitingConfigKey(app, env string) AppRateLimitingConfigKey {
 }
 
 // AppRateLimitingConfig manages rate limiters per application/environment combination.
+// Each unique app/env pair gets its own isolated rate limiter to prevent one application
+// from affecting others. Inactive limiters are automatically cleaned up every 10 minutes
+// to prevent unbounded memory growth.
 type AppRateLimitingConfig struct {
 	pool  map[AppRateLimitingConfigKey]*AppRateLimiter
 	rate  rate.Limit
@@ -47,9 +57,6 @@ type AppRateLimitingConfig struct {
 	// Metrics
 	activeApp          prometheus.Gauge
 	rateLimitDecisions *prometheus.CounterVec
-
-	// Self rate limiter to avoid overload
-	selfLimiter *rate.Limiter
 }
 
 // NewAppRateLimitingConfig creates a new AppRateLimitingConfig with the given rate limit and burst size.
@@ -70,8 +77,6 @@ func NewAppRateLimitingConfig(rateLimit float64, burst int, reg prometheus.Regis
 			},
 			[]string{"app", "env", "allowed"},
 		),
-
-		selfLimiter: rate.NewLimiter(rate.Limit(rateLimit), burst),
 	}
 }
 
@@ -146,11 +151,6 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 	limiter, exists := r.GetPoolLimiter(key)
 
 	if !exists {
-		// Self rate limiting to avoid memory overload on app creation
-		if !r.selfLimiter.Allow() {
-			return false
-		}
-
 		// Create new rate limiter with pre-filled bucket (similar to handler.Update)
 		t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
 		newLimiter := rate.NewLimiter(r.rate, r.burst)
