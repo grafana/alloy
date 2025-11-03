@@ -65,8 +65,8 @@ You can use the following blocks with `loki.source.file`:
 | Name                             | Description                                                                  | Required |
 | -------------------------------- | ---------------------------------------------------------------------------- | -------- |
 | [`decompression`][decompression] | Configure reading logs from compressed files.                                | no       |
-| [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes.            | no       |
 | [`file_match`][file_match]       | Configure file discovery using glob patterns for automatic target discovery. | no       |
+| [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes.            | no       |
 
 [decompression]: #decompression
 [file_watch]: #file_watch
