@@ -572,9 +572,8 @@ func setupTestNativeHistogram() prometheus_client.Histogram {
 // setupTestMixedHistogram creates and initializes a test histogram with both classic and native buckets
 func setupTestMixedHistogram() prometheus_client.Histogram {
 	mixedHistogram := prometheus_client.NewHistogram(prometheus_client.HistogramOpts{
-		Name: "test_mixed_histogram",
-		Help: "A test histogram metric with both classic and native buckets",
-		// TODO: This is not a classic histogram?
+		Name:    "test_mixed_histogram",
+		Help:    "A test histogram metric with both classic and native buckets",
 		Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0}, // Classic buckets
 		// Native histogram configuration
 		NativeHistogramBucketFactor:     1.1,
