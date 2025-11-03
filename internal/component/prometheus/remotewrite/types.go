@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
 	"time"
 
 	types "github.com/grafana/alloy/internal/component/common/config"
@@ -266,19 +265,10 @@ func convertConfigs(cfg Arguments) (*config.Config, error) {
 
 	return &config.Config{
 		GlobalConfig: config.GlobalConfig{
-			ExternalLabels: toLabels(cfg.ExternalLabels),
+			ExternalLabels: labels.FromMap(cfg.ExternalLabels),
 		},
 		RemoteWriteConfigs: rwConfigs,
 	}, nil
-}
-
-func toLabels(in map[string]string) labels.Labels {
-	res := make(labels.Labels, 0, len(in))
-	for k, v := range in {
-		res = append(res, labels.Label{Name: k, Value: v})
-	}
-	sort.Sort(res)
-	return res
 }
 
 // ManagedIdentityConfig is used to store managed identity config values
