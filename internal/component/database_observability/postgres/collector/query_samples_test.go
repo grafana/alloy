@@ -46,13 +46,13 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}).AddRow(
 						now, "testdb", 100, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{Int32: 500, Valid: true}, sql.NullInt32{Int32: 400, Valid: true},
 						xactStartTime, "active", stateChangeTime, sql.NullString{},
-						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 123, Valid: true},
+						sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 123, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
@@ -61,7 +61,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}))
 			},
 
@@ -81,13 +81,13 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}).AddRow(
 						now, "testdb", 101, sql.NullInt64{Int64: 100, Valid: true},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"parallel worker", now, sql.NullInt32{}, sql.NullInt32{},
 						now, "active", now, sql.NullString{},
-						sql.NullString{}, nil, now, sql.NullInt64{Int64: 123, Valid: true},
+						sql.NullString{}, now, sql.NullInt64{Int64: 123, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
@@ -96,7 +96,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}))
 			},
 
@@ -116,14 +116,17 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}).AddRow(
 						now, "testdb", 102, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 						xactStartTime, "waiting", stateChangeTime, sql.NullString{String: "Lock", Valid: true},
-						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
+						sql.NullString{String: "relation", Valid: true}, now, sql.NullInt64{Int64: 124, Valid: true},
 					))
+				// Blocking PIDs query for lock waits
+				mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+					WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(102, pq.Int64Array{103, 104}))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
@@ -131,7 +134,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}))
 			},
 
@@ -153,24 +156,24 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 						"query",
 					}).AddRow(
 						now, "testdb", 103, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
 						now, "active", now, sql.NullString{},
-						sql.NullString{}, nil, now, sql.NullInt64{Int64: 125, Valid: true},
+						sql.NullString{}, now, sql.NullInt64{Int64: 125, Valid: true},
 						"<insufficient privilege>",
 					))
-				// Second scrape: empty to complete cycle
+					// Second scrape: empty to complete cycle
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 						"query",
 					}))
 			},
@@ -188,13 +191,13 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}).AddRow(
 						now, sql.NullString{Valid: false}, 104, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", now, sql.NullInt32{}, sql.NullInt32{},
 						now, "active", now, sql.NullString{},
-						sql.NullString{}, nil, now, sql.NullInt64{Int64: 126, Valid: true},
+						sql.NullString{}, now, sql.NullInt64{Int64: 126, Valid: true},
 					))
 				// Second scrape: empty to complete cycle
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "")).RowsWillBeClosed().
@@ -203,7 +206,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 					}))
 			},
 			expectedErrorLine: `err="database name is not valid`,
@@ -219,24 +222,24 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 						"query",
 					}).AddRow(
 						now, "testdb", 106, sql.NullInt64{},
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 						xactStartTime, "active", stateChangeTime, sql.NullString{},
-						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 128, Valid: true},
+						sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 128, Valid: true},
 						"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
 					))
-				// Second scrape: empty to trigger finalization
+					// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows([]string{
 						"now", "datname", "pid", "leader_pid",
 						"usename", "application_name", "client_addr", "client_port",
 						"backend_type", "backend_start", "backend_xid", "backend_xmin",
 						"xact_start", "state", "state_change", "wait_event_type",
-						"wait_event", "blocked_by_pids", "query_start", "query_id",
+						"wait_event", "query_start", "query_id",
 						"query",
 					}))
 			},
@@ -335,7 +338,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		"usename", "application_name", "client_addr", "client_port",
 		"backend_type", "backend_start", "backend_xid", "backend_xmin",
 		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"wait_event", "query_start", "query_id",
 		"query",
 	}
 
@@ -363,7 +366,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{Int32: 10, Valid: true}, sql.NullInt32{Int32: 20, Valid: true},
 				xactStartTime, "active", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 999, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 999, Valid: true},
 				"SELECT * FROM t",
 			))
 		// Second scrape: no rows -> finalize
@@ -412,9 +415,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", now.Add(-10*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{104, 103}, now, sql.NullInt64{Int64: 124, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, now, sql.NullInt64{Int64: 124, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
+		// blocking pids for scrape 1
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(300, pq.Int64Array{104, 103}))
 		// Scrape 2: same wait event with normalized PIDs
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
@@ -422,9 +428,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", now.Add(-12*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, now, sql.NullInt64{Int64: 124, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
+		// blocking pids for scrape 2
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(300, pq.Int64Array{103, 104}))
 		// Scrape 3: disappear
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
@@ -470,9 +479,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", stateChangeTime, sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 555, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, now, sql.NullInt64{Int64: 555, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
+		// blocking pids for wait-event row
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(301, pq.Int64Array{103, 104}))
 		// Scrape 2: active with no wait -> close occurrence
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
@@ -480,7 +492,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "active", now, sql.NullString{},
-				sql.NullString{}, nil, now, sql.NullInt64{Int64: 555, Valid: true},
+				sql.NullString{}, now, sql.NullInt64{Int64: 555, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
 		// Scrape 3: disappear
@@ -529,7 +541,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "active", now.Add(-10*time.Second), sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 9002, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 9002, Valid: true},
 				"SELECT * FROM t",
 			))
 		// Scrape 2: waiting with wait_event; state_change 7s ago
@@ -539,7 +551,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", now.Add(-7*time.Second), sql.NullString{String: "IO", Valid: true},
-				sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{501}, queryStartTime, sql.NullInt64{Int64: 9002, Valid: true},
+				sql.NullString{String: "DataFileRead", Valid: true}, queryStartTime, sql.NullInt64{Int64: 9002, Valid: true},
 				"SELECT * FROM t",
 			))
 		// Scrape 3: disappear -> finalize
@@ -554,7 +566,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
 			require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Line)
+			require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[]" queryid="9002"`, entries[1].Line)
 		}, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -588,9 +600,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103}, queryStartTime, sql.NullInt64{Int64: 9003, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, queryStartTime, sql.NullInt64{Int64: 9003, Valid: true},
 				"UPDATE t SET c=1",
 			))
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(403, pq.Int64Array{103}))
 		// Scrape 2: same event, set changes -> new occurrence
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
@@ -598,9 +612,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				xactStartTime, "waiting", now.Add(-8*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, queryStartTime, sql.NullInt64{Int64: 9003, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, queryStartTime, sql.NullInt64{Int64: 9003, Valid: true},
 				"UPDATE t SET c=1",
 			))
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(403, pq.Int64Array{103, 104}))
 		// Scrape 3: disappear -> finalize
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
@@ -640,7 +656,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		"usename", "application_name", "client_addr", "client_port",
 		"backend_type", "backend_start", "backend_xid", "backend_xmin",
 		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"wait_event", "query_start", "query_id",
 		"query",
 	}
 
@@ -668,7 +684,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{Int32: 11, Valid: true}, sql.NullInt32{Int32: 22, Valid: true},
 				xactStartTime, "active", now.Add(-10*time.Second), sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
 				"SELECT * FROM t",
 			))
 		// Scrape 2: same key turns idle; state_change denotes end
@@ -678,7 +694,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{Int32: 11, Valid: true}, sql.NullInt32{Int32: 22, Valid: true},
 				xactStartTime, "idle", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 20002, Valid: true},
 				"SELECT * FROM t",
 			))
 		// No strict expectation on further idle scrapes; we assert dedup via single emission
@@ -731,7 +747,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{Int32: 0, Valid: false}, sql.NullInt32{Int32: 0, Valid: false},
 				xactStartTime, "idle", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20003, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 20003, Valid: true},
 				"SELECT * FROM users",
 			))
 		// Scrape 2: same idle row again -> should not re-emit
@@ -741,7 +757,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{Int32: 0, Valid: false}, sql.NullInt32{Int32: 0, Valid: false},
 				xactStartTime, "idle", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 20003, Valid: true},
+				sql.NullString{}, queryStartTime, sql.NullInt64{Int64: 20003, Valid: true},
 				"SELECT * FROM users",
 			))
 
@@ -779,7 +795,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 		"usename", "application_name", "client_addr", "client_port",
 		"backend_type", "backend_start", "backend_xid", "backend_xmin",
 		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"wait_event", "query_start", "query_id",
 		"query",
 	}
 
@@ -808,7 +824,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 777, Valid: true},
+				sql.NullString{}, queryStartTime1, sql.NullInt64{Int64: 777, Valid: true},
 				"SELECT 1",
 			))
 		// Disappear to finalize cycle
@@ -823,7 +839,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime2, sql.NullInt64{Int64: 777, Valid: true},
+				sql.NullString{}, queryStartTime2, sql.NullInt64{Int64: 777, Valid: true},
 				"SELECT 1",
 			))
 		// Disappear to finalize
@@ -873,7 +889,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "active", stateChangeTime, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
+				sql.NullString{}, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
 				"SELECT 1",
 			))
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
@@ -882,7 +898,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "idle", now, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
+				sql.NullString{}, queryStartTime1, sql.NullInt64{Int64: 888, Valid: true},
 				"SELECT 1",
 			))
 
@@ -894,7 +910,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "active", now.Add(-50*time.Millisecond), sql.NullString{},
-				sql.NullString{}, nil, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
+				sql.NullString{}, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
 				"SELECT 1",
 			))
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
@@ -903,7 +919,7 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "idle in transaction", now, sql.NullString{},
-				sql.NullString{}, nil, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
+				sql.NullString{}, queryStartTime3, sql.NullInt64{Int64: 888, Valid: true},
 				"SELECT 1",
 			))
 		// Disappear to finalize
@@ -952,9 +968,11 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "waiting", now.Add(-5*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{1}, queryStartTime1, sql.NullInt64{Int64: 999, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, queryStartTime1, sql.NullInt64{Int64: 999, Valid: true},
 				"UPDATE t SET c=1",
 			))
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(8200, pq.Int64Array{1}))
 		// Disappear
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
@@ -967,9 +985,11 @@ func TestQuerySamples_Throttling(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "waiting", now.Add(-2*time.Second), sql.NullString{String: "Lock", Valid: true},
-				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{1}, queryStartTime4, sql.NullInt64{Int64: 999, Valid: true},
+				sql.NullString{String: "relation", Valid: true}, queryStartTime4, sql.NullInt64{Int64: 999, Valid: true},
 				"UPDATE t SET c=1",
 			))
+		mock.ExpectQuery(selectBlockingPIDs).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"pid", "pg_blocking_pids"}).AddRow(8200, pq.Int64Array{1}))
 		// Disappear
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
@@ -1022,7 +1042,7 @@ func TestAdaptiveShortPolling_SpeedsUpScans(t *testing.T) {
 		"usename", "application_name", "client_addr", "client_port",
 		"backend_type", "backend_start", "backend_xid", "backend_xmin",
 		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"wait_event", "query_start", "query_id",
 		"query",
 	}
 
@@ -1035,7 +1055,7 @@ func TestAdaptiveShortPolling_SpeedsUpScans(t *testing.T) {
 				"testuser", "testapp", "127.0.0.1", 5432,
 				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 				now.Add(-2*time.Minute), "active", now, sql.NullString{},
-				sql.NullString{}, nil, now, sql.NullInt64{Int64: 4242, Valid: true},
+				sql.NullString{}, now, sql.NullInt64{Int64: 4242, Valid: true},
 				"SELECT 1",
 			))
 	}
@@ -1075,7 +1095,7 @@ func TestAdaptiveCooldown_EnforcesBaseInterval(t *testing.T) {
 		"usename", "application_name", "client_addr", "client_port",
 		"backend_type", "backend_start", "backend_xid", "backend_xmin",
 		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"wait_event", "query_start", "query_id",
 		"query",
 	}
 
@@ -1088,7 +1108,7 @@ func TestAdaptiveCooldown_EnforcesBaseInterval(t *testing.T) {
 			"testuser", "testapp", "127.0.0.1", 5432,
 			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, nil, now, sql.NullInt64{Int64: 5252, Valid: true},
+			sql.NullString{}, now, sql.NullInt64{Int64: 5252, Valid: true},
 			"SELECT 1",
 		))
 	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
@@ -1097,7 +1117,7 @@ func TestAdaptiveCooldown_EnforcesBaseInterval(t *testing.T) {
 			"testuser", "testapp", "127.0.0.1", 5432,
 			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, nil, now, sql.NullInt64{Int64: 5252, Valid: true},
+			sql.NullString{}, now, sql.NullInt64{Int64: 5252, Valid: true},
 			"SELECT 1",
 		))
 	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).RowsWillBeClosed().
@@ -1106,7 +1126,7 @@ func TestAdaptiveCooldown_EnforcesBaseInterval(t *testing.T) {
 			"testuser", "testapp", "127.0.0.1", 5432,
 			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, nil, now, sql.NullInt64{Int64: 5252, Valid: true},
+			sql.NullString{}, now, sql.NullInt64{Int64: 5252, Valid: true},
 			"SELECT 1",
 		))
 
