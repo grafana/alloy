@@ -49,8 +49,8 @@ You can use the following blocks with `database_observability.postgres`:
 
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -90,10 +90,10 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 ### `query_samples`
 
-| Name                      | Type       | Description                                             | Default | Required |
-|---------------------------|------------|---------------------------------------------------------|---------|----------|
-| `collect_interval`        | `duration` | How frequently to collect information from database.    | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text including parameters. | `false` | no       |
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 
 ### `schema_details`
 
