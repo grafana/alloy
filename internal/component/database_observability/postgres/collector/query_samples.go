@@ -67,7 +67,11 @@ const selectPgStatActivity = `
 		)
 `
 
-const selectBlockingPIDs = `SELECT pid, pg_blocking_pids(pid) FROM pg_stat_activity WHERE wait_event_type = 'Lock'`
+const selectBlockingPIDs = `
+	SELECT pid, pg_blocking_pids(pid) 
+	FROM pg_stat_activity 
+	WHERE wait_event_type = 'Lock' AND pid != pg_backend_pid()
+`
 
 type QuerySamplesInfo struct {
 	DatabaseName    sql.NullString
@@ -111,8 +115,8 @@ type QuerySamples struct {
 	disableQueryRedaction bool
 	throttleInterval      time.Duration
 	lastEmittedByQueryID  map[int64]time.Time
-	adaptiveShortInterval time.Duration
-	shortWindowUntil      time.Time
+	adaptiveBurstInterval time.Duration
+	burstWindowUntil      time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -127,7 +131,7 @@ type QuerySamples struct {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	// Compute initial short-poll short interval based on the collection interval.
-	shortInterval, _ := computeShortWindow(args.CollectInterval, 0)
+	shortInterval, _ := computeBurstWindow(args.CollectInterval, 0)
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -139,8 +143,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		emitted:               map[SampleKey]time.Time{},
 		throttleInterval:      args.ThrottleInterval,
 		lastEmittedByQueryID:  map[int64]time.Time{},
-		adaptiveShortInterval: shortInterval,
-		shortWindowUntil:      time.Time{},
+		adaptiveBurstInterval: shortInterval,
+		burstWindowUntil:      time.Time{},
 	}, nil
 }
 
@@ -184,17 +188,19 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				elapsed = 0
 			}
 
-			// Arm a short window on activity if not already in one
+			// Arm a burst window on activity if not already in one
 			now := time.Now()
-			if hasActive && now.After(c.shortWindowUntil) {
-				s, window := computeShortWindow(c.collectInterval, elapsed)
-				c.adaptiveShortInterval = s
-				c.shortWindowUntil = now.Add(window)
+			if hasActive && now.After(c.burstWindowUntil) {
+				s, window := computeBurstWindow(c.collectInterval, elapsed)
+				c.adaptiveBurstInterval = s
+				c.burstWindowUntil = now.Add(window)
+				level.Info(c.logger).Log("msg", "starting burst window", "elapsed", elapsed, "hasActive", hasActive, "adaptiveBurstInterval", c.adaptiveBurstInterval, "burstWindowUntil", c.burstWindowUntil)
 			}
 
 			period := c.collectInterval
-			if now.Before(c.shortWindowUntil) {
-				period = c.adaptiveShortInterval
+			if hasActive && now.Before(c.burstWindowUntil) {
+				period = c.adaptiveBurstInterval
+				level.Info(c.logger).Log("msg", "using adaptive burst interval", "elapsed", elapsed, "hasActive", hasActive, "adaptiveBurstInterval", c.adaptiveBurstInterval, "burstWindowUntil", c.burstWindowUntil)
 			}
 
 			// Account for query/network latency: keep approximately fixed period
@@ -397,14 +403,14 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 		if st, hadActive := c.samples[key]; hadActive {
 			st.markEndedAt(sample)
 			st.LastRow.State = sample.State
-			c.emitted[key] = sample.Now
+			c.emitted[key] = sample.Now //is actually emitted at the end of the loop
 		} else if _, already := c.emitted[key]; !already {
 			// new idle sample not yet seen -> create a new sample state to track and emit it
 			newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
 			newIdleState.markEndedAt(sample)
 			newIdleState.LastRow.State = sample.State
 			c.samples[key] = newIdleState
-			c.emitted[key] = sample.Now
+			c.emitted[key] = sample.Now //is actually emitted at the end of the loop
 		}
 	}
 
@@ -542,18 +548,15 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 
 	shouldEmit := true
 	if !isThrottleExempt(state) && c.throttleInterval > 0 {
-		qid := state.LastRow.QueryID.Int64
-		if last, ok := c.lastEmittedByQueryID[qid]; ok {
+		if last, ok := c.lastEmittedByQueryID[state.LastRow.QueryID.Int64]; ok {
 			if time.Since(last) < c.throttleInterval {
 				shouldEmit = false
 			}
 		}
-		if shouldEmit {
-			c.lastEmittedByQueryID[qid] = time.Now()
-		}
 	}
 
 	if shouldEmit {
+		c.lastEmittedByQueryID[state.LastRow.QueryID.Int64] = time.Now()
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
@@ -707,16 +710,16 @@ func isThrottleExempt(sample *SampleState) bool {
 	return false
 }
 
-// computeShortWindow returns the short interval s and the window duration W
-// for time-boxed short polling, given the collection interval and the last
-// observed latency. W is bounded by 20*s to limit the number of short polls.
+// computeBurstWindow returns the burst interval s and the window duration W
+// for time-boxed burst polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of burst polls.
 //
 // Rules:
 //   - s_base = clamp(CI/30, 50ms..300ms)
 //   - s = max(s_base, observedLatency)
 //   - W = min(CI/2 - 100ms)
-//   - N ≤ 25 ⇒ for a short interval s, the window ≤ 25*s
-func computeShortWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
+//   - N ≤ 20 ⇒ for a burst interval s, the window ≤ 20*s
+func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
 	s := time.Duration(float64(collectInterval) / 30.0)
 	if s < 50*time.Millisecond {
 		s = 50 * time.Millisecond
@@ -731,9 +734,9 @@ func computeShortWindow(collectInterval, observedLatency time.Duration) (time.Du
 	if capWindow < 0 {
 		capWindow = 0
 	}
-	// Limit number of short polls: N ≤ 25 ⇒ window ≤ 25*s
+	// Limit number of burst polls: N ≤ 20 ⇒ window ≤ 20*s
 	if s > 0 {
-		nCap := 25 * s
+		nCap := 20 * s
 		if nCap < capWindow {
 			capWindow = nCap
 		}

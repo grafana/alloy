@@ -104,7 +104,7 @@ var DefaultArguments = Arguments{
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
-		ThrottleInterval:      30 * time.Second,
+		ThrottleInterval:      1 * time.Minute,
 	},
 	QueryTablesArguments: QueryTablesArguments{
 		CollectInterval: 1 * time.Minute,
