@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"slices"
 	"time"
 
@@ -112,10 +111,8 @@ type QuerySamples struct {
 	disableQueryRedaction bool
 	throttleInterval      time.Duration
 	lastEmittedByQueryID  map[int64]time.Time
-	adptiveShortInterval  time.Duration
-	adaptiveRemaining     int
-	adaptiveCooldown      int
-	adaptiveCycles        int
+	adaptiveShortInterval time.Duration
+	shortWindowUntil      time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -129,8 +126,8 @@ type QuerySamples struct {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	// Compute adaptive short-polling parameters based on the collection interval.
-	shortInterval, cycles := computeAdaptiveShortPolling(args.CollectInterval)
+	// Compute initial short-poll short interval based on the collection interval.
+	shortInterval, _ := computeShortWindow(args.CollectInterval, 0)
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -142,9 +139,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		emitted:               map[SampleKey]time.Time{},
 		throttleInterval:      args.ThrottleInterval,
 		lastEmittedByQueryID:  map[int64]time.Time{},
-		adptiveShortInterval:  shortInterval,
-		adaptiveCooldown:      0,
-		adaptiveCycles:        cycles,
+		adaptiveShortInterval: shortInterval,
+		shortWindowUntil:      time.Time{},
 	}, nil
 }
 
@@ -177,23 +173,37 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		}()
 
 		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
+			loopStart := time.Now()
+			hasActive, err := c.fetchQuerySample(c.ctx)
+			if err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
-			// Decide next interval (adaptive short polling when active)
-			interval := c.collectInterval
-			if c.adaptiveRemaining > 0 {
-				interval = c.adptiveShortInterval
-				c.adaptiveRemaining--
-				// Arm a cooldown once the last short cycle completes
-				if c.adaptiveRemaining == 0 && c.adaptiveCooldown == 0 {
-					c.adaptiveCooldown = 1
-				}
-			} else if c.adaptiveCooldown > 0 {
-				// Enforce at least one base interval before re-arming
-				interval = c.collectInterval
-				c.adaptiveCooldown--
+			// Measure elapsed time for this cycle
+			elapsed := time.Since(loopStart)
+			if elapsed < 0 {
+				elapsed = 0
+			}
+
+			// Arm a short window on activity if not already in one
+			now := time.Now()
+			if hasActive && now.After(c.shortWindowUntil) {
+				s, window := computeShortWindow(c.collectInterval, elapsed)
+				c.adaptiveShortInterval = s
+				c.shortWindowUntil = now.Add(window)
+			}
+
+			// Decide next interval: short during window, otherwise base interval
+			period := c.collectInterval
+			if now.Before(c.shortWindowUntil) {
+				period = c.adaptiveShortInterval
+			}
+
+			// Account for query/network latency: keep approximately fixed period
+			// between cycle starts by subtracting elapsed work time from the sleep.
+			interval := period - elapsed
+			if interval < 0 {
+				interval = 0
 			}
 			select {
 			case <-c.ctx.Done():
@@ -300,7 +310,7 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 	return equalPIDSets(w.blockedBy, other.blockedBy)
 }
 
-func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, err error) {
 	queryTextField := ""
 	if c.disableQueryRedaction {
 		queryTextField = queryTextClause
@@ -309,7 +319,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 
 	defer rows.Close()
@@ -331,7 +341,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	if err := rows.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return err
+		return false, err
 	}
 
 	blockedByByPID := map[int]pq.Int64Array{}
@@ -399,13 +409,8 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		c.emitAndDeleteSample(key)
 	}
 
-	if len(activeKeys) > 0 && c.adaptiveCooldown == 0 {
-		if c.adaptiveRemaining < c.adaptiveCycles {
-			c.adaptiveRemaining = c.adaptiveCycles
-		}
-	}
 	c.cleanupEmitted(time.Now())
-	return nil
+	return len(activeKeys) > 0, nil
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -695,74 +700,39 @@ func isThrottleExempt(sample *SampleState) bool {
 	return false
 }
 
-// computeAdaptiveShortPolling derives the short-interval (s) and number of
-// short cycles (r) for adaptive polling, given the base collection interval (CI).
+// computeShortWindow returns the short interval s and the window duration W
+// for time-boxed short polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of short polls.
 //
-// Goals:
-//   - Adaptively increase sampling density when there is activity, to better
-//     approximate query end times that occur between scrapes.
-//   - Keep overhead bounded: total short-poll window T = r*s must be < CI/2 to
-//     avoid race conditions with concurrent collectors and to limit DB load.
-//   - Ensure the short interval does not become too aggressive: floor at 100ms,
-//     and cap at 300ms for stability across large CIs.
-//
-// Heuristic (amplified root/log scaling):
-//
-//	s = clamp(CI/35, 100ms, 300ms)
-//	r_cap   = floor((CI/2 - 50ms) / s)
-//	r_shape = floor(2.5*sqrt(CI_seconds) + 1.2*log2(1 + CI_seconds) + 1)
-//	r       = min(r_cap, r_shape)
-//
-// Properties:
-//   - r*s is guaranteed < CI/2 via r_cap (with a small 50ms guard band).
-//   - s never increases as CI decreases due to the 100ms floor.
-//   - r grows sublinearly with CI (sqrt+log), which increases coverage for larger
-//     CIs without exploding the number of short cycles.
-
-// Examples:
-
-// CI=1s  → s=100ms, r=4  → T=400ms (40%)
-// CI=2s  → s=100ms, r=6  → T=600ms (30%)
-// CI=5s  → s≈143ms, r=9  → T≈1.29s (25.8%)
-// CI=10s → s≈286ms, r=13 → T≈3.72s (37.2%)
-// CI=30s → s=300ms, r=20 → T=6.0s (20%)
-
-func computeAdaptiveShortPolling(collectInterval time.Duration) (time.Duration, int) {
+// Rules:
+//   - s_base = clamp(CI/35, 100ms..300ms)
+//   - s = max(s_base, observedLatency)
+//   - W = min(CI/2 - 50ms, 3s)
+//   - N ≤ 20 ⇒ for a short interval s, the window ≤ 20*s
+func computeShortWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
 	if collectInterval <= 0 {
 		return 150 * time.Millisecond, 0
 	}
-
-	ciSeconds := float64(collectInterval) / float64(time.Second)
-
-	// Short interval: clamp(CI/35, 100ms, 300ms)
 	s := time.Duration(float64(collectInterval) / 35.0)
 	if s < 100*time.Millisecond {
 		s = 100 * time.Millisecond
 	} else if s > 300*time.Millisecond {
 		s = 300 * time.Millisecond
 	}
-
-	// Maximum cycles such that r*s < CI/2 (with 50ms guard)
+	if observedLatency > s {
+		s = observedLatency
+	}
 	guard := 50 * time.Millisecond
 	capWindow := collectInterval/2 - guard
 	if capWindow < 0 {
 		capWindow = 0
 	}
-	rCap := int(math.Floor(float64(capWindow) / float64(s)))
-	if rCap < 0 {
-		rCap = 0
+	// Limit number of short polls: N ≤ 20 ⇒ window ≤ 20*s
+	if s > 0 {
+		nCap := 20 * s
+		if nCap < capWindow {
+			capWindow = nCap
+		}
 	}
-
-	// Shape-driven cycles: 2.5*sqrt(CI_s) + 1.2*log2(1+CI_s) + 1
-	rShape := int(math.Floor(2.5*math.Sqrt(ciSeconds) + 1.2*math.Log2(1.0+ciSeconds) + 1.0))
-	if rShape < 0 {
-		rShape = 0
-	}
-
-	r := rShape
-	if r > rCap {
-		r = rCap
-	}
-
-	return s, r
+	return s, capWindow
 }
