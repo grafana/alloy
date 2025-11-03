@@ -1,0 +1,8 @@
+endpoint {
+  url = "http://primary.com"
+}
+
+endpoint {
+  url = "http://secondary.com"
+}
+

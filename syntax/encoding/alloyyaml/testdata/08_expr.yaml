@@ -1,0 +1,4 @@
+computed: expr((base + 100) * factor)
+password: expr(env("PASSWORD"))
+targets: expr(discovery.kubernetes.pods.targets)
+

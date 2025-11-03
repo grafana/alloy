@@ -1,0 +1,4 @@
+password = env("PASSWORD")
+targets  = discovery.kubernetes.pods.targets
+computed = (base + 100) * factor
+

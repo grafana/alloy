@@ -1,0 +1,183 @@
+prometheus.remote_write:
+  metrics_remote_write_name:
+    endpoint:
+      - metadata_config: {}
+        name: remote_write_name-04b53d
+        queue_config: {}
+        url: http://localhost:9009/api/prom/push
+
+otelcol.extension.jaeger_remote_sampling:
+  default_0:
+    grpc:
+      endpoint: localhost:14250
+    http:
+      endpoint: localhost:5778
+    source:
+      reload_interval: 30s
+      remote:
+        compression: ""
+        endpoint: jaeger-collector:14250
+        write_buffer_size: 0B
+
+otelcol.receiver.otlp:
+  _0_default:
+    grpc:
+      endpoint: localhost:4317
+      include_metadata: true
+    http:
+      endpoint: localhost:4318
+      include_metadata: true
+    output:
+      traces:
+        - expr(otelcol.processor.discovery._0_default.input)
+  _1_lb:
+    grpc:
+      endpoint: 0.0.0.0:4318
+    output:
+      traces:
+        - expr(otelcol.processor.tail_sampling._1_default.input)
+
+discovery.azure:
+  _0_default_prometheus1:
+    managed_identity:
+      client_id: client1
+    oauth:
+      client_id: client1
+      client_secret: secret1
+      tenant_id: tenant1
+    subscription_id: subscription1
+
+discovery.lightsail:
+  _0_default_prometheus1:
+    access_key: YOUR_ACCESS_KEY
+    port: 8080
+    region: us-east-1
+    secret_key: YOUR_SECRET_KEY
+
+discovery.relabel:
+  _0_default_prometheus1:
+    rule:
+      - source_labels:
+          - __address1__
+        target_label: __param_target1
+      - source_labels:
+          - __address2__
+        target_label: __param_target2
+    targets: expr(array.concat(discovery.azure._0_default_prometheus1.targets, discovery.lightsail._0_default_prometheus1.targets))
+
+otelcol.processor.discovery:
+  _0_default:
+    operation_type: insert
+    pod_associations:
+      - ip
+      - net.host.ip
+    output:
+      traces:
+        - expr(otelcol.processor.attributes._0_default.input)
+    targets: expr(discovery.relabel._0_default_prometheus1.output)
+
+otelcol.processor.attributes:
+  _0_default:
+    action:
+      - action: delete
+        key: db.table
+    output:
+      traces:
+        - expr(otelcol.exporter.loadbalancing._0_default.input)
+        - expr(otelcol.exporter.debug._0_default.input)
+        - expr(otelcol.connector.spanmetrics._0_default.input)
+
+prometheus.relabel:
+  _0_default:
+    forward_to:
+      - expr(prometheus.remote_write.metrics_remote_write_name.receiver)
+    rule:
+      - replacement: buzz
+        target_label: fizz
+      - replacement: bar
+        target_label: foo
+  _1_default:
+    forward_to:
+      - expr(prometheus.remote_write.metrics_remote_write_name.receiver)
+    rule:
+      - replacement: buzz
+        target_label: fizz
+      - replacement: bar
+        target_label: foo
+
+otelcol.exporter.prometheus:
+  _0_default:
+    forward_to:
+      - expr(prometheus.relabel._0_default.receiver)
+    gc_frequency: 0s
+  _1_default:
+    forward_to:
+      - expr(prometheus.relabel._1_default.receiver)
+    gc_frequency: 0s
+
+otelcol.exporter.loadbalancing:
+  _0_default:
+    protocol:
+      otlp:
+        client:
+          compression: none
+        retry:
+          max_elapsed_time: 1m0s
+    resolver:
+      static:
+        hostnames:
+          - tempo1.example.com
+          - tempo2.example.com
+
+otelcol.exporter.debug:
+  _0_default:
+    verbosity: Basic
+  _1_default:
+    verbosity: Basic
+
+otelcol.connector.spanmetrics:
+  _0_default:
+    histogram:
+      explicit: {}
+    namespace: metrics_prefix
+    output:
+      metrics:
+        - expr(otelcol.exporter.prometheus._0_default.input)
+  _1_default:
+    histogram:
+      explicit: {}
+    namespace: metrics_prefix
+    output:
+      metrics:
+        - expr(otelcol.exporter.prometheus._1_default.input)
+
+otelcol.processor.tail_sampling:
+  _1_default:
+    decision_wait: 5s
+    output:
+      traces:
+        - expr(otelcol.processor.batch._1_default.input)
+    policy:
+      - name: test-policy-1
+        type: always_sample
+
+otelcol.processor.batch:
+  _1_default:
+    output:
+      traces:
+        - expr(otelcol.exporter.otlp._1_0.input)
+        - expr(otelcol.exporter.debug._1_default.input)
+        - expr(otelcol.connector.spanmetrics._1_default.input)
+    send_batch_max_size: 4096
+    send_batch_size: 2048
+    timeout: 5s
+
+otelcol.exporter.otlp:
+  _1_0:
+    client:
+      endpoint: tempo.example.com:14250
+      tls:
+        insecure: true
+    retry_on_failure:
+      max_elapsed_time: 1m0s
+

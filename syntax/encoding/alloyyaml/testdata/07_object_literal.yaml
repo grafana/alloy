@@ -1,0 +1,6 @@
+labels:
+  $object:
+    app: myapp
+    env: prod
+    team: platform
+

@@ -1,0 +1,4 @@
+endpoint:
+  - url: http://primary.com
+  - url: http://secondary.com
+

@@ -1,0 +1,3 @@
+labels = ["app", "prod", "web"]
+ports  = [8080, 8081, 8082]
+
