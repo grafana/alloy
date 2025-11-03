@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled slicelabels" \
+    GO_TAGS="netgo builtinassets promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make alloy
 
