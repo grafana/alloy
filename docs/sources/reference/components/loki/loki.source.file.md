@@ -127,7 +127,7 @@ Benefits of using `file_match` over `local.file_match`:
 - Reduced overhead: File discovery is integrated directly into `loki.source.file`, eliminating the need for component-to-component communication
 - Same functionality: Supports the same glob patterns and features, including `__path_exclude__` for excluding files
 
-When `enabled` is set to `true`, you can use glob patterns (e.g., `/tmp/*.log` or `/var/log/**/*.log`) directly in the `targets` argument's `__path__` label.
+When `enabled` is set to `true`, you can use glob patterns, for example, `/tmp/*.log` or `/var/log/**/*.log`, directly in the `targets` argument's `__path__` label.
 The component periodically scans the filesystem based on `sync_period` and automatically discovers new files, removes deleted files, and ignores files older than `ignore_older_than` if specified.
 
 ## Exported fields
