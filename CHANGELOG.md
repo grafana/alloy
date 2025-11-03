@@ -75,6 +75,8 @@ Main (unreleased)
 
 - Only log EOF errors for syslog port investigations in `loki.source.syslog` as Debug, not Warn. (@dehaansa)
 
+- Fix prometheus.exporter.process ignoring the `remove_empty_groups` argument. (@mhamzahkhan)
+
 - Fix issues with "unknown series ref when trying to add exemplar" from `prometheus.remote_write` by allowing series ref links to be updated if they change. (@kgeckhart)
 
 - Fix `loki.source.podlogs` component to register the Kubernetes field index for `spec.nodeName` when node filtering is enabled, preventing "Index with name field:spec.nodeName does not exist" errors. (@QuentinBisson)
