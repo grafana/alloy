@@ -369,6 +369,7 @@ func transformException(log log.Logger, store sourceMapsStore, ex *payload.Excep
 		Stacktrace: &payload.Stacktrace{Frames: frames},
 		Timestamp:  ex.Timestamp,
 		Context:    ex.Context,
+		Trace:      ex.Trace,
 	}
 }
 

@@ -18,6 +18,7 @@ labels:
 database_observability.postgres "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
+  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -48,8 +49,8 @@ You can use the following blocks with `database_observability.postgres`:
 
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -89,10 +90,10 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 ### `query_samples`
 
-| Name                      | Type       | Description                                             | Default | Required |
-|---------------------------|------------|---------------------------------------------------------|---------|----------|
-| `collect_interval`        | `duration` | How frequently to collect information from database.    | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text including parameters. | `false` | no       |
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 
 ### `schema_details`
 
@@ -116,9 +117,11 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 ```alloy
 database_observability.postgres "orders_db" {
-  data_source_name = "postgres://user:pass@localhost:5432/mydb"
-  forward_to = [loki.write.logs_service.receiver]
-  enable_collectors = ["query_details", "query_samples", "schema_details"]
+  data_source_name = "postgres://user:pass@localhost:5432/dbname"
+  forward_to       = [loki.relabel.orders_db.receiver]
+  targets          = prometheus.exporter.postgres.orders_db.targets
+
+  enable_collectors = ["query_samples", "explain_plans"]
 
   cloud_provider {
     aws {
@@ -127,9 +130,39 @@ database_observability.postgres "orders_db" {
   }
 }
 
-prometheus.scrape "orders_db" {
+prometheus.exporter.postgres "orders_db" {
+  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
+  enabled_collectors = ["stat_statements"]
+}
+
+loki.relabel "orders_db" {
+  forward_to = [loki.write.logs_service.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+discovery.relabel "orders_db" {
   targets = database_observability.postgres.orders_db.targets
-  honor_labels = true // required to keep job and instance labels
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+prometheus.scrape "orders_db" {
+  targets    = discovery.relabel.orders_db.targets
+  job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 

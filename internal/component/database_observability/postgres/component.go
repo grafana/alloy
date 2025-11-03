@@ -64,7 +64,7 @@ var (
 type Arguments struct {
 	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
+	Targets           []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 
@@ -420,6 +420,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
+			DSN:             string(c.args.DataSourceName),
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
 			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
