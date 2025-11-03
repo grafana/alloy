@@ -1,21 +1,12 @@
 name: Test (Windows)
 on:
-  push:
-    # TODO: Also run the tests when a Windows-specific features is changed.
-    # For example, the Windows Exporter for Prometheus and Event Log tailers.
-    branches:
-      - main
-  # TODO: Run the Windows tests for each PR?
-  # For now we don't do it just because it takes time.
   pull_request:
-    types: [labeled, opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 jobs:
   test_windows:
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'os:windows') || github.event_name == 'push' || github.event_name == 'merge_group' }}
     name: Test (Windows)
     runs-on: windows-latest
     steps:
