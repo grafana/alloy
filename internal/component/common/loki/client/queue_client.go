@@ -179,8 +179,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	c := &queueClient{
 		logger:       log.With(logger, "component", "client", "host", cfg.URL.Host),
 		cfg:          cfg,
@@ -196,8 +194,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		ctx:        ctx,
-		cancel:     cancel,
 		maxStreams: maxStreams,
 	}
 
