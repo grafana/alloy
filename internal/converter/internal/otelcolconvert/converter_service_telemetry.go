@@ -5,7 +5,6 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/token/builder"
-	otel_tel "go.opentelemetry.io/collector/service/telemetry"
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"go.uber.org/zap/zapcore"
 )
@@ -119,7 +118,7 @@ func convertMetrics(_ *builder.File, tel otelconftelemetry.MetricsConfig) diag.D
 }
 
 // TODO: Support metrics conversion once upstream's "traces" section is not experimental.
-func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
+func convertTraces(_ *builder.File, tel otelconftelemetry.TracesConfig) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	if len(tel.Processors) > 0 {

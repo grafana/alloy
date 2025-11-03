@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/service/pipelines"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"golang.org/x/exp/maps"
 )
 
@@ -176,7 +177,14 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 	var diags diag.Diagnostics
 
 	if convertServiceAttrs {
-		diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+		// Type assertion needed because cfg.Service.Telemetry is component.Config (interface)
+		// but convertTelemetry expects otelconftelemetry.Config (concrete type)
+		telConfig, ok := interface{}(cfg.Service.Telemetry).(otelconftelemetry.Config)
+		if !ok {
+			diags.Add(diag.SeverityLevelError, fmt.Sprintf("unexpected telemetry config type: %T", cfg.Service.Telemetry))
+		} else {
+			diags.AddAll(convertTelemetry(file, telConfig))
+		}
 	}
 
 	groups, err := createPipelineGroups(cfg.Service.Pipelines)
