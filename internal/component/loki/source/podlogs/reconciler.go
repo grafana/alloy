@@ -73,6 +73,8 @@ type reconciler struct {
 	nodeFilterEnabled        bool
 	nodeFilterName           string
 
+	preserveMetaLabels bool
+
 	debugMut  sync.RWMutex
 	debugInfo []DiscoveredPodLogs
 }
@@ -132,6 +134,14 @@ func (r *reconciler) SetDistribute(distribute bool) {
 	defer r.reconcileMut.Unlock()
 
 	r.shouldDistribute = distribute
+}
+
+// UpdatePreserveMetaLabels configures whether to preserve meta labels in targets.
+func (r *reconciler) UpdatePreserveMetaLabels(preserveMetaLabels bool) {
+	r.reconcileMut.Lock()
+	defer r.reconcileMut.Unlock()
+
+	r.preserveMetaLabels = preserveMetaLabels
 }
 
 func (r *reconciler) getShouldDistribute() bool {
@@ -324,8 +334,14 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 			processedLabels, _ := relabel.Process(targetLabels.Copy(), relabelRules...)
 
 			defaultJob := fmt.Sprintf("%s/%s:%s", podLogs.Namespace, podLogs.Name, container.Name)
-			finalLabels, err := kubetail.PrepareLabels(processedLabels, defaultJob)
 
+			// Check if we should preserve meta labels for downstream components
+			r.reconcileMut.RLock()
+			preserveMetaLabels := r.preserveMetaLabels
+			r.reconcileMut.RUnlock()
+
+			// Use the updated PrepareLabels function with meta label preservation option
+			finalLabels, err := kubetail.PrepareLabelsWithMetaPreservation(processedLabels, defaultJob, preserveMetaLabels)
 			if err != nil {
 				discoveredPod.Containers = append(discoveredPod.Containers, DiscoveredContainer{
 					DiscoveredLabels: targetLabels.Map(),
