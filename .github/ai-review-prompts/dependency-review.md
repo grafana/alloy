@@ -26,6 +26,8 @@ Read and follow the rules below.
 - DO enclose all code in backticks.
 - DO use diff-style code changes in favor of "before" and "after" blocks.
 - DO suggest code changes which maintain existing behavior as closely as possible.
+- DO use the GitHub releases for the package (usually available at ./releases on the web) to assist in determining changes.
+- DO use the CHANGELOG.md and UPGRADING.md files to assist in determining changes.
 - DO NOT assess net-new dependencies unless they affect existing indirect dependencies.
 - DO NOT assess any parts of the diff for non go.mod files.
 - DO NOT make assumptions about changes (e.g. probably, might be).
