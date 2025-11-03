@@ -176,5 +176,3 @@ func TestPreserveDiscoveredLabelsConfig(t *testing.T) {
 		})
 	}
 }
-
-
