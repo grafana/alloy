@@ -17,7 +17,7 @@ func analyzeWithAI(ctx context.Context, client openai.Client, model openai.ChatM
 			openai.UserMessage(fullPrompt),
 		},
 		Model:           model,
-		ReasoningEffort: openai.ReasoningEffortHigh,
+		ReasoningEffort: openai.ReasoningEffortMedium,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create chat completion: %w", err)

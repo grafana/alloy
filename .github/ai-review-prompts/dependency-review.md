@@ -21,16 +21,21 @@ Read and follow the rules below.
 - DO provide the relevant changelog sections and/or code snippets in the expandable sections for each dependency.
 - DO provide concise code snippets for relevant code updates that would need to be made.
 - DO help maintainers make informed decisions.
-- DO Use actual changelogs, code changes, commits, and PR messages.
 - DO exhaustively check each release between the as-is and to-be versions.
 - DO enclose all code in backticks.
 - DO use diff-style code changes in favor of "before" and "after" blocks.
 - DO suggest code changes which maintain existing behavior as closely as possible.
-- DO use the GitHub releases for the package (usually available at ./releases on the web) to assist in determining changes.
-- DO use the CHANGELOG.md and UPGRADING.md files to assist in determining changes.
+- DO use the following sources of information to determine changes:
+    - GitHub releases for the package (when available at ./releases for the dependency on github.com)
+    - CHANGELOG.md
+    - UPGRADING.md
+    - README.md
+    - Source code from the dependency's repository (when available on github.com)
+    - Git commit messages, and PR descriptions
+    - Main branch's source code from the target repository performing the dependency update (when available on github.com)
 - DO NOT assess net-new dependencies unless they affect existing indirect dependencies.
-- DO NOT assess any parts of the diff for non go.mod files.
-- DO NOT make assumptions about changes (e.g. probably, might be).
+- DO NOT assess any parts of the diff besides go.mod files.
+- DO NOT make assumptions about changes (e.g. probably, might be, likely).
 - DO NOT include verbiage about updating import paths, as this is implied and compiler-enforced.
 - DO NOT skip analyzing each major versions when, for example, a dependency jumps from v1 to v3.
 - DO NOT mark a dependency as "safe" even if the provided diff includes changes for it.
