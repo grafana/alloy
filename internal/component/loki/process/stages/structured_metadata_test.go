@@ -123,6 +123,16 @@ stage.structured_metadata {
 }
 `
 
+var pipelineStagesStructuredMetadataFromNestedValues = `
+stage.json {
+	expressions = {app = "", component_nested = "", component_non_nested = "" }
+}
+
+stage.structured_metadata {
+  regex = "component_.*"
+}
+`
+
 func Test_StructuredMetadataStage(t *testing.T) {
 	tests := map[string]struct {
 		pipelineStagesYaml         string
@@ -184,6 +194,11 @@ func Test_StructuredMetadataStage(t *testing.T) {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromExtractedValues,
 			logLine:                    `pod=loki-querier-664f97db8d-qhnwg metadata_name=loki metadata_component=querier msg="sample log line"`,
 			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}, push.LabelAdapter{Name: "metadata_name", Value: "loki"}, push.LabelAdapter{Name: "metadata_component", Value: "querier"}},
+		},
+		"expected structured metadata from nested values": {
+			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromNestedValues,
+			logLine:                    `{"app":"loki", "component_nested": {"name":"ingester", "props":{"n1": "v1", "n2": "v2"}}, "component_non_nested": "non_nested_val"}`,
+			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "component_nested", Value: `{"name":"ingester","props":{"n1":"v1","n2":"v2"}}`}, push.LabelAdapter{Name: "component_non_nested", Value: "non_nested_val"}},
 		},
 	}
 	for name, test := range tests {
