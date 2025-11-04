@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 
@@ -17,27 +16,23 @@ type StructuredMetadataConfig struct {
 }
 
 func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
-	labelsConfig := map[string]string{}
-	// same as in labels.go, but allow empty list
-	for labelName, labelSrc := range configs.Values {
-		//nolint:staticcheck
-		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
-		}
-		// If no label source was specified, use the key name
-		if labelSrc == nil || *labelSrc == "" {
-			labelsConfig[labelName] = labelName
-		} else {
-			labelsConfig[labelName] = *labelSrc
-		}
-	}
+  var validatedLabelsConfig map[string]string
+  var err error
+
+  if len(configs.Values) > 0 {
+    labelsConfig := LabelsConfig{Values: configs.Values}
+    validatedLabelsConfig, err = validateLabelsConfig(labelsConfig)
+    if err != nil {
+      return nil, err
+    }
+  }
 
 	re, err := regexp.Compile(configs.Regex)
 	if err != nil {
 		return nil, err
 	}
 	return &structuredMetadataStage{
-		labelsConfig: labelsConfig,
+		labelsConfig: validatedLabelsConfig,
 		regex:        *re,
 		logger:       logger,
 	}, nil
