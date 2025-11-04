@@ -222,7 +222,8 @@ func (c *Component) Run(ctx context.Context) error {
 			case <-c.watcher.C:
 				c.mut.Lock()
 				if !c.args.FileMatch.Enabled {
-					return
+					c.mut.Unlock()
+					continue
 				}
 				c.scheduleSources()
 				c.mut.Unlock()
