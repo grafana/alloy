@@ -146,6 +146,23 @@ type SampleState struct {
 	EndOverride sql.NullTime
 }
 
+func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// markEndedAt sets EndOverride and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) markEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndOverride = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
+}
+
 // WaitEventTracker coalesces consecutive identical wait events
 // to reduce log volume while preserving timing.
 type WaitEventTracker struct {
@@ -277,28 +294,26 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
+		if !isIdleState(sample.State.String) {
+			c.upsertActiveSample(key, sample)
+			activeKeys[key] = struct{}{}
+			continue
+		}
+
 		// Handle idle states specially: emit finalized sample once
 		if isIdleState(sample.State.String) {
 			if st, hadActive := c.samples[key]; hadActive {
-				st.EndOverride = sample.StateChange
-				st.LastSeenAt = sample.Now
+				st.markEndedAt(sample)
 				st.LastRow.State = sample.State
-				c.emitted[key] = sample.Now // is actually emitted at the end of the loop
+				c.emitted[key] = sample.Now //is actually emitted at the end of the loop
 			} else if _, already := c.emitted[key]; !already {
-				// New idle-only sample not yet seen -> create and mark finished
+				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
-				if sample.StateChange.Valid {
-					newIdleState.EndOverride = sample.StateChange
-					newIdleState.LastSeenAt = sample.StateChange.Time
-				} else {
-					newIdleState.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
-					newIdleState.LastSeenAt = sample.Now
-				}
+				newIdleState.markEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
-				c.emitted[key] = sample.Now // is actually emitted at the end of the loop
+				c.emitted[key] = sample.Now //is actually emitted at the end of the loop
 			}
-			// do not mark idle as active
 			continue
 		}
 
@@ -384,6 +399,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTimeIfActive(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -463,20 +479,11 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
-// buildQuerySampleLabelsWithEnd is like buildQuerySampleLabels but uses the provided end time
-// to compute durations and the timestamp when available (e.g., idle finalized at state_change).
 func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endOverride *time.Time) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-
 	end := state.LastRow.Now
 	if endOverride != nil {
 		end = *endOverride
@@ -484,47 +491,6 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endOver
 
 	xactDuration := calculateDuration(state.LastRow.XactStart, end)
 	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
-
-	clientAddr := ""
-	if state.LastRow.ClientAddr.Valid {
-		clientAddr = state.LastRow.ClientAddr.String
-		if state.LastRow.ClientPort.Valid {
-			clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
-		}
-	}
-
-	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
-		state.LastRow.PID,
-		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.ApplicationName.String,
-		clientAddr,
-		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
-		state.LastRow.BackendXID.Int32,
-		state.LastRow.BackendXmin.Int32,
-		xactDuration,
-		queryDuration,
-		state.LastRow.QueryID.Int64,
-	)
-	if state.LastCpuTime != "" {
-		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
-	}
-	if c.disableQueryRedaction && state.LastRow.Query.Valid {
-		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
-	}
-	return labels
-}
-
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
-	leaderPID := ""
-	if state.LastRow.LeaderPID.Valid {
-		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
-	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -572,7 +538,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		we.LastState,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
