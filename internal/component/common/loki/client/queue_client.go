@@ -23,7 +23,6 @@ import (
 type StoppableWriteTo interface {
 	alloyWal.WriteTo
 	Stop()
-	StopNow()
 }
 
 // MarkerHandler re-defines the interface of internal.MarkerHandler that the queue client interacts with, to contribute

@@ -417,3 +417,7 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 	}
 	return resp.StatusCode, err
 }
+
+func batchIsRateLimited(status int) bool {
+	return status == 429
+}
