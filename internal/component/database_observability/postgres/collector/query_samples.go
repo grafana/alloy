@@ -130,8 +130,6 @@ type QuerySamples struct {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	// Compute initial short-poll short interval based on the collection interval.
-	shortInterval, _ := computeBurstWindow(args.CollectInterval, 0)
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -143,8 +141,6 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		emitted:               map[SampleKey]time.Time{},
 		throttleInterval:      args.ThrottleInterval,
 		lastEmittedByQueryID:  map[int64]time.Time{},
-		adaptiveBurstInterval: shortInterval,
-		burstWindowUntil:      time.Time{},
 	}, nil
 }
 
@@ -159,8 +155,8 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
 
-	if c.throttleInterval < 30*time.Second {
-		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.throttleInterval))
+	if c.throttleInterval < time.Minute {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 1 minute: %s. This may result in excessive samples volume.", c.throttleInterval))
 	}
 
 	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with throttle interval: %s", c.throttleInterval))
@@ -179,43 +175,23 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		for {
 			loopStart := time.Now()
 			hasActive, err := c.fetchQuerySample(c.ctx)
+
 			if err != nil {
 				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			elapsed := time.Since(loopStart)
-			if elapsed < 0 {
-				elapsed = 0
-			}
+			interval := c.collectInterval
 
-			// Arm a burst window on activity if not already in one
-			now := time.Now()
-			if hasActive && now.After(c.burstWindowUntil) {
-				s, window := computeBurstWindow(c.collectInterval, elapsed)
-				c.adaptiveBurstInterval = s
-				c.burstWindowUntil = now.Add(window)
-				level.Info(c.logger).Log("msg", "starting burst window", "elapsed", elapsed, "hasActive", hasActive, "adaptiveBurstInterval", c.adaptiveBurstInterval, "burstWindowUntil", c.burstWindowUntil)
-			}
-
-			period := c.collectInterval
-			if hasActive && now.Before(c.burstWindowUntil) {
-				period = c.adaptiveBurstInterval
-				level.Info(c.logger).Log("msg", "using adaptive burst interval", "elapsed", elapsed, "hasActive", hasActive, "adaptiveBurstInterval", c.adaptiveBurstInterval, "burstWindowUntil", c.burstWindowUntil)
-			}
-
-			// Account for query/network latency: keep approximately fixed period
-			// between cycle starts by subtracting elapsed work time from the sleep.
-			interval := period - elapsed
-			if interval < 0 {
-				interval = 0
-			}
-
-			// On errors, enforce a 1s floor sleep to avoid tight loops on error conditions.
-			if err != nil {
-				const errorFloor = time.Second
-				if interval < errorFloor {
-					interval = errorFloor
+			if hasActive {
+				// Arm a burst window on activity if not already in one
+				if loopStart.After(c.burstWindowUntil) {
+					s, window := computeBurstWindow(c.collectInterval, elapsed)
+					c.adaptiveBurstInterval = s
+					c.burstWindowUntil = loopStart.Add(window)
+					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
 				}
+				interval = c.adaptiveBurstInterval
 			}
 
 			select {
@@ -734,12 +710,7 @@ func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Du
 	if capWindow < 0 {
 		capWindow = 0
 	}
-	// Limit number of burst polls: N ≤ 20 ⇒ window ≤ 20*s
-	if s > 0 {
-		nCap := 20 * s
-		if nCap < capWindow {
-			capWindow = nCap
-		}
-	}
+
+	capWindow = min(capWindow, 20*s)
 	return s, capWindow
 }
