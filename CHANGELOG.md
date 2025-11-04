@@ -85,6 +85,9 @@ Main (unreleased)
 
 - Fix `loki.write` no longer includes internal labels `__`.  (@matt-gp)
 
+- `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
+  A mixed histogram is one which has both classic and exponential buckets.
+
 v1.11.3
 -----------------
 
