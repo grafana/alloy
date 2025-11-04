@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/tail/ratelimiter"
-	"github.com/grafana/alloy/internal/loki/tail/util"
-	"github.com/grafana/alloy/internal/loki/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	"gopkg.in/tomb.v1"
 )
 

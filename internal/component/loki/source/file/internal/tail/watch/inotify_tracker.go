@@ -10,7 +10,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/grafana/alloy/internal/loki/tail/util"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 
 	"github.com/fsnotify/fsnotify"
 )

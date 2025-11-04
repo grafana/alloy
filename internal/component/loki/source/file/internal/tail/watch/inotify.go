@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/alloy/internal/loki/tail/util"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 
 	"github.com/fsnotify/fsnotify"
 	"gopkg.in/tomb.v1"

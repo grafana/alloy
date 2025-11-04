@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/tail/util"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 	"gopkg.in/tomb.v1"
 )
 

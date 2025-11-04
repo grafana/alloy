@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/tail/ratelimiter"
-	"github.com/grafana/alloy/internal/loki/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"

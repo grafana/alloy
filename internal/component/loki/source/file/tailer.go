@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/tail"
-	"github.com/grafana/alloy/internal/loki/tail/watch"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"

@@ -6,7 +6,7 @@ package tail
 import (
 	"os"
 
-	"github.com/grafana/alloy/internal/loki/tail/winfile"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/winfile"
 )
 
 func OpenFile(name string) (file *os.File, err error) {
