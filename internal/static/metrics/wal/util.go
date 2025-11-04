@@ -1,6 +1,8 @@
 package wal
 
 import (
+	"log/slog"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -65,7 +67,7 @@ func (r walReplayer) Replay(dir string) error {
 }
 
 func (r walReplayer) replayWAL(reader *wlog.Reader) error {
-	var dec record.Decoder
+	dec := record.NewDecoder(nil, slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
 	for reader.Next() {
 		rec := reader.Record()
@@ -82,6 +84,18 @@ func (r walReplayer) replayWAL(reader *wlog.Reader) error {
 				return err
 			}
 			r.w.Append(samples)
+		case record.HistogramSamples, record.CustomBucketsHistogramSamples:
+			samples, err := dec.HistogramSamples(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.AppendHistograms(samples)
+		case record.FloatHistogramSamples, record.CustomBucketsFloatHistogramSamples:
+			samples, err := dec.FloatHistogramSamples(rec, nil)
+			if err != nil {
+				return err
+			}
+			r.w.AppendFloatHistograms(samples)
 		case record.Exemplars:
 			exemplars, err := dec.Exemplars(rec, nil)
 			if err != nil {

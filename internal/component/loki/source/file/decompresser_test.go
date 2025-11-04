@@ -91,7 +91,7 @@ func BenchmarkReadlines(b *testing.B) {
 				logger:    log.NewNopLogger(),
 				running:   atomic.NewBool(false),
 				receiver:  loki.NewLogsReceiver(),
-				path:      tc.file,
+				key:       positions.Entry{Path: tc.file},
 				positions: &noopPositions{},
 				labels:    model.LabelSet{"foo": "bar", "baz": "boo"},
 			}
@@ -116,7 +116,7 @@ func TestGigantiqueGunzipFile(t *testing.T) {
 		logger:    log.NewNopLogger(),
 		running:   atomic.NewBool(false),
 		receiver:  loki.NewLogsReceiver(),
-		path:      file,
+		key:       positions.Entry{Path: file},
 		metrics:   newMetrics(prometheus.NewRegistry()),
 		cfg:       DecompressionConfig{Format: "gz"},
 		positions: &noopPositions{},
@@ -146,7 +146,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -171,7 +171,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "bz2"},
 			positions: &noopPositions{},
@@ -197,7 +197,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -234,16 +234,18 @@ func TestDecompressor(t *testing.T) {
 		"filename": model.LabelValue(filename),
 		"foo":      "bar",
 	}
+
 	decompressor, err := newDecompressor(
 		newMetrics(nil),
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return true },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 
@@ -290,16 +292,18 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		"filename": model.LabelValue(filename),
 		"foo":      "bar",
 	}
+
 	decompressor, err := newDecompressor(
 		newMetrics(nil),
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return false },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 	go decompressor.Run(t.Context())
@@ -342,11 +346,12 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return true },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 

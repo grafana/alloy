@@ -219,12 +219,8 @@ func (t *scrapeLoop) scrape() {
 	)
 	defer cancel()
 
-	for _, l := range t.allLabels {
-		if l.Name == ProfileName {
-			profileType = l.Value
-			break
-		}
-	}
+	profileType = t.allLabels.Get(ProfileName)
+
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
 		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
