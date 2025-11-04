@@ -24,11 +24,11 @@ const (
 )
 
 const (
-	queryTextClause = ", s.query"
-	stateActive     = "active"
-    stateIdle           = "idle"
-    stateIdleTxnAborted = "idle in transaction (aborted)"
-    stateIdleTxn        = "idle in transaction"
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -114,8 +114,8 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
-    // keep track of keys that were already emitted to avoid duplicates
-    emitted map[SampleKey]time.Time
+	// keep track of keys that were already emitted to avoid duplicates
+	emitted map[SampleKey]time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -141,9 +141,9 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
-    // EndOverride is used to compute durations and timestamps when a query
-    // transitioned to idle or was only observed as idle.
-    EndOverride sql.NullTime
+	// EndOverride is used to compute durations and timestamps when a query
+	// transitioned to idle or was only observed as idle.
+	EndOverride sql.NullTime
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -193,8 +193,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction: args.DisableQueryRedaction,
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
-        samples:               map[SampleKey]*SampleState{},
-        emitted:               map[SampleKey]time.Time{},
+		samples:               map[SampleKey]*SampleState{},
+		emitted:               map[SampleKey]time.Time{},
 	}, nil
 }
 
@@ -277,33 +277,33 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-        // Handle idle states specially: emit finalized sample once
-        if isIdleState(sample.State.String) {
-            if st, hadActive := c.samples[key]; hadActive {
-                st.EndOverride = sample.StateChange
-                st.LastSeenAt = sample.Now
-                st.LastRow.State = sample.State
-                c.emitted[key] = sample.Now // is actually emitted at the end of the loop
-            } else if _, already := c.emitted[key]; !already {
-                // New idle-only sample not yet seen -> create and mark finished
-                newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
-                if sample.StateChange.Valid {
-                    newIdleState.EndOverride = sample.StateChange
-                    newIdleState.LastSeenAt = sample.StateChange.Time
-                } else {
-                    newIdleState.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
-                    newIdleState.LastSeenAt = sample.Now
-                }
-                newIdleState.LastRow.State = sample.State
-                c.samples[key] = newIdleState
-                c.emitted[key] = sample.Now // is actually emitted at the end of the loop
-            }
-            // do not mark idle as active
-            continue
-        }
+		// Handle idle states specially: emit finalized sample once
+		if isIdleState(sample.State.String) {
+			if st, hadActive := c.samples[key]; hadActive {
+				st.EndOverride = sample.StateChange
+				st.LastSeenAt = sample.Now
+				st.LastRow.State = sample.State
+				c.emitted[key] = sample.Now // is actually emitted at the end of the loop
+			} else if _, already := c.emitted[key]; !already {
+				// New idle-only sample not yet seen -> create and mark finished
+				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				if sample.StateChange.Valid {
+					newIdleState.EndOverride = sample.StateChange
+					newIdleState.LastSeenAt = sample.StateChange.Time
+				} else {
+					newIdleState.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+					newIdleState.LastSeenAt = sample.Now
+				}
+				newIdleState.LastRow.State = sample.State
+				c.samples[key] = newIdleState
+				c.emitted[key] = sample.Now // is actually emitted at the end of the loop
+			}
+			// do not mark idle as active
+			continue
+		}
 
-        c.upsertActiveSample(key, sample)
-        activeKeys[key] = struct{}{}
+		c.upsertActiveSample(key, sample)
+		activeKeys[key] = struct{}{}
 	}
 
 	if err := rows.Err(); err != nil {
@@ -311,14 +311,14 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-    // finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
-    for key, st := range c.samples {
-        if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
-            continue
-        }
-        c.emitAndDeleteSample(key)
-    }
-    c.cleanupEmitted(time.Now())
+	// finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
+			continue
+		}
+		c.emitAndDeleteSample(key)
+	}
+	c.cleanupEmitted(time.Now())
 	return nil
 }
 
@@ -430,22 +430,22 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-    var endOverride *time.Time
-    if state.EndOverride.Valid {
-        t := state.EndOverride.Time
-        endOverride = &t
-    }
-    sampleLabels := c.buildQuerySampleLabelsWithEnd(state, endOverride)
-    ts := state.LastSeenAt.UnixNano()
-    if endOverride != nil {
-        ts = endOverride.UnixNano()
-    }
-    c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-        logging.LevelInfo,
-        OP_QUERY_SAMPLE,
-        sampleLabels,
-        ts,
-    )
+	var endOverride *time.Time
+	if state.EndOverride.Valid {
+		t := state.EndOverride.Time
+		endOverride = &t
+	}
+	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, endOverride)
+	ts := state.LastSeenAt.UnixNano()
+	if endOverride != nil {
+		ts = endOverride.UnixNano()
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_QUERY_SAMPLE,
+		sampleLabels,
+		ts,
+	)
 
 	for _, we := range state.tracker.WaitEvents() {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
@@ -472,50 +472,50 @@ func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
 // buildQuerySampleLabelsWithEnd is like buildQuerySampleLabels but uses the provided end time
 // to compute durations and the timestamp when available (e.g., idle finalized at state_change).
 func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endOverride *time.Time) string {
-    leaderPID := ""
-    if state.LastRow.LeaderPID.Valid {
-        leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
-    }
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
 
-    end := state.LastRow.Now
-    if endOverride != nil {
-        end = *endOverride
-    }
+	end := state.LastRow.Now
+	if endOverride != nil {
+		end = *endOverride
+	}
 
-    xactDuration := calculateDuration(state.LastRow.XactStart, end)
-    queryDuration := calculateDuration(state.LastRow.QueryStart, end)
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
-    clientAddr := ""
-    if state.LastRow.ClientAddr.Valid {
-        clientAddr = state.LastRow.ClientAddr.String
-        if state.LastRow.ClientPort.Valid {
-            clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
-        }
-    }
+	clientAddr := ""
+	if state.LastRow.ClientAddr.Valid {
+		clientAddr = state.LastRow.ClientAddr.String
+		if state.LastRow.ClientPort.Valid {
+			clientAddr = fmt.Sprintf("%s:%d", clientAddr, state.LastRow.ClientPort.Int32)
+		}
+	}
 
-    labels := fmt.Sprintf(
-        `datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
-        state.LastRow.DatabaseName.String,
-        state.LastRow.PID,
-        leaderPID,
-        state.LastRow.Username.String,
-        state.LastRow.ApplicationName.String,
-        clientAddr,
-        state.LastRow.BackendType.String,
-        state.LastRow.State.String,
-        state.LastRow.BackendXID.Int32,
-        state.LastRow.BackendXmin.Int32,
-        xactDuration,
-        queryDuration,
-        state.LastRow.QueryID.Int64,
-    )
-    if state.LastCpuTime != "" {
-        labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
-    }
-    if c.disableQueryRedaction && state.LastRow.Query.Valid {
-        labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
-    }
-    return labels
+	labels := fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.ApplicationName.String,
+		clientAddr,
+		state.LastRow.BackendType.String,
+		state.LastRow.State.String,
+		state.LastRow.BackendXID.Int32,
+		state.LastRow.BackendXmin.Int32,
+		xactDuration,
+		queryDuration,
+		state.LastRow.QueryID.Int64,
+	)
+	if state.LastCpuTime != "" {
+		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+	}
+	if c.disableQueryRedaction && state.LastRow.Query.Valid {
+		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+	}
+	return labels
 }
 
 func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
@@ -618,17 +618,17 @@ func equalPIDSets(a, b []int64) bool {
 }
 
 func (c *QuerySamples) cleanupEmitted(now time.Time) {
-    const ttl = 10 * time.Minute
-    for k, lastSeen := range c.emitted {
-        if now.Sub(lastSeen) > ttl {
-            delete(c.emitted, k)
-        }
-    }
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
 
 func isIdleState(state string) bool {
-    if state == stateIdle || state == stateIdleTxnAborted {
-        return true
-    }
-    return false
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
 }
