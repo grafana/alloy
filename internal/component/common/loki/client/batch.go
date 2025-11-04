@@ -43,7 +43,7 @@ type batch struct {
 	segmentCounter map[int]int
 }
 
-func newBatch(maxStreams int, entries ...loki.Entry) *batch {
+func newBatch(maxStreams int) *batch {
 	b := &batch{
 		streams:        map[string]*push.Stream{},
 		totalBytes:     0,
@@ -52,17 +52,12 @@ func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 		segmentCounter: map[int]int{},
 	}
 
-	// Add entries to the batch
-	for _, entry := range entries {
-		//never error here
-		_ = b.add(entry)
-	}
-
 	return b
 }
 
-// add an entry to the batch
-func (b *batch) add(entry loki.Entry) error {
+// add an entry to the batch, tracking that the data being added
+// comes from segment segmentNum read from the WAL.
+func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	b.totalBytes += entrySize(entry.Entry)
 
 	// Append the entry to an already existing stream (if any)
@@ -81,32 +76,7 @@ func (b *batch) add(entry loki.Entry) error {
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
-	return nil
-}
 
-// addFromWAL adds an entry to the batch, tracking that the data being added comes from segment segmentNum read from the
-// WAL.
-func (b *batch) addFromWAL(lbs model.LabelSet, entry push.Entry, segmentNum int) error {
-	b.totalBytes += len(entry.Line)
-
-	// Append the entry to an already existing stream (if any)
-	labels := labelsMapToString(lbs)
-	if stream, ok := b.streams[labels]; ok {
-		stream.Entries = append(stream.Entries, entry)
-		b.countForSegment(segmentNum)
-		return nil
-	}
-
-	streams := len(b.streams)
-	if b.maxStreams > 0 && streams >= b.maxStreams {
-		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
-	}
-
-	// Add the entry as a new stream
-	b.streams[labels] = &push.Stream{
-		Labels:  labels,
-		Entries: []push.Entry{entry},
-	}
 	b.countForSegment(segmentNum)
 
 	return nil

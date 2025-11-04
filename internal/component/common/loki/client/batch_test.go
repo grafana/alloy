@@ -27,7 +27,7 @@ func TestBatch_MaxStreams(t *testing.T) {
 
 	errCount := 0
 	for _, entry := range inputEntries {
-		err := b.add(entry)
+		err := b.add(entry, 0)
 		if err != nil {
 			errCount++
 			assert.ErrorIs(t, err, errMaxStreamsLimitExceeded)
@@ -78,7 +78,7 @@ func TestBatch_add(t *testing.T) {
 			b := newBatch(0)
 
 			for _, entry := range testData.inputEntries {
-				err := b.add(entry)
+				err := b.add(entry, 0)
 				assert.NoError(t, err)
 			}
 
@@ -99,24 +99,30 @@ func TestBatch_encode(t *testing.T) {
 			expectedEntriesCount: 0,
 		},
 		"single stream with single log entry": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-			),
+			inputBatch: func() *batch {
+				b := newBatch(0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry}, 0)
+				return b
+			}(),
 			expectedEntriesCount: 1,
 		},
 		"single stream with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
-			),
+			inputBatch: func() *batch {
+				b := newBatch(0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry}, 0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[1].Entry}, 0)
+				return b
+			}(),
 			expectedEntriesCount: 2,
 		},
 		"multiple streams with multiple log entries": {
-			inputBatch: newBatch(0,
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[0].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
-				loki.Entry{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
-			),
+			inputBatch: func() *batch {
+				b := newBatch(0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[0].Entry}, 0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[1].Entry}, 0)
+				_ = b.add(loki.Entry{Labels: model.LabelSet{}, Entry: logEntries[2].Entry}, 0)
+				return b
+			}(),
 			expectedEntriesCount: 3,
 		},
 	}
@@ -146,9 +152,8 @@ func TestHashCollisions(t *testing.T) {
 	const entriesPerLabel = 10
 
 	for i := 0; i < entriesPerLabel; i++ {
-		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
-
-		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}})
+		_ = b.add(loki.Entry{Labels: ls1, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
+		_ = b.add(loki.Entry{Labels: ls2, Entry: push.Entry{Timestamp: time.Now(), Line: fmt.Sprintf("line %d", i)}}, 0)
 	}
 
 	// make sure that colliding labels are stored properly as independent streams

@@ -23,6 +23,12 @@ import (
 	lokiutil "github.com/grafana/loki/v3/pkg/util"
 )
 
+// queuedBatch is a batch specific to a tenant, that is considered ready to be sent.
+type queuedBatch struct {
+	TenantID string
+	Batch    *batch
+}
+
 func newQueue2(metrics *Metrics, logger log.Logger, cfg Config) *queue2 {
 	capacity := cfg.Queue.Capacity / cfg.BatchSize
 	return &queue2{
@@ -46,13 +52,15 @@ type queue2 struct {
 
 }
 
-func (q *queue2) Append(tenantID string, entry loki.Entry) bool {
+func (q *queue2) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	batch, ok := q.batches[tenantID]
 	if !ok {
-		q.batches[tenantID] = newBatch(q.cfg.MaxStreams, entry)
+		batch := newBatch(q.cfg.MaxStreams)
+		_ = batch.add(entry, segmentNum)
+		q.batches[tenantID] = batch
 		return true
 	}
 
@@ -62,12 +70,15 @@ func (q *queue2) Append(tenantID string, entry loki.Entry) bool {
 		default:
 			return false
 		}
-		q.batches[tenantID] = newBatch(q.cfg.MaxStreams, entry)
+
+		batch := newBatch(q.cfg.MaxStreams)
+		_ = batch.add(entry, segmentNum)
+		q.batches[tenantID] = batch
 		return true
 	}
 
 	// if we cannot add entry to batch we will drop it.
-	if err := batch.add(entry); err != nil {
+	if err := batch.add(entry, segmentNum); err != nil {
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := ReasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
@@ -131,7 +142,7 @@ loop:
 	close(q.c)
 }
 
-func newShards(metrics *Metrics, logger log.Logger, cfg Config) (*shards, error) {
+func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -149,21 +160,24 @@ func newShards(metrics *Metrics, logger log.Logger, cfg Config) (*shards, error)
 	client.Timeout = cfg.Timeout
 
 	return &shards{
-		cfg:     cfg,
-		logger:  logger,
-		metrics: metrics,
-		client:  client,
+		cfg:           cfg,
+		logger:        logger,
+		metrics:       metrics,
+		client:        client,
+		marketHandler: markerHandler,
 	}, nil
 }
 
 type shards struct {
-	cfg     Config
-	logger  log.Logger
-	metrics *Metrics
-	client  *http.Client
+	cfg           Config
+	logger        log.Logger
+	metrics       *Metrics
+	client        *http.Client
+	marketHandler SentDataMarkerHandler
 
-	mut    sync.Mutex
-	queues []*queue2
+	mut     sync.Mutex
+	tenants map[string]struct{}
+	queues  []*queue2
 
 	running atomic.Int32
 	done    chan struct{}
@@ -247,13 +261,20 @@ func (s *shards) runShard(q *queue2) {
 	case <-maxWaitCheck.C:
 		for _, b := range q.Batches() {
 			s.sendBatch(b.TenantID, b.Batch)
+			b.Batch.reportAsSentData(s.marketHandler)
 		}
 	}
 }
 
-func (s *shards) enqueue(tenantID string, entry loki.Entry) bool {
+func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
 	s.mut.Lock()
 	defer s.mut.Unlock()
+
+	entry, tenantID := s.processEntry(entry)
+	if _, ok := s.tenants[tenantID]; !ok {
+		s.tenants[tenantID] = struct{}{}
+		s.initBatchMetrics(tenantID)
+	}
 
 	fingerprint := entry.Labels.FastFingerprint()
 	shard := uint64(fingerprint) % uint64(len(s.queues))
@@ -262,8 +283,31 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry) bool {
 	case <-s.softShutdown:
 		return false
 	default:
-		return s.queues[shard].Append(tenantID, entry)
+		return s.queues[shard].Append(tenantID, entry, segmentNum)
 	}
+}
+
+func (s *shards) initBatchMetrics(tenantID string) {
+	// Initialize counters to 0 so the metrics are exported before the first
+	// occurrence of incrementing to avoid missing metrics.
+	for _, counter := range s.metrics.countersWithHostTenantReason {
+		for _, reason := range Reasons {
+			counter.WithLabelValues(s.cfg.URL.Host, tenantID, reason).Add(0)
+		}
+	}
+
+	for _, counter := range s.metrics.countersWithHostTenant {
+		counter.WithLabelValues(s.cfg.URL.Host, tenantID).Add(0)
+	}
+}
+
+func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
+	// Check if it has been overridden while processing the pipeline stages
+	if value, ok := e.Labels[ReservedLabelTenantID]; ok {
+		return e, string(value)
+	}
+
+	return e, s.cfg.TenantID
 }
 
 func (s *shards) sendBatch(tenantID string, batch *batch) {

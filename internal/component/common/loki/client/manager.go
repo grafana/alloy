@@ -41,7 +41,6 @@ type StoppableWatcher interface {
 
 type StoppableClient interface {
 	Stop()
-	StopNow()
 }
 
 // watcherClientPair represents a pair of watcher and client, which are coupled together, or just a single client.
@@ -192,12 +191,6 @@ func (m *Manager) startWithForward() {
 			}
 		}
 	}()
-}
-
-func (m *Manager) StopNow() {
-	for _, pair := range m.pairs {
-		pair.client.StopNow()
-	}
 }
 
 func (m *Manager) Chan() chan<- loki.Entry {
