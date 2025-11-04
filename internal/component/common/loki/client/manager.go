@@ -86,7 +86,7 @@ type Manager struct {
 }
 
 // NewManager creates a new Manager
-func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
+func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, walCfg wal.Config, notifier WriterEventsNotifier, clientCfgs ...Config) (*Manager, error) {
 	var fake struct{}
 
 	walWatcherMetrics := wal.NewWatcherMetrics(reg)
@@ -119,7 +119,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 			}
 			markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(clientName))
 
-			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, maxStreams, logger, markerHandler)
+			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, cfg.MaxStreams, logger, markerHandler)
 			if err != nil {
 				return nil, fmt.Errorf("error starting queue client: %w", err)
 			}
@@ -140,7 +140,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 				client:  queue,
 			})
 		} else {
-			client, err := New(metrics, cfg, maxStreams, logger)
+			client, err := New(metrics, cfg, cfg.MaxStreams, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error starting client: %w", err)
 			}

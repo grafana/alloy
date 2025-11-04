@@ -438,7 +438,7 @@ func TestClient_Handle(t *testing.T) {
 			}
 
 			m := NewMetrics(reg)
-			c, err := New(m, cfg, 0, log.NewNopLogger())
+			c, err := New(m, cfg, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -578,7 +578,7 @@ func TestClient_StopNow(t *testing.T) {
 			}
 
 			m := NewMetrics(reg)
-			cl, err := New(m, cfg, 0, log.NewNopLogger())
+			cl, err := New(m, cfg, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries

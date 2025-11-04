@@ -177,6 +177,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
+		cfgs[i].MaxStreams = newArgs.MaxStreams
 		//cfgs is slice of struct values, so we set by index
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
@@ -210,7 +211,7 @@ func (c *Component) Update(args component.Arguments) error {
 		notifier = c.walWriter
 	}
 
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, newArgs.MaxStreams, c.opts.Registerer, walCfg, notifier, cfgs...)
+	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, c.opts.Registerer, walCfg, notifier, cfgs...)
 	if err != nil {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}
