@@ -29,9 +29,9 @@ type queuedBatch struct {
 	Batch    *batch
 }
 
-func newQueue2(metrics *Metrics, logger log.Logger, cfg Config) *queue2 {
+func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 	capacity := cfg.Queue.Capacity / cfg.BatchSize
-	return &queue2{
+	return &queue{
 		cfg:     cfg,
 		metrics: metrics,
 		logger:  logger,
@@ -41,7 +41,7 @@ func newQueue2(metrics *Metrics, logger log.Logger, cfg Config) *queue2 {
 	}
 }
 
-type queue2 struct {
+type queue struct {
 	cfg     Config
 	metrics *Metrics
 	logger  log.Logger
@@ -52,7 +52,7 @@ type queue2 struct {
 
 }
 
-func (q *queue2) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
+func (q *queue) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -91,11 +91,11 @@ func (q *queue2) Append(tenantID string, entry loki.Entry, segmentNum int) bool 
 	return true
 }
 
-func (q *queue2) Chan() chan queuedBatch {
+func (q *queue) Chan() chan queuedBatch {
 	return q.c
 }
 
-func (q *queue2) Batches() []queuedBatch {
+func (q *queue) Batches() []queuedBatch {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -125,7 +125,7 @@ loop:
 	return batches
 }
 
-func (q *queue2) FlushAndShutdown(done chan struct{}) {
+func (q *queue) FlushAndShutdown(done chan struct{}) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -177,7 +177,7 @@ type shards struct {
 
 	mut     sync.Mutex
 	tenants map[string]struct{}
-	queues  []*queue2
+	queues  []*queue
 
 	running atomic.Int32
 	done    chan struct{}
@@ -191,10 +191,10 @@ func (s *shards) start(n int) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	queues := make([]*queue2, n)
+	queues := make([]*queue, n)
 
 	for i := range n {
-		queues[i] = newQueue2(s.metrics, s.logger, s.cfg)
+		queues[i] = newQueue(s.metrics, s.logger, s.cfg)
 	}
 
 	s.queues = queues
@@ -231,7 +231,7 @@ func (s *shards) stop() {
 	<-s.done
 }
 
-func (s *shards) runShard(q *queue2) {
+func (s *shards) runShard(q *queue) {
 	// Given the a shart handles multiple batches (1 per tenant) and each batch
 	// can be created at a different point in time, we look for batches whose
 	// max wait time has been reached every 10 times per BatchWait, so that the
