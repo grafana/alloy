@@ -8,7 +8,7 @@ dist:
 extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.134.0
     # TODO: we are currently manually adding alloy to go.mod, can we prevent that without including the extension?
-#  - gomod: github.com/grafana/alloy/extension/alloyflow v0.1.0
+  - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.134.0
   - gomod: go.opentelemetry.io/collector/extension/zpagesextension v0.134.0
 
@@ -30,7 +30,7 @@ replaces:
   # Local modules.
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
-#  - github.com/grafana/alloy/extension/alloyflow => ../extension/alloyflow
+  - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
 
   # Replace directives required for additional OCB components added above to be compatible with the rest of Alloy's dependencies.
   - github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite => github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.130.0

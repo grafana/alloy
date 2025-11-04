@@ -3,6 +3,7 @@
 package main
 
 import (
+	alloyengine "github.com/grafana/alloy/extension/alloyengine"
 	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
 	prometheusremotewriteexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
 	jaegerremotesampling "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
@@ -27,6 +28,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory](
 		jaegerremotesampling.NewFactory(),
+		alloyengine.NewFactory(),
 		pprofextension.NewFactory(),
 		zpagesextension.NewFactory(),
 	)
@@ -35,6 +37,7 @@ func components() (otelcol.Factories, error) {
 	}
 	factories.ExtensionModules = make(map[component.Type]string, len(factories.Extensions))
 	factories.ExtensionModules[jaegerremotesampling.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.134.0"
+	factories.ExtensionModules[alloyengine.NewFactory().Type()] = "github.com/grafana/alloy/extension/alloyengine v0.1.0"
 	factories.ExtensionModules[pprofextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.134.0"
 	factories.ExtensionModules[zpagesextension.NewFactory().Type()] = "go.opentelemetry.io/collector/extension/zpagesextension v0.134.0"
 
