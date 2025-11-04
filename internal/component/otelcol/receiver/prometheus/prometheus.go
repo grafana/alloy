@@ -133,6 +133,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		// When supported, this could be added as an arg.
 		trimMetricSuffixes = false
 
+		// TODO(ptodev): Remove this once we have stable support for native histograms.
 		enableNativeHistograms = c.opts.MinStability.Permits(featuregate.StabilityPublicPreview)
 
 		gcInterval = 5 * time.Minute

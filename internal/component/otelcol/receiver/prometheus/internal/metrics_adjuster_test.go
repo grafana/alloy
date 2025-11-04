@@ -768,7 +768,7 @@ func runScript(t *testing.T, ma MetricsAdjuster, job, instance string, tests []*
 					rm.Resource().Attributes().PutStr(string(semconv.ServiceInstanceIDKey), instance)
 				}
 			}
-			assert.EqualValues(t, test.adjusted, adjusted)
+			assert.Equal(t, test.adjusted, adjusted)
 		})
 	}
 }

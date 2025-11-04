@@ -86,6 +86,9 @@ Main (unreleased)
 
 - Fix missing native histograms custom buckets (NHCB) samples from `prometheus.remote_write`. (@krajorama)
 
+- `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
+  A mixed histogram is one which has both classic and exponential buckets.
+
 v1.11.3
 -----------------
 
