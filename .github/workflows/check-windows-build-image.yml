@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
 
       - name: Create test Windows build image
-        uses: mr-smithers-excellent/docker-build-push@a4dc055191e5c80b01c04d2525d545efb5712b2b # v6.7
+        uses: mr-smithers-excellent/docker-build-push@19d2beefef6bcdc202195fdcb9deb79a4fab5c1f # v6.8
         with:
           image: grafana/alloy-build-image
           tags: latest
