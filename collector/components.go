@@ -23,6 +23,7 @@ import (
 	zpagesextension "go.opentelemetry.io/collector/extension/zpagesextension"
 	healthcheckextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension"
 	pprofextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension"
+	alloyengine "github.com/grafana/alloy/extension/alloyengine"
 	batchprocessor "go.opentelemetry.io/collector/processor/batchprocessor"
 	memorylimiterprocessor "go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 	attributesprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
@@ -41,6 +42,7 @@ func components() (otelcol.Factories, error) {
 		zpagesextension.NewFactory(),
 		healthcheckextension.NewFactory(),
 		pprofextension.NewFactory(),
+		alloyengine.NewFactory(),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
@@ -49,6 +51,7 @@ func components() (otelcol.Factories, error) {
 	factories.ExtensionModules[zpagesextension.NewFactory().Type()] = "go.opentelemetry.io/collector/extension/zpagesextension v0.139.0"
 	factories.ExtensionModules[healthcheckextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.139.0"
 	factories.ExtensionModules[pprofextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.139.0"
+	factories.ExtensionModules[alloyengine.NewFactory().Type()] = "github.com/grafana/alloy/extension/alloyengine v0.1.0"
 
 	factories.Receivers, err = otelcol.MakeFactoryMap[receiver.Factory](
 		otlpreceiver.NewFactory(),
