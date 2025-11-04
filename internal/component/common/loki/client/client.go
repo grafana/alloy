@@ -34,12 +34,10 @@ type Client interface {
 	loki.EntryHandler
 	// Stop goroutine sending batch of entries without retries.
 	StopNow()
-	Name() string
 }
 
 // Client for pushing logs in snappy-compressed protos over HTTP.
 type client struct {
-	name    string
 	metrics *Metrics
 	logger  log.Logger
 	cfg     Config
@@ -49,16 +47,14 @@ type client struct {
 	wg   sync.WaitGroup
 
 	bc *batchClient
-
-	maxStreams int
 }
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, logger)
+func New(metrics *Metrics, cfg Config, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {
 	logger = log.With(logger, "component", "client", "host", cfg.URL.Host)
 
 	bc, err := newBatchClient(metrics, logger, cfg)
@@ -67,16 +63,11 @@ func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) 
 	}
 
 	c := &client{
-		logger:     logger,
-		bc:         bc,
-		cfg:        cfg,
-		entries:    make(chan loki.Entry),
-		metrics:    metrics,
-		name:       GetClientName(cfg),
-		maxStreams: maxStreams,
-	}
-	if cfg.Name != "" {
-		c.name = cfg.Name
+		logger:  logger,
+		bc:      bc,
+		cfg:     cfg,
+		entries: make(chan loki.Entry),
+		metrics: metrics,
 	}
 
 	c.wg.Add(1)
@@ -134,7 +125,7 @@ func (c *client) run() {
 
 			// If the batch doesn't exist yet, we create a new one with the entry
 			if !ok {
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				c.initBatchMetrics(tenantID)
 				break
 			}
@@ -144,7 +135,7 @@ func (c *client) run() {
 			if batch.sizeBytesAfter(e.Entry) > c.cfg.BatchSize {
 				c.bc.sendBatch(context.Background(), tenantID, batch)
 
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				break
 			}
 
@@ -210,8 +201,4 @@ func (c *client) StopNow() {
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
-}
-
-func (c *client) Name() string {
-	return c.name
 }

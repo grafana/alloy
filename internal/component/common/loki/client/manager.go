@@ -74,8 +74,6 @@ func (p watcherClientPair) Stop(drain bool) {
 // https://github.com/grafana/loki/issues/8197, this Manager will be
 // responsible for instantiating all client types: Logger, Multi and WAL.
 type Manager struct {
-	name string
-
 	clients []Client
 	pairs   []watcherClientPair
 
@@ -102,7 +100,7 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 	pairs := make([]watcherClientPair, 0, len(clientCfgs))
 	for _, cfg := range clientCfgs {
 		// Don't allow duplicate clients, we have client specific metrics that need at least one unique label value (name).
-		clientName := GetClientName(cfg)
+		clientName := getClientName(cfg)
 		if _, ok := clientsCheck[clientName]; ok {
 			return nil, fmt.Errorf("duplicate client configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
@@ -119,7 +117,7 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 			}
 			markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.WithCurriedId(clientName))
 
-			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, cfg.MaxStreams, logger, markerHandler)
+			queue, err := NewQueue(metrics, queueClientMetrics.CurryWithId(clientName), cfg, logger, markerHandler)
 			if err != nil {
 				return nil, fmt.Errorf("error starting queue client: %w", err)
 			}
@@ -140,7 +138,7 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 				client:  queue,
 			})
 		} else {
-			client, err := New(metrics, cfg, cfg.MaxStreams, logger)
+			client, err := New(metrics, cfg, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error starting client: %w", err)
 			}
@@ -159,10 +157,8 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 	}
 
 	if walCfg.Enabled {
-		manager.name = buildManagerName("wal", clientCfgs...)
 		manager.startWithConsume()
 	} else {
-		manager.name = buildManagerName("multi", clientCfgs...)
 		manager.startWithForward()
 	}
 	return manager, nil
@@ -204,10 +200,6 @@ func (m *Manager) StopNow() {
 	}
 }
 
-func (m *Manager) Name() string {
-	return m.name
-}
-
 func (m *Manager) Chan() chan<- loki.Entry {
 	return m.entries
 }
@@ -243,9 +235,9 @@ func (m *Manager) StopWithDrain(drain bool) {
 	stopWG.Wait()
 }
 
-// GetClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
+// getClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
 // or a hash of the config as whole, this allows us to detect repeated configs.
-func GetClientName(cfg Config) string {
+func getClientName(cfg Config) string {
 	if cfg.Name != "" {
 		return cfg.Name
 	}
@@ -266,7 +258,7 @@ func buildManagerName(prefix string, cfgs ...Config) string {
 	sb.WriteString(prefix)
 	sb.WriteString(":")
 	for i, c := range cfgs {
-		sb.WriteString(GetClientName(c))
+		sb.WriteString(getClientName(c))
 		if i != len(cfgs)-1 {
 			sb.WriteString(",")
 		}
