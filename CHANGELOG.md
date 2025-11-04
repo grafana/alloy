@@ -84,6 +84,8 @@ Main (unreleased)
 
 - Fix `loki.write` no longer includes internal labels `__`.  (@matt-gp)
 
+- Fix missing native histograms custom buckets (NHCB) samples from `prometheus.remote_write`. (@krajorama)
+
 v1.11.3
 -----------------
 
