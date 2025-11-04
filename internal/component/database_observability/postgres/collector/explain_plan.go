@@ -339,6 +339,11 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
+		if err := rs.Err(); err != nil {
+			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
+			return err
+		}
+
 		var datname, queryId, query string
 		var calls int64
 		var ls time.Time
@@ -374,7 +379,7 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	}
 
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
-	level.Info(c.logger).Log("msg", "populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
+	level.Debug(c.logger).Log("msg", "populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	return nil
 }
 
