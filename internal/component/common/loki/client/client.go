@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -10,8 +9,8 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/grafana/dskit/backoff"
 )
 
 const (
@@ -39,14 +38,16 @@ type Client interface {
 // Client for pushing logs in snappy-compressed protos over HTTP.
 type client struct {
 	metrics *Metrics
-	logger  log.Logger
 	cfg     Config
 	entries chan loki.Entry
 
 	once sync.Once
 	wg   sync.WaitGroup
 
-	bc *batchClient
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	shards *shards
 }
 
 // New makes a new Client.
@@ -57,21 +58,23 @@ func New(metrics *Metrics, cfg Config, logger log.Logger) (Client, error) {
 func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {
 	logger = log.With(logger, "component", "client", "host", cfg.URL.Host)
 
-	bc, err := newBatchClient(metrics, logger, cfg)
+	shards, err := newShards(metrics, logger, cfg)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	c := &client{
-		logger:  logger,
-		bc:      bc,
 		cfg:     cfg,
 		entries: make(chan loki.Entry),
 		metrics: metrics,
+		shards:  shards,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 
-	c.wg.Add(1)
-	go c.run()
+	c.wg.Go(func() { c.run() })
 	return c, nil
 }
 
@@ -90,76 +93,33 @@ func (c *client) initBatchMetrics(tenantID string) {
 }
 
 func (c *client) run() {
-	batches := map[string]*batch{}
-
-	// Given the client handles multiple batches (1 per tenant) and each batch
-	// can be created at a different point in time, we look for batches whose
-	// max wait time has been reached every 10 times per BatchWait, so that the
-	// maximum delay we have sending batches is 10% of the max waiting time.
-	// We apply a cap of 10ms to the ticker, to avoid too frequent checks in
-	// case the BatchWait is very low.
-	minWaitCheckFrequency := 10 * time.Millisecond
-	maxWaitCheckFrequency := max(c.cfg.BatchWait/10, minWaitCheckFrequency)
-
-	maxWaitCheck := time.NewTicker(maxWaitCheckFrequency)
-
-	defer func() {
-		maxWaitCheck.Stop()
-		// Send all pending batches
-		for tenantID, batch := range batches {
-			c.bc.sendBatch(context.Background(), tenantID, batch)
-		}
-
-		c.wg.Done()
-	}()
+	tenants := make(map[string]struct{})
+	c.shards.start(1)
 
 	for {
 		select {
-		case e, ok := <-c.entries:
-			if !ok {
-				return
-			}
+		case <-c.ctx.Done():
+			return
+		case e := <-c.entries:
 
 			e, tenantID := c.processEntry(e)
-			batch, ok := batches[tenantID]
 
-			// If the batch doesn't exist yet, we create a new one with the entry
-			if !ok {
-				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
+			if _, ok := tenants[tenantID]; ok {
 				c.initBatchMetrics(tenantID)
-				break
 			}
 
-			// If adding the entry to the batch will increase the size over the max
-			// size allowed, we do send the current batch and then create a new one
-			if batch.sizeBytesAfter(e.Entry) > c.cfg.BatchSize {
-				c.bc.sendBatch(context.Background(), tenantID, batch)
-
-				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
-				break
-			}
-
-			// The max size of the batch isn't reached, so we can add the entry
-			err := batch.add(e)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
-				reason := ReasonGeneric
-				if errors.Is(err, errMaxStreamsLimitExceeded) {
-					reason = ReasonStreamLimited
-				}
-				c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Add(float64(len(e.Line)))
-				c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, reason).Inc()
-				return
-			}
-		case <-maxWaitCheck.C:
-			// Send all batches whose max wait time has been reached
-			for tenantID, batch := range batches {
-				if batch.age() < c.cfg.BatchWait {
-					continue
+			backoff := backoff.New(c.ctx, backoff.Config{
+				MinBackoff: 5 * time.Millisecond,
+				MaxBackoff: 50 * time.Millisecond,
+			})
+			for {
+				if c.shards.enqueue(tenantID, e) {
+					break
 				}
 
-				c.bc.sendBatch(context.Background(), tenantID, batch)
-				delete(batches, tenantID)
+				if !backoff.Ongoing() {
+					break
+				}
 			}
 		}
 	}
@@ -187,14 +147,12 @@ func (c *client) getTenantID(labels model.LabelSet) string {
 
 // Stop the client.
 func (c *client) Stop() {
-	c.once.Do(func() { close(c.entries) })
+	c.shards.stop()
+	c.cancel()
 	c.wg.Wait()
 }
 
-// StopNow stops the client without retries
 func (c *client) StopNow() {
-	// stop batch client from retrying requests.
-	c.bc.stop()
 	c.Stop()
 }
 
