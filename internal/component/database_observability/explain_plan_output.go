@@ -62,7 +62,7 @@ var ExplainReservedWordDenyList = map[string]bool{
 
 	// MySQL specific write operations
 	"LOAD": true, "DELAYED": true, "IGNORE": true, "ON DUPLICATE KEY": true,
-	"LOW_PRIORITY": true, "HIGH_PRIORITY": true, "QUICK": true, "LOCK": true, "UNLOCK": true,
+	"LOW_PRIORITY": true, "HIGH_PRIORITY": true, "QUICK": true,
 	"LOCK IN SHARE MODE": true,
 
 	// PostgreSQL specific write operations

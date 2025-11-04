@@ -461,7 +461,7 @@ func TestContainsReservedKeywords_WithActualDenyList(t *testing.T) {
 		{
 			name:     "SELECT with legacy LOCK IN SHARE MODE",
 			query:    "SELECT name FROM users LOCK IN SHARE MODE",
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "SELECT with FOR UPDATE",
