@@ -21,11 +21,13 @@ Main (unreleased)
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+  - enable `explain_plans` collector by default (@rgeyer)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
   - `explain_plans` added the explain plan collector (@rgeyer)
   - add `user` field to wait events within `query_samples` collector (@gaantunes)
   - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+  - enable `explain_plans` collector by default (@rgeyer)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 

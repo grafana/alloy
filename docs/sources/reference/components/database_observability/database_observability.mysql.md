@@ -44,7 +44,7 @@ The following collectors are configurable:
 | `query_samples`   | Collect query samples.                                   | yes                |
 | `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
-| `explain_plans`   | Collect explain plans information.                       | no                 |
+| `explain_plans`   | Collect explain plans information.                       | yes                |
 
 ## Blocks
 

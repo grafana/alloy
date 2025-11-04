@@ -127,7 +127,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
@@ -250,7 +250,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
