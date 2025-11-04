@@ -316,17 +316,12 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	if version17Plus {
 		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since")
 	} else {
-		statReset, err := c.dbConnection.QueryContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to fetch stats reset time for explain plans", "err", err)
-			return err
+		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
+		if err := statReset.Err(); err != nil {
+			return fmt.Errorf("failed to fetch stats reset time for explain plans: %w", err)
 		}
-		defer statReset.Close()
-		if statReset.Next() {
-			if err := statReset.Scan(&resetTS); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan stats reset time for explain plans", "err", err)
-				return err
-			}
+		if err := statReset.Scan(&resetTS); err != nil {
+			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
 		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since")
 	}
@@ -334,22 +329,16 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch digests for explain plans: %w", err)
 	}
 	defer rs.Close()
 
 	for rs.Next() {
-		if err := rs.Err(); err != nil {
-			level.Error(c.logger).Log("msg", "failed to iterate rs digests for explain plans", "err", err)
-			return err
-		}
-
 		var datname, queryId, query string
 		var calls int64
 		var ls time.Time
 		if err := rs.Scan(&datname, &queryId, &query, &calls, &ls); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan query for explain plan", "err", err)
-			return err
+			return fmt.Errorf("failed to scan query for explain plan: %w", err)
 		}
 
 		if slices.ContainsFunc(c.excludeSchemas, func(schema string) bool {
@@ -376,6 +365,10 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 			}
 			c.queryCache[qi.uniqueKey] = qi
 		}
+	}
+
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to iterate query rows for explain plans: %w", err)
 	}
 
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
