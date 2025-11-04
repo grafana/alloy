@@ -3,7 +3,6 @@ package client
 import (
 	"crypto/sha256"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -243,18 +242,4 @@ func asSha256(o interface{}) string {
 
 	temp := fmt.Sprintf("%x", h.Sum(nil))
 	return temp[:6]
-}
-
-// buildManagerName assembles the Manager's name from all configs, and a given prefix.
-func buildManagerName(prefix string, cfgs ...Config) string {
-	var sb strings.Builder
-	sb.WriteString(prefix)
-	sb.WriteString(":")
-	for i, c := range cfgs {
-		sb.WriteString(getClientName(c))
-		if i != len(cfgs)-1 {
-			sb.WriteString(",")
-		}
-	}
-	return sb.String()
 }
