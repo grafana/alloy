@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,6 +59,10 @@ func (a *Arguments) SetToDefault() {
 	a.FileMatch.SetToDefault()
 }
 
+func (a *Arguments) Validate() error {
+	return a.FileMatch.Validate()
+}
+
 type FileWatch struct {
 	MinPollFrequency time.Duration `alloy:"min_poll_frequency,attr,optional"`
 	MaxPollFrequency time.Duration `alloy:"max_poll_frequency,attr,optional"`
@@ -81,6 +86,13 @@ func (a *FileMatch) SetToDefault() {
 		Enabled:    false,
 		SyncPeriod: 10 * time.Second,
 	}
+}
+
+func (a *FileMatch) Validate() error {
+	if a.SyncPeriod <= 0 {
+		return errors.New("sync period must be greater than 0")
+	}
+	return nil
 }
 
 type DecompressionConfig struct {
@@ -142,10 +154,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	if args.FileMatch.SyncPeriod < 1 {
-		args.FileMatch.SyncPeriod = 10 * time.Second
 	}
 
 	c := &Component{
@@ -262,7 +270,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.resolver = newStaticResolver()
 	}
 
-	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod && newArgs.FileMatch.SyncPeriod < 0 {
+	if newArgs.FileMatch.SyncPeriod != c.args.FileMatch.SyncPeriod {
 		c.watcher.Reset(newArgs.FileMatch.SyncPeriod)
 	}
 
