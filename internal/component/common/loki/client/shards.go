@@ -369,6 +369,11 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
+const (
+	contentType  = "application/x-protobuf"
+	maxErrMsgLen = 1024
+)
+
 func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
 	defer cancel()
