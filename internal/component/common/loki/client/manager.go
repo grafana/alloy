@@ -168,28 +168,22 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 // are not used since they are read from the WAL, so we need a routine to just read the entries received through the channel
 // and discarding them, to not block the sending side.
 func (m *Manager) startWithConsume() {
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		// discard read entries
-		//nolint:revive
+	m.wg.Go(func() {
 		for range m.entries {
 		}
-	}()
+	})
 }
 
 // startWithForward starts the main manager routine, which reads entries from the exposed channel, and forwards them
 // doing a fan-out across all inner clients.
 func (m *Manager) startWithForward() {
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
+	m.wg.Go(func() {
 		for e := range m.entries {
 			for _, c := range m.clients {
 				c.Chan() <- e
 			}
 		}
-	}()
+	})
 }
 
 func (m *Manager) Chan() chan<- loki.Entry {
@@ -236,7 +230,7 @@ func getClientName(cfg Config) string {
 	return asSha256(cfg)
 }
 
-func asSha256(o interface{}) string {
+func asSha256(o any) string {
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "%v", o)
 
