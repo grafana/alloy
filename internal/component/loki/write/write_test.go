@@ -281,6 +281,10 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
 			},
+			FileMatch: lsf.FileMatch{
+				Enabled:    false,
+				SyncPeriod: 10 * time.Second,
+			},
 		})
 		require.NoError(t, err)
 	}()

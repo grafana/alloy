@@ -65,6 +65,9 @@ log 5
 			})},
 			LegacyPositionsFile: legacyPositionFilename,
 			ForwardTo:           []loki.LogsReceiver{rec},
+			FileMatch: FileMatch{
+				SyncPeriod: 10 * time.Second,
+			},
 		})
 		require.NoError(t, err)
 	}()

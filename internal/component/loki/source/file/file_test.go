@@ -483,7 +483,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 func runTests(t *testing.T, run func(t *testing.T, match FileMatch)) {
 	t.Helper()
 
-	for _, m := range []FileMatch{{Enabled: false}, {Enabled: true, SyncPeriod: 10 * time.Second}} {
+	for _, m := range []FileMatch{{Enabled: false, SyncPeriod: 10 * time.Second}, {Enabled: true, SyncPeriod: 10 * time.Second}} {
 		t.Run(fmt.Sprintf("file match %t", m.Enabled), func(t *testing.T) {
 			run(t, m)
 		})
