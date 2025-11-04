@@ -42,7 +42,7 @@ func ContainsReservedKeywords(query string, reservedWords map[string]bool, dbms 
 		if token.Type == sqllexer.ERROR {
 			// If lexing fails, fall back to simple string search for safety
 			uppercaseQuery := strings.ToUpper(query)
-			for word, _ := range reservedWords {
+			for word := range reservedWords {
 				if strings.Contains(uppercaseQuery, word) {
 					return true
 				}
