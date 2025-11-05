@@ -165,6 +165,7 @@ func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarker
 		metrics:       metrics,
 		client:        client,
 		marketHandler: markerHandler,
+		tenants:       make(map[string]struct{}),
 	}, nil
 }
 
