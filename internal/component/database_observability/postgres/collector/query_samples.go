@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -115,7 +116,7 @@ type QuerySamples struct {
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
 	// keep track of keys that were already emitted to avoid duplicates
-	emitted map[SampleKey]time.Time
+	emitted *expirable.LRU[SampleKey, struct{}]
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -203,6 +204,9 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheTTL = 10 * time.Minute
+
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
@@ -211,7 +215,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
-		emitted:               map[SampleKey]time.Time{},
+		emitted:               expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -305,14 +309,14 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			if st, hadActive := c.samples[key]; hadActive {
 				st.markEndedAt(sample)
 				st.LastRow.State = sample.State
-				c.emitted[key] = sample.Now //is actually emitted at the end of the loop
-			} else if _, already := c.emitted[key]; !already {
+				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			} else if _, already := c.emitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
 				newIdleState.markEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
-				c.emitted[key] = sample.Now //is actually emitted at the end of the loop
+				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
 			}
 			continue
 		}
@@ -333,7 +337,6 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		}
 		c.emitAndDeleteSample(key)
 	}
-	c.cleanupEmitted(time.Now())
 	return nil
 }
 
@@ -581,15 +584,6 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
-}
-
-func (c *QuerySamples) cleanupEmitted(now time.Time) {
-	const ttl = 10 * time.Minute
-	for k, lastSeen := range c.emitted {
-		if now.Sub(lastSeen) > ttl {
-			delete(c.emitted, k)
-		}
-	}
 }
 
 func isIdleState(state string) bool {
