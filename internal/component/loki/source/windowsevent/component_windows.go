@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package windowsevent
 
 import (
@@ -11,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/loki/promtail/api"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
@@ -43,10 +45,10 @@ type Component struct {
 }
 
 type handler struct {
-	handler chan api.Entry
+	handler chan loki.Entry
 }
 
-func (h *handler) Chan() chan<- api.Entry {
+func (h *handler) Chan() chan<- loki.Entry {
 	return h.handler
 }
 
@@ -60,7 +62,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      o,
 		receivers: args.ForwardTo,
-		handle:    &handler{handler: make(chan api.Entry)},
+		handle:    &handler{handler: make(chan loki.Entry)},
 		args:      args,
 	}
 
