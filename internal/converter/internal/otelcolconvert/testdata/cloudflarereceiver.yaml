@@ -1,0 +1,24 @@
+receivers:
+  cloudflare:
+    logs:
+      tls:
+        cert_file: /path/to/cert.pem
+        key_file: /path/to/key.pem
+      endpoint: 0.0.0.0:12345
+      secret: 1234567890abcdef1234567890abcdef
+      timestamp_field: EdgeStartTimestamp
+      timestamp_format: rfc3339
+      attributes:
+        ClientIP: http_request.client_ip
+        ClientRequestURI: http_request.uri
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [cloudflare]
+      processors: []
+      exporters: [otlp]

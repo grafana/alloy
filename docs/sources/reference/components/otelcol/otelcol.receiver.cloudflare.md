@@ -28,6 +28,10 @@ You can specify multiple `otelcol.receiver.cloudflare` components by giving them
 ```alloy
 otelcol.receiver.cloudflare "<LABEL>" {
   endpoint = "0.0.0.0:12345"
+
+  output {
+    logs = [...]
+  }
 }
 ```
 
@@ -86,6 +90,8 @@ If the `tls` block isn't provided, TLS won't be used for connections to the serv
 
 ## Example
 
+The following example receives logs from Cloudflare and forwards them through a batch processor:
+
 ```alloy
 otelcol.receiver.cloudflare "default" {
   endpoint = "0.0.0.0:12345"
@@ -100,6 +106,22 @@ otelcol.receiver.cloudflare "default" {
   tls {
     cert_file = "/path/to/cert.pem"
     key_file = "/path/to/key.pem"
+  }
+
+  output {
+    logs = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    logs = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = env("<OTLP_ENDPOINT>")
   }
 }
 ```
