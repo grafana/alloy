@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
-	"github.com/grafana/alloy/internal/loki/promtail/api"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/sys/windows/svc/eventlog"
+
+	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/loki/promtail/api"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 func TestBookmarkUpdate(t *testing.T) {
