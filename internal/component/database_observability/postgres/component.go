@@ -284,19 +284,19 @@ func (c *Component) Update(args component.Arguments) error {
 		return nil
 	}
 
-	var systemID, systemIP, systemPort, engineVersion string
+	var systemID, systemIP, systemPort, engineVersion sql.NullString
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
 		c.reportError("failed to scan engine version", err)
 		return nil
 	}
 
-	systemID = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID, systemIP, systemPort))))
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(systemID)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -309,7 +309,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(systemID, engineVersion); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String); err != nil {
 		c.reportError("failed to start collectors", err)
 		return nil
 	}
