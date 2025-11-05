@@ -21,6 +21,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "minimal configuration",
 			cfg: `
 				endpoint = "localhost:8080/webhook"
+				output {}
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -43,6 +44,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				timestamp_field = "EdgeStartTimestamp"
 				timestamp_format = "unix"
 				separator = "_"
+				output {}
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -68,6 +70,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					key_file = "/path/to/key.pem"
 				}
 				timestamp_format = "unixnano"
+				output {}
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -92,6 +95,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				endpoint = "localhost:8080/webhook"
 				timestamp_field = "RequestTimestamp"
 				timestamp_format = "rfc3339"
+				output {}
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -132,6 +136,7 @@ func TestArguments_Validate(t *testing.T) {
 				secret = "my-secret"
 				endpoint = "localhost:8080/webhook"
 				timestamp_format = "invalid"
+				output {}
 			`,
 			expectedError: `invalid timestamp_format "invalid"`,
 		},
@@ -143,6 +148,7 @@ func TestArguments_Validate(t *testing.T) {
 				tls {
 					key_file = "/path/to/key.pem"
 				}
+				output {}
 			`,
 			expectedError: "tls was configured, but no cert file was specified",
 		},
@@ -154,20 +160,22 @@ func TestArguments_Validate(t *testing.T) {
 				tls {
 					cert_file = "/path/to/cert.pem"
 				}
+				output {}
 			`,
 			expectedError: "tls was configured, but no key file was specified",
 		},
 		{
-			testName: "missing secret",
+			testName: "missing output",
 			cfg: `
 				endpoint = "localhost:8080/webhook"
 			`,
-			expectedError: `missing required attribute "secret"`,
+			expectedError: `missing required block "output"`,
 		},
 		{
 			testName: "missing endpoint",
 			cfg: `
 				secret = "my-secret"
+				output {}
 			`,
 			expectedError: `missing required attribute "endpoint"`,
 		},

@@ -40,6 +40,9 @@ type Arguments struct {
 	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`
 	TimestampFormat string                      `alloy:"timestamp_format,attr,optional"`
 	Separator       string                      `alloy:"separator,attr,optional"`
+
+	// Output configures where to send received data. Required.
+	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -110,5 +113,5 @@ func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component 
 
 // NextConsumers implements receiver.Arguments.
 func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
-	return nil
+	return args.Output
 }

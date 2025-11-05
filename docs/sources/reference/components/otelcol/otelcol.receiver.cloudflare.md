@@ -43,15 +43,27 @@ You can use the following arguments with `otelcol.receiver.tcplog`:
 | `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.       | `"unixnano"`           | no       |
 | `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer or float fields can be mapped.     |                        | no       |
 
+When the `attributes` configuration is empty, the receiver will automatically ingest all fields from the log messages as attributes, using the original field names as attribute names.
+
 Refer to the upstream receiver [documentation][https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/cloudflarereceiver#configuration] for more details.
 
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.cloudflare`:
 
-| Block        | Description                      | Required |
-| ------------ | -------------------------------- | -------- |
-| [`tls`][tls] | Custom server TLS configuration. | no       |
+| Block              | Description                                       | Required |
+| ------------------ | ------------------------------------------------- | -------- |
+| [`output`][output] | Configures where to send received telemetry data. | yes      |
+| [`tls`][tls]       | Custom server TLS configuration.                  | no       |
+
+[output]: #output
+[tls]: #tls
+
+### `output`
+
+{{< badge text="Required" >}}
+
+{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 
