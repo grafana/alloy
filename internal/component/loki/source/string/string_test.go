@@ -8,6 +8,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,22 +58,26 @@ func TestString(t *testing.T) {
 	}()
 
 	// Make sure the first argument is received
-	select {
-	case received := <-receiver.Chan():
-		require.Equal(t, initArgs.expected, received.Line)
-	case <-time.After(time.Second):
-		t.Fatalf("timeout waiting for log entry")
-	}
-
-	// Subsequent update should be received
-	for i, testArgs := range argsArray {
-		comp.Update(testArgs.args)
-
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		select {
 		case received := <-receiver.Chan():
-			require.Equal(t, testArgs.expected, received.Line)
-		case <-time.After(time.Second):
-			t.Fatalf("timeout waiting for log entry %d", i)
+			assert.Equal(c, initArgs.expected, received.Line)
+		default:
+			assert.Fail(c, "log entry not received yet")
 		}
+	}, time.Second, 10*time.Millisecond)
+
+	// Subsequent update should be received
+	for _, testArgs := range argsArray {
+		comp.Update(testArgs.args)
+
+		assert.EventuallyWithT(t, func(c *assert.CollectT) {
+			select {
+			case received := <-receiver.Chan():
+				assert.Equal(c, testArgs.expected, received.Line)
+			default:
+				assert.Fail(c, "log entry not received yet")
+			}
+		}, time.Second, 10*time.Millisecond)
 	}
 }
