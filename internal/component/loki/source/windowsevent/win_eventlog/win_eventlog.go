@@ -34,12 +34,11 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
 	"golang.org/x/sys/windows"
-
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 )
 
 var sampleConfig = `
@@ -344,7 +343,7 @@ func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fi
 	return false
 }
 
-func EvtSubscribe(logName, xquery string) (EvtHandle, error) {
+func EvtSubscribe(logger log.Logger, logName, xquery string) (EvtHandle, error) {
 	var logNamePtr, xqueryPtr *uint16
 
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
@@ -368,12 +367,12 @@ func EvtSubscribe(logName, xquery string) (EvtHandle, error) {
 	if err != nil {
 		return 0, err
 	}
-	level.Debug(util_log.Logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
+	level.Debug(logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }
 
-func EvtSubscribeWithBookmark(logName, xquery string, bookMark EvtHandle) (EvtHandle, error) {
+func EvtSubscribeWithBookmark(logger log.Logger, logName, xquery string, bookMark EvtHandle) (EvtHandle, error) {
 	var logNamePtr, xqueryPtr *uint16
 
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
@@ -397,7 +396,7 @@ func EvtSubscribeWithBookmark(logName, xquery string, bookMark EvtHandle) (EvtHa
 	if err != nil {
 		return 0, err
 	}
-	level.Debug(util_log.Logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
+	level.Debug(logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }
