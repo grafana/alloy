@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	CounterInc = "inc"
-	CounterAdd = "add"
+	counterInc = "inc"
+	counterAdd = "add"
 
-	ErrCounterActionRequired          = "counter action must be defined as either `inc` or `add`"
-	ErrCounterInvalidAction           = "action %s is not valid, action must be either `inc` or `add`"
-	ErrCounterInvalidMatchAll         = "`match_all: true` cannot be combined with `value`, please remove `match_all` or `value`"
-	ErrCounterInvalidCountBytes       = "`count_entry_bytes: true` can only be set with `match_all: true`"
-	ErrCounterInvalidCountBytesAction = "`count_entry_bytes: true` can only be used with `action: add`"
+	errCounterActionRequired          = "counter action must be defined as either `inc` or `add`"
+	errCounterInvalidAction           = "action %s is not valid, action must be either `inc` or `add`"
+	errCounterInvalidMatchAll         = "`match_all: true` cannot be combined with `value`, please remove `match_all` or `value`"
+	errCounterInvalidCountBytes       = "`count_entry_bytes: true` can only be set with `match_all: true`"
+	errCounterInvalidCountBytesAction = "`count_entry_bytes: true` can only be used with `action: add`"
 )
 
 type CounterConfig struct {
@@ -42,20 +42,20 @@ func ParseCounterConfig(config any) (*CounterConfig, error) {
 
 func validateCounterConfig(config *CounterConfig) error {
 	if config.Action == "" {
-		return errors.New(ErrCounterActionRequired)
+		return errors.New(errCounterActionRequired)
 	}
 	config.Action = strings.ToLower(config.Action)
-	if config.Action != CounterInc && config.Action != CounterAdd {
-		return fmt.Errorf(ErrCounterInvalidAction, config.Action)
+	if config.Action != counterInc && config.Action != counterAdd {
+		return fmt.Errorf(errCounterInvalidAction, config.Action)
 	}
 	if config.MatchAll != nil && *config.MatchAll && config.Value != nil {
-		return fmt.Errorf(ErrCounterInvalidMatchAll)
+		return errors.New(errCounterInvalidMatchAll)
 	}
 	if config.CountBytes != nil && *config.CountBytes && (config.MatchAll == nil || !*config.MatchAll) {
-		return errors.New(ErrCounterInvalidCountBytes)
+		return errors.New(errCounterInvalidCountBytes)
 	}
-	if config.CountBytes != nil && *config.CountBytes && config.Action != CounterAdd {
-		return errors.New(ErrCounterInvalidCountBytesAction)
+	if config.CountBytes != nil && *config.CountBytes && config.Action != counterAdd {
+		return errors.New(errCounterInvalidCountBytesAction)
 	}
 	return nil
 }

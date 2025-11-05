@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	GaugeSet = "set"
-	GaugeInc = "inc"
-	GaugeDec = "dec"
-	GaugeAdd = "add"
-	GaugeSub = "sub"
+	gaugeSet = "set"
+	gaugeInc = "inc"
+	gaugeDec = "dec"
+	gaugeAdd = "add"
+	gaugeSub = "sub"
 
-	ErrGaugeActionRequired = "gauge action must be defined as `set`, `inc`, `dec`, `add`, or `sub`"
-	ErrGaugeInvalidAction  = "action %s is not valid, action must be `set`, `inc`, `dec`, `add`, or `sub`"
+	errGaugeActionRequired = "gauge action must be defined as `set`, `inc`, `dec`, `add`, or `sub`"
+	errGaugeInvalidAction  = "action %s is not valid, action must be `set`, `inc`, `dec`, `add`, or `sub`"
 )
 
 type GaugeConfig struct {
@@ -40,16 +40,16 @@ func ParseGaugeConfig(config any) (*GaugeConfig, error) {
 
 func validateGaugeConfig(config *GaugeConfig) error {
 	if config.Action == "" {
-		return errors.New(ErrGaugeActionRequired)
+		return errors.New(errGaugeActionRequired)
 	}
 	config.Action = strings.ToLower(config.Action)
-	if config.Action != GaugeSet &&
-		config.Action != GaugeInc &&
-		config.Action != GaugeDec &&
-		config.Action != GaugeAdd &&
-		config.Action != GaugeSub {
+	if config.Action != gaugeSet &&
+		config.Action != gaugeInc &&
+		config.Action != gaugeDec &&
+		config.Action != gaugeAdd &&
+		config.Action != gaugeSub {
 
-		return fmt.Errorf(ErrGaugeInvalidAction, config.Action)
+		return fmt.Errorf(errGaugeInvalidAction, config.Action)
 	}
 	return nil
 }
