@@ -41,6 +41,8 @@ Main (unreleased)
 
 - Add `verbose_mode` configuration fields to alloy pyroscope.ebpf to be enable ebpf-profiler verbose mode. (@luweglarz)
 
+- Add support for summary metrics in `stage.metrics` for Loki logs, enabling creation of Prometheus Summary time-series with quantiles from parsed log fields. (@pkalsi97)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)

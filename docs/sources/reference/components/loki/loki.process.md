@@ -837,6 +837,7 @@ The following blocks are supported inside the definition of `stage.metrics`:
 | [`metric.counter`][metric.counter]     | Defines a `counter` metric.   | no       |
 | [`metric.gauge`][metric.gauge]         | Defines a `gauge` metric.     | no       |
 | [`metric.histogram`][metric.histogram] | Defines a `histogram` metric. | no       |
+| [`metric.summary`][metric.summary]     | Defines a `summary` metric.   | no       |
 
 {{< admonition type="note" >}}
 The metrics will be reset if you reload the {{< param "PRODUCT_NAME" >}} configuration file.
@@ -845,6 +846,7 @@ The metrics will be reset if you reload the {{< param "PRODUCT_NAME" >}} configu
 [metric.counter]: #metriccounter
 [metric.gauge]: #metricgauge
 [metric.histogram]: #metrichistogram
+[metric.summary]: #metricsummary
 
 #### `metric.counter`
 
@@ -905,6 +907,28 @@ The following arguments are supported:
 | `prefix`            | `string`      | The prefix to the metric name.                                                      | `"loki_process_custom_"` | no       |
 | `source`            | `string`      | Key from the extracted data map to use for the metric. Defaults to the metric name. | `""`                     | no       |
 | `value`             | `string`      | If set, the metric only changes if `source` exactly matches the `value`.            | `""`                     | no       |
+
+#### `metric.summary`
+
+Defines a summary metric whose values are recorded with quantile objectives.
+
+The following arguments are supported:
+
+| Name                | Type          | Description                                                                                     | Default                  | Required |
+| ------------------- | ------------- | ----------------------------------------------------------------------------------------------- | ------------------------ | -------- |
+| `name`              | `string`      | The metric name.                                                                                |                          | yes      |
+| `description`       | `string`      | The metric's description and help text.                                                         | `""`                     | no       |
+| `prefix`            | `string`      | The prefix to the metric name.                                                                  | `"loki_process_custom_"` | no       |
+| `source`            | `string`      | Key from the extracted data map to use for the metric. Defaults to the metric name.             | `""`                     | no       |
+| `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as stale and removed.                 | `"5m"`                   | no       |
+| `objective`         | `block`       | Defines quantile objectives. Multiple `objective` blocks can be specified.                      |                          | no       |
+
+`objective` block:
+
+| Name       | Type     | Description                   | Required |
+| ---------- | -------- | ----------------------------- | -------- |
+| `quantile` | `float`  | Target quantile value.        | yes      |
+| `error`    | `float`  | Allowed error for quantile.   | yes      |
 
 #### `metrics` behavior
 
@@ -1012,6 +1036,34 @@ stage.metrics {
         description = "recorded response times"
         source      = "response_time"
         buckets     = [0.001,0.0025,0.005,0.010,0.025,0.050]
+    }
+}
+```
+
+The following example shows a summary that reads `latency` from the extracted map and records observations into a Prometheus Summary. The metric exports quantile series along with `_sum` and `_count`.
+
+```alloy
+stage.metrics {
+    metric.summary {
+        name        = "request_latency_seconds"
+        description = "latency of processed log events"
+        prefix      = "my_custom_tracking_"
+        source      = "latency"
+
+        objective {
+            quantile = 0.5
+            error    = 0.05
+        }
+        objective {
+            quantile = 0.9
+            error    = 0.01
+        }
+        objective {
+            quantile = 0.99
+            error    = 0.001
+        }
+
+        max_idle_duration = "5m"
     }
 }
 ```
