@@ -154,9 +154,13 @@ func (c *Component) Update(args component.Arguments) error {
 		)
 		c.argsMut.RUnlock()
 
+		var cleanupWg sync.WaitGroup
+
 		// Start cleanup routine if per-app rate limiting is enabled
 		if c.handler.appRateLimiter != nil {
-			go c.handler.appRateLimiter.CleanupRoutine(ctx, DEFAULT_CLEANUP_INTERVAL)
+			cleanupWg.Go(func() {
+				c.handler.appRateLimiter.CleanupRoutine(ctx, DEFAULT_CLEANUP_INTERVAL)
+			})
 		}
 
 		srv := newServer(
@@ -174,6 +178,8 @@ func (c *Component) Update(args component.Arguments) error {
 			level.Error(c.log).Log("msg", "server exited with error", "err", err)
 			c.setServerHealth(err)
 		}
+
+		cleanupWg.Wait()
 	}
 
 	select {
