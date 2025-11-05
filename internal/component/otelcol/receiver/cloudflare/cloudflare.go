@@ -35,11 +35,11 @@ func init() {
 type Arguments struct {
 	Endpoint        string                      `alloy:"endpoint,attr"`
 	Secret          string                      `alloy:"secret,attr,optional"`
-	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
-	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
 	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`
 	TimestampFormat string                      `alloy:"timestamp_format,attr,optional"`
 	Separator       string                      `alloy:"separator,attr,optional"`
+	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
+	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`

@@ -99,8 +99,8 @@ otelcol.receiver.cloudflare "default" {
   timestamp_field = "EdgeStartTimestamp"
   timestamp_format = "rfc3339"
   attributes = {
-    "ClientIP" = "http_request.client_ip"
-    "ClientRequestURI" = "http_request.uri"
+    ClientIP = "http_request.client_ip",
+    ClientRequestURI = "http_request.uri",
   }
 
   tls {

@@ -1,16 +1,18 @@
 otelcol.receiver.cloudflare "default" {
-  endpoint = "0.0.0.0:12345"
-  secret = "1234567890abcdef1234567890abcdef"
-  timestamp_field = "EdgeStartTimestamp"
-  timestamp_format = "rfc3339"
-  attributes = {
-    "ClientIP" = "http_request.client_ip"
-    "ClientRequestURI" = "http_request.uri"
-  }
-  tls {
-    cert_file = "/path/to/cert.pem"
-    key_file = "/path/to/key.pem"
-  }
+	endpoint         = "0.0.0.0:12345"
+	secret           = "1234567890abcdef1234567890abcdef"
+	timestamp_field  = "CustomTimestampField"
+	timestamp_format = "unixnano"
+	separator        = ":"
+	attributes       = {
+		ClientIP         = "http_request.client_ip",
+		ClientRequestURI = "http_request.uri",
+	}
+
+	tls {
+		cert_file = "/path/to/cert.pem"
+		key_file  = "/path/to/key.pem"
+	}
 
 	output {
 		logs = [otelcol.exporter.otlp.default.input]

@@ -6,8 +6,9 @@ receivers:
         key_file: /path/to/key.pem
       endpoint: 0.0.0.0:12345
       secret: 1234567890abcdef1234567890abcdef
-      timestamp_field: EdgeStartTimestamp
-      timestamp_format: rfc3339
+      timestamp_field: CustomTimestampField
+      timestamp_format: unixnano
+      separator: ":"
       attributes:
         ClientIP: http_request.client_ip
         ClientRequestURI: http_request.uri
