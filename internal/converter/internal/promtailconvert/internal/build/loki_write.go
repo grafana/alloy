@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
+	"github.com/grafana/alloy/internal/loki/promtail/client"
 	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 
 	"github.com/grafana/alloy/internal/component/common/loki"

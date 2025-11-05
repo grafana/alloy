@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/util"
-	"github.com/grafana/tail"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
