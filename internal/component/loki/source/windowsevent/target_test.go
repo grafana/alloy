@@ -9,9 +9,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -33,20 +31,21 @@ func TestBookmarkUpdate(t *testing.T) {
 		require.NoError(t, os.RemoveAll(dirPath))
 	}()
 
-	scrapeConfig := &scrapeconfig.WindowsEventsTargetConfig{
+	args := Arguments{
 		Locale:               0,
-		EventlogName:         "Application",
-		Query:                "*",
+		EventLogName:         "Application",
+		XPathQuery:                "*",
 		UseIncomingTimestamp: false,
 		BookmarkPath:         filePath,
 		PollInterval:         10 * time.Millisecond,
 		ExcludeEventData:     false,
 		ExcludeEventMessage:  false,
-		ExcludeUserData:      false,
-		Labels:               utils.ToLabelSet(map[string]string{"job": "windows"}),
+		ExcludeUserdata:      false,
+		IncludeEventDataMap:  false,
+		Labels:               map[string]string{"job": "windows"},
 	}
 	handle := &handler{handler: make(chan api.Entry)}
-	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)
+	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, args, 1000*time.Millisecond)
 	require.NoError(t, err)
 
 	tm := time.Now().Format(time.RFC3339Nano)

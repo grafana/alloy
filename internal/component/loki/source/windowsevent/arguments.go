@@ -21,6 +21,7 @@ type Arguments struct {
 	ExcludeEventData     bool                `alloy:"exclude_event_data,attr,optional"`
 	ExcludeUserdata      bool                `alloy:"exclude_user_data,attr,optional"`
 	ExcludeEventMessage  bool                `alloy:"exclude_event_message,attr,optional"`
+	IncludeEventDataMap  bool                `alloy:"include_event_data_map,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
@@ -38,6 +39,7 @@ func defaultArgs() Arguments {
 		ExcludeUserdata:      false,
 		ExcludeEventMessage:  false,
 		UseIncomingTimestamp: false,
+		IncludeEventDataMap:  false,
 	}
 }
 

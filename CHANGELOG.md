@@ -944,6 +944,8 @@ v1.7.0
 
 - Upgrade `beyla.ebpf` to v2.0.4. The full list of changes can be found in the [Beyla release notes](https://github.com/grafana/beyla/releases/tag/v2.0.0). (@marctc)
 
+- Add windows event `event_data` processing converting XML content into a key-value map. Useful for easier tag extraction from complex events. This feature can be enabled by setting the new config parameter `include_event_data_map` to true in the windowsevent source component. (@fabbaena)
+
 ### Bugfixes
 
 - Fix log rotation for Windows in `loki.source.file` by refactoring the component to use the runner pkg. This should also reduce CPU consumption when tailing a lot of files in a dynamic environment. (@wildum)
