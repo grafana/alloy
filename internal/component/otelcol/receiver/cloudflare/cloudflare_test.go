@@ -20,10 +20,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "minimal configuration",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/webhook"
-				}
+				secret = "my-secret"
+				endpoint = "localhost:8080/webhook"
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -38,17 +36,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "full configuration without TLS",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/cloudflare-webhook"
-					attributes = {
-						"service.name" = "cloudflare-logs",
-						"environment" = "production",
-					}
-					timestamp_field = "EdgeStartTimestamp"
-					timestamp_format = "unix"
-					separator = "_"
+				secret = "my-secret"
+				endpoint = "localhost:8080/cloudflare-webhook"
+				attributes = {
+					"service.name" = "cloudflare-logs",
+					"environment" = "production",
 				}
+				timestamp_field = "EdgeStartTimestamp"
+				timestamp_format = "unix"
+				separator = "_"
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -67,15 +63,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "configuration with TLS",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8443/secure-webhook"
-					tls {
-						cert_file = "/path/to/cert.pem"
-						key_file = "/path/to/key.pem"
-					}
-					timestamp_format = "unixnano"
+				secret = "my-secret"
+				endpoint = "localhost:8443/secure-webhook"
+				tls {
+					cert_file = "/path/to/cert.pem"
+					key_file = "/path/to/key.pem"
 				}
+				timestamp_format = "unixnano"
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -96,12 +90,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "configuration with custom timestamp field",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/webhook"
-					timestamp_field = "RequestTimestamp"
-					timestamp_format = "rfc3339"
-				}
+				secret = "my-secret"
+				endpoint = "localhost:8080/webhook"
+				timestamp_field = "RequestTimestamp"
+				timestamp_format = "rfc3339"
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
@@ -139,23 +131,19 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			testName: "invalid timestamp format",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/webhook"
-					timestamp_format = "invalid"
-				}
+				secret = "my-secret"
+				endpoint = "localhost:8080/webhook"
+				timestamp_format = "invalid"
 			`,
 			expectedError: `invalid timestamp_format "invalid"`,
 		},
 		{
 			testName: "TLS with missing cert file",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/webhook"
-					tls {
-						key_file = "/path/to/key.pem"
-					}
+				secret = "my-secret"
+				endpoint = "localhost:8080/webhook"
+				tls {
+					key_file = "/path/to/key.pem"
 				}
 			`,
 			expectedError: "tls was configured, but no cert file was specified",
@@ -163,12 +151,10 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			testName: "TLS with missing key file",
 			cfg: `
-				logs {
-					secret = "my-secret"
-					endpoint = "localhost:8080/webhook"
-					tls {
-						cert_file = "/path/to/cert.pem"
-					}
+				secret = "my-secret"
+				endpoint = "localhost:8080/webhook"
+				tls {
+					cert_file = "/path/to/cert.pem"
 				}
 			`,
 			expectedError: "tls was configured, but no key file was specified",
@@ -176,18 +162,14 @@ func TestArguments_Validate(t *testing.T) {
 		{
 			testName: "missing secret",
 			cfg: `
-				logs {
-					endpoint = "localhost:8080/webhook"
-				}
+				endpoint = "localhost:8080/webhook"
 			`,
 			expectedError: `missing required attribute "secret"`,
 		},
 		{
 			testName: "missing endpoint",
 			cfg: `
-				logs {
-					secret = "my-secret"
-				}
+				secret = "my-secret"
 			`,
 			expectedError: `missing required attribute "endpoint"`,
 		},

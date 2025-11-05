@@ -32,7 +32,7 @@ func init() {
 	})
 }
 
-type LogsConfig struct {
+type Arguments struct {
 	Secret          string                      `alloy:"secret,attr"`
 	Endpoint        string                      `alloy:"endpoint,attr"`
 	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
@@ -42,47 +42,37 @@ type LogsConfig struct {
 	Separator       string                      `alloy:"separator,attr,optional"`
 }
 
-func (lc LogsConfig) Convert() cloudflarereceiver.LogsConfig {
-	tlsCfg := lc.TLS.Convert()
-	return cloudflarereceiver.LogsConfig{
-		Secret:          lc.Secret,
-		Endpoint:        lc.Endpoint,
-		TLS:             tlsCfg.Get(),
-		Attributes:      lc.Attributes,
-		TimestampField:  lc.TimestampField,
-		TimestampFormat: lc.TimestampFormat,
-		Separator:       lc.Separator,
-	}
-}
-
-func (lc *LogsConfig) SetToDefault() {
-	// Although otel's receiver already initializes defaults of downstream config,
-	// let's do it as well to avoid breaking changes if defauls are changed in upstream.
-	if lc.TimestampField == "" {
-		lc.TimestampField = "EdgeStartTimestamp"
-	}
-
-	if lc.TimestampFormat == "" {
-		lc.TimestampFormat = "rfc3339"
-	}
-
-	if lc.Separator == "" {
-		lc.Separator = "."
-	}
-}
-
-type Arguments struct {
-	Logs LogsConfig `alloy:"logs,block"`
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	args.Logs.SetToDefault()
+	// Although otel's receiver already initializes defaults of downstream config,
+	// let's do it as well to avoid breaking changes if defauls are changed in upstream.
+	if args.TimestampField == "" {
+		args.TimestampField = "EdgeStartTimestamp"
+	}
+
+	if args.TimestampFormat == "" {
+		args.TimestampFormat = "rfc3339"
+	}
+
+	if args.Separator == "" {
+		args.Separator = "."
+	}
 }
 
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
+	tlsCfg := args.TLS.Convert()
+	logCfg := cloudflarereceiver.LogsConfig{
+		Secret:          args.Secret,
+		Endpoint:        args.Endpoint,
+		TLS:             tlsCfg.Get(),
+		Attributes:      args.Attributes,
+		TimestampField:  args.TimestampField,
+		TimestampFormat: args.TimestampFormat,
+		Separator:       args.Separator,
+	}
+
 	return &cloudflarereceiver.Config{
-		Logs: args.Logs.Convert(),
+		Logs: logCfg,
 	}
 }
 
