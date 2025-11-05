@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	promtailcfg "github.com/grafana/alloy/internal/loki/promtail/config"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
 	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/loki/promtail/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/file"
 	lokicfgutil "github.com/grafana/alloy/internal/loki/util/cfg"
 	"github.com/grafana/dskit/flagext"
 	"gopkg.in/yaml.v2"

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/grafana/alloy/internal/loki/promtail/positions"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -20,7 +18,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/file"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
+	"github.com/grafana/alloy/internal/loki/promtail/positions"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
 )

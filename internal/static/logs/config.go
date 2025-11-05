@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/grafana/alloy/internal/loki/promtail/client"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
 	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/loki/promtail/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/file"
 )
 
 // Config controls the configuration of the Loki log scraper.
