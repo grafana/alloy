@@ -16,8 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/server"
 	"github.com/grafana/alloy/internal/loki/promtail/tracing"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
-
-	"github.com/grafana/loki/v3/pkg/util/flagext"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
 )
 
 // Options contains cross-cutting promtail configurations

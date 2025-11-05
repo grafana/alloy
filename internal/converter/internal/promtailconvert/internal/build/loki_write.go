@@ -4,13 +4,13 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/alloy/internal/loki/promtail/client"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiwrite "github.com/grafana/alloy/internal/component/loki/write"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/loki/promtail/client"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
@@ -59,7 +59,7 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiw
 	}
 }
 
-func convertFlagLabels(labels lokiflag.LabelSet) map[string]string {
+func convertFlagLabels(labels flagext.LabelSet) map[string]string {
 	result := map[string]string{}
 	for k, v := range labels.LabelSet {
 		result[string(k)] = string(v)
