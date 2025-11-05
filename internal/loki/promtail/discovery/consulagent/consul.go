@@ -6,6 +6,10 @@
 package consulagent
 
 import (
+	"errors"
+	"strings"
+	"time"
+
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 )
@@ -39,4 +43,26 @@ type SDConfig struct {
 	NodeMeta map[string]string `yaml:"node_meta,omitempty"`
 
 	TLSConfig config.TLSConfig `yaml:"tls_config,omitempty"`
+}
+
+// defaultSDConfig is the default Consul SD configuration.
+var defaultSDConfig = SDConfig{
+	TagSeparator:    ",",
+	Scheme:          "http",
+	Server:          "localhost:8500",
+	AllowStale:      true,
+	RefreshInterval: model.Duration(30 * time.Second),
+}
+
+func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*c = defaultSDConfig
+	type plain SDConfig
+	err := unmarshal((*plain)(c))
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(c.Server) == "" {
+		return errors.New("consulagent SD configuration requires a server address")
+	}
+	return nil
 }
