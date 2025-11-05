@@ -1,10 +1,11 @@
 package metric
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -45,10 +46,10 @@ func validateCounterConfig(config *CounterConfig) error {
 	}
 	config.Action = strings.ToLower(config.Action)
 	if config.Action != CounterInc && config.Action != CounterAdd {
-		return errors.Errorf(ErrCounterInvalidAction, config.Action)
+		return fmt.Errorf(ErrCounterInvalidAction, config.Action)
 	}
 	if config.MatchAll != nil && *config.MatchAll && config.Value != nil {
-		return errors.Errorf(ErrCounterInvalidMatchAll)
+		return fmt.Errorf(ErrCounterInvalidMatchAll)
 	}
 	if config.CountBytes != nil && *config.CountBytes && (config.MatchAll == nil || !*config.MatchAll) {
 		return errors.New(ErrCounterInvalidCountBytes)

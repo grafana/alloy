@@ -1,10 +1,11 @@
 package metric
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -47,7 +48,8 @@ func validateGaugeConfig(config *GaugeConfig) error {
 		config.Action != GaugeDec &&
 		config.Action != GaugeAdd &&
 		config.Action != GaugeSub {
-		return errors.Errorf(ErrGaugeInvalidAction, config.Action)
+
+		return fmt.Errorf(ErrGaugeInvalidAction, config.Action)
 	}
 	return nil
 }
