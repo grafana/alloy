@@ -14,9 +14,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
@@ -27,6 +24,9 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 

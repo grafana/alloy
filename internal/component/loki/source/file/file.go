@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
-
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
