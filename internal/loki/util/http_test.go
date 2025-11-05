@@ -44,7 +44,7 @@ func TestParseProtoReader(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			assert.Nil(t, util.SerializeProtoResponse(w, &req, tt.compression))
+			assert.Nil(t, util.SerializeProto(w, &req, tt.compression))
 
 			reader := w.Result().Body
 			if tt.useBytesBuffer {
