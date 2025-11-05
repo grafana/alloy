@@ -33,8 +33,8 @@ func init() {
 }
 
 type Arguments struct {
-	Secret          string                      `alloy:"secret,attr"`
 	Endpoint        string                      `alloy:"endpoint,attr"`
+	Secret          string                      `alloy:"secret,attr,optional"`
 	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
 	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
 	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`

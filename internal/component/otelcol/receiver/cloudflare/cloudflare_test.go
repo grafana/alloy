@@ -20,12 +20,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "minimal configuration",
 			cfg: `
-				secret = "my-secret"
 				endpoint = "localhost:8080/webhook"
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
-					Secret:          "my-secret",
 					Endpoint:        "localhost:8080/webhook",
 					TimestampField:  "EdgeStartTimestamp",
 					TimestampFormat: "rfc3339",
