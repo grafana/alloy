@@ -1,0 +1,93 @@
+---
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.cloudflare/
+description: Learn about otelcol.receiver.cloudflare
+labels:
+  stage: experimental
+  products:
+    - oss
+title: otelcol.receiver.cloudflare
+---
+
+# `otelcol.receiver.cloudflare`
+
+{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.receiver.cloudflare` receives logs sent by Cloudflare [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs.
+
+{{< admonition type="note" >}}
+`otelcol.receiver.cloudflare` is a wrapper over the upstream OpenTelemetry Collector [`cloudflare`][] receiver.
+Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+
+[`cloudflare`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/cloudflarereceiver
+{{< /admonition >}}
+
+You can specify multiple `otelcol.receiver.cloudflare` components by giving them different labels.
+
+## Usage
+
+```alloy
+otelcol.receiver.cloudflare "<LABEL>" {
+  endpoint = "0.0.0.0:12345"
+}
+```
+
+## Arguments
+
+You can use the following arguments with `otelcol.receiver.tcplog`:
+
+| Name               | Type                | Description                                                                                               | Default                | Required |
+| ------------------ | ------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
+| `endpoint`         | `string`            | The `<HOST:PORT>` endpoint address on which the receiver will await requests from Cloudflare.             |                        | yes      |
+| `secret`           | `string`            | If this value is set, the receiver expects to see it in any valid requests under the `X-CF-Secret` header |                        | no       |
+| `timestamp_field`  | `string`            | Log field name that contains timestamp.                                                                   | `"EdgeStartTimestamp"` | no       |
+| `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.       | `"unixnano"`           | no       |
+| `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer or float fields can be mapped.     |                        | no       |
+
+Refer to the upstream receiver [documentation][https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/cloudflarereceiver#configuration] for more details.
+
+## Blocks
+
+You can use the following blocks with `otelcol.receiver.cloudflare`:
+
+| Block        | Description                      | Required |
+| ------------ | -------------------------------- | -------- |
+| [`tls`][tls] | Custom server TLS configuration. | no       |
+
+### `tls`
+
+The `tls` block configures TLS settings used for a server.
+If the `tls` block isn't provided, TLS won't be used for connections to the server.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+## Exported fields
+
+`otelcol.receiver.cloudflare` doesn't export any fields.
+
+## Component health
+
+`otelcol.receiver.cloudflare` is only reported as unhealthy if given an invalid configuration.
+
+## Debug information
+
+`otelcol.receiver.cloudflare` doesn't expose any component-specific debug information.
+
+## Example
+
+```alloy
+otelcol.receiver.cloudflare "default" {
+  endpoint = "0.0.0.0:12345"
+  secret = "1234567890abcdef1234567890abcdef"
+  timestamp_field = "EdgeStartTimestamp"
+  timestamp_format = "rfc3339"
+  attributes = {
+    "ClientIP" = "http_request.client_ip"
+    "ClientRequestURI" = "http_request.uri"
+  }
+
+  tls {
+    cert_file = "/path/to/cert.pem"
+    key_file = "/path/to/key.pem"
+  }
+}
+```
