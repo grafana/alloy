@@ -7,17 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
-	"github.com/grafana/dskit/flagext"
-	"github.com/prometheus/common/config"
-
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -42,7 +41,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			cancel:        func() {},
 			ConsumerGroup: group,
 			logger:        log.NewNopLogger(),
-			discoverer: DiscovererFn(func(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) (RunnableTarget, error) {
+			discoverer: DiscovererFn(func(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) (Target, error) {
 				return nil, nil
 			}),
 		},
