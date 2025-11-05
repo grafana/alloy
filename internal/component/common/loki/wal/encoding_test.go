@@ -13,10 +13,6 @@ import (
 	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
-var (
-	recordPool = NewRecordPool()
-)
-
 func Test_Encoding_Series(t *testing.T) {
 	record := &Record{
 		entryIndexMap: make(map[uint64]int),
