@@ -70,10 +70,10 @@ func (h *handler) Update(args ServerArguments) {
 		h.rateLimiter.SetBurstAt(t, int(args.RateLimiting.BurstSize))
 
 		// Initialize or update the per-app rate limiter if strategy is per_app
-		if args.RateLimiting.Strategy == RateLimitingStrategyPerApp {
-			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize), h.reg)
-		} else {
+		if args.RateLimiting.Strategy != RateLimitingStrategyPerApp {
 			h.appRateLimiter = nil
+		} else if h.appRateLimiter == nil {
+			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize), h.reg)
 		}
 	} else {
 		// Set to infinite rate limit.

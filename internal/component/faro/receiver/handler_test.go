@@ -760,6 +760,60 @@ func TestHandler_ExtractAppEnv(t *testing.T) {
 	}
 }
 
+// TestHandler_Update_PreservesAppRateLimiterState verifies that calling Update multiple times
+// with per_app strategy doesn't recreate the AppRateLimitingConfig, preserving existing state.
+func TestHandler_Update_PreservesAppRateLimiterState(t *testing.T) {
+	h := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+
+	// First Update with per_app strategy
+	h.Update(ServerArguments{
+		RateLimiting: RateLimitingArguments{
+			Enabled:   true,
+			Strategy:  RateLimitingStrategyPerApp,
+			Rate:      10,
+			BurstSize: 5,
+		},
+	})
+
+	// Store reference to the created AppRateLimitingConfig
+	firstAppRateLimiter := h.appRateLimiter
+	require.NotNil(t, firstAppRateLimiter)
+
+	// Second Update with same per_app strategy
+	h.Update(ServerArguments{
+		RateLimiting: RateLimitingArguments{
+			Enabled:   true,
+			Strategy:  RateLimitingStrategyPerApp,
+			Rate:      10,
+			BurstSize: 5,
+		},
+	})
+
+	// Verify the AppRateLimitingConfig instance wasn't recreated
+	require.Same(t, firstAppRateLimiter, h.appRateLimiter, "AppRateLimitingConfig should be preserved across Updates")
+
+	// Update with global strategy should clear it
+	h.Update(ServerArguments{
+		RateLimiting: RateLimitingArguments{
+			Enabled:   true,
+			Strategy:  RateLimitingStrategyGlobal,
+			Rate:      10,
+			BurstSize: 5,
+		},
+	})
+
+	require.Nil(t, h.appRateLimiter, "AppRateLimitingConfig should be nil when switching to global strategy")
+
+	// Disable rate limiting should also clear it
+	h.Update(ServerArguments{
+		RateLimiting: RateLimitingArguments{
+			Enabled: false,
+		},
+	})
+
+	require.Nil(t, h.appRateLimiter, "AppRateLimitingConfig should be nil when rate limiting is disabled")
+}
+
 type testExporter struct {
 	name     string
 	broken   bool
