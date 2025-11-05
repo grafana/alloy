@@ -1,11 +1,9 @@
 package util
 
 import (
-	"time"
 	"unsafe"
 
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
 // ModelLabelSetToMap convert a model.LabelSet to a map[string]string
@@ -22,28 +20,4 @@ func MapToModelLabelSet(m map[string]string) model.LabelSet {
 		return model.LabelSet{}
 	}
 	return *(*map[model.LabelName]model.LabelValue)(unsafe.Pointer(&m)) // #nosec G103 -- we know the string is not mutated
-}
-
-// RoundToMilliseconds returns milliseconds precision time from nanoseconds.
-// from will be rounded down to the nearest milliseconds while through is rounded up.
-func RoundToMilliseconds(from, through time.Time) (model.Time, model.Time) {
-	fromMs := from.UnixNano() / int64(time.Millisecond)
-	throughMs := through.UnixNano() / int64(time.Millisecond)
-
-	// add a millisecond to the through time if the nanosecond offset within the second is not a multiple of milliseconds
-	if int64(through.Nanosecond())%int64(time.Millisecond) != 0 {
-		throughMs++
-	}
-
-	return model.Time(fromMs), model.Time(throughMs)
-}
-
-// LabelsToMetric converts a Labels to Metric
-// Don't do this on any performance sensitive paths.
-func LabelsToMetric(ls labels.Labels) model.Metric {
-	m := make(model.Metric, ls.Len())
-	ls.Range(func(l labels.Label) {
-		m[model.LabelName(l.Name)] = model.LabelValue(l.Value)
-	})
-	return m
 }
