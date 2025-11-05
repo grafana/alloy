@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/loki/ingester/wal"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/record"

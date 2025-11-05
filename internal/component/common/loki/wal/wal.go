@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
+	"github.com/grafana/alloy/internal/loki/ingester/wal"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/prometheus/prometheus/util/compression"
