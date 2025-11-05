@@ -7,13 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/promtail/api"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/loki/promtail/api"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 func init() {

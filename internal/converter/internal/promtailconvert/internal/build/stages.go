@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	promtailstages "github.com/grafana/alloy/internal/loki/logentry/stages"
-	"github.com/grafana/alloy/internal/loki/util/flagext"
-	promtailmetric "github.com/grafana/loki/v3/clients/pkg/logentry/metric"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
+	promtailstages "github.com/grafana/alloy/internal/loki/promtail/stages"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
+	promtailmetric "github.com/grafana/loki/v3/clients/pkg/logentry/metric"
 )
 
 func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
