@@ -30,7 +30,6 @@ func Test(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	defer cancel()
 
 	// Create file to log to.
 	f, err := os.CreateTemp(t.TempDir(), "example")
@@ -42,7 +41,10 @@ func Test(t *testing.T) {
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := ctrl.Run(ctx, Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
@@ -77,13 +79,18 @@ func Test(t *testing.T) {
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+
+	cancel()
+	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	defer cancel()
 
 	// Create file to log to.
 	f, err := os.CreateTemp(t.TempDir(), "example")
@@ -95,7 +102,10 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 	ch1 := loki.NewLogsReceiver()
 
+	var ctrlWg sync.WaitGroup
+	ctrlWg.Add(1)
 	go func() {
+		defer ctrlWg.Done()
 		err := ctrl.Run(ctx, Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
@@ -109,12 +119,12 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	ctrl.WaitRunning(time.Minute)
 
 	workerCtx, cancelWorkers := context.WithCancel(ctx)
-	var wg sync.WaitGroup
-	wg.Add(2)
+	var workerWg sync.WaitGroup
+	workerWg.Add(2)
 
 	// Start a goroutine that reads from the channel until cancellation
 	go func() {
-		defer wg.Done()
+		defer workerWg.Done()
 		for {
 			select {
 			case <-workerCtx.Done():
@@ -126,7 +136,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	}()
 
 	go func() {
-		defer wg.Done()
+		defer workerWg.Done()
 		for {
 			select {
 			case <-workerCtx.Done():
@@ -155,7 +165,13 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	require.NoError(t, err)
 
 	cancelWorkers()
-	wg.Wait()
+	workerWg.Wait()
+
+	cancel()
+	ctrlWg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestFileWatch(t *testing.T) {
@@ -184,7 +200,10 @@ func TestFileWatch(t *testing.T) {
 		},
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := ctrl.Run(ctx, args)
 		require.NoError(t, err)
 	}()
@@ -209,11 +228,14 @@ func TestFileWatch(t *testing.T) {
 		require.FailNow(t, "failed waiting for log line")
 	}
 
-	// Shut down the component.
+	// Shut down the component and wait for it to complete.
 	cancel()
+	wg.Wait()
 
-	// Wait to make sure that all go routines stopped.
-	time.Sleep(args.FileWatch.MaxPollFrequency)
+	// Wait for the tail library's polling goroutine to exit.
+	// The PollingFileWatcher goroutine may be sleeping for up to MaxPollFrequency
+	// when Stop() is called, especially on Windows where cleanup is slower.
+	time.Sleep(args.FileWatch.MaxPollFrequency + 100*time.Millisecond)
 }
 
 // Test that updating the component does not leak goroutines.
@@ -221,7 +243,6 @@ func TestUpdate_NoLeak(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	defer cancel()
 
 	// Create file to tail.
 	f, err := os.CreateTemp(t.TempDir(), "example")
@@ -239,7 +260,10 @@ func TestUpdate_NoLeak(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{},
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := ctrl.Run(ctx, args)
 		require.NoError(t, err)
 	}()
@@ -252,6 +276,15 @@ func TestUpdate_NoLeak(t *testing.T) {
 		err := ctrl.Update(args)
 		require.NoError(t, err)
 	}
+
+	// Cancel context and wait for Run to complete before checking for leaks.
+	// This is especially important on Windows where file operations and cleanup
+	// take longer than on Unix systems.
+	cancel()
+	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func TestTwoTargets(t *testing.T) {
@@ -404,7 +437,6 @@ func TestDeleteRecreateFile(t *testing.T) {
 	filename := "example"
 
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	defer cancel()
 
 	// Create file to log to.
 	f, err := os.Create(filename)
@@ -415,7 +447,10 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	ch1 := loki.NewLogsReceiver()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err := ctrl.Run(ctx, Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 				"__path__": f.Name(),
@@ -453,6 +488,12 @@ func TestDeleteRecreateFile(t *testing.T) {
 	require.NoError(t, err)
 
 	checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+
+	cancel()
+	wg.Wait()
+
+	// Wait for the tail library's polling goroutine to exit (default MaxPollFrequency is 250ms).
+	time.Sleep(350 * time.Millisecond)
 }
 
 func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
