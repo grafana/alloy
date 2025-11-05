@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
@@ -74,4 +75,8 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 // Update implements service.Service.
 func (*Service) Update(newConfig any) error {
 	return fmt.Errorf("otel service does not support configuration")
+}
+
+func (s *Service) Exports() component.Exports {
+	return nil
 }

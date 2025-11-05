@@ -923,6 +923,17 @@ func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error 
 		}
 	case *ImportConfigNode:
 		l.componentNodeManager.customComponentReg.updateImportContent(c)
+	case *ServiceNode:
+		err2 := l.cache.CacheExports([]string{c.NodeID()}, c.Exports())
+		if err2 != nil {
+			if err != nil {
+				level.Error(logger).Log("msg", "service evaluation and exports caching failed", "eval err", err, "caching err", err2)
+				return errors.Join(err, err2)
+			} else {
+				level.Error(logger).Log("msg", "failed to cache service exports after evaluation", "err", err2)
+				return err2
+			}
+		}
 	}
 
 	if err != nil {

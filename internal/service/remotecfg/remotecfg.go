@@ -16,6 +16,7 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
@@ -39,6 +40,8 @@ type Service struct {
 	attrs       map[string]string
 	cm          *configManager
 
+	exports Exports
+
 	// runCtx is the context from Run method, used for service lifecycle operations
 	runCtx context.Context
 }
@@ -55,6 +58,10 @@ type Options struct {
 	StoragePath string                // Where to cache configuration on-disk.
 	ConfigPath  string                // Where the root config file is.
 	Metrics     prometheus.Registerer // Where to send metrics to.
+}
+
+type Exports struct {
+	ID string `alloy:"id,attr,optional"`
 }
 
 // New returns a new instance of the remotecfg service.
@@ -110,10 +117,11 @@ type Data struct {
 // Definition returns the definition of the remotecfg service.
 func (s *Service) Definition() service.Definition {
 	return service.Definition{
-		Name:       ServiceName,
-		ConfigType: Arguments{},
-		DependsOn:  nil, // remotecfg has no dependencies.
-		Stability:  featuregate.StabilityGenerallyAvailable,
+		Name:        ServiceName,
+		ConfigType:  Arguments{},
+		DependsOn:   nil, // remotecfg has no dependencies.
+		Stability:   featuregate.StabilityGenerallyAvailable,
+		ExportsType: Exports{},
 	}
 }
 
@@ -192,6 +200,10 @@ func (s *Service) Update(newConfig any) error {
 	return nil
 }
 
+func (s *Service) Exports() component.Exports {
+	return s.exports
+}
+
 // updateHandleEmptyUrl handles impacts of changes to the arguments when the URL is empty.
 func (s *Service) updateHandleEmptyUrl(args Arguments) {
 	s.mut.Lock()
@@ -200,6 +212,7 @@ func (s *Service) updateHandleEmptyUrl(args Arguments) {
 	s.apiClient = newNoopClient()
 	s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 	s.args = args
+	s.setExports()
 
 	// Clean up the old configManager before creating a new one
 	var remotecfgPath, configPath string
@@ -256,6 +269,7 @@ func (s *Service) updateHandleArgs(newArgs Arguments) error {
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs
+	s.setExports()
 
 	return nil
 }
@@ -340,6 +354,12 @@ func (s *Service) getContext() context.Context {
 		return s.runCtx
 	}
 	return context.Background()
+}
+
+func (s *Service) setExports() {
+	s.exports = Exports{
+		ID: s.args.ID,
+	}
 }
 
 // GetHost returns the host for the remotecfg service.

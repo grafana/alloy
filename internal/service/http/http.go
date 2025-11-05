@@ -104,6 +104,8 @@ type Service struct {
 
 	componentHttpPathPrefix          string
 	componentHttpPathPrefixRemotecfg string
+
+	exports Exports
 }
 
 var _ service.Service = (*Service)(nil)
@@ -152,13 +154,19 @@ func New(opts Options) *Service {
 	}
 }
 
+type Exports struct {
+	HttpListenAddr   string `alloy:"http_listen_address,attr,optional"`
+	MemoryListenAddr string `alloy:"memeory_listen_address,attr,optional"`
+}
+
 // Definition returns the definition of the HTTP service.
 func (s *Service) Definition() service.Definition {
 	return service.Definition{
-		Name:       ServiceName,
-		ConfigType: Arguments{},
-		DependsOn:  []string{remotecfg.ServiceName}, // http requires remotecfg to be up to wire lookups to its controller.
-		Stability:  featuregate.StabilityGenerallyAvailable,
+		Name:        ServiceName,
+		ConfigType:  Arguments{},
+		DependsOn:   []string{remotecfg.ServiceName}, // http requires remotecfg to be up to wire lookups to its controller.
+		Stability:   featuregate.StabilityGenerallyAvailable,
+		ExportsType: Exports{},
 	}
 }
 
@@ -503,7 +511,16 @@ func (s *Service) Update(newConfig any) error {
 	}
 	s.authenticatorMut.Unlock()
 
+	s.exports = Exports{
+		HttpListenAddr:   s.opts.HTTPListenAddr,
+		MemoryListenAddr: s.opts.MemoryListenAddr,
+	}
+
 	return nil
+}
+
+func (s *Service) Exports() component.Exports {
+	return s.exports
 }
 
 // Data returns an instance of [Data]. Calls to Data are cachable by the

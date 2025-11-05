@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
@@ -111,6 +112,10 @@ func (s *Service) Run(ctx context.Context, host alloy_service.Host) error {
 // Update will be called once before Run, and may be called
 // while Run is active.
 func (s *Service) Update(_ any) error {
+	return nil
+}
+
+func (s *Service) Exports() component.Exports {
 	return nil
 }
 

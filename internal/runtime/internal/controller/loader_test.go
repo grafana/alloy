@@ -652,3 +652,7 @@ func (fs *fakeService) Data() any {
 	}
 	return nil
 }
+
+func (fs *fakeService) Exports() component.Exports {
+	return nil
+}
