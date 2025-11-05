@@ -820,8 +820,8 @@ func buildMixedTypeSeries() seriesList {
 			name:    "float_series",
 			samples: []sample{{1, 10.0, nil, nil}, {10, 100.0, nil, nil}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(10.0), Ts: int64(1), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(100.0), Ts: int64(10), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(1), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(10), HasTs: true},
 			},
 		},
 		// From now on I put -1 into the float to be different from default 0.
@@ -831,32 +831,32 @@ func buildMixedTypeSeries() seriesList {
 			name:    "integer histogram",
 			samples: []sample{{2, -1, tsdbutil.GenerateTestHistogram(1), nil}, {20, -1, tsdbutil.GenerateTestHistogram(100), nil}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(10.0), Ts: int64(2), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(100.0), Ts: int64(20), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(2), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(20), HasTs: true},
 			},
 		},
 		{
 			name:    "float histogram",
 			samples: []sample{{3, -1, nil, tsdbutil.GenerateTestFloatHistogram(1)}, {30, -1, nil, tsdbutil.GenerateTestFloatHistogram(100)}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(10.0), Ts: int64(3), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(100.0), Ts: int64(30), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(3), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(30), HasTs: true},
 			},
 		},
 		{
 			name:    "integer NHCB",
 			samples: []sample{{2, -1, tsdbutil.GenerateTestCustomBucketsHistogram(1), nil}, {20, -1, tsdbutil.GenerateTestCustomBucketsHistogram(100), nil}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(10.0), Ts: int64(2), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(100.0), Ts: int64(20), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(2), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(20), HasTs: true},
 			},
 		},
 		{
 			name:    "float NHCB",
 			samples: []sample{{3, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(1)}, {30, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(100)}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(10.0), Ts: int64(3), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(100.0), Ts: int64(30), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(3), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(30), HasTs: true},
 			},
 		},
 	}
