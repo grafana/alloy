@@ -815,8 +815,9 @@ github.com/frankban/quicktest v1.11.2/go.mod h1:K+q6oSqb0W0Ininfk863uOk1lMy69l/P
 github.com/frankban/quicktest v1.13.0/go.mod h1:qLE0fzW0VuyUAJgPU19zByoIr0HtCHN/r/VLSOOIySU=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
-github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
-github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
+github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
+github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
 github.com/fxamacker/cbor/v2 v2.9.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gabriel-vasile/mimetype v1.4.8 h1:FfZ3gj38NjllZIeJAmMhr+qKL8Wu+nOoI3GqacKw1NM=
@@ -1888,8 +1889,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.134.0/go.mod h1:/7gxhrwB57LA6sjQ/oznZmMww0anVl9DFbBwgYM6xfU=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.133.0 h1:04eEfhfTzTXPkQdPPei3HuBGulJYypj2LG2T6zNzKNs=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver v0.133.0/go.mod h1:OCkhWl4FZD/ZfbVL4YVMEGbJMnWSOA9aqn98dDAAYZA=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.139.1-0.20251104070254-02c05d16009d h1:mvHFXf0oVu5J9JsFJr5K4jQrFMCTLSqYEa7EvvWmwZc=
-github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.139.1-0.20251104070254-02c05d16009d/go.mod h1:vFQK4qK9VSkiy1JcoB2IALt2qfD6SrZI+CsNy2b3rLQ=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.134.0 h1:fX0x5F5m13Kf+acghqfeaLgJrV6WMB2DeR0KJTbB9uY=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.134.0/go.mod h1:nFWtEmxnW+QJbtD+mxyDf5SC+MIKFhvrbNpBohKeGwE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.134.0 h1:W/6ChWdXE1CtlVowt//Y8KDpTfZWfihOn0d61wmC2iE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver v0.134.0/go.mod h1:cby3qCubjht8OKnVTvAvF9f/AdFx3kDplXyLWOmuqpQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver v0.134.0 h1:ZqTg+oeqz5ShHPt+fPBbf2afTi1tNXk1u0MSW/l5r2w=
@@ -1906,8 +1907,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/opencontainers/runc v1.2.6 h1:P7Hqg40bsMvQGCS4S7DJYhUZOISMLJOB2iGX5COWiPk=
-github.com/opencontainers/runc v1.2.6/go.mod h1:dOQeFo29xZKBNeRBI0B19mJtfHv68YgCTh1X+YphA+4=
+github.com/opencontainers/runc v1.2.8 h1:RnEICeDReapbZ5lZEgHvj7E9Q3Eex9toYmaGBsbvU5Q=
+github.com/opencontainers/runc v1.2.8/go.mod h1:cC0YkmZcuvr+rtBZ6T7NBoVbMGNAdLa/21vIElJDOzI=
 github.com/opencontainers/runtime-spec v1.2.1 h1:S4k4ryNgEpxW1dzyqffOmhI1BHYcjzU8lpJfSlR0xww=
 github.com/opencontainers/runtime-spec v1.2.1/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.13.0 h1:Zza88GWezyT7RLql12URvoxsbLfjFx988+LGaWfbL84=
@@ -2577,8 +2578,8 @@ go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685 h1:
 go.opentelemetry.io/collector/semconv v0.128.1-0.20250610090210-188191247685/go.mod h1:OPXer4l43X23cnjLXIZnRj/qQOjSuq4TgBLI76P9hns=
 go.opentelemetry.io/collector/service v0.138.0 h1:ubOa9S3Wdv6hHkoXCuPfidtgUVGIUYY8+SpoM7shAB8=
 go.opentelemetry.io/collector/service v0.138.0/go.mod h1:EEsuXliw8X+7R68TsJ5Z5uCBmHNTOK5iutBCY/Z6+vg=
-go.opentelemetry.io/collector/service/hostcapabilities v0.134.0 h1:J2PVp8j0Z71KS+JNo+vSxje7q1/qS8vmkQDyHU+Eom4=
-go.opentelemetry.io/collector/service/hostcapabilities v0.134.0/go.mod h1:Ue/ZLS2HvRZIhVNlEGW+7vH+HzHGDCQvOQeKXD4KelQ=
+go.opentelemetry.io/collector/service/hostcapabilities v0.138.0 h1:0Zs/cP3qy/6nIer9DxEJ6r40F6JdcamivhdEzHCToT4=
+go.opentelemetry.io/collector/service/hostcapabilities v0.138.0/go.mod h1:Jf/g1Et9Uqk8ZSw4kIUh29Ki+vUT7xX1w9a6+SDX1bs=
 go.opentelemetry.io/collector/service/telemetry/telemetrytest v0.138.0 h1:QewMMSZWLzk6Mx8OBiE5bJGdrCij7mXrMZeym1b38cw=
 go.opentelemetry.io/collector/service/telemetry/telemetrytest v0.138.0/go.mod h1:5H1FcdgmBBnMKH8x8a1SnadsHeCXHewu2z3/Tqm+Diw=
 go.opentelemetry.io/contrib/bridges/otelzap v0.13.0 h1:aBKdhLVieqvwWe9A79UHI/0vgp2t/s2euY8X59pGRlw=
@@ -2946,7 +2947,6 @@ golang.org/x/sys v0.0.0-20220829200755-d48e67d00261/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.1.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.2.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.3.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.4.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

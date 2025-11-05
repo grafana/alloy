@@ -3,22 +3,22 @@
 package main
 
 import (
-	alloyengine "github.com/grafana/alloy/extension/alloyengine"
-	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
-	prometheusremotewriteexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
-	jaegerremotesampling "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
-	pprofextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/exporter"
-	debugexporter "go.opentelemetry.io/collector/exporter/debugexporter"
-	otlpexporter "go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/extension"
-	zpagesextension "go.opentelemetry.io/collector/extension/zpagesextension"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
-	batchprocessor "go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
+	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
+	debugexporter "go.opentelemetry.io/collector/exporter/debugexporter"
+	otlpexporter "go.opentelemetry.io/collector/exporter/otlpexporter"
+	prometheusremotewriteexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
+	jaegerremotesampling "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
+	alloyengine "github.com/grafana/alloy/extension/alloyengine"
+	pprofextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension"
+	zpagesextension "go.opentelemetry.io/collector/extension/zpagesextension"
+	batchprocessor "go.opentelemetry.io/collector/processor/batchprocessor"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
 )
 
