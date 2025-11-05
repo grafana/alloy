@@ -15,22 +15,20 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
-	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
-	"github.com/grafana/alloy/internal/useragent"
-
-	"github.com/grafana/alloy/internal/loki/ingester/wal"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	lokiutil "github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.
 type StoppableWriteTo interface {
-	alloyWal.WriteTo
+	wal.WriteTo
 	Stop()
 	StopNow()
 }

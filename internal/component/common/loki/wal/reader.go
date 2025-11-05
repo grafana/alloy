@@ -5,7 +5,6 @@ import (
 
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/loki/ingester/wal"
 	"github.com/grafana/alloy/internal/loki/util"
 	walUtils "github.com/grafana/loki/v3/pkg/util/wal"
 
@@ -24,9 +23,9 @@ func ReadWAL(dir string) ([]loki.Entry, error) {
 	seenEntries := []loki.Entry{}
 
 	for reader.Next() {
-		var walRec = wal.Record{}
+		var walRec = Record{}
 		bytes := reader.Record()
-		err = wal.DecodeRecord(bytes, &walRec)
+		err = DecodeRecord(bytes, &walRec)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding wal record: %w", err)
 		}
