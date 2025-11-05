@@ -563,3 +563,58 @@ loki_process_custom_response_time_seconds_count{baz="fu",fu="baz"} 1.0
 loki_process_custom_total_keys{bar="foo",foo="bar"} 8.0
 loki_process_custom_total_keys{baz="fu",fu="baz"} 8.0
 `
+
+var testSummaryConfig = `
+stage.regex {
+  expression = "latency=(?P<latency>[0-9.]+)"
+}
+
+stage.metrics {
+  metric.summary {
+    name        = "request_latency_seconds"
+    description = "test summary metric"
+    source      = "latency"
+
+    objective {
+      quantile = 0.5
+      error    = 0.05
+    }
+    objective {
+      quantile = 0.9
+      error    = 0.01
+    }
+    objective {
+      quantile = 0.99
+      error    = 0.001
+    }
+  }
+}
+`
+
+func TestSummaryMetric(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testSummaryConfig), nil, registry, featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	in := make(chan Entry)
+	out := pl.Run(in)
+
+	in <- newEntry(nil, model.LabelSet{"test": "app"}, `latency=1.20`, time.Now())
+	close(in)
+	<-out
+
+	err = testutil.GatherAndCompare(
+		registry,
+		strings.NewReader(`# HELP loki_process_custom_request_latency_seconds test summary metric
+# TYPE loki_process_custom_request_latency_seconds summary
+loki_process_custom_request_latency_seconds{test="app",quantile="0.5"} 1.2
+loki_process_custom_request_latency_seconds{test="app",quantile="0.9"} 1.2
+loki_process_custom_request_latency_seconds{test="app",quantile="0.99"} 1.2
+loki_process_custom_request_latency_seconds_sum{test="app"} 1.2
+loki_process_custom_request_latency_seconds_count{test="app"} 1
+`),
+		"loki_process_custom_request_latency_seconds",
+	)
+	require.NoError(t, err)
+}

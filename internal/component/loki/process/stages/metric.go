@@ -25,6 +25,7 @@ type MetricConfig struct {
 	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"`
 	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"`
 	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional"`
+	Summary   *metric.SummaryConfig   `alloy:"summary,block,optional"`
 }
 
 // MetricsConfig is a set of configured metrics.
@@ -87,6 +88,19 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 			// It is safe to .MustRegister here because the metric created above is unchecked.
 			registry.MustRegister(collector)
 			metrics[cfg.Histogram.Name] = cfgCollector{cfg: cfg, collector: collector}
+		case cfg.Summary != nil:
+			customPrefix := ""
+			if cfg.Summary.Prefix != "" {
+				customPrefix = cfg.Summary.Prefix
+			} else {
+				customPrefix = defaultMetricsPrefix
+			}
+			collector, err = metric.NewSummaries(customPrefix+cfg.Summary.Name, cfg.Summary)
+			if err != nil {
+				return nil, err
+			}
+			registry.MustRegister(collector)
+			metrics[cfg.Summary.Name] = cfgCollector{cfg: cfg, collector: collector}
 		default:
 			return nil, fmt.Errorf("undefined stage type in '%v', exiting", cfg)
 		}
@@ -151,6 +165,13 @@ func (m *metricStage) Process(labels model.LabelSet, extracted map[string]interf
 			} else {
 				level.Debug(m.logger).Log("msg", "source does not exist", "err", fmt.Sprintf("source: %s, does not exist", cc.cfg.Histogram.Source))
 			}
+		case cc.cfg.Summary != nil:
+			if v, ok := extracted[cc.cfg.Summary.Source]; ok {
+				m.recordSummary(name, cc.collector.(*metric.Summaries), labels, v)
+			} else {
+				level.Debug(m.logger).Log("msg", "source does not exist", "err",
+					fmt.Sprintf("source: %s, does not exist", cc.cfg.Summary.Source))
+			}
 		}
 	}
 }
@@ -161,6 +182,7 @@ func (m *metricStage) Name() string {
 }
 
 // Cleanup implements Stage.
+// Cleanup implements Stage.
 func (m *metricStage) Cleanup() {
 	for _, cfgCollector := range m.metrics {
 		switch vec := cfgCollector.collector.(type) {
@@ -169,6 +191,8 @@ func (m *metricStage) Cleanup() {
 		case *metric.Gauges:
 			vec.DeleteAll()
 		case *metric.Histograms:
+			vec.DeleteAll()
+		case *metric.Summaries:
 			vec.DeleteAll()
 		}
 	}
@@ -285,6 +309,33 @@ func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms,
 		return
 	}
 	histogram.With(labels).Observe(f)
+}
+
+func (m *metricStage) recordSummary(name string, summary *metric.Summaries, labels model.LabelSet, v interface{}) {
+	if summary.Cfg.Value != "" {
+		stringVal, err := getString(v)
+		if err != nil {
+			if Debug {
+				level.Debug(m.logger).Log("msg", "failed to convert extracted value to string, "+
+					"can't perform value comparison", "metric", name, "err",
+					fmt.Sprintf("can't convert %v to string", reflect.TypeOf(v)))
+			}
+			return
+		}
+		if summary.Cfg.Value != stringVal {
+			return
+		}
+	}
+
+	f, err := getFloat(v)
+	if err != nil {
+		if Debug {
+			level.Debug(m.logger).Log("msg", "failed to convert extracted value to float", "metric", name, "err", err)
+		}
+		return
+	}
+
+	summary.With(labels).Observe(f)
 }
 
 // getFloat will take the provided value and return a float64 if possible
