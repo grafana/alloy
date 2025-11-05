@@ -699,142 +699,173 @@ func TestComputeBurstWindow(t *testing.T) {
 	}
 }
 
-func TestBurstRevertsWhenNoActive(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
+func TestBurstBehavior(t *testing.T) {
+	// 1) Reverts to CI when no active rows
+	t.Run("reverts_when_no_active", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
 
-	logBuffer := syncbuffer.Buffer{}
-	lokiClient := loki_fake.NewClient(func() {})
-	defer lokiClient.Stop()
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
-	// Use CI = 500ms so burst interval is ~50ms, then verify third scan is delayed ~CI when activity stops.
-	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-		DB:                    db,
-		CollectInterval:       500 * time.Millisecond,
-		EntryHandler:          lokiClient,
-		Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-		DisableQueryRedaction: true,
+		// Use CI = 500ms so burst interval is ~50ms, then verify finalizations spacing reflects CI when inactive
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       500 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+		})
+		require.NoError(t, err)
+
+		now := time.Now()
+		backendStartTime := now.Add(-1 * time.Hour)
+		columns := []string{
+			"now", "datname", "pid", "leader_pid",
+			"usename", "application_name", "client_addr", "client_port",
+			"backend_type", "backend_start", "backend_xid", "backend_xmin",
+			"xact_start", "state", "state_change", "wait_event_type",
+			"wait_event", "query_start", "query_id",
+			"query",
+		}
+
+		// Active → Active → Empty (emit #1) → Empty (wait CI) → Active → Empty (emit #2)
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
+		))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
+		))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 7000, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true}, "SELECT 1",
+		))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		var t1, t2 time.Time
+		require.Eventually(t, func() bool {
+			if len(lokiClient.Received()) >= 1 {
+				t1 = time.Now()
+				return true
+			}
+			return false
+		}, 3*time.Second, 20*time.Millisecond)
+		require.Eventually(t, func() bool {
+			if len(lokiClient.Received()) >= 2 {
+				t2 = time.Now()
+				return true
+			}
+			return false
+		}, 3*time.Second, 20*time.Millisecond)
+
+		delta := t2.Sub(t1)
+		require.GreaterOrEqual(t, delta, 900*time.Millisecond)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
-	require.NoError(t, err)
 
-	now := time.Now()
-	backendStartTime := now.Add(-1 * time.Hour)
-	columns := []string{
-		"now", "datname", "pid", "leader_pid",
-		"usename", "application_name", "client_addr", "client_port",
-		"backend_type", "backend_start", "backend_xid", "backend_xmin",
-		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "query_start", "query_id",
-		"query",
-	}
+	// 2) When observed latency > CI, no burst; next interval equals observed
+	t.Run("respects_delay_greater_than_collect_interval", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
 
-	// 1) Active row to arm burst
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			now, "testdb", 7000, sql.NullInt64{},
-			"testuser", "testapp", "127.0.0.1", 5432,
-			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
-			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true},
-			"SELECT 1",
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       100 * time.Millisecond,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+		})
+		require.NoError(t, err)
+
+		now := time.Now()
+		backendStartTime := now.Add(-1 * time.Hour)
+		columns := []string{
+			"now", "datname", "pid", "leader_pid",
+			"usename", "application_name", "client_addr", "client_port",
+			"backend_type", "backend_start", "backend_xid", "backend_xmin",
+			"xact_start", "state", "state_change", "wait_event_type",
+			"wait_event", "query_start", "query_id",
+			"query",
+		}
+
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(250 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 9100, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 5001, Valid: true}, "SELECT 1",
 		))
-	// 2) Active row keep burst window open
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			now, "testdb", 7000, sql.NullInt64{},
-			"testuser", "testapp", "127.0.0.1", 5432,
-			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
-			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, now, sql.NullInt64{Int64: 7001, Valid: true},
-			"SELECT 1",
-		))
-	// 3) No rows -> finalize burst window
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns))
-	// 4) Third scan should only happen after ~CI and not during burst cadence
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(20 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns))
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
 
-	require.NoError(t, sampleCollector.Start(t.Context()))
+		require.NoError(t, sampleCollector.Start(t.Context()))
 
-	// After ~550ms not all expectations should be met because the fourth scan is delayed by ~CI
-	time.Sleep(550 * time.Millisecond)
-	require.Error(t, mock.ExpectationsWereMet())
+		start := time.Now()
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 2*time.Second, 20*time.Millisecond)
+		elapsed := time.Since(start)
+		require.GreaterOrEqual(t, elapsed, 500*time.Millisecond)
+		require.Less(t, elapsed, 600*time.Millisecond)
 
-	// Eventually all expectations should be met once CI passes.
-	require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 2*time.Second, 50*time.Millisecond)
-
-	sampleCollector.Stop()
-	require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
-}
-
-func TestRespectsDelayGreaterThanCollectInterval(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	logBuffer := syncbuffer.Buffer{}
-	lokiClient := loki_fake.NewClient(func() {})
-	defer lokiClient.Stop()
-
-	// CI is small (100ms); the first scan will be delayed to 250ms to simulate slow query/network.
-	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-		DB:                    db,
-		CollectInterval:       100 * time.Millisecond,
-		EntryHandler:          lokiClient,
-		Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-		DisableQueryRedaction: true,
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
-	require.NoError(t, err)
 
-	now := time.Now()
-	backendStartTime := now.Add(-1 * time.Hour)
-	columns := []string{
-		"now", "datname", "pid", "leader_pid",
-		"usename", "application_name", "client_addr", "client_port",
-		"backend_type", "backend_start", "backend_xid", "backend_xmin",
-		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "query_start", "query_id",
-		"query",
-	}
+	// 3) Multiple polls occur within burst window
+	t.Run("multiple_polls_within_window", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
 
-	// 1) Delayed active row to arm burst and ensure observed latency > CI
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(250 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			now, "testdb", 9100, sql.NullInt64{},
-			"testuser", "testapp", "127.0.0.1", 5432,
-			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
-			now.Add(-2*time.Minute), "active", now, sql.NullString{},
-			sql.NullString{}, now, sql.NullInt64{Int64: 5001, Valid: true},
-			"SELECT 1",
-		))
-	// 2) Next scan (any set) should only happen after respecting the long delay + chosen interval
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns))
-	// 3) Additional scans to ensure the loop keeps progressing normally thereafter
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns))
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).
-		WillDelayFor(10 * time.Millisecond).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns))
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
-	require.NoError(t, sampleCollector.Start(t.Context()))
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			CollectInterval:       3 * time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction: true,
+		})
+		require.NoError(t, err)
 
-	// Before 400ms from start, the second expectation should not yet be met because the interval was set to ~250ms
-	time.Sleep(400 * time.Millisecond)
-	require.Error(t, mock.ExpectationsWereMet())
+		now := time.Now()
+		backendStartTime := now.Add(-1 * time.Hour)
+		columns := []string{
+			"now", "datname", "pid", "leader_pid",
+			"usename", "application_name", "client_addr", "client_port",
+			"backend_type", "backend_start", "backend_xid", "backend_xmin",
+			"xact_start", "state", "state_change", "wait_event_type",
+			"wait_event", "query_start", "query_id",
+			"query",
+		}
 
-	// Eventually, all expectations should be satisfied once the loop continues.
-	require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 2*time.Second, 50*time.Millisecond)
+		for i := 0; i < 7; i++ {
+			mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 8100, sql.NullInt64{}, "testuser", "testapp", "127.0.0.1", 5432, "client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{}, now.Add(-2*time.Minute), "active", now, sql.NullString{}, sql.NullString{}, now, sql.NullInt64{Int64: 6001, Valid: true}, "SELECT 1",
+			))
+		}
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause)).WillDelayFor(5 * time.Millisecond).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows(columns))
 
-	sampleCollector.Stop()
-	require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		start := time.Now()
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 3*time.Second, 20*time.Millisecond)
+		elapsed := time.Since(start)
+		require.GreaterOrEqual(t, elapsed, 700*time.Millisecond)
+		require.Less(t, elapsed, 1000*time.Millisecond)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }

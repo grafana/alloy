@@ -239,14 +239,26 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 			elapsed := time.Since(loopStart)
 			interval := c.collectInterval
+			now := time.Now()
 			if hasActive {
-				if loopStart.After(c.burstWindowUntil) {
-					s, window := computeBurstWindow(c.collectInterval, elapsed)
+				s, window := computeBurstWindow(c.collectInterval, elapsed)
+				if now.Before(c.burstWindowUntil) && c.adaptiveBurstInterval > 0 {
+					// continue the current burst
+					interval = c.adaptiveBurstInterval
+					level.Debug(c.logger).Log("msg", "continuing the current burst window", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+				} else if window > s {
+					// start a new burst window
 					c.adaptiveBurstInterval = s
-					c.burstWindowUntil = loopStart.Add(window)
+					c.burstWindowUntil = now.Add(window)
 					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+					interval = s
+				} else {
+					// don't start a new burst, use the observed latency as interval to avoid impacting database performance
+					c.adaptiveBurstInterval = 0
+					c.burstWindowUntil = time.Time{}
+					interval = s
+					level.Debug(c.logger).Log("msg", "using the observed latency as interval to avoid impacting database performance", "interval", s)
 				}
-				interval = c.adaptiveBurstInterval
 			}
 
 			select {
