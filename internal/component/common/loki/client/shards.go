@@ -47,9 +47,9 @@ type queue struct {
 	logger  log.Logger
 	c       chan queuedBatch
 
-	mu      sync.Mutex
-	batches map[string]*batch // we need to have seperate batches per tenant
-
+	mu sync.Mutex
+	// we need to have separate batches per tenant
+	batches map[string]*batch
 }
 
 func (q *queue) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
@@ -120,7 +120,6 @@ loop:
 			}
 			break loop
 		}
-
 	}
 	return batches
 }
@@ -224,7 +223,6 @@ func (s *shards) stop() {
 	case <-s.done:
 		return
 	case <-time.After(s.cfg.Queue.DrainTimeout):
-
 	}
 
 	// perform hard shutdown

@@ -85,11 +85,7 @@ func (c *client) run() {
 				MinBackoff: 5 * time.Millisecond,
 				MaxBackoff: 50 * time.Millisecond,
 			})
-			for {
-				if c.shards.enqueue(e, 0) {
-					break
-				}
-
+			for !c.shards.enqueue(e, 0) {
 				if !backoff.Ongoing() {
 					break
 				}

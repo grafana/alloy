@@ -145,16 +145,14 @@ func (c *queueClient) appendSingleEntry(entry loki.Entry, segmentNum int) bool {
 		MinBackoff: 5 * time.Millisecond,
 		MaxBackoff: 50 * time.Millisecond,
 	})
-	for {
-		if c.shards.enqueue(entry, segmentNum) {
-			return true
-		}
-
+	for !c.shards.enqueue(entry, segmentNum) {
 		if !backoff.Ongoing() {
 			// we could not enqueue and client is stopped.
 			return false
 		}
 	}
+
+	return true
 }
 
 // Stop the client, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
