@@ -12,10 +12,10 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/natefinch/atomic"
 	uberAtomic "go.uber.org/atomic"
 
-	"github.com/grafana/alloy/internal/loki/promtail/targets/windows/win_eventlog"
-	"github.com/natefinch/atomic"
+	"github.com/grafana/alloy/internal/component/loki/source/windowsevent/win_eventlog"
 )
 
 type bookMark struct {
