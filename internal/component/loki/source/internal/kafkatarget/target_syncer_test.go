@@ -41,7 +41,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			cancel:        func() {},
 			ConsumerGroup: group,
 			logger:        log.NewNopLogger(),
-			discoverer: DiscovererFn(func(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) (Target, error) {
+			discoverer: DiscovererFn(func(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) (RunnableTarget, error) {
 				return nil, nil
 			}),
 		},
