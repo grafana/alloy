@@ -1527,7 +1527,7 @@ stage.structured_metadata {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
     }
-    regex = "label_.*"   // Adds all extracted values starting with 'label_' to structured metadata.
+    regex = "pod_.*"   // Adds all extracted values starting with 'pod_' to structured metadata.
 }
 ```
 
