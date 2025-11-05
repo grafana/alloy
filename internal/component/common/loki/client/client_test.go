@@ -21,11 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/loki/util"
 )
 
-type RemoteWriteRequest struct {
-	TenantID string
-	Request  push.PushRequest
-}
-
 var logEntries = []loki.Entry{
 	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(1, 0).UTC(), Line: "line1"}},
 	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(2, 0).UTC(), Line: "line2"}},
