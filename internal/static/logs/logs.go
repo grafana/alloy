@@ -7,9 +7,9 @@ import (
 
 	"github.com/grafana/alloy/internal/loki/promtail/config"
 	"github.com/grafana/alloy/internal/loki/promtail/server"
+	"github.com/grafana/alloy/internal/loki/promtail/tracing"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
 	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
-	"github.com/grafana/loki/v3/pkg/tracing"
 
 	"github.com/grafana/alloy/internal/useragent"
 	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates

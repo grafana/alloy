@@ -14,9 +14,9 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/loki/promtail/server"
+	"github.com/grafana/alloy/internal/loki/promtail/tracing"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
 
-	"github.com/grafana/loki/v3/pkg/tracing"
 	"github.com/grafana/loki/v3/pkg/util/flagext"
 )
 
