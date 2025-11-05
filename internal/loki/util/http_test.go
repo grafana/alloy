@@ -6,28 +6,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 func TestParseProtoReader(t *testing.T) {
-	// 47 bytes compressed and 53 uncompressed
-	req := &logproto.PreallocWriteRequest{
-		WriteRequest: logproto.WriteRequest{
-			Timeseries: []logproto.PreallocTimeseries{
-				{
-					TimeSeries: &logproto.TimeSeries{
-						Labels: []logproto.LabelAdapter{
-							{Name: "foo", Value: "bar"},
-						},
-						Samples: []logproto.LegacySample{
-							{Value: 10, TimestampMs: 1},
-							{Value: 20, TimestampMs: 2},
-							{Value: 30, TimestampMs: 3},
-						},
-					},
+	// 42 bytes compressed and 71 uncompressed
+	req := push.PushRequest{
+		Streams: []push.Stream{
+			{
+				Labels: `{foo="foo"}`,
+				Entries: []push.Entry{
+					{Line: "foo foo foo foo foo foo foo foo foo foo"},
 				},
 			},
 		},
@@ -40,22 +32,19 @@ func TestParseProtoReader(t *testing.T) {
 		expectErr      bool
 		useBytesBuffer bool
 	}{
-		{"rawSnappy", util.RawSnappy, 53, false, false},
-		{"noCompression", util.NoCompression, 53, false, false},
+		{"rawSnappy", util.RawSnappy, 71, false, false},
+		{"noCompression", util.NoCompression, 71, false, false},
 		{"too big rawSnappy", util.RawSnappy, 10, true, false},
-		{"too big decoded rawSnappy", util.RawSnappy, 50, true, false},
 		{"too big noCompression", util.NoCompression, 10, true, false},
 
-		{"bytesbuffer rawSnappy", util.RawSnappy, 53, false, true},
-		{"bytesbuffer noCompression", util.NoCompression, 53, false, true},
+		{"bytesbuffer rawSnappy", util.RawSnappy, 71, false, true},
+		{"bytesbuffer noCompression", util.NoCompression, 71, false, true},
 		{"bytesbuffer too big rawSnappy", util.RawSnappy, 10, true, true},
-		{"bytesbuffer too big decoded rawSnappy", util.RawSnappy, 50, true, true},
 		{"bytesbuffer too big noCompression", util.NoCompression, 10, true, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			assert.Nil(t, util.SerializeProtoResponse(w, req, tt.compression))
-			var fromWire logproto.PreallocWriteRequest
+			assert.Nil(t, util.SerializeProtoResponse(w, &req, tt.compression))
 
 			reader := w.Result().Body
 			if tt.useBytesBuffer {
@@ -65,13 +54,14 @@ func TestParseProtoReader(t *testing.T) {
 				reader = bytesBuffered{Buffer: &buf}
 			}
 
+			var fromWire push.PushRequest
 			err := util.ParseProtoReader(context.Background(), reader, 0, tt.maxSize, &fromWire, tt.compression)
 			if tt.expectErr {
 				assert.NotNil(t, err)
 				return
 			}
 			assert.Nil(t, err)
-			assert.Equal(t, req, &fromWire)
+			assert.Equal(t, req, fromWire)
 		})
 	}
 }

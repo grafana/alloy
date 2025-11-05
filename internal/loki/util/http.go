@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -143,11 +142,10 @@ func tryBufferFromReader(reader io.Reader) (*bytes.Buffer, bool) {
 	return nil, false
 }
 
-// SerializeProtoResponse serializes a protobuf response into an HTTP response.
-func SerializeProtoResponse(w http.ResponseWriter, resp proto.Message, compression CompressionType) error {
+// SerializeProto serializes a protobuf response into writer
+func SerializeProto(w io.Writer, resp proto.Message, compression CompressionType) error {
 	data, err := proto.Marshal(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return fmt.Errorf("error marshaling proto response: %v", err)
 	}
 
@@ -158,7 +156,6 @@ func SerializeProtoResponse(w http.ResponseWriter, resp proto.Message, compressi
 	}
 
 	if _, err := w.Write(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return fmt.Errorf("error sending proto response: %v", err)
 	}
 	return nil
