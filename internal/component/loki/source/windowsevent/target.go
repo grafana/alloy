@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -113,7 +112,7 @@ func (t *Target) loop() {
 			if err != nil {
 				if err != win_eventlog.ERROR_NO_MORE_ITEMS {
 					t.err = err
-					level.Error(util_log.Logger).Log("msg", "error fetching events", "err", err)
+					level.Error(t.logger).Log("msg", "error fetching events", "err", err)
 				}
 				break loop
 			}
@@ -126,7 +125,7 @@ func (t *Target) loop() {
 				err = t.bm.update(handles[len(handles)-1])
 				if err != nil {
 					t.err = err
-					level.Error(util_log.Logger).Log("msg", "error updating in-memory bookmark", "err", err)
+					level.Error(t.logger).Log("msg", "error updating in-memory bookmark", "err", err)
 				}
 			}
 			win_eventlog.Close(handles)
@@ -162,14 +161,14 @@ func (t *Target) updateBookmark(bookmarkSyncPeriod time.Duration) {
 func (t *Target) saveBookmarkPosition() {
 	if err := t.bm.save(); err != nil {
 		t.err = err
-		level.Error(util_log.Logger).Log("msg", "error saving bookmark", "err", err)
+		level.Error(t.logger).Log("msg", "error saving bookmark", "err", err)
 	}
 }
 
 // renderEntries renders Loki entries from windows event logs
 func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 	res := make([]loki.Entry, 0, len(events))
-	lbs := labels.NewBuilder(nil)
+	lbs := labels.NewBuilder(labels.EmptyLabels())
 	for _, event := range events {
 		entry := loki.Entry{
 			Labels: make(model.LabelSet),
@@ -198,12 +197,13 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 		// apply relabelings.
 		processed, _ := relabel.Process(lbs.Labels(), t.relabelConfig...)
 
-		for _, lbl := range processed {
-			if strings.HasPrefix(lbl.Name, "__") {
-				continue
+		processed.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, "__") {
+				return
 			}
-			entry.Labels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-		}
+			entry.Labels[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+
+		})
 
 		line, err := formatLine(t.cfg, event)
 		if err != nil {
