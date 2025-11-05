@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/loki/promtail/client"
-
 	lokiutil "github.com/grafana/alloy/internal/loki/util"
 )
 

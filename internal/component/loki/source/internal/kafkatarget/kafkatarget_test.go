@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/IBM/sarama"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 // Consumergroup handler

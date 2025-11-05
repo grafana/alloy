@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-const (
-	FilenameLabel = "filename"
-)
-
 // Config describes behavior for Target
 type Config struct {
 	SyncPeriod time.Duration `mapstructure:"sync_period" yaml:"sync_period"`

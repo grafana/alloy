@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 
-	promtail_config "github.com/grafana/alloy/internal/loki/promtail/config"
-	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	prom_config "github.com/prometheus/prometheus/config"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -15,7 +13,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
 	"github.com/grafana/alloy/internal/converter/internal/staticconvert/internal/build"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/file"
+	promtail_config "github.com/grafana/alloy/internal/loki/promtail/config"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
+	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/static/config"
 	"github.com/grafana/alloy/internal/static/logs"
 	"github.com/grafana/alloy/syntax/scanner"

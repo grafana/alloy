@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/target"
 	"github.com/grafana/go-gelf/v2/gelf"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -21,6 +19,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -160,33 +159,6 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 
 func secondsToUnixTimestamp(seconds float64) time.Time {
 	return time.Unix(0, int64(seconds*float64(time.Second)))
-}
-
-// Type returns GelfTargetType.
-func (t *Target) Type() target.TargetType {
-	return target.GelfTargetType
-}
-
-// Ready indicates whether or not the gelf target is ready to be read from.
-func (t *Target) Ready() bool {
-	return true
-}
-
-// DiscoveredLabels returns the set of labels discovered by the gelf target, which
-// is always nil. Implements Target.
-func (t *Target) DiscoveredLabels() model.LabelSet {
-	return nil
-}
-
-// Labels returns the set of labels that statically apply to all log entries
-// produced by the GelfTarget.
-func (t *Target) Labels() model.LabelSet {
-	return t.config.Labels
-}
-
-// Details returns target-specific details.
-func (t *Target) Details() interface{} {
-	return map[string]string{}
 }
 
 // Stop shuts down the GelfTarget.

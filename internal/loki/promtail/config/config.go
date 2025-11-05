@@ -9,11 +9,11 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/loki/promtail/client"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
 	"github.com/grafana/alloy/internal/loki/promtail/limit"
 	"github.com/grafana/alloy/internal/loki/promtail/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/loki/promtail/server"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/file"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
 
 	"github.com/grafana/loki/v3/pkg/tracing"

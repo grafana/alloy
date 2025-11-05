@@ -13,7 +13,6 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/target"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -283,7 +282,7 @@ func (ts *TargetSyncer) NewTarget(session sarama.ConsumerGroupSession, claim sar
 	if len(labelOut) == 0 {
 		level.Warn(ts.logger).Log("msg", "dropping target", "reason", "no labels", "details", details, "discovered_labels", discoveredLabels.String())
 		return &runnableDroppedTarget{
-			Target: target.NewDroppedTarget("dropping target, no labels", discoveredLabels),
+			Target: newDroppedTarget("dropping target, no labels", discoveredLabels),
 			runFn: func() {
 				for range claim.Messages() {
 				}
