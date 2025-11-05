@@ -48,7 +48,7 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	// Although otel's receiver already initializes defaults of downstream config,
-	// let's do it as well to avoid breaking changes if defauls are changed in upstream.
+	// let's do it as well to avoid breaking changes if defaults are changed in upstream.
 	if args.TimestampField == "" {
 		args.TimestampField = "EdgeStartTimestamp"
 	}
