@@ -16,7 +16,6 @@ import (
 	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/loki/promtail/targets/target"
 	"github.com/grafana/loki/pkg/push"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
@@ -348,37 +347,6 @@ func (t *JournalTarget) formatter(entry *sdjournal.JournalEntry) (string, error)
 		},
 	}
 	return journalEmptyStr, nil
-}
-
-// Type returns JournalTargetType.
-func (t *JournalTarget) Type() target.TargetType {
-	return target.JournalTargetType
-}
-
-// Ready indicates whether or not the journal is ready to be
-// read from.
-func (t *JournalTarget) Ready() bool {
-	return true
-}
-
-// DiscoveredLabels returns the set of labels discovered by
-// the JournalTarget, which is always nil. Implements
-// Target.
-func (t *JournalTarget) DiscoveredLabels() model.LabelSet {
-	return nil
-}
-
-// Labels returns the set of labels that statically apply to
-// all log entries produced by the JournalTarget.
-func (t *JournalTarget) Labels() model.LabelSet {
-	return t.labels
-}
-
-// Details returns target-specific details.
-func (t *JournalTarget) Details() interface{} {
-	return map[string]string{
-		"position": t.positions.GetString(t.positionPath, ""),
-	}
 }
 
 // Stop shuts down the JournalTarget.

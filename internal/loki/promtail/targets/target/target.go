@@ -60,11 +60,6 @@ type Target interface {
 	Details() interface{}
 }
 
-// IsDropped tells if a target has been dropped
-func IsDropped(t Target) bool {
-	return t.Type() == DroppedTargetType
-}
-
 // droppedTarget is a target that has been dropped
 type droppedTarget struct {
 	discoveredLabels model.LabelSet
