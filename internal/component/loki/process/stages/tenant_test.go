@@ -14,7 +14,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/featuregate"
-	lokiutil "github.com/grafana/alloy/internal/loki/util"
 )
 
 var testTenantAlloyExtractedData = `
@@ -159,25 +158,25 @@ func TestTenantStage_Process(t *testing.T) {
 			config:         TenantConfig{Source: "tenant_id"},
 			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
 			inputExtracted: map[string]interface{}{},
-			expectedTenant: lokiutil.StringRef("foo"),
+			expectedTenant: ptr("foo"),
 		},
 		"should set the tenant if the source field is defined in the extracted map": {
 			config:         TenantConfig{Source: "tenant_id"},
 			inputLabels:    model.LabelSet{},
 			inputExtracted: map[string]interface{}{"tenant_id": "bar"},
-			expectedTenant: lokiutil.StringRef("bar"),
+			expectedTenant: ptr("bar"),
 		},
 		"should set the tenant if the label is defined in the label map": {
 			config:         TenantConfig{Label: "tenant_id"},
 			inputLabels:    model.LabelSet{"tenant_id": "bar"},
 			inputExtracted: map[string]interface{}{},
-			expectedTenant: lokiutil.StringRef("bar"),
+			expectedTenant: ptr("bar"),
 		},
 		"should override the tenant if the source field is defined in the extracted map": {
 			config:         TenantConfig{Source: "tenant_id"},
 			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
 			inputExtracted: map[string]interface{}{"tenant_id": "bar"},
-			expectedTenant: lokiutil.StringRef("bar"),
+			expectedTenant: ptr("bar"),
 		},
 		"should not set the tenant if the source field data type can't be converted to string": {
 			config:         TenantConfig{Source: "tenant_id"},
@@ -189,13 +188,13 @@ func TestTenantStage_Process(t *testing.T) {
 			config:         TenantConfig{Value: "bar"},
 			inputLabels:    model.LabelSet{},
 			inputExtracted: map[string]interface{}{},
-			expectedTenant: lokiutil.StringRef("bar"),
+			expectedTenant: ptr("bar"),
 		},
 		"should override the tenant with the configured static value": {
 			config:         TenantConfig{Value: "bar"},
 			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
 			inputExtracted: map[string]interface{}{},
-			expectedTenant: lokiutil.StringRef("bar"),
+			expectedTenant: ptr("bar"),
 		},
 	}
 
