@@ -80,7 +80,6 @@ func (c *client) run() {
 		case <-c.ctx.Done():
 			return
 		case e := <-c.entries:
-
 			backoff := backoff.New(c.ctx, backoff.Config{
 				MinBackoff: 5 * time.Millisecond,
 				MaxBackoff: 50 * time.Millisecond,

@@ -30,7 +30,7 @@ type queuedBatch struct {
 }
 
 func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
-	capacity := cfg.Queue.Capacity / cfg.BatchSize
+	capacity := max(cfg.Queue.Capacity/max(cfg.BatchSize, 1), 1)
 	return &queue{
 		cfg:     cfg,
 		metrics: metrics,
@@ -249,18 +249,20 @@ func (s *shards) runShard(q *queue) {
 		}
 	}()
 
-	select {
-	case <-s.ctx.Done():
-		return
-	case b, ok := <-q.Chan():
-		if !ok {
+	for {
+		select {
+		case <-s.ctx.Done():
 			return
-		}
-		s.sendBatch(b.TenantID, b.Batch)
-	case <-maxWaitCheck.C:
-		for _, b := range q.Batches() {
+		case b, ok := <-q.Chan():
+			if !ok {
+				return
+			}
 			s.sendBatch(b.TenantID, b.Batch)
-			b.Batch.reportAsSentData(s.marketHandler)
+		case <-maxWaitCheck.C:
+			for _, b := range q.Batches() {
+				s.sendBatch(b.TenantID, b.Batch)
+				b.Batch.reportAsSentData(s.marketHandler)
+			}
 		}
 	}
 }
@@ -311,10 +313,12 @@ func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
 
 func (s *shards) sendBatch(tenantID string, batch *batch) {
 	buf, entriesCount, err := batch.encode()
+
 	if err != nil {
 		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
 		return
 	}
+
 	bufBytes := float64(len(buf))
 	s.metrics.encodedBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
 

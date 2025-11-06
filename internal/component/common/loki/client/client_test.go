@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -464,12 +463,7 @@ func TestClient_Handle(t *testing.T) {
 				receivedReqs = append(receivedReqs, req)
 			}
 
-			// Due to implementation details (maps iteration ordering is random) we just check
-			// that the expected requests are equal to the received requests, without checking
-			// the exact order which is not guaranteed in case of multi-tenant
-			// require.ElementsMatch(t, testData.expectedReqs, receivedReqs)
-			fmt.Printf("Received reqs: %#v\n", receivedReqs)
-			fmt.Printf("Expected reqs: %#v\n", testData.expectedReqs)
+			assert.ElementsMatch(t, testData.expectedReqs, receivedReqs)
 
 			expectedMetrics := strings.ReplaceAll(testData.expectedMetrics, "__HOST__", serverURL.Host)
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total", "loki_write_mutated_entries_total", "loki_write_mutated_bytes_total")
@@ -477,6 +471,7 @@ func TestClient_Handle(t *testing.T) {
 		})
 	}
 }
+<<<<<<< HEAD
 
 func TestClient_StopNow(t *testing.T) {
 	cases := []struct {
@@ -623,3 +618,5 @@ func TestClient_StopNow(t *testing.T) {
 		})
 	}
 }
+=======
+>>>>>>> 0750e5b15 (Fix shard loop and update tests)
