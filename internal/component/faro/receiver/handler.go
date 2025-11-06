@@ -73,7 +73,7 @@ func (h *handler) Update(args ServerArguments) {
 		if args.RateLimiting.Strategy != RateLimitingStrategyPerApp {
 			h.appRateLimiter = nil
 		} else if h.appRateLimiter == nil {
-			h.appRateLimiter = NewAppRateLimitingConfig(h.args.RateLimiting.Rate, int(h.args.RateLimiting.BurstSize), h.reg)
+			h.appRateLimiter = NewAppRateLimitingConfig(args.RateLimiting.Rate, int(args.RateLimiting.BurstSize), h.reg)
 		}
 	} else {
 		// Set to infinite rate limit.
@@ -111,14 +111,20 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
-	var p payload.Payload
+	// Check global rate limiting (if enabled)
+	if !h.checkGlobalRateLimit() {
+		http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
 
+	var p payload.Payload
 	if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if !h.isWithinRateLimits(p) {
+	// Check per-app rate limiting (if enabled)
+	if !h.checkPerAppRateLimit(p) {
 		http.Error(rw, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
@@ -126,13 +132,20 @@ func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 	h.processRequest(rw, req, p)
 }
 
-func (h *handler) isWithinRateLimits(p payload.Payload) bool {
-	if !h.args.RateLimiting.Enabled {
-		return true
+// checkGlobalRateLimit checks if the global rate limit allows a request.
+// Global rate limiting is applied by default if RateLimiting.Enabled is true.
+func (h *handler) checkGlobalRateLimit() bool {
+	if h.args.RateLimiting.Enabled && h.args.RateLimiting.Strategy == RateLimitingStrategyGlobal {
+		return h.rateLimiter.Allow()
 	}
 
-	switch h.args.RateLimiting.Strategy {
-	case RateLimitingStrategyPerApp:
+	// meaning that the global rate limit is not set
+	return true
+}
+
+// checkPerAppRateLimit checks if the per-app rate limit allows a request.
+func (h *handler) checkPerAppRateLimit(p payload.Payload) bool {
+	if h.args.RateLimiting.Enabled && h.args.RateLimiting.Strategy == RateLimitingStrategyPerApp {
 		app, env := h.extractAppEnv(p)
 		allowed := h.appRateLimiter.Allow(app, env)
 		if !allowed {
@@ -142,11 +155,12 @@ func (h *handler) isWithinRateLimits(p payload.Payload) bool {
 				"env", env,
 			)
 		}
+
 		return allowed
-	default:
-		// Fallback to global rate limiter with infinite rate if not set.
-		return h.rateLimiter.Allow()
 	}
+
+	// meaning that the per-app rate limit is not set
+	return true
 }
 
 func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p payload.Payload) {

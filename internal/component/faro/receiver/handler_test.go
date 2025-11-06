@@ -323,6 +323,7 @@ func TestRateLimiter(t *testing.T) {
 	h.Update(ServerArguments{
 		RateLimiting: RateLimitingArguments{
 			Enabled:   true,
+			Strategy:  RateLimitingStrategyGlobal, // Default is Global via SetToDefault()
 			Rate:      1,
 			BurstSize: 2,
 		},
