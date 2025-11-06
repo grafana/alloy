@@ -94,58 +94,6 @@ type ServiceDiscoveryConfig struct {
 	TritonSDConfigs []*triton.SDConfig `mapstructure:"triton_sd_configs,omitempty" yaml:"triton_sd_configs,omitempty"`
 }
 
-func (cfg ServiceDiscoveryConfig) Configs() (res discovery.Configs) {
-	if x := cfg.StaticConfigs; len(x) > 0 {
-		res = append(res, x)
-	}
-	for _, x := range cfg.DNSSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.FileSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.ConsulSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.ConsulAgentSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.DigitalOceanSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.DockerSwarmSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.ServersetSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.NerveSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.MarathonSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.KubernetesSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.GCESDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.EC2SDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.OpenstackSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.AzureSDConfigs {
-		res = append(res, x)
-	}
-	for _, x := range cfg.TritonSDConfigs {
-		res = append(res, x)
-	}
-	return res
-}
-
 // JournalTargetConfig describes systemd journal records to scrape.
 type JournalTargetConfig struct {
 	// MaxAge determines the oldest relative time from process start that will

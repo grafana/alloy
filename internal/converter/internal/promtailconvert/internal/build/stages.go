@@ -12,9 +12,9 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
+	promtailmetric "github.com/grafana/alloy/internal/loki/promtail/metric"
 	promtailstages "github.com/grafana/alloy/internal/loki/promtail/stages"
 	"github.com/grafana/alloy/internal/loki/util/flagext"
-	promtailmetric "github.com/grafana/loki/v3/clients/pkg/logentry/metric"
 )
 
 func convertStage(st interface{}, diags *diag.Diagnostics) (stages.StageConfig, bool) {
@@ -488,7 +488,7 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 	// Create metric according to type
 	switch strings.ToLower(pMetric.MetricType) {
 	case promtailstages.MetricTypeCounter:
-		pCounter, err := promtailmetric.NewCounters(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseCounterConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create counter metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -499,13 +499,13 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:          defaultEmpty(pMetric.Source),
 			Prefix:          pMetric.Prefix,
 			MaxIdle:         maxIdle,
-			Value:           defaultEmpty(pCounter.Cfg.Value),
-			Action:          pCounter.Cfg.Action,
-			MatchAll:        defaultFalse(pCounter.Cfg.MatchAll),
-			CountEntryBytes: defaultFalse(pCounter.Cfg.CountBytes),
+			Value:           defaultEmpty(cfg.Value),
+			Action:          cfg.Action,
+			MatchAll:        defaultFalse(cfg.MatchAll),
+			CountEntryBytes: defaultFalse(cfg.CountBytes),
 		}
 	case promtailstages.MetricTypeGauge:
-		pGauge, err := promtailmetric.NewGauges(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseGaugeConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create gauge metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -516,11 +516,11 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:      defaultEmpty(pMetric.Source),
 			Prefix:      pMetric.Prefix,
 			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(pGauge.Cfg.Value),
-			Action:      pGauge.Cfg.Action,
+			Value:       defaultEmpty(cfg.Value),
+			Action:      cfg.Action,
 		}
 	case promtailstages.MetricTypeHistogram:
-		pHistogram, err := promtailmetric.NewHistograms(name, pMetric.Description, pMetric.Config, int64(maxIdle.Seconds()))
+		cfg, err := promtailmetric.ParseHistogramConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create histogram metric process stage: %v", err))
 			return stages.MetricConfig{}, false
@@ -531,8 +531,8 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			Source:      defaultEmpty(pMetric.Source),
 			Prefix:      pMetric.Prefix,
 			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(pHistogram.Cfg.Value),
-			Buckets:     pHistogram.Cfg.Buckets,
+			Value:       defaultEmpty(cfg.Value),
+			Buckets:     cfg.Buckets,
 		}
 	}
 	return fMetric, true

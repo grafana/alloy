@@ -6,11 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
 )
 
 func Test_Encoding_Series(t *testing.T) {
@@ -63,43 +62,43 @@ func Test_Encoding_Entries(t *testing.T) {
 				RefEntries: []RefEntries{
 					{
 						Ref: 456,
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
 								Line:      "first",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "a",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "a"},
+								},
 							},
 							{
 								Timestamp: time.Unix(2000, 0),
 								Line:      "second",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "456",
-									"userID", "b",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "456"},
+									{Name: "userID", Value: "b"},
+								},
 							},
 						},
 					},
 					{
 						Ref: 789,
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
 								Line:      "third",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "789",
-									"userID", "c",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "789"},
+									{Name: "userID", Value: "c"},
+								},
 							},
 							{
 								Timestamp: time.Unix(4000, 0),
 								Line:      "fourth",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "d",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "d"},
+								},
 							},
 						},
 					},
@@ -116,44 +115,44 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
 								Line:      "first",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "a",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "a"},
+								},
 							},
 							{
 								Timestamp: time.Unix(2000, 0),
 								Line:      "second",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "456",
-									"userID", "b",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "456"},
+									{Name: "userID", Value: "b"},
+								},
 							},
 						},
 					},
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
 								Line:      "third",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "789",
-									"userID", "c",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "789"},
+									{Name: "userID", Value: "c"},
+								},
 							},
 							{
 								Timestamp: time.Unix(4000, 0),
 								Line:      "fourth",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "d",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "d"},
+								},
 							},
 						},
 					},
@@ -170,44 +169,44 @@ func Test_Encoding_Entries(t *testing.T) {
 					{
 						Ref:     456,
 						Counter: 1, // v2 uses counter for WAL replay
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(1000, 0),
 								Line:      "first",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "a",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "a"},
+								},
 							},
 							{
 								Timestamp: time.Unix(2000, 0),
 								Line:      "second",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "456",
-									"userID", "b",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "456"},
+									{Name: "userID", Value: "b"},
+								},
 							},
 						},
 					},
 					{
 						Ref:     789,
 						Counter: 2, // v2 uses counter for WAL replay
-						Entries: []logproto.Entry{
+						Entries: []push.Entry{
 							{
 								Timestamp: time.Unix(3000, 0),
 								Line:      "third",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "789",
-									"userID", "c",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "789"},
+									{Name: "userID", Value: "c"},
+								},
 							},
 							{
 								Timestamp: time.Unix(4000, 0),
 								Line:      "fourth",
-								StructuredMetadata: logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-									"traceID", "123",
-									"userID", "d",
-								)),
+								StructuredMetadata: push.LabelsAdapter{
+									{Name: "traceID", Value: "123"},
+									{Name: "userID", Value: "d"},
+								},
 							},
 						},
 					},
@@ -240,18 +239,18 @@ func Test_Encoding_Entries(t *testing.T) {
 func Benchmark_EncodeEntries(b *testing.B) {
 	for _, withStructuredMetadata := range []bool{true, false} {
 		b.Run(fmt.Sprintf("structuredMetadata=%t", withStructuredMetadata), func(b *testing.B) {
-			var entries []logproto.Entry
+			var entries []push.Entry
 			for i := int64(0); i < 10000; i++ {
-				entry := logproto.Entry{
+				entry := push.Entry{
 					Timestamp: time.Unix(0, i),
 					Line:      fmt.Sprintf("long line with a lot of data like a log %d", i),
 				}
 
 				if withStructuredMetadata {
-					entry.StructuredMetadata = logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-						"traceID", strings.Repeat(fmt.Sprintf("%d", i), 10),
-						"userID", strings.Repeat(fmt.Sprintf("%d", i), 10),
-					))
+					entry.StructuredMetadata = push.LabelsAdapter{
+						{Name: "traceID", Value: strings.Repeat(fmt.Sprintf("%d", i), 10)},
+						{Name: "userID", Value: strings.Repeat(fmt.Sprintf("%d", i), 10)},
+					}
 				}
 
 				entries = append(entries, entry)
@@ -285,18 +284,18 @@ func Benchmark_EncodeEntries(b *testing.B) {
 func Benchmark_DecodeWAL(b *testing.B) {
 	for _, withStructuredMetadata := range []bool{true, false} {
 		b.Run(fmt.Sprintf("structuredMetadata=%t", withStructuredMetadata), func(b *testing.B) {
-			var entries []logproto.Entry
+			var entries []push.Entry
 			for i := int64(0); i < 10000; i++ {
-				entry := logproto.Entry{
+				entry := push.Entry{
 					Timestamp: time.Unix(0, i),
 					Line:      fmt.Sprintf("long line with a lot of data like a log %d", i),
 				}
 
 				if withStructuredMetadata {
-					entry.StructuredMetadata = logproto.FromLabelsToLabelAdapters(labels.FromStrings(
-						"traceID", strings.Repeat(fmt.Sprintf("%d", i), 10),
-						"userID", strings.Repeat(fmt.Sprintf("%d", i), 10),
-					))
+					entry.StructuredMetadata = push.LabelsAdapter{
+						{Name: "traceID", Value: strings.Repeat(fmt.Sprintf("%d", i), 10)},
+						{Name: "userID", Value: strings.Repeat(fmt.Sprintf("%d", i), 10)},
+					}
 				}
 
 				entries = append(entries, entry)

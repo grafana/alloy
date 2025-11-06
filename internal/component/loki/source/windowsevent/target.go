@@ -74,9 +74,9 @@ func NewTarget(
 
 	var subsHandle win_eventlog.EvtHandle
 	if bm.isNew {
-		subsHandle, err = win_eventlog.EvtSubscribe(cfg.EventlogName, cfg.Query)
+		subsHandle, err = win_eventlog.EvtSubscribe(logger, cfg.EventlogName, cfg.Query)
 	} else {
-		subsHandle, err = win_eventlog.EvtSubscribeWithBookmark(cfg.EventlogName, cfg.Query, bm.handle)
+		subsHandle, err = win_eventlog.EvtSubscribeWithBookmark(logger, cfg.EventlogName, cfg.Query, bm.handle)
 	}
 
 	if err != nil {
