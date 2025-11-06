@@ -52,7 +52,4 @@ loki.write "enriched" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
   }
-  external_labels = {
-    test_name = "network_device_enriched",
-  }
 }

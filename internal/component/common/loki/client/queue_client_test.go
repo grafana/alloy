@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -22,10 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
-
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
 type testCase struct {
@@ -123,20 +121,19 @@ func TestQueueClient(t *testing.T) {
 
 			// Instance the client
 			cfg := Config{
-				URL:            serverURL,
-				BatchWait:      tc.batchWait,
-				BatchSize:      tc.batchSize,
-				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-				ExternalLabels: lokiflag.LabelSet{},
-				Timeout:        1 * time.Second,
-				TenantID:       "",
-				Queue:          tc.queueConfig,
+				URL:           serverURL,
+				BatchWait:     tc.batchWait,
+				BatchSize:     tc.batchSize,
+				Client:        config.HTTPClientConfig{},
+				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+				Timeout:       1 * time.Second,
+				TenantID:      "",
+				Queue:         tc.queueConfig,
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, nilMarkerHandler{})
+			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, nilMarkerHandler{})
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -150,17 +147,16 @@ func TestQueueClient(t *testing.T) {
 				mod := i % tc.numSeries
 				qc.StoreSeries([]record.RefSeries{
 					{
-						Labels: labels.Labels{{
-							Name:  "app",
-							Value: fmt.Sprintf("test-%d", mod),
-						}},
+						Labels: labels.New(
+							labels.Label{Name: "app", Value: fmt.Sprintf("test-%d", mod)},
+						),
 						Ref: chunks.HeadSeriesRef(mod),
 					},
 				}, 0)
 
 				_ = qc.AppendEntries(wal.RefEntries{
 					Ref: chunks.HeadSeriesRef(mod),
-					Entries: []logproto.Entry{{
+					Entries: []push.Entry{{
 						Timestamp: time.Now(),
 						Line:      l,
 					}},
@@ -265,14 +261,13 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	// Instance the client
 	cfg := Config{
-		URL:            serverURL,
-		BatchWait:      time.Millisecond * 50,
-		BatchSize:      10,
-		Client:         config.HTTPClientConfig{},
-		BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-		ExternalLabels: lokiflag.LabelSet{},
-		Timeout:        1 * time.Second,
-		TenantID:       "",
+		URL:           serverURL,
+		BatchWait:     time.Millisecond * 50,
+		BatchSize:     10,
+		Client:        config.HTTPClientConfig{},
+		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+		Timeout:       1 * time.Second,
+		TenantID:      "",
 		Queue: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,
@@ -281,7 +276,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, 0, false, logger, mhFactory(b))
+	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -297,18 +292,17 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 			seriesId := j % bc.numSeries
 			qc.StoreSeries([]record.RefSeries{
 				{
-					Labels: labels.Labels{{
-						Name: "app",
+					Labels: labels.New(
 						// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
-						Value: fmt.Sprintf("series-%d", seriesId),
-					}},
+						labels.Label{Name: "app", Value: fmt.Sprintf("series-%d", seriesId)},
+					),
 					Ref: chunks.HeadSeriesRef(seriesId),
 				},
 			}, 0)
 
 			_ = qc.AppendEntries(wal.RefEntries{
 				Ref: chunks.HeadSeriesRef(seriesId),
-				Entries: []logproto.Entry{{
+				Entries: []push.Entry{{
 					Timestamp: time.Now(),
 					Line:      l,
 				}},
@@ -360,14 +354,13 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 
 	// Instance the client
 	cfg := Config{
-		URL:            serverURL,
-		BatchWait:      time.Millisecond * 50,
-		BatchSize:      10,
-		Client:         config.HTTPClientConfig{},
-		BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
-		ExternalLabels: lokiflag.LabelSet{},
-		Timeout:        1 * time.Second,
-		TenantID:       "",
+		URL:           serverURL,
+		BatchWait:     time.Millisecond * 50,
+		BatchSize:     10,
+		Client:        config.HTTPClientConfig{},
+		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
+		Timeout:       1 * time.Second,
+		TenantID:      "",
 		Queue: QueueConfig{
 			Capacity:     1000, // queue size of 100
 			DrainTimeout: time.Second * 10,
@@ -377,7 +370,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, 0, 0, false, logger)
+	qc, err := New(m, cfg, 0, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -396,7 +389,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
 				},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      l,
 				},

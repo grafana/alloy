@@ -369,9 +369,8 @@ func TestQueryTables(t *testing.T) {
 
 			lokiClient := loki_fake.NewClient(func() {})
 
-			collector, err := NewQueryTables(QueryTablesArguments{
+			collector, err := NewQueryDetails(QueryDetailsArguments{
 				DB:              db,
-				InstanceKey:     "mysql-db",
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
 				Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -430,9 +429,8 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -496,9 +494,8 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
@@ -559,9 +556,8 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiClient := loki_fake.NewClient(func() {})
 
-		collector, err := NewQueryTables(QueryTablesArguments{
+		collector, err := NewQueryDetails(QueryDetailsArguments{
 			DB:              db,
-			InstanceKey:     "mysql-db",
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),

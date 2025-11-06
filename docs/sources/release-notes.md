@@ -14,7 +14,7 @@ For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links 
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
 
-## v1.11 (unreleased)
+## v1.11
 
 ### Breaking changes due to major version upgrade of Prometheus
 
@@ -33,6 +33,27 @@ Prometheus dependency had a major version upgrade from v2.55.1 to v3.4.2.
   The recommended way to deal with this change is to fix references to integer `le` and `quantile` label values, but otherwise do nothing and accept that some queries that span the transition time will produce inaccurate or unexpected results.
 
 See the upstream [Prometheus v3 migration guide](https://prometheus.io/docs/prometheus/3.4/migration/) for more details.
+
+### Breaking changes in `prometheus.scrape`
+
+`scrape_native_histograms` attribute for `prometheus.scrape` is now set to `false`, whereas in previous versions of Alloy it would default to `true`. 
+This means that it is no longer enough to just configure `scrape_protocols` to start with `PrometheusProto` to scrape native histograms - `scrape_native_histograms` has to be enabled. 
+If `scrape_native_histograms` is enabled, `scrape_protocols` will automatically be configured correctly for you to include `PrometheusProto`.
+If you configure it explicitly, Alloy will validate that `PrometheusProto` is in the `scrape_protocols` list.
+
+In previous versions of Alloy configuring `scrape_protocols` to start with `PrometheusProto` was enough to start scraping native histograms because `scrape_native_histogram` defaulted to true:
+```alloy
+prometheus.scrape "scrape" {
+  scrape_protocols = ["PrometheusProto"]
+}
+```
+
+Now it has to be enabled and `scrape_protocols` can be omitted:
+```alloy
+prometheus.scrape "scrape" {
+  scrape_native_histograms = true
+}
+```
 
 ### Breaking changes in `prometheus.exporter.windows`
 

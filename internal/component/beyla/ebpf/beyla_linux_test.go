@@ -13,14 +13,15 @@ import (
 
 	"github.com/grafana/beyla/v2/pkg/beyla"
 	"github.com/grafana/beyla/v2/pkg/config"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/attributes"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/debug"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/export/instrumentations"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/filter"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/kubeflags"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/services"
-	"github.com/open-telemetry/opentelemetry-ebpf-instrumentation/pkg/transform"
+	beylaSvc "github.com/grafana/beyla/v2/pkg/services"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/obi/pkg/export/attributes"
+	"go.opentelemetry.io/obi/pkg/export/debug"
+	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/filter"
+	"go.opentelemetry.io/obi/pkg/kubeflags"
+	"go.opentelemetry.io/obi/pkg/services"
+	"go.opentelemetry.io/obi/pkg/transform"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -55,10 +56,11 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			}
 		}
 		discovery {
-			services {
+			instrument {
 				name = "test"
 				namespace = "default"
 				open_ports = "80,443"
+				exe_path = "/usr/bin/app*"
 				kubernetes {
 					namespace = "default"
 				}
@@ -68,10 +70,11 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 					arg = "0.5"
 				}
 			}
-			services {
+			instrument {
 				name = "test2"
 				namespace = "default"
-				open_ports = "80,443"
+				open_ports = "8080"
+				exe_path = "/opt/*/bin/service"
 				kubernetes {
 					pod_labels = {
 						test = "test",
@@ -79,9 +82,14 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 				}
 				exports = ["metrics"]
 			}
-			exclude_services {
-				exe_path = "test3"
+			exclude_instrument {
+				exe_path = "/usr/bin/test*"
 				namespace = "default"
+			}
+			survey {
+				exe_path = "/app/microservice-*"
+				name = "microservice"
+				exports = ["metrics", "traces"]
 			}
 		}
 		metrics {
@@ -138,11 +146,13 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
 	cfg, err := args.Convert()
 	require.NoError(t, err)
+
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
 	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
 	require.Equal(t, "*", cfg.Routes.WildcardChar)
+
 	require.Equal(t, kubeflags.EnabledTrue, cfg.Attributes.Kubernetes.Enable)
 	require.Equal(t, 15*time.Second, cfg.Attributes.Kubernetes.InformersSyncTimeout)
 	require.Equal(t, 30*time.Minute, cfg.Attributes.Kubernetes.InformersResyncPeriod)
@@ -154,6 +164,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, []string{"*"}, sel.Include)
 	require.Equal(t, []string{"db_statement"}, sel.Exclude)
+
 	require.True(t, cfg.NetworkFlows.Enable)
 	require.Equal(t, "0.0.0.0", cfg.NetworkFlows.AgentIP)
 	require.Equal(t, []string{"eth0"}, cfg.NetworkFlows.Interfaces)
@@ -167,19 +178,32 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "local", cfg.NetworkFlows.AgentIPIface)
 	require.Equal(t, "ipv4", cfg.NetworkFlows.AgentIPType)
 	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
-	require.Len(t, cfg.Discovery.Services, 2)
-	require.Equal(t, "test", cfg.Discovery.Services[0].Name)
-	require.Equal(t, "default", cfg.Discovery.Services[0].Namespace)
-	require.True(t, cfg.Discovery.Services[0].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportMetrics))
-	require.True(t, cfg.Discovery.Services[0].ExportModes.CanExport(services.ExportTraces))
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Services[0].SamplerConfig)
-	require.True(t, cfg.Discovery.Services[1].PodLabels["test"].IsSet())
-	require.Len(t, cfg.Discovery.ExcludeServices, 1)
-	require.True(t, cfg.Discovery.ExcludeServices[0].Path.IsSet())
-	require.Equal(t, "default", cfg.Discovery.ExcludeServices[0].Namespace)
+
+	require.Len(t, cfg.Discovery.Instrument, 2)
+	require.Equal(t, "test", cfg.Discovery.Instrument[0].Name)
+	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
+	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
+	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportMetrics())
+	require.True(t, cfg.Discovery.Instrument[0].ExportModes.CanExportTraces())
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, cfg.Discovery.Instrument[0].SamplerConfig)
+	require.True(t, cfg.Discovery.Instrument[1].PodLabels["test"].IsSet())
+	require.True(t, cfg.Discovery.Instrument[1].ExportModes.CanExportMetrics())
+	require.False(t, cfg.Discovery.Instrument[1].ExportModes.CanExportTraces())
+
+	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
+	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
+	require.Equal(t, "default", cfg.Discovery.ExcludeInstrument[0].Namespace)
+
+	require.Len(t, cfg.Discovery.Survey, 1)
+	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
+	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
+	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
+
 	require.Equal(t, []string{"application", "network"}, cfg.Prometheus.Features)
 	require.Equal(t, []string{"redis", "sql", "gpu", "mongo"}, cfg.Prometheus.Instrumentations)
+
 	require.True(t, cfg.EnforceSysCaps)
 	require.Equal(t, 10, cfg.EBPF.WakeupLen)
 	require.True(t, cfg.EBPF.TrackRequestHeaders)
@@ -197,6 +221,19 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"http", "grpc", "kafka"}, cfg.TracesReceiver.Instrumentations)
 	require.Equal(t, services.SamplerConfig{Name: "traceidratio", Arg: "0.1"}, cfg.TracesReceiver.Sampler)
 	require.Len(t, cfg.TracesReceiver.Traces, 0)
+
+	instrumentConverted, err := args.Discovery.Instrument.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, instrumentConverted, 2)
+
+	surveyConverted, err := args.Discovery.Survey.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, surveyConverted, 1)
+
+	require.NoError(t, args.Discovery.Instrument.Validate())
+	require.NoError(t, args.Discovery.Survey.Validate())
+
+	require.True(t, len(cfg.Discovery.Instrument) > 0 || len(cfg.Discovery.Survey) > 0)
 }
 
 func TestArguments_TracePrinterDebug(t *testing.T) {
@@ -354,7 +391,9 @@ func TestArguments_InvalidExportModes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var args Arguments
-			require.Error(t, syntax.Unmarshal([]byte(tt.config), &args))
+			require.NoError(t, syntax.Unmarshal([]byte(tt.config), &args))
+			_, err := convertExportModes(args.Discovery.Services[0].ExportModes)
+			require.Error(t, err)
 		})
 	}
 }
@@ -691,6 +730,10 @@ func TestConvert_Attributes(t *testing.T) {
 				Exclude: []string{"db_statement"},
 			},
 		},
+		RenameUnresolvedHosts:          "unresolved",
+		RenameUnresolvedHostsOutgoing:  "outgoing",
+		RenameUnresolvedHostsIncoming:  "incoming",
+		MetricSpanNameAggregationLimit: 100,
 	}
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
@@ -702,13 +745,13 @@ func TestConvert_Attributes(t *testing.T) {
 
 func TestConvert_Discovery(t *testing.T) {
 	args := Discovery{
-		Services: []Service{
+		Instrument: []Service{
 			{
 				Name:           "test",
 				Namespace:      "default",
 				OpenPorts:      "80",
 				ContainersOnly: true,
-				ExportModes:    services.ExportModes{services.ExportMetrics},
+				ExportModes:    []string{"metrics"},
 				Sampler: SamplerConfig{
 					Arg:  "0.5",
 					Name: "traceidratio",
@@ -734,44 +777,43 @@ func TestConvert_Discovery(t *testing.T) {
 				},
 			},
 		},
-		ExcludeServices: []Service{
+		ExcludeInstrument: []Service{
 			{
 				Name:      "test",
 				Namespace: "default",
 			},
 		},
-		DefaultExcludeServices: []Service{},
+		DefaultExcludeInstrument: []Service{},
 	}
 	config, err := args.Convert()
 
 	require.NoError(t, err)
-	require.Len(t, config.Services, 3)
-	require.Equal(t, "test", config.Services[0].Name)
-	require.Equal(t, "default", config.Services[0].Namespace)
-	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Services[0].OpenPorts)
-	require.True(t, config.Services[0].ContainersOnly)
-	require.True(t, config.Services[0].ExportModes.CanExport(services.ExportMetrics))
-	require.False(t, config.Services[0].ExportModes.CanExport(services.ExportTraces))
-	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Services[0].SamplerConfig)
-	require.True(t, config.Services[1].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Services[1].Metadata[services.AttrDeploymentName].IsSet())
-	_, exists := config.Services[1].Metadata[services.AttrDaemonSetName]
+	require.Len(t, config.Instrument, 3)
+	require.Equal(t, "test", config.Instrument[0].Name)
+	require.Equal(t, "default", config.Instrument[0].Namespace)
+	require.Equal(t, services.PortEnum{Ranges: []services.PortRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
+	require.True(t, config.Instrument[0].ContainersOnly)
+	require.True(t, config.Instrument[0].ExportModes.CanExportMetrics())
+	require.False(t, config.Instrument[0].ExportModes.CanExportTraces())
+	require.Equal(t, &services.SamplerConfig{Name: "traceidratio", Arg: "0.5"}, config.Instrument[0].SamplerConfig)
+	require.True(t, config.Instrument[1].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Instrument[1].Metadata[services.AttrDeploymentName].IsSet())
+	_, exists := config.Instrument[1].Metadata[services.AttrDaemonSetName]
 	require.False(t, exists)
-	require.True(t, config.Services[2].Metadata[services.AttrNamespace].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrPodName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrDeploymentName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrReplicaSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrStatefulSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrDaemonSetName].IsSet())
-	require.True(t, config.Services[2].Metadata[services.AttrOwnerName].IsSet())
-	require.True(t, config.Services[2].PodLabels["test"].IsSet())
-	require.True(t, config.Services[2].PodAnnotations["test"].IsSet())
-	require.NoError(t, config.Services.Validate())
-	require.Len(t, config.ExcludeServices, 1)
-	require.Equal(t, "test", config.ExcludeServices[0].Name)
-	require.Equal(t, "default", config.ExcludeServices[0].Namespace)
+	require.True(t, config.Instrument[2].Metadata[services.AttrNamespace].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrPodName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrDeploymentName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrReplicaSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrStatefulSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrDaemonSetName].IsSet())
+	require.True(t, config.Instrument[2].Metadata[services.AttrOwnerName].IsSet())
+	require.True(t, config.Instrument[2].PodLabels["test"].IsSet())
+	require.True(t, config.Instrument[2].PodAnnotations["test"].IsSet())
+	require.NoError(t, config.Instrument.Validate())
+	require.Len(t, config.ExcludeInstrument, 1)
+	require.Equal(t, "test", config.ExcludeInstrument[0].Name)
+	require.Equal(t, "default", config.ExcludeInstrument[0].Namespace)
 	require.Equal(t, true, config.ExcludeOTelInstrumentedServices)
-	require.Empty(t, config.DefaultExcludeServices)
 }
 
 func TestConvert_Prometheus(t *testing.T) {
@@ -1038,17 +1080,17 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 				Discovery: Discovery{
-					Services: Services{}, // Empty services and
-					Survey:   Services{}, // survey blocks.
+					Instrument: Services{},
+					Survey:     Services{},
 				},
 			},
-			wantErr: "discovery.services or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
 		},
 		{
 			name: "valid application configuration",
 			args: Arguments{
 				Discovery: Discovery{
-					Services: Services{
+					Instrument: Services{
 						{
 							OpenPorts: "80",
 						},
@@ -1064,7 +1106,7 @@ func TestArguments_Validate(t *testing.T) {
 			args: Arguments{
 				Discovery: Discovery{
 					Services: Services{
-						{}, // Empty service
+						{},
 					},
 				},
 				Metrics: Metrics{
@@ -1449,4 +1491,57 @@ func TestServices_Convert_SamplerConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEnvVars(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	t.Setenv("BEYLA_TRACE_PRINTER", "json")
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
+}
+
+func TestSurveyDisabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.False(t, cfg.Discovery.SurveyEnabled())
+	require.NotEqual(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.NotEqual(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+func TestSurveyEnabled(t *testing.T) {
+	comp := &Component{
+		args: Arguments{
+			TracePrinter: "text",
+			Discovery: Discovery{
+				Survey: Services{
+					{
+						Name: "foo",
+					},
+				},
+			},
+		},
+	}
+
+	cfg, err := comp.loadConfig()
+
+	require.NoError(t, err)
+	require.Len(t, cfg.Discovery.Survey, 1)
+	require.True(t, cfg.Discovery.SurveyEnabled())
+	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
+	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
 }

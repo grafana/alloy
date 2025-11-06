@@ -53,6 +53,7 @@ func toTailSamplingProcessor(state *State, id componentstatus.InstanceID, cfg *t
 		PolicyCfgs:              toPolicyCfgs(cfg.PolicyCfgs),
 		DecisionWait:            cfg.DecisionWait,
 		NumTraces:               cfg.NumTraces,
+		BlockOnOverflow:         cfg.BlockOnOverflow,
 		ExpectedNewTracesPerSec: cfg.ExpectedNewTracesPerSec,
 		Output: &otelcol.ConsumerArguments{
 			Traces: ToTokenizedConsumers(nextTraces),
@@ -165,8 +166,8 @@ func toAndSubPolicyCfg(cfgs []tailsamplingprocessor.AndSubPolicyCfg) []tail_samp
 
 func toLatencyConfig(cfg tailsamplingprocessor.LatencyCfg) tail_sampling.LatencyConfig {
 	return tail_sampling.LatencyConfig{
-		ThresholdMs:        cfg.ThresholdMs,
-		UpperThresholdmsMs: cfg.UpperThresholdmsMs,
+		ThresholdMs:      cfg.ThresholdMs,
+		UpperThresholdMs: cfg.UpperThresholdMs,
 	}
 }
 

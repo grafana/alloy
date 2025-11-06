@@ -13,9 +13,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
-
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"gopkg.in/yaml.v3"
 )
 
 func tempFilename(t *testing.T) string {
@@ -112,6 +110,37 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 		require.True(t, k.Path == "/tmp/newrandom.log")
 		require.True(t, v == "100")
 	}
+}
+
+func TestConvertLegacyPositionsFileJournal(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	journalCursor := "s=96c0493b15cd4824b73d031da667369f;i=25557;b=64c7ff8e6dbc4a21b77425da44ce57f1;m=d9ddfd2be7;t=63d7d20071963;x=336b5294210ef9ec"
+	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
+	legacyPositions := LegacyFile{
+		Positions: map[string]string{
+			"/some/path/test.log": "100",
+			CursorKey("oldjob"):   journalCursor,
+		},
+	}
+
+	f, err := os.Create(legacyFile)
+	require.NoError(t, err)
+	require.NoError(t, yaml.NewEncoder(f).Encode(legacyPositions))
+	require.NoError(t, f.Close())
+
+	newFile := filepath.Join(tmpDir, "new.yaml")
+	ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", log.NewNopLogger())
+
+	f, err = os.Open(newFile)
+	require.NoError(t, err)
+
+	var posFile File
+	require.NoError(t, yaml.NewDecoder(f).Decode(&posFile))
+	require.NoError(t, f.Close())
+
+	pos := posFile.Positions[Entry{Path: CursorKey("loki.source.journal.test"), Labels: "{}"}]
+	require.Equal(t, journalCursor, pos)
 }
 
 func TestReadPositionsOK(t *testing.T) {
@@ -247,7 +276,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(util_log.Logger, Config{
+	p, err := New(log.NewNopLogger(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 		ReadOnly:      true,
@@ -291,7 +320,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(util_log.Logger, Config{
+	p, err := New(log.NewNopLogger(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 	})

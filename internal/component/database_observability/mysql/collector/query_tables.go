@@ -18,9 +18,9 @@ import (
 )
 
 const (
+	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
-	QueryTablesName            = "query_tables"
 )
 
 const selectQueryTablesSamples = `
@@ -30,19 +30,18 @@ const selectQueryTablesSamples = `
 		schema_name,
 		query_sample_text
 	FROM performance_schema.events_statements_summary_by_digest
-	WHERE schema_name NOT IN ('mysql', 'performance_schema', 'information_schema')
-	AND last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)`
+	WHERE last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY)
+	AND schema_name NOT IN ` + EXCLUDED_SCHEMAS
 
-type QueryTablesArguments struct {
+type QueryDetailsArguments struct {
 	DB              *sql.DB
-	InstanceKey     string
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
 }
 
-type QueryTables struct {
+type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
@@ -55,26 +54,26 @@ type QueryTables struct {
 	cancel  context.CancelFunc
 }
 
-func NewQueryTables(args QueryTablesArguments) (*QueryTables, error) {
-	c := &QueryTables{
+func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	c := &QueryDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
-		logger:          log.With(args.Logger, "collector", QueryTablesName),
+		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
 
 	return c, nil
 }
 
-func (c *QueryTables) Name() string {
-	return QueryTablesName
+func (c *QueryDetails) Name() string {
+	return QueryDetailsCollector
 }
 
-func (c *QueryTables) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", QueryTablesName+" collector started")
+func (c *QueryDetails) Start(ctx context.Context) error {
+	level.Debug(c.logger).Log("msg", "collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -106,20 +105,19 @@ func (c *QueryTables) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *QueryTables) Stopped() bool {
+func (c *QueryDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
 // Stop should be kept idempotent
-func (c *QueryTables) Stop() {
+func (c *QueryDetails) Stop() {
 	c.cancel()
 }
 
-func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
+func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectQueryTablesSamples)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch summary table samples", "err", err)
-		return err
+		return fmt.Errorf("failed to fetch summary table samples: %w", err)
 	}
 	defer rs.Close()
 
@@ -155,14 +153,13 @@ func (c *QueryTables) tablesFromEventsStatements(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over samples result set", "err", err)
-		return err
+		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
 	return nil
 }
 
-func (c *QueryTables) tryParseTableNames(sqlText, fallbackSqlText string) ([]string, error) {
+func (c *QueryDetails) tryParseTableNames(sqlText, fallbackSqlText string) ([]string, error) {
 	sqlText, err := c.sqlParser.CleanTruncatedText(sqlText)
 	if err != nil {
 		sqlText, err = c.sqlParser.CleanTruncatedText(fallbackSqlText)
@@ -186,7 +183,7 @@ func (c *QueryTables) tryParseTableNames(sqlText, fallbackSqlText string) ([]str
 	return c.sqlParser.ExtractTableNames(stmt), nil
 }
 
-func (c *QueryTables) tryTokenizeTableNames(sqlText, fallbackSqlText string) ([]string, error) {
+func (c *QueryDetails) tryTokenizeTableNames(sqlText, fallbackSqlText string) ([]string, error) {
 	var metadata *sqllexer.StatementMetadata
 	var err error
 

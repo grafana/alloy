@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func createTempFileWithContent(t *testing.T, content []byte) string {
@@ -93,7 +93,7 @@ func TestGetLastLinePosition(t *testing.T) {
 
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -114,15 +114,15 @@ func TestTailer(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
 		func() bool { return true },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 
@@ -188,7 +188,7 @@ func TestTailer(t *testing.T) {
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -209,15 +209,15 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
 		func() bool { return false },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
@@ -252,7 +252,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 
 func TestTailerDeleteFileInstant(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -273,15 +273,15 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		logFile.Name(),
-		labels,
-		"",
-		watch.PollingFileWatcherOptions{
-			MinPollFrequency: 25 * time.Millisecond,
-			MaxPollFrequency: 25 * time.Millisecond,
-		},
-		false,
 		func() bool { return true },
+		sourceOptions{
+			path:   logFile.Name(),
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+		},
 	)
 	require.NoError(t, err)
 

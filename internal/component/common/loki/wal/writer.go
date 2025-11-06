@@ -10,15 +10,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	"github.com/grafana/loki/v3/pkg/util"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -244,14 +243,14 @@ func (wrt *Writer) SubscribeWrite(subscriber WriteEventSubscriber) {
 // entryWriter writes loki.Entry to a WAL, keeping in memory a single Record object that's reused
 // across every write.
 type entryWriter struct {
-	reusableWALRecord *wal.Record
+	reusableWALRecord *Record
 }
 
 // newEntryWriter creates a new entryWriter.
 func newEntryWriter() *entryWriter {
 	return &entryWriter{
-		reusableWALRecord: &wal.Record{
-			RefEntries: make([]wal.RefEntries, 0, 1),
+		reusableWALRecord: &Record{
+			RefEntries: make([]RefEntries, 0, 1),
 			Series:     make([]record.RefSeries, 0, 1),
 		},
 	}
@@ -261,18 +260,16 @@ func newEntryWriter() *entryWriter {
 // write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
 func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error {
 	// Reset wal record slices
-	ew.reusableWALRecord.RefEntries = ew.reusableWALRecord.RefEntries[:0]
-	ew.reusableWALRecord.Series = ew.reusableWALRecord.Series[:0]
+	ew.reusableWALRecord.Reset()
 
 	var fp uint64
 	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
-	sort.Sort(lbs)
 	fp, _ = lbs.HashWithoutLabels(nil, []string(nil)...)
 
 	// Append the entry to an already existing stream (if any)
-	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, wal.RefEntries{
+	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, RefEntries{
 		Ref: chunks.HeadSeriesRef(fp),
-		Entries: []logproto.Entry{
+		Entries: []push.Entry{
 			entry.Entry,
 		},
 	})

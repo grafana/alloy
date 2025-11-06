@@ -24,4 +24,5 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - run: make GO_TAGS="nodocker" test
+    - run: make GO_TAGS="nodocker,slicelabels" test
+

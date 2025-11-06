@@ -18,7 +18,9 @@ New log entries are forwarded whenever a log entry line ends with the `\n` chara
 You can specify multiple `loki.source.file` components by giving them different labels.
 
 {{< admonition type="note" >}}
-`loki.source.file` doesn't handle file discovery. You can use `local.file_match` for file discovery.
+By default, `loki.source.file` requires absolute file paths in the `targets` argument.
+To discover files using glob patterns, you can either enable the [`file_match`](#file_match) block (recommended) for built-in file discovery, or use the `local.file_match` component for file discovery and pass its targets to `loki.source.file`.
+
 Refer to the [File globbing](#file-globbing) example for more information.
 {{< /admonition >}}
 
@@ -51,24 +53,24 @@ If not set, it defaults to UTF-8.
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
 
-{{< admonition type="note" >}}
-The `legacy_positions_file` argument is used when you are transitioning from legacy. The legacy positions file is converted to the new format.
+The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
+The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
-If you add any labels before `loki.source.file`, then the positions file conversion won't work.
-The legacy positions file didn't have a concept of labels in the positions file, so the conversion assumes no labels.
-{{< /admonition >}}
+When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
 ## Blocks
 
 You can use the following blocks with `loki.source.file`:
 
-| Name                             | Description                                                       | Required |
-| -------------------------------- | ----------------------------------------------------------------- | -------- |
-| [`decompression`][decompression] | Configure reading logs from compressed files.                     | no       |
-| [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes. | no       |
+| Name                             | Description                                                                  | Required |
+| -------------------------------- | ---------------------------------------------------------------------------- | -------- |
+| [`decompression`][decompression] | Configure reading logs from compressed files.                                | no       |
+| [`file_match`][file_match]       | Configure file discovery using glob patterns for automatic target discovery. | no       |
+| [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes.            | no       |
 
 [decompression]: #decompression
 [file_watch]: #file_watch
+[file_match]: #file_match
 
 ### `decompression`
 
@@ -106,6 +108,28 @@ The following arguments are supported:
 If no file changes are detected, the poll frequency doubles until a file change is detected or the poll frequency reaches the `max_poll_frequency`.
 
 If file changes are detected, the poll frequency is reset to `min_poll_frequency`.
+
+### `file_match`
+
+The `file_match` block enables built-in file discovery directly within `loki.source.file`.
+When enabled, the component discovers files on the local filesystem using glob patterns and the [doublestar][] library.
+
+The following arguments are supported:
+
+| Name                | Type                | Description                                                 | Default | Required |
+|---------------------|---------------------|-------------------------------------------------------------|---------|----------|
+| `enabled`           | `bool`              | Enable file discovery using glob patterns.                  | `false` | no       |
+| `ignore_older_than` | `duration`          | Ignores files with modification times before this duration. | `"0s"`  | no       |
+| `sync_period`       | `duration`          | How often to sync filesystem and targets.                   | `"10s"` | no       |
+
+Benefits of using `file_match` over `local.file_match`:
+
+- Simplified configuration: No need for a separate `local.file_match` component
+- Reduced overhead: File discovery is integrated directly into `loki.source.file`, eliminating the need for component-to-component communication
+- Same functionality: Supports the same glob patterns and features, including `__path_exclude__` for excluding files
+
+When `enabled` is set to `true`, you can use glob patterns, for example, `/tmp/*.log` or `/var/log/**/*.log`, directly in the `targets` argument's `__path__` label.
+The component periodically scans the filesystem based on `sync_period` and automatically discovers new files, removes deleted files, and ignores files older than `ignore_older_than` if specified.
 
 ## Exported fields
 
@@ -180,13 +204,36 @@ loki.write "local" {
 }
 ```
 
-### File globbing
+### File globbing with `file_match` (recommended)
 
-This example collects log entries from the files matching `*.log` pattern using `local.file_match` component.
-When files appear or disappear, the list of targets is updated accordingly.
+This example collects log entries from files matching the `*.log` pattern using the built-in `file_match` block.
+When files appear or disappear, the list of targets is automatically updated based on the `sync_period` configuration.
 
 ```alloy
+loki.source.file "tmpfiles" {
+  targets    = [
+    {__path__ = "/tmp/*.log"},
+  ]
+  forward_to = [loki.write.local.receiver]
+  file_match {
+    enabled = true
+    sync_period = "10s"
+  }
+}
 
+loki.write "local" {
+  endpoint {
+    url = "loki:3100/api/v1/push"
+  }
+}
+```
+
+### File globbing with `local.file_match`
+
+This example demonstrates the alternative approach using a separate `local.file_match` component.
+This approach is still supported but using the `file_match` block is recommended for better performance and simpler configuration.
+
+```alloy
 local.file_match "logs" {
   path_targets = [
     {__path__ = "/tmp/*.log"},
@@ -207,19 +254,18 @@ loki.write "local" {
 
 ### Decompression
 
-This example collects log entries from the compressed files matching `*.gz` pattern using `local.file_match` component and the decompression configuration on the `loki.source.file` component.
+This example collects log entries from compressed files matching the `*.gz` pattern using the built-in `file_match` block with decompression enabled.
 
 ```alloy
-
-local.file_match "logs" {
-  path_targets = [
+loki.source.file "tmpfiles" {
+  targets    = [
     {__path__ = "/tmp/*.gz"},
   ]
-}
-
-loki.source.file "tmpfiles" {
-  targets    = local.file_match.logs.targets
   forward_to = [loki.write.local.receiver]
+  file_match {
+    enabled = true
+    sync_period = "10s"
+  }
   decompression {
     enabled       = true
     initial_delay = "10s"
@@ -235,6 +281,7 @@ loki.write "local" {
 ```
 
 [IANA encoding]: https://www.iana.org/assignments/character-sets/character-sets.xhtml
+[doublestar]: https://github.com/bmatcuk/doublestar
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

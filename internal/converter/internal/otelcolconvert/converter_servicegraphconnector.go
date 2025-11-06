@@ -71,7 +71,6 @@ func toServicegraphConnector(state *State, id componentstatus.InstanceID, cfg *s
 		CacheLoop:              cfg.CacheLoop,
 		StoreExpirationLoop:    cfg.StoreExpirationLoop,
 		MetricsFlushInterval:   metricsFlushIntervalValue,
-		DatabaseNameAttribute:  cfg.DatabaseNameAttribute,
 		DatabaseNameAttributes: cfg.DatabaseNameAttributes,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -147,25 +147,18 @@ type client struct {
 	once sync.Once
 	wg   sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	maxStreams int
 }
-
-// Tripperware can wrap a roundtripper.
-type Tripperware func(http.RoundTripper) http.RoundTripper
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
+func New(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, maxStreams, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (*client, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -176,18 +169,14 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:  log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:     cfg,
-		entries: make(chan loki.Entry),
-		metrics: metrics,
-		name:    GetClientName(cfg),
-
-		externalLabels:      cfg.ExternalLabels.LabelSet,
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		logger:     log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:        cfg,
+		entries:    make(chan loki.Entry),
+		metrics:    metrics,
+		name:       GetClientName(cfg),
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 	if cfg.Name != "" {
 		c.name = cfg.Name
@@ -207,20 +196,6 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 
 	c.wg.Add(1)
 	go c.run()
-	return c, nil
-}
-
-// NewWithTripperware creates a new Loki client with a custom tripperware.
-func NewWithTripperware(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, tp Tripperware) (Client, error) {
-	c, err := newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	if tp != nil {
-		c.client.Transport = tp(c.client.Transport)
-	}
-
 	return c, nil
 }
 
@@ -248,10 +223,7 @@ func (c *client) run() {
 	// We apply a cap of 10ms to the ticker, to avoid too frequent checks in
 	// case the BatchWait is very low.
 	minWaitCheckFrequency := 10 * time.Millisecond
-	maxWaitCheckFrequency := c.cfg.BatchWait / 10
-	if maxWaitCheckFrequency < minWaitCheckFrequency {
-		maxWaitCheckFrequency = minWaitCheckFrequency
-	}
+	maxWaitCheckFrequency := max(c.cfg.BatchWait/10, minWaitCheckFrequency)
 
 	maxWaitCheck := time.NewTicker(maxWaitCheckFrequency)
 
@@ -273,20 +245,6 @@ func (c *client) run() {
 			}
 
 			e, tenantID := c.processEntry(e)
-
-			// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-			if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-				if !c.maxLineSizeTruncate {
-					c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-					c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-					break
-				}
-
-				c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-				c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-				e.Line = e.Line[:c.maxLineSize]
-			}
-
 			batch, ok := batches[tenantID]
 
 			// If the batch doesn't exist yet, we create a new one with the entry
@@ -377,7 +335,7 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 			break
 		}
 
-		level.Warn(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
+		level.Debug(c.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
 		c.metrics.batchRetries.WithLabelValues(c.cfg.URL.Host, tenantID).Inc()
 		backoff.Wait()
 
@@ -387,17 +345,15 @@ func (c *client) sendBatch(tenantID string, batch *batch) {
 		}
 	}
 
-	if err != nil {
-		level.Error(c.logger).Log("msg", "final error sending batch", "status", status, "tenant", tenantID, "error", err)
-		// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
-		// were for a different reason
-		dropReason := ReasonGeneric
-		if batchIsRateLimited(status) {
-			dropReason = ReasonRateLimited
-		}
-		c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-		c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	level.Error(c.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
+	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
+	// were for a different reason
+	dropReason := ReasonGeneric
+	if batchIsRateLimited(status) {
+		dropReason = ReasonRateLimited
 	}
+	c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
+	c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
 func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
@@ -431,7 +387,7 @@ func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
+	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))
@@ -474,9 +430,6 @@ func (c *client) StopNow() {
 }
 
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
-	}
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
 }

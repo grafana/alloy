@@ -112,6 +112,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.snmp](../components/prometheus/prometheus.exporter.snmp)
 - [prometheus.exporter.snowflake](../components/prometheus/prometheus.exporter.snowflake)
 - [prometheus.exporter.squid](../components/prometheus/prometheus.exporter.squid)
+- [prometheus.exporter.static](../components/prometheus/prometheus.exporter.static)
 - [prometheus.exporter.statsd](../components/prometheus/prometheus.exporter.statsd)
 - [prometheus.exporter.unix](../components/prometheus/prometheus.exporter.unix)
 - [prometheus.exporter.windows](../components/prometheus/prometheus.exporter.windows)
@@ -125,6 +126,11 @@ The following components, grouped by namespace, _export_ Targets.
 The following components, grouped by namespace, _consume_ Targets.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
+
+{{< collapse title="database_observability" >}}
+- [database_observability.mysql](../components/database_observability/database_observability.mysql)
+- [database_observability.postgres](../components/database_observability/database_observability.postgres)
+{{< /collapse >}}
 
 {{< collapse title="discovery" >}}
 - [discovery.process](../components/discovery/discovery.process)
@@ -147,6 +153,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.scrape](../components/prometheus/prometheus.scrape)
 {{< /collapse >}}
 
@@ -179,6 +186,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.remote_write](../components/prometheus/prometheus.remote_write)
 - [prometheus.write.queue](../components/prometheus/prometheus.write.queue)
@@ -198,6 +206,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}
+- [prometheus.enrich](../components/prometheus/prometheus.enrich)
 - [prometheus.operator.podmonitors](../components/prometheus/prometheus.operator.podmonitors)
 - [prometheus.operator.probes](../components/prometheus/prometheus.operator.probes)
 - [prometheus.operator.scrapeconfigs](../components/prometheus/prometheus.operator.scrapeconfigs)
@@ -308,6 +317,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.exporter.debug](../components/otelcol/otelcol.exporter.debug)
 - [otelcol.exporter.faro](../components/otelcol/otelcol.exporter.faro)
 - [otelcol.exporter.googlecloud](../components/otelcol/otelcol.exporter.googlecloud)
+- [otelcol.exporter.googlecloudpubsub](../components/otelcol/otelcol.exporter.googlecloudpubsub)
 - [otelcol.exporter.kafka](../components/otelcol/otelcol.exporter.kafka)
 - [otelcol.exporter.loadbalancing](../components/otelcol/otelcol.exporter.loadbalancing)
 - [otelcol.exporter.loki](../components/otelcol/otelcol.exporter.loki)
@@ -331,6 +341,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.processor.span](../components/otelcol/otelcol.processor.span)
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
+- [otelcol.receiver.googlecloudpubsub](../components/otelcol/otelcol.receiver.googlecloudpubsub)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: EXPORTERS OF OpenTelemetry `otelcol.Consumer` -->
@@ -371,11 +382,13 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.tail_sampling](../components/otelcol/otelcol.processor.tail_sampling)
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
+- [otelcol.receiver.awsecscontainermetrics](../components/otelcol/otelcol.receiver.awsecscontainermetrics)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
 - [otelcol.receiver.faro](../components/otelcol/otelcol.receiver.faro)
 - [otelcol.receiver.file_stats](../components/otelcol/otelcol.receiver.file_stats)
 - [otelcol.receiver.filelog](../components/otelcol/otelcol.receiver.filelog)
 - [otelcol.receiver.fluentforward](../components/otelcol/otelcol.receiver.fluentforward)
+- [otelcol.receiver.googlecloudpubsub](../components/otelcol/otelcol.receiver.googlecloudpubsub)
 - [otelcol.receiver.influxdb](../components/otelcol/otelcol.receiver.influxdb)
 - [otelcol.receiver.jaeger](../components/otelcol/otelcol.receiver.jaeger)
 - [otelcol.receiver.kafka](../components/otelcol/otelcol.receiver.kafka)

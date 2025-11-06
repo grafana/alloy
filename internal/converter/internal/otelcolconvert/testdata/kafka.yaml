@@ -24,11 +24,10 @@ receivers:
       sasl:
         username: fakeusername
         password: fakepassword
-        mechanism: AWS_MSK_IAM
+        mechanism: AWS_MSK_IAM_OAUTHBEARER
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:
@@ -59,7 +58,6 @@ exporters:
         version: 1
         aws_msk:
           region: us-east-1
-          broker_addr: broker:9092
       tls:
         insecure: true
       kerberos:

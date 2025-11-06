@@ -67,12 +67,14 @@ const ComponentGraph: React.FC<GraphProps> = ({ components, moduleID, enabled, w
   // On click, open the component details page in a new tab.
   const onNodeClick = (_event: React.MouseEvent, node: Node) => {
     const baseUrl = globalThis.window.location.origin + pathPrefix;
+    const moduleID = typeof node.data.moduleID === 'string' ? node.data.moduleID : '';
+    const remoteCfgPrefix = moduleID.startsWith('remotecfg/') ? 'remotecfg/' : '';
     const path =
       node.data.moduleID && node.data.moduleID !== ''
         ? `component/${node.data.moduleID}/${node.data.localID}`
         : `component/${node.data.localID}`;
 
-    globalThis.window.open(baseUrl + path, '_blank');
+    globalThis.window.open(baseUrl + remoteCfgPrefix + path, '_blank');
   };
 
   return (

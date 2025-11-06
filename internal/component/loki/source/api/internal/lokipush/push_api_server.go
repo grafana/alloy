@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -13,8 +12,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/user"
+	lokipush "github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/v3/pkg/util/constants"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -175,6 +175,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		nil, // usage tracker
 		nil,
 		"",
+		constants.Loki,
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
@@ -194,7 +195,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			lastErr = err
 			continue
 		}
-		sort.Sort(ls)
 
 		lb := labels.NewBuilder(ls)
 
@@ -205,19 +205,19 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 
 		// Apply relabeling
 		processed, keep := relabel.Process(lb.Labels(), relabelRules...)
-		if !keep || len(processed) == 0 {
+		if !keep || processed.Len() == 0 {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		// Convert to model.LabelSet
 		filtered := model.LabelSet{}
-		for i := range processed {
-			if strings.HasPrefix(processed[i].Name, "__") {
-				continue
+		processed.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, "__") {
+				return
 			}
-			filtered[model.LabelName(processed[i].Name)] = model.LabelValue(processed[i].Value)
-		}
+			filtered[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+		})
 
 		// Add tenant ID to the filtered labels if it is set
 		if tenantID != "" {
@@ -227,7 +227,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		for _, entry := range stream.Entries {
 			e := loki.Entry{
 				Labels: filtered.Clone(),
-				Entry: logproto.Entry{
+				Entry: lokipush.Entry{
 					Line:               entry.Line,
 					StructuredMetadata: entry.StructuredMetadata,
 					Parsed:             entry.Parsed,
@@ -274,7 +274,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		}
 		entries <- loki.Entry{
 			Labels: addLabels,
-			Entry: logproto.Entry{
+			Entry: lokipush.Entry{
 				Timestamp: time.Now(),
 				Line:      line,
 			},

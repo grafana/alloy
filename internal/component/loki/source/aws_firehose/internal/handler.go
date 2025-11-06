@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -122,7 +122,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// common labels contains all record-wide labels
-	commonLabels := labels.NewBuilder(nil)
+	commonLabels := labels.NewBuilder(labels.EmptyLabels())
 	commonLabels.Set("__aws_firehose_request_id", req.Header.Get("X-Amz-Firehose-Request-Id"))
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
@@ -161,7 +161,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		case OriginDirectPUT:
 			h.sender.Send(req.Context(), loki.Entry{
 				Labels: h.postProcessLabels(commonLabels.Labels()),
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: ts,
 					Line:      string(decodedRecord),
 				},
@@ -187,21 +187,22 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 	}
 
 	entryLabels := make(model.LabelSet)
-	for _, lbl := range lbs {
+	lbs.Range(func(lbl labels.Label) {
 		// if internal label and not reserved, drop
 		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != lokiClient.ReservedLabelTenantID {
-			continue
+			return
 		}
 
 		// ignore invalid labels
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+			return
 		}
 
 		entryLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
+
 	return entryLabels
 }
 
@@ -281,7 +282,7 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 		}
 		h.sender.Send(ctx, loki.Entry{
 			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: timestamp,
 				Line:      event.Message,
 			},

@@ -295,7 +295,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	result.QueueSettings = *q
+	result.QueueBatchConfig = *q
 	result.Producer = args.Producer.Convert()
 
 	if args.TLS != nil {

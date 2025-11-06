@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
 )
 
 const (
@@ -100,7 +100,7 @@ func (c *consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		ssLen := rs.ScopeSpans().Len()
 
 		var svc string
-		svcAtt, ok := rs.Resource().Attributes().Get(semconv.AttributeServiceName)
+		svcAtt, ok := rs.Resource().Attributes().Get(string(semconv.ServiceNameKey))
 		if ok {
 			svc = svcAtt.Str()
 		}

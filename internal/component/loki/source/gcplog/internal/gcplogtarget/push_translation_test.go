@@ -93,11 +93,12 @@ func TestTranslate(t *testing.T) {
 
 	rc := []*relabel.Config{
 		{
-			SourceLabels: model.LabelNames{"__gcp_message_id"},
-			Regex:        mustNewRegexp("(.*)"),
-			Action:       relabel.Replace,
-			Replacement:  "$1",
-			TargetLabel:  "message_id",
+			SourceLabels:         model.LabelNames{"__gcp_message_id"},
+			Regex:                mustNewRegexp("(.*)"),
+			Action:               relabel.Replace,
+			Replacement:          "$1",
+			TargetLabel:          "message_id",
+			NameValidationScheme: model.LegacyValidation,
 		},
 	}
 

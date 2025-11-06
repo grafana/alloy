@@ -15,22 +15,20 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
-	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/useragent"
-
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
 )
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.
 type StoppableWriteTo interface {
-	alloyWal.WriteTo
+	wal.WriteTo
 	Stop()
 	StopNow()
 }
@@ -165,29 +163,25 @@ type queueClient struct {
 
 	wg sync.WaitGroup
 
-	externalLabels model.LabelSet
-
 	// series cache
 	series        map[chunks.HeadSeriesRef]model.LabelSet
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
-	quit                chan struct{}
-	markerHandler       MarkerHandler
+	ctx           context.Context
+	cancel        context.CancelFunc
+	maxStreams    int
+	quit          chan struct{}
+	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -208,12 +202,9 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		externalLabels:      cfg.ExternalLabels.LabelSet,
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
+		ctx:        ctx,
+		cancel:     cancel,
+		maxStreams: maxStreams,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes
@@ -269,8 +260,7 @@ func (c *queueClient) StoreSeries(series []record.RefSeries, segment int) {
 	defer c.seriesLock.Unlock()
 	for _, seriesRec := range series {
 		c.seriesSegment[seriesRec.Ref] = segment
-		labels := lokiutil.MapToModelLabelSet(seriesRec.Labels.Map())
-		c.series[seriesRec.Ref] = labels
+		c.series[seriesRec.Ref] = promLabelsToModelLabels(seriesRec.Labels)
 	}
 }
 
@@ -300,21 +290,8 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 	return nil
 }
 
-func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
+func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e push.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
-
-	// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-	if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-		if !c.maxLineSizeTruncate {
-			c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-			c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-			return
-		}
-
-		c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-		c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-		e.Line = e.Line[:c.maxLineSize]
-	}
 
 	// TODO: can I make this locking more fine grained?
 	c.batchesMtx.Lock()
@@ -536,7 +513,7 @@ func (c *queueClient) send(ctx context.Context, tenantID string, buf []byte) (in
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
+	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))
@@ -599,9 +576,6 @@ func (c *queueClient) StopNow() {
 }
 
 func (c *queueClient) processLabels(lbs model.LabelSet) (model.LabelSet, string) {
-	if len(c.externalLabels) > 0 {
-		lbs = c.externalLabels.Merge(lbs)
-	}
 	tenantID := c.getTenantID(lbs)
 	return lbs, tenantID
 }

@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.10.1
+          image: docker.io/grafana/alloy:v1.11.3
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -44,14 +44,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          readinessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - curl -f HTTP://localhost:12345/-/ready || exit 1
-            initialDelaySeconds: 10
-            timeoutSeconds: 1
           volumeMounts:
             - name: config
               mountPath: /etc/alloy

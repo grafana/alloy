@@ -21,7 +21,6 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: alloy
-        checksum/config: d9c8e5435700357048f6c2e796184f37690d09297a95591b2b341fb0aa15d0a
       labels:
         app.kubernetes.io/name: alloy
         app.kubernetes.io/instance: alloy
@@ -29,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.10.1
+          image: docker.io/grafana/alloy:v1.11.3
           imagePullPolicy: IfNotPresent
           args:
             - run

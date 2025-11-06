@@ -93,6 +93,7 @@ body:
       - otelcol.exporter.debug
       - otelcol.exporter.faro
       - otelcol.exporter.googlecloud
+      - otelcol.exporter.googlecloudpubsub
       - otelcol.exporter.kafka
       - otelcol.exporter.loadbalancing
       - otelcol.exporter.loki
@@ -118,11 +119,13 @@ body:
       - otelcol.processor.tail_sampling
       - otelcol.processor.transform
       - otelcol.receiver.awscloudwatch
+      - otelcol.receiver.awsecscontainermetrics
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
       - otelcol.receiver.file_stats
       - otelcol.receiver.filelog
       - otelcol.receiver.fluentforward
+      - otelcol.receiver.googlecloudpubsub
       - otelcol.receiver.influxdb
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka
@@ -137,6 +140,7 @@ body:
       - otelcol.receiver.vcenter
       - otelcol.receiver.zipkin
       - otelcol.storage.file
+      - prometheus.enrich
       - prometheus.exporter.apache
       - prometheus.exporter.azure
       - prometheus.exporter.blackbox
@@ -161,6 +165,7 @@ body:
       - prometheus.exporter.snmp
       - prometheus.exporter.snowflake
       - prometheus.exporter.squid
+      - prometheus.exporter.static
       - prometheus.exporter.statsd
       - prometheus.exporter.unix
       - prometheus.exporter.windows

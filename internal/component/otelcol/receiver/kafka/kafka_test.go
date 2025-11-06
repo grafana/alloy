@@ -391,7 +391,6 @@ func TestArguments_Auth(t *testing.T) {
 						version = 9
 						aws_msk {
 							region = "test_region"
-							broker_addr = "test_broker_addr"
 						}
 					}
 				}
@@ -454,8 +453,7 @@ func TestArguments_Auth(t *testing.T) {
 						"mechanism": "test_mechanism",
 						"version":   9,
 						"aws_msk": map[string]interface{}{
-							"region":      "test_region",
-							"broker_addr": "test_broker_addr",
+							"region": "test_region",
 						},
 					},
 				},

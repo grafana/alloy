@@ -62,15 +62,6 @@
       scheme: {{ $values.listenScheme }}
     initialDelaySeconds: {{ $values.initialDelaySeconds }}
     timeoutSeconds: {{ $values.timeoutSeconds }}
-  {{- else }}
-  readinessProbe:
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - curl -f {{ $values.listenScheme }}://localhost:{{ $values.listenPort }}/-/ready || exit 1
-    initialDelaySeconds: {{ $values.initialDelaySeconds }}
-    timeoutSeconds: {{ $values.timeoutSeconds }}
   {{- end }}
   {{- with $values.livenessProbe }}
   livenessProbe:

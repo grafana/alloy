@@ -134,6 +134,47 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l log.Logger) {
 	level.Info(l).Log("msg", "successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
 }
 
+// ConvertLegacyPositionsFileJournal will convert the legacy positions file to the new format for a journal job if:
+// 1. There is no file at the newpath
+// 2. There is a file at the legacy path and that it is valid yaml
+//
+// legacyJob is the name of the journal job in e.g. promatil or agent static.
+func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l log.Logger) {
+	legacyPositions := readLegacyFile(legacyPath, l)
+	// legacyPositions did not exist or was invalid so return.
+	if legacyPositions == nil {
+		level.Info(l).Log("msg", "will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
+		return
+	}
+	fi, err := os.Stat(newPath)
+	// If the newpath exists, then don't convert.
+	if err == nil && fi.Size() > 0 {
+		level.Info(l).Log("msg", "will not convert the legacy positions file as the new positions file already exists", "path", newPath)
+		return
+	}
+
+	var (
+		legacyCursor = CursorKey(legacyJob)
+		newCursor    = CursorKey(componentID)
+	)
+
+	newPositions := make(map[Entry]string)
+	for k, v := range legacyPositions.Positions {
+		if k == legacyCursor {
+			newPositions[Entry{
+				Path:   newCursor,
+				Labels: "{}",
+			}] = v
+			break
+		}
+	}
+	err = writePositionFile(newPath, newPositions)
+	if err != nil {
+		level.Error(l).Log("msg", "error writing new positions file converted from legacy", "path", newPath, "error", err)
+	}
+	level.Info(l).Log("msg", "successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+}
+
 func readLegacyFile(legacyPath string, l log.Logger) *LegacyFile {
 	oldFile, err := os.Stat(legacyPath)
 	// If the old file doesn't exist or is empty then return early.

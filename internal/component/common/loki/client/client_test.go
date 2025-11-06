@@ -2,18 +2,14 @@ package client
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/config"
@@ -21,25 +17,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/utils"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
-
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 var logEntries = []loki.Entry{
-	{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Unix(1, 0).UTC(), Line: "line1"}},
-	{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Unix(2, 0).UTC(), Line: "line2"}},
-	{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Unix(3, 0).UTC(), Line: "line3"}},
-	{Labels: model.LabelSet{"__tenant_id__": "tenant-1"}, Entry: logproto.Entry{Timestamp: time.Unix(4, 0).UTC(), Line: "line4"}},
-	{Labels: model.LabelSet{"__tenant_id__": "tenant-1"}, Entry: logproto.Entry{Timestamp: time.Unix(5, 0).UTC(), Line: "line5"}},
-	{Labels: model.LabelSet{"__tenant_id__": "tenant-2"}, Entry: logproto.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
-	{Labels: model.LabelSet{}, Entry: logproto.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line0123456789"}},
+	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(1, 0).UTC(), Line: "line1"}},
+	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(2, 0).UTC(), Line: "line2"}},
+	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(3, 0).UTC(), Line: "line3"}},
+	{Labels: model.LabelSet{"__tenant_id__": "tenant-1"}, Entry: push.Entry{Timestamp: time.Unix(4, 0).UTC(), Line: "line4"}},
+	{Labels: model.LabelSet{"__tenant_id__": "tenant-1"}, Entry: push.Entry{Timestamp: time.Unix(5, 0).UTC(), Line: "line5"}},
+	{Labels: model.LabelSet{"__tenant_id__": "tenant-2"}, Entry: push.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line6"}},
+	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(6, 0).UTC(), Line: "line0123456789"}},
 	{
 		Labels: model.LabelSet{},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: time.Unix(7, 0).UTC(),
 			Line:      "line7",
 			StructuredMetadata: push.LabelsAdapter{
@@ -51,18 +43,16 @@ var logEntries = []loki.Entry{
 
 func TestClient_Handle(t *testing.T) {
 	tests := map[string]struct {
-		clientBatchSize           int
-		clientBatchWait           time.Duration
-		clientMaxRetries          int
-		clientMaxLineSize         int
-		clientMaxLineSizeTruncate bool
-		clientTenantID            string
-		clientDropRateLimited     bool
-		serverResponseStatus      int
-		inputEntries              []loki.Entry
-		inputDelay                time.Duration
-		expectedReqs              []utils.RemoteWriteRequest
-		expectedMetrics           string
+		clientBatchSize       int
+		clientBatchWait       time.Duration
+		clientMaxRetries      int
+		clientTenantID        string
+		clientDropRateLimited bool
+		serverResponseStatus  int
+		inputEntries          []loki.Entry
+		inputDelay            time.Duration
+		expectedReqs          []util.RemoteWriteRequest
+		expectedMetrics       string
 	}{
 		"batch log entries together until the batch size is reached": {
 			clientBatchSize:      10,
@@ -70,14 +60,14 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1], logEntries[2]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[2].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[2].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -104,90 +94,6 @@ func TestClient_Handle(t *testing.T) {
                                loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
                        `,
 		},
-		"dropping log entries that have max_line_size exceeded": {
-			clientBatchSize:           10,
-			clientBatchWait:           100 * time.Millisecond,
-			clientMaxRetries:          3,
-			clientMaxLineSize:         10, // any log line more than this length should be discarded
-			clientMaxLineSizeTruncate: false,
-			serverResponseStatus:      200,
-			inputEntries:              []loki.Entry{logEntries[0], logEntries[1], logEntries[6]}, // this logEntries[6] entries has line more than size 10
-			expectedReqs: []utils.RemoteWriteRequest{
-				{
-					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
-				},
-			},
-			expectedMetrics: `
-                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
-                               # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 2.0
-                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-                               # TYPE loki_write_dropped_entries_total counter
-                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 1
-                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                               # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                               # TYPE loki_write_mutated_entries_total counter
-                               loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                       `,
-		},
-		"truncating log entries that have max_line_size exceeded": {
-			clientBatchSize:           10,
-			clientBatchWait:           100 * time.Millisecond,
-			clientMaxRetries:          3,
-			clientMaxLineSize:         10,
-			clientMaxLineSizeTruncate: true,
-			serverResponseStatus:      200,
-			inputEntries:              []loki.Entry{logEntries[0], logEntries[1], logEntries[6]}, // logEntries[6]'s line is greater than 10 bytes
-			expectedReqs: []utils.RemoteWriteRequest{
-				{
-					TenantID: "",
-					Request: logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{
-						logEntries[0].Entry,
-						logEntries[1].Entry,
-						{
-							Timestamp: logEntries[6].Entry.Timestamp,
-							Line:      logEntries[6].Line[:10],
-						},
-					}}}},
-				},
-			},
-			expectedMetrics: `
-                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
-                               # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 3.0
-                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
-                               # TYPE loki_write_dropped_entries_total counter
-                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                               # HELP loki_write_mutated_entries_total The total number of log entries that have been mutated.
-                               # TYPE loki_write_mutated_entries_total counter
-                               loki_write_mutated_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="line_too_long",tenant=""} 1
-                               loki_write_mutated_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_mutated_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                              # HELP loki_write_mutated_bytes_total The total number of bytes that have been mutated.
-                              # TYPE loki_write_mutated_bytes_total counter
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="line_too_long",tenant=""} 4
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_mutated_bytes_total{host="__HOST__",reason="stream_limited",tenant=""} 0
-                       `,
-		},
-
 		"batch log entries together until the batch wait time is reached": {
 			clientBatchSize:      10,
 			clientBatchWait:      100 * time.Millisecond,
@@ -195,14 +101,14 @@ func TestClient_Handle(t *testing.T) {
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
 			inputDelay:           110 * time.Millisecond,
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[1].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[1].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -235,18 +141,18 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 500,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -279,10 +185,10 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 400,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -315,18 +221,18 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 429,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -360,10 +266,10 @@ func TestClient_Handle(t *testing.T) {
 			clientDropRateLimited: true,
 			serverResponseStatus:  429,
 			inputEntries:          []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -397,10 +303,10 @@ func TestClient_Handle(t *testing.T) {
 			clientTenantID:       "tenant-default",
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "tenant-default",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -434,18 +340,18 @@ func TestClient_Handle(t *testing.T) {
 			clientTenantID:       "tenant-default",
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[3], logEntries[4], logEntries[5]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "tenant-default",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 				{
 					TenantID: "tenant-1",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[3].Entry, logEntries[4].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[3].Entry, logEntries[4].Entry}}}},
 				},
 				{
 					TenantID: "tenant-2",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[5].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[5].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -505,10 +411,10 @@ func TestClient_Handle(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
-			receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 			// Start a local HTTP server
-			server := utils.NewRemoteWriteServer(receivedReqsChan, testData.serverResponseStatus)
+			server := util.NewRemoteWriteServer(receivedReqsChan, testData.serverResponseStatus)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -525,13 +431,12 @@ func TestClient_Handle(t *testing.T) {
 				DropRateLimitedBatches: testData.clientDropRateLimited,
 				Client:                 config.HTTPClientConfig{},
 				BackoffConfig:          backoff.Config{MinBackoff: 1 * time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: testData.clientMaxRetries},
-				ExternalLabels:         lokiflag.LabelSet{},
 				Timeout:                1 * time.Second,
 				TenantID:               testData.clientTenantID,
 			}
 
 			m := NewMetrics(reg)
-			c, err := New(m, cfg, 0, testData.clientMaxLineSize, testData.clientMaxLineSizeTruncate, log.NewNopLogger())
+			c, err := New(m, cfg, 0, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -554,7 +459,7 @@ func TestClient_Handle(t *testing.T) {
 			close(receivedReqsChan)
 
 			// Get all push requests received on the server side
-			receivedReqs := make([]utils.RemoteWriteRequest, 0)
+			receivedReqs := make([]util.RemoteWriteRequest, 0)
 			for req := range receivedReqsChan {
 				receivedReqs = append(receivedReqs, req)
 			}
@@ -583,7 +488,7 @@ func TestClient_StopNow(t *testing.T) {
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
-		expectedReqs         []utils.RemoteWriteRequest
+		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
 	}{
 		{
@@ -593,14 +498,14 @@ func TestClient_StopNow(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1], logEntries[2]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
 				},
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[2].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[2].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -622,10 +527,10 @@ func TestClient_StopNow(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 429,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
-					Request:  logproto.PushRequest{Streams: []logproto.Stream{{Labels: "{}", Entries: []logproto.Entry{logEntries[0].Entry}}}},
+					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
 				},
 			},
 			expectedMetrics: `
@@ -647,10 +552,10 @@ func TestClient_StopNow(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
-			receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 			// Start a local HTTP server
-			server := utils.NewRemoteWriteServer(receivedReqsChan, c.serverResponseStatus)
+			server := util.NewRemoteWriteServer(receivedReqsChan, c.serverResponseStatus)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -661,18 +566,17 @@ func TestClient_StopNow(t *testing.T) {
 
 			// Instance the client
 			cfg := Config{
-				URL:            serverURL,
-				BatchWait:      c.clientBatchWait,
-				BatchSize:      c.clientBatchSize,
-				Client:         config.HTTPClientConfig{},
-				BackoffConfig:  backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
-				ExternalLabels: lokiflag.LabelSet{},
-				Timeout:        1 * time.Second,
-				TenantID:       c.clientTenantID,
+				URL:           serverURL,
+				BatchWait:     c.clientBatchWait,
+				BatchSize:     c.clientBatchSize,
+				Client:        config.HTTPClientConfig{},
+				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: c.clientMaxRetries},
+				Timeout:       1 * time.Second,
+				TenantID:      c.clientTenantID,
 			}
 
 			m := NewMetrics(reg)
-			cl, err := New(m, cfg, 0, 0, false, log.NewNopLogger())
+			cl, err := New(m, cfg, 0, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -701,7 +605,7 @@ func TestClient_StopNow(t *testing.T) {
 			require.Error(t, cc.ctx.Err()) // non-nil error if its cancelled.
 
 			// Get all push requests received on the server side
-			receivedReqs := make([]utils.RemoteWriteRequest, 0)
+			receivedReqs := make([]util.RemoteWriteRequest, 0)
 			for req := range receivedReqsChan {
 				receivedReqs = append(receivedReqs, req)
 			}
@@ -716,36 +620,4 @@ func TestClient_StopNow(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
-}
-
-type RoundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (r RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return r(req)
-}
-
-func Test_Tripperware(t *testing.T) {
-	url, err := url.Parse("http://foo.com")
-	require.NoError(t, err)
-	var called bool
-	c, err := NewWithTripperware(metrics, Config{
-		URL: flagext.URLValue{URL: url},
-	}, 0, 0, false, log.NewNopLogger(), func(rt http.RoundTripper) http.RoundTripper {
-		return RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
-			require.Equal(t, r.URL.String(), "http://foo.com")
-			called = true
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("ok")),
-			}, nil
-		})
-	})
-	require.NoError(t, err)
-
-	c.Chan() <- loki.Entry{
-		Labels: model.LabelSet{"foo": "bar"},
-		Entry:  logproto.Entry{Timestamp: time.Now(), Line: "foo"},
-	}
-	c.Stop()
-	require.True(t, called)
 }

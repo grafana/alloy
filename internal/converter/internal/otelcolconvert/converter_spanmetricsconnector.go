@@ -54,16 +54,16 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 	)
 
 	var exponential *spanmetrics.ExponentialHistogramConfig
-	if cfg.Histogram.Exponential != nil {
+	if cfg.Histogram.Exponential.HasValue() {
 		exponential = &spanmetrics.ExponentialHistogramConfig{
-			MaxSize: cfg.Histogram.Exponential.MaxSize,
+			MaxSize: cfg.Histogram.Exponential.Get().MaxSize,
 		}
 	}
 
 	var explicit *spanmetrics.ExplicitHistogramConfig
-	if cfg.Histogram.Explicit != nil {
+	if cfg.Histogram.Explicit.HasValue() {
 		explicit = &spanmetrics.ExplicitHistogramConfig{
-			Buckets: cfg.Histogram.Explicit.Buckets,
+			Buckets: cfg.Histogram.Explicit.Get().Buckets,
 		}
 	}
 

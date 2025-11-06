@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,11 +11,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 const (
@@ -26,6 +28,7 @@ const (
 
 type TestLog struct {
 	TestDir    string
+	IsError    bool
 	AlloyLog   string
 	TestOutput string
 }
@@ -35,19 +38,17 @@ type fileInfo struct {
 	relPath string
 }
 
-var logChan chan TestLog
-
 func executeCommand(command string, args []string, taskDescription string) {
 	fmt.Printf("%s...\n", taskDescription)
 
 	cmd := exec.Command(command, args...)
 
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+	// Assign os.Stdout and os.Stderr to the command's output streams
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("error executing %s: %v\nstdout: %s\nstderr: %s", taskDescription, err, outBuf.String(), errBuf.String())
+		log.Fatalf("error executing %s: %v", taskDescription, err)
 	}
 }
 
@@ -126,9 +127,11 @@ func createContainerRequest(dirName string, port int, networkName string, contai
 }
 
 // Configure the test command with appropriate environment variables if needed
-func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container) (*exec.Cmd, error) {
+func setupTestCommand(ctx context.Context, dirName string, testDir string, alloyContainer testcontainers.Container, testTimeout time.Duration) (*exec.Cmd, error) {
 	testCmd := exec.Command("go", "test")
 	testCmd.Dir = testDir
+
+	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
 
 	if dirName == "loki-enrich" {
 		mappedPort, err := alloyContainer.MappedPort(ctx, "1514/tcp")
@@ -141,20 +144,18 @@ func setupTestCommand(ctx context.Context, dirName string, testDir string, alloy
 			return nil, fmt.Errorf("failed to get container host: %v", err)
 		}
 
-		fmt.Printf("Loki API should be available at http://%s:%s/loki/api/v1/push\n",
-			host, mappedPort.Port())
-
-		// TODO: we shouldn't have this logic here, this is needed for the loki-enrich test
-		// to work, but we should find a better way to pass the host and port
-		testCmd.Env = append(os.Environ(),
-			fmt.Sprintf("ALLOY_HOST=%s", host),
-			fmt.Sprintf("ALLOY_PORT=%s", mappedPort.Port()))
+		testCmd.Env = append(testCmd.Environ(),
+			fmt.Sprintf("%s=%s", common.AlloyHostEnv, host),
+			fmt.Sprintf("%s=%s", common.AlloyPortEnv, mappedPort.Port()))
 	}
 
 	return testCmd, nil
 }
 
-func runSingleTest(ctx context.Context, testDir string, port int) {
+var logMux sync.Mutex
+var logs []TestLog
+
+func runSingleTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
 	info, err := os.Stat(testDir)
 	if err != nil {
 		panic(err)
@@ -185,43 +186,62 @@ func runSingleTest(ctx context.Context, testDir string, port int) {
 	req := createContainerRequest(dirName, port, "alloy-integration-tests_integration-tests", containerFiles)
 
 	// Start container
+	containerStartTime := time.Now()
 	alloyContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 		Logger:           log.Default(),
 	})
 	if err != nil {
-		logChan <- TestLog{
+		addLog(TestLog{
 			TestDir:  dirName,
 			AlloyLog: fmt.Sprintf("failed to start Alloy container: %v", err),
-		}
+			IsError:  true,
+		})
 		return
 	}
-	defer alloyContainer.Terminate(ctx)
+
+	defer func() {
+		if err := alloyContainer.Terminate(ctx); err != nil {
+			addLog(TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
+				IsError:  true,
+			})
+		}
+	}()
 
 	// Setup and run test command
-	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer)
+	testCmd, err := setupTestCommand(ctx, dirName, testDir, alloyContainer, testTimeout)
 	if err != nil {
-		logChan <- TestLog{
+		addLog(TestLog{
 			TestDir:  dirName,
-			AlloyLog: fmt.Sprintf("%v", err),
-		}
+			AlloyLog: fmt.Sprintf("failed to setup test command: %v", err),
+			IsError:  true,
+		})
 		return
+	}
+	if stateful {
+		testCmd.Env = append(testCmd.Environ(),
+			fmt.Sprintf("%s=%d", common.AlloyStartTimeEnv, containerStartTime.Unix()),
+			fmt.Sprintf("%s=true", common.TestStatefulEnv))
 	}
 
 	testOutput, errTest := testCmd.CombinedOutput()
 
-	// Collect and report logs if test failed
+	// Collect and report logs
 	alloyLogs, _ := alloyContainer.Logs(ctx)
 	alloyLog, _ := io.ReadAll(alloyLogs)
+	testLogs := TestLog{
+		TestDir:    dirName,
+		AlloyLog:   string(alloyLog),
+		TestOutput: string(testOutput),
+	}
 
 	if errTest != nil {
-		logChan <- TestLog{
-			TestDir:    dirName,
-			AlloyLog:   string(alloyLog),
-			TestOutput: string(testOutput),
-		}
+		testLogs.IsError = true
 	}
+	addLog(testLogs)
 }
 
 func runAllTests(ctx context.Context) {
@@ -236,31 +256,39 @@ func runAllTests(ctx context.Context) {
 		wg.Add(1)
 		go func(td string, offset int) {
 			defer wg.Done()
-			runSingleTest(ctx, td, port+offset)
+			runSingleTest(ctx, td, port+offset, stateful, testTimeout)
 		}(testDir, i)
 	}
 	wg.Wait()
 }
 
-func reportResults() {
-	testsFailed := 0
-	close(logChan)
-	for log := range logChan {
+func addLog(testLog TestLog) {
+	logMux.Lock()
+	defer logMux.Unlock()
+	logs = append(logs, testLog)
+}
+
+// reportResults prints the results of the tests and returns the number of failed tests
+func reportResults(alwaysPrintLogs bool) int {
+	dirsWithFailure := map[string]struct{}{}
+	for _, log := range logs {
 		if strings.Contains(log.TestOutput, "build constraints exclude all Go files") {
 			fmt.Printf("Test %q is not applicable for this OS, ignoring\n", log.TestDir)
 			continue
 		}
-		fmt.Printf("Failure detected in %s:\n", log.TestDir)
+		if log.IsError {
+			fmt.Printf("Failure detected in %s:\n", log.TestDir)
+			dirsWithFailure[log.TestDir] = struct{}{}
+		} else if alwaysPrintLogs {
+			fmt.Printf("Tests in %s were successful:\n", log.TestDir)
+		} else {
+			continue
+		}
 		fmt.Println("Test output:", log.TestOutput)
 		fmt.Println("Alloy logs:", log.AlloyLog)
-		testsFailed++
 	}
 
-	if testsFailed > 0 {
-		fmt.Printf("%d tests failed!\n", testsFailed)
-	} else {
-		fmt.Println("All integration tests passed!")
-	}
+	return len(dirsWithFailure)
 }
 
 func collectFiles(root string) ([]fileInfo, error) {

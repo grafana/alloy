@@ -21,31 +21,33 @@ const (
 	StageTypeDocker     = "docker"
 	StageTypeDrop       = "drop"
 	//TODO(thampiotr): Add support for eventlogmessage stage
-	StageTypeEventLogMessage    = "eventlogmessage"
-	StageTypeGeoIP              = "geoip"
-	StageTypeJSON               = "json"
-	StageTypeLabel              = "labels"
-	StageTypeLabelAllow         = "labelallow"
-	StageTypeLabelDrop          = "labeldrop"
-	StageTypeLimit              = "limit"
-	StageTypeLogfmt             = "logfmt"
-	StageTypeLuhn               = "luhn"
-	StageTypeMatch              = "match"
-	StageTypeMetric             = "metrics"
-	StageTypeMultiline          = "multiline"
-	StageTypeOutput             = "output"
-	StageTypePack               = "pack"
-	StageTypePattern            = "pattern"
-	StageTypePipeline           = "pipeline"
-	StageTypeRegex              = "regex"
-	StageTypeReplace            = "replace"
-	StageTypeSampling           = "sampling"
-	StageTypeStaticLabels       = "static_labels"
-	StageTypeStructuredMetadata = "structured_metadata"
-	StageTypeTemplate           = "template"
-	StageTypeTenant             = "tenant"
-	StageTypeTimestamp          = "timestamp"
-	StageTypeWindowsEvent       = "windowsevent"
+	StageTypeEventLogMessage        = "eventlogmessage"
+	StageTypeGeoIP                  = "geoip"
+	StageTypeJSON                   = "json"
+	StageTypeLabel                  = "labels"
+	StageTypeLabelAllow             = "labelallow"
+	StageTypeLabelDrop              = "labeldrop"
+	StageTypeLimit                  = "limit"
+	StageTypeLogfmt                 = "logfmt"
+	StageTypeLuhn                   = "luhn"
+	StageTypeMatch                  = "match"
+	StageTypeMetric                 = "metrics"
+	StageTypeMultiline              = "multiline"
+	StageTypeOutput                 = "output"
+	StageTypePack                   = "pack"
+	StageTypePattern                = "pattern"
+	StageTypePipeline               = "pipeline"
+	StageTypeRegex                  = "regex"
+	StageTypeReplace                = "replace"
+	StageTypeSampling               = "sampling"
+	StageTypeStaticLabels           = "static_labels"
+	StageTypeStructuredMetadata     = "structured_metadata"
+	StageTypeStructuredMetadataDrop = "structured_metadata_drop"
+	StageTypeTemplate               = "template"
+	StageTypeTenant                 = "tenant"
+	StageTypeTimestamp              = "timestamp"
+	StageTypeTruncate               = "truncate"
+	StageTypeWindowsEvent           = "windowsevent"
 )
 
 // Add stages that are not GA. Stages that are not specified here are considered GA.
@@ -174,6 +176,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		if err != nil {
 			return nil, err
 		}
+	case cfg.StructuredMetadataDropConfig != nil:
+		s, err = newStructuredMetadataDropStage(logger, *cfg.StructuredMetadataDropConfig)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.RegexConfig != nil:
 		s, err = newRegexStage(logger, *cfg.RegexConfig)
 		if err != nil {
@@ -259,6 +266,11 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
 	case cfg.PatternConfig != nil:
 		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		if err != nil {
+			return nil, err
+		}
+	case cfg.TruncateConfig != nil:
+		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
 		if err != nil {
 			return nil, err
 		}

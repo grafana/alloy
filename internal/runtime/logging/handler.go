@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 )
@@ -139,6 +140,17 @@ func (h *handler) WithGroup(name string) slog.Handler {
 	}
 }
 
+var unsafeKeyCharReplacer = strings.NewReplacer(
+	" ", "_",
+	"=", "_",
+	"\"", "_",
+	"\t", "_",
+	"\n", "_",
+	"\v", "_",
+	"\f", "_",
+	"\r", "_",
+)
+
 func replace(groups []string, a slog.Attr) slog.Attr {
 	if len(groups) > 0 {
 		return a
@@ -192,5 +204,8 @@ func replace(groups []string, a slog.Attr) slog.Attr {
 		}
 	}
 
-	return a
+	return slog.Attr{
+		Key:   unsafeKeyCharReplacer.Replace(strings.TrimSpace(a.Key)),
+		Value: a.Value,
+	}
 }
