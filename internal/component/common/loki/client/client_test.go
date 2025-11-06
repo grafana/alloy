@@ -6,11 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/config"
@@ -18,9 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/loki/promtail/utils"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 var logEntries = []loki.Entry{
@@ -53,7 +51,7 @@ func TestClient_Handle(t *testing.T) {
 		serverResponseStatus  int
 		inputEntries          []loki.Entry
 		inputDelay            time.Duration
-		expectedReqs          []utils.RemoteWriteRequest
+		expectedReqs          []util.RemoteWriteRequest
 		expectedMetrics       string
 	}{
 		"batch log entries together until the batch size is reached": {
@@ -62,7 +60,7 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1], logEntries[2]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
@@ -103,7 +101,7 @@ func TestClient_Handle(t *testing.T) {
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
 			inputDelay:           110 * time.Millisecond,
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -143,7 +141,7 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 500,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -187,7 +185,7 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 400,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -223,7 +221,7 @@ func TestClient_Handle(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 429,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -268,7 +266,7 @@ func TestClient_Handle(t *testing.T) {
 			clientDropRateLimited: true,
 			serverResponseStatus:  429,
 			inputEntries:          []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -305,7 +303,7 @@ func TestClient_Handle(t *testing.T) {
 			clientTenantID:       "tenant-default",
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "tenant-default",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
@@ -342,7 +340,7 @@ func TestClient_Handle(t *testing.T) {
 			clientTenantID:       "tenant-default",
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[3], logEntries[4], logEntries[5]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "tenant-default",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -413,10 +411,10 @@ func TestClient_Handle(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
-			receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 			// Start a local HTTP server
-			server := utils.NewRemoteWriteServer(receivedReqsChan, testData.serverResponseStatus)
+			server := util.NewRemoteWriteServer(receivedReqsChan, testData.serverResponseStatus)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -461,7 +459,7 @@ func TestClient_Handle(t *testing.T) {
 			close(receivedReqsChan)
 
 			// Get all push requests received on the server side
-			receivedReqs := make([]utils.RemoteWriteRequest, 0)
+			receivedReqs := make([]util.RemoteWriteRequest, 0)
 			for req := range receivedReqsChan {
 				receivedReqs = append(receivedReqs, req)
 			}
@@ -490,7 +488,7 @@ func TestClient_StopNow(t *testing.T) {
 		serverResponseStatus int
 		inputEntries         []loki.Entry
 		inputDelay           time.Duration
-		expectedReqs         []utils.RemoteWriteRequest
+		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
 	}{
 		{
@@ -500,7 +498,7 @@ func TestClient_StopNow(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 200,
 			inputEntries:         []loki.Entry{logEntries[0], logEntries[1], logEntries[2]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry, logEntries[1].Entry}}}},
@@ -529,7 +527,7 @@ func TestClient_StopNow(t *testing.T) {
 			clientMaxRetries:     3,
 			serverResponseStatus: 429,
 			inputEntries:         []loki.Entry{logEntries[0]},
-			expectedReqs: []utils.RemoteWriteRequest{
+			expectedReqs: []util.RemoteWriteRequest{
 				{
 					TenantID: "",
 					Request:  push.PushRequest{Streams: []push.Stream{{Labels: "{}", Entries: []push.Entry{logEntries[0].Entry}}}},
@@ -554,10 +552,10 @@ func TestClient_StopNow(t *testing.T) {
 			reg := prometheus.NewRegistry()
 
 			// Create a buffer channel where we do enqueue received requests
-			receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+			receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
 
 			// Start a local HTTP server
-			server := utils.NewRemoteWriteServer(receivedReqsChan, c.serverResponseStatus)
+			server := util.NewRemoteWriteServer(receivedReqsChan, c.serverResponseStatus)
 			require.NotNil(t, server)
 			defer server.Close()
 
@@ -607,7 +605,7 @@ func TestClient_StopNow(t *testing.T) {
 			require.Error(t, cc.ctx.Err()) // non-nil error if its cancelled.
 
 			// Get all push requests received on the server side
-			receivedReqs := make([]utils.RemoteWriteRequest, 0)
+			receivedReqs := make([]util.RemoteWriteRequest, 0)
 			for req := range receivedReqsChan {
 				receivedReqs = append(receivedReqs, req)
 			}

@@ -15,7 +15,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
@@ -290,7 +290,7 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 	return nil
 }
 
-func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
+func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e push.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
 
 	// TODO: can I make this locking more fine grained?
@@ -513,7 +513,7 @@ func (c *queueClient) send(ctx context.Context, tenantID string, buf []byte) (in
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
+	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))

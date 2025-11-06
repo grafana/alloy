@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/util/encoding"
 )
 
@@ -60,7 +60,7 @@ func (r *Record) Reset() {
 	r.entryIndexMap = make(map[uint64]int)
 }
 
-func (r *Record) AddEntries(fp uint64, counter int64, entries ...logproto.Entry) {
+func (r *Record) AddEntries(fp uint64, counter int64, entries ...push.Entry) {
 	if idx, ok := r.entryIndexMap[fp]; ok {
 		r.RefEntries[idx].Entries = append(r.RefEntries[idx].Entries, entries...)
 		r.RefEntries[idx].Counter = counter
@@ -78,7 +78,7 @@ func (r *Record) AddEntries(fp uint64, counter int64, entries ...logproto.Entry)
 type RefEntries struct {
 	Counter int64
 	Ref     chunks.HeadSeriesRef
-	Entries []logproto.Entry
+	Entries []push.Entry
 }
 
 func (r *Record) EncodeSeries(b []byte) []byte {
@@ -165,24 +165,24 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 		}
 
 		nEntries := dec.Uvarint()
-		refEntries.Entries = make([]logproto.Entry, 0, nEntries)
+		refEntries.Entries = make([]push.Entry, 0, nEntries)
 		rem := nEntries
 		for ; dec.Err() == nil && rem > 0; rem-- {
 			timeOffset := dec.Varint64()
 			lineLength := dec.Uvarint()
 			line := dec.Bytes(lineLength)
 
-			var structuredMetadata []logproto.LabelAdapter
+			var structuredMetadata []push.LabelAdapter
 			if version >= WALRecordEntriesV3 {
 				nStructuredMetadata := dec.Uvarint()
 				if nStructuredMetadata > 0 {
-					structuredMetadata = make([]logproto.LabelAdapter, 0, nStructuredMetadata)
+					structuredMetadata = make([]push.LabelAdapter, 0, nStructuredMetadata)
 					for i := 0; dec.Err() == nil && i < nStructuredMetadata; i++ {
 						nameLength := dec.Uvarint()
 						name := dec.Bytes(nameLength)
 						valueLength := dec.Uvarint()
 						value := dec.Bytes(valueLength)
-						structuredMetadata = append(structuredMetadata, logproto.LabelAdapter{
+						structuredMetadata = append(structuredMetadata, push.LabelAdapter{
 							Name:  string(name),
 							Value: string(value),
 						})
@@ -190,7 +190,7 @@ func DecodeEntries(b []byte, version RecordType, rec *Record) error {
 				}
 			}
 
-			refEntries.Entries = append(refEntries.Entries, logproto.Entry{
+			refEntries.Entries = append(refEntries.Entries, push.Entry{
 				Timestamp:          time.Unix(0, baseTime+timeOffset),
 				Line:               string(line),
 				StructuredMetadata: structuredMetadata,

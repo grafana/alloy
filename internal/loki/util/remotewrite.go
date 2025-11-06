@@ -1,4 +1,4 @@
-package utils
+package util
 
 import (
 	"math"
@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/util"
 )
 
 // RemoteWriteRequest wraps the received logs remote write request that is received.
@@ -26,7 +25,7 @@ func createServerHandler(receivedReqsChan chan RemoteWriteRequest, receivedOKSta
 	return func(rw http.ResponseWriter, req *http.Request) {
 		// Parse the request
 		var pushReq push.PushRequest
-		if err := util.ParseProtoReader(req.Context(), req.Body, int(req.ContentLength), math.MaxInt32, &pushReq, util.RawSnappy); err != nil {
+		if err := ParseProtoReader(req.Context(), req.Body, int(req.ContentLength), math.MaxInt32, &pushReq, RawSnappy); err != nil {
 			rw.WriteHeader(500)
 			return
 		}
