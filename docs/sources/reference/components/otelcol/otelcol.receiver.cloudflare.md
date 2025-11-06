@@ -37,19 +37,20 @@ otelcol.receiver.cloudflare "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.receiver.tcplog`:
+You can use the following arguments with `otelcol.receiver.cloudflare`:
 
 | Name               | Type                | Description                                                                                                | Default                | Required |
 | ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
 | `endpoint`         | `string`            | The `<HOST:PORT>` endpoint address on which the receiver awaits requests from Cloudflare.                  |                        | yes      |
-| `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer, or float fields can be mapped.     |                        | no       |
 | `secret`           | `string`            | If this value is set, the receiver expects to see it in any valid requests under the `X-CF-Secret` header. |                        | no       |
+| `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer, or float fields can be mapped.     |                        | no       |
+| `delimiter`        | `string`            | The separator to join nested fields in the log message when setting attributes.                            | `"."`                  | no       |
 | `timestamp_field`  | `string`            | Log field name that contains timestamp.                                                                    | `"EdgeStartTimestamp"` | no       |
-| `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.        | `"unixnano"`           | no       |
+| `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.        | `"rfc3339"`            | no       |
 
 When the `attributes` configuration is empty, the receiver will automatically ingest all fields from the log messages as attributes, using the original field names as attribute names.
 
-Refer to the upstream receiver [documentation][https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/cloudflarereceiver#configuration] for more details.
+Refer to the upstream receiver [documentation](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/cloudflarereceiver#configuration) for more details.
 
 ## Blocks
 
@@ -133,7 +134,6 @@ otelcol.exporter.otlp "default" {
 `otelcol.receiver.cloudflare` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
-
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
