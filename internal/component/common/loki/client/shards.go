@@ -30,13 +30,20 @@ type queuedBatch struct {
 }
 
 func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
+	// Capacity is the worst case size in bytes desired for the send queue. This value is used to calculate the size of
+	// the buffered channel. The worst case scenario assumed is that every batch buffered in full, hence
+	// the channel capacity would be calculated as: bufferChannelSize = Capacity / BatchSize.
+	// For example, assuming BatchSize is the 1 MiB default and Capacity is 100 MiB,
+	// the underlying buffered channel would buffer up to 100 batches.
 	capacity := max(cfg.Queue.Capacity/max(cfg.BatchSize, 1), 1)
+
+	// Create a new queue with the given metrics, logger and configuration.
 	return &queue{
 		cfg:     cfg,
 		metrics: metrics,
 		logger:  logger,
 
-		batches: map[string]*batch{},
+		batches: make(map[string]*batch),
 		c:       make(chan queuedBatch, capacity),
 	}
 }
