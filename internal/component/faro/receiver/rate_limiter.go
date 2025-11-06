@@ -83,9 +83,6 @@ func NewAppRateLimitingConfig(rateLimit float64, burst int, reg prometheus.Regis
 // GetPoolLimiter returns the rate limiter for the given key.
 // Returns the limiter and a boolean indicating if it exists.
 func (r *AppRateLimitingConfig) GetPoolLimiter(key AppRateLimitingConfigKey) (*rate.Limiter, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	appLimiter, exists := r.pool[key]
 	if !exists {
 		return nil, false
@@ -95,14 +92,12 @@ func (r *AppRateLimitingConfig) GetPoolLimiter(key AppRateLimitingConfigKey) (*r
 
 // SetPoolLimiter sets a rate limiter for the given key and returns it.
 func (r *AppRateLimitingConfig) SetPoolLimiter(key AppRateLimitingConfigKey, limiter *rate.Limiter) *rate.Limiter {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	r.pool[key] = &AppRateLimiter{
 		limiter:  limiter,
 		lastUsed: time.Now(),
 	}
 	r.activeApp.Set(float64(len(r.pool)))
+
 	return limiter
 }
 
@@ -145,27 +140,35 @@ func (r *AppRateLimitingConfig) cleanupExpiredLimiters() {
 
 // Allow checks if a request is allowed for the given app/environment combination.
 // Creates a new rate limiter if one doesn't exist for the app/env key.
+// Updates the lastUsed timestamp on each call to prevent the cleanup routine
+// from removing active limiters.
 func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 	key := ParseAppRateLimitingConfigKey(app, env)
 
+	r.mu.Lock()
 	limiter, exists := r.GetPoolLimiter(key)
-
 	if !exists {
-		// Create new rate limiter with pre-filled bucket (similar to handler.Update)
-		t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
-		newLimiter := rate.NewLimiter(r.rate, r.burst)
-		newLimiter.SetLimitAt(t, r.rate)
-		newLimiter.SetBurstAt(t, r.burst)
+		newLimiter := r.getNewLimiter()
 
 		limiter = r.SetPoolLimiter(key, newLimiter)
 	} else {
-		// Update last used time
-		r.mu.Lock()
-		r.pool[key].lastUsed = time.Now()
-		r.mu.Unlock()
+		// Limiter exists, update its last used timestamp to prevent cleanup
+		appLimiter := r.pool[key]
+		appLimiter.lastUsed = time.Now()
 	}
+
+	r.mu.Unlock()
 
 	allowed := limiter.Allow()
 	r.rateLimitDecisions.WithLabelValues(app, env, fmt.Sprintf("%t", allowed)).Inc()
 	return allowed
+}
+
+func (r *AppRateLimitingConfig) getNewLimiter() *rate.Limiter {
+	t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
+	newLimiter := rate.NewLimiter(r.rate, r.burst)
+	newLimiter.SetLimitAt(t, r.rate)
+	newLimiter.SetBurstAt(t, r.burst)
+
+	return newLimiter
 }
