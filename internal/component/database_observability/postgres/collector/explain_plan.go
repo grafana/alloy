@@ -328,7 +328,6 @@ func (c *ExplainPlan) populateQueryCache(ctx context.Context) error {
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to fetch digests for explain plans", "err", err)
 		return fmt.Errorf("failed to fetch digests for explain plans: %w", err)
 	}
 	defer rs.Close()
@@ -395,7 +394,7 @@ func (c *ExplainPlan) fetchExplainPlans(ctx context.Context) error {
 			if *nonRecoverableFailureOccurred {
 				qi.failureCount++
 				c.queryDenylist[qi.uniqueKey] = qi
-				level.Info(c.logger).Log("msg", "query denylisted", "query_id", qi.queryId)
+				level.Debug(c.logger).Log("msg", "query denylisted", "query_id", qi.queryId)
 			} else {
 				c.finishedQueryCache[qi.uniqueKey] = qi
 			}
