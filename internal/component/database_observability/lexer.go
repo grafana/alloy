@@ -64,7 +64,7 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 							continue
 						}
 						if isCommandKeywordOrIdentifier(tokenBuffer[i]) {
-							if strings.ToUpper(tokenBuffer[i].Value) == strings.ToUpper(currentExemptionPrefix) {
+							if strings.EqualFold(tokenBuffer[i].Value, currentExemptionPrefix) {
 								matchedTokens++
 								if matchedTokens < lookbackCount {
 									currentExemptionPrefix = (*resWord.ExemptionPrefixes)[matchedTokens]
