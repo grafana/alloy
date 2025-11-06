@@ -1,26 +1,19 @@
-# Shorthand for arrays with simple values. This wouldn't work if elements were objects.
 labels:
-  - app
-  - prod
-  - web
-ports:
-  - 8080
-  - 8081
-  - 8082
-
-# This is not an array! These are anonymous blocks.
-object:
-- foo: bar
-- baz: qux
-
-# Can still use the $array marker for arrays with simple values
-labels2:
-  $array:
     - app
     - prod
     - web
+labels2:
+    - app
+    - prod
+    - web
+object:
+    - foo: bar
+    - baz: qux
+ports:
+    - 8080
+    - 8081
+    - 8082
 ports2:
-  $array:
     - 8080
     - 8081
     - 8082

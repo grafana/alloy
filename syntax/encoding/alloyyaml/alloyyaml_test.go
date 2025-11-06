@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 
@@ -123,31 +122,16 @@ func compareAlloyAST(expected, actual []byte) error {
 	return nil
 }
 
-// normalizeAST removes non-semantic information (positions, comments) and sorts elements.
+// normalizeAST removes non-semantic information (positions, comments).
 func normalizeAST(file *ast.File) {
 	file.Comments = nil
 	normalizeBody(file.Body)
 }
 
-// normalizeBody sorts and sanitizes statements recursively.
+// normalizeBody sanitizes statements recursively.
 func normalizeBody(body ast.Body) {
-	sort.Slice(body, func(i, j int) bool {
-		return sortKey(body[i]) < sortKey(body[j])
-	})
 	for _, stmt := range body {
 		normalizeStmt(stmt)
-	}
-}
-
-// sortKey returns a sort key for ordering statements.
-func sortKey(stmt ast.Stmt) string {
-	switch s := stmt.(type) {
-	case *ast.AttributeStmt:
-		return "attr:" + s.Name.Name
-	case *ast.BlockStmt:
-		return "block:" + strings.Join(s.Name, ".") + ":" + s.Label
-	default:
-		return ""
 	}
 }
 
@@ -179,9 +163,6 @@ func normalizeExpr(expr ast.Expr) {
 		}
 	case *ast.ObjectExpr:
 		e.LCurlyPos, e.RCurlyPos = token.Pos{}, token.Pos{}
-		sort.Slice(e.Fields, func(i, j int) bool {
-			return e.Fields[i].Name.Name < e.Fields[j].Name.Name
-		})
 		for _, field := range e.Fields {
 			clearPos(field.Name)
 			normalizeExpr(field.Value)

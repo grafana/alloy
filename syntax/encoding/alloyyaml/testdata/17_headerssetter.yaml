@@ -1,33 +1,31 @@
 otelcol.auth.headers/default:
-  header:
-    - action: insert
-      from_context: tenant_id
-      key: X-Scope-OrgID
-    - action: insert
-      from_attribute: tenant_id
-      key: X-Scope-OrgID-Fake
-    - key: User-ID
-      value: user_id
-    - action: update
-      key: User-ID
-      value: user_id
-    - action: delete
-      key: Some-Header
-
-otelcol.receiver.otlp/default:
-  grpc:
-    endpoint: localhost:4317
-  http:
-    endpoint: localhost:4318
-  output:
-    logs:
-      - expr(otelcol.exporter.otlp.default.input)
-    metrics:
-      - expr(otelcol.exporter.otlp.default.input)
-    traces:
-      - expr(otelcol.exporter.otlp.default.input)
-
+    header:
+        - action: insert
+          from_context: tenant_id
+          key: X-Scope-OrgID
+        - action: insert
+          from_attribute: tenant_id
+          key: X-Scope-OrgID-Fake
+        - key: User-ID
+          value: user_id
+        - action: update
+          key: User-ID
+          value: user_id
+        - action: delete
+          key: Some-Header
 otelcol.exporter.otlp/default:
-  client:
-    auth: expr(otelcol.auth.headers.default.handler)
-    endpoint: database:4317
+    client:
+        auth: expr(otelcol.auth.headers.default.handler)
+        endpoint: database:4317
+otelcol.receiver.otlp/default:
+    grpc:
+        endpoint: localhost:4317
+    http:
+        endpoint: localhost:4318
+    output:
+        logs:
+            - expr(otelcol.exporter.otlp.default.input)
+        metrics:
+            - expr(otelcol.exporter.otlp.default.input)
+        traces:
+            - expr(otelcol.exporter.otlp.default.input)

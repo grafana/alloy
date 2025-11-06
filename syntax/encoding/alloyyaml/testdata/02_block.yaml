@@ -1,4 +1,3 @@
 logging:
-  format: json
-  level: debug
-
+    format: json
+    level: debug

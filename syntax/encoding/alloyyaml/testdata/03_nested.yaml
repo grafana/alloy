@@ -1,7 +1,6 @@
 server:
-  address: localhost
-  port: 8080
-  tls:
-    ca_file: /etc/ca.pem
-    cert_file: /etc/cert.pem
-
+    address: localhost
+    port: 8080
+    tls:
+        ca_file: /etc/ca.pem
+        cert_file: /etc/cert.pem

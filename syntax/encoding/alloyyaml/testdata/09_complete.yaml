@@ -1,20 +1,16 @@
-logging:
-  format: logfmt
-  level: debug
-
 discovery.kubernetes/pods:
-  role: pod
-
-prometheus.scrape/default:
-  forward_to:
-    - expr(prometheus.remote_write.default.receiver)
-  scrape_interval: 15s
-  targets: expr(discovery.kubernetes.pods.targets)
-
+    role: pod
+logging:
+    format: logfmt
+    level: debug
 prometheus.remote_write/default:
-  endpoint:
-    url: http://localhost:9009/api/prom/push
-    basic_auth:
-      username: admin
-      password: expr(env("PASSWORD"))
-
+    endpoint:
+        basic_auth:
+            password: expr(env("PASSWORD"))
+            username: admin
+        url: http://localhost:9009/api/prom/push
+prometheus.scrape/default:
+    forward_to:
+        - expr(prometheus.remote_write.default.receiver)
+    scrape_interval: 15s
+    targets: expr(discovery.kubernetes.pods.targets)

@@ -1,25 +1,20 @@
 logging:
-  format: logfmt
-  level: debug
-
-tracing:
-  sampling_fraction: 1
-  write_to:
-    - expr(otelcol.exporter.otlp.tempo.input)
-
+    format: logfmt
+    level: debug
 otelcol.exporter.otlp/tempo:
-  client:
-    endpoint: localhost:4317
-    tls:
-      insecure: true
-
+    client:
+        endpoint: localhost:4317
+        tls:
+            insecure: true
 prometheus.exporter.unix/default: {}
-
-prometheus.scrape/default:
-  forward_to:
-    - expr(prometheus.remote_write.default.receiver)
-  targets: expr(prometheus.exporter.unix.default.targets)
-
 prometheus.remote_write/default:
-  endpoint:
-    - url: http://localhost:9009/api/prom/push
+    endpoint:
+        url: http://localhost:9009/api/prom/push
+prometheus.scrape/default:
+    forward_to:
+        - expr(prometheus.remote_write.default.receiver)
+    targets: expr(prometheus.exporter.unix.default.targets)
+tracing:
+    sampling_fraction: 1
+    write_to:
+        - expr(otelcol.exporter.otlp.tempo.input)

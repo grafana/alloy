@@ -1,37 +1,35 @@
-otelcol.receiver.otlp/default:
-  grpc:
-    endpoint: localhost:4317
-  http:
-    endpoint: localhost:4318
-  output:
-    traces:
-      - expr(otelcol.connector.servicegraph.default.input)
-
-otelcol.exporter.otlp/default:
-  client:
-    endpoint: database:4317
-  sending_queue:
-    queue_size: 5000
-
 otelcol.connector.servicegraph/default:
-  cache_loop: 2m0s
-  database_name_attributes:
-    - db_name3
-    - db_name4
-  dimensions:
-    - dimension-1
-    - dimension-2
-  latency_histogram_buckets:
-    - 100ms
-    - 250ms
-    - 1s
-    - 5s
-    - 10s
-  metrics_flush_interval: 3m0s
-  output:
-    metrics:
-      - expr(otelcol.exporter.otlp.default.input)
-  store:
-    max_items: 10
-    ttl: 1s
-  store_expiration_loop: 5s
+    cache_loop: 2m0s
+    database_name_attributes:
+        - db_name3
+        - db_name4
+    dimensions:
+        - dimension-1
+        - dimension-2
+    latency_histogram_buckets:
+        - 100ms
+        - 250ms
+        - 1s
+        - 5s
+        - 10s
+    metrics_flush_interval: 3m0s
+    output:
+        metrics:
+            - expr(otelcol.exporter.otlp.default.input)
+    store:
+        max_items: 10
+        ttl: 1s
+    store_expiration_loop: 5s
+otelcol.exporter.otlp/default:
+    client:
+        endpoint: database:4317
+    sending_queue:
+        queue_size: 5000
+otelcol.receiver.otlp/default:
+    grpc:
+        endpoint: localhost:4317
+    http:
+        endpoint: localhost:4318
+    output:
+        traces:
+            - expr(otelcol.connector.servicegraph.default.input)

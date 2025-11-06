@@ -1,0 +1,39 @@
+some_block "label_name" {
+	this_is_array = [
+		{foo = "bar"},
+		{baz = "qux"},
+	]
+	this_is_object = {
+		foo = "bar",
+		baz = "boop",
+	}
+	this_is_anon_block {
+		foo = "bar"
+		baz = "bap"
+	}
+	this_is_anon_block {
+		foo = "fab"
+		baz = "boom"
+	}
+	this_is_anon_block {
+		foo = "bop"
+		baz = "bob"
+	}
+	these_are_named_blocks "block_1" {
+		foo = "bar"
+	}
+	these_are_named_blocks "block_2" {
+		foo = "fab"
+	}
+	these_are_named_blocks "block_3" {
+		foo = "bop"
+	}
+	ordered_stages {
+		stage.foo { }
+		stage.bar { }
+		stage.foo { }
+		stage.bar { }
+	}
+}
+
+another_block {}
