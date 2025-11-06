@@ -35,42 +35,75 @@ const (
 	ExplainPlanJoinAlgorithmNestedLoop ExplainPlanJoinAlgorithm = "nested_loop"
 )
 
+type ExplainReservedWordMetadata struct {
+	ExemptionPrefixes *[]string
+}
+
 // ExplainReservedWordDenyList contains SQL reserved words that indicate write operations
 // to the database. These are primarily DML (Data Manipulation Language) and DDL
 // (Data Definition Language) commands that modify database state.
 // This was extracted from the MySQL and PostgreSQL documentation by Claude Sonnet 4 on Oct 28, 2025
 // and audited by @rgeyer and others in the dbo11y team.
-var ExplainReservedWordDenyList = map[string]bool{
+var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	// Data Manipulation Language (DML) - Write operations
-	"INSERT": true, "UPDATE": true, "DELETE": true, "REPLACE": true, "MERGE": true, "UPSERT": true,
-	"FOR UPDATE": true,
+	"INSERT": ExplainReservedWordMetadata{},
+	"UPDATE": ExplainReservedWordMetadata{
+		ExemptionPrefixes: &[]string{"FOR"},
+	},
+	"DELETE":  ExplainReservedWordMetadata{},
+	"REPLACE": ExplainReservedWordMetadata{},
+	"MERGE":   ExplainReservedWordMetadata{},
+	"UPSERT":  ExplainReservedWordMetadata{},
 
 	// Data Definition Language (DDL) - Schema modifications
-	"CREATE": true, "ALTER": true, "DROP": true, "RENAME": true, "TRUNCATE": true,
+	"CREATE":   ExplainReservedWordMetadata{},
+	"ALTER":    ExplainReservedWordMetadata{},
+	"DROP":     ExplainReservedWordMetadata{},
+	"RENAME":   ExplainReservedWordMetadata{},
+	"TRUNCATE": ExplainReservedWordMetadata{},
 
 	// Transaction control that can commit writes
-	"COMMIT": true, "ROLLBACK": true, "SAVEPOINT": true,
+	"COMMIT":    ExplainReservedWordMetadata{},
+	"ROLLBACK":  ExplainReservedWordMetadata{},
+	"SAVEPOINT": ExplainReservedWordMetadata{},
 
 	// Database/Schema management
-	"USE": true, "DATABASE": true, "SCHEMA": true,
+	"USE":      ExplainReservedWordMetadata{},
+	"DATABASE": ExplainReservedWordMetadata{},
+	"SCHEMA":   ExplainReservedWordMetadata{},
 
 	// Index operations
-	"REINDEX": true, "ANALYZE": true, "OPTIMIZE": true,
-	"REINDEX TABLE": true, "ANALYZE TABLE": true, "OPTIMIZE TABLE": true,
+	"REINDEX":  ExplainReservedWordMetadata{},
+	"ANALYZE":  ExplainReservedWordMetadata{},
+	"OPTIMIZE": ExplainReservedWordMetadata{},
+
 	// User/Permission management
-	"GRANT": true, "REVOKE": true, "CREATE USER": true, "DROP USER": true, "ALTER USER": true,
+	"GRANT":  ExplainReservedWordMetadata{},
+	"REVOKE": ExplainReservedWordMetadata{},
 
 	// MySQL specific write operations
-	"LOAD": true, "DELAYED": true, "IGNORE": true, "ON DUPLICATE KEY": true,
-	"LOW_PRIORITY": true, "HIGH_PRIORITY": true, "QUICK": true,
-	"LOCK IN SHARE MODE": true,
+	"LOAD":          ExplainReservedWordMetadata{},
+	"DELAYED":       ExplainReservedWordMetadata{},
+	"IGNORE":        ExplainReservedWordMetadata{},
+	"LOW_PRIORITY":  ExplainReservedWordMetadata{},
+	"HIGH_PRIORITY": ExplainReservedWordMetadata{},
+	"QUICK":         ExplainReservedWordMetadata{},
 
 	// PostgreSQL specific write operations
-	"COPY": true, "VACUUM": true, "CLUSTER": true, "LISTEN": true, "NOTIFY": true, "DISCARD": true,
-	"PREPARE": true, "EXECUTE": true, "DEALLOCATE": true, "RESET": true, "SET": true,
+	"COPY":       ExplainReservedWordMetadata{},
+	"VACUUM":     ExplainReservedWordMetadata{},
+	"CLUSTER":    ExplainReservedWordMetadata{},
+	"LISTEN":     ExplainReservedWordMetadata{},
+	"NOTIFY":     ExplainReservedWordMetadata{},
+	"DISCARD":    ExplainReservedWordMetadata{},
+	"PREPARE":    ExplainReservedWordMetadata{},
+	"EXECUTE":    ExplainReservedWordMetadata{},
+	"DEALLOCATE": ExplainReservedWordMetadata{},
+	"RESET":      ExplainReservedWordMetadata{},
+	"SET":        ExplainReservedWordMetadata{},
 
 	// dbo11 specific operations we'd like to exclude
-	"EXPLAIN": true,
+	"EXPLAIN": ExplainReservedWordMetadata{},
 }
 
 type ExplainPlanOutput struct {
