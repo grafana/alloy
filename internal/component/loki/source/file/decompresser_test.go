@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
-
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 type noopClient struct {
@@ -219,7 +219,7 @@ func TestOnelineFiles(t *testing.T) {
 
 func TestDecompressor(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -277,7 +277,7 @@ func TestDecompressor(t *testing.T) {
 
 func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -326,7 +326,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 
 func TestDecompressor_RunCalledTwice(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{

@@ -1,6 +1,6 @@
 package stages
 
-import "github.com/grafana/loki/v3/pkg/util/flagext"
+import "github.com/grafana/alloy/internal/loki/util/flagext"
 
 const (
 	StageTypeJSON               = "json"

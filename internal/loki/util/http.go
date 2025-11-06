@@ -141,3 +141,22 @@ func tryBufferFromReader(reader io.Reader) (*bytes.Buffer, bool) {
 	}
 	return nil, false
 }
+
+// SerializeProto serializes a protobuf response into writer
+func SerializeProto(w io.Writer, resp proto.Message, compression CompressionType) error {
+	data, err := proto.Marshal(resp)
+	if err != nil {
+		return fmt.Errorf("error marshaling proto response: %v", err)
+	}
+
+	switch compression {
+	case NoCompression:
+	case RawSnappy:
+		data = snappy.Encode(nil, data)
+	}
+
+	if _, err := w.Write(data); err != nil {
+		return fmt.Errorf("error sending proto response: %v", err)
+	}
+	return nil
+}

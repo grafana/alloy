@@ -46,7 +46,7 @@ WHERE name = 'server_version';`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -324,7 +324,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryDetailsCollector:  true,
 		collector.QuerySamplesCollector:  true,
 		collector.SchemaDetailsCollector: true,
-		collector.ExplainPlanCollector:   false,
+		collector.ExplainPlanCollector:   true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
