@@ -14,25 +14,25 @@ import (
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 var updateGolden = flag.Bool("update", false, "update golden YAML files")
 
-// TestGoldenFiles tests bidirectional conversion between Alloy and YAML.
+// TestYAMLToAlloy tests YAML → Alloy conversion using golden files.
 //
 // Test files are stored in testdata/ as pairs:
-//   - foo.alloy: Alloy configuration (source of truth)
-//   - foo.yaml: Expected YAML output (golden file)
+//   - foo.yaml: YAML input (hand-written golden file)
+//   - foo.alloy: Expected Alloy output (golden file)
 //
 // The test validates:
-//  1. Alloy is syntactically valid (can be parsed)
-//  2. YAML → Alloy conversion produces valid Alloy
-//  3. YAML → Alloy → YAML round-trip produces same YAML
+//  1. YAML → Alloy conversion produces valid Alloy
+//  2. The generated Alloy matches the golden file (semantically via AST comparison)
 //
-// Run with -update flag to regenerate golden YAML files:
+// Run with -update flag to skip tests (golden files must be created manually):
 //
-//	go test -v -run TestGoldenFiles -update
-func TestGoldenFiles(t *testing.T) {
+//	go test -v -run TestYAMLToAlloy -update
+func TestYAMLToAlloy(t *testing.T) {
 	testdataDir := "testdata"
 
 	// Find all .alloy files in testdata
@@ -49,19 +49,15 @@ func TestGoldenFiles(t *testing.T) {
 		yamlPath := filepath.Join(testdataDir, baseName+".yaml")
 
 		t.Run(baseName, func(t *testing.T) {
-			testGoldenFile(t, alloyPath, yamlPath)
+			testYAMLToAlloy(t, alloyPath, yamlPath)
 		})
 	}
 }
 
-func testGoldenFile(t *testing.T, alloyPath, yamlPath string) {
-	// Read Alloy file
-	alloyContent, err := os.ReadFile(alloyPath)
+func testYAMLToAlloy(t *testing.T, alloyPath, yamlPath string) {
+	// Read golden Alloy file
+	expectedAlloy, err := os.ReadFile(alloyPath)
 	require.NoError(t, err, "failed to read alloy file: %s", alloyPath)
-
-	// For now, we'll use the YAML file as the source
-	// In a full implementation, we'd parse Alloy → YAML
-	// But for testing conversion, we'll go: YAML → Alloy → YAML
 
 	// Check if YAML file exists or if we're updating
 	yamlContent, err := os.ReadFile(yamlPath)
@@ -71,26 +67,26 @@ func testGoldenFile(t *testing.T, alloyPath, yamlPath string) {
 	}
 
 	if *updateGolden {
-		t.Logf("Skipping %s - golden file update requires manual creation for now", filepath.Base(alloyPath))
+		t.Logf("Skipping %s - golden file update requires manual creation", filepath.Base(alloyPath))
 		return
 	}
 
 	require.NoError(t, err, "failed to read yaml file: %s", yamlPath)
 
-	// Test: YAML → Alloy
-	convertedAlloy, err := ToAlloy(yamlContent)
+	// Convert YAML → Alloy
+	actualAlloy, err := ToAlloy(yamlContent)
 	require.NoError(t, err, "failed to convert YAML to Alloy")
 
 	// Compare AST semantically (ignoring comments, whitespace, formatting)
-	err = compareAlloyAST(t, alloyContent, convertedAlloy)
+	err = compareAlloyAST(t, expectedAlloy, actualAlloy)
 	if err != nil {
 		t.Errorf("AST comparison failed: %v", err)
-		t.Logf("Expected (golden):\n%s", string(alloyContent))
-		t.Logf("Actual (converted):\n%s", string(convertedAlloy))
+		t.Logf("Expected Alloy (golden):\n%s", string(expectedAlloy))
+		t.Logf("Actual Alloy (converted):\n%s", string(actualAlloy))
 		t.FailNow()
 	}
 
-	t.Logf("✓ Golden file test passed: %s", filepath.Base(yamlPath))
+	t.Logf("✓ YAML → Alloy test passed: %s", filepath.Base(yamlPath))
 }
 
 // compareAlloyAST parses both Alloy strings and compares their AST structures semantically.
@@ -230,5 +226,171 @@ func sanitizeExpr(expr ast.Expr) {
 		e.LParenPos = token.Pos{}
 		e.RParenPos = token.Pos{}
 		sanitizeExpr(e.Inner)
+	}
+}
+
+// TestAlloyToYAML tests Alloy → YAML conversion using the same golden files.
+//
+// Test files are stored in testdata/ as pairs:
+//   - foo.alloy: Alloy configuration (input)
+//   - foo.yaml: Expected YAML output (golden file)
+//
+// The test validates:
+//  1. Alloy → YAML conversion produces valid YAML
+//  2. The generated YAML matches the golden file (semantically)
+//
+// Run with -args -update to regenerate golden YAML files from Alloy:
+//
+//	go test -v -run TestAlloyToYAML -args -update
+//	go test -v -run TestAlloyToYAML/13_traces -args -update  # Update specific test
+func TestAlloyToYAML(t *testing.T) {
+	testdataDir := "testdata"
+
+	// Find all .alloy files in testdata
+	alloyFiles, err := filepath.Glob(filepath.Join(testdataDir, "*.alloy"))
+	require.NoError(t, err, "failed to list testdata files")
+
+	if len(alloyFiles) == 0 {
+		t.Skip("no testdata files found")
+	}
+
+	for _, alloyPath := range alloyFiles {
+		// Get base name without extension
+		baseName := strings.TrimSuffix(filepath.Base(alloyPath), ".alloy")
+		yamlPath := filepath.Join(testdataDir, baseName+".yaml")
+
+		t.Run(baseName, func(t *testing.T) {
+			testAlloyToYAML(t, alloyPath, yamlPath)
+		})
+	}
+}
+
+func testAlloyToYAML(t *testing.T, alloyPath, yamlPath string) {
+	// Read Alloy file
+	alloyContent, err := os.ReadFile(alloyPath)
+	require.NoError(t, err, "failed to read alloy file: %s", alloyPath)
+
+	// Convert Alloy → YAML
+	actualYAML, err := ToYAML(alloyContent)
+	require.NoError(t, err, "failed to convert Alloy to YAML")
+
+	// If update flag is set, write the generated YAML and skip comparison
+	if *updateGolden {
+		err := os.WriteFile(yamlPath, actualYAML, 0644)
+		require.NoError(t, err, "failed to write golden file: %s", yamlPath)
+		t.Logf("✓ Updated golden file: %s", filepath.Base(yamlPath))
+		return
+	}
+
+	// Read expected YAML file
+	expectedYAML, err := os.ReadFile(yamlPath)
+	if os.IsNotExist(err) {
+		t.Skipf("Golden file %s does not exist. Run with -args -update to create it.", yamlPath)
+		return
+	}
+	require.NoError(t, err, "failed to read yaml file: %s", yamlPath)
+
+	// Compare YAML data structures (ignoring comments, ordering, formatting)
+	err = compareYAMLData(t, expectedYAML, actualYAML)
+	if err != nil {
+		t.Errorf("YAML comparison failed: %v", err)
+		t.Logf("Expected YAML:\n%s", string(expectedYAML))
+		t.Logf("Actual YAML:\n%s", string(actualYAML))
+		t.FailNow()
+	}
+
+	t.Logf("✓ Alloy → YAML test passed: %s", filepath.Base(alloyPath))
+}
+
+// compareYAMLData parses both YAML strings and compares their data structures.
+// It ignores comments, whitespace, and key ordering.
+func compareYAMLData(t *testing.T, expected, actual []byte) error {
+	var expectedData, actualData interface{}
+
+	if err := yaml.Unmarshal(expected, &expectedData); err != nil {
+		return fmt.Errorf("failed to parse expected YAML: %w", err)
+	}
+
+	if err := yaml.Unmarshal(actual, &actualData); err != nil {
+		return fmt.Errorf("failed to parse actual YAML: %w", err)
+	}
+
+	// Normalize both data structures
+	expectedData = normalizeYAMLData(expectedData)
+	actualData = normalizeYAMLData(actualData)
+
+	// Use reflect.DeepEqual for comparison
+	if !reflect.DeepEqual(expectedData, actualData) {
+		return fmt.Errorf("YAML data structures differ")
+	}
+
+	return nil
+}
+
+// normalizeYAMLData recursively normalizes YAML data for comparison.
+// This ensures consistent types and ordering for comparison.
+func normalizeYAMLData(data interface{}) interface{} {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		// Unwrap $array marker if present
+		if arrValue, hasArray := v["$array"]; hasArray && len(v) == 1 {
+			return normalizeYAMLData(arrValue)
+		}
+
+		result := make(map[string]interface{})
+		for key, val := range v {
+			result[key] = normalizeYAMLData(val)
+		}
+		return result
+
+	case map[interface{}]interface{}:
+		// yaml.v3 sometimes parses maps with interface{} keys
+		result := make(map[string]interface{})
+		for key, val := range v {
+			keyStr := fmt.Sprintf("%v", key)
+			result[keyStr] = normalizeYAMLData(val)
+		}
+		// Unwrap $array marker if present
+		if arrValue, hasArray := result["$array"]; hasArray && len(result) == 1 {
+			return normalizeYAMLData(arrValue)
+		}
+		return result
+
+	case []interface{}:
+		result := make([]interface{}, len(v))
+		for i, elem := range v {
+			result[i] = normalizeYAMLData(elem)
+		}
+		return result
+
+	case int:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case int64:
+		return v
+	case uint:
+		return int64(v)
+	case uint32:
+		return int64(v)
+	case uint64:
+		if v <= 9223372036854775807 {
+			return int64(v)
+		}
+		return v
+	case float32:
+		return float64(v)
+	case float64:
+		return v
+	case string:
+		return v
+	case bool:
+		return v
+	case nil:
+		return nil
+
+	default:
+		// Unknown type, return as-is
+		return v
 	}
 }

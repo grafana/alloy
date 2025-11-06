@@ -6,3 +6,6 @@ endpoint {
   url = "http://secondary.com"
 }
 
+single_endpoint {
+  url = "http://single.com"
+}

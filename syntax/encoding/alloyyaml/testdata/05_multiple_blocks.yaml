@@ -2,3 +2,5 @@ endpoint:
   - url: http://primary.com
   - url: http://secondary.com
 
+single_endpoint:
+  url: http://single.com
