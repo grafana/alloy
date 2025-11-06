@@ -48,7 +48,7 @@ func TestQueue_append(t *testing.T) {
 	assert.False(t, queued)
 
 	// dequeue current batch.
-	_ = <-q.channel()
+	<-q.channel()
 
 	// add batch again.
 	queued = q.append("tenant-1", entry, 0)
@@ -124,7 +124,6 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 			done := make(chan struct{})
 			defer close(done)
 			q.flushAndShutdown(done)
-
 		})
 
 		wg.Go(func() {
