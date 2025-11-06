@@ -24,8 +24,12 @@ const (
 )
 
 const (
-	queryTextClause = ", s.query"
-	stateActive     = "active"
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	stateIdle           = "idle"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
+	waitEventTypeLock   = "Lock"
 )
 
 const selectPgStatActivity = `
@@ -47,7 +51,6 @@ const selectPgStatActivity = `
 		s.state_change,
 		s.wait_event_type,
 		s.wait_event,
-		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
 		s.query_id
 		%s
@@ -55,7 +58,6 @@ const selectPgStatActivity = `
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
 		s.pid != pg_backend_pid() AND
-		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
 			(
@@ -63,6 +65,12 @@ const selectPgStatActivity = `
 				s.query_id != 0
 			)
 		)
+`
+
+const selectBlockingPIDs = `
+	SELECT pid, pg_blocking_pids(pid) 
+	FROM pg_stat_activity 
+	WHERE wait_event_type = 'Lock' AND pid != pg_backend_pid()
 `
 
 type QuerySamplesInfo struct {
@@ -97,6 +105,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
+	ThrottleInterval      time.Duration
 }
 
 type QuerySamples struct {
@@ -104,6 +113,10 @@ type QuerySamples struct {
 	collectInterval       time.Duration
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	throttleInterval      time.Duration
+	lastEmittedByQueryID  map[int64]time.Time
+	adaptiveBurstInterval time.Duration
+	burstWindowUntil      time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -112,6 +125,94 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
+	// keep track of keys that were already emitted to avoid duplicates
+	emitted map[SampleKey]time.Time
+}
+
+func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	return &QuerySamples{
+		dbConnection:          args.DB,
+		collectInterval:       args.CollectInterval,
+		entryHandler:          args.EntryHandler,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:               &atomic.Bool{},
+		samples:               map[SampleKey]*SampleState{},
+		emitted:               map[SampleKey]time.Time{},
+		throttleInterval:      args.ThrottleInterval,
+		lastEmittedByQueryID:  map[int64]time.Time{},
+	}, nil
+}
+
+func (c *QuerySamples) Name() string {
+	return QuerySamplesCollector
+}
+
+func (c *QuerySamples) Start(ctx context.Context) error {
+	if c.disableQueryRedaction {
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+	} else {
+		level.Debug(c.logger).Log("msg", "collector started")
+	}
+
+	if c.throttleInterval < time.Minute {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 1 minute: %s. This may result in excessive samples volume.", c.throttleInterval))
+	}
+
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with throttle interval: %s", c.throttleInterval))
+
+	c.running.Store(true)
+	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
+	c.cancel = cancel
+
+	go func() {
+		defer func() {
+			c.Stop()
+			c.running.Store(false)
+		}()
+
+		for {
+			loopStart := time.Now()
+			hasActive, err := c.fetchQuerySample(c.ctx)
+
+			if err != nil {
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
+			}
+
+			elapsed := time.Since(loopStart)
+			interval := c.collectInterval
+
+			if hasActive {
+				// Arm a burst window on activity if not already in one
+				if loopStart.After(c.burstWindowUntil) {
+					s, window := computeBurstWindow(c.collectInterval, elapsed)
+					c.adaptiveBurstInterval = s
+					c.burstWindowUntil = loopStart.Add(window)
+					level.Debug(c.logger).Log("msg", "starting a collection burst window while there are rows in active state", "burst interval", c.adaptiveBurstInterval, "until", c.burstWindowUntil)
+				}
+				interval = c.adaptiveBurstInterval
+			}
+
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-time.After(interval):
+				// continue loop
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (c *QuerySamples) Stopped() bool {
+	return !c.running.Load()
+}
+
+// Stop should be kept idempotent
+func (c *QuerySamples) Stop() {
+	c.cancel()
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -137,6 +238,26 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
+	// EndOverride is used to compute durations and timestamps when a query
+	// transitioned to idle or was only observed as idle.
+	EndOverride sql.NullTime
+}
+
+func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// markEndedAt sets EndOverride and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) markEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndOverride = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -178,69 +299,7 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 	return equalPIDSets(w.blockedBy, other.blockedBy)
 }
 
-func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-	}, nil
-}
-
-func (c *QuerySamples) Name() string {
-	return QuerySamplesCollector
-}
-
-func (c *QuerySamples) Start(ctx context.Context) error {
-	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
-	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
-	}
-
-	c.running.Store(true)
-	ctx, cancel := context.WithCancel(ctx)
-	c.ctx = ctx
-	c.cancel = cancel
-
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
-
-		ticker := time.NewTicker(c.collectInterval)
-
-		for {
-			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
-			}
-
-			select {
-			case <-c.ctx.Done():
-				return
-			case <-ticker.C:
-				// continue loop
-			}
-		}
-	}()
-
-	return nil
-}
-
-func (c *QuerySamples) Stopped() bool {
-	return !c.running.Load()
-}
-
-// Stop should be kept idempotent
-func (c *QuerySamples) Stop() {
-	c.cancel()
-}
-
-func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
+func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, err error) {
 	queryTextField := ""
 	if c.disableQueryRedaction {
 		queryTextField = queryTextClause
@@ -249,18 +308,60 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	query := fmt.Sprintf(selectPgStatActivity, queryTextField)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
+		return false, fmt.Errorf("failed to query pg_stat_activity: %w", err)
 	}
 
 	defer rows.Close()
 
-	activeKeys := map[SampleKey]struct{}{}
+	var buffered []QuerySamplesInfo
+	hasLockWait := false
 
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
 		if scanErr != nil {
 			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
 			continue
+		}
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			hasLockWait = true
+		}
+		buffered = append(buffered, sample)
+	}
+
+	if err := rows.Err(); err != nil {
+		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
+		return false, err
+	}
+
+	blockedByByPID := map[int]pq.Int64Array{}
+	if hasLockWait {
+		blockedRows, err := c.dbConnection.QueryContext(ctx, selectBlockingPIDs)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to query blocking pids", "err", err)
+		} else {
+			defer blockedRows.Close()
+			for blockedRows.Next() {
+				var pid int
+				var blocked pq.Int64Array
+				if err := blockedRows.Scan(&pid, &blocked); err != nil {
+					level.Error(c.logger).Log("msg", "failed to scan blocking pids row", "err", err)
+					continue
+				}
+				blockedByByPID[pid] = blocked
+			}
+			if err := blockedRows.Err(); err != nil {
+				level.Error(c.logger).Log("msg", "failed to iterate blocking pids rows", "err", err)
+			}
+		}
+	}
+
+	activeKeys := map[SampleKey]struct{}{}
+
+	for _, sample := range buffered {
+		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
+			if blocked, ok := blockedByByPID[sample.PID]; ok {
+				sample.BlockedByPIDs = blocked
+			}
 		}
 
 		key, procErr := c.processRow(sample)
@@ -269,23 +370,36 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		c.upsertActiveSample(key, sample)
-		activeKeys[key] = struct{}{}
+		if !isIdleState(sample.State.String) {
+			c.upsertActiveSample(key, sample)
+			activeKeys[key] = struct{}{}
+			continue
+		}
+
+		if st, hadActive := c.samples[key]; hadActive {
+			st.markEndedAt(sample)
+			st.LastRow.State = sample.State
+			c.emitted[key] = sample.Now //is actually emitted at the end of the loop
+		} else if _, already := c.emitted[key]; !already {
+			// new idle sample not yet seen -> create a new sample state to track and emit it
+			newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+			newIdleState.markEndedAt(sample)
+			newIdleState.LastRow.State = sample.State
+			c.samples[key] = newIdleState
+			c.emitted[key] = sample.Now //is actually emitted at the end of the loop
+		}
 	}
 
-	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return err
-	}
-
-	// finalize samples that are no longer active
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
+	// finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
 	}
-	return nil
+
+	c.cleanupEmitted(time.Now())
+	return len(activeKeys) > 0, nil
 }
 
 func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
@@ -308,7 +422,6 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.StateChange,
 		&sample.WaitEventType,
 		&sample.WaitEvent,
-		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
 	}
@@ -350,6 +463,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTimeIfActive(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -396,43 +510,66 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state)
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
-		sampleLabels,
-		state.LastSeenAt.UnixNano(),
-	)
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+	var endOverride *time.Time
+	if state.EndOverride.Valid {
+		t := state.EndOverride.Time
+		endOverride = &t
+	}
+	sampleLabels := c.buildQuerySampleLabels(state, endOverride)
+	ts := state.LastSeenAt.UnixNano()
+	if endOverride != nil {
+		ts = endOverride.UnixNano()
+	}
+
+	shouldEmit := true
+	if !isThrottleExempt(state) && c.throttleInterval > 0 {
+		if last, ok := c.lastEmittedByQueryID[state.LastRow.QueryID.Int64]; ok {
+			if time.Since(last) < c.throttleInterval {
+				shouldEmit = false
+			}
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
+	}
+
+	if shouldEmit {
+		c.lastEmittedByQueryID[state.LastRow.QueryID.Int64] = time.Now()
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
+			OP_QUERY_SAMPLE,
+			sampleLabels,
+			ts,
 		)
+
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
+func (c *QuerySamples) buildQuerySampleLabels(state *SampleState, endOverride *time.Time) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
+
+	end := state.LastRow.Now
+	if endOverride != nil {
+		end = *endOverride
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -458,6 +595,7 @@ func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
 		queryDuration,
 		state.LastRow.QueryID.Int64,
 	)
+
 	if state.LastCpuTime != "" {
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
@@ -480,7 +618,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID,
 		state.LastRow.Username.String,
 		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		we.LastState,
 		state.LastRow.BackendXID.Int32,
 		state.LastRow.BackendXmin.Int32,
 		we.LastWaitTime,
@@ -490,6 +628,15 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
+}
+
+func (c *QuerySamples) cleanupEmitted(now time.Time) {
+	const ttl = 10 * time.Minute
+	for k, lastSeen := range c.emitted {
+		if now.Sub(lastSeen) > ttl {
+			delete(c.emitted, k)
+		}
+	}
 }
 
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
@@ -523,4 +670,47 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
+}
+
+func isThrottleExempt(sample *SampleState) bool {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
+		return true
+	}
+	return false
+}
+
+// computeBurstWindow returns the burst interval s and the window duration W
+// for time-boxed burst polling, given the collection interval and the last
+// observed latency. W is bounded by 20*s to limit the number of burst polls.
+//
+// Rules:
+//   - s_base = clamp(CI/30, 50ms..300ms)
+//   - s = max(s_base, observedLatency)
+//   - W = min(CI/2 - 100ms)
+//   - N ≤ 20 ⇒ for a burst interval s, the window ≤ 20*s
+func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Duration, time.Duration) {
+	s := time.Duration(float64(collectInterval) / 30.0)
+	if s < 50*time.Millisecond {
+		s = 50 * time.Millisecond
+	} else if s > 300*time.Millisecond {
+		s = 300 * time.Millisecond
+	}
+	if observedLatency > s {
+		s = observedLatency
+	}
+	guard := 100 * time.Millisecond
+	capWindow := collectInterval/2 - guard
+	if capWindow < 0 {
+		capWindow = 0
+	}
+
+	capWindow = min(capWindow, 20*s)
+	return s, capWindow
 }
