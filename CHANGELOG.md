@@ -32,6 +32,7 @@ Main (unreleased)
   - add `user` field to wait events within `query_samples` collector (@gaantunes)
   - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
   - enable `explain_plans` collector by default (@rgeyer)
+  - safely generate server_id when UDP socket used for database connection (@matthewnolf)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
