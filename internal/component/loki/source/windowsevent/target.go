@@ -14,22 +14,18 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"golang.org/x/sys/windows"
 
-	"github.com/prometheus/prometheus/model/labels"
-
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/windows/win_eventlog"
-
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/windowsevent/win_eventlog"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 type Target struct {
 	subscription  win_eventlog.EvtHandle
-	handler       api.EntryHandler
+	handler       loki.EntryHandler
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
 	relabelConfig []*relabel.Config
 	logger        log.Logger
@@ -46,7 +42,7 @@ type Target struct {
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
 func NewTarget(
 	logger log.Logger,
-	handler api.EntryHandler,
+	handler loki.EntryHandler,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
 	bookmarkSyncPeriod time.Duration,
@@ -116,7 +112,7 @@ func (t *Target) loop() {
 			if err != nil {
 				if err != win_eventlog.ERROR_NO_MORE_ITEMS {
 					t.err = err
-					level.Error(util_log.Logger).Log("msg", "error fetching events", "err", err)
+					level.Error(t.logger).Log("msg", "error fetching events", "err", err)
 				}
 				break loop
 			}
@@ -129,7 +125,7 @@ func (t *Target) loop() {
 				err = t.bm.update(handles[len(handles)-1])
 				if err != nil {
 					t.err = err
-					level.Error(util_log.Logger).Log("msg", "error updating in-memory bookmark", "err", err)
+					level.Error(t.logger).Log("msg", "error updating in-memory bookmark", "err", err)
 				}
 			}
 			win_eventlog.Close(handles)
@@ -165,16 +161,16 @@ func (t *Target) updateBookmark(bookmarkSyncPeriod time.Duration) {
 func (t *Target) saveBookmarkPosition() {
 	if err := t.bm.save(); err != nil {
 		t.err = err
-		level.Error(util_log.Logger).Log("msg", "error saving bookmark", "err", err)
+		level.Error(t.logger).Log("msg", "error saving bookmark", "err", err)
 	}
 }
 
 // renderEntries renders Loki entries from windows event logs
-func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
-	res := make([]api.Entry, 0, len(events))
-	lbs := labels.NewBuilder(nil)
+func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
+	res := make([]loki.Entry, 0, len(events))
+	lbs := labels.NewBuilder(labels.EmptyLabels())
 	for _, event := range events {
-		entry := api.Entry{
+		entry := loki.Entry{
 			Labels: make(model.LabelSet),
 		}
 
@@ -201,12 +197,13 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
 		// apply relabelings.
 		processed, _ := relabel.Process(lbs.Labels(), t.relabelConfig...)
 
-		for _, lbl := range processed {
-			if strings.HasPrefix(lbl.Name, "__") {
-				continue
+		processed.Range(func(l labels.Label) {
+			if strings.HasPrefix(l.Name, "__") {
+				return
 			}
-			entry.Labels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-		}
+			entry.Labels[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+
+		})
 
 		line, err := formatLine(t.cfg, event)
 		if err != nil {
@@ -217,39 +214,6 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []api.Entry {
 		res = append(res, entry)
 	}
 	return res
-}
-
-// Type returns WindowsTargetType.
-func (t *Target) Type() target.TargetType {
-	return target.WindowsTargetType
-}
-
-// Ready indicates whether or not the windows target is ready.
-func (t *Target) Ready() bool {
-	if t.err != nil {
-		return false
-	}
-	return t.ready
-}
-
-// DiscoveredLabels returns discovered labels from the target.
-func (t *Target) DiscoveredLabels() model.LabelSet {
-	// todo(cyriltovena) we might want to sample discovered labels later and returns them here.
-	return nil
-}
-
-// Labels returns the set of labels that statically apply to all log entries
-// produced by the windows target.
-func (t *Target) Labels() model.LabelSet {
-	return t.cfg.Labels
-}
-
-// Details returns target-specific details.
-func (t *Target) Details() interface{} {
-	if t.err != nil {
-		return map[string]string{"err": t.err.Error()}
-	}
-	return map[string]string{}
 }
 
 func (t *Target) Stop() error {

@@ -12,10 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
-
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 )
 
 var testTenantAlloyExtractedData = `

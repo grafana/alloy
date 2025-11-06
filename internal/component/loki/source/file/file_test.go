@@ -1,5 +1,3 @@
-//go:build !race
-
 package file
 
 import (
@@ -125,6 +123,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		}
 	}()
 
+	var backgroundErr error
 	go func() {
 		defer wg.Done()
 		for {
@@ -132,8 +131,10 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 			case <-workerCtx.Done():
 				return
 			default:
-				_, err = f.Write([]byte("writing some text\nwriting some text2\n"))
-				require.NoError(t, err)
+				_, backgroundErr = f.Write([]byte("writing some text\nwriting some text2\n"))
+				if backgroundErr != nil {
+					return
+				}
 			}
 		}
 	}()
@@ -156,6 +157,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 	cancelWorkers()
 	wg.Wait()
+	require.NoError(t, backgroundErr)
 }
 
 func TestFileWatch(t *testing.T) {

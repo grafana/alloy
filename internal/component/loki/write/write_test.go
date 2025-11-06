@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
-	loki_util "github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"

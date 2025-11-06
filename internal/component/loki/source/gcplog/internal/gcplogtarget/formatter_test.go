@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -21,7 +21,7 @@ func TestFormat(t *testing.T) {
 		relabel              []*relabel.Config
 		useIncomingTimestamp bool
 		useFullLine          bool
-		expected             api.Entry
+		expected             loki.Entry
 	}{
 		{
 			name: "relabelling",
@@ -70,7 +70,7 @@ func TestFormat(t *testing.T) {
 				},
 			},
 			useIncomingTimestamp: true,
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname":              "pubsub-test",
 					"backend_service_name": "http-loki",
@@ -93,7 +93,7 @@ func TestFormat(t *testing.T) {
 				"jobname": "pubsub-test",
 			},
 			useIncomingTimestamp: true,
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -111,7 +111,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -130,7 +130,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},
@@ -148,7 +148,7 @@ func TestFormat(t *testing.T) {
 			labels: model.LabelSet{
 				"jobname": "pubsub-test",
 			},
-			expected: api.Entry{
+			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"jobname": "pubsub-test",
 				},

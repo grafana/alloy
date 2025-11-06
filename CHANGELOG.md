@@ -20,11 +20,15 @@ Main (unreleased)
 ### Features
 
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
-  - `explain_plans` collector now changes schema before returning the connection to the pool (@cristiangreco)
+  - `explain_plans`
+    - collector now changes schema before returning the connection to the pool (@cristiangreco)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
   - enable `explain_plans` collector by default (@rgeyer)
 
 - (_Experimental_) Additions to experimental `database_observability.postgres` component:
-  - `explain_plans` added the explain plan collector (@rgeyer)
+  - `explain_plans`
+    - added the explain plan collector (@rgeyer)
+    - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
   - add `user` field to wait events within `query_samples` collector (@gaantunes)
   - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
   - enable `explain_plans` collector by default (@rgeyer)
@@ -34,6 +38,8 @@ Main (unreleased)
 - Add `structured_metadata_drop` stage for `loki.process` to filter structured metadata. (@baurmatt)
 
 - Send remote config status to the remote server for the remotecfg service. (@erikbaranowski)
+
+- Send effective config to the remote server for the remotecfg service. (@erikbaranowski)
 
 - Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
 

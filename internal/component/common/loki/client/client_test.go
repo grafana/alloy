@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/utils"
+	"github.com/grafana/alloy/internal/loki/promtail/utils"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )

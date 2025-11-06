@@ -8,13 +8,12 @@ package target
 
 import (
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 
 	"github.com/coreos/go-systemd/sdjournal"
 	"github.com/go-kit/log"
@@ -25,11 +24,26 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
-
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/testutils"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
+
+var randomGenerator *rand.Rand
+
+func initRandom() {
+	randomGenerator = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randName() string {
+	b := make([]rune, 10)
+	for i := range b {
+		b[i] = letters[randomGenerator.Intn(len(letters))] //#nosec G404 -- Generating random test data, fine.
+	}
+	return string(b)
+}
 
 type mockJournalReader struct {
 	config sdjournal.JournalReaderConfig
@@ -75,8 +89,8 @@ func TestJournalTarget(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -137,8 +151,8 @@ func TestJournalTargetParsingErrors(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -205,8 +219,8 @@ func TestJournalTarget_JSON(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -265,8 +279,8 @@ func TestJournalTarget_Since(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -299,8 +313,8 @@ func TestJournalTarget_Cursor_TooOld(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -339,8 +353,8 @@ func TestJournalTarget_Cursor_NotTooOld(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
@@ -396,8 +410,8 @@ func TestJournalTarget_Matches(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	testutils.InitRandom()
-	dirName := filepath.Join(os.TempDir(), testutils.RandName())
+	initRandom()
+	dirName := filepath.Join(os.TempDir(), randName())
 	positionsFileName := dirName + "/positions.yml"
 
 	// Set the sync period to a really long value, to guarantee the sync timer
