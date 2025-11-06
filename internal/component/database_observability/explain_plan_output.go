@@ -46,64 +46,64 @@ type ExplainReservedWordMetadata struct {
 // and audited by @rgeyer and others in the dbo11y team.
 var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	// Data Manipulation Language (DML) - Write operations
-	"INSERT": ExplainReservedWordMetadata{},
-	"UPDATE": ExplainReservedWordMetadata{
+	"INSERT": {},
+	"UPDATE": {
 		ExemptionPrefixes: &[]string{"FOR"},
 	},
-	"DELETE":  ExplainReservedWordMetadata{},
-	"REPLACE": ExplainReservedWordMetadata{},
-	"MERGE":   ExplainReservedWordMetadata{},
-	"UPSERT":  ExplainReservedWordMetadata{},
+	"DELETE":  {},
+	"REPLACE": {},
+	"MERGE":   {},
+	"UPSERT":  {},
 
 	// Data Definition Language (DDL) - Schema modifications
-	"CREATE":   ExplainReservedWordMetadata{},
-	"ALTER":    ExplainReservedWordMetadata{},
-	"DROP":     ExplainReservedWordMetadata{},
-	"RENAME":   ExplainReservedWordMetadata{},
-	"TRUNCATE": ExplainReservedWordMetadata{},
+	"CREATE":   {},
+	"ALTER":    {},
+	"DROP":     {},
+	"RENAME":   {},
+	"TRUNCATE": {},
 
 	// Transaction control that can commit writes
-	"COMMIT":    ExplainReservedWordMetadata{},
-	"ROLLBACK":  ExplainReservedWordMetadata{},
-	"SAVEPOINT": ExplainReservedWordMetadata{},
+	"COMMIT":    {},
+	"ROLLBACK":  {},
+	"SAVEPOINT": {},
 
 	// Database/Schema management
-	"USE":      ExplainReservedWordMetadata{},
-	"DATABASE": ExplainReservedWordMetadata{},
-	"SCHEMA":   ExplainReservedWordMetadata{},
+	"USE":      {},
+	"DATABASE": {},
+	"SCHEMA":   {},
 
 	// Index operations
-	"REINDEX":  ExplainReservedWordMetadata{},
-	"ANALYZE":  ExplainReservedWordMetadata{},
-	"OPTIMIZE": ExplainReservedWordMetadata{},
+	"REINDEX":  {},
+	"ANALYZE":  {},
+	"OPTIMIZE": {},
 
 	// User/Permission management
-	"GRANT":  ExplainReservedWordMetadata{},
-	"REVOKE": ExplainReservedWordMetadata{},
+	"GRANT":  {},
+	"REVOKE": {},
 
 	// MySQL specific write operations
-	"LOAD":          ExplainReservedWordMetadata{},
-	"DELAYED":       ExplainReservedWordMetadata{},
-	"IGNORE":        ExplainReservedWordMetadata{},
-	"LOW_PRIORITY":  ExplainReservedWordMetadata{},
-	"HIGH_PRIORITY": ExplainReservedWordMetadata{},
-	"QUICK":         ExplainReservedWordMetadata{},
+	"LOAD":          {},
+	"DELAYED":       {},
+	"IGNORE":        {},
+	"LOW_PRIORITY":  {},
+	"HIGH_PRIORITY": {},
+	"QUICK":         {},
 
 	// PostgreSQL specific write operations
-	"COPY":       ExplainReservedWordMetadata{},
-	"VACUUM":     ExplainReservedWordMetadata{},
-	"CLUSTER":    ExplainReservedWordMetadata{},
-	"LISTEN":     ExplainReservedWordMetadata{},
-	"NOTIFY":     ExplainReservedWordMetadata{},
-	"DISCARD":    ExplainReservedWordMetadata{},
-	"PREPARE":    ExplainReservedWordMetadata{},
-	"EXECUTE":    ExplainReservedWordMetadata{},
-	"DEALLOCATE": ExplainReservedWordMetadata{},
-	"RESET":      ExplainReservedWordMetadata{},
-	"SET":        ExplainReservedWordMetadata{},
+	"COPY":       {},
+	"VACUUM":     {},
+	"CLUSTER":    {},
+	"LISTEN":     {},
+	"NOTIFY":     {},
+	"DISCARD":    {},
+	"PREPARE":    {},
+	"EXECUTE":    {},
+	"DEALLOCATE": {},
+	"RESET":      {},
+	"SET":        {},
 
 	// dbo11 specific operations we'd like to exclude
-	"EXPLAIN": ExplainReservedWordMetadata{},
+	"EXPLAIN": {},
 }
 
 type ExplainPlanOutput struct {
