@@ -182,7 +182,6 @@ func (m *metricStage) Name() string {
 }
 
 // Cleanup implements Stage.
-// Cleanup implements Stage.
 func (m *metricStage) Cleanup() {
 	for _, cfgCollector := range m.metrics {
 		switch vec := cfgCollector.collector.(type) {

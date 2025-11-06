@@ -920,6 +920,7 @@ The following arguments are supported:
 | `description`       | `string`      | The metric's description and help text.                                                         | `""`                     | no       |
 | `prefix`            | `string`      | The prefix to the metric name.                                                                  | `"loki_process_custom_"` | no       |
 | `source`            | `string`      | Key from the extracted data map to use for the metric. Defaults to the metric name.             | `""`                     | no       |
+| `value`             | `string`      | If set, the metric only changes if `source` exactly matches the `value`.                        | `""`                     | no       |
 | `max_idle_duration` | `duration`    | Maximum amount of time to wait until the metric is marked as stale and removed.                 | `"5m"`                   | no       |
 | `objective`         | `block`       | Defines quantile objectives. Multiple `objective` blocks can be specified.                      |                          | no       |
 
