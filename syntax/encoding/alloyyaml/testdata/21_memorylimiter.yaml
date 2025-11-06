@@ -1,31 +1,27 @@
-otelcol.receiver.otlp:
-  default:
-    grpc:
-      endpoint: localhost:4317
-    http:
-      endpoint: localhost:4318
-    output:
-      logs:
-        - expr(otelcol.processor.memory_limiter.default.input)
-      metrics:
-        - expr(otelcol.processor.memory_limiter.default.input)
-      traces:
-        - expr(otelcol.processor.memory_limiter.default.input)
+otelcol.receiver.otlp/default:
+  grpc:
+    endpoint: localhost:4317
+  http:
+    endpoint: localhost:4318
+  output:
+    logs:
+      - expr(otelcol.processor.memory_limiter.default.input)
+    metrics:
+      - expr(otelcol.processor.memory_limiter.default.input)
+    traces:
+      - expr(otelcol.processor.memory_limiter.default.input)
 
-otelcol.processor.memory_limiter:
-  default:
-    check_interval: 1s
-    limit_percentage: 90
-    output:
-      logs:
-        - expr(otelcol.exporter.otlp.default.input)
-      metrics:
-        - expr(otelcol.exporter.otlp.default.input)
-      traces:
-        - expr(otelcol.exporter.otlp.default.input)
+otelcol.processor.memory_limiter/default:
+  check_interval: 1s
+  limit_percentage: 90
+  output:
+    logs:
+      - expr(otelcol.exporter.otlp.default.input)
+    metrics:
+      - expr(otelcol.exporter.otlp.default.input)
+    traces:
+      - expr(otelcol.exporter.otlp.default.input)
 
-otelcol.exporter.otlp:
-  default:
-    client:
-      endpoint: database:4317
-
+otelcol.exporter.otlp/default:
+  client:
+    endpoint: database:4317

@@ -1,5 +1,4 @@
-otelcol.auth.oauth2:
-  $label: default
+otelcol.auth.oauth2/default:
   client_id: someclientid
   client_secret: someclientsecret
   endpoint_params:
@@ -16,8 +15,7 @@ otelcol.auth.oauth2:
     key_file: keyfile
   token_url: https://example.com/oauth2/default/v1/token
 
-otelcol.receiver.otlp:
-  $label: default
+otelcol.receiver.otlp/default:
   grpc:
     endpoint: localhost:4317
   output:
@@ -31,16 +29,14 @@ otelcol.receiver.otlp:
       - expr(otelcol.exporter.otlp.default_withauth.input)
       - expr(otelcol.exporter.otlphttp.default_noauth.input)
 
-otelcol.exporter.otlp:
-  $label: default_withauth
+otelcol.exporter.otlp/default_withauth:
   client:
     auth: expr(otelcol.auth.oauth2.default.handler)
     endpoint: database:4317
     tls:
       ca_file: /tmp/certs/ca.pem
 
-otelcol.exporter.otlphttp:
-  $label: default_noauth
+otelcol.exporter.otlphttp/default_noauth:
   client:
     endpoint: database:4318
     http2_ping_timeout: 0s

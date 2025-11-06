@@ -1,5 +1,4 @@
-loki.relabel:
-  $label: logs_log_config_fun
+loki.relabel/logs_log_config_fun:
   forward_to:
     - expr(loki.write.logs_log_config.receiver)
   rule:
@@ -7,8 +6,7 @@ loki.relabel:
         - __trail__
       target_label: __path__
 
-loki.source.cloudflare:
-  $label: logs_log_config_fun
+loki.source.cloudflare/logs_log_config_fun:
   api_token: dont_look_at_me_please
   fields_type: all
   forward_to:
@@ -21,8 +19,7 @@ loki.source.cloudflare:
   workers: 42
   zone_id: area51
 
-loki.write:
-  $label: logs_log_config
+loki.write/logs_log_config:
   endpoint:
     - url: http://localhost/loki/api/v1/push
   external_labels:

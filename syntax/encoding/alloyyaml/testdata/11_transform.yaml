@@ -1,69 +1,65 @@
-otelcol.receiver.otlp:
-  default:
-    grpc:
-      endpoint: localhost:4317
-    http:
-      endpoint: localhost:4318
-    output:
-      logs:
-        - expr(otelcol.processor.transform.default.input)
-      metrics:
-        - expr(otelcol.processor.transform.default.input)
-      traces:
-        - expr(otelcol.processor.transform.default.input)
+otelcol.receiver.otlp/default:
+  grpc:
+    endpoint: localhost:4317
+  http:
+    endpoint: localhost:4318
+  output:
+    logs:
+      - expr(otelcol.processor.transform.default.input)
+    metrics:
+      - expr(otelcol.processor.transform.default.input)
+    traces:
+      - expr(otelcol.processor.transform.default.input)
 
-otelcol.processor.transform:
-  default:
-    error_mode: ignore
-    log_statements:
-      - context: resource
-        statements:
-          - keep_keys(attributes, ["service.name", "service.namespace", "cloud.region"])
-      - context: log
-        statements:
-          - set(severity_text, "FAIL") where body == "request failed"
-          - replace_all_matches(attributes, "/user/*/list/*", "/user/{userId}/list/{listId}")
-          - replace_all_patterns(attributes, "value", "/account/\\d{4}", "/account/{accountId}")
-          - set(body, attributes["http.route"])
-    metric_statements:
-      - context: resource
-        statements:
-          - keep_keys(attributes, ["host.name"])
-          - truncate_all(attributes, 4096)
-      - context: metric
-        statements:
-          - set(description, "Sum") where type == "Sum"
-          - convert_sum_to_gauge() where name == "system.processes.count"
-          - convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"
-          - aggregate_on_attributes("sum") where name == "system.memory.usage"
-      - context: datapoint
-        statements:
-          - limit(attributes, 100, ["host.name"])
-          - truncate_all(attributes, 4096)
-    output:
-      logs:
-        - expr(otelcol.exporter.otlp.default.input)
-      metrics:
-        - expr(otelcol.exporter.otlp.default.input)
-      traces:
-        - expr(otelcol.exporter.otlp.default.input)
-    trace_statements:
-      - context: resource
-        statements:
-          - keep_keys(attributes, ["service.name", "service.namespace", "cloud.region", "process.command_line"])
-          - replace_pattern(attributes["process.command_line"], "password\\=[^\\s]*(\\s?)", "password=***")
-          - limit(attributes, 100, [])
-          - truncate_all(attributes, 4096)
-      - context: span
-        statements:
-          - set(status.code, 1) where attributes["http.path"] == "/health"
-          - set(name, attributes["http.route"])
-          - replace_match(attributes["http.target"], "/user/*/list/*", "/user/{userId}/list/{listId}")
-          - limit(attributes, 100, [])
-          - truncate_all(attributes, 4096)
+otelcol.processor.transform/default:
+  error_mode: ignore
+  log_statements:
+    - context: resource
+      statements:
+        - keep_keys(attributes, ["service.name", "service.namespace", "cloud.region"])
+    - context: log
+      statements:
+        - set(severity_text, "FAIL") where body == "request failed"
+        - replace_all_matches(attributes, "/user/*/list/*", "/user/{userId}/list/{listId}")
+        - replace_all_patterns(attributes, "value", "/account/\\d{4}", "/account/{accountId}")
+        - set(body, attributes["http.route"])
+  metric_statements:
+    - context: resource
+      statements:
+        - keep_keys(attributes, ["host.name"])
+        - truncate_all(attributes, 4096)
+    - context: metric
+      statements:
+        - set(description, "Sum") where type == "Sum"
+        - convert_sum_to_gauge() where name == "system.processes.count"
+        - convert_gauge_to_sum("cumulative", false) where name == "prometheus_metric"
+        - aggregate_on_attributes("sum") where name == "system.memory.usage"
+    - context: datapoint
+      statements:
+        - limit(attributes, 100, ["host.name"])
+        - truncate_all(attributes, 4096)
+  output:
+    logs:
+      - expr(otelcol.exporter.otlp.default.input)
+    metrics:
+      - expr(otelcol.exporter.otlp.default.input)
+    traces:
+      - expr(otelcol.exporter.otlp.default.input)
+  trace_statements:
+    - context: resource
+      statements:
+        - keep_keys(attributes, ["service.name", "service.namespace", "cloud.region", "process.command_line"])
+        - replace_pattern(attributes["process.command_line"], "password\\=[^\\s]*(\\s?)", "password=***")
+        - limit(attributes, 100, [])
+        - truncate_all(attributes, 4096)
+    - context: span
+      statements:
+        - set(status.code, 1) where attributes["http.path"] == "/health"
+        - set(name, attributes["http.route"])
+        - replace_match(attributes["http.target"], "/user/*/list/*", "/user/{userId}/list/{listId}")
+        - limit(attributes, 100, [])
+        - truncate_all(attributes, 4096)
 
-otelcol.exporter.otlp:
-  default:
-    client:
-      endpoint: database:4317
-
+otelcol.exporter.otlp/default:
+  client:
+    endpoint: database:4317

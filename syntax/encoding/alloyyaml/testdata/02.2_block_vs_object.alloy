@@ -1,31 +1,3 @@
-// some_block {
-//   format = "json"
-//   level  = "debug"
-//   object_in_block = {
-//     key1 = "value1",
-//     key2 = "value2",
-//   }
-// }
-
-// example_object = {
-//   key1 = "value1",
-//   "identifier.with.dots/and/slashes" = "value2",
-//   nested_object = {
-//     key3 = "value3",
-//     key4 = "value4",
-//   },
-//   nested_array = [
-//     {
-//       key5 = "value5",
-//       key6 = "value6",
-//     },
-//     {
-//       key7 = "value7",
-//       key8 = "value8",
-//     },
-//   ],
-// }
-
 this_is_a_block "label_name" {
   key1 = "value1"
   key2 = "value2"

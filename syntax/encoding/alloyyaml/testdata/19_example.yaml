@@ -7,24 +7,19 @@ tracing:
   write_to:
     - expr(otelcol.exporter.otlp.tempo.input)
 
-otelcol.exporter.otlp:
-  tempo:
-    client:
-      endpoint: localhost:4317
-      tls:
-        insecure: true
+otelcol.exporter.otlp/tempo:
+  client:
+    endpoint: localhost:4317
+    tls:
+      insecure: true
 
-prometheus.exporter.unix:
-  default: {}
+prometheus.exporter.unix/default: {}
 
-prometheus.scrape:
-  default:
-    forward_to:
-      - expr(prometheus.remote_write.default.receiver)
-    targets: expr(prometheus.exporter.unix.default.targets)
+prometheus.scrape/default:
+  forward_to:
+    - expr(prometheus.remote_write.default.receiver)
+  targets: expr(prometheus.exporter.unix.default.targets)
 
-prometheus.remote_write:
-  default:
-    endpoint:
-      - url: http://localhost:9009/api/prom/push
-
+prometheus.remote_write/default:
+  endpoint:
+    - url: http://localhost:9009/api/prom/push

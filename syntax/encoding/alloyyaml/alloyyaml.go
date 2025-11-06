@@ -22,6 +22,8 @@ import (
 //   - Key-value pairs with simple values are attributes
 //   - Arrays of maps represent multiple blocks with the same name
 //   - The expr() wrapper can be used for complex Alloy expressions
+//   - Block labels can be specified using "/" separator (e.g., "block_name/label")
+//   - Special keys: $object (for object literals), $array (for array literals)
 //
 // Example YAML:
 //
@@ -133,66 +135,77 @@ func writeBody(w io.Writer, body map[string]interface{}, indent int) error {
 		}
 		firstItem = false
 
+		// Check if key contains "/" separator for block/label syntax
+		blockName, label := splitBlockLabel(key)
+
 		// Determine if this is a block or attribute based on value type
 		switch v := value.(type) {
 		case map[string]interface{}:
-			// Check for $object marker - convert to object literal attribute
-			if objValue, hasObject := v["$object"]; hasObject {
-				if err := writeAttribute(w, key, objValue, indentStr); err != nil {
-					return fmt.Errorf("attribute %s: %w", key, err)
+			// Check for $array marker - convert to array literal attribute
+			if arrValue, hasArray := v["$array"]; hasArray {
+				if err := writeAttribute(w, blockName, arrValue, indentStr); err != nil {
+					return fmt.Errorf("attribute %s: %w", blockName, err)
 				}
 				continue
 			}
 
-			// Check for $label marker - convert to labeled block
-			if labelValue, hasLabel := v["$label"]; hasLabel {
-				if labelStr, ok := labelValue.(string); ok {
-					// Write block with label
-					fmt.Fprintf(w, "%s%s %q {\n", indentStr, key, labelStr)
-					// Write remaining keys as body (excluding $label)
-					bodyMap := make(map[string]interface{})
-					for k, val := range v {
-						if k != "$label" {
-							bodyMap[k] = val
-						}
-					}
-					if err := writeBody(w, bodyMap, indent+1); err != nil {
-						return err
-					}
-					fmt.Fprintf(w, "%s}\n", indentStr)
-					continue
+			// Check for $object marker - convert to object literal attribute
+			if objValue, hasObject := v["$object"]; hasObject {
+				if err := writeAttribute(w, blockName, objValue, indentStr); err != nil {
+					return fmt.Errorf("attribute %s: %w", blockName, err)
 				}
+				continue
+			}
+
+			// If label is present from "/" syntax, write labeled block
+			if label != "" {
+				fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label)
+				if err := writeBody(w, v, indent+1); err != nil {
+					return err
+				}
+				fmt.Fprintf(w, "%s}\n", indentStr)
+				continue
 			}
 
 			// Regular map values are blocks
-			if err := writeBlock(w, key, value, indent); err != nil {
-				return fmt.Errorf("block %s: %w", key, err)
+			if err := writeBlock(w, blockName, value, indent); err != nil {
+				return fmt.Errorf("block %s: %w", blockName, err)
 			}
 
 		case []interface{}:
 			// Arrays of maps are multiple blocks
 			if len(v) > 0 {
 				if _, ok := v[0].(map[string]interface{}); ok {
-					if err := writeBlock(w, key, value, indent); err != nil {
-						return fmt.Errorf("block %s: %w", key, err)
+					if err := writeBlock(w, blockName, value, indent); err != nil {
+						return fmt.Errorf("block %s: %w", blockName, err)
 					}
 					continue
 				}
 			}
 			// Otherwise it's a simple array attribute
-			if err := writeAttribute(w, key, value, indentStr); err != nil {
-				return fmt.Errorf("attribute %s: %w", key, err)
+			if err := writeAttribute(w, blockName, value, indentStr); err != nil {
+				return fmt.Errorf("attribute %s: %w", blockName, err)
 			}
 
 		default:
 			// Simple values are attributes
-			if err := writeAttribute(w, key, value, indentStr); err != nil {
-				return fmt.Errorf("attribute %s: %w", key, err)
+			if err := writeAttribute(w, blockName, value, indentStr); err != nil {
+				return fmt.Errorf("attribute %s: %w", blockName, err)
 			}
 		}
 	}
 
 	return nil
+}
+
+// splitBlockLabel splits a key into block name and label if it contains "/".
+// Returns (blockName, label) where label is empty if no "/" is present.
+func splitBlockLabel(key string) (string, string) {
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return key, ""
 }
 
 // isStructural returns true if the value is a structural element (nested map).
