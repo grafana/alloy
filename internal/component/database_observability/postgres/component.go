@@ -324,7 +324,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QueryDetailsCollector:  true,
 		collector.QuerySamplesCollector:  true,
 		collector.SchemaDetailsCollector: true,
-		collector.ExplainPlanCollector:   false,
+		collector.ExplainPlanCollector:   true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
