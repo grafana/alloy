@@ -26,9 +26,11 @@ const (
 )
 
 const (
-	queryTextClause   = ", s.query"
-	stateActive       = "active"
-	waitEventTypeLock = "Lock"
+	queryTextClause     = ", s.query"
+	stateActive         = "active"
+	waitEventTypeLock   = "Lock"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateIdleTxn        = "idle in transaction"
 )
 
 const finalizationRateWindow = 5 * time.Minute
@@ -648,7 +650,7 @@ func min(a, b time.Duration) time.Duration {
 }
 
 func isThrottleExempt(sample *SampleState) bool {
-	if sample.LastRow.State.String == "idle in transaction" || sample.LastRow.State.String == "idle in transaction (aborted)" || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
+	if sample.LastRow.State.String == stateIdleTxn || sample.LastRow.State.String == stateIdleTxnAborted || len(sample.tracker.WaitEvents()) > 0 || sample.LastCpuTime != "" {
 		return true
 	}
 	return false
