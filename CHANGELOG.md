@@ -80,9 +80,13 @@ Main (unreleased)
 
 - `loki.source.podlogs` now supports `preserve_discovered_labels` parameter to preserve discovered pod metadata labels for use by downstream components. (@QuentinBisson)
 
+<<<<<<< HEAD
 - Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
 
 - Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
+=======
+- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+>>>>>>> 01208be33 (Add changelog)
 
 ### Bugfixes
 
