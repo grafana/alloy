@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/go-sqllexer"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPgSqlParser_Redact(t *testing.T) {
@@ -313,175 +314,239 @@ func TestPgSqlParser_ExtractTableNames(t *testing.T) {
 }
 
 func TestContainsReservedKeywords(t *testing.T) {
-	reservedWords := map[string]bool{"INSERT": true, "UPDATE": true, "DELETE": true, "CREATE": true, "DROP": true}
-
 	tests := []struct {
-		name     string
-		query    string
-		expected bool
+		name          string
+		query         string
+		reservedWords map[string]ExplainReservedWordMetadata
+		expected      bool
 	}{
 		{
-			name:     "actual INSERT statement",
-			query:    "INSERT INTO users (name) VALUES ('John')",
+			name:          "Simple single keyword at the beginning of the query",
+			query:         "INSERT INTO users (name) VALUES ('John')",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with INSERT in string literal",
+			query:         "SELECT 'INSERT INTO table' FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with insert in column name",
+			query:         "SELECT insert_date FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with INSERT in comment",
+			query:         "SELECT * FROM users -- INSERT comment",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with INSERT in block comment",
+			query:         "SELECT * FROM users /* INSERT block comment */",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "CREATE TABLE statement",
+			query:         "CREATE TABLE users (id INT, name VARCHAR(50))",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with CREATE in quoted identifier",
+			query:         `SELECT "create_date" FROM users`,
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "UPDATE statement",
+			query:         "UPDATE users SET name = 'John' WHERE id = 1",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with update in string",
+			query:         "SELECT * FROM users WHERE status = 'update_pending'",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "DELETE statement",
+			query:         "DELETE FROM users WHERE id = 1",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with delete in table name",
+			query:         "SELECT * FROM delete_log",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "plain SELECT statement",
+			query:         "SELECT * FROM users WHERE name = 'John'",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "complex SELECT with joins",
+			query:         "SELECT u.name, p.title FROM users u JOIN posts p ON u.id = p.user_id",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with reserved word in WHERE clause string",
+			query:         "SELECT * FROM users WHERE description LIKE '%CREATE%'",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "DROP statement",
+			query:         "DROP TABLE users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with drop in column alias",
+			query:         "SELECT name AS drop_reason FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "EXPLAIN statement should be detected",
+			query:         "EXPLAIN SELECT * FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with explain in string should not be detected",
+			query:         "SELECT 'explain this' FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "PREPARE statement should be detected",
+			query:         "PREPARE stmt AS SELECT * FROM users WHERE id = $1",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with prepare in column name should not be detected",
+			query:         "SELECT prepare_date FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SET statement should be detected",
+			query:         "SET search_path TO public",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "SELECT with set in string should not be detected",
+			query:         "SELECT 'set this value' FROM users",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with reserved word in quoted identifier",
+			query:         `SELECT "insert" FROM users`,
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with reserved word in table alias",
+			query:         "SELECT * FROM users AS insert_table",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "SELECT with legacy LOCK IN SHARE MODE",
+			query:         "SELECT name FROM users LOCK IN SHARE MODE",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		{
+			name:          "WITH statement that INSERTS",
+			query:         "WITH cte AS (SELECT * FROM users) INSERT into users (name) VALUES ('John')",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "WITH statement that only SELECTs",
+			query:         "WITH cte AS (SELECT * FROM users) SELECT * FROM cte",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		// Single prefix with default reserved word list
+		{
+			name:          "SELECT with FOR UPDATE",
+			query:         "SELECT name FROM users FOR UPDATE",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      false,
+		},
+		// Multiple prefix
+		{
+			name:  "SELECT with multiple prefixes",
+			query: "SELECT name FROM users LOCK IN SHARE MODE",
+			reservedWords: map[string]ExplainReservedWordMetadata{
+				"MODE": {
+					ExemptionPrefixes: &[]string{"SHARE", "IN", "LOCK"},
+				},
+			},
+			expected: false,
+		},
+		{
+			name:  "multiple prefixes in deny list insufficient prefixes in query",
+			query: "SELECT name FROM users LOCK IN SHARE MODE",
+			reservedWords: map[string]ExplainReservedWordMetadata{
+				"MODE": {
+					ExemptionPrefixes: &[]string{"SHARE", "IN", "LOCK", "EXTRA"},
+				},
+			},
 			expected: true,
 		},
-		{
-			name:     "SELECT with INSERT in string literal",
-			query:    "SELECT 'INSERT INTO table' FROM users",
-			expected: false,
-		},
-		{
-			name:     "SELECT with insert in column name",
-			query:    "SELECT insert_date FROM users",
-			expected: false,
-		},
-		{
-			name:     "SELECT with INSERT in comment",
-			query:    "SELECT * FROM users -- INSERT comment",
-			expected: false,
-		},
-		{
-			name:     "SELECT with INSERT in block comment",
-			query:    "SELECT * FROM users /* INSERT block comment */",
-			expected: false,
-		},
-		{
-			name:     "CREATE TABLE statement",
-			query:    "CREATE TABLE users (id INT, name VARCHAR(50))",
-			expected: true,
-		},
-		{
-			name:     "SELECT with CREATE in quoted identifier",
-			query:    `SELECT "create_date" FROM users`,
-			expected: false,
-		},
-		{
-			name:     "UPDATE statement",
-			query:    "UPDATE users SET name = 'John' WHERE id = 1",
-			expected: true,
-		},
-		{
-			name:     "SELECT with update in string",
-			query:    "SELECT * FROM users WHERE status = 'update_pending'",
-			expected: false,
-		},
-		{
-			name:     "DELETE statement",
-			query:    "DELETE FROM users WHERE id = 1",
-			expected: true,
-		},
-		{
-			name:     "SELECT with delete in table name",
-			query:    "SELECT * FROM delete_log",
-			expected: false,
-		},
-		{
-			name:     "plain SELECT statement",
-			query:    "SELECT * FROM users WHERE name = 'John'",
-			expected: false,
-		},
-		{
-			name:     "complex SELECT with joins",
-			query:    "SELECT u.name, p.title FROM users u JOIN posts p ON u.id = p.user_id",
-			expected: false,
-		},
-		{
-			name:     "SELECT with reserved word in WHERE clause string",
-			query:    "SELECT * FROM users WHERE description LIKE '%CREATE%'",
-			expected: false,
-		},
-		{
-			name:     "DROP statement",
-			query:    "DROP TABLE users",
-			expected: true,
-		},
-		{
-			name:     "SELECT with drop in column alias",
-			query:    "SELECT name AS drop_reason FROM users",
-			expected: false,
-		},
-	}
+		// This is here to demonstrate a blindspot of the current implementation
+		// If the query contains the key word, with all of the defined prefixes,
+		// but also includes other keywords/commands/identifiers before the keyword
+		// in the denylist, we have to assume it's a new command/keyword/identifier.
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ContainsReservedKeywords(tt.query, reservedWords, sqllexer.DBMSMySQL)
-			if result != tt.expected {
-				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
-			}
-		})
-	}
-}
-
-func TestContainsReservedKeywords_WithActualDenyList(t *testing.T) {
-	tests := []struct {
-		name     string
-		query    string
-		expected bool
-	}{
+		// This means it is VERY important to create complete denylist exemption lists when appropriate.
 		{
-			name:     "EXPLAIN statement should be detected",
-			query:    "EXPLAIN SELECT * FROM users",
-			expected: true,
-		},
-		{
-			name:     "SELECT with explain in string should not be detected",
-			query:    "SELECT 'explain this' FROM users",
+			name:  "one prefix in deny list additional prefixes in query",
+			query: "SELECT name FROM users LOCK IN SHARE MODE",
+			reservedWords: map[string]ExplainReservedWordMetadata{
+				"MODE": {
+					ExemptionPrefixes: &[]string{"SHARE"},
+				},
+			},
 			expected: false,
-		},
-		{
-			name:     "PREPARE statement should be detected",
-			query:    "PREPARE stmt AS SELECT * FROM users WHERE id = $1",
-			expected: true,
-		},
-		{
-			name:     "SELECT with prepare in column name should not be detected",
-			query:    "SELECT prepare_date FROM users",
-			expected: false,
-		},
-		{
-			name:     "SET statement should be detected",
-			query:    "SET search_path TO public",
-			expected: true,
-		},
-		{
-			name:     "SELECT with set in string should not be detected",
-			query:    "SELECT 'set this value' FROM users",
-			expected: false,
-		},
-		{
-			name:     "SELECT with reserved word in quoted identifier",
-			query:    `SELECT "insert" FROM users`,
-			expected: false,
-		},
-		{
-			name:     "SELECT with reserved word in table alias",
-			query:    "SELECT * FROM users AS insert_table",
-			expected: false,
-		},
-		{
-			name:     "SELECT with legacy LOCK IN SHARE MODE",
-			query:    "SELECT name FROM users LOCK IN SHARE MODE",
-			expected: false,
-		},
-		{
-			name:     "SELECT with FOR UPDATE",
-			query:    "SELECT name FROM users FOR UPDATE",
-			expected: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run("MySQL: "+tt.name, func(t *testing.T) {
-			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+			result, err := ContainsReservedKeywords(tt.query, tt.reservedWords, sqllexer.DBMSMySQL)
+			require.NoError(t, err)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
 			}
 		})
 		t.Run("PostgreSQL: "+tt.name, func(t *testing.T) {
-			result := ContainsReservedKeywords(tt.query, ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
+			result, err := ContainsReservedKeywords(tt.query, tt.reservedWords, sqllexer.DBMSPostgres)
+			require.NoError(t, err)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v for query: %s", tt.expected, result, tt.query)
 			}
 		})
 	}
+
+	t.Run("lexer error", func(t *testing.T) {
+		_, err := ContainsReservedKeywords("SELECT \"foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		require.Error(t, err)
+	})
 }

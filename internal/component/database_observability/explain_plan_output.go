@@ -35,42 +35,75 @@ const (
 	ExplainPlanJoinAlgorithmNestedLoop ExplainPlanJoinAlgorithm = "nested_loop"
 )
 
+type ExplainReservedWordMetadata struct {
+	ExemptionPrefixes *[]string
+}
+
 // ExplainReservedWordDenyList contains SQL reserved words that indicate write operations
 // to the database. These are primarily DML (Data Manipulation Language) and DDL
 // (Data Definition Language) commands that modify database state.
 // This was extracted from the MySQL and PostgreSQL documentation by Claude Sonnet 4 on Oct 28, 2025
 // and audited by @rgeyer and others in the dbo11y team.
-var ExplainReservedWordDenyList = map[string]bool{
+var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	// Data Manipulation Language (DML) - Write operations
-	"INSERT": true, "UPDATE": true, "DELETE": true, "REPLACE": true, "MERGE": true, "UPSERT": true,
-	"FOR UPDATE": true,
+	"INSERT": {},
+	"UPDATE": {
+		ExemptionPrefixes: &[]string{"FOR"},
+	},
+	"DELETE":  {},
+	"REPLACE": {},
+	"MERGE":   {},
+	"UPSERT":  {},
 
 	// Data Definition Language (DDL) - Schema modifications
-	"CREATE": true, "ALTER": true, "DROP": true, "RENAME": true, "TRUNCATE": true,
+	"CREATE":   {},
+	"ALTER":    {},
+	"DROP":     {},
+	"RENAME":   {},
+	"TRUNCATE": {},
 
 	// Transaction control that can commit writes
-	"COMMIT": true, "ROLLBACK": true, "SAVEPOINT": true,
+	"COMMIT":    {},
+	"ROLLBACK":  {},
+	"SAVEPOINT": {},
 
 	// Database/Schema management
-	"USE": true, "DATABASE": true, "SCHEMA": true,
+	"USE":      {},
+	"DATABASE": {},
+	"SCHEMA":   {},
 
 	// Index operations
-	"REINDEX": true, "ANALYZE": true, "OPTIMIZE": true,
-	"REINDEX TABLE": true, "ANALYZE TABLE": true, "OPTIMIZE TABLE": true,
+	"REINDEX":  {},
+	"ANALYZE":  {},
+	"OPTIMIZE": {},
+
 	// User/Permission management
-	"GRANT": true, "REVOKE": true, "CREATE USER": true, "DROP USER": true, "ALTER USER": true,
+	"GRANT":  {},
+	"REVOKE": {},
 
 	// MySQL specific write operations
-	"LOAD": true, "DELAYED": true, "IGNORE": true, "ON DUPLICATE KEY": true,
-	"LOW_PRIORITY": true, "HIGH_PRIORITY": true, "QUICK": true,
-	"LOCK IN SHARE MODE": true,
+	"LOAD":          {},
+	"DELAYED":       {},
+	"IGNORE":        {},
+	"LOW_PRIORITY":  {},
+	"HIGH_PRIORITY": {},
+	"QUICK":         {},
 
 	// PostgreSQL specific write operations
-	"COPY": true, "VACUUM": true, "CLUSTER": true, "LISTEN": true, "NOTIFY": true, "DISCARD": true,
-	"PREPARE": true, "EXECUTE": true, "DEALLOCATE": true, "RESET": true, "SET": true,
+	"COPY":       {},
+	"VACUUM":     {},
+	"CLUSTER":    {},
+	"LISTEN":     {},
+	"NOTIFY":     {},
+	"DISCARD":    {},
+	"PREPARE":    {},
+	"EXECUTE":    {},
+	"DEALLOCATE": {},
+	"RESET":      {},
+	"SET":        {},
 
 	// dbo11 specific operations we'd like to exclude
-	"EXPLAIN": true,
+	"EXPLAIN": {},
 }
 
 type ExplainPlanOutput struct {
