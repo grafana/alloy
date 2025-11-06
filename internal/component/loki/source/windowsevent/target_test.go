@@ -14,8 +14,8 @@ import (
 	"go.uber.org/goleak"
 	"golang.org/x/sys/windows/svc/eventlog"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
-	"github.com/grafana/alloy/internal/loki/promtail/api"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
@@ -46,7 +46,7 @@ func TestBookmarkUpdate(t *testing.T) {
 		ExcludeUserData:      false,
 		Labels:               utils.ToLabelSet(map[string]string{"job": "windows"}),
 	}
-	handle := &handler{handler: make(chan api.Entry)}
+	handle := &testHandler{handler: make(chan loki.Entry)}
 	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)
 	require.NoError(t, err)
 
