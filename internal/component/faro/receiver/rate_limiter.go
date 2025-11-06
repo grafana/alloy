@@ -152,7 +152,7 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 
 	if !exists {
 		// Create new rate limiter with pre-filled bucket (similar to handler.Update)
-		t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
+		t := time.Now().Add(-time.Second * time.Duration(r.rate*float64(r.burst)))
 		newLimiter := rate.NewLimiter(r.rate, r.burst)
 		newLimiter.SetLimitAt(t, r.rate)
 		newLimiter.SetBurstAt(t, r.burst)
