@@ -14,6 +14,14 @@ title: local.file_match
 
 `local.file_match` discovers files on the local filesystem using glob patterns and the [doublestar][] library.
 
+{{< admonition type="note" >}}
+Use the built-in [`file_match`](../../loki/loki.source.file/#file_match) block in `loki.source.file` whenever possible.
+This provides better performance by integrating file discovery directly into the component, eliminating the overhead of a separate component.
+The performance benefit is especially noticeable in environments with many files to watch.
+
+Use the `local.file_match` component only when you need to share discovered targets across multiple components, reuse file discovery results in different parts of your configuration, or accept targets from other discovery components, for example,  `discovery.relabel` before file matching.
+{{< /admonition >}}
+
 [doublestar]: https://github.com/bmatcuk/doublestar
 
 ## Usage
