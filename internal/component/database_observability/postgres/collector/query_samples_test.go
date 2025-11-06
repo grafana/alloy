@@ -875,7 +875,7 @@ func TestComputeAdaptiveThrottle(t *testing.T) {
 	t.Parallel()
 
 	// base=0 disables
-	require.Equal(t, time.Duration(0), computeAdaptiveThrottle(0, 100))
+	require.Equal(t, time.Duration(0), computeAdaptiveThrottleInterval(0, 100))
 
 	type rateCase struct {
 		perMinuteRate int
@@ -912,7 +912,7 @@ func TestComputeAdaptiveThrottle(t *testing.T) {
 		t.Run(baseThrottleInterval.String(), func(t *testing.T) {
 			t.Parallel()
 			for _, rc := range rateCases {
-				got := computeAdaptiveThrottle(baseThrottleInterval, float64(rc.perMinuteRate))
+				got := computeAdaptiveThrottleInterval(baseThrottleInterval, float64(rc.perMinuteRate))
 				want := time.Duration(rc.factor) * baseThrottleInterval
 				require.Equal(t, want, got, "baseThrottleInterval=%s count=%d", baseThrottleInterval, rc.perMinuteRate)
 			}
@@ -1019,7 +1019,7 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 				if perMinute < 1 {
 					perMinute = 1
 				}
-				return computeAdaptiveThrottle(tc.baseThrottleInterval, perMinute)
+				return computeAdaptiveThrottleInterval(tc.baseThrottleInterval, perMinute)
 			}
 
 			// Allow an emission: set last emission far in the past

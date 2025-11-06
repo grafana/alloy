@@ -488,7 +488,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 
 	isExempt := isThrottleExempt(state)
 
-	// Only non-exempt samples contribute to the adaptive rate window.
 	var perMinuteRate float64
 	if !isExempt {
 		window := c.recentFinalizationsByQueryID[qid]
@@ -501,8 +500,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 
 	shouldEmit := true
 	if !isExempt && c.baseThrottleInterval > 0 {
-		// Compute the adaptive throttle interval from the normalized per-minute rate.
-		adaptiveThrottleInterval := computeAdaptiveThrottle(c.baseThrottleInterval, perMinuteRate)
+		adaptiveThrottleInterval := computeAdaptiveThrottleInterval(c.baseThrottleInterval, perMinuteRate)
 		if last, ok := c.lastEmittedByQueryID[qid]; ok {
 			if now.Sub(last) < adaptiveThrottleInterval {
 				shouldEmit = false
@@ -685,14 +683,15 @@ func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Du
 	return s, capWindow
 }
 
-// computeAdaptiveThrottle scales the base interval using a logarithmic factor derived
-// from the per-minute finalization rate. This provides gentle backoff at high rates:
+// computeAdaptiveThrottleInterval scales the base interval using a logarithmic factor derived
+// from the per-minute finalization rate. This provides gentle backoff at high rates,
+// avoiding excessive sampling:
 //
 //	factor = 1 + ceil(log10(max(1, per-minute-rate)))
 //	effective = baseThrottleInterval * factor
 //
 // If baseThrottleInterval is 0, adaptive throttling is disabled and 0 is returned.
-func computeAdaptiveThrottle(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
+func computeAdaptiveThrottleInterval(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
 	if baseThrottleInterval <= 0 {
 		return 0
 	}
