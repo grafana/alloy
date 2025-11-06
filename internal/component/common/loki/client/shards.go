@@ -41,6 +41,9 @@ func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 	}
 }
 
+// queue for batching and sending log entries to Loki.
+// The queue maintains separate batches per tenant and enqueues batches when they
+// reach the configured.
 type queue struct {
 	cfg     Config
 	metrics *Metrics
@@ -48,26 +51,36 @@ type queue struct {
 	c       chan queuedBatch
 
 	mu sync.Mutex
-	// we need to have separate batches per tenant
+	// batches maintains one active batch per tenant. When a batch reaches
+	// the size limit, it's moved to the channel and a new batch is created
+	// for that tenant.
 	batches map[string]*batch
 }
 
-func (q *queue) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
+// append adds a log entry to the queue for the given tenant.
+// It returns true if the entry was successfully queued, false if the queue
+// is full and backpressure should be applied.
+func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	batch, ok := q.batches[tenantID]
 	if !ok {
+		// Create a new batch for this tenant.
 		batch := newBatch(q.cfg.MaxStreams)
 		_ = batch.add(entry, segmentNum)
 		q.batches[tenantID] = batch
 		return true
 	}
 
+	// If adding this entry would exceed the batch size limit, enqueue the
+	// current batch and start a new one
 	if batch.sizeBytesAfter(entry.Entry) > q.cfg.BatchSize {
 		select {
 		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+			// Successfully enqueued the batch.
 		default:
+			// Channel is full, signal backpressure.
 			return false
 		}
 
@@ -77,7 +90,7 @@ func (q *queue) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
 		return true
 	}
 
-	// if we cannot add entry to batch we will drop it.
+	// Add entry to existing batch. If we cannot add entry to batch we will drop it.
 	if err := batch.add(entry, segmentNum); err != nil {
 		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 		reason := ReasonGeneric
@@ -91,11 +104,15 @@ func (q *queue) Append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	return true
 }
 
-func (q *queue) Chan() chan queuedBatch {
+// channel returns the channel used to receive batches ready to be sent.
+func (q *queue) channel() chan queuedBatch {
 	return q.c
 }
 
-func (q *queue) Batches() []queuedBatch {
+// drain retrieves all batches that are ready to be sent.
+// It returns all batches currently in the channel and all batches
+// from the batches map that have exceeded BatchWait.
+func (q *queue) drain() []queuedBatch {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -105,13 +122,16 @@ loop:
 	for {
 		select {
 		case b := <-q.c:
+			// Drain all batches from the channel
 			batches = append(batches, b)
 		default:
+			// Check for age-based ready batches
 			for tenantID, batch := range q.batches {
 				if batch.age() < q.cfg.BatchWait {
 					continue
 				}
 
+				// Batch has exceeded wait time, remove from map and return it
 				delete(q.batches, tenantID)
 				batches = append(batches, queuedBatch{
 					TenantID: tenantID,
@@ -124,7 +144,9 @@ loop:
 	return batches
 }
 
-func (q *queue) FlushAndShutdown(done chan struct{}) {
+// flushAndShutdown flushes all remaining batches and closes the channel.
+// It will stop early if the done channel is signaled.
+func (q *queue) flushAndShutdown(done chan struct{}) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -132,7 +154,9 @@ loop:
 	for tenantID, batch := range q.batches {
 		select {
 		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
+			// Successfully enqueued batch for sending
 		case <-done:
+			// Shutdown timeout reached, stop trying to flush
 			break loop
 		}
 	}
@@ -216,7 +240,7 @@ func (s *shards) stop() {
 	close(s.softShutdown)
 
 	for _, q := range s.queues {
-		go q.FlushAndShutdown(s.done)
+		go q.flushAndShutdown(s.done)
 	}
 
 	select {
@@ -253,13 +277,13 @@ func (s *shards) runShard(q *queue) {
 		select {
 		case <-s.ctx.Done():
 			return
-		case b, ok := <-q.Chan():
+		case b, ok := <-q.channel():
 			if !ok {
 				return
 			}
 			s.sendBatch(b.TenantID, b.Batch)
 		case <-maxWaitCheck.C:
-			for _, b := range q.Batches() {
+			for _, b := range q.drain() {
 				s.sendBatch(b.TenantID, b.Batch)
 				b.Batch.reportAsSentData(s.marketHandler)
 			}
@@ -284,7 +308,7 @@ func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
 	case <-s.softShutdown:
 		return false
 	default:
-		return s.queues[shard].Append(tenantID, entry, segmentNum)
+		return s.queues[shard].append(tenantID, entry, segmentNum)
 	}
 }
 
