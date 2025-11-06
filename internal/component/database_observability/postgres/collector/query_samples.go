@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/go-kit/log"
@@ -28,6 +30,8 @@ const (
 	stateActive       = "active"
 	waitEventTypeLock = "Lock"
 )
+
+const finalizationRateWindow = 5 * time.Minute
 
 const selectPgStatActivity = `
 	SELECT
@@ -103,7 +107,7 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
-	ThrottleInterval      time.Duration
+	BaseThrottleInterval  time.Duration
 }
 
 type QuerySamples struct {
@@ -118,11 +122,12 @@ type QuerySamples struct {
 	cancel  context.CancelFunc
 
 	// in-memory state of running samples
-	samples               map[SampleKey]*SampleState
-	throttleInterval      time.Duration
-	lastEmittedByQueryID  map[int64]time.Time
-	adaptiveBurstInterval time.Duration
-	burstWindowUntil      time.Time
+	samples                      map[SampleKey]*SampleState
+	baseThrottleInterval         time.Duration
+	lastEmittedByQueryID         map[int64]time.Time
+	recentFinalizationsByQueryID map[int64][]time.Time
+	adaptiveBurstInterval        time.Duration
+	burstWindowUntil             time.Time
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -191,15 +196,16 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-		throttleInterval:      args.ThrottleInterval,
-		lastEmittedByQueryID:  map[int64]time.Time{},
+		dbConnection:                 args.DB,
+		collectInterval:              args.CollectInterval,
+		entryHandler:                 args.EntryHandler,
+		disableQueryRedaction:        args.DisableQueryRedaction,
+		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                      &atomic.Bool{},
+		samples:                      map[SampleKey]*SampleState{},
+		baseThrottleInterval:         args.BaseThrottleInterval,
+		lastEmittedByQueryID:         map[int64]time.Time{},
+		recentFinalizationsByQueryID: map[int64][]time.Time{},
 	}, nil
 }
 
@@ -214,10 +220,10 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
 
-	if c.throttleInterval < time.Minute {
-		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with throttle interval below 1 minute: %s. This may result in excessive samples volume.", c.throttleInterval))
+	if c.baseThrottleInterval < 30*time.Second {
+		level.Warn(c.logger).Log("msg", fmt.Sprintf("collector configured with base throttle interval below 30 seconds: %s. This may result in excessive samples volume.", c.baseThrottleInterval))
 	}
-	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with throttle interval: %s", c.throttleInterval))
+	level.Debug(c.logger).Log("msg", fmt.Sprintf("collector started with base throttle interval: %s", c.baseThrottleInterval))
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -475,16 +481,36 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	sampleLabels := c.buildQuerySampleLabels(state)
 
+	now := time.Now()
+	qid := state.LastRow.QueryID.Int64
+
+	isExempt := isThrottleExempt(state)
+
+	// Only non-exempt samples contribute to the adaptive rate window.
+	var perMinuteRate float64
+	if !isExempt {
+		window := c.recentFinalizationsByQueryID[qid]
+		cutoff := now.Add(-finalizationRateWindow)
+		cutoffIndex := sort.Search(len(window), func(j int) bool { return window[j].After(cutoff) })
+		window = append(window[cutoffIndex:], now)
+		c.recentFinalizationsByQueryID[qid] = window
+		perMinuteRate = float64(len(window)) * float64(time.Minute) / float64(finalizationRateWindow)
+	}
+
 	shouldEmit := true
-	if !isThrottleExempt(state) && c.throttleInterval > 0 {
-		if last, ok := c.lastEmittedByQueryID[state.LastRow.QueryID.Int64]; ok {
-			if time.Since(last) < c.throttleInterval {
+	if !isExempt && c.baseThrottleInterval > 0 {
+		// Compute the adaptive throttle interval from the normalized per-minute rate.
+		adaptiveThrottleInterval := computeAdaptiveThrottle(c.baseThrottleInterval, perMinuteRate)
+		if last, ok := c.lastEmittedByQueryID[qid]; ok {
+			if now.Sub(last) < adaptiveThrottleInterval {
 				shouldEmit = false
 			}
 		}
 	}
 	if shouldEmit {
-		c.lastEmittedByQueryID[state.LastRow.QueryID.Int64] = time.Now()
+		if !isExempt {
+			c.lastEmittedByQueryID[qid] = now
+		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
@@ -655,4 +681,28 @@ func computeBurstWindow(collectInterval, observedLatency time.Duration) (time.Du
 
 	capWindow = min(capWindow, 20*s)
 	return s, capWindow
+}
+
+// computeAdaptiveThrottle scales the base interval using a logarithmic factor derived
+// from the per-minute finalization rate. This provides gentle backoff at high rates:
+//
+//	factor = 1 + ceil(log10(max(1, per-minute-rate)))
+//	effective = baseThrottleInterval * factor
+//
+// If baseThrottleInterval is 0, adaptive throttling is disabled and 0 is returned.
+func computeAdaptiveThrottle(baseThrottleInterval time.Duration, perMinuteRate float64) time.Duration {
+	if baseThrottleInterval <= 0 {
+		return 0
+	}
+	if perMinuteRate <= 1 {
+		return baseThrottleInterval
+	}
+	r := perMinuteRate
+	f := 1 + int(math.Ceil(math.Log10(r)))
+	if f < 1 {
+		f = 1
+	} else if f > 10 {
+		f = 10
+	}
+	return time.Duration(f) * baseThrottleInterval
 }
