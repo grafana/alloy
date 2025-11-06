@@ -137,7 +137,7 @@ When `strategy` is `per_app`, rate limiting is applied per application and envir
 
 This prevents one application from affecting the rate limits of other applications sending their data on the same gateway.
 
-The application and environment are extracted from the Faro payload metadata using the `app.name` and `app.environment` fields. If fields are missing, the rate limiting falls back to a global strategy for that request and shares the rate limiter with other applications.
+The application and environment are extracted from the Faro payload metadata using the `app.name` and `app.environment` fields. If these fields are missing, the request shares a rate limiter with other requests that also lack this metadata.
 
 Configuring the `rate` argument determines how fast the bucket refills, and configuring the `burst_size` argument determines how many requests can be received in a burst before the bucket is empty and starts rejecting requests.
 
