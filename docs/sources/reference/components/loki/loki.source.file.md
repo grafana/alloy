@@ -58,6 +58,9 @@ The format of the positions file is different in Grafana Alloy, so this will con
 This operation only occurs if the new positions file doesn't exist and the `legacy_positions_file` is valid.
 When `legacy_positions_file` is set, Alloy will try to find previous positions for a given file by matching the path and labels, falling back to matching on path only if no match is found.
 
+If you want to read a UTF-16 file with a Byte Order Mark (BOM), set `encoding` to `UTF-16`.
+BOMs will be ignored if `encoding` is set to either `UTF-16BE` or `UTF-16LE`.
+
 ## Blocks
 
 You can use the following blocks with `loki.source.file`:
