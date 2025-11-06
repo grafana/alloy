@@ -165,6 +165,8 @@ loop:
 	close(q.c)
 }
 
+// newShards creates a new shards instance for parallel processing of log entries.
+// It validates the configuration and creates an HTTP client for sending batches to Loki.
 func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
@@ -192,6 +194,10 @@ func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarker
 	}, nil
 }
 
+// shards manages multiple parallel queues for processing and sending log entries to Loki.
+// It uses sharding to distribute entries across multiple worker goroutines based on label fingerprints,
+// enabling parallel processing and improved throughput. Each shard has its own queue and worker goroutine.
+// Entries are routed to shards using a hash of their label fingerprint.
 type shards struct {
 	cfg           Config
 	logger        log.Logger
@@ -203,14 +209,21 @@ type shards struct {
 	tenants map[string]struct{}
 	queues  []*queue
 
+	// running is used to track the number of running shards.
 	running atomic.Int32
-	done    chan struct{}
+	// done is used to signal that all shards have finished.
+	done chan struct{}
 
+	// softShutdown is used to signal that no new entries should be accepted.
 	softShutdown chan struct{}
 	ctx          context.Context
-	cancel       context.CancelFunc
+	// cancel is used to cancel the context when a hard shutdown is initiated.
+	cancel context.CancelFunc
 }
 
+// start initializes n shards and starts worker goroutines for each one.
+// Each shard gets its own queue and a dedicated worker that processes batches
+// from that queue. The number of shards determines the parallelism level.
 func (s *shards) start(n int) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
@@ -232,11 +245,15 @@ func (s *shards) start(n int) {
 	}
 }
 
+// stop tries to perform a graceful shutdown of all shards.
+// It first attempts a soft shutdown by signaling that no new entries should be accepted
+// and allowing all queues to flush their remaining batches within the drain timeout.
+// If the drain timeout is exceeded, it performs a hard shutdown that will drop any remaining batches.
 func (s *shards) stop() {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	// attempt a soft showdown, meaning that all shards tries to flush their remaning batches.
+	// Attempt a soft showdown, meaning that all shards tries to flush their remaning batches.
 	close(s.softShutdown)
 
 	for _, q := range s.queues {
@@ -249,11 +266,12 @@ func (s *shards) stop() {
 	case <-time.After(s.cfg.Queue.DrainTimeout):
 	}
 
-	// perform hard shutdown
+	// Perform hard shutdown
 	s.cancel()
 	<-s.done
 }
 
+// runShard is the worker goroutine that processes batches from a single queue.
 func (s *shards) runShard(q *queue) {
 	// Given the a shart handles multiple batches (1 per tenant) and each batch
 	// can be created at a different point in time, we look for batches whose
@@ -276,13 +294,16 @@ func (s *shards) runShard(q *queue) {
 	for {
 		select {
 		case <-s.ctx.Done():
+			// Context is closed when hard shutdown is initiated.
 			return
 		case b, ok := <-q.channel():
 			if !ok {
+				// Channel is closed, when a graceful shutdown is successful.
 				return
 			}
 			s.sendBatch(b.TenantID, b.Batch)
 		case <-maxWaitCheck.C:
+			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
 				s.sendBatch(b.TenantID, b.Batch)
 				b.Batch.reportAsSentData(s.marketHandler)
@@ -291,6 +312,9 @@ func (s *shards) runShard(q *queue) {
 	}
 }
 
+// enqueue routes a log entry to the appropriate shard based on its label fingerprint.
+// Returns false we could not enqueue the entry, either because the shard is shutting down or the queue is full.
+// It is up to the caller to retry or drop the entry.
 func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
 	s.mut.Lock()
 	defer s.mut.Unlock()
@@ -335,6 +359,7 @@ func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
 	return e, s.cfg.TenantID
 }
 
+// sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch) {
 	buf, entriesCount, err := batch.encode()
 
@@ -366,7 +391,6 @@ func (s *shards) sendBatch(tenantID string, batch *batch) {
 		if err == nil {
 			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
 			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host, tenantID).Add(float64(entriesCount))
-
 			return
 		}
 
@@ -401,6 +425,7 @@ const (
 	maxErrMsgLen = 1024
 )
 
+// send performs the HTTP POST request to send a batch to Loki.
 func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Timeout)
 	defer cancel()
