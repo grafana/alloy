@@ -123,6 +123,7 @@ body:
       - otelcol.processor.transform
       - otelcol.receiver.awscloudwatch
       - otelcol.receiver.awsecscontainermetrics
+      - otelcol.receiver.cloudflare
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
       - otelcol.receiver.file_stats
