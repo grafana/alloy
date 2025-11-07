@@ -98,28 +98,11 @@ func TestStopAtEOF(t *testing.T) {
 	tail.StopAtEOF()
 }
 
-func TestMaxLineSizeFollow(t *testing.T) {
-	// As last file line does not end with newline, it will not be present in tail's output
-	maxLineSize(t, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin"})
-}
-
 func TestOver4096ByteLine(t *testing.T) {
 	tailTest := NewTailTest("Over4096ByteLine", t)
 	testString := strings.Repeat("a", 4097)
 	tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
 	tail := tailTest.StartTail("test.txt", Config{Location: nil})
-	go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
-
-	// Delete after a reasonable delay, to give tail sufficient time
-	// to read all lines.
-	<-time.After(100 * time.Millisecond)
-	tailTest.RemoveFile("test.txt")
-}
-func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
-	tailTest := NewTailTest("Over4096ByteLineMaxLineSize", t)
-	testString := strings.Repeat("a", 4097)
-	tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Location: nil, MaxLineSize: 4097})
 	go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 	// Delete after a reasonable delay, to give tail sufficient time
@@ -206,18 +189,6 @@ func TestTell(t *testing.T) {
 	tail.Done()
 }
 
-func maxLineSize(t *testing.T, fileContent string, expected []string) {
-	tailTest := NewTailTest("maxlinesize", t)
-	tailTest.CreateFile("test.txt", fileContent)
-	tail := tailTest.StartTail("test.txt", Config{Location: nil, MaxLineSize: 3})
-	go tailTest.VerifyTailOutput(tail, expected, false)
-
-	// Delete after a reasonable delay, to give tail sufficient time
-	// to read all lines.
-	<-time.After(100 * time.Millisecond)
-	tailTest.RemoveFile("test.txt")
-}
-
 func reOpen(t *testing.T) {
 	delay := 1000 * time.Millisecond
 
@@ -225,7 +196,7 @@ func reOpen(t *testing.T) {
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 	tail := tailTest.StartTail(
 		"test.txt",
-		Config{PollOptions: testPollingOptions}
+		Config{PollOptions: testPollingOptions},
 	)
 	content := []string{"hello", "world", "more", "data", "endofworld"}
 	go tailTest.VerifyTailOutput(tail, content, false)

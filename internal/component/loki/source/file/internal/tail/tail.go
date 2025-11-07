@@ -17,7 +17,6 @@ import (
 	"github.com/go-kit/log/level"
 	"gopkg.in/tomb.v1"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 )
 
@@ -44,14 +43,10 @@ type SeekInfo struct {
 
 // Config is used to specify how a file must be tailed.
 type Config struct {
-	// File-specifc
-	Location    *SeekInfo // Seek to this location before tailing
-	PollOptions watch.PollingFileWatcherOptions
-
-	// Generic IO
-	MaxLineSize int // If non-zero, split longer lines into multiple lines
-
 	Logger log.Logger
+	// Seek to this location before tailing
+	Location    *SeekInfo
+	PollOptions watch.PollingFileWatcherOptions
 }
 
 type Tail struct {
@@ -414,12 +409,7 @@ func (tail *Tail) finishDelete() error {
 }
 
 func (tail *Tail) openReader() {
-	if tail.MaxLineSize > 0 {
-		// add 2 to account for newline characters
-		tail.reader = bufio.NewReaderSize(tail.file, tail.MaxLineSize+2)
-	} else {
-		tail.reader = bufio.NewReader(tail.file)
-	}
+	tail.reader = bufio.NewReader(tail.file)
 }
 
 func (tail *Tail) seekEnd() error {
@@ -441,11 +431,6 @@ func (tail *Tail) seekTo(pos SeekInfo) error {
 func (tail *Tail) sendLine(line string) bool {
 	now := time.Now()
 	lines := []string{line}
-
-	// Split longer lines
-	if tail.MaxLineSize > 0 && len(line) > tail.MaxLineSize {
-		lines = util.PartitionString(line, tail.MaxLineSize)
-	}
 
 	for _, line := range lines {
 		tail.Lines <- &Line{line, now, nil}
