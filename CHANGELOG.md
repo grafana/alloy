@@ -29,8 +29,10 @@ Main (unreleased)
   - `explain_plans`
     - added the explain plan collector (@rgeyer)
     - collector now passes queries more permissively, expressly to allow queries beginning in `with` (@rgeyer)
-  - add `user` field to wait events within `query_samples` collector (@gaantunes)
-  - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+  - `query_samples`
+    - add `user` field to wait events within `query_samples` collector (@gaantunes)
+    - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
+    - process turned idle rows to calculate finalization times precisely and emit first seen idle rows (@gaantunes)
   - enable `explain_plans` collector by default (@rgeyer)
   - safely generate server_id when UDP socket used for database connection (@matthewnolf)
 
