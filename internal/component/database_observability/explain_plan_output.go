@@ -101,6 +101,7 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"DEALLOCATE": {},
 	"RESET":      {},
 	"SET":        {},
+	"UNLISTEN":   {},
 
 	// dbo11 specific operations we'd like to exclude
 	"EXPLAIN": {},
