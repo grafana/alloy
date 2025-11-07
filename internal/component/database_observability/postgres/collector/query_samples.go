@@ -142,25 +142,25 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
-	// EndOverride is used to compute durations and timestamps when a query
-	// transitioned to idle or was only observed as idle.
-	EndOverride sql.NullTime
+	// EndAt is the time we determined the sample ended (idle transition
+	// or when it was only observed idle), used to compute durations/timestamps.
+	EndAt sql.NullTime
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
+func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
 }
 
-// markEndedAt sets EndOverride and LastSeenAt based on the sample's state change or clock_timestamp if not available
-func (s *SampleState) markEndedAt(sample QuerySamplesInfo) {
+// setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) setEndedAt(sample QuerySamplesInfo) {
 	if sample.StateChange.Valid {
-		s.EndOverride = sample.StateChange
+		s.EndAt = sample.StateChange
 		s.LastSeenAt = sample.StateChange.Time
 		return
 	}
-	s.EndOverride = sql.NullTime{Time: sample.Now, Valid: true}
+	s.EndAt = sql.NullTime{Time: sample.Now, Valid: true}
 	s.LastSeenAt = sample.Now
 }
 
@@ -298,22 +298,16 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
-		if !isIdleState(sample.State.String) {
-			c.upsertActiveSample(key, sample)
-			activeKeys[key] = struct{}{}
-			continue
-		}
-
 		// Handle idle states specially: emit finalized sample once
 		if isIdleState(sample.State.String) {
 			if st, hadActive := c.samples[key]; hadActive {
-				st.markEndedAt(sample)
+				st.setEndedAt(sample)
 				st.LastRow.State = sample.State
 				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
 			} else if _, already := c.emitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
-				newIdleState.markEndedAt(sample)
+				newIdleState.setEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
 				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
@@ -321,8 +315,10 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			continue
 		}
 
+		// Non-idle: keep tracking as active
 		c.upsertActiveSample(key, sample)
 		activeKeys[key] = struct{}{}
+		continue
 	}
 
 	if err := rows.Err(); err != nil {
@@ -330,9 +326,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		return err
 	}
 
-	// finalize samples that are no longer active or have EndOverride set (idle finalized or one off idle sample)
+	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
 	for key, st := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive && !st.EndOverride.Valid {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
@@ -401,7 +397,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-	state.updateCpuTimeIfActive(sample)
+	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
@@ -449,15 +445,10 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	var endOverride *time.Time
-	if state.EndOverride.Valid {
-		t := state.EndOverride.Time
-		endOverride = &t
-	}
-	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, endOverride)
+	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
 	ts := state.LastSeenAt.UnixNano()
-	if endOverride != nil {
-		ts = endOverride.UnixNano()
+	if state.EndAt.Valid {
+		ts = state.EndAt.Time.UnixNano()
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
@@ -482,14 +473,14 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
-func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endOverride *time.Time) string {
+func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	end := state.LastRow.Now
-	if endOverride != nil {
-		end = *endOverride
+	if endAt.Valid {
+		end = endAt.Time
 	}
 
 	xactDuration := calculateDuration(state.LastRow.XactStart, end)
