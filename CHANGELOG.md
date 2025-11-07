@@ -13,7 +13,7 @@ Main (unreleased)
 ### Breaking changes
 
 - `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
-  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to a missing data when using the exporter
+  their `instance` label in their exported metrics. This is a consequence of a bug fix that could lead to missing data when using the exporter
   with clustering. If you would like to retain the previous behaviour, you can use `discovery.relabel` with `action = "replace"` rule to
   set the `instance` label to `sys.env("HOSTNAME")`. (@thampiotr)
 
@@ -43,7 +43,7 @@ Main (unreleased)
 
 - Send effective config to the remote server for the remotecfg service. (@erikbaranowski)
 
-- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano) 
+- Add a `stat_statements` configuration block to the `prometheus.exporter.postgres` component to enable selecting both the query ID and the full SQL statement. The new block includes one option to enable statement selection, and another to configure the maximum length of the statement text. (@SimonSerrano)
 
 - Add `truncate` stage for `loki.process` to truncate log entries, label values, and structured_metadata values. (@dehaansa)
 
@@ -77,6 +77,8 @@ Main (unreleased)
 - `prometheus.exporter.snowflake` dependency has been updated to 20251016132346-6d442402afb2, which updates data ownership queries to use `last_over_time` for a 24 hour period. (@dasomeone)
 
 - `loki.source.podlogs` now supports `preserve_discovered_labels` parameter to preserve discovered pod metadata labels for use by downstream components. (@QuentinBisson)
+
+- Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
 
 ### Bugfixes
 
@@ -116,7 +118,7 @@ v1.11.3
 
 - Fix `otelcol.exporter.splunkhec` arguments missing documented `otel_attrs_to_hec_metadata` block. (@dehaansa)
 
-- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa) 
+- Support Scrape Protocol specification in CRDS for `prometheus.operator.*` components. (@dehaansa)
 
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
