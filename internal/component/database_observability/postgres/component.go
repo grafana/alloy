@@ -370,7 +370,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.SchemaDetailsCollector] {
-		var err error
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			DSN:             string(c.args.DataSourceName),
@@ -393,10 +392,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		}
 	}
 
-	var qCollector *collector.QueryDetails
 	if collectors[collector.QueryDetailsCollector] {
-		var err error
-		qCollector, err = collector.NewQueryDetails(collector.QueryDetailsArguments{
+		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
