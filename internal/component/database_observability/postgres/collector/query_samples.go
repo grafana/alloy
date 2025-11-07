@@ -320,12 +320,11 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 	}
 
 	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
-		return false, err
+		return false, fmt.Errorf("failed to iterate pg_stat_activity rows: %w", err)
 	}
 
 	// Enrich blocked_by_pids only when there are lock waits
-	blockedByByPID := map[int]pq.Int64Array{}
+	blockedByPID := map[int]pq.Int64Array{}
 	if hasLockWait {
 		blockedRows, err := c.dbConnection.QueryContext(ctx, selectBlockingPIDs)
 		if err != nil {
@@ -339,7 +338,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 					level.Error(c.logger).Log("msg", "failed to scan blocking pids row", "err", err)
 					continue
 				}
-				blockedByByPID[pid] = blocked
+				blockedByPID[pid] = blocked
 			}
 			if err := blockedRows.Err(); err != nil {
 				level.Error(c.logger).Log("msg", "failed to iterate blocking pids rows", "err", err)
@@ -351,7 +350,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 
 	for _, sample := range buffered {
 		if sample.WaitEventType.Valid && sample.WaitEventType.String == waitEventTypeLock {
-			if blocked, ok := blockedByByPID[sample.PID]; ok {
+			if blocked, ok := blockedByPID[sample.PID]; ok {
 				sample.BlockedByPIDs = blocked
 			}
 		}
