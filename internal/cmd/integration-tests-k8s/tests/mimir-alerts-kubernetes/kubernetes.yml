@@ -1,0 +1,229 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: testing
+  labels:
+    alloy: "yes"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana-alloy
+  namespace: testing
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-alloy
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["alertmanagerconfigs"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-alloy
+subjects:
+- kind: ServiceAccount
+  name: grafana-alloy
+  namespace: testing
+roleRef:
+  kind: ClusterRole
+  name: grafana-alloy
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-alloy
+spec:
+  type: NodePort
+  selector:
+    app: grafana-alloy
+  ports:
+      # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: testing
+  name: grafana-alloy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-alloy
+  template:
+    metadata:
+      labels:
+        app: grafana-alloy
+    spec:
+      serviceAccount: grafana-alloy
+      containers:
+      - name: alloy
+        image: grafana/alloy:latest
+        imagePullPolicy: Never
+        args:
+        - run
+        - /etc/config/config.alloy
+        - --stability.level=experimental
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alloy-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: testing
+data:
+  config.alloy: |
+      remote.kubernetes.configmap "default" {
+        namespace = "testing"
+        name = "alertmgr-global"
+      }
+
+      mimir.alerts.kubernetes "default" {
+        address = "http://mimir-nginx.mimir-test.svc:80"
+        global_config = remote.kubernetes.configmap.default.data["glbl"]
+        template_files = {
+          `default_template` = 
+      `{{ define "__alertmanager" }}AlertManager{{ end }}
+      {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
+        }
+        alertmanagerconfig_namespace_selector {
+            match_labels = {
+                alloy = "yes",
+            }
+        }
+        alertmanagerconfig_selector {
+            match_labels = {
+                alloy = "yes",
+            }
+        }
+      }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmgr-global
+  namespace: testing
+data:
+  glbl: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+      smtp_hello: localhost
+      smtp_require_tls: true
+    route:
+      receiver: "null"
+    receivers:
+    - name: "null"
+    - name: "alloy-namespace/global-config/myreceiver"
+    templates:
+    - 'default_template'
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config1
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: myamc
+      continue: true
+  receivers:
+  - name: "null"
+  - name: myamc
+    webhookConfigs:
+    - url: http://test.url
+      httpConfig:
+        followRedirects: true
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config2
+  namespace: testing
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: 'database-pager'
+      groupWait: 10s
+      matchers:
+      - name: service
+        value: webapp
+  receivers:
+  - name: "null"
+  - name: "database-pager"
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config3
+  namespace: testing
+  # This config should not have the label required for 
+  # mimir.alerts.kubernetes to pick up the CRD. 
+  # 
+  # labels:
+  #   alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: 'database-pager'
+      group_wait: 10s
+      matchers:
+      - name: service
+        value: webapp
+  receivers:
+  - name: "null"
+  - name: "database-pager"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: othernamespace
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config3
+  # This config should be in a namespace which
+  # mimir.alerts.kubernetes is not watching.
+  namespace: othernamespace
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: team-X-mails
+      matchers:
+      - service
+        foo1|foo2|baz"
+  receivers:
+  - name: "null"
+  - name: "team-X-mails"
+    emailConfigs:
+    - to: 'team-X+alerts@example.org'

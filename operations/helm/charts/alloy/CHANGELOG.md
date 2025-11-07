@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Update RBAC rules to permit `mimir.alerts.kubernetes` to work by default. (@ptodev)
+
 ### Bug fixes
 
 - Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
