@@ -368,55 +368,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryDetailsCollector] {
-		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.QueryDetailsCollector, "create", err)
-		}
-		if err := qCollector.Start(context.Background()); err != nil {
-			logStartError(collector.QueryDetailsCollector, "start", err)
-		}
-		c.collectors = append(c.collectors, qCollector)
-	}
-
-	if collectors[collector.QuerySamplesCollector] {
-		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-		})
-		if err != nil {
-			logStartError(collector.QuerySamplesCollector, "create", err)
-		}
-		if err := aCollector.Start(context.Background()); err != nil {
-			logStartError(collector.QuerySamplesCollector, "start", err)
-		}
-		c.collectors = append(c.collectors, aCollector)
-	}
-
-	// Connection Info collector is always enabled
-	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
-		DSN:           string(c.args.DataSourceName),
-		Registry:      c.registry,
-		EngineVersion: engineVersion,
-		CloudProvider: cloudProviderInfo,
-	})
-	if err != nil {
-		logStartError(collector.ConnectionInfoName, "create", err)
-	}
-	if err := ciCollector.Start(context.Background()); err != nil {
-		logStartError(collector.ConnectionInfoName, "start", err)
-	}
-
-	c.collectors = append(c.collectors, ciCollector)
-
+	var tableRegistry *collector.TableRegistry
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
@@ -431,10 +383,68 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		}
-		if err := stCollector.Start(context.Background()); err != nil {
-			logStartError(collector.SchemaDetailsCollector, "start", err)
+		if stCollector != nil {
+			tableRegistry = stCollector.GetTableRegistry()
+			if err := stCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SchemaDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, stCollector)
 		}
-		c.collectors = append(c.collectors, stCollector)
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+			DB:              c.dbConnection,
+			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
+			EntryHandler:    entryHandler,
+			TableRegistry:   tableRegistry,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		}
+		if qCollector != nil {
+			if err := qCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qCollector)
+		}
+	}
+
+	if collectors[collector.QuerySamplesCollector] {
+		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
+			DB:                    c.dbConnection,
+			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
+			EntryHandler:          entryHandler,
+			Logger:                c.opts.Logger,
+			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
+		})
+		if err != nil {
+			logStartError(collector.QuerySamplesCollector, "create", err)
+		}
+		if aCollector != nil {
+			if err := aCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QuerySamplesCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, aCollector)
+		}
+	}
+
+	// Connection Info collector is always enabled
+	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
+		DSN:           string(c.args.DataSourceName),
+		Registry:      c.registry,
+		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
+	})
+	if err != nil {
+		logStartError(collector.ConnectionInfoName, "create", err)
+	}
+	if ciCollector != nil {
+		if err := ciCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ConnectionInfoName, "start", err)
+		}
+		c.collectors = append(c.collectors, ciCollector)
 	}
 
 	if collectors[collector.ExplainPlanCollector] {
@@ -454,10 +464,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
 		}
-		if err := epCollector.Start(context.Background()); err != nil {
-			logStartError(collector.ExplainPlanCollector, "start", err)
+		if epCollector != nil {
+			if err := epCollector.Start(context.Background()); err != nil {
+				logStartError(collector.ExplainPlanCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, epCollector)
 		}
-		c.collectors = append(c.collectors, epCollector)
 	}
 
 	if len(startErrors) > 0 {

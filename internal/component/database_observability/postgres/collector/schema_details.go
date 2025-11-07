@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -205,6 +206,72 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
+// TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[string]map[string]map[string]bool // map[database]map[schema]map[table]bool
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[string]map[string]map[string]bool),
+	}
+}
+
+func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	delete(tr.tables, database)
+
+	if len(tablesInfo) > 0 {
+		tr.tables[database] = make(map[string]map[string]bool)
+		for _, table := range tablesInfo {
+			if tr.tables[database][table.schema] == nil {
+				tr.tables[database][table.schema] = make(map[string]bool)
+			}
+			tr.tables[database][table.schema][table.tableName] = true
+		}
+	}
+}
+
+// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry
+func (tr *TableRegistry) IsValid(database, parsedTableName string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return false
+	}
+
+	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
+	switch schemaName {
+	case "": // parsedTableName isn't schema-qualified, e.g. SELECT * FROM table_name.
+		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/grafana-dbo11y-app/issues/1838
+		for _, tables := range schemas {
+			if tables[tableName] {
+				return true
+			}
+		}
+	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+		if tables, ok := schemas[schemaName]; ok {
+			return tables[tableName]
+		}
+	}
+
+	return false
+}
+
+// parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+func parseSchemaQualifiedIfAny(parsedTableName string) (string, string) {
+	parts := strings.SplitN(parsedTableName, ".", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "", parsedTableName
+}
+
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	DSN             string
@@ -232,6 +299,8 @@ type SchemaDetails struct {
 	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
 	cache *expirable.LRU[string, *tableInfo]
 
+	tableRegistry *TableRegistry
+
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -250,6 +319,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		entryHandler:        args.EntryHandler,
+		tableRegistry:       NewTableRegistry(),
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:             &atomic.Bool{},
 	}
@@ -263,6 +333,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -399,6 +473,8 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
 		}
 	}
+
+	c.tableRegistry.SetTablesForDatabase(dbName, tables)
 
 	if len(tables) == 0 {
 		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "datname", dbName)

@@ -45,6 +45,7 @@ type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	EntryHandler    loki.EntryHandler
+	TableRegistry   *TableRegistry
 
 	Logger log.Logger
 }
@@ -53,6 +54,7 @@ type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	entryHandler    loki.EntryHandler
+	tableRegistry   *TableRegistry
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -65,6 +67,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		entryHandler:    args.EntryHandler,
+		tableRegistry:   args.TableRegistry,
 		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}, nil
@@ -148,10 +151,15 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		}
 
 		for _, table := range tables {
+			validated := false
+			if c.tableRegistry != nil {
+				validated = c.tableRegistry.IsValid(databaseName, table)
+			}
+
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres"`, queryID, databaseName, table),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" engine="postgres" validated="%t"`, queryID, databaseName, table, validated),
 			)
 		}
 	}

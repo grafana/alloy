@@ -1525,3 +1525,59 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func Test_TableRegistry_IsValid(t *testing.T) {
+	t.Run("returns true when table exists in registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "public", tableName: "orders"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "users"))
+		assert.True(t, tr.IsValid("mydb", "orders"))
+	})
+
+	t.Run("returns false when table does not exist in registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.False(t, tr.IsValid("mydb", "nonexistent"))
+	})
+
+	t.Run("returns false given nonexistent database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.False(t, tr.IsValid("otherdb", "users"))
+	})
+
+	t.Run("returns false for empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+
+		assert.False(t, tr.IsValid("mydb", "users"))
+	})
+
+	t.Run("returns true when table exists in multiple schemas", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "private", tableName: "users"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "users"))
+	})
+
+	t.Run("returns true when schema-qualified table exists", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "private", tableName: "users"},
+		})
+
+		assert.True(t, tr.IsValid("mydb", "private.users"))
+	})
+}
