@@ -53,7 +53,6 @@ func newCollectorClient(args Arguments) (collectorv1connect.CollectorServiceClie
 	return collectorv1connect.NewCollectorServiceClient(
 		httpClient,
 		args.URL,
-		connect.WithHTTPGet(),
 		connect.WithInterceptors(newAgentInterceptor()),
 	), nil
 }
