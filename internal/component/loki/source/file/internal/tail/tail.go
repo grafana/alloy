@@ -391,7 +391,6 @@ func (tail *Tail) finishDelete() error {
 func (tail *Tail) openReader() {
 	tail.readerMut.Lock()
 	defer tail.readerMut.Unlock()
-	tail.reader = bufio.NewReader(tail.file)
 	if tail.Decoder != nil {
 		tail.reader = bufio.NewReader(tail.Decoder.Reader(tail.file))
 	} else {
