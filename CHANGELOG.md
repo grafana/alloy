@@ -80,6 +80,8 @@ Main (unreleased)
 
 - Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
 
+- Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
