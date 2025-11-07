@@ -47,7 +47,6 @@ type Config struct {
 	// File-specifc
 	Location    *SeekInfo // Seek to this location before tailing
 	ReOpen      bool      // Reopen recreated files (tail -F)
-	Poll        bool      // Poll for file changes instead of using inotify
 	Pipe        bool      // Is a named pipe (mkfifo)
 	PollOptions watch.PollingFileWatcherOptions
 
@@ -95,21 +94,17 @@ func TailFile(filename string, config Config) (*Tail, error) {
 		t.Logger = log.NewNopLogger()
 	}
 
-	if t.Poll {
-		watcher, err := watch.NewPollingFileWatcher(filename, config.PollOptions)
-		if err != nil {
-			return nil, err
-		}
-		t.watcher = watcher
-	} else {
-		t.watcher = watch.NewInotifyFileWatcher(filename)
+	var err error
+	t.watcher, err = watch.NewPollingFileWatcher(filename, config.PollOptions)
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
 	t.file, err = OpenFile(t.Filename)
 	if err != nil {
 		return nil, err
 	}
+
 	t.watcher.SetFile(t.file)
 
 	go t.tailFileSync()
