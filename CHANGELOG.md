@@ -103,6 +103,11 @@ Main (unreleased)
 - `otelcol.receiver.prometheus` now supports mixed histograms if `prometheus.scrape` has `honor_metadata` set to `true`. (@ptodev)
   A mixed histogram is one which has both classic and exponential buckets.
 
+- `loki.source.file` has better support for non-UTF-8 encoded files. (@ptodev)
+  * A BOM will be taken into account if the file is UTF-16 encoded and `encoding` is set to `UTF-16`. (Not `UTF-16BE` or `UTF-16LE`)
+  * The carriage return symbol in Windows log files with CLRF endings will no longer be part of the log line.
+  * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
+
 v1.11.3
 -----------------
 

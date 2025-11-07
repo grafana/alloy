@@ -18,6 +18,7 @@ import (
 	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	"golang.org/x/text/encoding/unicode"
 )
 
 var testPollingOptions = watch.PollingFileWatcherOptions{
@@ -512,6 +513,54 @@ func TestSizeRace(t *testing.T) {
 
 	close(tailTest.done)
 	tailTest.Cleanup(tail, false)
+}
+
+func TestTailErrorLog(t *testing.T) {
+	tail, err := TailFile("testdata/mssql.log", Config{
+		Follow:    false,
+		MustExist: true,
+		Location:  nil, // Start from beginning
+		Decoder:   unicode.UTF16(unicode.LittleEndian, unicode.ExpectBOM).NewDecoder(),
+	})
+	if err != nil {
+		t.Fatalf("Failed to start tailing msssql.log: %v", err)
+	}
+	defer tail.Cleanup()
+
+	expectedLines := []string{
+		"2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ",
+		"	Sep 24 2019 13:48:23 ",
+		"	Copyright (C) 2019 Microsoft Corporation",
+		"	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)",
+		"",
+		"2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00",
+		"2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.",
+		"2025-03-11 11:11:02.72 Server      All rights reserved.",
+	}
+
+	actualLines := getLines(tail.Lines)
+
+	// Read the first few lines and verify them
+	for i, expectedLine := range expectedLines {
+		if expectedLine != actualLines[i] {
+			t.Errorf("expected %s, got %s", expectedLine, actualLines[i])
+		}
+	}
+
+	// Stop the tail
+	err = tail.Stop()
+	if err != nil {
+		t.Errorf("Error stopping tail: %v", err)
+	}
+}
+
+func getLines(lines chan *Line) []string {
+	res := []string{}
+	for line := range lines {
+		res = append(res, line.Text)
+	}
+
+	return res
 }
 
 // Test library
