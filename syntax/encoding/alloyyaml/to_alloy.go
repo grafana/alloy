@@ -291,43 +291,6 @@ func isStructuralValue(value interface{}) bool {
 	return false
 }
 
-// writeBlock writes a block in Alloy syntax.
-// In the new format, blocks have array bodies (arrays of single-key maps).
-func writeBlock(w io.Writer, name string, value interface{}, indent int) error {
-	indentStr := strings.Repeat("  ", indent)
-
-	switch v := value.(type) {
-	case []interface{}:
-		// New format: array body
-		if _, err := fmt.Fprintf(w, "%s%s {\n", indentStr, name); err != nil {
-			return err
-		}
-		if err := writeBodyArray(w, v, indent+1); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
-			return err
-		}
-
-	case map[string]interface{}:
-		// Old format compatibility: map body
-		if _, err := fmt.Fprintf(w, "%s%s {\n", indentStr, name); err != nil {
-			return err
-		}
-		if err := writeBody(w, v, indent+1); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
-			return err
-		}
-
-	default:
-		return fmt.Errorf("invalid block value type: %T", value)
-	}
-
-	return nil
-}
-
 // writeAttribute writes an attribute assignment.
 func writeAttribute(w io.Writer, name string, value interface{}, indentStr string) error {
 	if _, err := fmt.Fprintf(w, "%s%s = ", indentStr, name); err != nil {
