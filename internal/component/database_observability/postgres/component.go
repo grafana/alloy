@@ -388,8 +388,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, stCollector)
 		}
+		c.collectors = append(c.collectors, stCollector)
 	}
 
 	if collectors[collector.QueryDetailsCollector] {
@@ -407,8 +407,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			if err := qCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QueryDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, qCollector)
 		}
+		c.collectors = append(c.collectors, qCollector)
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
@@ -426,8 +426,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			if err := aCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QuerySamplesCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, aCollector)
 		}
+		c.collectors = append(c.collectors, aCollector)
 	}
 
 	// Connection Info collector is always enabled
@@ -444,8 +444,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err := ciCollector.Start(context.Background()); err != nil {
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
-		c.collectors = append(c.collectors, ciCollector)
 	}
+	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
 		engineSemver, err := semver.ParseTolerant(engineVersion)
@@ -468,8 +468,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			if err := epCollector.Start(context.Background()); err != nil {
 				logStartError(collector.ExplainPlanCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, epCollector)
 		}
+		c.collectors = append(c.collectors, epCollector)
 	}
 
 	if len(startErrors) > 0 {
