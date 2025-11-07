@@ -521,8 +521,7 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 
 	explainQuery := fmt.Sprintf("%s%s", selectExplainPlanPrefix, preparedStatementName)
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
-	if paramCount == 0 {
-	} else {
+	if paramCount > 0 {
 		nullParams := strings.Repeat("null,", paramCount)
 		if paramCount > 0 {
 			nullParams = nullParams[:len(nullParams)-1]
