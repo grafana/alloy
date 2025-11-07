@@ -165,6 +165,10 @@ func (r *AppRateLimitingConfig) Allow(app, env string) bool {
 }
 
 func (r *AppRateLimitingConfig) getNewLimiter() *rate.Limiter {
+	// Updating the rate limit to time.Now() would immediately fill the
+	// buckets. To allow requsts to immediately pass through, we adjust the
+	// time to set the limit/burst to to allow for both the normal rate and
+	// burst to be filled.
 	t := time.Now().Add(-time.Duration(float64(time.Second) * float64(r.rate) * float64(r.burst)))
 	newLimiter := rate.NewLimiter(r.rate, r.burst)
 	newLimiter.SetLimitAt(t, r.rate)

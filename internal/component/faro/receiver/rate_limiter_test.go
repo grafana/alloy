@@ -76,8 +76,9 @@ func TestNewAppRateLimitingConfig(t *testing.T) {
 		burst     int
 	}{
 		{
-			name: "standard rate", rateLimit: 100.0,
-			burst: 200,
+			name:      "standard rate",
+			rateLimit: 100.0,
+			burst:     200,
 		},
 		{
 			name:      "fractional rate",
@@ -333,13 +334,6 @@ func TestAppRateLimitingConfig_CleanupExpiredLimiters(t *testing.T) {
 }
 
 func TestAppRateLimitingConfig_CleanupRoutine_RemovesOldLimiters(t *testing.T) {
-	// Use very short intervals for faster test
-	originalExpiry := DEFAULT_LIMITER_EXPIRY
-	defer func() {
-		// Note: Can't actually reset the const, but documenting intent
-		_ = originalExpiry
-	}()
-
 	config := NewAppRateLimitingConfig(10.0, 2, testReg())
 
 	// Create a rate limiter
