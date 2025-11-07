@@ -247,7 +247,7 @@ For example, you can set `enabled_list` to `["clrjit"]`.
 | `objects` | `string` | YAML string representing the counters to monitor. | `""`    | no       |
 
 The `objects` field should contain a YAML file as a string that satisfies the schema shown in the exporter's [documentation] for the `performancecounter` collector.
-While there are ways to construct this directly in {{< param "PRODUCT_NAME" >}} syntax using [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings] for example, the best way to configure this collector will be using a `local.file` component.
+While there are ways to construct this directly in {{< param "PRODUCT_NAME" >}} syntax using [raw {{< param "PRODUCT_NAME" >}} syntax strings][raw-strings] for example, the best way to configure this collector is to use a `local.file` component.
 
 ```alloy
 local.file "counters" {
