@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
+	"golang.org/x/text/encoding"
 	"gopkg.in/tomb.v1"
 )
 
@@ -64,6 +65,12 @@ type Config struct {
 	Pipe        bool      // Is a named pipe (mkfifo)
 	RateLimiter *ratelimiter.LeakyBucket
 	PollOptions watch.PollingFileWatcherOptions
+
+	// Change the decoder if the file is not UTF-8.
+	// If the tailer doesn't use the right decoding, the output text may be gibberish.
+	// For example, if the file is "UTF-16 LE" encoded, the tailer would not separate
+	// the new lines properly and the output could come out as chinese characters.
+	Decoder *encoding.Decoder
 
 	// Generic IO
 	Follow      bool // Continue looking for new lines (tail -f)
@@ -288,6 +295,9 @@ func (tail *Tail) readLine() (string, error) {
 
 	line = strings.TrimRight(line, "\n")
 
+	// Trim Windows line endings
+	line = strings.TrimSuffix(line, "\r")
+
 	return line, err
 }
 
@@ -468,11 +478,18 @@ func (tail *Tail) finishDelete() error {
 }
 
 func (tail *Tail) openReader() {
+	var reader io.Reader
+	if tail.Decoder != nil {
+		reader = tail.Decoder.Reader(tail.file)
+	} else {
+		reader = tail.file
+	}
+
 	if tail.MaxLineSize > 0 {
 		// add 2 to account for newline characters
-		tail.reader = bufio.NewReaderSize(tail.file, tail.MaxLineSize+2)
+		tail.reader = bufio.NewReaderSize(reader, tail.MaxLineSize+2)
 	} else {
-		tail.reader = bufio.NewReader(tail.file)
+		tail.reader = bufio.NewReader(reader)
 	}
 }
 
