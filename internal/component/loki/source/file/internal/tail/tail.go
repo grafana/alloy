@@ -147,12 +147,12 @@ func TailFile(filename string, config Config) (*Tail, error) {
 // so it may lost one line.
 func (tail *Tail) Tell() (int64, error) {
 	tail.fileMut.Lock()
-	f := tail.file
-	tail.fileMut.Unlock()
-	if f == nil {
+	if tail.file == nil {
+		tail.fileMut.Unlock()
 		return 0, os.ErrNotExist
 	}
-	offset, err := f.Seek(0, io.SeekCurrent)
+	offset, err := tail.file.Seek(0, io.SeekCurrent)
+	tail.fileMut.Unlock()
 	if err != nil {
 		return 0, err
 	}
