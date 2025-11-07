@@ -17,7 +17,6 @@ import (
 	"github.com/go-kit/log/level"
 	"gopkg.in/tomb.v1"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 )
@@ -51,7 +50,6 @@ type Config struct {
 	MustExist   bool      // Fail early if the file does not exist
 	Poll        bool      // Poll for file changes instead of using inotify
 	Pipe        bool      // Is a named pipe (mkfifo)
-	RateLimiter *ratelimiter.LeakyBucket
 	PollOptions watch.PollingFileWatcherOptions
 
 	// Generic IO
@@ -485,13 +483,6 @@ func (tail *Tail) sendLine(line string) bool {
 
 	for _, line := range lines {
 		tail.Lines <- &Line{line, now, nil}
-	}
-
-	if tail.Config.RateLimiter != nil {
-		ok := tail.Config.RateLimiter.Pour(uint16(len(lines)))
-		if !ok {
-			return false
-		}
 	}
 
 	return true

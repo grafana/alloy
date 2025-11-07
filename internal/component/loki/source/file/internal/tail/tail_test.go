@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 )
 
@@ -223,34 +222,6 @@ func TestReSeekPolling(t *testing.T) {
 	reSeek(t, true)
 }
 
-func TestRateLimiting(t *testing.T) {
-	tailTest := NewTailTest("rate-limiting", t)
-	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nextra\n")
-	config := Config{
-		Follow:      true,
-		RateLimiter: ratelimiter.NewLeakyBucket(2, time.Second)}
-	leakybucketFull := "Too much log activity; waiting a second before resuming tailing"
-	tail := tailTest.StartTail("test.txt", config)
-
-	// TODO: also verify that tail resumes after the cooloff period.
-	go tailTest.VerifyTailOutput(tail, []string{
-		"hello", "world", "again",
-		leakybucketFull,
-		"more", "data",
-		leakybucketFull}, false)
-
-	// Add more data only after reasonable delay.
-	<-time.After(1200 * time.Millisecond)
-	tailTest.AppendFile("test.txt", "more\ndata\n")
-
-	// Delete after a reasonable delay, to give tail sufficient time
-	// to read all lines.
-	<-time.After(100 * time.Millisecond)
-	tailTest.RemoveFile("test.txt")
-
-	tailTest.Cleanup(tail, true)
-}
-
 func TestTell(t *testing.T) {
 	tailTest := NewTailTest("tell-position", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
@@ -271,15 +242,12 @@ func TestTell(t *testing.T) {
 		Follow:   false,
 		Location: &SeekInfo{offset, io.SeekStart}}
 	tail = tailTest.StartTail("test.txt", config)
-	for l := range tail.Lines {
-		// it may readed one line in the chan(tail.Lines),
-		// so it may lost one line.
-		if l.Text != "world" && l.Text != "again" {
-			tailTest.Fatalf("mismatch; expected world or again, but got %s",
-				l.Text)
-		}
-		break
+	l := <-tail.Lines
+
+	if l.Text != "world" && l.Text != "again" {
+		tailTest.Fatalf("mismatch; expected world or again, but got %s", l.Text)
 	}
+
 	tailTest.RemoveFile("test.txt")
 	tail.Done()
 	tail.Cleanup()
