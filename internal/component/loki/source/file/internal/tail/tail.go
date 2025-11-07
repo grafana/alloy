@@ -30,11 +30,6 @@ type Line struct {
 	Err  error // Error from tail
 }
 
-// NewLine returns a Line with present time.
-func NewLine(text string) *Line {
-	return &Line{text, time.Now(), nil}
-}
-
 // SeekInfo represents arguments to `os.Seek`
 type SeekInfo struct {
 	Offset int64
@@ -150,14 +145,6 @@ func (tail *Tail) Stop() error {
 	tail.Kill(nil)
 	return tail.Wait()
 }
-
-// StopAtEOF stops tailing as soon as the end of the file is reached.
-func (tail *Tail) StopAtEOF() error {
-	tail.Kill(errStopAtEOF)
-	return tail.Wait()
-}
-
-var errStopAtEOF = errors.New("tail: stop at eof")
 
 func (tail *Tail) close() {
 	close(tail.Lines)
@@ -275,9 +262,11 @@ func (tail *Tail) tailFileSync() {
 
 	tail.openReader()
 
-	var offset int64
-	var err error
-	oneMoreRun := false
+	var (
+		err        error
+		offset     int64
+		oneMoreRun bool
+	)
 
 	// Read line by line.
 	for {
@@ -292,23 +281,7 @@ func (tail *Tail) tailFileSync() {
 
 		// Process `line` even if err is EOF.
 		if err == nil {
-			cooloff := !tail.sendLine(line)
-			if cooloff {
-				// Wait a second before seeking till the end of
-				// file when rate limit is reached.
-				msg := ("Too much log activity; waiting a second " +
-					"before resuming tailing")
-				tail.Lines <- &Line{msg, time.Now(), errors.New(msg)}
-				select {
-				case <-time.After(time.Second):
-				case <-tail.Dying():
-					return
-				}
-				if err := tail.seekEnd(); err != nil {
-					tail.Kill(err)
-					return
-				}
-			}
+			tail.Lines <- &Line{line, time.Now(), nil}
 		} else if err == io.EOF {
 			if line != "" {
 				// this has the potential to never return the last line if
@@ -352,9 +325,6 @@ func (tail *Tail) tailFileSync() {
 
 		select {
 		case <-tail.Dying():
-			if tail.Err() == errStopAtEOF {
-				continue
-			}
 			return
 		default:
 		}
@@ -409,11 +379,9 @@ func (tail *Tail) finishDelete() error {
 }
 
 func (tail *Tail) openReader() {
+	tail.readerMut.Lock()
+	defer tail.readerMut.Unlock()
 	tail.reader = bufio.NewReader(tail.file)
-}
-
-func (tail *Tail) seekEnd() error {
-	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekEnd})
 }
 
 func (tail *Tail) seekTo(pos SeekInfo) error {
@@ -424,17 +392,4 @@ func (tail *Tail) seekTo(pos SeekInfo) error {
 	// Reset the read buffer whenever the file is re-seek'ed
 	tail.reader.Reset(tail.file)
 	return nil
-}
-
-// sendLine sends the line(s) to Lines channel, splitting longer lines
-// if necessary. Return false if rate limit is reached.
-func (tail *Tail) sendLine(line string) bool {
-	now := time.Now()
-	lines := []string{line}
-
-	for _, line := range lines {
-		tail.Lines <- &Line{line, now, nil}
-	}
-
-	return true
 }
