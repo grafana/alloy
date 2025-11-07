@@ -1581,3 +1581,143 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 		assert.True(t, tr.IsValid("mydb", "private.users"))
 	})
 }
+
+func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
+	t.Run("extractSchemas populates TableRegistry", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectAllDatabases).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"datname",
+				}).AddRow("testdb"),
+			)
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"schema_name",
+				}).AddRow("public"),
+			)
+
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+				}).AddRow("users").AddRow("orders"),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("public.orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"column_name",
+					"column_type",
+					"not_nullable",
+					"column_default",
+					"identity_generation",
+					"is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true),
+			)
+
+		mock.ExpectQuery(selectIndexes).WithArgs("public", "orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"index_name",
+					"index_type",
+					"unique",
+					"column_names",
+					"expressions",
+					"has_nullable_column",
+				}),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "orders").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
+			)
+
+		err = collector.Start(context.Background())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			collector.tableRegistry.mu.RLock()
+			defer collector.tableRegistry.mu.RUnlock()
+			return len(collector.tableRegistry.tables) > 0
+		}, 2*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		collector.tableRegistry.mu.RLock()
+		actual := collector.tableRegistry.tables
+		collector.tableRegistry.mu.RUnlock()
+
+		expected := map[string]map[string]map[string]bool{
+			"testdb": {
+				"public": {
+					"users":  true,
+					"orders": true,
+				},
+			},
+		}
+		assert.Equal(t, expected, actual)
+	})
+}
