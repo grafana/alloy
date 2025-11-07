@@ -44,8 +44,9 @@ const selectQueriesForExplainPlanTemplate = `
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
 var unrecoverablePostgresSQLErrors = []string{
-	"pq: permission denied for table",
+	"pq: permission denied",
 	"pq: pg_hba.conf rejects connection for host",
+	"pq: syntax error",
 }
 
 var paramCountRegex = regexp.MustCompile(`\$\d+`)
