@@ -25,7 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -228,15 +227,8 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	}
 
 	tail, err := tail.TailFile(t.key.Path, tail.Config{
-		Follow:    true,
-		Poll:      true,
-		ReOpen:    true,
-		MustExist: true,
-		Location: &tail.SeekInfo{
-			Offset: pos,
-			Whence: 0,
-		},
-		Logger:      util.NewLogAdapter(t.logger),
+		Location:    &tail.SeekInfo{Offset: pos, Whence: 0},
+		Logger:      t.logger,
 		PollOptions: t.pollOptions,
 		Decoder:     t.decoder,
 	})
