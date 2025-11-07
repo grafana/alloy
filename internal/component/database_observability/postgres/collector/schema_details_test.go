@@ -1583,13 +1583,16 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 }
 
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
+	// The goroutine which deletes expired entries runs indefinitely,
+	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
 	t.Run("extractSchemas populates TableRegistry", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
-		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1696,6 +1699,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		err = collector.Start(context.Background())
 		require.NoError(t, err)
 
+		// wait for registry to populate
 		require.Eventually(t, func() bool {
 			collector.tableRegistry.mu.RLock()
 			defer collector.tableRegistry.mu.RUnlock()
@@ -1703,6 +1707,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
+		lokiClient.Stop()
 
 		require.NoError(t, mock.ExpectationsWereMet())
 
