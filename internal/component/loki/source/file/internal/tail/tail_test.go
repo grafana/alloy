@@ -8,16 +8,17 @@ package tail
 
 import (
 	_ "fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
+
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	loki_util "github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 var testPollingOptions = watch.PollingFileWatcherOptions{
@@ -172,7 +173,7 @@ func TestLocationFullDontFollow(t *testing.T) {
 func TestLocationEnd(t *testing.T) {
 	tailTest := NewTailTest("location-end", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{0, os.SEEK_END}})
+	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{0, io.SeekEnd}})
 	go tailTest.VerifyTailOutput(tail, []string{"more", "data"}, false)
 
 	<-time.After(100 * time.Millisecond)
@@ -189,7 +190,7 @@ func TestLocationMiddle(t *testing.T) {
 	// Test reading from middle.
 	tailTest := NewTailTest("location-middle", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{-6, os.SEEK_END}})
+	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{-6, io.SeekEnd}})
 	go tailTest.VerifyTailOutput(tail, []string{"world", "more", "data"}, false)
 
 	<-time.After(100 * time.Millisecond)
@@ -257,7 +258,7 @@ func TestTell(t *testing.T) {
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
 	config := Config{
 		Follow:   false,
-		Location: &SeekInfo{0, os.SEEK_SET}}
+		Location: &SeekInfo{0, io.SeekStart}}
 	tail := tailTest.StartTail("test.txt", config)
 	// read noe line
 	<-tail.Lines
@@ -270,7 +271,7 @@ func TestTell(t *testing.T) {
 
 	config = Config{
 		Follow:   false,
-		Location: &SeekInfo{offset, os.SEEK_SET}}
+		Location: &SeekInfo{offset, io.SeekStart}}
 	tail = tailTest.StartTail("test.txt", config)
 	for l := range tail.Lines {
 		// it may readed one line in the chan(tail.Lines),
@@ -322,8 +323,6 @@ func maxLineSize(t *testing.T, follow bool, fileContent string, expected []strin
 }
 
 func reOpen(t *testing.T, poll bool) {
-	logger := util.TestLogger(t)
-	level.Info(logger).Log("msg", "reOpen: starting")
 	var name string
 	// TODO: In this and other tests, don't wait for the full delay amount.
 	// Wait only up to the max delay time.
@@ -342,7 +341,6 @@ func reOpen(t *testing.T, poll bool) {
 		delay = 100 * time.Millisecond
 	}
 	tailTest := NewTailTest(name, t)
-	level.Info(logger).Log("msg", "reOpen: creating file")
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 	tail := tailTest.StartTail(
 		"test.txt",
@@ -351,7 +349,7 @@ func reOpen(t *testing.T, poll bool) {
 			ReOpen:      true,
 			Poll:        poll,
 			PollOptions: testPollingOptions,
-			Logger:      loki_util.NewLogAdapter(logger),
+			Logger:      util.NewLogAdapter(log.NewNopLogger()),
 		})
 	content := []string{"hello", "world", "more", "data", "endofworld"}
 	go tailTest.VerifyTailOutput(tail, content, false)
@@ -360,10 +358,8 @@ func reOpen(t *testing.T, poll bool) {
 	if poll {
 		// deletion must trigger reopen
 		<-time.After(delay)
-		level.Info(logger).Log("msg", "reOpen: removing file")
 		tailTest.RemoveFile("test.txt")
 		<-time.After(delay)
-		level.Info(logger).Log("msg", "reOpen: creating file")
 		tailTest.CreateFile("test.txt", "more\ndata\n")
 	} else {
 		// In inotify mode, fsnotify is currently unable to deliver notifications
@@ -371,22 +367,18 @@ func reOpen(t *testing.T, poll bool) {
 		// (see https://github.com/fsnotify/fsnotify/issues/194 for details).
 		//TODO: Does this still apply? Test deletion?
 		<-time.After(delay)
-		level.Info(logger).Log("msg", "reOpen: appending to file")
 		tailTest.AppendToFile("test.txt", "more\ndata\n")
 	}
 
 	// rename must trigger reopen
 	<-time.After(delay)
-	level.Info(logger).Log("msg", "reOpen: renaming file")
 	tailTest.RenameFile("test.txt", "test.txt.rotated")
 	<-time.After(delay)
-	level.Info(logger).Log("msg", "reOpen: creating file")
 	tailTest.CreateFile("test.txt", "endofworld\n")
 
 	// Delete after a reasonable delay, to give tail sufficient time
 	// to read all lines.
 	<-time.After(delay)
-	level.Info(logger).Log("msg", "reOpen: removing file")
 	tailTest.RemoveFile("test.txt")
 	<-time.After(delay)
 
