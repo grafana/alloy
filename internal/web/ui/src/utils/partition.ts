@@ -1,5 +1,5 @@
-import { AttrStmt, Body, StmtType } from '../features/alloy-syntax-js/types';
-import { PartitionedBody } from '../features/component/types';
+import { type AttrStmt, type Body, StmtType } from '../features/alloy-syntax-js/types';
+import type { PartitionedBody } from '../features/component/types';
 
 /**
  * partitionBody groups a body by attributes and inner blocks, assigning unique
@@ -17,7 +17,7 @@ export function partitionBody(body: Body, rootKey: string): PartitionedBody {
         case StmtType.ATTR:
           attrs.push(stmt);
           break;
-        case StmtType.BLOCK:
+        case StmtType.BLOCK: {
           const blockName = stmt.label ? `${stmt.name}.${stmt.label}` : stmt.name;
 
           // Keep track of how many blocks have this name so they can be given unique IDs.
@@ -31,6 +31,7 @@ export function partitionBody(body: Body, rootKey: string): PartitionedBody {
 
           inner.push(impl(stmt.body, displayName.concat([blockName]), keyPath.concat([key])));
           break;
+        }
       }
     });
 

@@ -9,8 +9,8 @@ ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
 RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
-    yarn --network-timeout=1200000                            \
-    && yarn run build
+    npm install                                               \
+    && npm run build
 
 FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.22 AS build
 
@@ -26,7 +26,7 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-COPY --from=ui-build /ui/build /src/alloy/internal/web/ui/build
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \

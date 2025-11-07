@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router';
 
 import Navbar from './features/layout/Navbar';
 import PageClusteringPeers from './pages/Clustering';
