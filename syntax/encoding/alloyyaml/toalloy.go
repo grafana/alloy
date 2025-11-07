@@ -20,7 +20,7 @@ func ToAlloy(yamlData []byte) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	if err := writeValue(&buf, data, 0, true); err != nil {
+	if err := writeValue(&buf, data, true); err != nil {
 		return nil, err
 	}
 
@@ -29,23 +29,23 @@ func ToAlloy(yamlData []byte) ([]byte, error) {
 
 // writeValue writes any YAML value in the appropriate Alloy format.
 // The isTopLevel flag indicates whether this is a top-level body (affects formatting).
-func writeValue(w io.Writer, value interface{}, indent int, isTopLevel bool) error {
+func writeValue(w io.Writer, value interface{}, isTopLevel bool) error {
 	switch v := value.(type) {
 	case nil:
 		if isTopLevel {
 			// Top-level null doesn't make sense
 			return nil
 		}
-		fmt.Fprint(w, "null")
-		return nil
+		_, err := fmt.Fprint(w, "null")
+		return err
 
 	case map[string]interface{}:
-		return writeMap(w, v, indent, isTopLevel)
+		return writeMap(w, v, 0, isTopLevel)
 
 	case []interface{}:
 		if isTopLevel {
 			// Top-level array should be treated as multiple statements
-			return writeTopLevelArray(w, v, indent)
+			return writeTopLevelArray(w, v, 0)
 		}
 		return writeArray(w, v)
 
@@ -53,22 +53,23 @@ func writeValue(w io.Writer, value interface{}, indent int, isTopLevel bool) err
 		return writeString(w, v)
 
 	case int:
-		fmt.Fprintf(w, "%d", v)
+		_, err := fmt.Fprintf(w, "%d", v)
+		return err
 	case int64:
-		fmt.Fprintf(w, "%d", v)
+		_, err := fmt.Fprintf(w, "%d", v)
+		return err
 	case float32:
-		writeFloat(w, float64(v))
+		return writeFloat(w, float64(v))
 	case float64:
-		writeFloat(w, v)
+		return writeFloat(w, v)
 
 	case bool:
-		fmt.Fprintf(w, "%v", v)
+		_, err := fmt.Fprintf(w, "%v", v)
+		return err
 
 	default:
 		return fmt.Errorf("unsupported value type: %T", v)
 	}
-
-	return nil
 }
 
 // writeMap writes a YAML map as either a block body (top-level) or object literal (nested).
@@ -77,8 +78,8 @@ func writeMap(w io.Writer, m map[string]interface{}, indent int, isTopLevel bool
 		if isTopLevel {
 			return nil
 		}
-		fmt.Fprint(w, "{}")
-		return nil
+		_, err := fmt.Fprint(w, "{}")
+		return err
 	}
 
 	if isTopLevel {
@@ -107,17 +108,17 @@ func writeBody(w io.Writer, body interface{}, indent int) error {
 // Each element in the array is a map with exactly one key (the statement name).
 func writeBodyArray(w io.Writer, body []interface{}, indent int) error {
 	indentStr := strings.Repeat("  ", indent)
-	
+
 	for i, item := range body {
 		itemMap, ok := item.(map[string]interface{})
 		if !ok {
 			return fmt.Errorf("body element %d must be a map, got %T", i, item)
 		}
-		
+
 		if len(itemMap) != 1 {
 			return fmt.Errorf("body element %d must have exactly one key, got %d keys", i, len(itemMap))
 		}
-		
+
 		// Extract the single key-value pair
 		var key string
 		var value interface{}
@@ -126,21 +127,23 @@ func writeBodyArray(w io.Writer, body []interface{}, indent int) error {
 			value = v
 			break
 		}
-		
+
 		// Add blank line between top-level blocks (but not before first item)
 		if i > 0 && indent == 0 && isStructuralValue(value) {
-			fmt.Fprintln(w)
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
 		}
-		
+
 		// Check if key contains "/" separator for block/label syntax
 		blockName, label := splitBlockLabel(key)
-		
+
 		// Determine if this is a block or attribute based on value type
 		if err := writeStatement(w, blockName, label, value, indentStr, indent); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -161,7 +164,9 @@ func writeBodyMap(w io.Writer, body map[string]interface{}, indent int) error {
 
 		// Add blank line between top-level blocks (but not first item)
 		if !firstItem && indent == 0 && isStructural(value) {
-			fmt.Fprintln(w)
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
 		}
 		firstItem = false
 
@@ -198,11 +203,15 @@ func writeStatement(w io.Writer, blockName, label string, value interface{}, ind
 
 		// If label is present from "/" syntax, write labeled block
 		if label != "" {
-			fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label)
+			if _, err := fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label); err != nil {
+				return err
+			}
 			if err := writeBody(w, v, indent+1); err != nil {
 				return err
 			}
-			fmt.Fprintf(w, "%s}\n", indentStr)
+			if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
+				return err
+			}
 			return nil
 		}
 
@@ -218,27 +227,33 @@ func writeStatement(w io.Writer, blockName, label string, value interface{}, ind
 		if len(v) == 0 {
 			// Empty block
 			if label != "" {
-				fmt.Fprintf(w, "%s%s %q { }\n", indentStr, blockName, label)
-			} else {
-				fmt.Fprintf(w, "%s%s { }\n", indentStr, blockName)
+				_, err := fmt.Fprintf(w, "%s%s %q { }\n", indentStr, blockName, label)
+				return err
 			}
-			return nil
+			_, err := fmt.Fprintf(w, "%s%s { }\n", indentStr, blockName)
+			return err
 		}
-		
+
 		if firstElem, ok := v[0].(map[string]interface{}); ok && len(firstElem) == 1 {
 			// This is a block body
 			if label != "" {
-				fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label)
+				if _, err := fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label); err != nil {
+					return err
+				}
 			} else {
-				fmt.Fprintf(w, "%s%s {\n", indentStr, blockName)
+				if _, err := fmt.Fprintf(w, "%s%s {\n", indentStr, blockName); err != nil {
+					return err
+				}
 			}
 			if err := writeBodyArray(w, v, indent+1); err != nil {
 				return err
 			}
-			fmt.Fprintf(w, "%s}\n", indentStr)
+			if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
+				return err
+			}
 			return nil
 		}
-		
+
 		// Otherwise it's an array attribute
 		if err := writeAttribute(w, blockName, value, indentStr); err != nil {
 			return fmt.Errorf("attribute %s: %w", blockName, err)
@@ -307,19 +322,27 @@ func writeBlock(w io.Writer, name string, value interface{}, indent int) error {
 	switch v := value.(type) {
 	case []interface{}:
 		// New format: array body
-		fmt.Fprintf(w, "%s%s {\n", indentStr, name)
+		if _, err := fmt.Fprintf(w, "%s%s {\n", indentStr, name); err != nil {
+			return err
+		}
 		if err := writeBodyArray(w, v, indent+1); err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%s}\n", indentStr)
+		if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
+			return err
+		}
 
 	case map[string]interface{}:
 		// Old format compatibility: map body
-		fmt.Fprintf(w, "%s%s {\n", indentStr, name)
+		if _, err := fmt.Fprintf(w, "%s%s {\n", indentStr, name); err != nil {
+			return err
+		}
 		if err := writeBody(w, v, indent+1); err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "%s}\n", indentStr)
+		if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
+			return err
+		}
 
 	default:
 		return fmt.Errorf("invalid block value type: %T", value)
@@ -330,14 +353,16 @@ func writeBlock(w io.Writer, name string, value interface{}, indent int) error {
 
 // writeAttribute writes an attribute assignment.
 func writeAttribute(w io.Writer, name string, value interface{}, indentStr string) error {
-	fmt.Fprintf(w, "%s%s = ", indentStr, name)
-
-	if err := writeValue(w, value, 0, false); err != nil {
+	if _, err := fmt.Fprintf(w, "%s%s = ", indentStr, name); err != nil {
 		return err
 	}
 
-	fmt.Fprintln(w)
-	return nil
+	if err := writeValue(w, value, false); err != nil {
+		return err
+	}
+
+	_, err := fmt.Fprintln(w)
+	return err
 }
 
 // writeString writes a string value, handling expr() wrapper.
@@ -346,44 +371,49 @@ func writeString(w io.Writer, s string) error {
 	if strings.HasPrefix(s, "expr(") && strings.HasSuffix(s, ")") {
 		// Unwrap and write expression as-is (unquoted)
 		expr := s[5 : len(s)-1]
-		fmt.Fprint(w, expr)
-		return nil
+		_, err := fmt.Fprint(w, expr)
+		return err
 	}
 
 	// Regular string - quote it
 	// TODO: Handle escaping properly (newlines, quotes, etc.)
-	fmt.Fprintf(w, "%q", s)
-	return nil
+	_, err := fmt.Fprintf(w, "%q", s)
+	return err
 }
 
 // writeFloat writes a float, avoiding unnecessary decimal points for whole numbers.
-func writeFloat(w io.Writer, f float64) {
+func writeFloat(w io.Writer, f float64) error {
 	if f == float64(int64(f)) {
 		// Whole number
-		fmt.Fprintf(w, "%d", int64(f))
-	} else {
-		fmt.Fprintf(w, "%v", f)
+		_, err := fmt.Fprintf(w, "%d", int64(f))
+		return err
 	}
+	_, err := fmt.Fprintf(w, "%v", f)
+	return err
 }
 
 // writeArray writes an array in Alloy syntax.
 func writeArray(w io.Writer, arr []interface{}) error {
 	if len(arr) == 0 {
-		fmt.Fprint(w, "[]")
-		return nil
+		_, err := fmt.Fprint(w, "[]")
+		return err
 	}
 
-	fmt.Fprint(w, "[")
+	if _, err := fmt.Fprint(w, "["); err != nil {
+		return err
+	}
 	for i, elem := range arr {
 		if i > 0 {
-			fmt.Fprint(w, ", ")
+			if _, err := fmt.Fprint(w, ", "); err != nil {
+				return err
+			}
 		}
-		if err := writeValue(w, elem, 0, false); err != nil {
+		if err := writeValue(w, elem, false); err != nil {
 			return err
 		}
 	}
-	fmt.Fprint(w, "]")
-	return nil
+	_, err := fmt.Fprint(w, "]")
+	return err
 }
 
 // writeTopLevelArray handles an array at the top level.
@@ -395,11 +425,13 @@ func writeTopLevelArray(w io.Writer, arr []interface{}, indent int) error {
 // writeObjectLiteral writes an object literal in Alloy syntax.
 func writeObjectLiteral(w io.Writer, obj map[string]interface{}) error {
 	if len(obj) == 0 {
-		fmt.Fprint(w, "{}")
-		return nil
+		_, err := fmt.Fprint(w, "{}")
+		return err
 	}
 
-	fmt.Fprint(w, "{ ")
+	if _, err := fmt.Fprint(w, "{ "); err != nil {
+		return err
+	}
 
 	// Sort keys for deterministic output
 	keys := make([]string, 0, len(obj))
@@ -410,28 +442,33 @@ func writeObjectLiteral(w io.Writer, obj map[string]interface{}) error {
 
 	for i, key := range keys {
 		if i > 0 {
-			fmt.Fprint(w, ", ")
+			if _, err := fmt.Fprint(w, ", "); err != nil {
+				return err
+			}
 		}
 
 		// Write key (quote if needed)
 		if needsQuoting(key) {
-			fmt.Fprintf(w, "%q = ", key)
+			if _, err := fmt.Fprintf(w, "%q = ", key); err != nil {
+				return err
+			}
 		} else {
-			fmt.Fprintf(w, "%s = ", key)
+			if _, err := fmt.Fprintf(w, "%s = ", key); err != nil {
+				return err
+			}
 		}
 
 		// Write value
-		if err := writeValue(w, obj[key], 0, false); err != nil {
+		if err := writeValue(w, obj[key], false); err != nil {
 			return err
 		}
 	}
 
-	fmt.Fprint(w, " }")
-	return nil
+	_, err := fmt.Fprint(w, " }")
+	return err
 }
 
 // needsQuoting returns true if a string needs to be quoted as an identifier.
 func needsQuoting(s string) bool {
 	return !scanner.IsValidIdentifier(s)
 }
-
