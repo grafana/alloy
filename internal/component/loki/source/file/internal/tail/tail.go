@@ -46,8 +46,6 @@ type SeekInfo struct {
 type Config struct {
 	// File-specifc
 	Location    *SeekInfo // Seek to this location before tailing
-	ReOpen      bool      // Reopen recreated files (tail -F)
-	Pipe        bool      // Is a named pipe (mkfifo)
 	PollOptions watch.PollingFileWatcherOptions
 
 	// Generic IO
@@ -288,14 +286,11 @@ func (tail *Tail) tailFileSync() {
 
 	// Read line by line.
 	for {
-		// do not seek in named pipes
-		if !tail.Pipe {
-			// grab the position in case we need to back up in the event of a half-line
-			offset, err = tail.Tell()
-			if err != nil {
-				tail.Kill(err)
-				return
-			}
+		// grab the position in case we need to back up in the event of a half-line
+		offset, err = tail.Tell()
+		if err != nil {
+			tail.Kill(err)
+			return
 		}
 
 		line, err := tail.readLine()
@@ -409,19 +404,13 @@ func (tail *Tail) waitForChanges() (bool, error) {
 
 func (tail *Tail) finishDelete() error {
 	tail.changes = nil
-	if tail.ReOpen {
-		// XXX: we must not log from a library.
-		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening moved/deleted file %s ...", tail.Filename))
-		if err := tail.reopen(false); err != nil {
-			return err
-		}
-		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened %s", tail.Filename))
-		tail.openReader()
-		return nil
-	} else {
-		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Stopping tail as file no longer exists: %s", tail.Filename))
-		return ErrStop
+	level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening moved/deleted file %s ...", tail.Filename))
+	if err := tail.reopen(false); err != nil {
+		return err
 	}
+	level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened %s", tail.Filename))
+	tail.openReader()
+	return nil
 }
 
 func (tail *Tail) openReader() {

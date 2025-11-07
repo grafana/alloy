@@ -232,11 +232,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	}
 
 	tail, err := tail.TailFile(t.key.Path, tail.Config{
-		ReOpen: true,
-		Location: &tail.SeekInfo{
-			Offset: pos,
-			Whence: 0,
-		},
+		Location:    &tail.SeekInfo{Offset: pos, Whence: 0},
 		Logger:      t.logger,
 		PollOptions: t.pollOptions,
 	})

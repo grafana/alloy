@@ -225,10 +225,8 @@ func reOpen(t *testing.T) {
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 	tail := tailTest.StartTail(
 		"test.txt",
-		Config{
-			ReOpen:      true,
-			PollOptions: testPollingOptions,
-		})
+		Config{PollOptions: testPollingOptions}
+	)
 	content := []string{"hello", "world", "more", "data", "endofworld"}
 	go tailTest.VerifyTailOutput(tail, content, false)
 
@@ -256,7 +254,7 @@ func reSeek(t *testing.T) {
 	tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
 	tail := tailTest.StartTail(
 		"test.txt",
-		Config{ReOpen: false, PollOptions: testPollingOptions})
+		Config{PollOptions: testPollingOptions})
 
 	go tailTest.VerifyTailOutput(tail, []string{"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld"}, false)
 
@@ -278,7 +276,7 @@ func TestTellRace(t *testing.T) {
 	tailTest := NewTailTest("tell-race", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 
-	tail := tailTest.StartTail("test.txt", Config{ReOpen: true, PollOptions: testPollingOptions})
+	tail := tailTest.StartTail("test.txt", Config{PollOptions: testPollingOptions})
 
 	<-tail.Lines
 	<-tail.Lines
@@ -305,7 +303,7 @@ func TestSizeRace(t *testing.T) {
 	tailTest := NewTailTest("tell-race", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 
-	tail := tailTest.StartTail("test.txt", Config{ReOpen: true, PollOptions: testPollingOptions})
+	tail := tailTest.StartTail("test.txt", Config{PollOptions: testPollingOptions})
 
 	<-tail.Lines
 	<-tail.Lines
