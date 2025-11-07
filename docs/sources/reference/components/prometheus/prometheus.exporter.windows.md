@@ -402,7 +402,7 @@ For example, you can set `enabled_list` to `["metrics"]`.
 
 | Name                  | Type           | Description                                                    | Default       | Required |
 | --------------------- | -------------- | -------------------------------------------------------------- | ------------- | -------- |
-| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | **see below** | no       |
+| `directories`         | `list(string)` | The list of directories containing the files to be ingested.   | *see below*   | no       |
 | `text_file_directory` | `string`       | Deprecated. The directory containing the files to be ingested. |               | no       |
 
 For backwards compatibility, the `textfile` collector can also be configured with the deprecated `text_file` block.
