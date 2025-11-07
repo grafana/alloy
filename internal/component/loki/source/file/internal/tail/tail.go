@@ -51,8 +51,7 @@ type Config struct {
 	PollOptions watch.PollingFileWatcherOptions
 
 	// Generic IO
-	Follow      bool // Continue looking for new lines (tail -f)
-	MaxLineSize int  // If non-zero, split longer lines into multiple lines
+	MaxLineSize int // If non-zero, split longer lines into multiple lines
 
 	Logger log.Logger
 }
@@ -79,10 +78,6 @@ type Tail struct {
 // invoke the `Wait` or `Err` method after finishing reading from the
 // `Lines` channel.
 func TailFile(filename string, config Config) (*Tail, error) {
-	if config.ReOpen && !config.Follow {
-		util.Fatal("cannot set ReOpen without Follow.")
-	}
-
 	t := &Tail{
 		Filename: filename,
 		Lines:    make(chan *Line),
@@ -325,14 +320,7 @@ func (tail *Tail) tailFileSync() {
 				}
 			}
 		} else if err == io.EOF {
-			if !tail.Follow {
-				if line != "" {
-					tail.sendLine(line)
-				}
-				return
-			}
-
-			if tail.Follow && line != "" {
+			if line != "" {
 				// this has the potential to never return the last line if
 				// it's not followed by a newline; seems a fair trade here
 				err := tail.seekTo(SeekInfo{Offset: offset, Whence: 0})

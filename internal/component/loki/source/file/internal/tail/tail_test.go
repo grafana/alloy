@@ -28,11 +28,11 @@ var testPollingOptions = watch.PollingFileWatcherOptions{
 
 func TestMustExist(t *testing.T) {
 	fmt.Println("Start")
-	_, err := TailFile("/no/such/file", Config{Follow: true})
+	_, err := TailFile("/no/such/file", Config{})
 	assert.Error(t, err)
 	fmt.Println("first")
 
-	tail, err := TailFile("README.md", Config{Follow: true})
+	tail, err := TailFile("README.md", Config{})
 	fmt.Println("tail second")
 	assert.NoError(t, err)
 	fmt.Println("NoError")
@@ -74,7 +74,7 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 }
 
 func TestStop(t *testing.T) {
-	tail, err := TailFile("_no_such_file", Config{Follow: true})
+	tail, err := TailFile("_no_such_file", Config{})
 	if err != nil {
 		t.Error("MustExist:false is violated")
 	}
@@ -86,7 +86,7 @@ func TestStop(t *testing.T) {
 func TestStopAtEOF(t *testing.T) {
 	tailTest := NewTailTest("maxlinesize", t)
 	tailTest.CreateFile("test.txt", "hello\nthere\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: nil})
+	tail := tailTest.StartTail("test.txt", Config{Location: nil})
 
 	// read "hello"
 	line := <-tail.Lines
@@ -100,18 +100,14 @@ func TestStopAtEOF(t *testing.T) {
 
 func TestMaxLineSizeFollow(t *testing.T) {
 	// As last file line does not end with newline, it will not be present in tail's output
-	maxLineSize(t, true, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin"})
-}
-
-func TestMaxLineSizeNoFollow(t *testing.T) {
-	maxLineSize(t, false, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin", "he"})
+	maxLineSize(t, "hello\nworld\nfin\nhe", []string{"hel", "lo", "wor", "ld", "fin"})
 }
 
 func TestOver4096ByteLine(t *testing.T) {
 	tailTest := NewTailTest("Over4096ByteLine", t)
 	testString := strings.Repeat("a", 4097)
 	tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: nil})
+	tail := tailTest.StartTail("test.txt", Config{Location: nil})
 	go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 	// Delete after a reasonable delay, to give tail sufficient time
@@ -123,7 +119,7 @@ func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
 	tailTest := NewTailTest("Over4096ByteLineMaxLineSize", t)
 	testString := strings.Repeat("a", 4097)
 	tailTest.CreateFile("test.txt", "test\n"+testString+"\nhello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: nil, MaxLineSize: 4097})
+	tail := tailTest.StartTail("test.txt", Config{Location: nil, MaxLineSize: 4097})
 	go tailTest.VerifyTailOutput(tail, []string{"test", testString, "hello", "world"}, false)
 
 	// Delete after a reasonable delay, to give tail sufficient time
@@ -135,7 +131,7 @@ func TestOver4096ByteLineWithSetMaxLineSize(t *testing.T) {
 func TestLocationFull(t *testing.T) {
 	tailTest := NewTailTest("location-full", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: nil})
+	tail := tailTest.StartTail("test.txt", Config{Location: nil})
 	go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
 
 	// Delete after a reasonable delay, to give tail sufficient time
@@ -144,23 +140,10 @@ func TestLocationFull(t *testing.T) {
 	tailTest.RemoveFile("test.txt")
 }
 
-func TestLocationFullDontFollow(t *testing.T) {
-	tailTest := NewTailTest("location-full-dontfollow", t)
-	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: false, Location: nil})
-	go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
-
-	// Add more data only after reasonable delay.
-	<-time.After(100 * time.Millisecond)
-	tailTest.AppendFile("test.txt", "more\ndata\n")
-	<-time.After(100 * time.Millisecond)
-
-}
-
 func TestLocationEnd(t *testing.T) {
 	tailTest := NewTailTest("location-end", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{0, io.SeekEnd}})
+	tail := tailTest.StartTail("test.txt", Config{Location: &SeekInfo{0, io.SeekEnd}})
 	go tailTest.VerifyTailOutput(tail, []string{"more", "data"}, false)
 
 	<-time.After(100 * time.Millisecond)
@@ -176,7 +159,7 @@ func TestLocationMiddle(t *testing.T) {
 	// Test reading from middle.
 	tailTest := NewTailTest("location-middle", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, Location: &SeekInfo{-6, io.SeekEnd}})
+	tail := tailTest.StartTail("test.txt", Config{Location: &SeekInfo{-6, io.SeekEnd}})
 	go tailTest.VerifyTailOutput(tail, []string{"world", "more", "data"}, false)
 
 	<-time.After(100 * time.Millisecond)
@@ -188,33 +171,18 @@ func TestLocationMiddle(t *testing.T) {
 	tailTest.RemoveFile("test.txt")
 }
 
-// The use of polling file watcher could affect file rotation
-// (detected via renames), so test these explicitly.
-
-func TestReOpenInotify(t *testing.T) {
-	reOpen(t, false)
-}
-
 func TestReOpenPolling(t *testing.T) {
-	reOpen(t, true)
-}
-
-// The use of polling file watcher could affect file rotation
-// (detected via renames), so test these explicitly.
-
-func TestReSeekInotify(t *testing.T) {
-	reSeek(t, false)
+	reOpen(t)
 }
 
 func TestReSeekPolling(t *testing.T) {
-	reSeek(t, true)
+	reSeek(t)
 }
 
 func TestTell(t *testing.T) {
 	tailTest := NewTailTest("tell-position", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\nagain\nmore\n")
 	config := Config{
-		Follow:   false,
 		Location: &SeekInfo{0, io.SeekStart}}
 	tail := tailTest.StartTail("test.txt", config)
 	// read noe line
@@ -226,9 +194,7 @@ func TestTell(t *testing.T) {
 	tail.Done()
 	// tail.close()
 
-	config = Config{
-		Follow:   false,
-		Location: &SeekInfo{offset, io.SeekStart}}
+	config = Config{Location: &SeekInfo{offset, io.SeekStart}}
 	tail = tailTest.StartTail("test.txt", config)
 	l := <-tail.Lines
 
@@ -240,31 +206,10 @@ func TestTell(t *testing.T) {
 	tail.Done()
 }
 
-func TestBlockUntilExists(t *testing.T) {
-	tailTest := NewTailTest("block-until-file-exists", t)
-	config := Config{
-		Follow: true,
-	}
-	tail := tailTest.StartTail("test.txt", config)
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		tailTest.CreateFile("test.txt", "hello world\n")
-	}()
-	for l := range tail.Lines {
-		if l.Text != "hello world" {
-			tailTest.Fatalf("mismatch; expected hello world, but got %s",
-				l.Text)
-		}
-		break
-	}
-	tailTest.RemoveFile("test.txt")
-	tail.Stop()
-}
-
-func maxLineSize(t *testing.T, follow bool, fileContent string, expected []string) {
+func maxLineSize(t *testing.T, fileContent string, expected []string) {
 	tailTest := NewTailTest("maxlinesize", t)
 	tailTest.CreateFile("test.txt", fileContent)
-	tail := tailTest.StartTail("test.txt", Config{Follow: follow, Location: nil, MaxLineSize: 3})
+	tail := tailTest.StartTail("test.txt", Config{Location: nil, MaxLineSize: 3})
 	go tailTest.VerifyTailOutput(tail, expected, false)
 
 	// Delete after a reasonable delay, to give tail sufficient time
@@ -281,7 +226,6 @@ func reOpen(t *testing.T) {
 	tail := tailTest.StartTail(
 		"test.txt",
 		Config{
-			Follow:      true,
 			ReOpen:      true,
 			PollOptions: testPollingOptions,
 		})
@@ -312,7 +256,7 @@ func reSeek(t *testing.T) {
 	tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
 	tail := tailTest.StartTail(
 		"test.txt",
-		Config{Follow: true, ReOpen: false, PollOptions: testPollingOptions})
+		Config{ReOpen: false, PollOptions: testPollingOptions})
 
 	go tailTest.VerifyTailOutput(tail, []string{"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld"}, false)
 
@@ -334,7 +278,7 @@ func TestTellRace(t *testing.T) {
 	tailTest := NewTailTest("tell-race", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, ReOpen: true, PollOptions: testPollingOptions})
+	tail := tailTest.StartTail("test.txt", Config{ReOpen: true, PollOptions: testPollingOptions})
 
 	<-tail.Lines
 	<-tail.Lines
@@ -361,7 +305,7 @@ func TestSizeRace(t *testing.T) {
 	tailTest := NewTailTest("tell-race", t)
 	tailTest.CreateFile("test.txt", "hello\nworld\n")
 
-	tail := tailTest.StartTail("test.txt", Config{Follow: true, ReOpen: true, PollOptions: testPollingOptions})
+	tail := tailTest.StartTail("test.txt", Config{ReOpen: true, PollOptions: testPollingOptions})
 
 	<-tail.Lines
 	<-tail.Lines
