@@ -12,26 +12,7 @@ import (
 )
 
 // ToAlloy converts YAML to Alloy configuration syntax.
-// The YAML uses an array-based structure to preserve order:
-//   - Root level is a YAML array
-//   - Block bodies are YAML arrays of single-key maps
-//   - Each statement (attribute or block) is a single-key map
-//   - Block labels can be specified using "/" separator (e.g., "block_name/label")
-//   - Special keys: $object (for object literals), $array (for array literals)
-//   - The expr() wrapper can be used for complex Alloy expressions
-//
-// Example YAML:
-//
-//	- logging:
-//	    - level: debug
-//	    - format: json
-//
-// Converts to Alloy:
-//
-//	logging {
-//	  level = "debug"
-//	  format = "json"
-//	}
+// See tests for example YAML and Alloy input files.
 func ToAlloy(yamlData []byte) ([]byte, error) {
 	var data interface{}
 	if err := yaml.Unmarshal(yamlData, &data); err != nil {

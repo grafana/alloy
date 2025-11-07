@@ -14,27 +14,7 @@ import (
 )
 
 // ToYAML converts Alloy configuration syntax to YAML.
-// The conversion uses an array-based structure to preserve order and allow duplicates:
-//   - Root level is a YAML array
-//   - Block bodies are YAML arrays of single-key maps
-//   - Each statement (attribute or block) is a single-key map
-//   - Labeled blocks use "/" separator (e.g., "block_name/label")
-//   - Array literals are marked with $array
-//   - Object literals are marked with $object
-//   - Complex expressions are wrapped in expr(...)
-//
-// Example Alloy:
-//
-//	logging {
-//	  level = "debug"
-//	  format = "json"
-//	}
-//
-// Converts to YAML:
-//
-//	- logging:
-//	    - level: debug
-//	    - format: json
+// See tests for example Alloy and YAML input files.
 func ToYAML(alloyData []byte) ([]byte, error) {
 	// Parse the Alloy file
 	file, err := parser.ParseFile("config.alloy", alloyData)
