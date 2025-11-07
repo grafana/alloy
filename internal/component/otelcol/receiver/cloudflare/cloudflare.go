@@ -47,19 +47,7 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	// Although otel's receiver already initializes defaults of downstream config,
-	// let's do it as well to avoid breaking changes if defaults are changed in upstream.
-	if args.TimestampField == "" {
-		args.TimestampField = "EdgeStartTimestamp"
-	}
-
-	if args.TimestampFormat == "" {
-		args.TimestampFormat = "rfc3339"
-	}
-
-	if args.Separator == "" {
-		args.Separator = "."
-	}
+	// Defaults filled by upstream OTel receiver in a factory.
 }
 
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
