@@ -229,7 +229,6 @@ The template value is replaced with the release value provided by the [Faro Web 
 * `faro_receiver_rate_limiter_active_app` (gauge): Number of active applications with rate limiters. Inactive limiters are cleaned up every 10 minutes.
 * `faro_receiver_rate_limiter_requests_total` (counter): Total number of requests processed by the rate limiter per app/environment.
 
-
 ## Example
 
 ```alloy
