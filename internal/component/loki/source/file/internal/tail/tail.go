@@ -478,20 +478,18 @@ func (tail *Tail) finishDelete() error {
 }
 
 func (tail *Tail) openReader() {
+	var reader io.Reader
 	if tail.Decoder != nil {
-		if tail.MaxLineSize > 0 {
-			// add 2 to account for newline characters
-			tail.reader = bufio.NewReaderSize(tail.Decoder.Reader(tail.file), tail.MaxLineSize+2)
-		} else {
-			tail.reader = bufio.NewReader(tail.Decoder.Reader(tail.file))
-		}
+		reader = tail.Decoder.Reader(tail.file)
 	} else {
-		if tail.MaxLineSize > 0 {
-			// add 2 to account for newline characters
-			tail.reader = bufio.NewReaderSize(tail.file, tail.MaxLineSize+2)
-		} else {
-			tail.reader = bufio.NewReader(tail.file)
-		}
+		reader = tail.file
+	}
+
+	if tail.MaxLineSize > 0 {
+		// add 2 to account for newline characters
+		tail.reader = bufio.NewReaderSize(reader, tail.MaxLineSize+2)
+	} else {
+		tail.reader = bufio.NewReader(reader)
 	}
 }
 

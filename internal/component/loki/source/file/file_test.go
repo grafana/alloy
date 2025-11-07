@@ -405,100 +405,103 @@ func TestEncoding(t *testing.T) {
 		{"LF UTF-16 BE with BOM (gzipped)", "/LF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			opts := component.Options{
-				Logger:        util.TestAlloyLogger(t),
-				Registerer:    prometheus.NewRegistry(),
-				OnStateChange: func(e component.Exports) {},
-				DataPath:      t.TempDir(),
-			}
+	runTests(t, func(t *testing.T, match FileMatch) {
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				opts := component.Options{
+					Logger:        util.TestAlloyLogger(t),
+					Registerer:    prometheus.NewRegistry(),
+					OnStateChange: func(e component.Exports) {},
+					DataPath:      t.TempDir(),
+				}
 
-			filePath := filepath.Join("testdata", "encoding", tc.filename)
+				filePath := filepath.Join("testdata", "encoding", tc.filename)
 
-			// Verify the test data file exists
-			_, err := os.Stat(filePath)
-			require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
+				// Verify the test data file exists
+				_, err := os.Stat(filePath)
+				require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
 
-			ch1 := loki.NewLogsReceiver()
-			args := Arguments{}
-			args.SetToDefault()
-			args.Targets = []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-				"__path__": filePath,
-				"source":   "sql_errorlog_real",
-			})}
-			args.Encoding = tc.encoding
-			args.DecompressionConfig = tc.decompressionConfig
-			args.ForwardTo = []loki.LogsReceiver{ch1}
+				ch1 := loki.NewLogsReceiver()
+				args := Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": filePath,
+						"source":   "sql_errorlog_real",
+					})},
+					FileMatch:           match,
+					Encoding:            tc.encoding,
+					DecompressionConfig: tc.decompressionConfig,
+					ForwardTo:           []loki.LogsReceiver{ch1},
+				}
 
-			// Create and run the component
-			c, err := New(opts, args)
-			require.NoError(t, err)
-
-			ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := c.Run(ctx)
+				// Create and run the component
+				c, err := New(opts, args)
 				require.NoError(t, err)
-			}()
 
-			expectedLabelSet := model.LabelSet{
-				"filename": model.LabelValue(filePath),
-				"source":   "sql_errorlog_real",
-			}
+				ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 
-			// Collect all received log lines
-			receivedLines := make([]string, 0)
-			timeout := time.After(10 * time.Second)
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := c.Run(ctx)
+					require.NoError(t, err)
+				}()
 
-			// Read for a reasonable amount of time to get several log entries
-			readingComplete := false
-			for !readingComplete {
-				select {
-				case logEntry := <-ch1.Chan():
-					require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-					require.Equal(t, expectedLabelSet, logEntry.Labels)
+				expectedLabelSet := model.LabelSet{
+					"filename": model.LabelValue(filePath),
+					"source":   "sql_errorlog_real",
+				}
 
-					receivedLines = append(receivedLines, logEntry.Line)
-					t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
+				// Collect all received log lines
+				receivedLines := make([]string, 0)
+				timeout := time.After(10 * time.Second)
 
-					// Stop after we have enough lines to verify the first few
-					if len(receivedLines) >= len(expectedLines) {
+				// Read for a reasonable amount of time to get several log entries
+				readingComplete := false
+				for !readingComplete {
+					select {
+					case logEntry := <-ch1.Chan():
+						require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+						require.Equal(t, expectedLabelSet, logEntry.Labels)
+
+						receivedLines = append(receivedLines, logEntry.Line)
+						t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
+
+						// Stop after we have enough lines to verify the first few
+						if len(receivedLines) >= len(expectedLines) {
+							readingComplete = true
+						}
+
+					case <-timeout:
+						t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
 						readingComplete = true
 					}
-
-				case <-timeout:
-					t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
-					readingComplete = true
 				}
-			}
 
-			// Verify we received all log lines
-			require.Len(t, receivedLines, len(expectedLines))
-			for i := range expectedLines {
-				require.Equal(t, expectedLines[i], receivedLines[i], "log line %d should match", i+1)
-			}
-
-			// Shut down the component before checking for the positions file.
-			// That way it will definitely write to the positions file as part of the shutdown.
-			cancel()
-
-			// Verify that positions.yml is written. NOTE: if we didn't wait for it,
-			// there would be a race condition between temporary directory being
-			// cleaned up and this file being created.
-			require.Eventually(t, func() bool {
-				if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-					return false
+				// Verify we received all log lines
+				require.Len(t, receivedLines, len(expectedLines))
+				for i := range expectedLines {
+					require.Equal(t, expectedLines[i], receivedLines[i], "log line %d should match", i+1)
 				}
-				return true
-			}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
 
-			wg.Wait()
-		})
-	}
+				// Shut down the component before checking for the positions file.
+				// That way it will definitely write to the positions file as part of the shutdown.
+				cancel()
+
+				// Verify that positions.yml is written. NOTE: if we didn't wait for it,
+				// there would be a race condition between temporary directory being
+				// cleaned up and this file being created.
+				require.Eventually(t, func() bool {
+					if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
+						return false
+					}
+					return true
+				}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
+
+				wg.Wait()
+			})
+		}
+	})
 }
 
 func TestDeleteRecreateFile(t *testing.T) {
