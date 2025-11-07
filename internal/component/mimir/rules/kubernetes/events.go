@@ -35,7 +35,7 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   healthReporter
 
-	mimirClient        client.Interface
+	mimirClient        client.RulerInterface
 	namespaceLister    coreListers.NamespaceLister
 	ruleLister         promListers.PrometheusRuleLister
 	namespaceSelector  labels.Selector
