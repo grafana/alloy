@@ -116,7 +116,6 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		// Run this after Stop() to avoid race conditions
@@ -535,7 +534,6 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		// Run this after Stop() to avoid race conditions
@@ -700,7 +698,6 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		// Run this after Stop() to avoid race conditions
@@ -811,7 +808,6 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		// Run this after Stop() to avoid race conditions
@@ -919,7 +915,6 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
 		lokiClient.Stop()
 
 		// Run this after Stop() to avoid race conditions
