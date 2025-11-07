@@ -47,7 +47,6 @@ type Config struct {
 	// File-specifc
 	Location    *SeekInfo // Seek to this location before tailing
 	ReOpen      bool      // Reopen recreated files (tail -F)
-	MustExist   bool      // Fail early if the file does not exist
 	Poll        bool      // Poll for file changes instead of using inotify
 	Pipe        bool      // Is a named pipe (mkfifo)
 	PollOptions watch.PollingFileWatcherOptions
@@ -106,14 +105,12 @@ func TailFile(filename string, config Config) (*Tail, error) {
 		t.watcher = watch.NewInotifyFileWatcher(filename)
 	}
 
-	if t.MustExist {
-		var err error
-		t.file, err = OpenFile(t.Filename)
-		if err != nil {
-			return nil, err
-		}
-		t.watcher.SetFile(t.file)
+	var err error
+	t.file, err = OpenFile(t.Filename)
+	if err != nil {
+		return nil, err
 	}
+	t.watcher.SetFile(t.file)
 
 	go t.tailFileSync()
 
@@ -275,15 +272,12 @@ func (tail *Tail) tailFileSync() {
 	defer tail.Done()
 	defer tail.close()
 
-	if !tail.MustExist {
-		// deferred first open, not technically truncated but we don't need to check for changed files
-		err := tail.reopen(true)
-		if err != nil {
-			if err != tomb.ErrDying {
-				tail.Kill(err)
-			}
-			return
+	// deferred first open, not technically truncated but we don't need to check for changed files
+	if err := tail.reopen(true); err != nil {
+		if err != tomb.ErrDying {
+			tail.Kill(err)
 		}
+		return
 	}
 
 	// Seek to requested location on first open of the file.
@@ -486,11 +480,4 @@ func (tail *Tail) sendLine(line string) bool {
 	}
 
 	return true
-}
-
-// Cleanup removes inotify watches added by the tail package. This function is
-// meant to be invoked from a process's exit handler. Linux kernel may not
-// automatically remove inotify watches after the process exits.
-func (tail *Tail) Cleanup() {
-	watch.Cleanup(tail.Filename)
 }
