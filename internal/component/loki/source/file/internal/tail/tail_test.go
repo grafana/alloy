@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/text/encoding/unicode"
 )
 
 var testPollingOptions = watch.PollingFileWatcherOptions{
@@ -115,7 +116,7 @@ func TestTail(t *testing.T) {
 	})
 
 	t.Run("reopen", func(t *testing.T) {
-		delay := 1000 * time.Millisecond
+		delay := 200 * time.Millisecond
 
 		tailTest := NewTailTest("reopen-polling", t)
 		tailTest.CreateFile("test.txt", "hello\nworld\n")
@@ -180,6 +181,25 @@ func TestTail(t *testing.T) {
 		// consume rest so we can stop
 		go consume(tail)
 		tail.Stop()
+	})
+
+	t.Run("UTF-16LE", func(t *testing.T) {
+		tail, err := TailFile("testdata/mssql.log", Config{Decoder: unicode.UTF16(unicode.LittleEndian, unicode.ExpectBOM).NewDecoder()})
+		assert.NoError(t, err)
+		defer tail.Stop()
+
+		expectedLines := []string{
+			"2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ",
+			"	Sep 24 2019 13:48:23 ",
+			"	Copyright (C) 2019 Microsoft Corporation",
+			"	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)",
+			"",
+			"2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00",
+			"2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.",
+			"2025-03-11 11:11:02.72 Server      All rights reserved.",
+		}
+
+		verify(t, tail, expectedLines)
 	})
 }
 

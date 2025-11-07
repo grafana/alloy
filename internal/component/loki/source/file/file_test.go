@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
-	"golang.org/x/text/encoding/unicode"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -352,69 +351,157 @@ func TestTwoTargets(t *testing.T) {
 func TestEncoding(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	// FIXME use test ctrl
+	expectedLines := []string{
+		"2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ",
+		"	Sep 24 2019 13:48:23 ",
+		"	Copyright (C) 2019 Microsoft Corporation",
+		"	Enterprise Edition (64-bit) on Windows Server 2022 Standard 10.0 <X64> (Build 20348: ) (Hypervisor)",
+		"",
+		"2025-03-11 11:11:02.71 Server      UTC adjustment: 1:00",
+		"2025-03-11 11:11:02.71 Server      (c) Microsoft Corporation.",
+		"2025-03-11 11:11:02.72 Server      All rights reserved.",
+		"2025-03-11 11:11:02.72 Server      Server process ID is 4708.",
+	}
+
+	noDecompress := DecompressionConfig{}
+	gzDecompress := DecompressionConfig{
+		Enabled: true,
+		Format:  "gz",
+	}
+
+	testCases := []struct {
+		name                string
+		filename            string
+		encoding            string
+		decompressionConfig DecompressionConfig
+	}{
+		{"CRLF default encoding", "/CRLF/UTF-8.txt", "", noDecompress},
+		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8", noDecompress},
+		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16", noDecompress},
+		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
+		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
+		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
+		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
+		{"LF default encoding", "/LF/UTF-8.txt", "", noDecompress},
+		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8", noDecompress},
+		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16", noDecompress},
+		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
+		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
+		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
+		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
+		{"CRLF default encoding (gzipped)", "/CRLF/UTF-8.txt.gz", "", gzDecompress},
+		{"CRLF UTF-8 (gzipped)", "/CRLF/UTF-8.txt.gz", "UTF-8", gzDecompress},
+		{"CRLF UTF-16 (gzipped)", "/CRLF/UTF-16.txt.gz", "UTF-16", gzDecompress},
+		{"CRLF UTF-16 LE (gzipped)", "/CRLF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
+		{"CRLF UTF-16 BE (gzipped)", "/CRLF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
+		{"CRLF UTF-16 LE with BOM (gzipped)", "/CRLF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
+		{"CRLF UTF-16 BE with BOM (gzipped)", "/CRLF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
+		{"LF default encoding (gzipped)", "/LF/UTF-8.txt.gz", "", gzDecompress},
+		{"LF UTF-8 (gzipped)", "/LF/UTF-8.txt.gz", "UTF-8", gzDecompress},
+		{"LF UTF-16 (gzipped)", "/LF/UTF-16.txt.gz", "UTF-16", gzDecompress},
+		{"LF UTF-16 LE (gzipped)", "/LF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
+		{"LF UTF-16 BE (gzipped)", "/LF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
+		{"LF UTF-16 LE with BOM (gzipped)", "/LF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
+		{"LF UTF-16 BE with BOM (gzipped)", "/LF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
+	}
+
 	runTests(t, func(t *testing.T, match FileMatch) {
-		// Create opts for component
-		opts := component.Options{
-			Logger:        util.TestAlloyLogger(t),
-			Registerer:    prometheus.NewRegistry(),
-			OnStateChange: func(e component.Exports) {},
-			DataPath:      t.TempDir(),
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				opts := component.Options{
+					Logger:        util.TestAlloyLogger(t),
+					Registerer:    prometheus.NewRegistry(),
+					OnStateChange: func(e component.Exports) {},
+					DataPath:      t.TempDir(),
+				}
+
+				filePath, err := filepath.Abs(filepath.Join("testdata", "encoding", tc.filename))
+				require.NoError(t, err)
+
+				// Verify the test data file exists
+				_, err = os.Stat(filePath)
+				require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
+
+				ch1 := loki.NewLogsReceiver()
+				args := Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": filePath,
+						"source":   "sql_errorlog_real",
+					})},
+					FileMatch:           match,
+					Encoding:            tc.encoding,
+					DecompressionConfig: tc.decompressionConfig,
+					ForwardTo:           []loki.LogsReceiver{ch1},
+				}
+
+				// Create and run the component
+				c, err := New(opts, args)
+				require.NoError(t, err)
+
+				ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := c.Run(ctx)
+					require.NoError(t, err)
+				}()
+
+				expectedLabelSet := model.LabelSet{
+					"filename": model.LabelValue(filePath),
+					"source":   "sql_errorlog_real",
+				}
+
+				// Collect all received log lines
+				receivedLines := make([]string, 0)
+				timeout := time.After(10 * time.Second)
+
+				// Read for a reasonable amount of time to get several log entries
+				readingComplete := false
+				for !readingComplete {
+					select {
+					case logEntry := <-ch1.Chan():
+						require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+						require.Equal(t, expectedLabelSet, logEntry.Labels)
+
+						receivedLines = append(receivedLines, logEntry.Line)
+						t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
+
+						// Stop after we have enough lines to verify the first few
+						if len(receivedLines) >= len(expectedLines) {
+							readingComplete = true
+						}
+
+					case <-timeout:
+						t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
+						readingComplete = true
+					}
+				}
+
+				// Verify we received all log lines
+				require.Len(t, receivedLines, len(expectedLines))
+				for i := range expectedLines {
+					require.Equal(t, expectedLines[i], receivedLines[i], "log line %d should match", i+1)
+				}
+
+				// Shut down the component before checking for the positions file.
+				// That way it will definitely write to the positions file as part of the shutdown.
+				cancel()
+
+				// Verify that positions.yml is written. NOTE: if we didn't wait for it,
+				// there would be a race condition between temporary directory being
+				// cleaned up and this file being created.
+				require.Eventually(t, func() bool {
+					if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
+						return false
+					}
+					return true
+				}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
+
+				wg.Wait()
+			})
 		}
-
-		// Create a file to write to and set up the component's Arguments.
-		f, err := os.CreateTemp(opts.DataPath, "example")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-
-		ch1 := loki.NewLogsReceiver()
-		args := Arguments{
-			Targets:   []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "lbl1": "val1"})},
-			Encoding:  "UTF-16BE",
-			ForwardTo: []loki.LogsReceiver{ch1},
-			FileMatch: match,
-		}
-
-		// Create and run the component.
-		c, err := New(opts, args)
-		require.NoError(t, err)
-
-		ctx, cancel := context.WithCancel(t.Context())
-		go c.Run(ctx)
-		require.Eventually(t, func() bool { return c.DebugInfo() != nil }, 500*time.Millisecond, 20*time.Millisecond)
-
-		// Write a UTF-16BE encoded byte slice to the file.
-		utf16Encoder := unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
-		utf16Bytes, err := utf16Encoder.Bytes([]byte("hello world!\n"))
-		require.Nil(t, err)
-
-		_, err = f.Write(utf16Bytes)
-		require.Nil(t, err)
-
-		// Make sure the log was received successfully with the correct format.
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "hello world!�", logEntry.Line)
-
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-
-		// Shut down the component
-		cancel()
-
-		// Verify that positions.yml is written. NOTE: if we didn't wait for it,
-		// there would be a race condition between temporary directory being
-		// cleaned up and this file being created.
-		require.Eventually(t, func() bool {
-			if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-				return false
-			}
-			return true
-		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
 	})
 }
 

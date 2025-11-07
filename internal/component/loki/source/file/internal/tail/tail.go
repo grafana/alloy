@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"golang.org/x/text/encoding"
 	"gopkg.in/tomb.v1"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
@@ -42,6 +43,12 @@ type Config struct {
 	// Seek to this location before tailing
 	Location    *SeekInfo
 	PollOptions watch.PollingFileWatcherOptions
+
+	// Change the decoder if the file is not UTF-8.
+	// If the tailer doesn't use the right decoding, the output text may be gibberish.
+	// For example, if the file is "UTF-16 LE" encoded, the tailer would not separate
+	// the new lines properly and the output could come out as chinese characters.
+	Decoder *encoding.Decoder
 }
 
 type Tail struct {
@@ -235,6 +242,9 @@ func (tail *Tail) readLine() (string, error) {
 
 	line = strings.TrimRight(line, "\n")
 
+	// Trim Windows line endings
+	line = strings.TrimSuffix(line, "\r")
+
 	return line, err
 }
 
@@ -382,6 +392,11 @@ func (tail *Tail) openReader() {
 	tail.readerMut.Lock()
 	defer tail.readerMut.Unlock()
 	tail.reader = bufio.NewReader(tail.file)
+	if tail.Decoder != nil {
+		tail.reader = bufio.NewReader(tail.Decoder.Reader(tail.file))
+	} else {
+		tail.reader = bufio.NewReader(tail.file)
+	}
 }
 
 func (tail *Tail) seekTo(pos SeekInfo) error {
