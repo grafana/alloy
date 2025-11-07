@@ -14,11 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	"github.com/grafana/alloy/internal/loki/util"
 )
 
 var testPollingOptions = watch.PollingFileWatcherOptions{
@@ -49,6 +46,7 @@ func TestMustExist(t *testing.T) {
 func TestWaitsForFileToExist(t *testing.T) {
 	tailTest := NewTailTest("waits-for-file-to-exist", t)
 	tail := tailTest.StartTail("test.txt", Config{})
+
 	go tailTest.VerifyTailOutput(tail, []string{"hello", "world"}, false)
 
 	<-time.After(100 * time.Millisecond)
@@ -66,7 +64,7 @@ func TestWaitsForFileToExistRelativePath(t *testing.T) {
 	os.Chdir(tailTest.path)
 	defer os.Chdir(oldWD)
 
-	tail, err := TailFile("test.txt", Config{})
+	tail := tailTest.StartTail("test.txt", Config{})
 	if err != nil {
 		tailTest.Fatal(err)
 	}
@@ -349,11 +347,9 @@ func reOpen(t *testing.T, poll bool) {
 			ReOpen:      true,
 			Poll:        poll,
 			PollOptions: testPollingOptions,
-			Logger:      util.NewLogAdapter(log.NewNopLogger()),
 		})
 	content := []string{"hello", "world", "more", "data", "endofworld"}
 	go tailTest.VerifyTailOutput(tail, content, false)
-	t.Logf("reOpen: VerifyTailOutput started")
 
 	if poll {
 		// deletion must trigger reopen
@@ -428,8 +424,7 @@ func reSeek(t *testing.T, poll bool) {
 		"test.txt",
 		Config{Follow: true, ReOpen: false, Poll: poll, PollOptions: testPollingOptions})
 
-	go tailTest.VerifyTailOutput(tail, []string{
-		"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld"}, false)
+	go tailTest.VerifyTailOutput(tail, []string{"a really long string goes here", "hello", "world", "h311o", "w0r1d", "endofworld"}, false)
 
 	// truncate now
 	<-time.After(100 * time.Millisecond)
@@ -602,7 +597,6 @@ func (t TailTest) VerifyTailOutput(tail *Tail, lines []string, expectEOF bool) {
 
 func (t TailTest) ReadLines(tail *Tail, lines []string) {
 	for idx, line := range lines {
-		tail.Logger.Printf("ReadLines: waiting for line: %s\n", line)
 		tailedLine, ok := <-tail.Lines
 		if !ok {
 			// tail.Lines is closed and empty.
@@ -623,7 +617,6 @@ func (t TailTest) ReadLines(tail *Tail, lines []string) {
 					"expecting <<%s>>>, but got <<<%s>>>",
 				line, tailedLine.Text)
 		}
-		tail.Logger.Printf("ReadLines: received line: %s\n", tailedLine.Text)
 	}
 }
 

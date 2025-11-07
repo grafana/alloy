@@ -8,16 +8,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"gopkg.in/tomb.v1"
+
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/ratelimiter"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/util"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	"gopkg.in/tomb.v1"
 )
 
 var (
@@ -41,18 +43,6 @@ type SeekInfo struct {
 	Whence int // os.SEEK_*
 }
 
-type logger interface {
-	Fatal(v ...interface{})
-	Fatalf(format string, v ...interface{})
-	Fatalln(v ...interface{})
-	Panic(v ...interface{})
-	Panicf(format string, v ...interface{})
-	Panicln(v ...interface{})
-	Print(v ...interface{})
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
-}
-
 // Config is used to specify how a file must be tailed.
 type Config struct {
 	// File-specifc
@@ -68,9 +58,7 @@ type Config struct {
 	Follow      bool // Continue looking for new lines (tail -f)
 	MaxLineSize int  // If non-zero, split longer lines into multiple lines
 
-	// Logger, when nil, is set to tail.DefaultLogger
-	// To disable logging: set field to tail.DiscardingLogger
-	Logger logger
+	Logger log.Logger
 }
 
 type Tail struct {
@@ -90,13 +78,6 @@ type Tail struct {
 	tomb.Tomb // provides: Done, Kill, Dying
 }
 
-var (
-	// DefaultLogger is used when Config.Logger == nil
-	DefaultLogger = log.New(os.Stderr, "", log.LstdFlags)
-	// DiscardingLogger can be used to disable logging output
-	DiscardingLogger = log.New(io.Discard, "", 0)
-)
-
 // TailFile begins tailing the file. Output stream is made available
 // via the `Tail.Lines` channel. To handle errors during tailing,
 // invoke the `Wait` or `Err` method after finishing reading from the
@@ -114,7 +95,7 @@ func TailFile(filename string, config Config) (*Tail, error) {
 
 	// when Logger was not specified in config, use default logger
 	if t.Logger == nil {
-		t.Logger = log.New(os.Stderr, "", log.LstdFlags)
+		t.Logger = log.NewNopLogger()
 	}
 
 	if t.Poll {
@@ -172,11 +153,13 @@ func (tail *Tail) Tell() (int64, error) {
 func (tail *Tail) Size() (int64, error) {
 	tail.fileMut.Lock()
 	f := tail.file
-	tail.fileMut.Unlock()
 	if f == nil {
+		tail.fileMut.Unlock()
 		return 0, os.ErrNotExist
 	}
 	fi, err := f.Stat()
+	tail.fileMut.Unlock()
+
 	if err != nil {
 		return 0, err
 	}
@@ -219,7 +202,7 @@ func (tail *Tail) reopen(truncated bool) error {
 	// start tailing a different file.
 	cf, err := tail.file.Stat()
 	if !truncated && err != nil {
-		log.Print("stat of old file returned, this is not expected and may result in unexpected behavior")
+		level.Debug(tail.Logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
 		// need to action on it, cf is checked for nil later on to accommodate this
 	}
@@ -234,7 +217,7 @@ func (tail *Tail) reopen(truncated bool) error {
 		tail.fileMut.Unlock()
 		if err != nil {
 			if os.IsNotExist(err) {
-				tail.Logger.Printf("Waiting for %s to appear...", tail.Filename)
+				level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Waiting for %s to appear...", tail.Filename))
 				if err := tail.watcher.BlockUntilExists(&tail.Tomb); err != nil {
 					if err == tomb.ErrDying {
 						return err
@@ -249,7 +232,7 @@ func (tail *Tail) reopen(truncated bool) error {
 		// File exists and is opened, get information about it.
 		nf, err := tail.file.Stat()
 		if err != nil {
-			tail.Logger.Print("Failed to stat new file to be tailed, will try to open it again")
+			level.Debug(tail.Logger).Log("msg", "Failed to stat new file to be tailed, will try to open it again")
 			tail.closeFile()
 			continue
 		}
@@ -308,7 +291,7 @@ func (tail *Tail) tailFileSync() {
 	// Seek to requested location on first open of the file.
 	if tail.Location != nil {
 		_, err := tail.file.Seek(tail.Location.Offset, tail.Location.Whence)
-		tail.Logger.Printf("Seeked %s - %+v\n", tail.Filename, tail.Location)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Seeked %s - %+v\n", tail.Filename, tail.Location))
 		if err != nil {
 			tail.Killf("Seek error on %s: %s", tail.Filename, err)
 			return
@@ -437,11 +420,11 @@ func (tail *Tail) waitForChanges() (bool, error) {
 		return true, nil
 	case <-tail.changes.Truncated:
 		// Always reopen truncated files (Follow is true)
-		tail.Logger.Printf("Re-opening truncated file %s ...", tail.Filename)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening truncated file %s ...", tail.Filename))
 		if err := tail.reopen(true); err != nil {
 			return false, err
 		}
-		tail.Logger.Printf("Successfully reopened truncated %s", tail.Filename)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened truncated %s", tail.Filename))
 		tail.openReader()
 		return false, nil
 	case <-tail.Dying():
@@ -453,15 +436,15 @@ func (tail *Tail) finishDelete() error {
 	tail.changes = nil
 	if tail.ReOpen {
 		// XXX: we must not log from a library.
-		tail.Logger.Printf("Re-opening moved/deleted file %s ...", tail.Filename)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening moved/deleted file %s ...", tail.Filename))
 		if err := tail.reopen(false); err != nil {
 			return err
 		}
-		tail.Logger.Printf("Successfully reopened %s", tail.Filename)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened %s", tail.Filename))
 		tail.openReader()
 		return nil
 	} else {
-		tail.Logger.Printf("Stopping tail as file no longer exists: %s", tail.Filename)
+		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Stopping tail as file no longer exists: %s", tail.Filename))
 		return ErrStop
 	}
 }
@@ -476,7 +459,7 @@ func (tail *Tail) openReader() {
 }
 
 func (tail *Tail) seekEnd() error {
-	return tail.seekTo(SeekInfo{Offset: 0, Whence: os.SEEK_END})
+	return tail.seekTo(SeekInfo{Offset: 0, Whence: io.SeekEnd})
 }
 
 func (tail *Tail) seekTo(pos SeekInfo) error {
@@ -507,8 +490,6 @@ func (tail *Tail) sendLine(line string) bool {
 	if tail.Config.RateLimiter != nil {
 		ok := tail.Config.RateLimiter.Pour(uint16(len(lines)))
 		if !ok {
-			tail.Logger.Printf("Leaky bucket full (%v); entering 1s cooloff period.\n",
-				tail.Filename)
 			return false
 		}
 	}

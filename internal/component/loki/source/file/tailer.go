@@ -26,7 +26,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
-	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -241,7 +240,7 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 			Offset: pos,
 			Whence: 0,
 		},
-		Logger:      util.NewLogAdapter(t.logger),
+		Logger:      t.logger,
 		PollOptions: t.pollOptions,
 	})
 
