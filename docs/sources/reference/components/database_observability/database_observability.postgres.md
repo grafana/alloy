@@ -94,11 +94,11 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 | ------------------------- | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
 | `base_throttle_interval`  | `duration` | Base interval for adaptive throttling of query sample emits. Set to `"0s"` to disable. | `"1m"`  | no       |
 | `collect_interval`        | `duration` | How frequently to collect information from database.                                   | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text, This might include parameters.                      | `false` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text. This might include parameters.                      | `false` | no       |
 
 `base_throttle_interval` uses a logarithmic backoff based on the per‑minute rate of finalized samples for the same query over a fixed 5‑minute window.
 This prevents an overly high sampling rate for hot queries.
-Exempt samples containing wait events, finalized with idle in transaction states, or with observed CPU load, which always emit and do not advance the throttle window.
+Samples with wait events, idle-in-transaction states, or observed CPU load are exempt from throttling and always emit immediately without advancing the throttle window.
 
 ### `schema_details`
 
