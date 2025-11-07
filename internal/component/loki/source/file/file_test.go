@@ -415,10 +415,11 @@ func TestEncoding(t *testing.T) {
 					DataPath:      t.TempDir(),
 				}
 
-				filePath := filepath.Join("testdata", "encoding", tc.filename)
+				filePath, err := filepath.Abs(filepath.Join("testdata", "encoding", tc.filename))
+				require.NoError(t, err)
 
 				// Verify the test data file exists
-				_, err := os.Stat(filePath)
+				_, err = os.Stat(filePath)
 				require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
 
 				ch1 := loki.NewLogsReceiver()
