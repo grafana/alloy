@@ -518,14 +518,17 @@ func (c *ExplainPlan) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([
 		return nil, fmt.Errorf("failed to set plan cache mode: %w", err)
 	}
 
+	explainQuery := fmt.Sprintf("%s%s", selectExplainPlanPrefix, preparedStatementName)
 	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
+	if paramCount == 0 {
+	} else {
+		nullParams := strings.Repeat("null,", paramCount)
+		if paramCount > 0 {
+			nullParams = nullParams[:len(nullParams)-1]
+		}
 
-	nullParams := strings.Repeat("null,", paramCount)
-	if paramCount > 0 {
-		nullParams = nullParams[:len(nullParams)-1]
+		explainQuery = fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
 	}
-
-	explainQuery := fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
 	rsExplain := conn.QueryRowContext(ctx, explainQuery)
 	if err := rsExplain.Err(); err != nil {
 		return nil, fmt.Errorf("failed to run explain plan: %w", err)
