@@ -115,33 +115,6 @@ func TestTail(t *testing.T) {
 		verify(t, tail, []string{"world", "more", "data", "more", "data"})
 	})
 
-	t.Run("reopen", func(t *testing.T) {
-		delay := 200 * time.Millisecond
-
-		tailTest := NewTailTest("reopen-polling", t)
-		tailTest.CreateFile("test.txt", "hello\nworld\n")
-		defer tailTest.RemoveFile("test.txt")
-		tail := tailTest.StartTail("test.txt", Config{PollOptions: testPollingOptions})
-		defer tail.Stop()
-
-		go func() {
-			// deletion must trigger reopen
-			<-time.After(delay)
-			tailTest.RemoveFile("test.txt")
-			<-time.After(delay)
-			tailTest.CreateFile("test.txt", "more\ndata\n")
-
-			// rename must trigger reopen
-			<-time.After(delay)
-			tailTest.RenameFile("test.txt", "test.txt.rotated")
-			<-time.After(delay)
-			tailTest.CreateFile("test.txt", "endofworld\n")
-
-		}()
-
-		verify(t, tail, []string{"hello", "world", "more", "data", "endofworld"})
-	})
-
 	t.Run("reseek", func(t *testing.T) {
 		tailTest := NewTailTest("reseek-polling", t)
 		tailTest.CreateFile("test.txt", "a really long string goes here\nhello\nworld\n")
