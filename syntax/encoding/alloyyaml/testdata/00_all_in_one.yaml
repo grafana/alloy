@@ -1,13 +1,11 @@
-# Example YAML output file.
 - some_block/label_name:
     - this_is_array:
         $array:
             - foo: bar
             - baz: qux
     - this_is_object:
-        $object:
-            baz: boop
-            foo: bar
+        baz: boop
+        foo: bar
     - this_uses_expr: expr(env("MY_VAR"))
     - this_is_anon_block:
         - foo: bar
@@ -24,5 +22,4 @@
         - foo: fab
     - these_are_named_blocks/block_3:
         - foo: bop
-
 - another_block: []

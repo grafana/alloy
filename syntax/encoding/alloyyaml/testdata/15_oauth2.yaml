@@ -3,9 +3,8 @@
     - client_secret: someclientsecret
     - token_url: https://example.com/oauth2/default/v1/token
     - endpoint_params:
-        $object:
-            audience:
-                - someaudience
+        audience:
+            - someaudience
     - scopes:
         - api.metrics
     - tls:

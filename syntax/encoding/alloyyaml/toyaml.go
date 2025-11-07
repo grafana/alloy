@@ -192,7 +192,9 @@ func convertArray(arr *ast.ArrayExpr) (interface{}, error) {
 	return result, nil
 }
 
-// convertObject converts an object expression to a map with $object marker.
+// convertObject converts an object expression to a map.
+// In the array-based format, plain maps represent object literals,
+// while arrays represent block bodies, so no marker is needed.
 func convertObject(obj *ast.ObjectExpr) (interface{}, error) {
 	objData := make(map[string]interface{})
 	for _, field := range obj.Fields {
@@ -203,10 +205,7 @@ func convertObject(obj *ast.ObjectExpr) (interface{}, error) {
 		objData[field.Name.Name] = val
 	}
 
-	// Wrap in $object marker to distinguish from blocks
-	return map[string]interface{}{
-		"$object": objData,
-	}, nil
+	return objData, nil
 }
 
 // renderExprAsString renders an expression as Alloy syntax and wraps it in expr().

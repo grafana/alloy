@@ -9,9 +9,8 @@
     - api_token: dont_look_at_me_please
     - zone_id: area51
     - labels:
-        $object:
-            identity: unidentified
-            object_type: flying
+        identity: unidentified
+        object_type: flying
     - workers: 42
     - pull_range: 1h0m0s
     - fields_type: all
@@ -20,5 +19,4 @@
 - loki.write/logs_log_config:
     - endpoint:
         - url: http://localhost/loki/api/v1/push
-    - external_labels:
-        $object: {}
+    - external_labels: {}

@@ -5,6 +5,5 @@
     - key1: value1
     - key2: value2
 - this_is_an_object:
-    $object:
-        key1: value1
-        key2: value2
+    key1: value1
+    key2: value2

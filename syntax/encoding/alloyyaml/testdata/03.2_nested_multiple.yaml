@@ -4,9 +4,8 @@
             - foo: bar
             - baz: qux
     - this_is_object:
-        $object:
-            baz: boop
-            foo: bar
+        baz: boop
+        foo: bar
     - this_is_anon_block:
         - foo: bar
         - baz: bap

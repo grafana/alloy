@@ -193,32 +193,10 @@ func writeStatement(w io.Writer, blockName, label string, value interface{}, ind
 			return nil
 		}
 
-		// Check for $object marker - convert to object literal attribute
-		if objValue, hasObject := v["$object"]; hasObject {
-			if err := writeAttribute(w, blockName, objValue, indentStr); err != nil {
-				return fmt.Errorf("attribute %s: %w", blockName, err)
-			}
-			return nil
-		}
-
-		// If label is present from "/" syntax, write labeled block
-		if label != "" {
-			if _, err := fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label); err != nil {
-				return err
-			}
-			if err := writeBody(w, v, indent+1); err != nil {
-				return err
-			}
-			if _, err := fmt.Fprintf(w, "%s}\n", indentStr); err != nil {
-				return err
-			}
-			return nil
-		}
-
-		// Regular map values could be blocks (old format) or need to check for array (new format)
-		// In new format, blocks have array bodies
-		if err := writeBlock(w, blockName, value, indent); err != nil {
-			return fmt.Errorf("block %s: %w", blockName, err)
+		// In array-based format, plain maps are object literals (not blocks)
+		// Blocks always have array bodies in the new format
+		if err := writeAttribute(w, blockName, value, indentStr); err != nil {
+			return fmt.Errorf("attribute %s: %w", blockName, err)
 		}
 
 	case []interface{}:
@@ -302,14 +280,13 @@ func isStructuralValue(value interface{}) bool {
 		}
 		return false
 	case map[string]interface{}:
-		// Check if it's not a special marker
+		// In array-based format, maps are object literals (not blocks)
+		// Only $array marker indicates it's not structural
 		if _, hasArray := v["$array"]; hasArray {
 			return false
 		}
-		if _, hasObject := v["$object"]; hasObject {
-			return false
-		}
-		return true
+		// Maps without markers are object literals, not structural
+		return false
 	}
 	return false
 }

@@ -147,8 +147,7 @@
         - template: "true"
     - stage.labels:
         - values:
-            $object:
-                debug: ""
+            debug: ""
     - stage.metrics:
         - metric.counter:
             - prefix: promtail_custom_
@@ -187,25 +186,22 @@
             - template: hosted-grafana
         - stage.labels:
             - values:
-                $object:
-                    service: ""
+                service: ""
     - stage.match:
         - selector: '{name="eventrouter"}'
         - stage.json:
             - expressions:
-                $object:
-                    component: event.source.component
-                    host: event.source.host
-                    message: event.message
-                    namespace: event.metadata.namespace
-                    object_kind: event.involvedObject.kind
-                    object_name: event.involvedObject.name
-                    reason: event.reason
-                    type: event.type
+                component: event.source.component
+                host: event.source.host
+                message: event.message
+                namespace: event.metadata.namespace
+                object_kind: event.involvedObject.kind
+                object_name: event.involvedObject.name
+                reason: event.reason
+                type: event.type
         - stage.labels:
             - values:
-                $object:
-                    namespace: ""
+                namespace: ""
         - stage.template:
             - source: newoutput
             - template: test
@@ -215,8 +211,7 @@
         - selector: '{name="kube-diff-logger"}'
         - stage.json:
             - expressions:
-                $object:
-                    timestamp: timestamp
+                timestamp: timestamp
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
@@ -243,20 +238,17 @@
         - selector: '{container="cortex-gw"} |= "agent id"'
         - stage.static_labels:
             - values:
-                $object:
-                    agent_log: id
+                agent_log: id
     - stage.match:
         - selector: '{container="cortex-gw"} |= "sample remote write"'
         - stage.static_labels:
             - values:
-                $object:
-                    agent_log: write
+                agent_log: write
     - stage.match:
         - selector: '{namespace=~".*(alertmanager|amixr|cortex|fire|ge-metrics|grafana|loki|mimir|tempo).*"} |~ "(insight_logs|insight|insights)=true"'
         - stage.static_labels:
             - values:
-                $object:
-                    insight: "true"
+                insight: "true"
     - stage.match:
         - selector: '{namespace="asserts", container=~"api-server|assertion-detector|model-builder"}'
         - stage.multiline:
@@ -265,11 +257,10 @@
             - expression: ^(?P<log_level>\S+)\s+\S+\s+\S+\s+(?P<thread_name>\S+)\s+(?P<logger_name>\S+)(\s+)?(?:.*tenantId=(?P<tenant_id>\d+))?
         - stage.labels:
             - values:
-                $object:
-                    level: log_level
-                    loggerName: logger_name
-                    tenantId: tenant_id
-                    threadName: thread_name
+                level: log_level
+                loggerName: logger_name
+                tenantId: tenant_id
+                threadName: thread_name
     - stage.match:
         - selector: '{namespace=~".*(grafana|loki|cortex|mimir|tempo|pyroscope|phlare|fire|profiles|ge-logs|ge-metrics|ge-traces|promtail|machine-learning|agent|amixir|asserts|chatops|faro|incident).*"}'
         - stage.regex:
@@ -283,8 +274,7 @@
             - template: loki/container
         - stage.labels:
             - values:
-                $object:
-                    service_name: ""
+                service_name: ""
     - stage.match:
         - selector: '{namespace="machine-learning",container=~"modelapi|worker"}'
         - stage.multiline:
@@ -293,185 +283,165 @@
         - selector: '{name=~"hosted-grafana-api|grafana"}'
         - stage.logfmt:
             - mapping:
-                $object:
-                    instance_audit: ""
+                instance_audit: ""
         - stage.labels:
             - values:
-                $object:
-                    instance_audit: ""
+                instance_audit: ""
     - stage.match:
         - selector: '{namespace="securityops",job="securityops/cloudtrail-exporter-workloads-prod"}'
         - stage.json:
             - expressions:
-                $object:
-                    eventCategory: event.eventCategory
-                    eventName: event.eventName
-                    eventSource: event.eventSource
-                    timestamp: time
+                eventCategory: event.eventCategory
+                eventName: event.eventName
+                eventSource: event.eventSource
+                timestamp: time
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    eventCategory: ""
-                    eventName: ""
-                    eventSource: ""
+                eventCategory: ""
+                eventName: ""
+                eventSource: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    container: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
+                container: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
     - stage.match:
         - selector: '{namespace="securityops",job="securityops/cloudtrail-exporter-workloads-ops"}'
         - stage.json:
             - expressions:
-                $object:
-                    eventCategory: event.eventCategory
-                    eventName: event.eventName
-                    eventSource: event.eventSource
-                    timestamp: time
+                eventCategory: event.eventCategory
+                eventName: event.eventName
+                eventSource: event.eventSource
+                timestamp: time
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    eventCategory: ""
-                    eventName: ""
-                    eventSource: ""
+                eventCategory: ""
+                eventName: ""
+                eventSource: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    container: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
+                container: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
     - stage.match:
         - selector: '{namespace="securityops",job="securityops/cloudtrail-exporter-workloads-dev"}'
         - stage.json:
             - expressions:
-                $object:
-                    eventCategory: event.eventCategory
-                    eventName: event.eventName
-                    eventSource: event.eventSource
-                    timestamp: time
+                eventCategory: event.eventCategory
+                eventName: event.eventName
+                eventSource: event.eventSource
+                timestamp: time
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    eventCategory: ""
-                    eventName: ""
-                    eventSource: ""
+                eventCategory: ""
+                eventName: ""
+                eventSource: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    container: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
+                container: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
     - stage.match:
         - selector: '{namespace="securityops",job="securityops/gh-audit-logs"}'
         - stage.json:
             - expressions:
-                $object:
-                    action: event.action
-                    actorIsBot: event.actor_is_bot
-                    eventType: event.event
-                    operationType: event.operation_type
-                    repo: event.repo
-                    repoId: event.repo_id
-                    timestamp: time
+                action: event.action
+                actorIsBot: event.actor_is_bot
+                eventType: event.event
+                operationType: event.operation_type
+                repo: event.repo
+                repoId: event.repo_id
+                timestamp: time
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    action: ""
-                    actorIsBot: ""
-                    eventType: ""
-                    operationType: ""
-                    repo: ""
-                    repoId: ""
+                action: ""
+                actorIsBot: ""
+                eventType: ""
+                operationType: ""
+                repo: ""
+                repoId: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    container: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
+                container: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
     - stage.match:
         - selector: '{job="notification-historian/notification-historian"}'
         - stage.json:
             - expressions:
-                $object:
-                    alerts: alerts
-                    commonAnnotations: commonAnnotations
-                    commonLabels: commonLabels
-                    externalURL: externalURL
-                    groupKey: groupKey
-                    groupLabels: groupLabels
-                    level: level
-                    message: message
-                    orgID: orgID
-                    receiver: receiver
-                    state: state
-                    status: status
-                    timestamp: time
-                    title: title
-                    truncatedAlerts: truncatedAlerts
-                    version: version
+                alerts: alerts
+                commonAnnotations: commonAnnotations
+                commonLabels: commonLabels
+                externalURL: externalURL
+                groupKey: groupKey
+                groupLabels: groupLabels
+                level: level
+                message: message
+                orgID: orgID
+                receiver: receiver
+                state: state
+                status: status
+                timestamp: time
+                title: title
+                truncatedAlerts: truncatedAlerts
+                version: version
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    alertname: ""
-                    level: ""
-                    orgID: ""
-                    receiver: ""
-                    state: ""
-                    status: ""
+                alertname: ""
+                level: ""
+                orgID: ""
+                receiver: ""
+                state: ""
+                status: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    alerts: ""
-                    commonAnnotations: ""
-                    commonLabels: ""
-                    container: ""
-                    externalURL: ""
-                    groupKey: ""
-                    groupLabels: ""
-                    message: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
-                    title: ""
-                    truncatedAlerts: ""
-                    version: ""
+                alerts: ""
+                commonAnnotations: ""
+                commonLabels: ""
+                container: ""
+                externalURL: ""
+                groupKey: ""
+                groupLabels: ""
+                message: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
+                title: ""
+                truncatedAlerts: ""
+                version: ""
     - stage.match:
         - selector: '{job="default/tetragon"}'
         - stage.json:
             - expressions:
-                $object:
-                    processExecArguments: process_exec.process.arguments
-                    processExecBinary: process_exec.process.binary
-                    processExecPodNamespace: process_exec.process.pod.namespace
+                processExecArguments: process_exec.process.arguments
+                processExecBinary: process_exec.process.binary
+                processExecPodNamespace: process_exec.process.pod.namespace
         - stage.labels:
             - values:
-                $object:
-                    processExecPodNamespace: ""
+                processExecPodNamespace: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    processExecArguments: ""
-                    processExecBinary: ""
+                processExecArguments: ""
+                processExecBinary: ""
         - stage.label_drop:
             - values:
                 - pod
@@ -481,29 +451,26 @@
         - selector: '{name="okta-logs"}'
         - stage.json:
             - expressions:
-                $object:
-                    alternateId: event.actor.alternateId
-                    eventType: event.eventType
-                    ipAddress: event.client.ipAddress
-                    level: event.severity
-                    timestamp: time
+                alternateId: event.actor.alternateId
+                eventType: event.eventType
+                ipAddress: event.client.ipAddress
+                level: event.severity
+                timestamp: time
         - stage.timestamp:
             - source: timestamp
             - format: RFC3339
         - stage.labels:
             - values:
-                $object:
-                    eventType: ""
-                    level: ""
+                eventType: ""
+                level: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    alternateId: ""
-                    container: ""
-                    ipAddress: ""
-                    pod: ""
-                    pod_template_hash: ""
-                    stream: ""
+                alternateId: ""
+                container: ""
+                ipAddress: ""
+                pod: ""
+                pod_template_hash: ""
+                stream: ""
         - stage.label_drop:
             - values:
                 - pod
@@ -514,10 +481,9 @@
         - selector: '{namespace="hosted-grafana", app="grafana"}'
         - stage.structured_metadata:
             - values:
-                $object:
-                    pod: ""
-                    pod_template_hash: ""
-                    resource_version: ""
+                pod: ""
+                pod_template_hash: ""
+                resource_version: ""
         - stage.label_drop:
             - values:
                 - pod
@@ -527,10 +493,9 @@
         - selector: '{namespace=~"loki.*"}'
         - stage.structured_metadata:
             - values:
-                $object:
-                    controller_revision_hash: ""
-                    pod: ""
-                    pod_template_hash: ""
+                controller_revision_hash: ""
+                pod: ""
+                pod_template_hash: ""
         - stage.label_drop:
             - values:
                 - pod
@@ -540,30 +505,26 @@
         - selector: '{namespace=~"(loki-live|loki-dev-.*|loki-prod.*|loki-ops.*)", container!~"memcached|static-exporter|archiver-operator|cortex-gw|eventrouter|loki-canary|rollout-operator"}'
         - stage.logfmt:
             - mapping:
-                $object:
-                    org_id: ""
-                    orgID: ""
-                    traceID: ""
-                    user_id: ""
+                org_id: ""
+                orgID: ""
+                traceID: ""
+                user_id: ""
         - stage.structured_metadata:
             - values:
-                $object:
-                    org_id: ""
-                    orgID: ""
-                    traceID: ""
-                    user_id: ""
+                org_id: ""
+                orgID: ""
+                traceID: ""
+                user_id: ""
     - stage.match:
         - selector: '{job=~"cicd-o11y/grafana-.*"} |= "service=bench"'
         - stage.static_labels:
             - values:
-                $object:
-                    bench: "true"
+                bench: "true"
     - stage.match:
         - selector: '{namespace="hosted-grafana-cd"} |= "service=bench"'
         - stage.static_labels:
             - values:
-                $object:
-                    bench: "true"
+                bench: "true"
 - discovery.relabel/systemd_journal:
     - targets:
         $array: []
@@ -585,8 +546,7 @@
     - forward_to:
         - expr(loki.write.logs.receiver)
     - labels:
-        $object:
-            job: default/systemd-journal
+        job: default/systemd-journal
 - loki.write/logs:
     - endpoint:
         - url: https://logs-us-central1.grafana.net/loki/api/v1/push
@@ -594,5 +554,4 @@
             - username: expr(sys.env("TENANT_ID"))
             - password: expr(sys.env("API_KEY"))
     - external_labels:
-        $object:
-            cluster: expr(sys.env("CLUSTER_NAME"))
+        cluster: expr(sys.env("CLUSTER_NAME"))

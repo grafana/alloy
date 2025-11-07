@@ -1,5 +1,4 @@
 - labels:
-    $object:
-        app: myapp
-        env: prod
-        team: platform
+    app: myapp
+    env: prod
+    team: platform
