@@ -367,11 +367,36 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, systemID)
 
 	var tableRegistry *collector.TableRegistry
-
 	collectors := enableOrDisableCollectors(c.args)
+
+	if collectors[collector.SchemaDetailsCollector] {
+		var err error
+		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
+			DB:              c.dbConnection,
+			DSN:             string(c.args.DataSourceName),
+			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
+			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
+			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
+			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.SchemaDetailsCollector, "create", err)
+		}
+		if stCollector != nil {
+			tableRegistry = stCollector.GetTableRegistry()
+			if err := stCollector.Start(context.Background()); err != nil {
+				logStartError(collector.SchemaDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, stCollector)
+		}
+	}
+
+	var qCollector *collector.QueryDetails
 	if collectors[collector.QueryDetailsCollector] {
 		var err error
-		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+		qCollector, err = collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryTablesArguments.CollectInterval,
 			EntryHandler:    entryHandler,
@@ -423,30 +448,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.collectors = append(c.collectors, ciCollector)
-	}
-
-	if collectors[collector.SchemaDetailsCollector] {
-		var err error
-		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
-			DSN:             string(c.args.DataSourceName),
-			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.SchemaDetailsCollector, "create", err)
-		}
-		if stCollector != nil {
-			tableRegistry = stCollector.GetTableRegistry()
-			if err := stCollector.Start(context.Background()); err != nil {
-				logStartError(collector.SchemaDetailsCollector, "start", err)
-			}
-			c.collectors = append(c.collectors, stCollector)
-		}
 	}
 
 	if collectors[collector.ExplainPlanCollector] {
