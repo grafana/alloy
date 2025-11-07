@@ -1,24 +1,24 @@
-loki.relabel/logs_log_config_fun:
-    forward_to:
+- loki.relabel/logs_log_config_fun:
+    - forward_to:
         - expr(loki.write.logs_log_config.receiver)
-    rule:
-        source_labels:
+    - rule:
+        - source_labels:
             - __trail__
-        target_label: __path__
-loki.source.cloudflare/logs_log_config_fun:
-    api_token: dont_look_at_me_please
-    fields_type: all
-    forward_to:
-        - expr(loki.relabel.logs_log_config_fun.receiver)
-    labels:
+        - target_label: __path__
+- loki.source.cloudflare/logs_log_config_fun:
+    - api_token: dont_look_at_me_please
+    - zone_id: area51
+    - labels:
         $object:
             identity: unidentified
             object_type: flying
-    pull_range: 1h0m0s
-    workers: 42
-    zone_id: area51
-loki.write/logs_log_config:
-    endpoint:
-        url: http://localhost/loki/api/v1/push
-    external_labels:
+    - workers: 42
+    - pull_range: 1h0m0s
+    - fields_type: all
+    - forward_to:
+        - expr(loki.relabel.logs_log_config_fun.receiver)
+- loki.write/logs_log_config:
+    - endpoint:
+        - url: http://localhost/loki/api/v1/push
+    - external_labels:
         $object: {}

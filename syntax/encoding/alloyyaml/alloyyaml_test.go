@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -163,6 +164,10 @@ func normalizeExpr(expr ast.Expr) {
 		}
 	case *ast.ObjectExpr:
 		e.LCurlyPos, e.RCurlyPos = token.Pos{}, token.Pos{}
+		// Sort fields by name for consistent comparison
+		sort.Slice(e.Fields, func(i, j int) bool {
+			return e.Fields[i].Name.Name < e.Fields[j].Name.Name
+		})
 		for _, field := range e.Fields {
 			clearPos(field.Name)
 			normalizeExpr(field.Value)

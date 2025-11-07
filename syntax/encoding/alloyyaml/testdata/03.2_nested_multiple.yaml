@@ -1,22 +1,24 @@
-some_block/label_name:
-    these_are_named_blocks/block_1:
-        foo: bar
-    these_are_named_blocks/block_2:
-        foo: fab
-    these_are_named_blocks/block_3:
-        foo: bop
-    this_is_anon_block:
-        - baz: bap
-          foo: bar
-        - baz: boom
-          foo: fab
-        - baz: bob
-          foo: bop
-    this_is_array:
+- some_block/label_name:
+    - this_is_array:
         $array:
             - foo: bar
             - baz: qux
-    this_is_object:
+    - this_is_object:
         $object:
             baz: boop
             foo: bar
+    - this_is_anon_block:
+        - foo: bar
+        - baz: bap
+    - this_is_anon_block:
+        - foo: fab
+        - baz: boom
+    - this_is_anon_block:
+        - foo: bop
+        - baz: bob
+    - these_are_named_blocks/block_1:
+        - foo: bar
+    - these_are_named_blocks/block_2:
+        - foo: fab
+    - these_are_named_blocks/block_3:
+        - foo: bop

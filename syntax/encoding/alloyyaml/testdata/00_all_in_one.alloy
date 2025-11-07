@@ -1,3 +1,4 @@
+// Example Alloy input file.
 some_block "label_name" {
 	this_is_array = [
 		{foo = "bar"},
@@ -7,17 +8,18 @@ some_block "label_name" {
 		foo = "bar",
 		baz = "boop",
 	}
+	this_uses_expr = env("MY_VAR")
 	this_is_anon_block {
 		foo = "bar"
-		baz = "bap"
+		pos = "first"
 	}
 	this_is_anon_block {
 		foo = "fab"
-		baz = "boom"
+		pos = "second"
 	}
 	this_is_anon_block {
 		foo = "bop"
-		baz = "bob"
+		pos = "third"
 	}
 	these_are_named_blocks "block_1" {
 		foo = "bar"
@@ -27,12 +29,6 @@ some_block "label_name" {
 	}
 	these_are_named_blocks "block_3" {
 		foo = "bop"
-	}
-	ordered_stages {
-		stage.foo { }
-		stage.bar { }
-		stage.foo { }
-		stage.bar { }
 	}
 }
 

@@ -1,36 +1,36 @@
-otelcol.exporter.loadbalancing/default:
-    protocol:
-        otlp:
-            client: {}
-    resolver:
-        static:
-            hostnames:
+- otelcol.storage.file/default_fs:
+    - directory: /var/lib/otelcol/file_storage
+    - compaction:
+        - directory: /var/lib/otelcol/file_storage
+        - rebound_needed_threshold_mib: 100
+        - rebound_trigger_threshold_mib: 10
+        - max_transaction_size: 65536
+        - check_interval: 5s
+    - create_directory: false
+- otelcol.receiver.otlp/default:
+    - grpc:
+        - endpoint: localhost:4317
+    - output:
+        - metrics:
+            - expr(otelcol.exporter.loadbalancing.default.input)
+        - logs:
+            - expr(otelcol.exporter.loadbalancing.default.input)
+        - traces:
+            - expr(otelcol.exporter.loadbalancing.default.input)
+- otelcol.exporter.loadbalancing/default:
+    - protocol:
+        - otlp:
+            - client: []
+    - resolver:
+        - static:
+            - hostnames:
                 - backend-1:4317
                 - backend-2:4317
                 - backend-3:4317
-    routing_key: service
-    sending_queue:
-        enabled: false
-        num_consumers: 0
-        queue_size: 0
-        sizer: ""
-        storage: expr(otelcol.storage.file.default_fs.handler)
-otelcol.receiver.otlp/default:
-    grpc:
-        endpoint: localhost:4317
-    output:
-        logs:
-            - expr(otelcol.exporter.loadbalancing.default.input)
-        metrics:
-            - expr(otelcol.exporter.loadbalancing.default.input)
-        traces:
-            - expr(otelcol.exporter.loadbalancing.default.input)
-otelcol.storage.file/default_fs:
-    compaction:
-        check_interval: 5s
-        directory: /var/lib/otelcol/file_storage
-        max_transaction_size: 65536
-        rebound_needed_threshold_mib: 100
-        rebound_trigger_threshold_mib: 10
-    create_directory: false
-    directory: /var/lib/otelcol/file_storage
+    - routing_key: service
+    - sending_queue:
+        - enabled: false
+        - num_consumers: 0
+        - queue_size: 0
+        - sizer: ""
+        - storage: expr(otelcol.storage.file.default_fs.handler)

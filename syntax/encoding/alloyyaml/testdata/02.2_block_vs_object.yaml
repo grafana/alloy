@@ -1,10 +1,10 @@
-this_is_a_block/label_name:
-    key1: value1
-    key2: value2
-this_is_an_object:
+- this_is_a_block/label_name:
+    - key1: value1
+    - key2: value2
+- this_is_anonymous_block:
+    - key1: value1
+    - key2: value2
+- this_is_an_object:
     $object:
         key1: value1
         key2: value2
-this_is_anonymous_block:
-    key1: value1
-    key2: value2

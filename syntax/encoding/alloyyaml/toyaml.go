@@ -14,12 +14,14 @@ import (
 )
 
 // ToYAML converts Alloy configuration syntax to YAML.
-// The conversion preserves the structure:
-//   - Blocks become nested maps
+// The conversion uses an array-based structure to preserve order and allow duplicates:
+//   - Root level is a YAML array
+//   - Block bodies are YAML arrays of single-key maps
+//   - Each statement (attribute or block) is a single-key map
 //   - Labeled blocks use "/" separator (e.g., "block_name/label")
+//   - Array literals are marked with $array
 //   - Object literals are marked with $object
 //   - Complex expressions are wrapped in expr(...)
-//   - Multiple blocks with the same name become YAML arrays
 //
 // Example Alloy:
 //
@@ -30,9 +32,9 @@ import (
 //
 // Converts to YAML:
 //
-//	logging:
-//	  format: json
-//	  level: debug
+//	- logging:
+//	    - level: debug
+//	    - format: json
 func ToYAML(alloyData []byte) ([]byte, error) {
 	// Parse the Alloy file
 	file, err := parser.ParseFile("config.alloy", alloyData)
@@ -55,48 +57,31 @@ func ToYAML(alloyData []byte) ([]byte, error) {
 	return yamlData, nil
 }
 
-// convertBody converts an AST body to a YAML-compatible map.
-// It handles merging multiple blocks with the same name into arrays.
-//
-// Note: Single blocks are represented as objects, while multiple blocks with the same
-// name are represented as arrays. Without schema information, we cannot determine if
-// a single block COULD have multiple instances, so the YAML representation may differ
-// from hand-written YAML that uses arrays for potentially-repeatable blocks.
+// convertBody converts an AST body to a YAML-compatible array of single-key maps.
+// Each statement (attribute or block) becomes a single-key map in the array.
+// This preserves order and allows duplicate block names.
 func convertBody(body ast.Body) (interface{}, error) {
 	if len(body) == 0 {
-		return map[string]interface{}{}, nil
+		return []interface{}{}, nil
 	}
 
-	result := make(map[string]interface{})
-	blockCounts := make(map[string]int) // Track how many times each block name appears
-
-	// First pass: count block occurrences
-	for _, stmt := range body {
-		if block, ok := stmt.(*ast.BlockStmt); ok {
-			name := strings.Join(block.Name, ".")
-			if block.Label != "" {
-				name = name + "/" + block.Label
-			}
-			blockCounts[name]++
-		}
-	}
-
-	// Second pass: convert statements
-	blockArrays := make(map[string][]interface{}) // Collect multiple blocks with same name
+	result := make([]interface{}, 0, len(body))
 
 	for _, stmt := range body {
 		switch s := stmt.(type) {
 		case *ast.AttributeStmt:
-			// Convert attribute
+			// Convert attribute to single-key map
 			name := s.Name.Name
 			value, err := convertExpr(s.Value)
 			if err != nil {
 				return nil, fmt.Errorf("attribute %s: %w", name, err)
 			}
-			result[name] = value
+			result = append(result, map[string]interface{}{
+				name: value,
+			})
 
 		case *ast.BlockStmt:
-			// Convert block
+			// Convert block to single-key map
 			name := strings.Join(s.Name, ".")
 			key := name
 			if s.Label != "" {
@@ -108,18 +93,10 @@ func convertBody(body ast.Body) (interface{}, error) {
 				return nil, fmt.Errorf("block %s: %w", key, err)
 			}
 
-			// If this block name appears multiple times, collect in array
-			if blockCounts[key] > 1 {
-				blockArrays[key] = append(blockArrays[key], blockData)
-			} else {
-				result[key] = blockData
-			}
+			result = append(result, map[string]interface{}{
+				key: blockData,
+			})
 		}
-	}
-
-	// Add arrays for multiple blocks
-	for key, blocks := range blockArrays {
-		result[key] = blocks
 	}
 
 	return result, nil

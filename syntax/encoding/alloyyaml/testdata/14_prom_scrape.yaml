@@ -1,32 +1,23 @@
-discovery.azure/metrics_agent_promobee:
-    managed_identity:
-        client_id: client
-    oauth:
-        client_id: client
-        client_secret: secret
-        tenant_id: tenant
-    proxy_url: proxy
-    subscription_id: subscription1
-discovery.azure/metrics_agent_promobee_2:
-    managed_identity:
-        client_id: client
-    oauth:
-        client_id: client
-        client_secret: secret
-        tenant_id: tenant
-    proxy_url: proxy
-    subscription_id: subscription2
-discovery.relabel/metrics_agent_promobee:
-    rule:
-        - source_labels:
-            - __address__
-          target_label: __param_id
-        - source_labels:
-            - __param_id
-          target_label: thermostat
-        - replacement: localhost:8099
-          target_label: __address__
-    targets: |-
+- discovery.azure/metrics_agent_promobee:
+    - subscription_id: subscription1
+    - oauth:
+        - client_id: client
+        - tenant_id: tenant
+        - client_secret: secret
+    - managed_identity:
+        - client_id: client
+    - proxy_url: proxy
+- discovery.azure/metrics_agent_promobee_2:
+    - subscription_id: subscription2
+    - oauth:
+        - client_id: client
+        - tenant_id: tenant
+        - client_secret: secret
+    - managed_identity:
+        - client_id: client
+    - proxy_url: proxy
+- discovery.relabel/metrics_agent_promobee:
+    - targets: |-
         expr(array.concat(
         	discovery.azure.metrics_agent_promobee.targets,
         	discovery.azure.metrics_agent_promobee_2.targets,
@@ -34,44 +25,19 @@ discovery.relabel/metrics_agent_promobee:
         		__address__ = "localhost:9090",
         	}],
         ))
-http:
-    tls:
-        cert_file: ./testdata/example-cert.pem
-        client_auth_type: VerifyClientCertIfGiven
-        client_ca_file: ./testdata/example-cert.pem
-        key_file: ./testdata/example-key.pem
-logging:
-    format: json
-    level: debug
-prometheus.relabel/metrics_agent_promobee:
-    forward_to:
-        - expr(prometheus.remote_write.metrics_agent.receiver)
-    rule:
+    - rule:
         - source_labels:
-            - __metric_address1__
-          target_label: __metric_param_target1
+            - __address__
+        - target_label: __param_id
+    - rule:
         - source_labels:
-            - __metric_address2__
-          target_label: __metric_param_target2
-prometheus.remote_write/metrics_agent:
-    endpoint:
-        basic_auth:
-            password: my-secret-password-here
-            username: "11111"
-        metadata_config: {}
-        name: agent-f9a4a6
-        queue_config:
-            batch_send_deadline: 3m0s
-            max_backoff: 10s
-            max_shards: 10
-            sample_age_limit: 50s
-        url: https://prometheus-us-central1.grafana.net/api/prom/push
-prometheus.scrape/metrics_agent_prometheus:
-    forward_to:
-        - expr(prometheus.remote_write.metrics_agent.receiver)
-    job_name: prometheus
-    scrape_timeout: 45s
-    targets: |-
+            - __param_id
+        - target_label: thermostat
+    - rule:
+        - target_label: __address__
+        - replacement: localhost:8099
+- prometheus.scrape/metrics_agent_prometheus:
+    - targets: |-
         expr(array.concat(
         	[{
         		__address__ = "localhost:9099",
@@ -80,10 +46,47 @@ prometheus.scrape/metrics_agent_prometheus:
         		__address__ = "localhost:9101",
         	}],
         ))
-prometheus.scrape/metrics_agent_promobee:
-    forward_to:
+    - forward_to:
+        - expr(prometheus.remote_write.metrics_agent.receiver)
+    - job_name: prometheus
+    - scrape_timeout: 45s
+- prometheus.scrape/metrics_agent_promobee:
+    - targets: expr(discovery.relabel.metrics_agent_promobee.output)
+    - forward_to:
         - expr(prometheus.relabel.metrics_agent_promobee.receiver)
-    job_name: promobee
-    metrics_path: /thermostat
-    scrape_timeout: 45s
-    targets: expr(discovery.relabel.metrics_agent_promobee.output)
+    - job_name: promobee
+    - scrape_timeout: 45s
+    - metrics_path: /thermostat
+- prometheus.relabel/metrics_agent_promobee:
+    - forward_to:
+        - expr(prometheus.remote_write.metrics_agent.receiver)
+    - rule:
+        - source_labels:
+            - __metric_address1__
+        - target_label: __metric_param_target1
+    - rule:
+        - source_labels:
+            - __metric_address2__
+        - target_label: __metric_param_target2
+- prometheus.remote_write/metrics_agent:
+    - endpoint:
+        - name: agent-f9a4a6
+        - url: https://prometheus-us-central1.grafana.net/api/prom/push
+        - basic_auth:
+            - username: "11111"
+            - password: my-secret-password-here
+        - queue_config:
+            - max_shards: 10
+            - batch_send_deadline: 3m0s
+            - max_backoff: 10s
+            - sample_age_limit: 50s
+        - metadata_config: []
+- logging:
+    - level: debug
+    - format: json
+- http:
+    - tls:
+        - cert_file: ./testdata/example-cert.pem
+        - key_file: ./testdata/example-key.pem
+        - client_ca_file: ./testdata/example-cert.pem
+        - client_auth_type: VerifyClientCertIfGiven

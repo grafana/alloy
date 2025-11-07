@@ -12,25 +12,25 @@ import (
 )
 
 // ToAlloy converts YAML to Alloy configuration syntax.
-// The YAML should follow a natural structure where:
-//   - Maps represent blocks
-//   - Key-value pairs with simple values are attributes
-//   - Arrays of maps represent multiple blocks with the same name
-//   - The expr() wrapper can be used for complex Alloy expressions
+// The YAML uses an array-based structure to preserve order:
+//   - Root level is a YAML array
+//   - Block bodies are YAML arrays of single-key maps
+//   - Each statement (attribute or block) is a single-key map
 //   - Block labels can be specified using "/" separator (e.g., "block_name/label")
 //   - Special keys: $object (for object literals), $array (for array literals)
+//   - The expr() wrapper can be used for complex Alloy expressions
 //
 // Example YAML:
 //
-//	logging:
-//	  level: debug
-//	  format: json
+//	- logging:
+//	    - level: debug
+//	    - format: json
 //
 // Converts to Alloy:
 //
 //	logging {
-//	  format = "json"
 //	  level = "debug"
+//	  format = "json"
 //	}
 func ToAlloy(yamlData []byte) ([]byte, error) {
 	var data interface{}
@@ -109,8 +109,62 @@ func writeMap(w io.Writer, m map[string]interface{}, indent int, isTopLevel bool
 	return writeObjectLiteral(w, m)
 }
 
-// writeBody writes a map as Alloy statements (blocks and attributes).
-func writeBody(w io.Writer, body map[string]interface{}, indent int) error {
+// writeBody is a compatibility wrapper that handles both old map format and new array format.
+func writeBody(w io.Writer, body interface{}, indent int) error {
+	switch b := body.(type) {
+	case []interface{}:
+		return writeBodyArray(w, b, indent)
+	case map[string]interface{}:
+		// Old format compatibility - should not happen in new design
+		return writeBodyMap(w, b, indent)
+	default:
+		return fmt.Errorf("invalid body type: %T", body)
+	}
+}
+
+// writeBodyArray writes an array of single-key maps as Alloy statements.
+// Each element in the array is a map with exactly one key (the statement name).
+func writeBodyArray(w io.Writer, body []interface{}, indent int) error {
+	indentStr := strings.Repeat("  ", indent)
+	
+	for i, item := range body {
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("body element %d must be a map, got %T", i, item)
+		}
+		
+		if len(itemMap) != 1 {
+			return fmt.Errorf("body element %d must have exactly one key, got %d keys", i, len(itemMap))
+		}
+		
+		// Extract the single key-value pair
+		var key string
+		var value interface{}
+		for k, v := range itemMap {
+			key = k
+			value = v
+			break
+		}
+		
+		// Add blank line between top-level blocks (but not before first item)
+		if i > 0 && indent == 0 && isStructuralValue(value) {
+			fmt.Fprintln(w)
+		}
+		
+		// Check if key contains "/" separator for block/label syntax
+		blockName, label := splitBlockLabel(key)
+		
+		// Determine if this is a block or attribute based on value type
+		if err := writeStatement(w, blockName, label, value, indentStr, indent); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// writeBodyMap writes the old map-based body format (for compatibility).
+func writeBodyMap(w io.Writer, body map[string]interface{}, indent int) error {
 	indentStr := strings.Repeat("  ", indent)
 
 	// Sort keys for deterministic output
@@ -133,60 +187,86 @@ func writeBody(w io.Writer, body map[string]interface{}, indent int) error {
 		// Check if key contains "/" separator for block/label syntax
 		blockName, label := splitBlockLabel(key)
 
-		// Determine if this is a block or attribute based on value type
-		switch v := value.(type) {
-		case map[string]interface{}:
-			// Check for $array marker - convert to array literal attribute
-			if arrValue, hasArray := v["$array"]; hasArray {
-				if err := writeAttribute(w, blockName, arrValue, indentStr); err != nil {
-					return fmt.Errorf("attribute %s: %w", blockName, err)
-				}
-				continue
-			}
+		if err := writeStatement(w, blockName, label, value, indentStr, indent); err != nil {
+			return err
+		}
+	}
 
-			// Check for $object marker - convert to object literal attribute
-			if objValue, hasObject := v["$object"]; hasObject {
-				if err := writeAttribute(w, blockName, objValue, indentStr); err != nil {
-					return fmt.Errorf("attribute %s: %w", blockName, err)
-				}
-				continue
-			}
+	return nil
+}
 
-			// If label is present from "/" syntax, write labeled block
+// writeStatement writes a single statement (attribute or block).
+func writeStatement(w io.Writer, blockName, label string, value interface{}, indentStr string, indent int) error {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// Check for $array marker - convert to array literal attribute
+		if arrValue, hasArray := v["$array"]; hasArray {
+			if err := writeAttribute(w, blockName, arrValue, indentStr); err != nil {
+				return fmt.Errorf("attribute %s: %w", blockName, err)
+			}
+			return nil
+		}
+
+		// Check for $object marker - convert to object literal attribute
+		if objValue, hasObject := v["$object"]; hasObject {
+			if err := writeAttribute(w, blockName, objValue, indentStr); err != nil {
+				return fmt.Errorf("attribute %s: %w", blockName, err)
+			}
+			return nil
+		}
+
+		// If label is present from "/" syntax, write labeled block
+		if label != "" {
+			fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label)
+			if err := writeBody(w, v, indent+1); err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "%s}\n", indentStr)
+			return nil
+		}
+
+		// Regular map values could be blocks (old format) or need to check for array (new format)
+		// In new format, blocks have array bodies
+		if err := writeBlock(w, blockName, value, indent); err != nil {
+			return fmt.Errorf("block %s: %w", blockName, err)
+		}
+
+	case []interface{}:
+		// In new format, arrays are block bodies
+		// Empty arrays or arrays of single-key maps are blocks
+		if len(v) == 0 {
+			// Empty block
+			if label != "" {
+				fmt.Fprintf(w, "%s%s %q { }\n", indentStr, blockName, label)
+			} else {
+				fmt.Fprintf(w, "%s%s { }\n", indentStr, blockName)
+			}
+			return nil
+		}
+		
+		if firstElem, ok := v[0].(map[string]interface{}); ok && len(firstElem) == 1 {
+			// This is a block body
 			if label != "" {
 				fmt.Fprintf(w, "%s%s %q {\n", indentStr, blockName, label)
-				if err := writeBody(w, v, indent+1); err != nil {
-					return err
-				}
-				fmt.Fprintf(w, "%s}\n", indentStr)
-				continue
+			} else {
+				fmt.Fprintf(w, "%s%s {\n", indentStr, blockName)
 			}
+			if err := writeBodyArray(w, v, indent+1); err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "%s}\n", indentStr)
+			return nil
+		}
+		
+		// Otherwise it's an array attribute
+		if err := writeAttribute(w, blockName, value, indentStr); err != nil {
+			return fmt.Errorf("attribute %s: %w", blockName, err)
+		}
 
-			// Regular map values are blocks
-			if err := writeBlock(w, blockName, value, indent); err != nil {
-				return fmt.Errorf("block %s: %w", blockName, err)
-			}
-
-		case []interface{}:
-			// Arrays of maps are multiple blocks
-			if len(v) > 0 {
-				if _, ok := v[0].(map[string]interface{}); ok {
-					if err := writeBlock(w, blockName, value, indent); err != nil {
-						return fmt.Errorf("block %s: %w", blockName, err)
-					}
-					continue
-				}
-			}
-			// Otherwise it's a simple array attribute
-			if err := writeAttribute(w, blockName, value, indentStr); err != nil {
-				return fmt.Errorf("attribute %s: %w", blockName, err)
-			}
-
-		default:
-			// Simple values are attributes
-			if err := writeAttribute(w, blockName, value, indentStr); err != nil {
-				return fmt.Errorf("attribute %s: %w", blockName, err)
-			}
+	default:
+		// Simple values are attributes
+		if err := writeAttribute(w, blockName, value, indentStr); err != nil {
+			return fmt.Errorf("attribute %s: %w", blockName, err)
 		}
 	}
 
@@ -213,36 +293,52 @@ func isStructural(value interface{}) bool {
 	return false
 }
 
+// isStructuralValue returns true if the value represents a block (not an attribute).
+// In the new format, blocks are represented as arrays of single-key maps.
+func isStructuralValue(value interface{}) bool {
+	switch v := value.(type) {
+	case []interface{}:
+		// Check if it's an array of single-key maps (block body)
+		if len(v) > 0 {
+			if firstElem, ok := v[0].(map[string]interface{}); ok && len(firstElem) == 1 {
+				return true
+			}
+		}
+		return false
+	case map[string]interface{}:
+		// Check if it's not a special marker
+		if _, hasArray := v["$array"]; hasArray {
+			return false
+		}
+		if _, hasObject := v["$object"]; hasObject {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
 // writeBlock writes a block in Alloy syntax.
+// In the new format, blocks have array bodies (arrays of single-key maps).
 func writeBlock(w io.Writer, name string, value interface{}, indent int) error {
 	indentStr := strings.Repeat("  ", indent)
 
 	switch v := value.(type) {
+	case []interface{}:
+		// New format: array body
+		fmt.Fprintf(w, "%s%s {\n", indentStr, name)
+		if err := writeBodyArray(w, v, indent+1); err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "%s}\n", indentStr)
+
 	case map[string]interface{}:
-		// Single block
+		// Old format compatibility: map body
 		fmt.Fprintf(w, "%s%s {\n", indentStr, name)
 		if err := writeBody(w, v, indent+1); err != nil {
 			return err
 		}
 		fmt.Fprintf(w, "%s}\n", indentStr)
-
-	case []interface{}:
-		// Multiple blocks with same name
-		for i, elem := range v {
-			if i > 0 && indent == 0 {
-				fmt.Fprintln(w) // Blank line between top-level blocks
-			}
-
-			if elemMap, ok := elem.(map[string]interface{}); ok {
-				fmt.Fprintf(w, "%s%s {\n", indentStr, name)
-				if err := writeBody(w, elemMap, indent+1); err != nil {
-					return err
-				}
-				fmt.Fprintf(w, "%s}\n", indentStr)
-			} else {
-				return fmt.Errorf("array elements for block %s must be maps, got %T", name, elem)
-			}
-		}
 
 	default:
 		return fmt.Errorf("invalid block value type: %T", value)
@@ -309,14 +405,10 @@ func writeArray(w io.Writer, arr []interface{}) error {
 	return nil
 }
 
-// writeTopLevelArray handles an array at the top level (rare, but possible).
+// writeTopLevelArray handles an array at the top level.
+// In the new format, this is an array of single-key maps representing statements.
 func writeTopLevelArray(w io.Writer, arr []interface{}, indent int) error {
-	for _, elem := range arr {
-		if err := writeValue(w, elem, indent, true); err != nil {
-			return err
-		}
-	}
-	return nil
+	return writeBodyArray(w, arr, indent)
 }
 
 // writeObjectLiteral writes an object literal in Alloy syntax.

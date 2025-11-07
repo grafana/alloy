@@ -1,19 +1,20 @@
-labels:
+- labels:
     - app
     - prod
     - web
-labels2:
+- ports:
+    - 8080
+    - 8081
+    - 8082
+- labels2:
     - app
     - prod
     - web
-object:
+- ports2:
+    - 8080
+    - 8081
+    - 8082
+- object:
     - foo: bar
+- object:
     - baz: qux
-ports:
-    - 8080
-    - 8081
-    - 8082
-ports2:
-    - 8080
-    - 8081
-    - 8082

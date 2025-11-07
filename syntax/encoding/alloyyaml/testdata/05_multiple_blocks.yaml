@@ -1,5 +1,6 @@
-endpoint:
+- endpoint:
     - url: http://primary.com
+- endpoint:
     - url: http://secondary.com
-single_endpoint:
-    url: http://single.com
+- single_endpoint:
+    - url: http://single.com

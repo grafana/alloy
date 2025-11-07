@@ -1,4 +1,4 @@
-labels:
+- labels:
     $object:
         app: myapp
         env: prod
