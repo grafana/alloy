@@ -6,6 +6,7 @@
 /.vscode
 /.history
 /.eventcache
+.vs/
 vendor
 data-alloy/
 
@@ -18,6 +19,8 @@ data-alloy/
 /dist.temp/
 /packaging/windows/LICENSE
 /packaging/windows/agent-windows-amd64.exe
+/packaging/windows/wix/wix/bin
+/packaging/windows/wix/wix/obj
 internal/web/ui/build
 
 .DS_Store
