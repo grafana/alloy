@@ -1902,6 +1902,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatch
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.134.0/go.mod h1:B2A6+/+hiHqnRosscKXeupWmRdYxayXjB+Muu7EMqRw=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0 h1:e2OWWuo7c83jTDjOPq2Wj2jLFNuzAIuuGheQksS9mdc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0/go.mod h1:4j8SsaglqpF/F875+s+21S4+bvK7F2kcTZGeW5L8tq4=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0 h1:ph9f7NaG/q0tSw/F81YobHDe9Ygm+KI6gLzMEKdw09o=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0/go.mod h1:WFF24ll2tEYuQzLmoOp8rG8p6x40Zv/DAnSE1hfOlnY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0 h1:+fmQLSvtARPeqAmKZb+ph6KZnZQwgtcZ8vkK735ZYEc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0/go.mod h1:OVi4ezn2HvWvvQsfrQZ4xGhSaEGJg2R+x18jrJysg8E=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.134.0 h1:De16DTKSyXcHNGfGtyBZrqzVrAF0Gyt+X+mUdZhMhII=

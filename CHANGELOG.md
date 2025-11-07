@@ -19,7 +19,11 @@ Main (unreleased)
 
 ### Features
 
- - Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
+- Add `otelcol.exporter.file` component to write metrics, logs, and traces to disk with optional rotation, compression, and grouping by resource attribute. (@madhub)
+
+- (_Experimental_) Add an `otelcol.receiver.cloudflare` component to receive
+  logs pushed by Cloudflare's [LogPush](https://developers.cloudflare.com/logs/logpush/) jobs. (@x1unix)
+
 - (_Experimental_) Additions to experimental `database_observability.mysql` component:
   - `explain_plans`
     - collector now changes schema before returning the connection to the pool (@cristiangreco)
