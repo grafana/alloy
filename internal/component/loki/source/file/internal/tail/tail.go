@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -79,23 +78,23 @@ type Tail struct {
 	Lines    chan *Line
 	Config
 
-	file   *os.File
-	reader *bufio.Reader
+	fileMut sync.Mutex
+	file    *os.File
+
+	readerMut sync.Mutex
+	reader    *bufio.Reader
 
 	watcher watch.FileWatcher
 	changes *watch.FileChanges
 
 	tomb.Tomb // provides: Done, Kill, Dying
-
-	fileMtx sync.Mutex
-	lk      sync.Mutex
 }
 
 var (
 	// DefaultLogger is used when Config.Logger == nil
 	DefaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 	// DiscardingLogger can be used to disable logging output
-	DiscardingLogger = log.New(ioutil.Discard, "", 0)
+	DiscardingLogger = log.New(io.Discard, "", 0)
 )
 
 // TailFile begins tailing the file. Output stream is made available
@@ -147,9 +146,9 @@ func TailFile(filename string, config Config) (*Tail, error) {
 // it may readed one line in the chan(tail.Lines),
 // so it may lost one line.
 func (tail *Tail) Tell() (int64, error) {
-	tail.fileMtx.Lock()
+	tail.fileMut.Lock()
 	f := tail.file
-	tail.fileMtx.Unlock()
+	tail.fileMut.Unlock()
 	if f == nil {
 		return 0, os.ErrNotExist
 	}
@@ -158,8 +157,8 @@ func (tail *Tail) Tell() (int64, error) {
 		return 0, err
 	}
 
-	tail.lk.Lock()
-	defer tail.lk.Unlock()
+	tail.readerMut.Lock()
+	defer tail.readerMut.Unlock()
 	if tail.reader == nil {
 		return 0, nil
 	}
@@ -171,9 +170,9 @@ func (tail *Tail) Tell() (int64, error) {
 // Size returns the length in bytes of the file being tailed,
 // or 0 with an error if there was an error Stat'ing the file.
 func (tail *Tail) Size() (int64, error) {
-	tail.fileMtx.Lock()
+	tail.fileMut.Lock()
 	f := tail.file
-	tail.fileMtx.Unlock()
+	tail.fileMut.Unlock()
 	if f == nil {
 		return 0, os.ErrNotExist
 	}
@@ -205,8 +204,8 @@ func (tail *Tail) close() {
 }
 
 func (tail *Tail) closeFile() {
-	tail.fileMtx.Lock()
-	defer tail.fileMtx.Unlock()
+	tail.fileMut.Lock()
+	defer tail.fileMut.Unlock()
 	if tail.file != nil {
 		tail.file.Close()
 		tail.file = nil
@@ -229,10 +228,10 @@ func (tail *Tail) reopen(truncated bool) error {
 	retries := 20
 	for {
 		var err error
-		tail.fileMtx.Lock()
+		tail.fileMut.Lock()
 		tail.file, err = OpenFile(tail.Filename)
 		tail.watcher.SetFile(tail.file)
-		tail.fileMtx.Unlock()
+		tail.fileMut.Unlock()
 		if err != nil {
 			if os.IsNotExist(err) {
 				tail.Logger.Printf("Waiting for %s to appear...", tail.Filename)
@@ -276,9 +275,9 @@ func (tail *Tail) reopen(truncated bool) error {
 }
 
 func (tail *Tail) readLine() (string, error) {
-	tail.lk.Lock()
+	tail.readerMut.Lock()
 	line, err := tail.reader.ReadString('\n')
-	tail.lk.Unlock()
+	tail.readerMut.Unlock()
 	if err != nil {
 		// Note ReadString "returns the data read before the error" in
 		// case of an error, including EOF, so we return it as is. The
