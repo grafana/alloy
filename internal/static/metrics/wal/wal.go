@@ -954,19 +954,35 @@ func (a *appender) log() error {
 	}
 
 	if len(a.pendingHistograms) > 0 {
-		buf, _ = encoder.HistogramSamples(a.pendingHistograms, buf)
+		var customBucketsHistograms []record.RefHistogramSample
+		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
 		buf = buf[:0]
+		if len(customBucketsHistograms) > 0 {
+			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return fmt.Errorf("log custom buckets histograms: %w", err)
+			}
+			buf = buf[:0]
+		}
 	}
 
 	if len(a.pendingFloatHistograms) > 0 {
-		buf, _ = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		var customBucketsFloatHistograms []record.RefFloatHistogramSample
+		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
 		buf = buf[:0]
+		if len(customBucketsFloatHistograms) > 0 {
+			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, buf)
+			if err := a.w.wal.Log(buf); err != nil {
+				return fmt.Errorf("log custom buckets histograms: %w", err)
+			}
+			buf = buf[:0]
+		}
 	}
 
 	// Exemplars should be logged after samples (float/native histogram/etc),

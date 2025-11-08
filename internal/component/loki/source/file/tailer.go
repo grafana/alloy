@@ -15,18 +15,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/util"
-	"github.com/grafana/tail"
-	"github.com/grafana/tail/watch"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/ianaindex"
-	"golang.org/x/text/transform"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
+	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/watch"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -64,6 +62,11 @@ func newTailer(
 	opts sourceOptions,
 ) (*tailer, error) {
 
+	decoder, err := getDecoder(opts.encoding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get decoder: %w", err)
+	}
+
 	tailer := &tailer{
 		metrics:            metrics,
 		logger:             log.With(logger, "component", "tailer"),
@@ -80,16 +83,7 @@ func newTailer(
 		},
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-	}
-
-	if opts.encoding != "" {
-		level.Info(tailer.logger).Log("msg", "Will decode messages", "from", opts.encoding, "to", "UTF8")
-		encoder, err := ianaindex.IANA.Encoding(opts.encoding)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get IANA encoding %s: %w", opts.encoding, err)
-		}
-		decoder := encoder.NewDecoder()
-		tailer.decoder = decoder
+		decoder:           decoder,
 	}
 
 	return tailer, nil
@@ -233,16 +227,10 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	}
 
 	tail, err := tail.TailFile(t.key.Path, tail.Config{
-		Follow:    true,
-		Poll:      true,
-		ReOpen:    true,
-		MustExist: true,
-		Location: &tail.SeekInfo{
-			Offset: pos,
-			Whence: 0,
-		},
-		Logger:      util.NewLogAdapter(t.logger),
+		Location:    &tail.SeekInfo{Offset: pos, Whence: 0},
+		Logger:      t.logger,
 		PollOptions: t.pollOptions,
+		Decoder:     t.decoder,
 	})
 
 	if err != nil {
@@ -255,6 +243,18 @@ func (t *tailer) initRun() (loki.EntryHandler, error) {
 	handler := loki.AddLabelsMiddleware(labelsMiddleware).Wrap(loki.NewEntryHandler(t.receiver.Chan(), func() {}))
 
 	return handler, nil
+}
+
+func getDecoder(encoding string) (*encoding.Decoder, error) {
+	if encoding == "" {
+		return nil, nil
+	}
+
+	encoder, err := ianaindex.IANA.Encoding(encoding)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IANA encoding %s: %w", encoding, err)
+	}
+	return encoder.NewDecoder(), nil
 }
 
 // updatePosition is run in a goroutine and checks the current size of the file
@@ -329,19 +329,6 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 			continue
 		}
 
-		var text string
-		if t.decoder != nil {
-			var err error
-			text, err = t.convertToUTF8(line.Text)
-			if err != nil {
-				level.Debug(t.logger).Log("msg", "failed to convert encoding", "error", err)
-				t.metrics.encodingFailures.WithLabelValues(t.key.Path).Inc()
-				text = fmt.Sprintf("the requested encoding conversion for this line failed in Alloy: %s", err.Error())
-			}
-		} else {
-			text = line.Text
-		}
-
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
 		entries <- loki.Entry{
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
@@ -349,7 +336,7 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 			Labels: make(model.LabelSet, len(t.labels)+1),
 			Entry: push.Entry{
 				Timestamp: line.Time,
-				Line:      text,
+				Line:      line.Text,
 			},
 		}
 	}
@@ -420,15 +407,6 @@ func (t *tailer) Key() positions.Entry {
 
 func (t *tailer) IsRunning() bool {
 	return t.running.Load()
-}
-
-func (t *tailer) convertToUTF8(text string) (string, error) {
-	res, _, err := transform.String(t.decoder, text)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode text to UTF8: %w", err)
-	}
-
-	return res, nil
 }
 
 // cleanupMetrics removes all metrics exported by this tailer

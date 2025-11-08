@@ -322,9 +322,7 @@ func populateLabels(lb *labels.Builder, base labels.Labels, cfg Arguments) (res 
 
 // targetsFromGroup builds targets based on the given TargetGroup, config and target types map.
 func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[string]ProfilingTarget) ([]*Target, error) {
-	var (
-		targets = make([]*Target, 0, len(group.Targets))
-	)
+	targets := make([]*Target, 0, len(group.Targets))
 
 	for i, tlset := range group.Targets {
 		builder := labels.NewScratchBuilder(len(tlset) + len(group.Labels))
@@ -349,22 +347,25 @@ func targetsFromGroup(group *targetgroup.Group, cfg Arguments, targetTypes map[s
 			if err != nil {
 				return nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
-			if lbls != nil {
-				profType := lbls.Get(ProfileName)
-				params := cfg.Params
-				if params == nil {
-					params = url.Values{}
-				}
 
-				if pcfg, found := targetTypes[profType]; found && pcfg.Delta {
-					seconds := (cfg.ScrapeInterval)/time.Second - 1
-					if cfg.DeltaProfilingDuration != defaultProfilingDuration {
-						seconds = (cfg.DeltaProfilingDuration) / time.Second
-					}
-					params.Add("seconds", strconv.Itoa(int(seconds)))
-				}
-				targets = append(targets, NewTarget(lbls, params))
+			if lbls.IsEmpty() {
+				continue
 			}
+
+			profType := lbls.Get(ProfileName)
+			params := cfg.Params
+			if params == nil {
+				params = url.Values{}
+			}
+
+			if pcfg, found := targetTypes[profType]; found && pcfg.Delta {
+				seconds := (cfg.ScrapeInterval)/time.Second - 1
+				if cfg.DeltaProfilingDuration != defaultProfilingDuration {
+					seconds = (cfg.DeltaProfilingDuration) / time.Second
+				}
+				params.Add("seconds", strconv.Itoa(int(seconds)))
+			}
+			targets = append(targets, NewTarget(lbls, params))
 		}
 	}
 
