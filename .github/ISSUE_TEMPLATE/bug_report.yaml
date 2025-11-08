@@ -181,6 +181,7 @@ body:
       - prometheus.scrape
       - prometheus.write.queue
       - pyroscope.ebpf
+      - pyroscope.enrich
       - pyroscope.java
       - pyroscope.receive_http
       - pyroscope.relabel
