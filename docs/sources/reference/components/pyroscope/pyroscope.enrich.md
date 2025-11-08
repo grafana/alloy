@@ -5,10 +5,15 @@ labels:
   stage: experimental
   products:
     - oss
+  tags:
+    - text: Community
+      tooltip: This component is developed, maintained, and supported by the Alloy user community.
 title: pyroscope.enrich
 ---
 
 # `pyroscope.enrich`
+
+{{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}  
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -34,10 +39,10 @@ You can use the following arguments with `pyroscope.enrich`:
 | `forward_to`           | `list(ProfilesReceiver)` | List of receivers to send enriched profiles to.                                               |         | yes      |
 | `target_match_label`   | `string`                 | The label from discovered targets to match against.                                           |         | yes      |
 | `targets`              | `list(Target)`           | List of targets from a discovery component.                                                   |         | yes      |
-| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, all labels are copied. |         | no       |
+| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, all labels are copied.  |         | no       |
 | `profiles_match_label` | `string`                 | The label from incoming profiles to match against discovered targets.                         |         | no       |
 
-If `profiles_match_label` isn't provided, `target_match_label` is used for matching profile labels.
+If `profiles_match_label` isn't provided, the component uses `target_match_label` for matching profile labels.
 
 ## Blocks
 
@@ -58,19 +63,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`pyroscope.enrich` exposes debug information about its state and enrichment activity.
-
-The following fields are available:
-
-| Field                    | Type        | Description                                                                |
-| ------------------------ | ----------- | -------------------------------------------------------------------------- |
-| `targets_cached`         | `int`       | The number of discovery targets currently cached for enrichment.           |
-| `profiles_processed`     | `uint64`    | The total number of profiles processed by the component.                   |
-| `profiles_enriched`      | `uint64`    | The number of profiles that were successfully enriched with target labels. |
-| `profiles_unmatched`     | `uint64`    | The number of profiles that couldn't be matched to a target.               |
-| `last_enrichment_time`   | `time.Time` | The timestamp of the last successful enrichment.                           |
-| `last_unmatched_value`   | `string`    | The match label value of the most recent unmatched profile.                |
-| `recent_matches`         | `list`      | The 10 most recent successful matches with timestamp and labels added.     |
+`pyroscope.enrich` doesn't expose debug information.
 
 ## Debug metrics
 
@@ -148,13 +141,13 @@ The component matches profiles to discovered targets and enriches them with addi
 
 1. For each profile, it looks up the value of `profiles_match_label` from the profile's labels, or `target_match_label` if `profiles_match_label` isn't specified.
 1. It matches this value against the `target_match_label` in discovered targets.
-1. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the profile. If `labels_to_copy` is empty, all labels are copied.
-1. The profile, enriched or unchanged, is forwarded to the configured receivers.
+1. When it finds a match, it copies the requested `labels_to_copy` from the discovered target to the profile. If `labels_to_copy` is empty, it copies all labels.
+1. The component forwards the profile, enriched or unchanged, to the configured receivers.
 
 {{< admonition type="caution" >}}
-By default, `pyroscope.enrich` is ready as soon as it starts, even if no targets are discovered.
-If profiles are sent to this component before the metadata is synced, they're passed through as-is, without enrichment.
-This is most likely to impact `pyroscope.enrich` on startup for a short time before the discovery components send a new list of targets.
+By default, `pyroscope.enrich` is ready as it starts, even if discovery doesn't find targets.
+If you send profiles to this component before the metadata synchronizes, the component passes them through as-is, without enrichment.
+This is most likely to impact `pyroscope.enrich` on startup for a short time before discovery components send a list of targets.
 {{< /admonition >}}
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

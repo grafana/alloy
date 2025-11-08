@@ -19,7 +19,7 @@ func TestEnricher(t *testing.T) {
 	opts := component.Options{
 		Logger:        log.NewNopLogger(),
 		OnStateChange: func(e component.Exports) {},
-		Registerer: prometheus.NewRegistry(),
+		Registerer:    prometheus.NewRegistry(),
 	}
 
 	tests := []struct {
@@ -167,7 +167,7 @@ func TestUpdate(t *testing.T) {
 	comp, err := New(component.Options{
 		Logger:        log.NewNopLogger(),
 		OnStateChange: func(e component.Exports) {},
-		Registerer: prometheus.NewRegistry(),
+		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{
 		ForwardTo: []pyroscope.Appendable{testAppendable},
 	})
@@ -199,7 +199,7 @@ func TestName(t *testing.T) {
 	comp, err := New(component.Options{
 		Logger:        log.NewNopLogger(),
 		OnStateChange: func(e component.Exports) {},
-		Registerer: prometheus.NewRegistry(),
+		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{
 		ForwardTo: []pyroscope.Appendable{testAppendable},
 	})
