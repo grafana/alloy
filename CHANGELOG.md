@@ -55,6 +55,8 @@ Main (unreleased)
 
 - Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
 
+- Add `prometheus.exporter.ipmi` component to collect hardware metrics from IPMI-enabled devices. Supports both local IPMI collection and remote IPMI monitoring with authentication. (@parsa97)
+
 ### Enhancements
 
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
