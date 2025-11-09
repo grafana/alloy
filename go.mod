@@ -118,7 +118,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.8.7
 	github.com/oklog/run v1.2.0
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/olekukonko/tablewriter v1.0.9
 	github.com/oliver006/redis_exporter v1.74.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.142.0
@@ -1148,4 +1148,5 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 // Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
+replace github.com/olekukonko/tablewriter => github.com/olekukonko/tablewriter v0.0.5
 // END GENERATED REPLACES
