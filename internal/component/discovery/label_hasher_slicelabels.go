@@ -4,6 +4,10 @@ package discovery
 
 import "github.com/cespare/xxhash/v2"
 
+var (
+	seps = []byte{'\xff'}
+)
+
 // NOTE 1: This function is copied from Prometheus codebase and adapted to work correctly with Alloy types.
 // NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have
 //
