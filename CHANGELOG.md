@@ -80,6 +80,7 @@
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
 
 - Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+- Add `prometheus.exporter.ipmi` component to collect hardware metrics from IPMI-enabled devices. Supports both local IPMI collection and remote IPMI monitoring with authentication. (@parsa97)
 
 ### Enhancements
 
