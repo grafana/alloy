@@ -67,7 +67,7 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &queueClient{
-		logger:    log.With(logger, "component", "client", "host", cfg.URL.Host),
+		logger:    logger,
 		cfg:       cfg,
 		qcMetrics: qcMetrics,
 		shards:    shards,
