@@ -291,7 +291,7 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 		return true
 	})
 	slices.Sort(labelsInOrder)
-	return HashLabelsInOrder(t, labelsInOrder)
+	return hashLabelsInOrder(t, labelsInOrder)
 }
 
 func (t Target) groupLabelsHash() uint64 {
@@ -303,7 +303,7 @@ func (t Target) groupLabelsHash() uint64 {
 		labelsInOrder = append(labelsInOrder, string(name))
 	}
 	slices.Sort(labelsInOrder)
-	return HashLabelsInOrder(t, labelsInOrder)
+	return hashLabelsInOrder(t, labelsInOrder)
 }
 
 func ComponentTargetsToPromTargetGroups(jobName string, tgs []Target) map[string][]*targetgroup.Group {

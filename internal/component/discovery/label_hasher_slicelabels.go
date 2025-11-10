@@ -12,7 +12,7 @@ var (
 // NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have
 //
 //	smooth rollouts without duplicated or missing data. There are tests to verify this behaviour. Do not change it.
-func HashLabelsInOrder(t Target, order []string) uint64 {
+func hashLabelsInOrder(t Target, order []string) uint64 {
 	// This optimisation is adapted from prometheus/model/labels.
 	// Use xxhash.Sum64(b) for fast path as it's faster.
 	b := make([]byte, 0, 1024)

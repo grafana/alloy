@@ -4,7 +4,7 @@ package discovery
 
 import "github.com/prometheus/prometheus/model/labels"
 
-func HashLabelsInOrder(t Target, order []string) uint64 {
+func hashLabelsInOrder(t Target, order []string) uint64 {
 	builder := labels.NewScratchBuilder(len(order))
 	mustGet := func(label string) string {
 		val, _ := t.Get(label)
