@@ -213,12 +213,12 @@ type table string
 // TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
 type TableRegistry struct {
 	mu     sync.RWMutex
-	tables map[database]map[schema]map[table]bool
+	tables map[database]map[schema]map[table]struct{}
 }
 
 func NewTableRegistry() *TableRegistry {
 	return &TableRegistry{
-		tables: make(map[database]map[schema]map[table]bool),
+		tables: make(map[database]map[schema]map[table]struct{}),
 	}
 }
 
@@ -229,12 +229,12 @@ func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*t
 	delete(tr.tables, database)
 
 	if len(tablesInfo) > 0 {
-		tr.tables[database] = make(map[schema]map[table]bool)
+		tr.tables[database] = make(map[schema]map[table]struct{})
 		for _, tblInfo := range tablesInfo {
 			if tr.tables[database][tblInfo.schema] == nil {
-				tr.tables[database][tblInfo.schema] = make(map[table]bool)
+				tr.tables[database][tblInfo.schema] = make(map[table]struct{})
 			}
-			tr.tables[database][tblInfo.schema][tblInfo.tableName] = true
+			tr.tables[database][tblInfo.schema][tblInfo.tableName] = struct{}{}
 		}
 	}
 }
@@ -254,13 +254,14 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 	case "": // parsedTableName isn't schema-qualified, e.g. SELECT * FROM table_name.
 		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/grafana-dbo11y-app/issues/1838
 		for _, tables := range schemas {
-			if tables[tableName] {
+			if _, ok := tables[tableName]; ok {
 				return true
 			}
 		}
 	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
 		if tables, ok := schemas[schemaName]; ok {
-			return tables[tableName]
+			_, ok := tables[tableName]
+			return ok
 		}
 	}
 

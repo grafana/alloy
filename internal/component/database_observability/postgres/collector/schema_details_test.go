@@ -1695,11 +1695,11 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		collector.tableRegistry.mu.RLock()
 		actual := collector.tableRegistry.tables
 		collector.tableRegistry.mu.RUnlock()
-		assert.Equal(t, map[database]map[schema]map[table]bool{
+		assert.Equal(t, map[database]map[schema]map[table]struct{}{
 			"testdb": {
 				"public": {
-					"users":  true,
-					"orders": true,
+					"users":  struct{}{},
+					"orders": struct{}{},
 				},
 			},
 		}, actual)

@@ -42,10 +42,10 @@ func TestQueryDetails(t *testing.T) {
 				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
-				tables: map[database]map[schema]map[table]bool{
+				tables: map[database]map[schema]map[table]struct{}{
 					"some_database": {
 						"public": {
-							"some_table": true,
+							"some_table": struct{}{},
 						},
 					},
 				},
@@ -67,10 +67,10 @@ func TestQueryDetails(t *testing.T) {
 				`level="info" queryid="abc123" datname="some_database" table="public.users" engine="postgres" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
-				tables: map[database]map[schema]map[table]bool{
+				tables: map[database]map[schema]map[table]struct{}{
 					"some_database": {
 						"public": {
-							"users": true,
+							"users": struct{}{},
 						},
 					},
 				},
