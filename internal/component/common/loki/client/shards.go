@@ -196,7 +196,7 @@ func newShards(metrics *Metrics, logger log.Logger, markerHandler SentDataMarker
 		logger:        logger,
 		metrics:       metrics,
 		client:        client,
-		marketHandler: markerHandler,
+		markerHandler: markerHandler,
 		tenants:       make(map[string]struct{}),
 	}, nil
 }
@@ -210,7 +210,7 @@ type shards struct {
 	logger        log.Logger
 	metrics       *Metrics
 	client        *http.Client
-	marketHandler SentDataMarkerHandler
+	markerHandler SentDataMarkerHandler
 
 	mut     sync.Mutex
 	tenants map[string]struct{}
@@ -313,7 +313,6 @@ func (s *shards) runShard(q *queue) {
 			// Drain all batches that have exceeded the max wait time.
 			for _, b := range q.drain() {
 				s.sendBatch(b.TenantID, b.Batch)
-				b.Batch.reportAsSentData(s.marketHandler)
 			}
 		}
 	}
@@ -368,6 +367,7 @@ func (s *shards) processEntry(e loki.Entry) (loki.Entry, string) {
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch) {
+	defer batch.reportAsSentData(s.markerHandler)
 	buf, entriesCount, err := batch.encode()
 
 	if err != nil {

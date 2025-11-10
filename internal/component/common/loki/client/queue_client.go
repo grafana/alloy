@@ -81,7 +81,6 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		markerHandler: markerHandler,
 	}
 
-	// FIXME: resharding loop and better place for this
 	c.shards.start(1)
 
 	return c, nil
