@@ -252,7 +252,7 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool
 	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
 	switch schemaName {
 	case "": // parsedTableName isn't schema-qualified, e.g. SELECT * FROM table_name.
-		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/grafana-dbo11y-app/issues/1838
+		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/alloy/issues/4815
 		for _, tables := range schemas {
 			if _, ok := tables[tableName]; ok {
 				return true
