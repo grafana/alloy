@@ -68,12 +68,13 @@ func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error)
 		cancel:  cancel,
 	}
 
+	c.shards.start(cfg.Queue.MinShards)
+
 	c.wg.Go(func() { c.run() })
 	return c, nil
 }
 
 func (c *client) run() {
-	c.shards.start(1)
 
 	for {
 		select {

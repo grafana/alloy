@@ -81,7 +81,7 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		markerHandler: markerHandler,
 	}
 
-	c.shards.start(1)
+	c.shards.start(cfg.Queue.MinShards)
 
 	return c, nil
 }
