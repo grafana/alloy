@@ -63,6 +63,7 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"TRUNCATE": {},
 
 	// Transaction control that can commit writes
+	"BEGIN":     {},
 	"COMMIT":    {},
 	"ROLLBACK":  {},
 	"SAVEPOINT": {},
@@ -101,6 +102,9 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"DEALLOCATE": {},
 	"RESET":      {},
 	"SET":        {},
+	"UNLISTEN":   {},
+	"DECLARE":    {},
+	"CLOSE":      {},
 
 	// dbo11 specific operations we'd like to exclude
 	"EXPLAIN": {},
