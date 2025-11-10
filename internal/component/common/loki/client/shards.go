@@ -260,7 +260,7 @@ func (s *shards) stop() {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	// Attempt a soft showdown, meaning that all shards tries to flush their remaning batches.
+	// Attempt a soft shutdown, meaning that all shards try to flush their remaining batches.
 	close(s.softShutdown)
 
 	for _, q := range s.queues {
