@@ -320,7 +320,7 @@ func (s *shards) runShard(q *queue) {
 }
 
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
-// Returns false we could not enqueue the entry, either because the shard is shutting down or the queue is full.
+// Returns false if we could not enqueue the entry, either because the shard is shutting down or the queue is full.
 // It is up to the caller to retry or drop the entry.
 func (s *shards) enqueue(entry loki.Entry, segmentNum int) bool {
 	s.mut.Lock()
