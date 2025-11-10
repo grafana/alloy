@@ -1593,6 +1593,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki_fake.NewClient(func() {})
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -1613,21 +1614,18 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"datname",
 				}).AddRow("testdb"),
 			)
-
 		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"schema_name",
 				}).AddRow("public"),
 			)
-
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"table_name",
 				}).AddRow("users").AddRow("orders"),
 			)
-
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1639,7 +1637,6 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"is_primary_key",
 				}).AddRow("id", "integer", true, nil, "", true),
 			)
-
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1651,7 +1648,6 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"has_nullable_column",
 				}),
 			)
-
 		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "users").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1661,7 +1657,6 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"referenced_column_name",
 				}),
 			)
-
 		mock.ExpectQuery(selectColumnNames).WithArgs("public.orders").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1673,7 +1668,6 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"is_primary_key",
 				}).AddRow("id", "integer", true, nil, "", true),
 			)
-
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "orders").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1685,7 +1679,6 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 					"has_nullable_column",
 				}),
 			)
-
 		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "orders").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1696,33 +1689,19 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 				}),
 			)
 
-		err = collector.Start(context.Background())
-		require.NoError(t, err)
-
-		// wait for registry to populate
-		require.Eventually(t, func() bool {
-			collector.tableRegistry.mu.RLock()
-			defer collector.tableRegistry.mu.RUnlock()
-			return len(collector.tableRegistry.tables) > 0
-		}, 2*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
+		require.NoError(t, collector.extractNames(context.Background()))
 
 		require.NoError(t, mock.ExpectationsWereMet())
-
 		collector.tableRegistry.mu.RLock()
 		actual := collector.tableRegistry.tables
 		collector.tableRegistry.mu.RUnlock()
-
-		expected := map[string]map[string]map[string]bool{
+		assert.Equal(t, map[string]map[string]map[string]bool{
 			"testdb": {
 				"public": {
 					"users":  true,
 					"orders": true,
 				},
 			},
-		}
-		assert.Equal(t, expected, actual)
+		}, actual)
 	})
 }
