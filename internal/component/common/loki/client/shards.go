@@ -233,6 +233,8 @@ type shards struct {
 // Each shard gets its own queue and a dedicated worker that processes batches
 // from that queue. The number of shards determines the parallelism level.
 func (s *shards) start(n int) {
+	n = max(n, 1)
+
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
