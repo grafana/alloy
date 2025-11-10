@@ -483,7 +483,7 @@ func TestContainsReservedKeywords(t *testing.T) {
 			expected:      false,
 		},
 		{
-			name:          "FOR UPDATE preceeds UPDATE",
+			name:          "FOR UPDATE preceds UPDATE",
 			query:         "SELECT * FROM users FOR UPDATE UPDATE users SET name = 'John'",
 			reservedWords: ExplainReservedWordDenyList,
 			expected:      true,
