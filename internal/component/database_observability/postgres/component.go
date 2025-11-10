@@ -383,11 +383,9 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		}
-		if stCollector != nil {
-			tableRegistry = stCollector.GetTableRegistry()
-			if err := stCollector.Start(context.Background()); err != nil {
-				logStartError(collector.SchemaDetailsCollector, "start", err)
-			}
+		tableRegistry = stCollector.GetTableRegistry()
+		if err := stCollector.Start(context.Background()); err != nil {
+			logStartError(collector.SchemaDetailsCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, stCollector)
 	}
@@ -403,10 +401,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
 		}
-		if qCollector != nil {
-			if err := qCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryDetailsCollector, "start", err)
-			}
+		if err := qCollector.Start(context.Background()); err != nil {
+			logStartError(collector.QueryDetailsCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, qCollector)
 	}
@@ -422,10 +418,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
 		}
-		if aCollector != nil {
-			if err := aCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QuerySamplesCollector, "start", err)
-			}
+		if err := aCollector.Start(context.Background()); err != nil {
+			logStartError(collector.QuerySamplesCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, aCollector)
 	}
@@ -440,11 +434,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
 	}
-	if ciCollector != nil {
-		if err := ciCollector.Start(context.Background()); err != nil {
-			logStartError(collector.ConnectionInfoName, "start", err)
-		}
+	if err := ciCollector.Start(context.Background()); err != nil {
+		logStartError(collector.ConnectionInfoName, "start", err)
 	}
+
 	c.collectors = append(c.collectors, ciCollector)
 
 	if collectors[collector.ExplainPlanCollector] {
@@ -464,10 +457,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string) error
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
 		}
-		if epCollector != nil {
-			if err := epCollector.Start(context.Background()); err != nil {
-				logStartError(collector.ExplainPlanCollector, "start", err)
-			}
+		if err := epCollector.Start(context.Background()); err != nil {
+			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, epCollector)
 	}
