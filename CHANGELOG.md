@@ -342,6 +342,8 @@ v1.11.0
 
 - Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
 
+- Fix excessive debug logs always being emitted by `prometheus.exporter.mongodb`. (@kalleep)
+
 v1.10.2
 -----------------
 
