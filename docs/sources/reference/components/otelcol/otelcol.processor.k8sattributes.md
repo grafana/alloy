@@ -157,9 +157,11 @@ The supported `metadata` keys are:
 * `container.image.tag`
 * `k8s.container.name`
 * `k8s.cronjob.name`
+* `k8s.cronjob.uid`
 * `k8s.daemonset.name`
 * `k8s.daemonset.uid`
 * `k8s.deployment.name`
+* `k8s.deployment.uid`
 * `k8s.job.name`
 * `k8s.job.uid`
 * `k8s.namespace.name`
