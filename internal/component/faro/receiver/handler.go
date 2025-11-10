@@ -199,10 +199,9 @@ func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p pa
 }
 
 // extractAppEnv extracts the app and environment from the Faro payload metadata.
-// Returns "unknown" for missing values to ensure isolation.
+// Returns empty strings for missing values to ensure isolation without collision with valid app names.
 func (h *handler) extractAppEnv(p payload.Payload) (string, string) {
-	app := "unknown"
-	env := "unknown"
+	app, env := "", ""
 
 	if p.Meta.App.Name != "" {
 		app = p.Meta.App.Name

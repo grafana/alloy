@@ -505,7 +505,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 				"exceptions": [],
 				"measurements": []
 			}`,
-			description:    "Apps without meta field share unknown:unknown rate limiter",
+			description:    "Apps without meta field share ':' rate limiter (empty app and env)",
 			requests:       3,
 			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted, http.StatusTooManyRequests},
 		},
@@ -523,7 +523,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 					}
 				}
 			}`,
-			description:    "Empty app name uses unknown:production key",
+			description:    "Empty app name uses ':production' key",
 			requests:       3,
 			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted, http.StatusTooManyRequests},
 		},
@@ -541,7 +541,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 					}
 				}
 			}`,
-			description:    "Empty environment uses myapp:unknown key",
+			description:    "Empty environment uses 'myapp:' key",
 			requests:       3,
 			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted, http.StatusTooManyRequests},
 		},
@@ -559,7 +559,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 					}
 				}
 			}`,
-			description:    "Both empty falls back to unknown:unknown",
+			description:    "Both empty uses ':' key (empty app and env)",
 			requests:       3,
 			expectedStatus: []int{http.StatusAccepted, http.StatusAccepted, http.StatusTooManyRequests},
 		},
@@ -594,7 +594,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 }
 
 func TestHandler_RateLimitingPerApp_MultipleAppsWithoutMetadata(t *testing.T) {
-	// This test verifies that multiple apps without metadata share the same rate limiter (unknown:unknown)
+	// This test verifies that multiple apps without metadata share the same rate limiter (':' - empty app and env)
 	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
 
 	args := ServerArguments{
@@ -602,7 +602,7 @@ func TestHandler_RateLimitingPerApp_MultipleAppsWithoutMetadata(t *testing.T) {
 			Enabled:   true,
 			Strategy:  "per_app",
 			Rate:      1.0,
-			BurstSize: 2.0, // burst of 2 requests total for all unknown apps
+			BurstSize: 2.0, // burst of 2 requests total for all apps without metadata
 		},
 	}
 	handler.Update(args)
@@ -626,8 +626,8 @@ func TestHandler_RateLimitingPerApp_MultipleAppsWithoutMetadata(t *testing.T) {
 		}
 	}
 
-	// Only 2 requests should succeed (burst size = 2) since all share unknown:unknown
-	assert.Equal(t, 2, successCount, "All apps without metadata should share the same rate limiter (unknown:unknown)")
+	// Only 2 requests should succeed (burst size = 2) since all share ':' rate limiter
+	assert.Equal(t, 2, successCount, "All apps without metadata should share the same rate limiter (':' - empty strings)")
 }
 
 func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testing.T) {
@@ -644,28 +644,28 @@ func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testin
 	}
 	handler.Update(args)
 
-	// First, exhaust the unknown:unknown quota with 2 requests (burst = 2)
-	unknownPayloads := []string{
+	// First, exhaust the ':' quota (empty app/env) with 2 requests (burst = 2)
+	emptyMetadataPayloads := []string{
 		`{"logs": [], "meta": {}}`,
 		`{"logs": []}`,
 	}
 
-	for _, payloadStr := range unknownPayloads {
+	for _, payloadStr := range emptyMetadataPayloads {
 		req := httptest.NewRequest("POST", "/", strings.NewReader(payloadStr))
 		req.Header.Set("Content-Type", "application/json")
 
 		rr := httptest.NewRecorder()
 		handler.handleRequest(rr, req)
 
-		assert.Equal(t, http.StatusAccepted, rr.Code, "unknown apps should succeed within burst limit")
+		assert.Equal(t, http.StatusAccepted, rr.Code, "apps without metadata should succeed within burst limit")
 	}
 
-	// Verify that a third unknown request is rejected
+	// Verify that a third request without metadata is rejected
 	req := httptest.NewRequest("POST", "/", strings.NewReader(`{"logs": []}`))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handler.handleRequest(rr, req)
-	assert.Equal(t, http.StatusTooManyRequests, rr.Code, "third unknown request should be rate limited")
+	assert.Equal(t, http.StatusTooManyRequests, rr.Code, "third request without metadata should be rate limited")
 
 	// Now send requests from an app with proper metadata - should have its own quota
 	properAppPayload := `{
@@ -678,8 +678,8 @@ func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testin
 		}
 	}`
 
-	// Should be able to make 2 requests (burst = 2) even though unknown:unknown is exhausted
-	// But not affected by previous unknown requests
+	// Should be able to make 2 requests (burst = 2) even though ':' quota is exhausted
+	// Not affected by previous requests without metadata
 	for i := range 2 {
 		req := httptest.NewRequest("POST", "/", strings.NewReader(properAppPayload))
 		req.Header.Set("Content-Type", "application/json")
@@ -690,7 +690,7 @@ func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testin
 		assert.Equal(t, http.StatusAccepted, rr.Code, "myapp:production should have its own quota, request %d", i+1)
 	}
 
-	// Third request for myapp:production should be rate limited (its own limit, not affected by unknown:unknown)
+	// Third request for myapp:production should be rate limited (its own limit, not affected by ':' limiter)
 	req = httptest.NewRequest("POST", "/", strings.NewReader(properAppPayload))
 	req.Header.Set("Content-Type", "application/json")
 	rr = httptest.NewRecorder()
@@ -729,7 +729,7 @@ func TestHandler_ExtractAppEnv(t *testing.T) {
 					},
 				},
 			},
-			expectedApp: "unknown",
+			expectedApp: "",
 			expectedEnv: "production",
 		},
 		{
@@ -742,13 +742,13 @@ func TestHandler_ExtractAppEnv(t *testing.T) {
 				},
 			},
 			expectedApp: "myapp",
-			expectedEnv: "unknown",
+			expectedEnv: "",
 		},
 		{
 			name:        "empty payload",
 			payload:     payload.Payload{},
-			expectedApp: "unknown",
-			expectedEnv: "unknown",
+			expectedApp: "",
+			expectedEnv: "",
 		},
 	}
 

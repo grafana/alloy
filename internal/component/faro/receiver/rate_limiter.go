@@ -24,16 +24,6 @@ const (
 // Segregates rate limiting configurations per application and environment.
 type AppRateLimitingConfigKey string
 
-// AppRateLimiter wraps a rate limiter with metadata for cleanup purposes.
-// The lastUsed field tracks when the limiter was last accessed, allowing
-// the cleanup routine to remove limiters that haven't been used within
-// DEFAULT_LIMITER_EXPIRY duration (10 minutes by default).
-// This prevents memory leaks from applications that stop sending requests.
-type AppRateLimiter struct {
-	limiter  *rate.Limiter
-	lastUsed time.Time
-}
-
 // String returns the string representation of the AppRateLimitingConfigKey.
 func (k AppRateLimitingConfigKey) String() string {
 	return string(k)
@@ -42,6 +32,16 @@ func (k AppRateLimitingConfigKey) String() string {
 // ParseAppRateLimitingConfigKey creates a key from app and environment values.
 func ParseAppRateLimitingConfigKey(app, env string) AppRateLimitingConfigKey {
 	return AppRateLimitingConfigKey(fmt.Sprintf("%s:%s", app, env))
+}
+
+// AppRateLimiter wraps a rate limiter with metadata for cleanup purposes.
+// The lastUsed field tracks when the limiter was last accessed, allowing
+// the cleanup routine to remove limiters that haven't been used within
+// DEFAULT_LIMITER_EXPIRY duration (10 minutes by default).
+// This prevents memory leaks from applications that stop sending requests.
+type AppRateLimiter struct {
+	limiter  *rate.Limiter
+	lastUsed time.Time
 }
 
 // AppRateLimitingConfig manages rate limiters per application/environment combination.
