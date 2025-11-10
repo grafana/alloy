@@ -280,7 +280,7 @@ func (s *shards) stop() {
 
 // runShard is the worker goroutine that processes batches from a single queue.
 func (s *shards) runShard(q *queue) {
-	// Given the a shart handles multiple batches (1 per tenant) and each batch
+	// Given that a shard handles multiple batches (1 per tenant) and each batch
 	// can be created at a different point in time, we look for batches whose
 	// max wait time has been reached every 10 times per BatchWait, so that the
 	// maximum delay we have sending batches is 10% of the max waiting time.
