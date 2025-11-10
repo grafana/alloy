@@ -34,6 +34,7 @@ func isCommandKeywordOrIdentifier(token sqllexer.Token) bool {
 // ContainsReservedKeywords checks if the SQL query contains any reserved keywords
 // that indicate write operations, excluding those in string literals or comments
 func ContainsReservedKeywords(query string, reservedWords map[string]ExplainReservedWordMetadata, dbms sqllexer.DBMSType) (bool, error) {
+	result := false
 	// Use the lexer to tokenize the query
 	lexer := sqllexer.New(query, sqllexer.WithDBMS(dbms))
 	tokenBuffer := make([]sqllexer.Token, 0)
@@ -72,16 +73,15 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 							}
 						}
 					}
-					if matchedTokens == lookbackCount {
-						return false, nil
+					if matchedTokens < lookbackCount {
+						result = true
 					}
-					return true, nil
 				} else {
-					return true, nil
+					result = true
 				}
 			}
 		}
 	}
 
-	return false, nil
+	return result, nil
 }

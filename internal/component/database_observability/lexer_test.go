@@ -482,6 +482,18 @@ func TestContainsReservedKeywords(t *testing.T) {
 			reservedWords: ExplainReservedWordDenyList,
 			expected:      false,
 		},
+		{
+			name:          "FOR UPDATE preceeds UPDATE",
+			query:         "SELECT * FROM users FOR UPDATE UPDATE users SET name = 'John'",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "START TRANSACTION should be detected",
+			query:         "START TRANSACTION",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
 		// Single prefix with default reserved word list
 		{
 			name:          "SELECT with FOR UPDATE",
