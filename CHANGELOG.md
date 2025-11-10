@@ -60,6 +60,8 @@ Main (unreleased)
 
 ### Enhancements
 
+- Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
+
 - Add support of `tls` in components `loki.source.(awsfirehose|gcplog|heroku|api)` and `prometheus.receive_http` and `pyroscope.receive_http`. (@fgouteroux)
 
 - Remove SendSIGKILL=no from unit files and recommendations (@oleg-kozlyuk-grafana)
