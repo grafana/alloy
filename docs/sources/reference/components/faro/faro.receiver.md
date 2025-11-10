@@ -115,15 +115,29 @@ If the `api_key` argument is empty, no authentication checks are performed, and 
 
 The `rate_limiting` block configures rate limiting for client requests.
 
-| Name         | Type     | Description                          | Default | Required |
-|--------------|----------|--------------------------------------|---------|----------|
-| `enabled`    | `bool`   | Whether to enable rate limiting.     | `true`  | no       |
-| `rate`       | `number` | Rate of allowed requests per second. | `50`    | no       |
-| `burst_size` | `number` | Allowed burst size of requests.      | `100`   | no       |
+| Name         | Type     | Description                                   | Default  | Required |
+|--------------|----------|-----------------------------------------------|----------|----------|
+| `enabled`    | `bool`   | Whether to enable rate limiting.              | `true`   | no       |
+| `strategy`   | `string` | The strategy to use for rate limiting.        | `global` | no       |
+| `rate`       | `number` | Rate of allowed requests per second.          | `50`     | no       |
+| `burst_size` | `number` | Allowed burst size of requests.               | `100`    | no       |
+
+The following `strategy` strings are valid:
+
+* `"global"`: Global rate limiting.
+* `"per_app"`: Application/Environment based rate limiting.
 
 Rate limiting functions as a [token bucket algorithm][token-bucket], where a bucket has a maximum capacity for up to `burst_size` requests and refills at a rate of `rate` per second.
 
-Each HTTP request drains the capacity of the bucket by one. After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
+Each HTTP request drains the capacity of the bucket by one. 
+
+After the bucket is empty, HTTP requests are rejected with an `HTTP 429 Too Many Requests` status code until the bucket has more available capacity.
+
+When `strategy` is `per_app`, rate limiting is applied per application and environment combination instead of globally.
+
+This prevents one application from affecting the rate limits of other applications sending their data on the same gateway.
+
+The application and environment are extracted from the Faro payload metadata using the `app.name` and `app.environment` fields. If these fields are missing, the request shares a rate limiter with other requests that also lack this metadata.
 
 Configuring the `rate` argument determines how fast the bucket refills, and configuring the `burst_size` argument determines how many requests can be received in a burst before the bucket is empty and starts rejecting requests.
 
@@ -212,6 +226,8 @@ The template value is replaced with the release value provided by the [Faro Web 
 * `faro_receiver_sourcemap_cache_size` (counter): Number of items in sourcemap cache per origin.
 * `faro_receiver_sourcemap_downloads_total` (counter): Total number of sourcemap downloads performed per origin and status.
 * `faro_receiver_sourcemap_file_reads_total` (counter): Total number of sourcemap retrievals using the filesystem per origin and status.
+* `faro_receiver_rate_limiter_active_app` (gauge): Number of active applications with rate limiters. Inactive limiters are cleaned up every 10 minutes.
+* `faro_receiver_rate_limiter_requests_total` (counter): Total number of requests processed by the rate limiter per app/environment.
 
 ## Example
 

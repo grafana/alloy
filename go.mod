@@ -33,7 +33,6 @@ require (
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/coreos/go-systemd/v22 v22.6.0
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/docker/docker v28.5.1+incompatible
@@ -985,6 +984,8 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
+
+require github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0
 
 require (
 	github.com/go-openapi/swag/cmdutils v0.25.1 // indirect

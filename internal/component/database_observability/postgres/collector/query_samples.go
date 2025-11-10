@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -27,10 +28,11 @@ const (
 
 const (
 	queryTextClause     = ", s.query"
-	stateActive         = "active"
 	waitEventTypeLock   = "Lock"
-	stateIdleTxnAborted = "idle in transaction (aborted)"
+	stateActive         = "active"
+	stateIdle           = "idle"
 	stateIdleTxn        = "idle in transaction"
+	stateIdleTxnAborted = "idle in transaction (aborted)"
 )
 
 const finalizationRateWindow = 5 * time.Minute
@@ -61,7 +63,6 @@ const selectPgStatActivity = `
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
 		s.pid != pg_backend_pid() AND
-		s.state != 'idle' AND
 		(
 			s.backend_type != 'client backend' OR
 			(
@@ -124,7 +125,10 @@ type QuerySamples struct {
 	cancel  context.CancelFunc
 
 	// in-memory state of running samples
-	samples                      map[SampleKey]*SampleState
+	samples map[SampleKey]*SampleState
+	// keep track of idle keys that were already emitted to avoid duplicates
+	idleEmitted *expirable.LRU[SampleKey, struct{}]
+	// adaptive throttling and burst controls
 	baseThrottleInterval         time.Duration
 	lastEmittedByQueryID         map[int64]time.Time
 	recentFinalizationsByQueryID map[int64][]time.Time
@@ -155,6 +159,26 @@ type SampleState struct {
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
+	// EndAt is the time we determined the sample ended (idle transition
+	// or when it was only observed idle), used to compute durations/timestamps.
+	EndAt sql.NullTime
+}
+
+func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
+	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
+		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
+	}
+}
+
+// setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
+func (s *SampleState) setEndedAt(sample QuerySamplesInfo) {
+	if sample.StateChange.Valid {
+		s.EndAt = sample.StateChange
+		s.LastSeenAt = sample.StateChange.Time
+		return
+	}
+	s.EndAt = sql.NullTime{Time: sample.Now, Valid: true}
+	s.LastSeenAt = sample.Now
 }
 
 // WaitEventTracker coalesces consecutive identical wait events
@@ -197,6 +221,9 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
+	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheTTL = 10 * time.Minute
+
 	return &QuerySamples{
 		dbConnection:                 args.DB,
 		collectInterval:              args.CollectInterval,
@@ -205,6 +232,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                       log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                      &atomic.Bool{},
 		samples:                      map[SampleKey]*SampleState{},
+		idleEmitted:                  expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 		baseThrottleInterval:         args.BaseThrottleInterval,
 		lastEmittedByQueryID:         map[int64]time.Time{},
 		recentFinalizationsByQueryID: map[int64][]time.Time{},
@@ -359,13 +387,33 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) (hasActive bool, er
 			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
+
+		// Handle idle states specially: emit finalized sample once
+		if isIdleState(sample.State.String) {
+			if st, hadActive := c.samples[key]; hadActive {
+				st.setEndedAt(sample)
+				st.LastRow.State = sample.State
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			} else if _, already := c.idleEmitted.Get(key); !already {
+				// new idle sample not yet seen -> create a new sample state to track and emit it
+				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				newIdleState.setEndedAt(sample)
+				newIdleState.LastRow.State = sample.State
+				c.samples[key] = newIdleState
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			}
+			continue
+		}
+
+		// Non-idle: keep tracking as active
 		c.upsertActiveSample(key, sample)
 		activeKeys[key] = struct{}{}
+		continue
 	}
 
-	// finalize samples that are no longer active
-	for key := range c.samples {
-		if _, stillActive := activeKeys[key]; stillActive {
+	// finalize samples that are no longer active or have EndAt set (idle finalized or one off idle sample)
+	for key, st := range c.samples {
+		if _, stillActive := activeKeys[key]; stillActive && !st.EndAt.Valid {
 			continue
 		}
 		c.emitAndDeleteSample(key)
@@ -433,7 +481,8 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
-	state.updateCpuTimeIfActive(sample)
+	state.updateCpuTime(sample)
+	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -480,11 +529,15 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	if !ok {
 		return
 	}
-	sampleLabels := c.buildQuerySampleLabels(state)
+	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
+	ts := state.LastSeenAt.UnixNano()
+	if state.EndAt.Valid {
+		ts = state.EndAt.Time.UnixNano()
+	}
 
+	// Adaptive throttling for query sample emissions
 	now := time.Now()
 	qid := state.LastRow.QueryID.Int64
-
 	isExempt := isThrottleExempt(state)
 
 	var perMinuteRate float64
@@ -514,39 +567,37 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			logging.LevelInfo,
 			OP_QUERY_SAMPLE,
 			sampleLabels,
-			state.LastSeenAt.UnixNano(),
+			ts,
 		)
-	}
-
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
+		for _, we := range state.tracker.WaitEvents() {
+			if we.WaitEventType == "" || we.WaitEvent == "" {
+				continue
+			}
+			waitEventLabels := c.buildWaitEventLabels(state, we)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				waitEventLabels,
+				we.LastTimestamp.UnixNano(),
+			)
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
-		)
 	}
 
 	delete(c.samples, key)
 }
 
-func (s *SampleState) updateCpuTimeIfActive(sample QuerySamplesInfo) {
-	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
-		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
-	}
-}
-
-func (c *QuerySamples) buildQuerySampleLabels(state *SampleState) string {
+func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	xactDuration := calculateDuration(state.LastRow.XactStart, state.LastRow.Now)
-	queryDuration := calculateDuration(state.LastRow.QueryStart, state.LastRow.Now)
+	end := state.LastRow.Now
+	if endAt.Valid {
+		end = endAt.Time
+	}
+
+	xactDuration := calculateDuration(state.LastRow.XactStart, end)
+	queryDuration := calculateDuration(state.LastRow.QueryStart, end)
 
 	clientAddr := ""
 	if state.LastRow.ClientAddr.Valid {
@@ -637,6 +688,13 @@ func equalPIDSets(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+func isIdleState(state string) bool {
+	if state == stateIdle || state == stateIdleTxnAborted {
+		return true
+	}
+	return false
 }
 
 func min(a, b time.Duration) time.Duration {

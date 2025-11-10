@@ -684,8 +684,6 @@ github.com/coreos/go-semver v0.3.1 h1:yi21YpKnrx1gt5R+la8n5WgS0kCrsPp33dmEyHReZr
 github.com/coreos/go-semver v0.3.1/go.mod h1:irMmmIw/7yzSRPWryHsK7EYSg09caPQL03VsM8rvUec=
 github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
-github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf h1:iW4rZ826su+pqaw19uhpSCzhj44qo35pNgKFGqzDKkU=
-github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/coreos/go-systemd/v22 v22.6.0 h1:aGVa/v8B7hpb0TKl0MWoAavPDmHvobFe5R5zn0bCJWo=
 github.com/coreos/go-systemd/v22 v22.6.0/go.mod h1:iG+pp635Fo7ZmV/j14KUcmEyWF+0X7Lua8rrTWzYgWU=
@@ -1898,6 +1896,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatch
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.134.0/go.mod h1:B2A6+/+hiHqnRosscKXeupWmRdYxayXjB+Muu7EMqRw=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0 h1:e2OWWuo7c83jTDjOPq2Wj2jLFNuzAIuuGheQksS9mdc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.134.0/go.mod h1:4j8SsaglqpF/F875+s+21S4+bvK7F2kcTZGeW5L8tq4=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0 h1:ph9f7NaG/q0tSw/F81YobHDe9Ygm+KI6gLzMEKdw09o=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.138.0/go.mod h1:WFF24ll2tEYuQzLmoOp8rG8p6x40Zv/DAnSE1hfOlnY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0 h1:+fmQLSvtARPeqAmKZb+ph6KZnZQwgtcZ8vkK735ZYEc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.134.0/go.mod h1:OVi4ezn2HvWvvQsfrQZ4xGhSaEGJg2R+x18jrJysg8E=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver v0.134.0 h1:De16DTKSyXcHNGfGtyBZrqzVrAF0Gyt+X+mUdZhMhII=
