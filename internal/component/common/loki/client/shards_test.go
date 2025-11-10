@@ -169,7 +169,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 		_, ok := <-q.channel()
 		assert.True(t, ok)
 
-		// Second batch should not been queued
+		// Second batch should not have been queued
 		_, ok = <-q.channel()
 		assert.False(t, ok)
 	})
