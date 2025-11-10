@@ -1695,7 +1695,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		collector.tableRegistry.mu.RLock()
 		actual := collector.tableRegistry.tables
 		collector.tableRegistry.mu.RUnlock()
-		assert.Equal(t, map[string]map[string]map[string]bool{
+		assert.Equal(t, map[database]map[schema]map[table]bool{
 			"testdb": {
 				"public": {
 					"users":  true,

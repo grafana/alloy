@@ -9,10 +9,11 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
-	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	loki_fake "github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func TestQueryDetails(t *testing.T) {
@@ -41,7 +42,7 @@ func TestQueryDetails(t *testing.T) {
 				`level="info" queryid="abc123" datname="some_database" table="some_table" engine="postgres" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
-				tables: map[string]map[string]map[string]bool{
+				tables: map[database]map[schema]map[table]bool{
 					"some_database": {
 						"public": {
 							"some_table": true,
@@ -66,7 +67,7 @@ func TestQueryDetails(t *testing.T) {
 				`level="info" queryid="abc123" datname="some_database" table="public.users" engine="postgres" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
-				tables: map[string]map[string]map[string]bool{
+				tables: map[database]map[schema]map[table]bool{
 					"some_database": {
 						"public": {
 							"users": true,

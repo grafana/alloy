@@ -127,7 +127,8 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var queryID, queryText, databaseName string
+		var queryID, queryText string
+		var databaseName database
 		err := rs.Scan(
 			&queryID,
 			&queryText,
