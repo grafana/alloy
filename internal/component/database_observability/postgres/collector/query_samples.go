@@ -115,8 +115,8 @@ type QuerySamples struct {
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
-	// keep track of keys that were already emitted to avoid duplicates
-	emitted *expirable.LRU[SampleKey, struct{}]
+	// keep track of idle keys that were already emitted to avoid duplicates
+	idleEmitted *expirable.LRU[SampleKey, struct{}]
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -215,7 +215,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:               &atomic.Bool{},
 		samples:               map[SampleKey]*SampleState{},
-		emitted:               expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
+		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -303,14 +303,14 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			if st, hadActive := c.samples[key]; hadActive {
 				st.setEndedAt(sample)
 				st.LastRow.State = sample.State
-				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
-			} else if _, already := c.emitted.Get(key); !already {
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+			} else if _, already := c.idleEmitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
 				newIdleState.setEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
-				c.emitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
+				c.idleEmitted.Add(key, struct{}{}) // is actually emitted at the end of the loop
 			}
 			continue
 		}
