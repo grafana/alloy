@@ -168,6 +168,7 @@ loop:
 		}
 	}
 
+	// It's safe to set batches to nil because a queue is never reused once we have closed it.
 	q.batches = nil
 	close(q.c)
 }
