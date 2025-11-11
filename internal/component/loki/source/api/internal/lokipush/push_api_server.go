@@ -30,11 +30,11 @@ import (
 )
 
 type PushAPIServer struct {
-	logger       log.Logger
-	serverConfig *fnet.ServerConfig
-	server       *fnet.TargetServer
-	handler      loki.LogsReceiver
-	hardClose    chan struct{}
+	logger        log.Logger
+	serverConfig  *fnet.ServerConfig
+	server        *fnet.TargetServer
+	handler       loki.LogsReceiver
+	forceShutdown chan struct{}
 
 	rwMutex            sync.RWMutex
 	labels             model.LabelSet
@@ -59,7 +59,7 @@ func NewPushAPIServer(logger log.Logger,
 		logger:             logger,
 		serverConfig:       serverConfig,
 		handler:            handler,
-		hardClose:          make(chan struct{}),
+		forceShutdown:      make(chan struct{}),
 		maxSendMessageSize: maxSendMessageSize,
 	}
 
@@ -123,7 +123,7 @@ func (s *PushAPIServer) Shutdown() {
 
 	// After timeout has expired we cancel all inflight requests.
 	<-time.After(s.serverConfig.GracefulShutdownTimeout)
-	close(s.hardClose)
+	close(s.forceShutdown)
 }
 
 func (s *PushAPIServer) SetLabels(labels model.LabelSet) {
@@ -249,7 +249,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 
 			select {
 			case s.handler.Chan() <- e:
-			case <-s.hardClose:
+			case <-s.forceShutdown:
 				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
@@ -291,7 +291,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 
 		select {
 		case s.handler.Chan() <- entry:
-		case <-s.hardClose:
+		case <-s.forceShutdown:
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
