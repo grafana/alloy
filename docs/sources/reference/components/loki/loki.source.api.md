@@ -50,13 +50,14 @@ The component starts an HTTP server on the configured port and address with the 
 
 You can use the following arguments with `loki.source.api`:
 
-| Name                     | Type                 | Description                                             | Default    | Required |
-| ------------------------ | -------------------- | ------------------------------------------------------- | ---------- | -------- |
-| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.               |            | yes      |
-| `labels`                 | `map(string)`        | The labels to associate with each received logs record. | `{}`       | no       |
-| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.               | `{}`       | no       |
-| `use_incoming_timestamp` | `bool`               | Whether to use the timestamp received from request.     | `false`    | no       |
-| `max_send_message_size`  | `size`               | Maximum size of a request to the push API.              | `"100MiB"` | no       |
+| Name                        | Type                 | Description                                                                        | Default    | Required |
+| --------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ---------- | -------- |
+| `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |            | yes      |
+| `labels`                    | `map(string)`        | The labels to associate with each received logs record.                            | `{}`       | no       |
+| `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                          | `{}`       | no       |
+| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from request.                                | `false`    | no       |
+| `max_send_message_size`     | `size`               | Maximum size of a request to the push API.                                         | `"100MiB"` | no       |
+| `graceful_shutdown_timeout` | `duration`           | Timeout for servers graceful shutdown. If configured, should be greater than zero. | `"30s"`    | no       |
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
