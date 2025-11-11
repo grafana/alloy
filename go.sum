@@ -1171,10 +1171,10 @@ github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesproces
 github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23/go.mod h1:7+xyIHr2PJNE9kic/D91c9SMxACdGIGCJykzTcqsYv0=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2 h1:mg90SB3x+FADo1eBA+x111TiaoHG8nPsebA16CCspxg=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.2/go.mod h1:Ys6Ftlp10t4YXXlRcffnIq4kUk6h7+Is1YSPekhB2f0=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c h1:G+o7MkTXTgpEebJM5ctNMZw8DOPOatRM6lOLeqRPL50=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202537-0.20250916114748-f2ff2fc6048c/go.mod h1:ajmdC82d8daScIWPT0Mmq95lvGmoBNMdAUBlWv/Hwbg=
+github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6 h1:EYliQdeskWSeIb/A79tani3t7nIIMA1W+DQxUU4K0OE=
+github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6/go.mod h1:s2uNBGhm7yA9ZwizwKFq6Dx+Xj8oP/YxRt2KeG4Y1+4=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c/go.mod h1:eXOwk9x2rmJZ9+Ov5ot7NitRWNmF0jynNEeuIDRnK/Q=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
@@ -2729,8 +2729,8 @@ go4.org/netipx v0.0.0-20230125063823-8449b0a6169f h1:ketMxHg+vWm3yccyYiq+uK8D3fR
 go4.org/netipx v0.0.0-20230125063823-8449b0a6169f/go.mod h1:tgPU4N2u9RByaTN3NC2p9xOzyFpte4jYwsIIRF7XlSc=
 golang.design/x/chann v0.1.2 h1:eHF9wjuQnpp+j4ryWhyxC/pFuYzbvMAkudA/I5ALovY=
 golang.design/x/chann v0.1.2/go.mod h1:Rh5KhCAp+0qu9+FfKPymHpu8onmjl89sFwMeiw3SK14=
-golang.org/x/arch v0.21.0 h1:iTC9o7+wP6cPWpDWkivCvQFGAHDQ59SrSxsLPcnkArw=
-golang.org/x/arch v0.21.0/go.mod h1:dNHoOeKiyja7GTvF9NJS1l3Z2yntpQNzgrjh1cU103A=
+golang.org/x/arch v0.22.0 h1:c/Zle32i5ttqRXjdLyyHZESLD/bB90DCU1g9l/0YBDI=
+golang.org/x/arch v0.22.0/go.mod h1:dNHoOeKiyja7GTvF9NJS1l3Z2yntpQNzgrjh1cU103A=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
@@ -2775,8 +2775,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b h1:18qgiDvlvH7kk8Ioa8Ov+K6xCi0GMvmGfGW0sgd/SYA=
-golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b/go.mod h1:j/pmGrbnkbPtQfxEe5D0VQhZC6qKbfKifgD0oM7sR70=
+golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 h1:mgKeJMpvi0yx/sU5GsxQ7p6s2wtOnGAHZWCHUM4KGzY=
+golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546/go.mod h1:j/pmGrbnkbPtQfxEe5D0VQhZC6qKbfKifgD0oM7sR70=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
