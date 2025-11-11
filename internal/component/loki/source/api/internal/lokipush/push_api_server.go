@@ -249,7 +249,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			select {
 			case s.handler.Chan() <- e:
 			case <-r.Context().Done():
-				w.WriteHeader(http.StatusGatewayTimeout)
+				w.WriteHeader(http.StatusServiceUnavailable)
 				return
 			case <-s.forceShutdown:
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -293,7 +293,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		select {
 		case s.handler.Chan() <- entry:
 		case <-r.Context().Done():
-			w.WriteHeader(http.StatusGatewayTimeout)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		case <-s.forceShutdown:
 			w.WriteHeader(http.StatusServiceUnavailable)
