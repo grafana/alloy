@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug fixes
+
+- Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
+ 
 1.4.0 (2025-10-27)
 ----------
 
