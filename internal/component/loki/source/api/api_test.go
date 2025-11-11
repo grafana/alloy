@@ -241,7 +241,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	defer lokiClient.Stop()
 
 	const messagesCount = 100
-	for i := 0; i < messagesCount; i++ {
+	for i := range messagesCount {
 		entry := loki.Entry{
 			Labels: map[model.LabelName]model.LabelValue{"source": "test"},
 			Entry:  push.Entry{Line: fmt.Sprintf("test message #%d", i)},
@@ -256,7 +256,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool {
-			for i := 0; i < receiversCount; i++ {
+			for i := range receiversCount {
 				if len(receivers[i].Received()) != messagesCount {
 					return false
 				}
@@ -571,14 +571,20 @@ func TestShutdown(t *testing.T) {
 	codes := make(chan int)
 	for range 5 {
 		go func() {
-			res, _ := http.DefaultClient.Do(newRequest())
-			codes <- res.StatusCode
+			res, err := http.DefaultClient.Do(newRequest())
+			if err != nil || res == nil {
+				// This should not happen but if it does we return -1 here so test will fail.
+				codes <- -1
+			} else {
+				codes <- res.StatusCode
+			}
 		}()
 	}
 
-	// Let requests go through
+	// Let requests go through.
 	time.Sleep(2 * time.Second)
-	// cancel component and stop server
+
+	// Cancel component and stop server.
 	cancel()
 
 	var collected []int
