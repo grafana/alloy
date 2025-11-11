@@ -33,7 +33,8 @@ type PushAPIServer struct {
 	logger       log.Logger
 	serverConfig *fnet.ServerConfig
 	server       *fnet.TargetServer
-	handler      loki.EntryHandler
+	handler      loki.LogsReceiver
+	hardClose    chan struct{}
 
 	rwMutex            sync.RWMutex
 	labels             model.LabelSet
@@ -44,7 +45,7 @@ type PushAPIServer struct {
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	registerer prometheus.Registerer,
 	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
@@ -58,6 +59,7 @@ func NewPushAPIServer(logger log.Logger,
 		logger:             logger,
 		serverConfig:       serverConfig,
 		handler:            handler,
+		hardClose:          make(chan struct{}),
 		maxSendMessageSize: maxSendMessageSize,
 	}
 
@@ -115,7 +117,13 @@ func (s *PushAPIServer) ServerConfig() fnet.ServerConfig {
 
 func (s *PushAPIServer) Shutdown() {
 	level.Info(s.logger).Log("msg", "stopping push API server")
+	// StopAndShutdown try to gracefully shutdown server.
+	// No inflight requests will be canceled.
 	s.server.StopAndShutdown()
+
+	// After timeout has expired we cancel all infligh requests.
+	<-time.After(s.serverConfig.GracefulShutdownTimeout)
+	close(s.hardClose)
 }
 
 func (s *PushAPIServer) SetLabels(labels model.LabelSet) {
@@ -238,7 +246,14 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			} else {
 				e.Timestamp = time.Now()
 			}
-			s.handler.Chan() <- e
+
+			select {
+			case s.handler.Chan() <- e:
+			case <-s.hardClose:
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+
 		}
 	}
 
@@ -254,7 +269,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) {
-	entries := s.handler.Chan()
 	defer r.Body.Close()
 	body := bufio.NewReader(r.Body)
 	addLabels := s.getLabels()
@@ -272,13 +286,16 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			}
 			continue
 		}
-		entries <- loki.Entry{
-			Labels: addLabels,
-			Entry: lokipush.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
-			},
+
+		entry := loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}}
+
+		select {
+		case s.handler.Chan() <- entry:
+		case <-s.hardClose:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
 		}
+
 		if err == io.EOF {
 			break
 		}
