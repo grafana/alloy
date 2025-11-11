@@ -234,7 +234,6 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-
 	return &QuerySamples{
 		dbConnection:                 args.DB,
 		collectInterval:              args.CollectInterval,
