@@ -556,7 +556,7 @@ func TestShutdown(t *testing.T) {
 
 	newRequest := func() *http.Request {
 		body := bytes.Buffer{}
-		err = util.SerializeProto(&body, &push.PushRequest{Streams: []push.Stream{{Labels: `{foo="foo"}`, Entries: []push.Entry{{Line: "line"}}}}}, util.RawSnappy)
+		err := util.SerializeProto(&body, &push.PushRequest{Streams: []push.Stream{{Labels: `{foo="foo"}`, Entries: []push.Entry{{Line: "line"}}}}}, util.RawSnappy)
 		require.NoError(t, err)
 		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/loki/api/v1/push", args.Server.HTTP.ListenAddress, args.Server.HTTP.ListenPort), &body)
 		require.NoError(t, err)
