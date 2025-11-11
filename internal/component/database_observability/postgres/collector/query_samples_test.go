@@ -974,6 +974,7 @@ func TestComputeBurstWindow(t *testing.T) {
 		})
 	}
 }
+
 func TestQuerySamples_TestBurstWindow(t *testing.T) {
 	t.Parallel()
 
@@ -1393,5 +1394,4 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 	require.Equal(t, 1, len(c.recentFinalizationsByQueryID[qid]))
 	_, found = c.lastEmittedByQueryID[qid]
 	require.True(t, found)
-
 }

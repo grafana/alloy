@@ -221,7 +221,7 @@ func (w WaitEventIdentity) Equal(other WaitEventIdentity) bool {
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
-	const emittedCacheSize = 1000 //pg_stat_statements default max number of statements to track
+	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
 	const emittedCacheTTL = 10 * time.Minute
 
 	return &QuerySamples{
