@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -492,6 +493,106 @@ func startTestComponent(
 	}
 }
 
+func TestShutdown(t *testing.T) {
+	args := testArgsWith(t, func(a *Arguments) {
+		a.Server.GracefulShutdownTimeout = 5 * time.Second
+		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+	})
+
+	opts := defaultOptions()
+
+	comp, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		err := comp.Run(ctx)
+		require.NoError(t, err)
+	}()
+
+	waitForServerToBeReady(t, comp)
+
+	// First request should be forwarded on channel
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), args))
+	require.NoError(t, err)
+
+	codes := make(chan int)
+	for range 5 {
+		go func() {
+			res, err := http.DefaultClient.Do(newRequest(t, context.Background(), args))
+			if err != nil || res == nil {
+				// This should not happen but if it does we return -1 here so test will fail.
+				codes <- -1
+			} else {
+				codes <- res.StatusCode
+			}
+		}()
+	}
+
+	// Let requests go through.
+	time.Sleep(2 * time.Second)
+
+	// Cancel component and stop server.
+	cancel()
+
+	var collected []int
+	for c := range codes {
+		collected = append(collected, c)
+		if len(collected) == 5 {
+			break
+		}
+	}
+
+	require.Equal(t, slices.Repeat([]int{503}, 5), collected)
+}
+
+func TestCancelRequest(t *testing.T) {
+	args := testArgsWith(t, func(a *Arguments) {
+		a.Server.GracefulShutdownTimeout = 5 * time.Second
+		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+	})
+
+	opts := defaultOptions()
+
+	comp, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx := t.Context()
+	go func() {
+		err := comp.Run(ctx)
+		require.NoError(t, err)
+	}()
+
+	waitForServerToBeReady(t, comp)
+
+	// First request should be forwarded on channel
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), args))
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Go(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+			defer cancel()
+			res, err := http.DefaultClient.Do(newRequest(t, ctx, args))
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			require.Nil(t, res)
+		})
+	}
+
+	wg.Wait()
+}
+
+func newRequest(t *testing.T, ctx context.Context, args Arguments) *http.Request {
+	body := bytes.Buffer{}
+	err := util.SerializeProto(&body, &push.PushRequest{Streams: []push.Stream{{Labels: `{foo="foo"}`, Entries: []push.Entry{{Line: "line"}}}}}, util.RawSnappy)
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://%s:%d/loki/api/v1/push", args.Server.HTTP.ListenAddress, args.Server.HTTP.ListenPort), &body)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-protobuf")
+	return req
+}
+
 func waitForServerToBeReady(t *testing.T, comp *Component) {
 	require.Eventuallyf(t, func() bool {
 		// Determine if TLS is enabled to choose the right protocol
@@ -531,71 +632,6 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 
 		return err == nil && resp != nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
-}
-
-func TestShutdown(t *testing.T) {
-	receiver := loki.NewLogsReceiver()
-
-	args := testArgsWith(t, func(a *Arguments) {
-		a.Server.GracefulShutdownTimeout = 5 * time.Second
-		a.ForwardTo = []loki.LogsReceiver{receiver}
-	})
-
-	opts := defaultOptions()
-
-	comp, err := New(opts, args)
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		err := comp.Run(ctx)
-		require.NoError(t, err)
-	}()
-
-	waitForServerToBeReady(t, comp)
-
-	newRequest := func() *http.Request {
-		body := bytes.Buffer{}
-		err := util.SerializeProto(&body, &push.PushRequest{Streams: []push.Stream{{Labels: `{foo="foo"}`, Entries: []push.Entry{{Line: "line"}}}}}, util.RawSnappy)
-		require.NoError(t, err)
-		req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/loki/api/v1/push", args.Server.HTTP.ListenAddress, args.Server.HTTP.ListenPort), &body)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/x-protobuf")
-		return req
-	}
-
-	// First request should be forwarded on channel
-	_, err = http.DefaultClient.Do(newRequest())
-	require.NoError(t, err)
-
-	codes := make(chan int)
-	for range 5 {
-		go func() {
-			res, err := http.DefaultClient.Do(newRequest())
-			if err != nil || res == nil {
-				// This should not happen but if it does we return -1 here so test will fail.
-				codes <- -1
-			} else {
-				codes <- res.StatusCode
-			}
-		}()
-	}
-
-	// Let requests go through.
-	time.Sleep(2 * time.Second)
-
-	// Cancel component and stop server.
-	cancel()
-
-	var collected []int
-	for c := range codes {
-		collected = append(collected, c)
-		if len(collected) == 5 {
-			break
-		}
-	}
-
-	require.Equal(t, slices.Repeat([]int{503}, 5), collected)
 }
 
 func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
