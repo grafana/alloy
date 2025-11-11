@@ -34,7 +34,8 @@ const (
 		SELECT datname 
 		FROM pg_database 
 		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')`
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ` + EXCLUDED_DATABASES
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
