@@ -117,11 +117,11 @@ func (s *PushAPIServer) ServerConfig() fnet.ServerConfig {
 
 func (s *PushAPIServer) Shutdown() {
 	level.Info(s.logger).Log("msg", "stopping push API server")
-	// StopAndShutdown try to gracefully shutdown server.
+	// StopAndShutdown tries to gracefully shutdown server.
 	// No inflight requests will be canceled.
 	s.server.StopAndShutdown()
 
-	// After timeout has expired we cancel all infligh requests.
+	// After timeout has expired we cancel all inflight requests.
 	<-time.After(s.serverConfig.GracefulShutdownTimeout)
 	close(s.hardClose)
 }
@@ -309,6 +309,6 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 func (s *PushAPIServer) ready(w http.ResponseWriter, _ *http.Request) {
 	resp := "ready"
 	if _, err := w.Write([]byte(resp)); err != nil {
-		level.Error(s.logger).Log("msg", "failed to respond to ready endoint", "err", err)
+		level.Error(s.logger).Log("msg", "failed to respond to ready endpoint", "err", err)
 	}
 }
