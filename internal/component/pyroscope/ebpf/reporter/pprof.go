@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.opentelemetry.io/ebpf-profiler/host"
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
@@ -46,7 +45,7 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 
-	ExtraNativeSymbolResolver samples.NativeSymbolResolver
+	ExtraNativeSymbolResolver irsymcache.NativeSymbolResolver
 	Consumer                  PPROFConsumer
 }
 type PPROFReporter struct {
@@ -94,7 +93,7 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		ProcessName:    meta.ProcessName,
 		ExecutablePath: meta.ExecutablePath,
 		ApmServiceName: meta.APMServiceName,
-		ContainerID:    containerID,
+		ExtraMeta:      containerID,
 		Pid:            int64(meta.PID),
 		Tid:            int64(meta.TID),
 	}
@@ -193,7 +192,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 	})
 
 	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ContainerID)
+		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ExtraMeta.(string))
 		if target == nil {
 			continue
 		}
@@ -332,14 +331,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 	if p.cfg.ExtraNativeSymbolResolver == nil {
 		return
 	}
-	addr := fr.AddressOrLineno
-	hostFrame := host.Frame{
-		File:          host.FileIDFromLibpf(mappingFile.FileID),
-		Lineno:        addr,
-		Type:          fr.Type,
-		ReturnAddress: false,
-	}
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, hostFrame, func(si samples.SourceInfo) {
+	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, fr.AddressOrLineno, mappingFile.FileID, func(si irsymcache.SourceInfo) {
 		name := si.FunctionName
 		if name == libpf.NullString && si.FilePath == libpf.NullString {
 			return
