@@ -93,16 +93,6 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 	q.WaitForResult = args.WaitForResult
 	q.Batch = batch
 
-	// q := &otelexporterhelper.QueueBatchConfig{
-	// 	Enabled:         args.Enabled,
-	// 	NumConsumers:    args.NumConsumers,
-	// 	QueueSize:       args.QueueSize,
-	// 	BlockOnOverflow: args.BlockOnOverflow,
-	// 	Sizer:           *sizer,
-	// 	WaitForResult:   args.WaitForResult,
-	// 	Batch:           batch,
-	// }
-
 	// Configure storage if args.Storage is set.
 	if args.Storage != nil {
 		if args.Storage.Extension == nil {
@@ -162,12 +152,6 @@ type BatchConfig struct {
 	MaxSize      int64         `alloy:"max_size,attr,optional"`
 	Sizer        string        `alloy:"sizer,attr,optional"`
 }
-
-// var defaultBatchConfig = configoptional.Default(otelexporterhelper.BatchConfig{
-// 	FlushTimeout: 200 * time.Millisecond,
-// 	Sizer:        otelexporterhelper.RequestSizerTypeItems,
-// 	MinSize:      8192,
-// })
 
 var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
 

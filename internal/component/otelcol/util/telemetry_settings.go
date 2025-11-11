@@ -15,7 +15,6 @@ var cachedResource *pcommon.Resource
 
 // GetTelemetrySettingsResource returns a resource describing the telemetry
 // settings of the OpenTelemetry Collector instance.
-
 func GetTelemetrySettingsResource() (pcommon.Resource, error) {
 	if cachedResource != nil {
 		return *cachedResource, nil
