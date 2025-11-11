@@ -20,8 +20,7 @@ func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataCon
   var err error
 
   if len(configs.Values) > 0 {
-    labelsConfig := LabelsConfig{Values: configs.Values}
-    validatedLabelsConfig, err = validateLabelsConfig(labelsConfig)
+    validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
     if err != nil {
       return nil, err
     }
