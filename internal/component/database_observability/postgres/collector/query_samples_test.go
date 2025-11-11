@@ -1289,14 +1289,19 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 			// Populate the 5m window with (tc.rateCount - 1) suppressed finalizations
 			// so that the next one (allowed) observes tc.rateCount events within 5 minutes.
 			for i := 0; i < tc.rateCount-1; i++ {
-				c.lastEmittedByQueryID[qid] = time.Now()
+				c.lastEmittedByQueryID.Add(qid, time.Now())
 				finalizeOnce()
 			}
 
 			// Helper to compute expected interval using current window size plus the in-flight finalization
 			expectedNow := func() time.Duration {
 				// Per-minute normalization from the fixed 5m window
-				count := len(c.recentFinalizationsByQueryID[qid]) + 1
+				var count int
+				if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
+					count = len(w) + 1
+				} else {
+					count = 1
+				}
 				perMinute := float64(count) * float64(time.Minute) / float64(finalizationRateWindow)
 				if perMinute < 1 {
 					perMinute = 1
@@ -1305,7 +1310,7 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 			}
 
 			// Allow an emission: set last emission far in the past
-			c.lastEmittedByQueryID[qid] = time.Now().Add(-100 * time.Hour)
+			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-100*time.Hour))
 			finalizeOnce()
 			require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond, "first allowed emission must pass")
 
@@ -1316,13 +1321,13 @@ func TestAdaptiveThrottle_RateBaseMatrix(t *testing.T) {
 
 			// Advance logical time by adjusting lastEmitted; just under the threshold -> still suppressed
 			exp := expectedNow()
-			c.lastEmittedByQueryID[qid] = time.Now().Add(-exp + 100*time.Millisecond)
+			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-exp+100*time.Millisecond))
 			finalizeOnce()
 			require.Equal(t, 1, len(lokiClient.Received()))
 
 			// Beyond the expected interval -> should emit
 			exp = expectedNow()
-			c.lastEmittedByQueryID[qid] = time.Now().Add(-exp - 100*time.Millisecond)
+			c.lastEmittedByQueryID.Add(qid, time.Now().Add(-exp-100*time.Millisecond))
 			finalizeOnce()
 			require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
 		})
@@ -1371,8 +1376,10 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 300*time.Millisecond, 10*time.Millisecond)
 	// Exempt emissions must not grow the recent finalization window nor set lastEmitted.
-	require.Equal(t, 0, len(c.recentFinalizationsByQueryID[qid]))
-	_, found := c.lastEmittedByQueryID[qid]
+	if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
+		require.Equal(t, 0, len(w))
+	}
+	_, found := c.lastEmittedByQueryID.Get(qid)
 	require.False(t, found)
 
 	// Now a non-exempt (active) sample should emit and set lastEmitted/window as usual.
@@ -1391,7 +1398,11 @@ func TestAdaptiveThrottle_ExemptNotCounted(t *testing.T) {
 	c.emitAndDeleteSample(key)
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 300*time.Millisecond, 10*time.Millisecond)
-	require.Equal(t, 1, len(c.recentFinalizationsByQueryID[qid]))
-	_, found = c.lastEmittedByQueryID[qid]
+	if w, ok := c.recentFinalizationsByQueryID.Get(qid); ok {
+		require.Equal(t, 1, len(w))
+	} else {
+		require.Fail(t, "recentFinalizationsByQueryID entry not found")
+	}
+	_, found = c.lastEmittedByQueryID.Get(qid)
 	require.True(t, found)
 }
