@@ -31,8 +31,8 @@ const (
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
-		SELECT datname 
-		FROM pg_database 
+		SELECT datname
+		FROM pg_database
 		WHERE datistemplate = false
 			AND has_database_privilege(datname, 'CONNECT')
 			AND datname NOT IN ` + EXCLUDED_DATABASES
