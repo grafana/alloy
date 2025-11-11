@@ -50,9 +50,12 @@ otelcol.receiver.kafka "default" {
 	min_fetch_size           = 2
 	default_fetch_size       = 1048575
 	max_fetch_size           = 2000000
+	max_partition_fetch_size = 2097152
 	max_fetch_wait           = "11s"
 	group_rebalance_strategy = "roundrobin"
 	group_instance_id        = "fakeinstanceid"
+	rack_id                  = "test-rack"
+	use_leader_epoch         = false
 
 	error_backoff {
 		enabled              = true
@@ -78,6 +81,9 @@ otelcol.exporter.kafka "default" {
 	topic_from_attribute                     = "my_topic"
 	partition_traces_by_id                   = true
 	partition_metrics_by_resource_attributes = true
+	partition_logs_by_resource_attributes    = true
+	partition_logs_by_trace_id               = true
+	include_metadata_keys                    = ["key1", "key2"]
 	timeout                                  = "11s"
 
 	logs {
@@ -131,6 +137,7 @@ otelcol.exporter.kafka "default" {
 		compression_params {
 			level = 9
 		}
-		flush_max_messages = 11
+		flush_max_messages       = 11
+		allow_auto_topic_creation = true
 	}
 }
