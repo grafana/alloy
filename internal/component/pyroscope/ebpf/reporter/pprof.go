@@ -93,7 +93,6 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 		ProcessName:    meta.ProcessName,
 		ExecutablePath: meta.ExecutablePath,
 		ApmServiceName: meta.APMServiceName,
-		ExtraMeta:      containerID,
 		Pid:            int64(meta.PID),
 		Tid:            int64(meta.TID),
 	}
@@ -163,9 +162,9 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for _, ts := range reportedEvents {
+	for containerID, ts := range reportedEvents {
 		for origin, events := range ts {
-			pp := p.createProfile(origin, events)
+			pp := p.createProfile(containerID, origin, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -178,7 +177,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.cfg.ExtraNativeSymbolResolver != nil {
 			p.cfg.ExtraNativeSymbolResolver.Cleanup()
@@ -192,7 +191,7 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 	})
 
 	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ExtraMeta.(string))
+		target := p.sd.FindTarget(uint32(traceKey.Pid), string(containerID))
 		if target == nil {
 			continue
 		}
