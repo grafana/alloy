@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/loki/pkg/push"
 )
 
 var pipelineStagesStructuredMetadataFromLogfmt = `
@@ -137,68 +136,68 @@ func Test_StructuredMetadataStage(t *testing.T) {
 	tests := map[string]struct {
 		pipelineStagesYaml         string
 		logLine                    string
-		expectedStructuredMetadata push.LabelsAdapter
+		expectedStructuredMetadata string
 		expectedLabels             model.LabelSet
 	}{
 		"expected structured metadata to be extracted with logfmt parser and to be added to entry": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromLogfmt,
 			logLine:                    "app=loki component=ingester",
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "app", Value: "loki"}},
+			expectedStructuredMetadata: `{"app":"loki"}`,
 		},
 		"expected structured metadata to be extracted with json parser and to be added to entry": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromJSON,
 			logLine:                    `{"app":"loki" ,"component":"ingester"}`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "app", Value: "loki"}},
+			expectedStructuredMetadata: `{"app":"loki"}`,
 		},
 		"expected structured metadata to be extracted with regexp parser and to be added to entry": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataWithRegexParser,
 			logLine:                    `2019-01-01T01:00:00.000000001Z stderr P i'm a log message!`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "stream", Value: "stderr"}},
+			expectedStructuredMetadata: `{"stream":"stderr"}`,
 		},
 		"expected structured metadata to be extracted with json parser and to be added to entry after rendering the template": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromJSONWithTemplate,
 			logLine:                    `{"app":"loki" ,"component":"ingester"}`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "app", Value: "LOKI"}},
+			expectedStructuredMetadata: `{"app":"LOKI"}`,
 		},
 		"expected structured metadata and regular labels to be extracted with json parser and to be added to entry": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataAndRegularLabelsFromJSON,
 			logLine:                    `{"app":"loki" ,"component":"ingester"}`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "app", Value: "loki"}},
+			expectedStructuredMetadata: `{"app":"loki"}`,
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("ingester")},
 		},
 		"expected structured metadata and regular labels to be extracted with static labels stage and to be added to entry": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromStaticLabels,
 			logLine:                    `sample log line`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod", Value: "loki-querier-664f97db8d-qhnwg"}},
+			expectedStructuredMetadata: `{"pod":"loki-querier-664f97db8d-qhnwg"}`,
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
 		"expected structured metadata and regular labels to be extracted with static labels stage using different structured key": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromStaticLabelsDifferentKey,
 			logLine:                    `sample log line`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}},
+			expectedStructuredMetadata: `{"pod_name":"loki-querier-664f97db8d-qhnwg"}`,
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
 		"expected structured metadata and regular labels to be extracted using regex with static labels stage": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromRegexLabels,
 			logLine:                    `sample log line`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "label_app_kubernetes_io_name", Value: "loki"}, push.LabelAdapter{Name: "label_app_kubernetes_io_component", Value: "querier"}},
+			expectedStructuredMetadata: `{"label_app_kubernetes_io_component":"querier","label_app_kubernetes_io_name":"loki"}`,
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
 		"expected structured metadata and regular labels to be extracted using regex and non-regex with static labels stage": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromRegexAndNonRegexLabels,
 			logLine:                    `sample log line`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}, push.LabelAdapter{Name: "label_app_kubernetes_io_name", Value: "loki"}, push.LabelAdapter{Name: "label_app_kubernetes_io_component", Value: "querier"}},
+			expectedStructuredMetadata: `{"label_app_kubernetes_io_component":"querier","label_app_kubernetes_io_name":"loki","pod_name":"loki-querier-664f97db8d-qhnwg"}`,
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
 		"expected structured metadata to be set from extracted values": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromExtractedValues,
 			logLine:                    `pod=loki-querier-664f97db8d-qhnwg metadata_name=loki metadata_component=querier msg="sample log line"`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}, push.LabelAdapter{Name: "metadata_name", Value: "loki"}, push.LabelAdapter{Name: "metadata_component", Value: "querier"}},
+			expectedStructuredMetadata: `{"metadata_component":"querier","metadata_name":"loki","pod_name":"loki-querier-664f97db8d-qhnwg"}`,
 		},
 		"expected structured metadata from nested values": {
 			pipelineStagesYaml:         pipelineStagesStructuredMetadataFromNestedValues,
 			logLine:                    `{"app":"loki", "component_nested": {"name":"ingester", "props":{"n1": "v1", "n2": "v2"}}, "component_non_nested": "non_nested_val"}`,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "component_nested", Value: `{"name":"ingester","props":{"n1":"v1","n2":"v2"}}`}, push.LabelAdapter{Name: "component_non_nested", Value: "non_nested_val"}},
+			expectedStructuredMetadata: `{"component_nested":"{\"name\":\"ingester\",\"props\":{\"n1\":\"v1\",\"n2\":\"v2\"}}","component_non_nested":"non_nested_val"}`,
 		},
 	}
 	for name, test := range tests {
@@ -207,15 +206,11 @@ func Test_StructuredMetadataStage(t *testing.T) {
 			require.NoError(t, err)
 
 			result := processEntries(pl, newEntry(nil, nil, test.logLine, time.Now()))[0]
-			expectedStructuredMetadata := make(map[string]string)
-			for _, l := range test.expectedStructuredMetadata {
-				expectedStructuredMetadata[l.Name] = l.Value
-			}
-			resultStructuredMetadata := make(map[string]string)
-			for _, l := range result.StructuredMetadata {
-				resultStructuredMetadata[l.Name] = l.Value
-			}
-			require.Equal(t, expectedStructuredMetadata, resultStructuredMetadata)
+
+			sm, err := result.StructuredMetadata.MarshalJSON()
+			require.NoError(t, err)
+			require.Equal(t, test.expectedStructuredMetadata, string(sm))
+
 			if test.expectedLabels != nil {
 				require.Equal(t, test.expectedLabels, result.Labels)
 			} else {
