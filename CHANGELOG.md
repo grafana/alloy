@@ -89,6 +89,8 @@ Main (unreleased)
 
 - Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
 
+- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
