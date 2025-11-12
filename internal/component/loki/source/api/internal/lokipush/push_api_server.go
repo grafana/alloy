@@ -117,11 +117,15 @@ func (s *PushAPIServer) ServerConfig() fnet.ServerConfig {
 
 func (s *PushAPIServer) Shutdown() {
 	level.Info(s.logger).Log("msg", "stopping push API server")
-	// StopAndShutdown tries to gracefully shutdown server.
-	// No in-flight requests will be canceled.
+	// StopAndShutdown tries to gracefully shutdown.
+	// It will stop idle and incoming connections
+	// and try to wait for all in-flight connections
+	// to finish. If configured timeout `ServerGracefulShutdownTimeout`
+	// expired this call will be unblocked.
 	s.server.StopAndShutdown()
 
-	// After we have tried a graceful shutdown we cancel all in-flight requests.
+	// After we have tried a graceful shutdown we force all remaining in-flight
+	// requests to exit.
 	close(s.forceShutdown)
 }
 
