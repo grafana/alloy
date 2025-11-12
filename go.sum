@@ -711,6 +711,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/deckarep/golang-set/v2 v2.6.0 h1:XfcQbWM1LlMB8BsJ8N9vW5ehnnPVIw0je80NsVHagjM=
 github.com/deckarep/golang-set/v2 v2.6.0/go.mod h1:VAky9rY/yGXJOLEDv3OMci+7wtDpOF4IN+y82NBOac4=
+github.com/dehaansa/opentelemetry-ebpf-instrumentation v0.0.0-20251112143931-490d8e64bbe3 h1:dNrtZPOuf3WOGYhvasSjPwMCBejRQdcg4igOGtSJuqw=
+github.com/dehaansa/opentelemetry-ebpf-instrumentation v0.0.0-20251112143931-490d8e64bbe3/go.mod h1:Q/40/vmBNC395gYXc1mhvii+tx3qRtOBO3cuz93FA30=
 github.com/deneonet/benc v1.1.7 h1:0XPxTTVJZq/ulxXvMn2Mzjx5XquekVky3wX6eTgA0vA=
 github.com/deneonet/benc v1.1.7/go.mod h1:UCfkM5Od0B2huwv/ZItvtUb7QnALFt9YXtX8NXX4Lts=
 github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 h1:ue4Es4Xzz255hWQ7NAWzZxuXG+YOV7URzzusLLSe0zU=
@@ -1171,8 +1173,6 @@ github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesproces
 github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23/go.mod h1:7+xyIHr2PJNE9kic/D91c9SMxACdGIGCJykzTcqsYv0=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6 h1:EYliQdeskWSeIb/A79tani3t7nIIMA1W+DQxUU4K0OE=
-github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6/go.mod h1:s2uNBGhm7yA9ZwizwKFq6Dx+Xj8oP/YxRt2KeG4Y1+4=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c/go.mod h1:eXOwk9x2rmJZ9+Ov5ot7NitRWNmF0jynNEeuIDRnK/Q=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=

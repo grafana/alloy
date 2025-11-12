@@ -1080,7 +1080,8 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6
+// replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.6
+replace go.opentelemetry.io/obi => github.com/dehaansa/opentelemetry-ebpf-instrumentation v0.0.0-20251112143931-490d8e64bbe3
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c
 
