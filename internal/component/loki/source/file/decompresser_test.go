@@ -359,7 +359,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		func() bool { return true },
+		func() bool { return false },
 		sourceOptions{
 			path:                 filename,
 			labels:               labels,
