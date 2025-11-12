@@ -89,6 +89,8 @@ Main (unreleased)
 
 - Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
 
+- `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)

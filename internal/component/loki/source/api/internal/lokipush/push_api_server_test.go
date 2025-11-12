@@ -236,7 +236,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -307,7 +307,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 0)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 0)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -322,7 +322,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 	// Send some logs
 	ts := time.Now()
 	body := new(bytes.Buffer)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		body.WriteString("line" + strconv.Itoa(i))
 		_, err := http.Post(fmt.Sprintf("http://%s:%d/api/v1/raw", localhost, port), "text/json", body)
 		require.NoError(t, err)
@@ -376,7 +376,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 0)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 0)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -454,7 +454,7 @@ func TestReady(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -515,7 +515,7 @@ func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fa
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
