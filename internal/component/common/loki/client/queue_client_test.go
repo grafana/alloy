@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
 type testCase struct {

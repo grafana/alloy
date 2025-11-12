@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/dskit/user"
 	lokipush "github.com/grafana/loki/pkg/push"
 	"github.com/grafana/loki/v3/pkg/loghttp/push"
+	"github.com/grafana/loki/v3/pkg/util/constants"
 	util_log "github.com/grafana/loki/v3/pkg/util/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -29,10 +30,11 @@ import (
 )
 
 type PushAPIServer struct {
-	logger       log.Logger
-	serverConfig *fnet.ServerConfig
-	server       *fnet.TargetServer
-	handler      loki.EntryHandler
+	logger        log.Logger
+	serverConfig  *fnet.ServerConfig
+	server        *fnet.TargetServer
+	handler       loki.LogsReceiver
+	forceShutdown chan struct{}
 
 	rwMutex            sync.RWMutex
 	labels             model.LabelSet
@@ -43,7 +45,7 @@ type PushAPIServer struct {
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	registerer prometheus.Registerer,
 	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
@@ -57,6 +59,7 @@ func NewPushAPIServer(logger log.Logger,
 		logger:             logger,
 		serverConfig:       serverConfig,
 		handler:            handler,
+		forceShutdown:      make(chan struct{}),
 		maxSendMessageSize: maxSendMessageSize,
 	}
 
@@ -114,7 +117,16 @@ func (s *PushAPIServer) ServerConfig() fnet.ServerConfig {
 
 func (s *PushAPIServer) Shutdown() {
 	level.Info(s.logger).Log("msg", "stopping push API server")
+	// StopAndShutdown tries to gracefully shutdown.
+	// It will stop idle and incoming connections
+	// and try to wait for all in-flight connections
+	// to finish. If configured timeout `ServerGracefulShutdownTimeout`
+	// expired this call will be unblocked.
 	s.server.StopAndShutdown()
+
+	// After we have tried a graceful shutdown we force all remaining in-flight
+	// requests to exit.
+	close(s.forceShutdown)
 }
 
 func (s *PushAPIServer) SetLabels(labels model.LabelSet) {
@@ -174,6 +186,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		nil, // usage tracker
 		nil,
 		"",
+		constants.Loki,
 	)
 	if err != nil {
 		level.Warn(s.logger).Log("msg", "failed to parse incoming push request", "err", err.Error())
@@ -236,7 +249,16 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			} else {
 				e.Timestamp = time.Now()
 			}
-			s.handler.Chan() <- e
+
+			select {
+			case s.handler.Chan() <- e:
+			case <-r.Context().Done():
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			case <-s.forceShutdown:
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
 		}
 	}
 
@@ -252,7 +274,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 // NOTE: This code is copied from Promtail (https://github.com/grafana/loki/commit/47e2c5884f443667e64764f3fc3948f8f11abbb8) with changes kept to the minimum.
 // Only the HTTP handler functions are copied to allow for Alloy-specific server configuration and lifecycle management.
 func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) {
-	entries := s.handler.Chan()
 	defer r.Body.Close()
 	body := bufio.NewReader(r.Body)
 	addLabels := s.getLabels()
@@ -270,13 +291,19 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			}
 			continue
 		}
-		entries <- loki.Entry{
-			Labels: addLabels,
-			Entry: lokipush.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
-			},
+
+		entry := loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}}
+
+		select {
+		case s.handler.Chan() <- entry:
+		case <-r.Context().Done():
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case <-s.forceShutdown:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
 		}
+
 		if err == io.EOF {
 			break
 		}
@@ -290,6 +317,6 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 func (s *PushAPIServer) ready(w http.ResponseWriter, _ *http.Request) {
 	resp := "ready"
 	if _, err := w.Write([]byte(resp)); err != nil {
-		level.Error(s.logger).Log("msg", "failed to respond to ready endoint", "err", err)
+		level.Error(s.logger).Log("msg", "failed to respond to ready endpoint", "err", err)
 	}
 }

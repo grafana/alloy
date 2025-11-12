@@ -369,7 +369,7 @@ discovery.relabel "database_observability_mysql_example_db_2" {
 }
 
 prometheus.scrape "database_observability_mysql_example_db_2" {
-  targets    = discovery.relabel.database_observability_mysql_example_db_2.targets
+  targets    = discovery.relabel.database_observability_mysql_example_db_2.output
   job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
@@ -447,9 +447,9 @@ GRANT pg_read_all_data TO "db-o11y";
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
-2. Add the following configuration block to Alloy for each Postgres DB you'd like to monitor.
+2. Add the following configuration block to Alloy.
 - Replace `<your_DB_name>`
-- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
+- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/postgres?sslmode=require"`.
 
 3. Copy this block for each DB you'd like to monitor.
 

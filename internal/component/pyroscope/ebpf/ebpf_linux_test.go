@@ -65,7 +65,7 @@ sample_rate = 239
 			in: `
 	targets = [{"service_name" = "foo", "container_id"= "cid"}]
 	forward_to = []
-	off_cpu_threshold = 1000
+	off_cpu_threshold = 1
 	`,
 			expected: func() Arguments {
 				x := NewDefaultArguments()
@@ -76,7 +76,7 @@ sample_rate = 239
 					}),
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
-				x.OffCPUThreshold = 1000
+				x.OffCPUThreshold = 1
 				return x
 			},
 		},

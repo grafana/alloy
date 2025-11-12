@@ -86,7 +86,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
   && apt-get install -y nodejs \
   && corepack enable \
   && node -v \
-  && yarn -v
+  && npm -v
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository

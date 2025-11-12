@@ -15,22 +15,20 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
-	alloyWal "github.com/grafana/alloy/internal/component/common/loki/wal"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/useragent"
-
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
 )
 
 // StoppableWriteTo is a mixing of the WAL's WriteTo interface, that is Stoppable as well.
 type StoppableWriteTo interface {
-	alloyWal.WriteTo
+	wal.WriteTo
 	Stop()
 	StopNow()
 }
@@ -262,8 +260,7 @@ func (c *queueClient) StoreSeries(series []record.RefSeries, segment int) {
 	defer c.seriesLock.Unlock()
 	for _, seriesRec := range series {
 		c.seriesSegment[seriesRec.Ref] = segment
-		labels := lokiutil.MapToModelLabelSet(seriesRec.Labels.Map())
-		c.series[seriesRec.Ref] = labels
+		c.series[seriesRec.Ref] = promLabelsToModelLabels(seriesRec.Labels)
 	}
 }
 
@@ -293,7 +290,7 @@ func (c *queueClient) AppendEntries(entries wal.RefEntries, segment int) error {
 	return nil
 }
 
-func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e logproto.Entry) {
+func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e push.Entry) {
 	lbs, tenantID := c.processLabels(lbs)
 
 	// TODO: can I make this locking more fine grained?
@@ -516,7 +513,7 @@ func (c *queueClient) send(ctx context.Context, tenantID string, buf []byte) (in
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
+	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))

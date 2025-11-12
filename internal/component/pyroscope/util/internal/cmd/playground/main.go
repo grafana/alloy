@@ -27,12 +27,14 @@ var (
 type config struct {
 	ebpfEnabled bool
 	javaPids    pids
+	uprobeLinks stringSlice
 }
 
 func parseConfig() *config {
 	c := &config{}
 	flag.BoolVar(&c.ebpfEnabled, "ebpf", true, "enable ebpf")
 	flag.Var(&c.javaPids, "java", "java process id")
+	flag.Var(&c.uprobeLinks, "uprobe", "uprobe link (can be specified multiple times)")
 	flag.Parse()
 	return c
 }
@@ -46,12 +48,13 @@ func newWrite() pyroscope.Appendable {
 	return receiver
 }
 
-func newEbpf(forward pyroscope.Appendable) *ebpf.Component {
+func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component {
 	args := ebpf.NewDefaultArguments()
 	args.PyroscopeDynamicProfilingPolicy = false
 	args.ForwardTo = []pyroscope.Appendable{forward}
 	args.ReporterUnsymbolizedStubs = true
 	args.Demangle = "full"
+	args.UProbeLinks = uprobeLinks
 	e, err := ebpf.New(
 		log.With(l, "component", "ebpf"),
 		reg,
@@ -77,7 +80,7 @@ func main() {
 	w := newWrite()
 
 	if cfg.ebpfEnabled {
-		e := newEbpf(w)
+		e := newEbpf(w, cfg.uprobeLinks)
 		g.Add(func() error {
 			return e.Run(ctx)
 		}, cancel2)
@@ -129,5 +132,16 @@ func (p *pids) Set(value string) error {
 		return err
 	}
 	*p = append(*p, pid)
+	return nil
+}
+
+type stringSlice []string
+
+func (s *stringSlice) String() string {
+	return fmt.Sprintf("%+v", *s)
+}
+
+func (s *stringSlice) Set(value string) error {
+	*s = append(*s, value)
 	return nil
 }

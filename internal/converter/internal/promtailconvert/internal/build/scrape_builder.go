@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/positions"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -21,6 +19,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
+	"github.com/grafana/alloy/internal/loki/promtail/positions"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
@@ -73,10 +74,14 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 	forwardTo := s.getOrNewProcessStageReceivers()
 
 	args := lokisourcefile.Arguments{
-		ForwardTo:            forwardTo,
-		Encoding:             s.cfg.Encoding,
-		DecompressionConfig:  convertDecompressionConfig(s.cfg.DecompressionCfg),
-		FileWatch:            convertFileWatchConfig(watchConfig),
+		ForwardTo:           forwardTo,
+		Encoding:            s.cfg.Encoding,
+		DecompressionConfig: convertDecompressionConfig(s.cfg.DecompressionCfg),
+		FileWatch:           convertFileWatchConfig(watchConfig),
+		FileMatch: lokisourcefile.FileMatch{
+			Enabled:    false,
+			SyncPeriod: 10 * time.Second,
+		},
 		LegacyPositionsFile:  positionsCfg.PositionsFile,
 		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartBeginning,
 	}

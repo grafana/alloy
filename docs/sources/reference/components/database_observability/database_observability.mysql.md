@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: experimental
+  stage: public_preview
   products:
     - oss
 ---
 
 # `database_observability.mysql`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
@@ -44,7 +44,7 @@ The following collectors are configurable:
 | `query_samples`   | Collect query samples.                                   | yes                |
 | `setup_consumers` | Collect enabled `performance_schema.setup_consumers`.    | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries. | no                 |
-| `explain_plans`   | Collect explain plans information.                       | no                 |
+| `explain_plans`   | Collect explain plans information.                       | yes                |
 
 ## Blocks
 
@@ -130,7 +130,7 @@ The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGu
 
 | Name                             | Type       | Description                                                                    | Default | Required |
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
-| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"1m"`  | no       |
+| `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Whether to enable some specific `performance_schema.setup_consumers` settings. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |

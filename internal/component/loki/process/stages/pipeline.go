@@ -39,11 +39,12 @@ type StageConfig struct {
 	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"`
 	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"`
 	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"`
-	StructuredMetadata           *LabelsConfig                 `alloy:"structured_metadata,block,optional"`
+	StructuredMetadata           *StructuredMetadataConfig     `alloy:"structured_metadata,block,optional"`
 	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional"`
 	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"`
 	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
 	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
+	TruncateConfig               *TruncateConfig               `alloy:"truncate,block,optional"`
 	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }
