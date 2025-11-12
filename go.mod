@@ -114,7 +114,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.8.7
 	github.com/oklog/run v1.2.0
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/olekukonko/tablewriter v1.0.9
 	github.com/oliver006/redis_exporter v1.74.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.134.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.134.0
@@ -1001,6 +1001,13 @@ require (
 	github.com/go-openapi/swag/yamlutils v0.25.1 // indirect
 )
 
+require github.com/bougou/go-ipmi v0.7.7 // indirect
+
+require (
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+)
+
 // NOTE: replace directives below must always be *temporary*.
 //
 // Adding a replace directive to change a module to a fork of a module will
@@ -1108,3 +1115,5 @@ replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.6
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
+
+replace github.com/olekukonko/tablewriter => github.com/olekukonko/tablewriter v0.0.5

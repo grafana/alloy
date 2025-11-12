@@ -18,6 +18,7 @@ import (
 	_ "github.com/grafana/alloy/internal/static/integrations/elasticsearch_exporter" // register elasticsearch_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/gcp_exporter"           // register gcp_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/github_exporter"        // register github_exporter
+	_ "github.com/grafana/alloy/internal/static/integrations/ipmi_exporter"          // register ipmi_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/kafka_exporter"         // register kafka_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/memcached_exporter"     // register memcached_exporter
 	_ "github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"       // register mongodb_exporter
