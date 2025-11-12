@@ -323,12 +323,6 @@ func (t *tailer) readLines(handler loki.EntryHandler, done chan struct{}) {
 			return
 		}
 
-		// Note currently the tail implementation hardcodes Err to nil, this should never hit.
-		if line.Err != nil {
-			level.Error(t.logger).Log("msg", "tail routine: error reading line", "path", t.key.Path, "error", line.Err)
-			continue
-		}
-
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
 		entries <- loki.Entry{
 			// Allocate the expected size of labels. This matches the number of labels added by the middleware
