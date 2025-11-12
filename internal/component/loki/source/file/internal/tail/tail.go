@@ -97,6 +97,8 @@ func TailFile(filename string, config Config) (*Tail, error) {
 
 	t.watcher.SetFile(t.file)
 
+	t.openReader()
+
 	go t.tailFileSync()
 
 	return t, nil
@@ -252,14 +254,6 @@ func (tail *Tail) tailFileSync() {
 	defer tail.Done()
 	defer tail.close()
 
-	// deferred first open, not technically truncated but we don't need to check for changed files
-	if err := tail.reopen(true); err != nil {
-		if err != tomb.ErrDying {
-			tail.Kill(err)
-		}
-		return
-	}
-
 	// Seek to requested location on first open of the file.
 	if tail.Location != nil {
 		_, err := tail.file.Seek(tail.Location.Offset, tail.Location.Whence)
@@ -269,8 +263,6 @@ func (tail *Tail) tailFileSync() {
 			return
 		}
 	}
-
-	tail.openReader()
 
 	var (
 		err        error
@@ -323,9 +315,7 @@ func (tail *Tail) tailFileSync() {
 				}
 			}
 
-			// When EOF is reached, wait for more data to become
-			// available. Wait strategy is based on the `tail.watcher`
-			// implementation (inotify or polling).
+			// When EOF is reached, wait for more data to become available.
 			oneMoreRun, err = tail.waitForChanges()
 			if err != nil {
 				if err != ErrStop {
