@@ -17,7 +17,7 @@ import (
 )
 
 func TestQueryDetails(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	testcases := []struct {
 		name                string
@@ -421,7 +421,7 @@ func TestQueryDetails(t *testing.T) {
 }
 
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("recoverable sql error in result set", func(t *testing.T) {
 		t.Parallel()

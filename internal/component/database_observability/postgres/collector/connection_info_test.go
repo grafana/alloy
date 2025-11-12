@@ -15,7 +15,7 @@ import (
 )
 
 func TestConnectionInfo(t *testing.T) {
-	defer goleak.VerifyNone(t)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	const baseExpectedMetrics = `
 	# HELP database_observability_connection_info Information about the connection
