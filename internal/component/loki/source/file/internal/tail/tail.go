@@ -290,9 +290,15 @@ func (tail *Tail) tailFileSync() {
 		line, err := tail.readLine()
 
 		// Process `line` even if err is EOF.
-		if err == nil {
-			tail.Lines <- &Line{line, time.Now(), nil}
-		} else if err == io.EOF {
+		switch err {
+		case nil:
+			select {
+			case tail.Lines <- &Line{line, time.Now(), nil}:
+			case <-tail.Dying():
+				return
+			}
+
+		case io.EOF:
 			if line != "" {
 				// this has the potential to never return the last line if
 				// it's not followed by a newline; seems a fair trade here
@@ -327,16 +333,10 @@ func (tail *Tail) tailFileSync() {
 				}
 				return
 			}
-		} else {
+		default:
 			// non-EOF error
 			tail.Killf("Error reading %s: %s", tail.Filename, err)
 			return
-		}
-
-		select {
-		case <-tail.Dying():
-			return
-		default:
 		}
 	}
 }
@@ -364,7 +364,7 @@ func (tail *Tail) waitForChanges() (bool, error) {
 		// run the poll one more time to catch anything we may have missed since the last poll.
 		return true, nil
 	case <-tail.changes.Truncated:
-		// Always reopen truncated files (Follow is true)
+		// Always reopen truncated files.
 		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening truncated file %s ...", tail.Filename))
 		if err := tail.reopen(true); err != nil {
 			return false, err
