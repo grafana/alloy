@@ -28,7 +28,6 @@ var (
 type Line struct {
 	Text string
 	Time time.Time
-	Err  error // Error from tail
 }
 
 // SeekInfo represents arguments to `os.Seek`
@@ -285,7 +284,7 @@ func (tail *Tail) tailFileSync() {
 		switch err {
 		case nil:
 			select {
-			case tail.Lines <- &Line{line, time.Now(), nil}:
+			case tail.Lines <- &Line{line, time.Now()}:
 			case <-tail.Dying():
 				return
 			}
