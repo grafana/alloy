@@ -57,7 +57,7 @@ func (a *Arguments) labelSet() model.LabelSet {
 
 type Component struct {
 	opts               component.Options
-	entriesChan        chan loki.Entry
+	handler            loki.LogsReceiver
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
@@ -72,7 +72,7 @@ type Component struct {
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
-		entriesChan:        make(chan loki.Entry),
+		handler:            loki.NewLogsReceiver(),
 		receivers:          args.ForwardTo,
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 	}
@@ -85,11 +85,13 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) (err error) {
-	defer c.stop()
+	defer func() {
+		c.stop()
+	}()
 
 	for {
 		select {
-		case entry := <-c.entriesChan:
+		case entry := <-c.handler.Chan():
 			c.receiversMut.RLock()
 			receivers := c.receivers
 			c.receiversMut.RUnlock()
@@ -146,7 +148,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(serverRegistry)
 
 		var err error
-		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, loki.NewEntryHandler(c.entriesChan, func() {}), serverRegistry, int64(newArgs.MaxSendMessageSize))
+		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, c.handler, serverRegistry, int64(newArgs.MaxSendMessageSize))
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
