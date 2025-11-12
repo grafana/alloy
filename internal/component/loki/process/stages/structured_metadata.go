@@ -16,15 +16,15 @@ type StructuredMetadataConfig struct {
 }
 
 func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
-  var validatedLabelsConfig map[string]string
-  var err error
+	var validatedLabelsConfig map[string]string
+	var err error
 
-  if len(configs.Values) > 0 {
-    validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
-    if err != nil {
-      return nil, err
-    }
-  }
+	if len(configs.Values) > 0 {
+		validatedLabelsConfig, err = validateLabelsConfig(configs.Values)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	re, err := regexp.Compile(configs.Regex)
 	if err != nil {
