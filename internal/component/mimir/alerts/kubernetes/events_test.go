@@ -263,7 +263,7 @@ templates: []`
 				Type: "OnNamespace",
 			},
 			want:             emptyCfg,
-			expectLogMessage: "failed to do an initial configuration update",
+			expectLogMessage: "failed to initialize from global AlertmangerConfig",
 		},
 		{
 			name:       "2 AlertmanagerConfig CRDs - 1 in another namespace",
@@ -333,7 +333,7 @@ spec:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nsIndexer := testNamespaceIndexer()
-			ruleIndexer := testRuleIndexer()
+			amConfigsIndexer := testAmConfigsIndexer()
 
 			mimirClient := newFakeMimirClient()
 
@@ -373,14 +373,19 @@ spec:
 				mimirClient:       mimirClient,
 				baseCfg:           convertToAlertmanagerType(t, tt.baseCfgStr),
 				namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-				cfgLister:         promListers_v1alpha1.NewAlertmanagerConfigLister(ruleIndexer),
+				cfgLister:         promListers_v1alpha1.NewAlertmanagerConfigLister(amConfigsIndexer),
 				namespaceSelector: namespaceSelector,
 				cfgSelector:       cfgSelector,
 				metrics:           newMetrics(),
 				logger:            testLogger,
 			}
 
-			go processor.run(t.Context())
+			ctx := t.Context()
+
+			// Do an initial sync of the Mimir ruler state before starting the event processing loop.
+			processor.enqueueSyncMimir()
+
+			go processor.run(ctx)
 			defer processor.stop()
 
 			eventHandler := kubernetes.NewQueuedEventHandler(processor.logger, processor.queue)
@@ -394,7 +399,7 @@ spec:
 				err := yaml.Unmarshal([]byte(amConfigStr), &amConfig)
 				assert.NoError(t, err)
 
-				require.NoError(t, ruleIndexer.Add(&amConfig))
+				require.NoError(t, amConfigsIndexer.Add(&amConfig))
 				eventHandler.OnAdd(&amConfig, false)
 			}
 
@@ -428,12 +433,12 @@ func convertStringToSelector(t *testing.T, labelSelector string) labels.Selector
 	return selector
 }
 
-func testRuleIndexer() cache.Indexer {
-	ruleIndexer := cache.NewIndexer(
+func testAmConfigsIndexer() cache.Indexer {
+	amConfigsIndexer := cache.NewIndexer(
 		cache.DeletionHandlingMetaNamespaceKeyFunc,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
-	return ruleIndexer
+	return amConfigsIndexer
 }
 
 func testNamespaceIndexer() cache.Indexer {

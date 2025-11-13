@@ -59,19 +59,28 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
+	// The client via which Alertmanager configs are sent to Mimir.
 	mimirClient mimirClient.AlertmanagerInterface
 
+	// Signal an update to the Arguments.
 	configUpdates chan ConfigUpdate
+
+	ticker *time.Ticker
 
 	healthMut sync.RWMutex
 	health    component.Health
 	metrics   *metrics
 
-	k8sClient         kubernetes.Interface
+	// Connection to the Kubernetes API.
+	k8sClient kubernetes.Interface
+	// Selector for "Namespace" k8s resources which to watch.
 	namespaceSelector labels.Selector
-	cfgSelector       labels.Selector
-	eventProcessor    *eventProcessor
-	promClient        promVersioned.Interface
+	// Selector for "AlertmanagerConfig" k8s resources which to watch.
+	cfgSelector labels.Selector
+	// A Prometheus Operator client via which "AlertmanagerConfigs" are retrieved from the Kubernetes API.
+	promClient promVersioned.Interface
+	// The event processor that watches for changes in the Kubernetes API and updates the Mimir Alertmanager configs.
+	eventProcessor *eventProcessor
 }
 
 type ConfigUpdate struct {
@@ -79,8 +88,10 @@ type ConfigUpdate struct {
 }
 
 var _ component.Component = (*Component)(nil)
-var _ component.DebugComponent = (*Component)(nil)
 var _ component.HealthComponent = (*Component)(nil)
+
+// TODO: Implement DebugInfo()
+// var _ component.DebugComponent = (*Component)(nil)
 
 // New creates a new Component and initializes required clients based on the provided configuration.
 // TODO: Add clustering support
@@ -110,6 +121,7 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 		args:          args,
 		configUpdates: make(chan ConfigUpdate),
 		metrics:       m,
+		ticker:        time.NewTicker(args.SyncInterval),
 	}
 
 	return c, nil
@@ -172,6 +184,11 @@ func (c *Component) iteration(ctx context.Context, state util.Lifecycle[Argument
 	case <-ctx.Done():
 		state.Shutdown()
 		return errShutdown
+	case <-c.ticker.C:
+		// It's useful to sync periodically:
+		// * If an event was missed earlier, it can be synced now.
+		// * If the connection to Mimir or to the k8s API didn't work last time, it might work now.
+		state.SyncState()
 	}
 
 	return nil
@@ -232,9 +249,11 @@ func (c *Component) Shutdown() {
 	}
 }
 
-// syncState asks the eventProcessor to sync rule state from the Mimir Ruler. It does
-// not block waiting for state to be synced.
-func (c *Component) SyncState() {}
+func (c *Component) SyncState() {
+	if c.eventProcessor != nil {
+		c.eventProcessor.enqueueSyncMimir()
+	}
+}
 
 func (c *Component) init() error {
 	level.Info(c.log).Log("msg", "initializing with configuration")
@@ -256,6 +275,8 @@ func (c *Component) init() error {
 	}
 
 	httpClient := c.args.HTTPClientConfig.Convert()
+
+	c.ticker.Reset(c.args.SyncInterval)
 
 	c.mimirClient, err = mimirClient.New(c.log, mimirClient.Config{
 		Address:          c.args.Address,
@@ -311,16 +332,16 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
 	)
 
 	amConfigs := factory.Monitoring().V1alpha1().AlertmanagerConfigs()
-	ruleLister := amConfigs.Lister()
-	ruleInformer := amConfigs.Informer()
-	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
+	amConfigsLister := amConfigs.Lister()
+	amConfigsInformer := amConfigs.Informer()
+	_, err := amConfigsInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
 	if err != nil {
 		return nil, err
 	}
 
 	factory.Start(stopChan)
 	factory.WaitForCacheSync(stopChan)
-	return ruleLister, nil
+	return amConfigsLister, nil
 }
 
 func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{},

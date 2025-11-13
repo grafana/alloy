@@ -61,6 +61,7 @@ You can use the following arguments with `mimir.alerts.kubernetes`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |               | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`       | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |               | no       |
+| `sync_interval`          | `duration`          | Amount of time between reconciliations with Mimir.                                               | `"5m"`        | no       |
 | `template_files`         | `map(string)`       | A map of Alertmanager [template files][mimir-api-set-alertmgr-cfg].                              |  `{}`         | no       |
 
 At most, one of the following can be provided:

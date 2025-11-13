@@ -35,15 +35,16 @@ type eventProcessor struct {
 	stopChan chan struct{}
 	health   util.HealthReporter
 
-	mimirClient       client.AlertmanagerInterface
+	mimirClient client.AlertmanagerInterface
+
 	namespaceLister   coreListers.NamespaceLister
-	baseCfg           alertmgr_cfg.Config
 	cfgLister         promListers_v1alpha.AlertmanagerConfigLister
 	namespaceSelector labels.Selector
 	cfgSelector       labels.Selector
-	templateFiles     map[string]string
+	kclient           go_k8s.Interface
 
-	kclient go_k8s.Interface
+	baseCfg       alertmgr_cfg.Config
+	templateFiles map[string]string
 
 	metrics *metrics
 	logger  log.Logger
@@ -109,18 +110,6 @@ func (m *metrics) register(r prometheus.Registerer) error {
 
 // run processes events added to the queue until the queue is shutdown.
 func (e *eventProcessor) run(ctx context.Context) {
-	// Do an initial reconciliation so that Mimir is updated if there are no AlertmanagerConfig CRDs.
-	err := e.reconcileState(ctx)
-	if err != nil {
-		level.Error(e.logger).Log(
-			"msg", "failed to do an initial configuration update",
-			"err", err,
-		)
-		e.health.ReportUnhealthy(err)
-	} else {
-		e.health.ReportHealthy()
-	}
-
 	for {
 		evt, shutdown := e.queue.Get()
 		if shutdown {
@@ -173,6 +162,12 @@ func (e *eventProcessor) processEvent(ctx context.Context, event kubernetes.Even
 	return e.reconcileState(ctx)
 }
 
+func (e *eventProcessor) enqueueSyncMimir() {
+	e.queue.Add(kubernetes.Event{
+		Typ: util.EventTypeSyncMimir,
+	})
+}
+
 func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 	amConfigs map[string]*promv1alpha1.AlertmanagerConfig, store *assets.StoreBuilder) (*alertmgr_cfg.Config, error) {
 
@@ -216,6 +211,8 @@ func (e *eventProcessor) reconcileState(ctx context.Context) error {
 		return err
 	}
 
+	// TODO: Get Mimir's current Alertmanager config and diff it with the one Alloy has.
+	//       If it's the same, do nothing. If it's different, update Mimir.
 	err = e.mimirClient.CreateAlertmanagerConfigs(ctx, cfg, e.templateFiles)
 	if err != nil {
 		return err

@@ -1,6 +1,8 @@
 package alerts
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -9,6 +11,7 @@ import (
 type Arguments struct {
 	Address          string                  `alloy:"address,attr"`
 	HTTPClientConfig config.HTTPClientConfig `alloy:",squash"`
+	SyncInterval     time.Duration           `alloy:"sync_interval,attr,optional"`
 
 	TemplateFiles map[string]string `alloy:"template_files,attr,optional"`
 	GlobalConfig  alloytypes.Secret `alloy:"global_config,attr"`
@@ -20,6 +23,7 @@ type Arguments struct {
 }
 
 var DefaultArguments = Arguments{
+	SyncInterval:     5 * time.Minute,
 	HTTPClientConfig: config.DefaultHTTPClientConfig,
 }
 
