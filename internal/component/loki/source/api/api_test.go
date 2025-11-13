@@ -105,8 +105,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
-	_, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	_ = startTestComponent(t, opts, args, ctx)
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -152,8 +151,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 		a.Labels = map[string]string{"test_label": "before"}
 	})
 	opts := defaultOptions()
-	c, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	c := startTestComponent(t, opts, args, ctx)
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -219,7 +217,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 	const receiversCount = 10
 	var receivers = make([]*fake.Client, receiversCount)
-	for i := 0; i < receiversCount; i++ {
+	for i := range receiversCount {
 		receivers[i] = fake.NewClient(func() {})
 	}
 
@@ -235,8 +233,6 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 		err := comp.Run(ctx)
 		require.NoError(t, err)
 	}()
-
-	defer comp.stop()
 
 	lokiClient := newTestLokiClient(t, args, opts)
 	defer lokiClient.Stop()
@@ -344,25 +340,20 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			comp, err := New(
-				defaultOptions(),
-				tc.args,
-			)
-			require.NoError(t, err)
 
-			// in order to cleanly update, we want to make sure the server is running first.
-			waitForServerToBeReady(t, comp)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			comp := startTestComponent(t, defaultOptions(), tc.args, ctx)
 
 			serverBefore := comp.server
-			err = comp.Update(tc.newArgs)
-			require.NoError(t, err)
+			require.NoError(t, comp.Update(tc.newArgs))
 
 			restarted := serverBefore != comp.server
 			assert.Equal(t, restarted, tc.restartRequired)
 
 			// in order to cleanly shutdown, we want to make sure the server is running first.
 			waitForServerToBeReady(t, comp)
-			comp.stop()
 		})
 	}
 }
@@ -388,8 +379,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
-	_, shutdown := startTestComponent(t, opts, args, ctx)
-	defer shutdown()
+	_ = startTestComponent(t, opts, args, ctx)
 
 	// Create TLS-enabled Loki client
 	lokiClient := newTestLokiClientTLS(t, args, opts)
@@ -457,6 +447,13 @@ func TestDefaultServerConfig(t *testing.T) {
 		defaultOptions(),
 		args,
 	)
+
+	ctx := t.Context()
+	go func() {
+		err := comp.Run(ctx)
+		require.NoError(t, err)
+	}()
+
 	require.NoError(t, err)
 
 	require.Eventuallyf(t, func() bool {
@@ -467,8 +464,6 @@ func TestDefaultServerConfig(t *testing.T) {
 		))
 		return err == nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
-
-	comp.stop()
 }
 
 func startTestComponent(
@@ -476,7 +471,7 @@ func startTestComponent(
 	opts component.Options,
 	args Arguments,
 	ctx context.Context,
-) (component.Component, func()) {
+) *Component {
 
 	comp, err := New(opts, args)
 	require.NoError(t, err)
@@ -485,11 +480,8 @@ func startTestComponent(
 		require.NoError(t, err)
 	}()
 
-	return comp, func() {
-		// in order to cleanly shutdown, we want to make sure the server is running first.
-		waitForServerToBeReady(t, comp)
-		comp.stop()
-	}
+	waitForServerToBeReady(t, comp)
+	return comp
 }
 
 func TestShutdown(t *testing.T) {
