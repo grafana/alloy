@@ -75,7 +75,6 @@ func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error)
 }
 
 func (c *client) run() {
-
 	for {
 		select {
 		case <-c.ctx.Done():

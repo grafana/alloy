@@ -37,7 +37,6 @@ func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 	// the underlying buffered channel would buffer up to 100 batches.
 	capacity := max(cfg.Queue.Capacity/max(cfg.BatchSize, 1), 1)
 
-	// Create a new queue with the given metrics, logger and configuration.
 	return &queue{
 		cfg:     cfg,
 		metrics: metrics,
@@ -50,7 +49,7 @@ func newQueue(metrics *Metrics, logger log.Logger, cfg Config) *queue {
 
 // queue for batching and sending log entries to Loki.
 // The queue maintains separate batches per tenant and enqueues batches when they
-// reach the configured.
+// reach the configured batch size limit.
 type queue struct {
 	cfg     Config
 	metrics *Metrics
@@ -81,7 +80,7 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 	}
 
 	// If adding this entry would exceed the batch size limit, enqueue the
-	// current batch and start a new one
+	// current batch and start a new one.
 	if batch.sizeBytesAfter(entry.Entry) > q.cfg.BatchSize {
 		select {
 		case q.c <- queuedBatch{Batch: batch, TenantID: tenantID}:
