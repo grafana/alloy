@@ -394,6 +394,8 @@ func (tail *Tail) seekTo(pos SeekInfo) error {
 		return fmt.Errorf("Seek error on %s: %s", tail.Filename, err)
 	}
 	// Reset the read buffer whenever the file is re-seek'ed
+	tail.readerMut.Lock()
 	tail.reader.Reset(tail.file)
+	tail.readerMut.Unlock()
 	return nil
 }
