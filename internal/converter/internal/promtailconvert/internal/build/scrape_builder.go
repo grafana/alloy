@@ -82,7 +82,8 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 			Enabled:    false,
 			SyncPeriod: 10 * time.Second,
 		},
-		LegacyPositionsFile: positionsCfg.PositionsFile,
+		LegacyPositionsFile:  positionsCfg.PositionsFile,
+		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartBeginning,
 	}
 	overrideHook := func(val interface{}) interface{} {
 		if _, ok := val.([]discovery.Target); ok {

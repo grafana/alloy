@@ -39,19 +39,28 @@ The component starts a new reader for each of the given `targets` and fans out l
 
 You can use the following arguments with `loki.source.file`:
 
-| Name                    | Type                 | Description                                                | Default | Required |
-| ----------------------- | -------------------- | ---------------------------------------------------------- | ------- | -------- |
-| `forward_to`            | `list(LogsReceiver)` | List of receivers to send log entries to.                  |         | yes      |
-| `targets`               | `list(map(string))`  | List of files to read from.                                |         | yes      |
-| `encoding`              | `string`             | The encoding to convert from when reading files.           | `""`    | no       |
-| `legacy_positions_file` | `string`             | Allows conversion from legacy positions file.              | `""`    | no       |
-| `tail_from_end`         | `bool`               | Whether to tail from end if a stored position isn't found. | `false` | no       |
+| Name                      | Type                 | Description                                                    | Default                    | Required |
+|---------------------------|----------------------|----------------------------------------------------------------|----------------------------|----------|
+| `forward_to`              | `list(LogsReceiver)` | List of receivers to send log entries to.                      |                            | yes      |
+| `targets`                 | `list(map(string))`  | List of files to read from.                                    |                            | yes      |
+| `encoding`                | `string`             | The encoding to convert from when reading files.               | `""`                       | no       |
+| `legacy_positions_file`   | `string`             | Allows conversion from legacy positions file.                  | `""`                       | no       |
+| `on_positions_file_error` | `string`             | How to handle a corrupt positions file entry for a given file. | `"restart_from_beginning"` | no       |
+| `tail_from_end`           | `bool`               | Whether to tail from end if a stored position isn't found.     | `false`                    | no       |
 
 The `encoding` argument must be a valid [IANA encoding][] name.
 If not set, it defaults to UTF-8.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
+
+The `on_positions_file_error` argument must be one of `"skip"`, `"restart_from_end"`, or `"restart_from_beginning"`.
+This attribute defines the behavior if the positions file entry for a given file is corrupted.
+`"restart_from_end"` will mimic the `tail_from_end` flag and set the position to the end of the file. This will reduce the likelihood of duplicate logs, but may cause some logs to not be sent.
+`"restart_from_beginning"` will reset the position to `0`, causing the whole file to be read and processed. This may cause duplicate logs to be sent.
+`"skip"` will cause the tailer to skip the file and not collect its logs.
+
+`tail_from_end` and a `on_positions_file_error` value of `"restart_from_end"` are not supported when `decompression` is enabled.
 
 The `legacy_positions_file` argument is used when you are transitioning from Grafana Agent Static Mode to Grafana Alloy. 
 The format of the positions file is different in Grafana Alloy, so this will convert it to the new format.
