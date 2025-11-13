@@ -33,7 +33,7 @@ type PushAPIServer struct {
 	logger        log.Logger
 	serverConfig  *fnet.ServerConfig
 	server        *fnet.TargetServer
-	handler       loki.LogsReceiver
+	handler       loki.LogsBatchReceiver
 	forceShutdown chan struct{}
 
 	rwMutex            sync.RWMutex
@@ -45,7 +45,7 @@ type PushAPIServer struct {
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
-	handler loki.LogsReceiver,
+	handler loki.LogsBatchReceiver,
 	registerer prometheus.Registerer,
 	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
@@ -206,8 +206,12 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	relabelRules := s.getRelabelRules()
 	keepTimestamp := s.getKeepTimestamp()
 
-	var lastErr error
+	var (
+		entries []loki.Entry
+		lastErr error
+	)
 	for _, stream := range req.Streams {
+
 		ls, err := promql_parser.ParseMetric(stream.Labels)
 		if err != nil {
 			lastErr = err
@@ -256,16 +260,18 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 				e.Timestamp = time.Now()
 			}
 
-			select {
-			case s.handler.Chan() <- e:
-			case <-r.Context().Done():
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			case <-s.forceShutdown:
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			}
+			entries = append(entries, e)
 		}
+	}
+
+	select {
+	case s.handler.Chan() <- entries:
+	case <-r.Context().Done():
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	case <-s.forceShutdown:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
 	}
 
 	if lastErr != nil {
@@ -283,6 +289,9 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	body := bufio.NewReader(r.Body)
 	addLabels := s.getLabels()
+
+	var entries []loki.Entry
+
 	for {
 		line, err := body.ReadString('\n')
 		if err != nil && err != io.EOF {
@@ -298,21 +307,21 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 
-		entry := loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}}
-
-		select {
-		case s.handler.Chan() <- entry:
-		case <-r.Context().Done():
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		case <-s.forceShutdown:
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
+		entries = append(entries, loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}})
 
 		if err == io.EOF {
 			break
 		}
+	}
+
+	select {
+	case s.handler.Chan() <- entries:
+	case <-r.Context().Done():
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	case <-s.forceShutdown:
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
