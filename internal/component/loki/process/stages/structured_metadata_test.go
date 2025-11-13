@@ -2,9 +2,6 @@ package stages
 
 import (
 	"encoding/json"
-	"maps"
-	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -246,22 +243,8 @@ func Test_StructuredMetadataStage(t *testing.T) {
 
 			result := processEntries(pl, newEntry(nil, nil, test.logLine, time.Now()))[0]
 
-			sortedExpected := slices.Sorted(maps.Keys(test.expectedStructuredMetadata))
-			slices.SortFunc(result.StructuredMetadata, func(a, b push.LabelAdapter) int {
-				return strings.Compare(a.Name, b.Name)
-			})
-			for idx, metadata := range result.StructuredMetadata {
-				require.Equal(t, sortedExpected[idx], metadata.Name)
-				switch v := test.expectedStructuredMetadata[metadata.Name].(type) {
-				case string:
-					require.Equal(t, v, metadata.Value)
-				case map[string]any:
-					var actual map[string]any
-					err := json.Unmarshal([]byte(metadata.Value), &actual)
-					require.NoError(t, err)
-					require.Equal(t, v, actual)
-				}
-			}
+			actualStructuredMetadata := convertStructuredMetadataToMap(result.StructuredMetadata)
+			require.Equal(t, test.expectedStructuredMetadata, actualStructuredMetadata)
 
 			if test.expectedLabels != nil {
 				require.Equal(t, test.expectedLabels, result.Labels)
@@ -270,4 +253,20 @@ func Test_StructuredMetadataStage(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Convert result.StructuredMetadata to map[string]any for easier comparison
+func convertStructuredMetadataToMap(sm push.LabelsAdapter) map[string]any {
+	result := make(map[string]any)
+	for _, keyValPair := range sm {
+		// Try to unmarshal as JSON object first
+		var jsonValue map[string]any
+		if err := json.Unmarshal([]byte(keyValPair.Value), &jsonValue); err == nil {
+			result[keyValPair.Name] = jsonValue
+		} else {
+			// If not valid JSON object, use the string value
+			result[keyValPair.Name] = keyValPair.Value
+		}
+	}
+	return result
 }
