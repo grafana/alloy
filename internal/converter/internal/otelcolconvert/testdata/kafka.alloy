@@ -83,8 +83,8 @@ otelcol.exporter.kafka "default" {
 	partition_metrics_by_resource_attributes = true
 	partition_logs_by_resource_attributes    = true
 	partition_logs_by_trace_id               = true
-	include_metadata_keys                    = ["key1", "key2"]
 	timeout                                  = "11s"
+	include_metadata_keys                    = ["key1", "key2"]
 
 	logs {
 		topic    = "otlp_logs"
@@ -137,7 +137,7 @@ otelcol.exporter.kafka "default" {
 		compression_params {
 			level = 9
 		}
-		flush_max_messages       = 11
+		flush_max_messages        = 11
 		allow_auto_topic_creation = true
 	}
 }

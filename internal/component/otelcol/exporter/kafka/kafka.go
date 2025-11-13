@@ -118,6 +118,7 @@ func (c *KafkaExporterSignalConfig) convert(topic, encoding deprecatedArg) kafka
 		if len(c.Encoding) > 0 {
 			result.Encoding = c.Encoding
 		}
+		result.TopicFromMetadataKey = c.TopicFromMetadataKey
 	} else { // Try to use deprecated attributes only if the new block is not set.
 		if len(topic.value) > 0 {
 			result.Topic = topic.value
@@ -134,8 +135,6 @@ func (c *KafkaExporterSignalConfig) convert(topic, encoding deprecatedArg) kafka
 	if len(result.Encoding) == 0 {
 		result.Encoding = encoding.defaultValue
 	}
-
-	result.TopicFromMetadataKey = c.TopicFromMetadataKey
 
 	return result
 }

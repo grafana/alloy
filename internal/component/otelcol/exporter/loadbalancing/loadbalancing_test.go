@@ -243,6 +243,7 @@ func TestConfigConversion(t *testing.T) {
 			NumConsumers: 10,
 			QueueSize:    1000,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
+			Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 		}
 
 		defaultProtocol = loadbalancingexporter.Protocol{
@@ -289,6 +290,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -318,6 +320,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "service",
 				Protocol:   defaultProtocol,
@@ -359,6 +362,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				Resolver: loadbalancingexporter.ResolverSettings{
 					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
@@ -395,6 +399,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -429,6 +434,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -460,6 +466,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -494,6 +501,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -529,6 +537,7 @@ func TestConfigConversion(t *testing.T) {
 				},
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 				RoutingKey: "traceID",
 				Protocol:   defaultProtocol,
@@ -570,6 +579,7 @@ func TestConfigConversion(t *testing.T) {
 				Protocol:   defaultProtocol,
 				QueueSettings: exporterhelper.QueueBatchConfig{
 					Sizer: exporterhelper.RequestSizerTypeRequests,
+					Batch: exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -612,6 +622,7 @@ func TestConfigConversion(t *testing.T) {
 					NumConsumers: 0,
 					QueueSize:    0,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
@@ -671,6 +682,7 @@ func TestConfigConversion(t *testing.T) {
 					NumConsumers: 11,
 					QueueSize:    1111,
 					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
 				},
 			},
 		},
