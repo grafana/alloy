@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
+	"github.com/grafana/alloy/internal/loki/promtail/client"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
 )
 
 // DefaultGlobalConfig holds default global settings to be used across all instances.

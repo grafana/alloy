@@ -235,6 +235,9 @@ func NewDefaultArguments() Arguments {
 		DotNetEnabled:   true,
 		OffCPUThreshold: 0,
 		GoEnabled:       true,
+		LoadProbe:       false,
+		UProbeLinks:     []string{},
+		VerboseMode:     false,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
@@ -259,10 +262,14 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	}
 
 	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.LoadProbe = args.LoadProbe
+	cfg.UProbeLinks = args.UProbeLinks
+	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
 }
 

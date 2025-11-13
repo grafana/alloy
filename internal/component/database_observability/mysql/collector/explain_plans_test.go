@@ -1666,6 +1666,43 @@ func TestExplainPlans(t *testing.T) {
 			)
 		})
 
+		t.Run("passes queries beginning in with", func(t *testing.T) {
+			lokiClient.Clear()
+			logBuffer.Reset()
+			mock.ExpectQuery(selectDigestsForExplainPlan).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+				"schema_name",
+				"digest",
+				"query_sample_text",
+				"last_seen",
+			}).AddRow(
+				"some_schema",
+				"some_digest",
+				"with cte as (select * from some_table where id = 1) select * from cte",
+				lastSeen,
+			))
+
+			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+			mock.ExpectQuery(selectExplainPlanPrefix + "with cte as (select * from some_table where id = 1) select * from cte").WillReturnRows(sqlmock.NewRows([]string{
+				"json",
+			}).AddRow(
+				[]byte(`{"query_block": {"select_id": 1}}`),
+			))
+
+			err = c.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			require.NotContains(t, logBuffer.String(), "error")
+
+			require.Eventually(
+				t,
+				func() bool { return len(lokiClient.Received()) == 1 },
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+		})
+
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 	})

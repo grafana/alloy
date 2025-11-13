@@ -119,6 +119,8 @@ body:
       - otelcol.processor.tail_sampling
       - otelcol.processor.transform
       - otelcol.receiver.awscloudwatch
+      - otelcol.receiver.awsecscontainermetrics
+      - otelcol.receiver.cloudflare
       - otelcol.receiver.datadog
       - otelcol.receiver.faro
       - otelcol.receiver.file_stats
@@ -164,6 +166,7 @@ body:
       - prometheus.exporter.snmp
       - prometheus.exporter.snowflake
       - prometheus.exporter.squid
+      - prometheus.exporter.static
       - prometheus.exporter.statsd
       - prometheus.exporter.unix
       - prometheus.exporter.windows

@@ -211,6 +211,8 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 				sum += t
 			}
 			b.AddValue(sum, s)
+		case support.TraceOriginUProbe:
+			b.AddValue(int64(len(traceInfo.Timestamps)), s)
 		}
 
 		for i := range traceInfo.Frames {
@@ -256,10 +258,15 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 					}
 
 				case libpf.AbortFrame:
-					// Next step: Figure out how the OTLP protocol
-					// could handle artificial frames, like AbortFrame,
-					// that are not originated from a native or interpreted
-					// program.
+					// Be explicit about unknown frames so that we do introduce unknown unknowns.
+					location.Line = []profile.Line{{
+						Line: 0,
+						Function: b.Function(
+							libpf.Intern("[unknown]"),
+							libpf.Intern("[unknown]"),
+						)},
+					}
+					location.Mapping.HasFunctions = true
 				default:
 					if fr.FunctionName != libpf.NullString {
 						location.Line = []profile.Line{{

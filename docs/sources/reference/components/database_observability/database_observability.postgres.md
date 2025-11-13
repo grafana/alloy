@@ -3,14 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: experimental
+  stage: public_preview
   products:
     - oss
 ---
 
 # `database_observability.postgres`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
@@ -18,6 +18,7 @@ labels:
 database_observability.postgres "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
+  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -40,7 +41,7 @@ The following collectors are configurable:
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
-| `explain_plans`  | Collect query explain plans.                                          | no                 |
+| `explain_plans`  | Collect query explain plans.                                          | yes                |
 
 ## Blocks
 
@@ -48,15 +49,38 @@ You can use the following blocks with `database_observability.postgres`:
 
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 
+The > symbol indicates deeper levels of nesting.
+For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
+
+[cloud_provider]: #cloud_provider
+[aws]: #aws
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
+
+### `cloud_provider`
+
+The `cloud_provider` block has no attributes.
+It contains zero or more [`aws`][aws] blocks.
+You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
+This information is appended as labels to the collected metrics.
+The labels make it easier for you to filter and group your metrics.
+
+### `aws`
+
+The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
+
+| Name  | Type     | Description                                             | Default | Required |
+|-------|----------|---------------------------------------------------------|---------|----------|
+| `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
 
 ### `query_details`
 
@@ -66,10 +90,10 @@ You can use the following blocks with `database_observability.postgres`:
 
 ### `query_samples`
 
-| Name                      | Type       | Description                                             | Default | Required |
-|---------------------------|------------|---------------------------------------------------------|---------|----------|
-| `collect_interval`        | `duration` | How frequently to collect information from database.    | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text including parameters. | `false` | no       |
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 
 ### `schema_details`
 
@@ -93,14 +117,52 @@ You can use the following blocks with `database_observability.postgres`:
 
 ```alloy
 database_observability.postgres "orders_db" {
-  data_source_name = "postgres://user:pass@localhost:5432/mydb"
+  data_source_name = "postgres://user:pass@localhost:5432/dbname"
+  forward_to       = [loki.relabel.orders_db.receiver]
+  targets          = prometheus.exporter.postgres.orders_db.targets
+
+  enable_collectors = ["query_samples", "explain_plans"]
+
+  cloud_provider {
+    aws {
+      arn = "your-rds-db-arn"
+    }
+  }
+}
+
+prometheus.exporter.postgres "orders_db" {
+  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
+  enabled_collectors = ["stat_statements"]
+}
+
+loki.relabel "orders_db" {
   forward_to = [loki.write.logs_service.receiver]
-  enable_collectors = ["query_details", "query_samples", "schema_details"]
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
+}
+
+discovery.relabel "orders_db" {
+  targets = database_observability.postgres.orders_db.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/db-o11y"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = "orders_db"
+  }
 }
 
 prometheus.scrape "orders_db" {
-  targets = database_observability.postgres.orders_db.targets
-  honor_labels = true // required to keep job and instance labels
+  targets    = discovery.relabel.orders_db.targets
+  job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
 

@@ -102,6 +102,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/transform"              // Import otelcol.processor.transform
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch"           // Import otelcol.receiver.awscloudwatch
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/awsecscontainermetrics"  // Import otelcol.receiver.awsecscontainermetrics
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/cloudflare"              // Import otelcol.receiver.cloudflare
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog"                 // Import otelcol.receiver.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/faro"                    // Import otelcol.receiver.faro
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"              // Import otelcol.receiver.file_stats
@@ -147,6 +149,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"                 // Import prometheus.exporter.snmp
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/snowflake"            // Import prometheus.exporter.snowflake
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/squid"                // Import prometheus.exporter.squid
+	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/static"               // Import prometheus.exporter.static
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/statsd"               // Import prometheus.exporter.statsd
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/unix"                 // Import prometheus.exporter.unix
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/windows"              // Import prometheus.exporter.windows

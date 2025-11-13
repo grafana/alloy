@@ -6,13 +6,13 @@ import (
 	"sync"
 
 	"github.com/go-kit/log/level"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {
@@ -66,7 +66,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts:         opts,
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
-		receiver:     loki.NewLogsReceiver(),
+		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 	}
 
 	// Initialize the cache with provided targets

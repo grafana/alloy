@@ -80,6 +80,7 @@ type Arguments struct {
 	SetCollectors flagext.StringSlice `alloy:"set_collectors,attr,optional"`
 
 	// Collector-specific config options
+	Arp         ArpConfig         `alloy:"arp,block,optional"`
 	BCache      BCacheConfig      `alloy:"bcache,block,optional"`
 	CPU         CPUConfig         `alloy:"cpu,block,optional"`
 	Disk        DiskStatsConfig   `alloy:"disk,block,optional"`
@@ -113,6 +114,9 @@ func (a *Arguments) Convert() *node_integration.Config {
 		EnableCollectors:                 a.EnableCollectors,
 		DisableCollectors:                a.DisableCollectors,
 		SetCollectors:                    a.SetCollectors,
+		ArpDeviceExclude:                 a.Arp.DeviceExclude,
+		ArpDeviceInclude:                 a.Arp.DeviceInclude,
+		ArpNetlink:                       a.Arp.Netlink,
 		BcachePriorityStats:              a.BCache.PriorityStats,
 		CPUBugsInclude:                   a.CPU.BugsInclude,
 		CPUEnableCPUGuest:                a.CPU.EnableCPUGuest,
@@ -255,6 +259,13 @@ type FilesystemConfig struct {
 // IPVSConfig contains config specific to the ipvs collector.
 type IPVSConfig struct {
 	BackendLabels []string `alloy:"backend_labels,attr,optional"`
+}
+
+// ArpConfig contains config specific to the arp collector.
+type ArpConfig struct {
+	DeviceExclude string `alloy:"device_exclude,attr,optional"`
+	DeviceInclude string `alloy:"device_include,attr,optional"`
+	Netlink       bool   `alloy:"netlink,attr,optional"`
 }
 
 // BCacheConfig contains config specific to the bcache collector.

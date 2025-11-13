@@ -10,6 +10,17 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug fixes
+
+- Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
+ 
+1.4.0 (2025-10-27)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.11.3. (@kalleep)
+
 - Allow for creating Roles and RoleBindings instead of ClusterRoles and ClusterRoleBindings. (@petewall)
 
 - Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)

@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
-	"github.com/grafana/alloy/internal/util"
-
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
+	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 type noopClient struct {
@@ -91,7 +91,7 @@ func BenchmarkReadlines(b *testing.B) {
 				logger:    log.NewNopLogger(),
 				running:   atomic.NewBool(false),
 				receiver:  loki.NewLogsReceiver(),
-				path:      tc.file,
+				key:       positions.Entry{Path: tc.file},
 				positions: &noopPositions{},
 				labels:    model.LabelSet{"foo": "bar", "baz": "boo"},
 			}
@@ -116,7 +116,7 @@ func TestGigantiqueGunzipFile(t *testing.T) {
 		logger:    log.NewNopLogger(),
 		running:   atomic.NewBool(false),
 		receiver:  loki.NewLogsReceiver(),
-		path:      file,
+		key:       positions.Entry{Path: file},
 		metrics:   newMetrics(prometheus.NewRegistry()),
 		cfg:       DecompressionConfig{Format: "gz"},
 		positions: &noopPositions{},
@@ -146,7 +146,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -171,7 +171,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "bz2"},
 			positions: &noopPositions{},
@@ -197,7 +197,7 @@ func TestOnelineFiles(t *testing.T) {
 			logger:    log.NewNopLogger(),
 			running:   atomic.NewBool(false),
 			receiver:  loki.NewLogsReceiver(),
-			path:      file,
+			key:       positions.Entry{Path: file},
 			metrics:   newMetrics(prometheus.NewRegistry()),
 			cfg:       DecompressionConfig{Format: "gz"},
 			positions: &noopPositions{},
@@ -219,7 +219,7 @@ func TestOnelineFiles(t *testing.T) {
 
 func TestDecompressor(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -234,16 +234,18 @@ func TestDecompressor(t *testing.T) {
 		"filename": model.LabelValue(filename),
 		"foo":      "bar",
 	}
+
 	decompressor, err := newDecompressor(
 		newMetrics(nil),
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return true },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 
@@ -275,7 +277,7 @@ func TestDecompressor(t *testing.T) {
 
 func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -290,16 +292,18 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		"filename": model.LabelValue(filename),
 		"foo":      "bar",
 	}
+
 	decompressor, err := newDecompressor(
 		newMetrics(nil),
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return false },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 	go decompressor.Run(t.Context())
@@ -322,7 +326,7 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 
 func TestDecompressor_RunCalledTwice(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	positionsFile, err := positions.New(l, positions.Config{
@@ -342,11 +346,12 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 		l,
 		ch1,
 		positionsFile,
-		filename,
-		labels,
-		"",
-		DecompressionConfig{Format: "gz"},
 		func() bool { return true },
+		sourceOptions{
+			path:                filename,
+			labels:              labels,
+			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+		},
 	)
 	require.NoError(t, err)
 

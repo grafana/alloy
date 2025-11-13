@@ -9,8 +9,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
-	"github.com/grafana/loki/v3/pkg/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/record"
@@ -19,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -40,7 +39,7 @@ func (t *testWriteTo) SeriesReset(segmentNum int) {
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
-func (t *testWriteTo) AppendEntries(entries wal.RefEntries, _ int) error {
+func (t *testWriteTo) AppendEntries(entries RefEntries, _ int) error {
 	var entry loki.Entry
 	if l, ok := t.series[uint64(entries.Ref)]; ok {
 		entry.Labels = l
@@ -585,7 +584,7 @@ func (s *slowWriteTo) SeriesReset(segmentNum int) {
 func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
-func (s *slowWriteTo) AppendEntries(entries wal.RefEntries, segmentNum int) error {
+func (s *slowWriteTo) AppendEntries(entries RefEntries, segmentNum int) error {
 	// only log on development debug flag
 	if debug {
 		var allLines strings.Builder

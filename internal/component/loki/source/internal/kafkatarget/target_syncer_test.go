@@ -7,17 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
-	"github.com/grafana/dskit/flagext"
-	"github.com/prometheus/common/config"
-
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -84,11 +83,12 @@ func Test_NewTarget(t *testing.T) {
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_topic"},
-					TargetLabel:  "topic",
-					Replacement:  "$1",
-					Action:       relabel.Replace,
-					Regex:        relabel.MustNewRegexp("(.*)"),
+					SourceLabels:         model.LabelNames{"__meta_kafka_topic"},
+					TargetLabel:          "topic",
+					Replacement:          "$1",
+					Action:               relabel.Replace,
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			KafkaConfig: TargetConfig{
