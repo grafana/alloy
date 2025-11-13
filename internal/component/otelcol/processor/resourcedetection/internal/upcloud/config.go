@@ -8,8 +8,8 @@ import (
 const Name = "upcloud"
 
 type Config struct {
-	FailOnMissingMetadata bool                         `alloy:"fail_on_missing_metadata,attr,optional"`
-	ResourceAttributes    ResourceAttributesConfig   `alloy:"resource_attributes,block,optional"`
+	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
+	ResourceAttributes    ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
