@@ -129,7 +129,7 @@ func (s *PushAPIServer) Shutdown() {
 	close(s.forceShutdown)
 }
 
-// ForceShutdown will force shutdown the server and cancel all in-flight before starting server shutdown.
+// ForceShutdown will cancel all in-flight before starting server shutdown.
 func (s *PushAPIServer) ForceShutdown() {
 	level.Info(s.logger).Log("msg", "force shutdown of push API server")
 	close(s.forceShutdown)
