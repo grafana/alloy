@@ -2,9 +2,15 @@ package util
 
 import (
 	"context"
+
+	"github.com/grafana/alloy/internal/component/common/kubernetes"
 )
 
 // TODO: Use the functions in this file in the mimir.rules.kubernetes component.
+
+const (
+	EventTypeSyncMimir kubernetes.EventType = "sync-mimir"
+)
 
 // healthReporter encapsulates the logic for marking a component as healthy or
 // not healthy to make testing portions of the Component easier.

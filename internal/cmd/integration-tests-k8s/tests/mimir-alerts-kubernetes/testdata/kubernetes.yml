@@ -96,6 +96,9 @@ data:
 
       mimir.alerts.kubernetes "default" {
         address = "http://mimir-nginx.mimir-test.svc:80"
+        // Set a short sync interval so that Alloy retries soon after starting.
+        // There's a high chance that Mimir is not yet ready when Alloy starts sending requests to it.
+        sync_interval = "5s"
         global_config = remote.kubernetes.configmap.default.data["glbl"]
         template_files = {
           `default_template` = 
