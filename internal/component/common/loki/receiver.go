@@ -48,7 +48,7 @@ func NewLogsReceiver(opts ...LogReceiverOption) LogsReceiver {
 	return l
 }
 
-// LogsBatchReceiver is a interface providing `chan []Entry`. This should be used when
+// LogsBatchReceiver is an interface providing `chan []Entry`. This should be used when
 // multiple entries need to be sent over a channel.
 type LogsBatchReceiver interface {
 	Chan() chan []Entry
