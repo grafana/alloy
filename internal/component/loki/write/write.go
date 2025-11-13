@@ -88,7 +88,6 @@ type Component struct {
 
 	// remote write components
 	clientManger *client.Manager
-	walWriter    *wal.Writer
 
 	// sink is the place where log entries received by this component should be written to. If WAL
 	// is enabled, this will be the WAL Writer, otherwise, the client manager
@@ -194,13 +193,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}
 
-	externalLabels := utils.ToLabelSet(c.args.ExternalLabels)
-	// if WAL is enabled, the WAL writer should be the destination sink. Otherwise, the client manager
-	if walCfg.Enabled {
-		c.sink = newEntryHandler(c.walWriter, externalLabels)
-	} else {
-		c.sink = newEntryHandler(c.clientManger, externalLabels)
-	}
+	c.sink = newEntryHandler(c.clientManger, utils.ToLabelSet(c.args.ExternalLabels))
 
 	return nil
 }
