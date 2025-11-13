@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,11 +25,53 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
 )
+
+type fakeBatchReceiver struct {
+	entries  chan []loki.Entry
+	received []loki.Entry
+	once     sync.Once
+	mtx      sync.Mutex
+	wg       sync.WaitGroup
+}
+
+func newFakeBatchReceiver() *fakeBatchReceiver {
+	c := &fakeBatchReceiver{
+		entries: make(chan []loki.Entry),
+	}
+	c.wg.Add(1)
+	c.wg.Go(func() {
+		defer c.wg.Done()
+		for batch := range c.entries {
+			c.mtx.Lock()
+			for _, e := range batch {
+				c.received = append(c.received, e)
+			}
+			c.mtx.Unlock()
+		}
+	})
+	return c
+}
+
+func (c *fakeBatchReceiver) Chan() chan []loki.Entry {
+	return c.entries
+}
+
+func (c *fakeBatchReceiver) Received() []loki.Entry {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	cpy := make([]loki.Entry, len(c.received))
+	copy(cpy, c.received)
+	return cpy
+}
+
+func (c *fakeBatchReceiver) Stop() {
+	close(c.entries)
+	c.wg.Wait()
+}
 
 const localhost = "127.0.0.1"
 
@@ -287,7 +330,7 @@ regex = "dropme"
 func TestPlaintextPushTarget(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+	eh := newFakeBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -307,7 +350,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 0)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 0)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -356,7 +399,8 @@ func TestPlaintextPushTarget(t *testing.T) {
 func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+
+	eh := newFakeBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -376,7 +420,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 0)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 0)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -433,10 +477,6 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 
 func TestReady(t *testing.T) {
 	logger := log.NewNopLogger()
-	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
-	defer eh.Stop()
-
 	// Get a randomly available port by open and closing a TCP socket
 	addr, err := net.ResolveTCPAddr("tcp", localhost+":0")
 	require.NoError(t, err)
@@ -454,7 +494,7 @@ func TestReady(t *testing.T) {
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 100<<20)
+	pt, err := NewPushAPIServer(logger, serverConfig, nil, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
@@ -497,9 +537,9 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fake.Client) {
+func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fakeBatchReceiver) {
 	//Create PushAPIServerOld
-	eh := fake.NewClient(func() {})
+	eh := newFakeBatchReceiver()
 	t.Cleanup(func() {
 		eh.Stop()
 	})
@@ -515,7 +555,7 @@ func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fa
 		GRPC: &fnet.GRPCConfig{ListenPort: getFreePort(t)},
 	}
 
-	pt, err := NewPushAPIServer(logger, serverConfig, eh.LogsReceiver(), prometheus.NewRegistry(), 100<<20)
+	pt, err := NewPushAPIServer(logger, serverConfig, eh, prometheus.NewRegistry(), 100<<20)
 	require.NoError(t, err)
 
 	err = pt.Run()
