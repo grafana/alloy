@@ -188,9 +188,13 @@ func (args *GRPCClientArguments) Convert() (*otelconfiggrpc.ClientConfig, error)
 		return nil, nil
 	}
 
-	opaqueHeaders := make(map[string]configopaque.String)
+	// Convert map to MapList (slice) for v1.45.0+ API
+	opaqueHeaders := make(configopaque.MapList, 0, len(args.Headers))
 	for headerName, headerVal := range args.Headers {
-		opaqueHeaders[headerName] = configopaque.String(headerVal)
+		opaqueHeaders = append(opaqueHeaders, configopaque.Pair{
+			Name:  headerName,
+			Value: configopaque.String(headerVal),
+		})
 	}
 
 	// Configure authentication if args.Auth is set.

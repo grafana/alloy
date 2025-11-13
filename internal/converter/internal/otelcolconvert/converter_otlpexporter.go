@@ -160,10 +160,10 @@ func toKeepaliveClientArguments(cfg *configgrpc.KeepaliveClientConfig) *otelcol.
 	}
 }
 
-func toHeadersMap(cfg map[string]configopaque.String) map[string]string {
+func toHeadersMap(cfg configopaque.MapList) map[string]string {
 	res := make(map[string]string, len(cfg))
-	for k, v := range cfg {
-		res[k] = string(v)
+	for _, pair := range cfg {
+		res[pair.Name] = string(pair.Value)
 	}
 	return res
 }

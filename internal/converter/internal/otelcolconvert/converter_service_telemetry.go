@@ -5,17 +5,24 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/token/builder"
-	otel_tel "go.opentelemetry.io/collector/service/telemetry"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"go.uber.org/zap/zapcore"
 )
 
-func convertTelemetry(file *builder.File, tel otelconftelemetry.Config) diag.Diagnostics {
+func convertTelemetry(file *builder.File, tel component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
-	diags.AddAll(convertLogging(file, tel.Logs))
-	diags.AddAll(convertMetrics(file, tel.Metrics))
-	diags.AddAll(convertTraces(file, tel.Traces))
+	// Type assert to otelconftelemetry.Config
+	otelTel, ok := tel.(otelconftelemetry.Config)
+	if !ok {
+		// If it's not the expected type, skip conversion
+		return diags
+	}
+
+	diags.AddAll(convertLogging(file, otelTel.Logs))
+	diags.AddAll(convertMetrics(file, otelTel.Metrics))
+	// Traces field was removed in v0.139.0, so we skip it
 
 	return diags
 }
@@ -118,17 +125,4 @@ func convertMetrics(_ *builder.File, tel otelconftelemetry.MetricsConfig) diag.D
 	return diags
 }
 
-// TODO: Support metrics conversion once upstream's "traces" section is not experimental.
-func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	if len(tel.Processors) > 0 {
-		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/processors configuration is not supported")
-	}
-
-	if len(tel.Propagators) > 0 {
-		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/propagators configuration is not supported")
-	}
-
-	return diags
-}
+// convertTraces was removed as TracesConfig no longer exists in v0.139.0
