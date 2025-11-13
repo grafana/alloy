@@ -30,10 +30,12 @@ import (
 )
 
 type PushAPIServer struct {
-	logger        log.Logger
-	serverConfig  *fnet.ServerConfig
-	server        *fnet.TargetServer
-	handler       loki.LogsBatchReceiver
+	logger       log.Logger
+	serverConfig *fnet.ServerConfig
+	server       *fnet.TargetServer
+	handler      loki.LogsBatchReceiver
+
+	once          sync.Once
 	forceShutdown chan struct{}
 
 	rwMutex            sync.RWMutex
@@ -126,13 +128,13 @@ func (s *PushAPIServer) Shutdown() {
 
 	// After we have tried a graceful shutdown we force all remaining in-flight
 	// requests to exit.
-	close(s.forceShutdown)
+	s.once.Do(func() { close(s.forceShutdown) })
 }
 
 // ForceShutdown will cancel all in-flight before starting server shutdown.
 func (s *PushAPIServer) ForceShutdown() {
 	level.Info(s.logger).Log("msg", "force shutdown of push API server")
-	close(s.forceShutdown)
+	s.once.Do(func() { close(s.forceShutdown) })
 	s.server.StopAndShutdown()
 }
 
@@ -264,20 +266,22 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	select {
-	case s.handler.Chan() <- entries:
-	case <-r.Context().Done():
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	case <-s.forceShutdown:
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
+	if len(entries) > 0 {
+		select {
+		case s.handler.Chan() <- entries:
+		case <-r.Context().Done():
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case <-s.forceShutdown:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 
-	if lastErr != nil {
-		level.Warn(s.logger).Log("msg", "at least one entry in the push request failed to process", "err", lastErr.Error())
-		http.Error(w, lastErr.Error(), http.StatusBadRequest)
-		return
+		if lastErr != nil {
+			level.Warn(s.logger).Log("msg", "at least one entry in the push request failed to process", "err", lastErr.Error())
+			http.Error(w, lastErr.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -314,14 +318,16 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	select {
-	case s.handler.Chan() <- entries:
-	case <-r.Context().Done():
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	case <-s.forceShutdown:
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
+	if len(entries) > 0 {
+		select {
+		case s.handler.Chan() <- entries:
+		case <-r.Context().Done():
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case <-s.forceShutdown:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
