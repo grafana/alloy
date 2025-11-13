@@ -86,7 +86,13 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func (c *Component) Run(ctx context.Context) (err error) {
 	defer func() {
-		c.stop()
+		c.serverMut.Lock()
+		defer c.serverMut.Unlock()
+		if c.server != nil {
+			// We want to cancel all in-flight request when component stops.
+			c.server.ForceShutdown()
+			c.server = nil
+		}
 	}()
 
 	for {
@@ -163,13 +169,4 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server.SetKeepTimestamp(newArgs.UseIncomingTimestamp)
 
 	return nil
-}
-
-func (c *Component) stop() {
-	c.serverMut.Lock()
-	defer c.serverMut.Unlock()
-	if c.server != nil {
-		c.server.Shutdown()
-		c.server = nil
-	}
 }
