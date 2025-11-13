@@ -124,7 +124,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.139.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0 // bug with v139 https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/43950
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0 // TODO: Upgrade this when we can use a new version of otlptranslator
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.139.0

@@ -1767,8 +1767,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpu
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.139.0/go.mod h1:9jenjTifEpGka6PQw2jAvpEcp/fhh1WripcfR3+fEac=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0 h1:uY48pjpi97vlqJU9sRc37dKCWmVcvNwVJLWfPjKiph8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.139.0/go.mod h1:5F1q7AY20A5t0K/npgTCbLMKUISpqG2DRVQMoE4Hb5s=
-github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.139.0 h1:Xh1iuPrwR6TqDBYbjGYS28z02PSE4yNAJ8s2+VRKcP8=
-github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.139.0/go.mod h1:wS9IU751U2WIK6U+HGjtYpea1tuTkHONGzrvlWSYzeU=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0 h1:C0fsnGSo7uVB4GEsADW1P0Yl04KrQcCnGnQf5V3nTaA=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.138.0/go.mod h1:8b+5kIk92O+ezzsR25VXYU68m6d0LNS75wdbaSmTMZ8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0 h1:2Vu5fp72wN18qKX/s8HIZLSwrmOJLVlSyXynL0PnR3I=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.130.0/go.mod h1:Oyxv2r1NHL/pdogUs1NT6SXOPckxVcX5I9LlZ30GzXo=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.139.0 h1:2wa0+KJbl0Q2YWT2EhRBu0ZQ1Co07LCFyVZhVpRH58M=

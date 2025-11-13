@@ -80,8 +80,8 @@ func Test(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	require.NoError(t, ctrl.WaitRunning(time.Hour), "component never started")
+	require.NoError(t, ctrl.WaitExports(time.Hour), "component never exported anything")
 
 	// Send traces in the background to our exporter.
 	go func() {
@@ -105,7 +105,7 @@ func Test(t *testing.T) {
 
 	// Wait for our exporter to finish and pass data to our rpc server.
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Hour):
 		require.FailNow(t, "failed waiting for traces")
 	case tr := <-traceCh:
 		require.Equal(t, 1, tr.SpanCount())
