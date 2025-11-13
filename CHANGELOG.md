@@ -123,6 +123,8 @@ Main (unreleased)
 
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
  
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
+
 v1.11.3
 -----------------
 
