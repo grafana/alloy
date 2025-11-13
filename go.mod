@@ -1106,6 +1106,6 @@ replace (
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 
 // Pin runc to v1.1.12 to maintain compatibility with cadvisor that requires libcontainer/cgroups packages
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.6
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
