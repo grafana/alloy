@@ -64,8 +64,7 @@ func newQueue(client *queueClient, size int, logger log.Logger) *queue {
 		logger: logger,
 	}
 
-	q.wg.Add(1)
-	go q.run()
+	q.wg.Go(func() { q.run() })
 
 	return &q
 }
@@ -88,8 +87,6 @@ func (q *queue) enqueueWithCancel(ctx context.Context, qb queuedBatch) bool {
 }
 
 func (q *queue) run() {
-	defer q.wg.Done()
-
 	for {
 		select {
 		case <-q.quit:

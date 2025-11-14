@@ -169,7 +169,6 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 // and discarding them, to not block the sending side.
 func (m *Manager) startWithConsume() {
 	m.wg.Go(func() {
-		defer m.wg.Done()
 		// discard read entries
 		//nolint:revive
 		for range m.entries {
@@ -181,7 +180,6 @@ func (m *Manager) startWithConsume() {
 // doing a fan-out across all inner clients.
 func (m *Manager) startWithForward() {
 	m.wg.Go(func() {
-		defer m.wg.Done()
 		for e := range m.entries {
 			for _, c := range m.clients {
 				c.Chan() <- e
