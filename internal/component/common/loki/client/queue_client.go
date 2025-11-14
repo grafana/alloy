@@ -136,13 +136,6 @@ func (q *queue) sendAndReport(ctx context.Context, tenantId string, b *batch) {
 	b.reportAsSentData(q.client.markerHandler)
 }
 
-// closeNow closes the queue, without draining batches that might be buffered to be sent.
-func (q *queue) closeNow() {
-	close(q.quit)
-	q.wg.Wait()
-	close(q.q)
-}
-
 // queueClient is a WAL-specific remote write client implementation. This client attests to the wal.WriteTo interface,
 // which allows it to be injected in the wal.Watcher as a destination where to write read series and entries. As the watcher
 // reads from the WAL, batches are created and dispatched onto a send queue when ready to be sent.
