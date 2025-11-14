@@ -16,7 +16,7 @@ import (
 
 func TestMultilineStageProcess(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	regex, err := validateMultilineConfig(mcfg)
 	require.NoError(t, err)
 
@@ -44,7 +44,7 @@ func TestMultilineStageProcess(t *testing.T) {
 
 func TestMultilineStageMultiStreams(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	regex, err := validateMultilineConfig(mcfg)
 	require.NoError(t, err)
 
@@ -83,9 +83,37 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 	require.Equal(t, model.LabelValue("one"), out[3].Labels["value"])
 }
 
+func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
+	logger := util.TestAlloyLogger(t)
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: false}
+	regex, err := validateMultilineConfig(mcfg)
+	require.NoError(t, err)
+
+	stage := &multilineStage{
+		cfg:    mcfg,
+		regex:  regex,
+		logger: logger,
+	}
+
+	out := processEntries(stage,
+		simpleEntry("not a start line before 1", "label"),
+		simpleEntry("not a start line before 2", "label"),
+		simpleEntry("START line 1\n", "label"),
+		simpleEntry("not a start line", "label"),
+		simpleEntry("START line 2\r\n", "label"),
+		simpleEntry("START line 3", "label"))
+
+	require.Len(t, out, 5)
+	require.Equal(t, "not a start line before 1", out[0].Line)
+	require.Equal(t, "not a start line before 2", out[1].Line)
+	require.Equal(t, "START line 1\n\nnot a start line", out[2].Line)
+	require.Equal(t, "START line 2\r\n", out[3].Line)
+	require.Equal(t, "START line 3", out[4].Line)
+}
+
 func TestMultilineStageMaxWaitTime(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond}
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
 	regex, err := validateMultilineConfig(mcfg)
 	require.NoError(t, err)
 
@@ -147,7 +175,7 @@ func simpleEntry(line, label string) Entry {
 
 func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second}
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
 	regex, err := validateMultilineConfig(mcfg)
 	require.NoError(t, err)
 

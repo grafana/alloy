@@ -26,15 +26,17 @@ var (
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression  string        `alloy:"firstline,attr"`
-	MaxLines    uint64        `alloy:"max_lines,attr,optional"`
-	MaxWaitTime time.Duration `alloy:"max_wait_time,attr,optional"`
+	Expression   string        `alloy:"firstline,attr"`
+	MaxLines     uint64        `alloy:"max_lines,attr,optional"`
+	MaxWaitTime  time.Duration `alloy:"max_wait_time,attr,optional"`
+	TrimNewlines bool          `alloy:"trim_newlines,attr,optional"`
 }
 
 // DefaultMultilineConfig applies the default values on
 var DefaultMultilineConfig = MultilineConfig{
-	MaxLines:    128,
-	MaxWaitTime: 3 * time.Second,
+	MaxLines:     128,
+	MaxWaitTime:  3 * time.Second,
+	TrimNewlines: true,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -167,7 +169,11 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
-			state.buffer.WriteString(strings.TrimRight(e.Line, "\r\n"))
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+			state.buffer.WriteString(line)
 			state.currentLines++
 
 			if state.currentLines == m.cfg.MaxLines {
