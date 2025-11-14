@@ -67,13 +67,35 @@ the recommended update order of the major dependencies.
 
 ## Steps to update a major dependency
 
-Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. For each step write a short summary of what you did and how successful you were + any other output that is
-specifically required for that step.
+Don't write anything in this document. Create a separate document called `deps-update-YYYY-MM-DD.md` in the root of the repository. For each step write a short summary of what you did, how successful you were, and any other output that is
+specifically required for that step. Treat this file as the lab notebook for the upgrade. At minimum capture:
+
+- The commit or tag you started from and links to the previous successful upgrade.
+- The version matrix from Step 1, including links to upstream release notes or changelog sections you read.
+- A table of replace directives and fork status from Step 2, with the comparison URLs you used.
+- A per-dependency activity log that lists every command you ran (`go get`, `go mod tidy`, builds/tests) and the outcome.
+- Manual fixes that were required (for example, converter updates or ebpf API adjustments) with file paths.
+- The full test/build matrix you executed in Steps 4 and 5, including the command lines and whether they passed.
+- Follow-up actions or blockers you escalated (opened issues, waiting for a fork update, etc.).
 
 ### Step 1: Establish the latest and current versions of all the major dependencies
 
 For all the major dependencies, use the tools described in this document to find the latest versions.
 List them in a form of a table containing three columns: the dependency name, the current version and the latest version.
+Augment the table with:
+
+- The upstream release notes or changelog links you consulted.
+- The git tags you intend to target (avoid pseudo-versions unless absolutely required).
+- Any immediate red flags you spotted while reading the release notes (breaking changes, minimum Go/Kubernetes versions, etc.).
+
+Helpful commands:
+
+```bash
+go list -m -json <module> | jq -r '.Version, .Replace? // empty | select(. != "")'
+gh release view <owner>/<repo>@<tag> --web
+```
+
+Record the output and URLs in the update log so reviewers can reproduce your research quickly.
 
 ### Step 2: List the current forks and what changes have been added to them
 
@@ -81,14 +103,26 @@ For all the dependencies that are replaced with forks, list the changes that hav
 
 Make a short summary of the forks and recommend whether the change can be upstreamed or if we need to continue maintaining the fork.
 
+Always include any forks that are indirectly tied to a major dependency. For example, when updating OpenTelemetry you must audit:
+
+- `go.opentelemetry.io/obi` (Grafana opentelemetry-ebpf-instrumentation fork).
+- `go.opentelemetry.io/ebpf-profiler` (Grafana opentelemetry-ebpf-profiler fork).
+- Any Grafana-maintained collectors that expose new component factory APIs.
+
+Document the exact comparison URLs you inspected (for example, `https://github.com/open-telemetry/opentelemetry-collector-contrib/compare/v0.138.0...v0.139.0` and the corresponding Grafana fork comparison). Call out whether the fork already contains the tag you target or whether follow-up work is needed (new fork branch, cherry-picks, or issue filing). If a replace directive looks obsolete, note it here so you can try removing it in Step 3.
+
 ### Step 3: Update the major dependencies in the recommended order
 
 Update the major dependencies in the recommended order, using the tools described above in this document:
 
 - Initially keep the forks unchanged.
 - For each major dependency, perform these steps:
+  - Prefer targeting published tags explicitly: `go get <module>@vX.Y.Z`. Avoid using `go get -u` or leaving pseudo-versions unless you have documented why the tag is unavailable. If a pseudo-version is unavoidable, record the upstream issue or PR in your update log.
   - Update the version in the go.mod file to the latest version
   - Check if `go mod tidy` can successfully resolve the dependencies. If it can, move on to the next dependency.
+  - After each `go mod tidy`, scan `go.mod` for unintended pseudo-versions using `rg 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod` and fix them immediately.
+  - Review upstream diffs for breaking API or configuration changes. Focus on structs that power our converters (`internal/converter/internal/otelcolconvert`), static configs, or runtime helpers. Update the converters, testdata (Alloy + YAML fixtures), and integration tests to expose new fields such as Kafka topic options or telemetry factory wiring.
+  - When OpenTelemetry APIs shift, audit related Grafana forks (`go.opentelemetry.io/obi`, `go.opentelemetry.io/ebpf-profiler`) and update the replace directives to the latest compatible fork tags. Run the relevant unit tests (for example, `go test ./internal/component/pyroscope/...`) after each bump.
   - If you encounter issues with the forks, call it out and recommend
     the next steps, which may require creating a new fork, based on the latest version of the dependency.
   - If you encounter conflicts:
@@ -108,6 +142,12 @@ Update the major dependencies in the recommended order, using the tools describe
 
 - If you were able to produce a working go.mod file and the `go mod tidy` command passes, don't yet worry about
   building the project or running the tests. These are the next steps to be taken later.
+
+- Once a dependency cohort (for example, “all OTel modules”) is upgraded successfully:
+  - Update `docs/sources/_index.md` and `docs/sources/_index.md.t` so the `OTEL_VERSION` (and similar constants) match the new release.
+  - Add or update the `CHANGELOG.md` entry describing the upgrade with key highlights and links to upstream changelogs.
+  - Confirm that any new or downgraded replace directives have concise comments explaining the reason and linking to upstream issues.
+  - Capture these actions in your update log before starting the next cohort.
 
 - Organise the go.mod in the following way:
   - module name, go version, etc.
@@ -130,6 +170,7 @@ Update the major dependencies in the recommended order, using the tools describe
       - See if there are some other ways to solve it.
       - If there is no simple solution, report this problem clearly and you can stop here. We want to work on one problem at a time.
 - If you were able to fix the compilation errors, explain what you did and how confident you are that these are correct fixes.
+- After addressing a compilation failure, immediately rerun the smallest test suite that exercises the modified code path (for example, `go test ./internal/converter/internal/otelcolconvert/...` after converter tweaks, `go test ./internal/component/pyroscope/...` after ebpf work). Record the command and outcome in the update log.
 - If we still have compilation errors, stop here.
 
 ### Step 5: Fix test errors and failures
@@ -149,6 +190,7 @@ it clearly as required, provide steps to reproduce it, the options we have and y
   - `go test ./internal/component/loki/...` - to test the Loki components
   - `go test ./internal/component/otelcol/...` - to test the OpenTelemetry Collector components
   - `go test ./internal/component/beyla/...` - to test the Beyla components
+  - `go test ./internal/component/pyroscope/...` - to test the Pyroscope eBPF components whenever OTel or ebpf-profiler dependencies change
   - `go test ./internal/component/...` - to test all components
   - `go test ./internal/converter/...` - to test the config converters - make sure that users can still smoothly convert
     their configurations to Alloy. If there is a lot of additions to alloy output files, this often indicates that
@@ -185,6 +227,17 @@ it clearly as required, provide steps to reproduce it, the options we have and y
   are the right versions of dependencies that can be used to address the issue at hand.
 
 - If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on.
+
+### Step 6: Final reporting and PR preparation
+
+- Update `deps-update-YYYY-MM-DD.md` with a concise executive summary:
+  - Final version table and any modules that intentionally remained on older versions.
+  - Fork status and whether new branches or issues were created.
+  - Manual fixes you landed (with file references) and lingering TODOs you deferred.
+  - Full list of build/test commands that were executed with pass/fail status.
+- Verify that the PR contains documentation updates (`CHANGELOG.md`, `docs/sources/_index.md`, etc.) and comments on replace directives explaining any temporary pinning.
+- Use the summary from the update log to draft the PR description so reviewers can correlate commits, logs, and test results quickly.
+- Capture any follow-up work (new issues, downstream teams to notify) before merging.
 
 ### Tips and tools to use
 
@@ -294,3 +347,41 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadb
 ```
 
 Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
+
+#### Verifying module versions in go.mod
+
+After each dependency bump, double-check that `go.mod` only contains the intended tags:
+
+```bash
+rg --color=never 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod
+go list -m -json all | jq -r 'select(.Path=="<module>").Version'
+```
+
+If you spot an unexpected pseudo-version, identify why the tag was not picked up (deleted tag, private module, etc.) and document the rationale in the update log.
+
+#### Inspecting upstream config changes quickly
+
+When a collector component introduces new settings, you can diff the upstream structs without cloning repositories:
+
+```bash
+old=v0.138.0
+new=v0.139.0
+module=github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
+go mod download ${module}@${old} ${module}@${new}
+diff -u \
+  "$(go env GOMODCACHE)/${module}@${old}/config.go" \
+  "$(go env GOMODCACHE)/${module}@${new}/config.go"
+```
+
+Use the diff to drive converter updates and fixture changes before running tests.
+
+#### Locating metadata references that must be updated
+
+Several files embed version strings (for example `OTEL_VERSION`). When the upgrade succeeds, update them in one pass:
+
+```bash
+rg 'OTEL_VERSION' docs/sources
+rg 'otel.*version' -g'*.md' docs/sources
+```
+
+Cross-check the results with the values recorded in your update log so the documentation remains consistent.
