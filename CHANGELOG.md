@@ -93,6 +93,8 @@ Main (unreleased)
 
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
+- `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
