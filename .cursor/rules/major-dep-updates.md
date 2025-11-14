@@ -87,6 +87,7 @@ Update the major dependencies in the recommended order, using the tools describe
 
 - Initially keep the forks unchanged.
 - For each major dependency, perform these steps:
+  - Prefer targeting published tags explicitly: `go get <module>@vX.Y.Z`. Avoid using `go get -u` or leaving pseudo-versions unless you have documented why the tag is unavailable.
   - Update the version in the go.mod file to the latest version
   - Check if `go mod tidy` can successfully resolve the dependencies. If it can, move on to the next dependency.
   - If you encounter issues with the forks, call it out and recommend
@@ -149,6 +150,7 @@ it clearly as required, provide steps to reproduce it, the options we have and y
   - `go test ./internal/component/loki/...` - to test the Loki components
   - `go test ./internal/component/otelcol/...` - to test the OpenTelemetry Collector components
   - `go test ./internal/component/beyla/...` - to test the Beyla components
+  - `go test ./internal/component/pyroscope/...` - to test the Pyroscope eBPF components
   - `go test ./internal/component/...` - to test all components
   - `go test ./internal/converter/...` - to test the config converters - make sure that users can still smoothly convert
     their configurations to Alloy. If there is a lot of additions to alloy output files, this often indicates that
@@ -294,3 +296,24 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadb
 ```
 
 Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
+
+#### Inspecting upstream code changes between versions
+
+When dependencies introduce new features or breaking changes, you can inspect the changes directly without cloning repositories:
+
+```bash
+old=v0.138.0
+new=v0.139.0
+module=github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
+go mod download ${module}@${old} ${module}@${new}
+
+# Inspect specific files (e.g., config structs, factory code, interfaces)
+diff -u \
+  "$(go env GOMODCACHE)/${module}@${old}/config.go" \
+  "$(go env GOMODCACHE)/${module}@${new}/config.go"
+
+# Or compare entire directories to spot new files or removed code
+diff -ur \
+  "$(go env GOMODCACHE)/${module}@${old}" \
+  "$(go env GOMODCACHE)/${module}@${new}" | head -200
+```
