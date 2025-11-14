@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
@@ -36,7 +35,7 @@ func TestManager_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for i := 0; i < 2; i++ {
-			_, err := NewManager(metrics, log.NewLogfmtLogger(os.Stdout), reg, wal.Config{
+			_, err := NewManager(metrics, log.NewNopLogger(), reg, wal.Config{
 				WatchConfig: wal.DefaultWatchConfig,
 			}, Config{
 				URL: flagext.URLValue{URL: host},
@@ -50,7 +49,7 @@ func TestManager_ErrorCreatingWhenNoClientConfigsProvided(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
@@ -71,7 +70,7 @@ func TestManager_ErrorCreatingWhenRepeatedConfigs(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
@@ -128,7 +127,7 @@ func TestManager_WALEnabled(t *testing.T) {
 	}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	clientMetrics := NewMetrics(reg)
 
@@ -181,7 +180,7 @@ func TestManager_WALDisabled(t *testing.T) {
 	walConfig := wal.Config{}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	clientMetrics := NewMetrics(reg)
 
@@ -235,7 +234,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	walConfig := wal.Config{}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
