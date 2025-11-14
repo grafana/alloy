@@ -57,7 +57,7 @@ func (a *Arguments) labelSet() model.LabelSet {
 
 type Component struct {
 	opts               component.Options
-	handler            loki.LogsReceiver
+	handler            loki.LogsBatchReceiver
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
@@ -72,7 +72,7 @@ type Component struct {
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
-		handler:            loki.NewLogsReceiver(),
+		handler:            loki.NewLogsBatchReceiver(),
 		receivers:          args.ForwardTo,
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 	}
@@ -86,23 +86,30 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func (c *Component) Run(ctx context.Context) (err error) {
 	defer func() {
-		c.stop()
+		c.serverMut.Lock()
+		defer c.serverMut.Unlock()
+		if c.server != nil {
+			// We want to cancel all in-flight request when component stops.
+			c.server.ForceShutdown()
+			c.server = nil
+		}
 	}()
 
 	for {
 		select {
-		case entry := <-c.handler.Chan():
+		case entries := <-c.handler.Chan():
 			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				select {
-				case receiver.Chan() <- entry:
-				case <-ctx.Done():
-					return
+			for _, entry := range entries {
+				for _, receiver := range c.receivers {
+					select {
+					case receiver.Chan() <- entry:
+					case <-ctx.Done():
+						c.receiversMut.RUnlock()
+						return
+					}
 				}
 			}
+			c.receiversMut.RUnlock()
 		case <-ctx.Done():
 			return
 		}
@@ -163,13 +170,4 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server.SetKeepTimestamp(newArgs.UseIncomingTimestamp)
 
 	return nil
-}
-
-func (c *Component) stop() {
-	c.serverMut.Lock()
-	defer c.serverMut.Unlock()
-	if c.server != nil {
-		c.server.Shutdown()
-		c.server = nil
-	}
 }

@@ -140,6 +140,8 @@ Main (unreleased)
 
 - Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
  
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
+
 v1.11.3
 -----------------
 
