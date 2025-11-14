@@ -123,7 +123,7 @@ Main (unreleased)
 
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
 
-- Remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
+- Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
  
 v1.11.3
 -----------------
