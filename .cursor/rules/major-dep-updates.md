@@ -83,7 +83,7 @@ Make a short summary of the forks and recommend whether the change can be upstre
 
 ### Step 3: Update the major dependencies in the recommended order
 
-Update the major dependencies in the recommended order, using the tools described above in this document:
+Update the major dependencies in the recommended order, using the tools described in this document:
 
 - Initially keep the forks unchanged.
 - For each major dependency, perform these steps:
@@ -97,6 +97,10 @@ Update the major dependencies in the recommended order, using the tools describe
       This may require adding replace directives to the go.mod file. This may also require tracing your steps back
       to the earlier dependencies that were updated.
     - If there is an existing replace directive for the problematic dependencies, try to remove it and see if `go mod tidy` can successfully pass - perhaps it is no longer needed. If that's the case, call it out in summary.
+    - IMPORTANT: For some dependencies you must consider well-known internal forks of them, which often need to be used instead and already have a version or branch that can be used that resolves the issues:
+      - `go.opentelemetry.io/obi` => `github.com/grafana/opentelemetry-ebpf-instrumentation`
+      - `go.opentelemetry.io/ebpf-profiler` => `github.com/grafana/opentelemetry-ebpf-profiler`
+      - `github.com/prometheus/prometheus` => `github.com/grafana/prometheus`
   - If you are unable to resolve the conflicts, call it out and recommend the next steps.
     Make sure you clearly classify the kind of issue:
     - Is it that a major dependency upstream is lagging behind with updating some other dependency?
