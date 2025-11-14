@@ -25,6 +25,7 @@ type Arguments struct {
 	LoadProbe           bool                   `alloy:"load_probe,attr,optional"`
 	UProbeLinks         []string               `alloy:"u_probe_links,attr,optional"`
 	VerboseMode         bool                   `alloy:"verbose_mode,attr,optional"`
+	LazyMode            bool                   `alloy:"lazy_mode,attr,optional"`
 	DeprecatedArguments DeprecatedArguments    `alloy:",squash"`
 
 	// undocumented
