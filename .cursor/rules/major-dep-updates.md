@@ -120,7 +120,7 @@ Update the major dependencies in the recommended order, using the tools describe
   - Prefer targeting published tags explicitly: `go get <module>@vX.Y.Z`. Avoid using `go get -u` or leaving pseudo-versions unless you have documented why the tag is unavailable. If a pseudo-version is unavoidable, record the upstream issue or PR in your update log.
   - Update the version in the go.mod file to the latest version
   - Check if `go mod tidy` can successfully resolve the dependencies. If it can, move on to the next dependency.
-  - After each `go mod tidy`, scan `go.mod` for unintended pseudo-versions using `rg 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod` and fix them immediately.
+  - After each `go mod tidy`, scan `go.mod` for unintended pseudo-versions using `grep -E 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod` and fix them immediately.
   - Review upstream diffs for breaking API or configuration changes. Focus on structs that power our converters (`internal/converter/internal/otelcolconvert`), static configs, or runtime helpers. Update the converters, testdata (Alloy + YAML fixtures), and integration tests to expose new fields such as Kafka topic options or telemetry factory wiring.
   - When OpenTelemetry APIs shift, audit related Grafana forks (`go.opentelemetry.io/obi`, `go.opentelemetry.io/ebpf-profiler`) and update the replace directives to the latest compatible fork tags. Run the relevant unit tests (for example, `go test ./internal/component/pyroscope/...`) after each bump.
   - If you encounter issues with the forks, call it out and recommend
@@ -353,35 +353,45 @@ Run `go mod tidy` and it will fix the raw commit sha with the correct version nu
 After each dependency bump, double-check that `go.mod` only contains the intended tags:
 
 ```bash
-rg --color=never 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod
+grep -E 'v[0-9]+\.[0-9]+\.[0-9]+-0\.' go.mod
 go list -m -json all | jq -r 'select(.Path=="<module>").Version'
 ```
 
 If you spot an unexpected pseudo-version, identify why the tag was not picked up (deleted tag, private module, etc.) and document the rationale in the update log.
 
-#### Inspecting upstream config changes quickly
+#### Inspecting upstream code changes between versions
 
-When a collector component introduces new settings, you can diff the upstream structs without cloning repositories:
+When dependencies introduce new features or breaking changes, inspect the changes directly without cloning repositories:
 
 ```bash
 old=v0.138.0
 new=v0.139.0
 module=github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter
 go mod download ${module}@${old} ${module}@${new}
+
+# Inspect specific files (e.g., config structs, factory code, interfaces)
 diff -u \
   "$(go env GOMODCACHE)/${module}@${old}/config.go" \
   "$(go env GOMODCACHE)/${module}@${new}/config.go"
+
+# Or compare entire directories to spot new files or removed code
+diff -ur \
+  "$(go env GOMODCACHE)/${module}@${old}" \
+  "$(go env GOMODCACHE)/${module}@${new}" | head -200
 ```
 
-Use the diff to drive converter updates and fixture changes before running tests.
+Use these diffs to:
+- Update our converters (`internal/converter/internal/otelcolconvert`) to expose new configuration fields.
+- Identify breaking API changes in factory signatures, component interfaces, or helper functions.
+- Update test fixtures (both Alloy `.alloy` and YAML `.yaml` files) to match new defaults.
 
 #### Locating metadata references that must be updated
 
 Several files embed version strings (for example `OTEL_VERSION`). When the upgrade succeeds, update them in one pass:
 
 ```bash
-rg 'OTEL_VERSION' docs/sources
-rg 'otel.*version' -g'*.md' docs/sources
+grep -r 'OTEL_VERSION' docs/sources
+grep -r 'otel.*version' docs/sources --include='*.md'
 ```
 
 Cross-check the results with the values recorded in your update log so the documentation remains consistent.
