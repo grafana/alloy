@@ -121,6 +121,8 @@ Main (unreleased)
   * The carriage return symbol in Windows log files with CLRF endings will no longer be part of the log line.
   * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
 
+- Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+ 
 v1.11.3
 -----------------
 
