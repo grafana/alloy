@@ -72,10 +72,9 @@ func ContainsReservedKeywords(query string, reservedWords map[string]ExplainRese
 							}
 						}
 					}
-					if matchedTokens == lookbackCount {
-						return false, nil
+					if matchedTokens < lookbackCount {
+						return true, nil
 					}
-					return true, nil
 				} else {
 					return true, nil
 				}

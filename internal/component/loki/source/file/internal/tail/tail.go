@@ -28,7 +28,6 @@ var (
 type Line struct {
 	Text string
 	Time time.Time
-	Err  error // Error from tail
 }
 
 // SeekInfo represents arguments to `os.Seek`
@@ -95,7 +94,17 @@ func TailFile(filename string, config Config) (*Tail, error) {
 		return nil, err
 	}
 
+	// Seek to requested location.
+	if t.Location != nil {
+		_, err := t.file.Seek(t.Location.Offset, t.Location.Whence)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	t.watcher.SetFile(t.file)
+
+	t.reader = t.getReader()
 
 	go t.tailFileSync()
 
@@ -252,26 +261,6 @@ func (tail *Tail) tailFileSync() {
 	defer tail.Done()
 	defer tail.close()
 
-	// deferred first open, not technically truncated but we don't need to check for changed files
-	if err := tail.reopen(true); err != nil {
-		if err != tomb.ErrDying {
-			tail.Kill(err)
-		}
-		return
-	}
-
-	// Seek to requested location on first open of the file.
-	if tail.Location != nil {
-		_, err := tail.file.Seek(tail.Location.Offset, tail.Location.Whence)
-		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Seeked %s - %+v\n", tail.Filename, tail.Location))
-		if err != nil {
-			tail.Killf("Seek error on %s: %s", tail.Filename, err)
-			return
-		}
-	}
-
-	tail.openReader()
-
 	var (
 		err        error
 		offset     int64
@@ -290,9 +279,15 @@ func (tail *Tail) tailFileSync() {
 		line, err := tail.readLine()
 
 		// Process `line` even if err is EOF.
-		if err == nil {
-			tail.Lines <- &Line{line, time.Now(), nil}
-		} else if err == io.EOF {
+		switch err {
+		case nil:
+			select {
+			case tail.Lines <- &Line{line, time.Now()}:
+			case <-tail.Dying():
+				return
+			}
+
+		case io.EOF:
 			if line != "" {
 				// this has the potential to never return the last line if
 				// it's not followed by a newline; seems a fair trade here
@@ -317,9 +312,7 @@ func (tail *Tail) tailFileSync() {
 				}
 			}
 
-			// When EOF is reached, wait for more data to become
-			// available. Wait strategy is based on the `tail.watcher`
-			// implementation (inotify or polling).
+			// When EOF is reached, wait for more data to become available.
 			oneMoreRun, err = tail.waitForChanges()
 			if err != nil {
 				if err != ErrStop {
@@ -327,16 +320,10 @@ func (tail *Tail) tailFileSync() {
 				}
 				return
 			}
-		} else {
+		default:
 			// non-EOF error
 			tail.Killf("Error reading %s: %s", tail.Filename, err)
 			return
-		}
-
-		select {
-		case <-tail.Dying():
-			return
-		default:
 		}
 	}
 }
@@ -364,13 +351,15 @@ func (tail *Tail) waitForChanges() (bool, error) {
 		// run the poll one more time to catch anything we may have missed since the last poll.
 		return true, nil
 	case <-tail.changes.Truncated:
-		// Always reopen truncated files (Follow is true)
+		// Always reopen truncated files.
 		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Re-opening truncated file %s ...", tail.Filename))
 		if err := tail.reopen(true); err != nil {
 			return false, err
 		}
 		level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened truncated %s", tail.Filename))
-		tail.openReader()
+		tail.readerMut.Lock()
+		tail.reader = tail.getReader()
+		tail.readerMut.Unlock()
 		return false, nil
 	case <-tail.Dying():
 		return false, ErrStop
@@ -384,17 +373,18 @@ func (tail *Tail) finishDelete() error {
 		return err
 	}
 	level.Debug(tail.Logger).Log("msg", fmt.Sprintf("Successfully reopened %s", tail.Filename))
-	tail.openReader()
+
+	tail.readerMut.Lock()
+	tail.reader = tail.getReader()
+	tail.readerMut.Unlock()
 	return nil
 }
 
-func (tail *Tail) openReader() {
-	tail.readerMut.Lock()
-	defer tail.readerMut.Unlock()
+func (tail *Tail) getReader() *bufio.Reader {
 	if tail.Decoder != nil {
-		tail.reader = bufio.NewReader(tail.Decoder.Reader(tail.file))
+		return bufio.NewReader(tail.Decoder.Reader(tail.file))
 	} else {
-		tail.reader = bufio.NewReader(tail.file)
+		return bufio.NewReader(tail.file)
 	}
 }
 
@@ -404,6 +394,8 @@ func (tail *Tail) seekTo(pos SeekInfo) error {
 		return fmt.Errorf("Seek error on %s: %s", tail.Filename, err)
 	}
 	// Reset the read buffer whenever the file is re-seek'ed
+	tail.readerMut.Lock()
 	tail.reader.Reset(tail.file)
+	tail.readerMut.Unlock()
 	return nil
 }

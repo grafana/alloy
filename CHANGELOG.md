@@ -59,6 +59,8 @@ Main (unreleased)
 
 - Add `file_match` block to `loki.source.file` for built-in file discovery using glob patterns. (@kalleep)
 
+- Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
@@ -90,6 +92,8 @@ Main (unreleased)
 
 - Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
 
+- `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
@@ -118,6 +122,8 @@ Main (unreleased)
   * The carriage return symbol in Windows log files with CLRF endings will no longer be part of the log line.
   * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
 
+- Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+ 
 v1.11.3
 -----------------
 
@@ -138,6 +144,8 @@ v1.11.3
 - Fix panic in `otelcol.receiver.syslog` when no tcp block was configured. (@kalleep)
 
 - Fix breaking changes in the texfile collector for `prometheus.exporter.windows`, and `prometheus.exporter.unix`, when prometheus/common was upgraded. (@kgeckhart)
+
+- Support recovering from corrupted positions file entries in `loki.source.file`. (@dehaansa)
 
 ### Other changes
 
@@ -347,6 +355,8 @@ v1.11.0
 - Fix graph UI so it generates correct URLs for components in `remotecfg` modules. (@patrickeasters)
 
 - Fix panic in `loki.write` when component is shutting down and `external_labels` are configured. (@kalleep)
+
+- Fix excessive debug logs always being emitted by `prometheus.exporter.mongodb`. (@kalleep)
 
 v1.10.2
 -----------------
