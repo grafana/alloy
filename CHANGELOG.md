@@ -62,6 +62,17 @@ Main (unreleased)
 
 - Add a `regex` argument to the `structured_metadata` stage in `loki.process` to extract labels matching a regular expression. (@timonegk)
 
+- OpenTelemetry Collector dependencies upgraded from v0.134.0 to v0.139.0. (@dehaansa)
+  - All `otelcol.receiver.*` components leveraging an HTTP server can configure HTTP keep alive behavior with `keep_alives_enabled`.
+  - All `otelcol.exporter.*` components providing the `sending_queue` > `batch` block have default `batch` values.
+  - The `otelcol.processor.k8sattributes` component has support for extracting annotations from k8s jobs and daemonsets.
+  - The `otelcol.processor.resourcedecetion` component supports nine new detectors.
+  - The `otelcol.exporter.kafka` component supports partitioning logs by trace ID (`partition_logs_by_trace_id`) and configuring default behavior if topic does not exist (`allow_auto_topic_creation`).
+  - The `otelcol.receiver.kafka` component has new configuration options `max_partition_fetch_size`, `rack_id`, and `use_leader_epoch`.
+  - The `otelcol.exporter.s3` component has new configuration options `s3_base_prefix` and `s3_partition_timezone`.
+  - The `otelcol.processor.servicegraph` component now supports defining the maximum number of buckets for generated exponential histograms.
+  - See the upstream [core][https://github.com/open-telemetry/opentelemetry-collector/blob/v0.139.0/CHANGELOG.md] and [contrib][https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.139.0/CHANGELOG.md] changelogs for more details.
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)

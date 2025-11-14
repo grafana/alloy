@@ -90,11 +90,18 @@ func TestBadOtelConfig(t *testing.T) {
 	traceCh := make(chan ptrace.Traces)
 	args.Output = makeTracesOutput(traceCh)
 
+	done := make(chan struct{})
 	go func() {
 		err := ctrl.Run(ctx, args)
 		require.Error(t, err, "unknown sampling policy type bad_type")
+		done <- struct{}{}
 	}()
 
+	select {
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "component never returned an error")
+	case <-done:
+	}
 	require.Error(t, ctrl.WaitRunning(time.Second), "component never started")
 }
 

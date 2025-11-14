@@ -558,7 +558,8 @@ func TestContainsReservedKeywords(t *testing.T) {
 	}
 
 	t.Run("lexer error", func(t *testing.T) {
-		_, err := ContainsReservedKeywords("SELECT \"foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		// TODO - consider if lexer should still error on "foo, see https://github.com/DataDog/go-sqllexer/pull/72
+		_, err := ContainsReservedKeywords("SELECT `foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
 		require.Error(t, err)
 	})
 }
