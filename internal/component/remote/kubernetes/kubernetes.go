@@ -71,8 +71,9 @@ type Component struct {
 	mut  sync.Mutex
 	args Arguments
 
-	client *client_go.Clientset
-	kind   ResourceType
+	ClientBuidler ClientBuidler
+	client        client_go.Interface
+	kind          ResourceType
 
 	lastPoll    time.Time
 	lastExports Exports // Used for determining whether exports should be updated
@@ -89,8 +90,10 @@ var (
 // New returns a new, unstarted remote.kubernetes.* component.
 func New(opts component.Options, args Arguments, rType ResourceType) (*Component, error) {
 	c := &Component{
-		log:  opts.Logger,
-		opts: opts,
+		log:           opts.Logger,
+		opts:          opts,
+		ClientBuidler: RestClientBuidler{},
+		args:          args,
 
 		kind: rType,
 		health: component.Health{
@@ -99,15 +102,19 @@ func New(opts component.Options, args Arguments, rType ResourceType) (*Component
 			UpdateTime: time.Now(),
 		},
 	}
-
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
 	return c, nil
 }
 
 // Run starts the remote.kubernetes.* component.
 func (c *Component) Run(ctx context.Context) error {
+	// Do the initial Update() in Run() instead of in New().
+	// That way New() is stateless and has no side effects.
+	// This also allows tests to replace struct fields
+	// such as ClientBuidler before Run() is called.
+	if err := c.Update(c.args); err != nil {
+		return err
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -232,11 +239,7 @@ func (c *Component) Update(args component.Arguments) (err error) {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
-	restConfig, err := c.args.Client.BuildRESTConfig(c.log)
-	if err != nil {
-		return err
-	}
-	c.client, err = client_go.NewForConfig(restConfig)
+	c.client, err = c.ClientBuidler.GetKubernetesClient(c.log, &c.args.Client)
 	if err != nil {
 		return fmt.Errorf("creating kubernetes client: %w", err)
 	}
