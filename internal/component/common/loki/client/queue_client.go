@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/useragent"
@@ -299,7 +300,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 		nb := newBatch(c.cfg.MaxStreams)
 		// since the batch is new, adding a new entry, and hence a new stream, won't fail since there aren't any stream
 		// registered in the batch.
-		_ = nb.addFromWAL(lbs, e, segmentNum)
+		_ = nb.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 
 		c.batches[tenantID] = nb
 		c.batchesMtx.Unlock()
@@ -317,7 +318,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 		})
 
 		nb := newBatch(c.cfg.MaxStreams)
-		_ = nb.addFromWAL(lbs, e, segmentNum)
+		_ = nb.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 		c.batches[tenantID] = nb
 		c.batchesMtx.Unlock()
 
@@ -325,7 +326,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 	}
 
 	// The max size of the batch isn't reached, so we can add the entry
-	err := batch.addFromWAL(lbs, e, segmentNum)
+	err := batch.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 	c.batchesMtx.Unlock()
 
 	if err != nil {
