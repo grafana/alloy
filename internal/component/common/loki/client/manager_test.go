@@ -36,9 +36,9 @@ func TestManager_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for i := 0; i < 2; i++ {
-			_, err := NewManager(metrics, log.NewLogfmtLogger(os.Stdout), 0, reg, wal.Config{
+			_, err := NewManager(metrics, log.NewLogfmtLogger(os.Stdout), reg, wal.Config{
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier, Config{
+			}, Config{
 				URL: flagext.URLValue{URL: host},
 			})
 			require.NoError(t, err)
@@ -50,11 +50,11 @@ func TestManager_ErrorCreatingWhenNoClientConfigsProvided(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), 0, prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier)
+			})
 			require.Error(t, err)
 		})
 	}
@@ -71,11 +71,11 @@ func TestManager_ErrorCreatingWhenRepeatedConfigs(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), 0, prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier, config1, config1Copy)
+			}, config1, config1Copy)
 			require.Error(t, err)
 		})
 	}
@@ -132,10 +132,7 @@ func TestManager_WALEnabled(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	clientMetrics := NewMetrics(reg)
 
-	// start writer and manager
-	writer, err := wal.NewWriter(walConfig, logger, reg)
-	require.NoError(t, err)
-	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, writer, testClientConfig)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -146,7 +143,6 @@ func TestManager_WALEnabled(t *testing.T) {
 	}()
 
 	defer func() {
-		writer.Stop()
 		manager.Stop()
 		closeServer.Close()
 	}()
@@ -156,7 +152,7 @@ func TestManager_WALEnabled(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := 0; i < totalLines; i++ {
-		writer.Chan() <- loki.Entry{
+		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -190,7 +186,7 @@ func TestManager_WALDisabled(t *testing.T) {
 	clientMetrics := NewMetrics(reg)
 
 	// start writer and manager
-	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -248,7 +244,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	clientMetrics := NewMetrics(reg)
 
 	// start writer and manager
-	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig, testClientConfig2)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
