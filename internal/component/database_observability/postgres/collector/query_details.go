@@ -142,7 +142,7 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext="%s" datname="%s" engine="postgres"`, queryID, queryText, databaseName),
+			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s" engine="postgres"`, queryID, queryText, databaseName),
 		)
 
 		tables, err := c.tryTokenizeTableNames(queryText)

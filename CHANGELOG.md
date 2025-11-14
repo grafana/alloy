@@ -39,6 +39,8 @@ v1.12.0-rc.0
     - add `user` field to wait events within `query_samples` collector (@gaantunes)
     - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
     - process turned idle rows to calculate finalization times precisely and emit first seen idle rows (@gaantunes)
+  - `query_details`
+    - escape queries coming from pg_stat_statements with quotes (@gaantunes)
   - enable `explain_plans` collector by default (@rgeyer)
   - safely generate server_id when UDP socket used for database connection (@matthewnolf)
   - add table registry and include "validated" in parsed table name logs (@fridgepoet)
@@ -138,6 +140,8 @@ v1.12.0-rc.0
   * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
 
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+
+- Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
 
 v1.11.3
 -----------------

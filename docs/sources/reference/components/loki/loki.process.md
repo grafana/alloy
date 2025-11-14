@@ -1022,11 +1022,12 @@ The `stage.multiline` inner block merges multiple lines into a single block befo
 
 The following arguments are supported:
 
-| Name            | Type       | Description                                        | Default | Required |
-| --------------- | ---------- | -------------------------------------------------- | ------- | -------- |
-| `firstline`     | `string`   | Name from extracted data to use for the log entry. |         | yes      |
-| `max_lines`     | `number`   | The maximum number of lines a block can have.      | `128`   | no       |
-| `max_wait_time` | `duration` | The maximum time to wait for a multiline block.    | `"3s"`  | no       |
+| Name            | Type       | Description                                                 | Default | Required |
+|-----------------|------------|-------------------------------------------------------------|---------|----------|
+| `firstline`     | `string`   | Name from extracted data to use for the log entry.          |         | yes      |
+| `max_lines`     | `number`   | The maximum number of lines a block can have.               | `128`   | no       |
+| `max_wait_time` | `duration` | The maximum time to wait for a multiline block.             | `"3s"`  | no       |
+| `trim_newlines` | `bool`     | Whether to trim newlines from the end of each merged entry. | `true`  | no       |
 
 A new block is identified by the RE2 regular expression passed in `firstline`.
 
