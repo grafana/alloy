@@ -53,17 +53,16 @@ type client struct {
 	wg   sync.WaitGroup
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx        context.Context
-	cancel     context.CancelFunc
-	maxStreams int
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, logger)
+func New(metrics *Metrics, cfg Config, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -74,13 +73,12 @@ func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:     log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:        cfg,
-		entries:    make(chan loki.Entry),
-		metrics:    metrics,
-		ctx:        ctx,
-		cancel:     cancel,
-		maxStreams: maxStreams,
+		logger:  log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:     cfg,
+		entries: make(chan loki.Entry),
+		metrics: metrics,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 
 	err := cfg.Client.Validate()
@@ -147,7 +145,7 @@ func (c *client) run() {
 
 			// If the batch doesn't exist yet, we create a new one with the entry
 			if !ok {
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				c.initBatchMetrics(tenantID)
 				break
 			}
@@ -157,7 +155,7 @@ func (c *client) run() {
 			if batch.sizeBytesAfter(e.Entry) > c.cfg.BatchSize {
 				c.sendBatch(tenantID, batch)
 
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				break
 			}
 
