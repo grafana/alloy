@@ -139,6 +139,8 @@ Main (unreleased)
   * These bugs used to cause some logs to show up with Chinese characters. Notably, this would happen on MSSQL UTF-16 LE logs.
 
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
+
+- Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
  
 v1.11.3
 -----------------
