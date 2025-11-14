@@ -170,17 +170,16 @@ type queueClient struct {
 	// ctx is used in any upstream calls from the `client`.
 	ctx           context.Context
 	cancel        context.CancelFunc
-	maxStreams    int
 	quit          chan struct{}
 	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -201,9 +200,8 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		ctx:        ctx,
-		cancel:     cancel,
-		maxStreams: maxStreams,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes
@@ -298,7 +296,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 
 	// If the batch doesn't exist yet, we create a new one with the entry
 	if !ok {
-		nb := newBatch(c.maxStreams)
+		nb := newBatch(c.cfg.MaxStreams)
 		// since the batch is new, adding a new entry, and hence a new stream, won't fail since there aren't any stream
 		// registered in the batch.
 		_ = nb.addFromWAL(lbs, e, segmentNum)
@@ -318,7 +316,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 			Batch:    batch,
 		})
 
-		nb := newBatch(c.maxStreams)
+		nb := newBatch(c.cfg.MaxStreams)
 		_ = nb.addFromWAL(lbs, e, segmentNum)
 		c.batches[tenantID] = nb
 		c.batchesMtx.Unlock()
