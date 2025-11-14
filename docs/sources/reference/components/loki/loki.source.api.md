@@ -105,6 +105,8 @@ The metrics include labels such as `status_code` where relevant, which can be us
 * `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
 * `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
 * `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
+* `loki_source_api_entries_processed` (counter): Total number of log entries processed.
+* `loki_source_api_entries_written` (counter): Total number of log entries forwarded.
 
 ## Example
 
