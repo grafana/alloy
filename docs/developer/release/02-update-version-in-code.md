@@ -24,9 +24,19 @@ Example PRs:
 
 ### 1.1. Add the new version to the CHANGELOG
 
-For a First Release Candidate (`rc.0`), replace the `Main (unreleased)` header with a new one for  `VERSION`.
+For a First Release Candidate (`rc.0`), add a new header below the `Main (unreleased)` for `VERSION`. For example:
+```
+Main (unreleased)
+-----------------
 
-For an Additional Release Candidate or SRV, update the header `PREVIOUS_RELEASE_CANDIDATE_VERSION` to `VERSION`.
+v1.12.0-rc.0
+-----------------
+
+(Release notes that were previously under Main (unreleased))
+```
+
+For an Additional Release Candidate or SRV, increment the number in the release candidate header to match your new
+`VERSION`. For example, `v1.12.0-rc.0` becomes `v1.12.0-rc.1`.
 
 For a patch release, add a new header for `VERSION`.
 
