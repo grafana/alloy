@@ -38,8 +38,15 @@ func NewRemoteSource(
 		cache = newServiceStrategyCache(reloadInterval)
 	}
 
+	// Convert MapList to map for headerAdditions
+	headerAdditions := make(map[string]configopaque.String)
+	grpcClientSettings.Headers.Iter(func(name string, value configopaque.String) bool {
+		headerAdditions[name] = value
+		return true
+	})
+
 	return &grpcRemoteStrategyStore{
-		headerAdditions: grpcClientSettings.Headers,
+		headerAdditions: headerAdditions,
 		delegate:        NewConfigManager(conn),
 		cache:           cache,
 	}, cache

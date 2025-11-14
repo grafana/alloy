@@ -164,9 +164,9 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		authentication = configoptional.Some(otelconfigauth.Config{AuthenticatorID: ext.ID})
 	}
 
-	opaqueHeaders := make(map[string]configopaque.String)
+	var opaqueHeaders configopaque.MapList
 	for headerName, headerVal := range args.Headers {
-		opaqueHeaders[headerName] = configopaque.String(headerVal)
+		opaqueHeaders.Set(headerName, configopaque.String(headerVal))
 	}
 
 	v := otelconfighttp.ClientConfig{
