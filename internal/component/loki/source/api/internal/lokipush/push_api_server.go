@@ -34,6 +34,7 @@ type PushAPIServer struct {
 	serverConfig *fnet.ServerConfig
 	server       *fnet.TargetServer
 	handler      loki.LogsBatchReceiver
+	metrics      *metrics
 
 	once          sync.Once
 	forceShutdown chan struct{}
@@ -61,6 +62,7 @@ func NewPushAPIServer(logger log.Logger,
 		logger:             logger,
 		serverConfig:       serverConfig,
 		handler:            handler,
+		metrics:            newMetircs(registerer),
 		forceShutdown:      make(chan struct{}),
 		maxSendMessageSize: maxSendMessageSize,
 	}
@@ -213,6 +215,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		lastErr error
 	)
 	for _, stream := range req.Streams {
+		s.metrics.entriesProcessed.Add(float64(len(stream.Entries)))
+
 		ls, err := promql_parser.ParseMetric(stream.Labels)
 		if err != nil {
 			lastErr = err
@@ -265,7 +269,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(entries) > 0 {
+	numEntries := len(entries)
+	if numEntries > 0 {
 		select {
 		case s.handler.Chan() <- entries:
 		case <-r.Context().Done():
@@ -275,6 +280,8 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
+
+		s.metrics.entriesWritten.Add(float64(numEntries))
 
 		if lastErr != nil {
 			level.Warn(s.logger).Log("msg", "at least one entry in the push request failed to process", "err", lastErr.Error())
@@ -310,6 +317,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 
+		s.metrics.entriesProcessed.Inc()
 		entries = append(entries, loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}})
 
 		if err == io.EOF {
@@ -317,7 +325,8 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if len(entries) > 0 {
+	numEntries := len(entries)
+	if numEntries > 0 {
 		select {
 		case s.handler.Chan() <- entries:
 		case <-r.Context().Done():
@@ -327,6 +336,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
+		s.metrics.entriesWritten.Add(float64(numEntries))
 	}
 
 	w.WriteHeader(http.StatusNoContent)
