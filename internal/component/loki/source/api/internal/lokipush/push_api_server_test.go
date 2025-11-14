@@ -42,7 +42,6 @@ func newFakeBatchReceiver() *fakeBatchReceiver {
 		entries: make(chan []loki.Entry),
 	}
 	c.wg.Go(func() {
-		defer c.wg.Done()
 		for batch := range c.entries {
 			c.mtx.Lock()
 			c.received = append(c.received, batch...)
