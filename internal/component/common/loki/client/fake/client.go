@@ -21,15 +21,14 @@ func NewClient(stop func()) *Client {
 		OnStop:  stop,
 		entries: make(chan loki.Entry),
 	}
-	c.wg.Add(1)
-	go func() {
+	c.wg.Go(func() {
 		defer c.wg.Done()
 		for e := range c.entries {
 			c.mtx.Lock()
 			c.received = append(c.received, e)
 			c.mtx.Unlock()
 		}
-	}()
+	})
 	return c
 }
 
@@ -50,11 +49,6 @@ func (c *Client) Received() []loki.Entry {
 	cpy := make([]loki.Entry, len(c.received))
 	copy(cpy, c.received)
 	return cpy
-}
-
-// StopNow implements client.Client
-func (c *Client) StopNow() {
-	c.Stop()
 }
 
 func (c *Client) Name() string {
