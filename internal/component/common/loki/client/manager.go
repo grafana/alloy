@@ -73,8 +73,6 @@ func (p watcherClientPair) Stop(drain bool) {
 // https://github.com/grafana/loki/issues/8197, this Manager will be
 // responsible for instantiating all client types: Logger, Multi and WAL.
 type Manager struct {
-	name string
-
 	clients []Client
 	pairs   []watcherClientPair
 
@@ -101,7 +99,7 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 	pairs := make([]watcherClientPair, 0, len(clientCfgs))
 	for _, cfg := range clientCfgs {
 		// Don't allow duplicate clients, we have client specific metrics that need at least one unique label value (name).
-		clientName := GetClientName(cfg)
+		clientName := getClientName(cfg)
 		if _, ok := clientsCheck[clientName]; ok {
 			return nil, fmt.Errorf("duplicate client configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
@@ -157,10 +155,8 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 		entries: make(chan loki.Entry),
 	}
 	if walCfg.Enabled {
-		manager.name = buildManagerName("wal", clientCfgs...)
 		manager.startWithConsume()
 	} else {
-		manager.name = buildManagerName("multi", clientCfgs...)
 		manager.startWithForward()
 	}
 	return manager, nil
@@ -194,10 +190,6 @@ func (m *Manager) startWithForward() {
 	})
 }
 
-func (m *Manager) Name() string {
-	return m.name
-}
-
 func (m *Manager) Chan() chan<- loki.Entry {
 	return m.entries
 }
@@ -222,20 +214,18 @@ func (m *Manager) StopWithDrain(drain bool) {
 	// the drain time of the watcher + drain time client. To minimize this, and since we keep a separate WAL for each
 	// client config, each (watcher, client) pair is stopped concurrently.
 	for _, pair := range m.pairs {
-		stopWG.Add(1)
-		go func(pair watcherClientPair) {
-			defer stopWG.Done()
+		stopWG.Go(func() {
 			pair.Stop(drain)
-		}(pair)
+		})
 	}
 
 	// wait for all pairs to be stopped
 	stopWG.Wait()
 }
 
-// GetClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
+// getClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
 // or a hash of the config as whole, this allows us to detect repeated configs.
-func GetClientName(cfg Config) string {
+func getClientName(cfg Config) string {
 	if cfg.Name != "" {
 		return cfg.Name
 	}
@@ -256,7 +246,7 @@ func buildManagerName(prefix string, cfgs ...Config) string {
 	sb.WriteString(prefix)
 	sb.WriteString(":")
 	for i, c := range cfgs {
-		sb.WriteString(GetClientName(c))
+		sb.WriteString(getClientName(c))
 		if i != len(cfgs)-1 {
 			sb.WriteString(",")
 		}

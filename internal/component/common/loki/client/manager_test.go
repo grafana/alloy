@@ -137,7 +137,6 @@ func TestManager_WALEnabled(t *testing.T) {
 	require.NoError(t, err)
 	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, writer, testClientConfig)
 	require.NoError(t, err)
-	require.Equal(t, "wal:test-client", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	go func() {
@@ -193,7 +192,6 @@ func TestManager_WALDisabled(t *testing.T) {
 	// start writer and manager
 	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig)
 	require.NoError(t, err)
-	require.Equal(t, "multi:test-client", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	go func() {
@@ -252,7 +250,6 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	// start writer and manager
 	manager, err := NewManager(clientMetrics, logger, 0, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
-	require.Equal(t, "multi:test-client,test-client-2", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())

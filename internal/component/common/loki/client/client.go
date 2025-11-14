@@ -37,14 +37,12 @@ var userAgent = useragent.Get()
 
 // Client pushes entries to Loki and can be stopped
 type Client interface {
-	loki.EntryHandler
-	// Stop goroutine sending batch of entries without retries.
-	Name() string
+	Chan() chan<- loki.Entry
+	Stop()
 }
 
 // Client for pushing logs in snappy-compressed protos over HTTP.
 type client struct {
-	name    string
 	metrics *Metrics
 	logger  log.Logger
 	cfg     Config
@@ -80,13 +78,9 @@ func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) 
 		cfg:        cfg,
 		entries:    make(chan loki.Entry),
 		metrics:    metrics,
-		name:       GetClientName(cfg),
 		ctx:        ctx,
 		cancel:     cancel,
 		maxStreams: maxStreams,
-	}
-	if cfg.Name != "" {
-		c.name = cfg.Name
 	}
 
 	err := cfg.Client.Validate()
@@ -101,8 +95,7 @@ func newClient(metrics *Metrics, cfg Config, maxStreams int, logger log.Logger) 
 
 	c.client.Timeout = cfg.Timeout
 
-	c.wg.Add(1)
-	go c.run()
+	c.wg.Go(func() { c.run() })
 	return c, nil
 }
 
@@ -140,8 +133,6 @@ func (c *client) run() {
 		for tenantID, batch := range batches {
 			c.sendBatch(tenantID, batch)
 		}
-
-		c.wg.Done()
 	}()
 
 	for {
@@ -332,8 +323,4 @@ func (c *client) Stop() {
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
-}
-
-func (c *client) Name() string {
-	return c.name
 }
