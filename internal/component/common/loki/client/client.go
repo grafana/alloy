@@ -160,7 +160,7 @@ func (c *client) run() {
 			}
 
 			// The max size of the batch isn't reached, so we can add the entry
-			err := batch.add(e)
+			err := batch.add(e, 0)
 			if err != nil {
 				level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 				reason := ReasonGeneric
