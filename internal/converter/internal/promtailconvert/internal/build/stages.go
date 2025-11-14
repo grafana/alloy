@@ -204,9 +204,10 @@ func convertMultiline(cfg interface{}, diags *diag.Diagnostics) (stages.StageCon
 
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:  defaultEmpty(pMulti.Expression),
-			MaxLines:    defaultZero(pMulti.MaxLines),
-			MaxWaitTime: maxWaitTime,
+			Expression:   defaultEmpty(pMulti.Expression),
+			MaxLines:     defaultZero(pMulti.MaxLines),
+			MaxWaitTime:  maxWaitTime,
+			TrimNewlines: true,
 		},
 	}, true
 }
