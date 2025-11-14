@@ -5,10 +5,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	reasonInvalidLabels = "invalid_labels"
-)
-
 func newMetircs(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		entriesWritten: prometheus.NewCounter(prometheus.CounterOpts{
