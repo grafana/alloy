@@ -38,6 +38,8 @@ Main (unreleased)
     - add `user` field to wait events within `query_samples` collector (@gaantunes)
     - rework the query samples collector to buffer per-query execution state across scrapes and emit finalized entries (@gaantunes)
     - process turned idle rows to calculate finalization times precisely and emit first seen idle rows (@gaantunes)
+  - `query_details`
+    - escape queries coming from pg_stat_statements with quotes (@gaantunes)
   - enable `explain_plans` collector by default (@rgeyer)
   - safely generate server_id when UDP socket used for database connection (@matthewnolf)
   - add table registry and include "validated" in parsed table name logs (@fridgepoet)
