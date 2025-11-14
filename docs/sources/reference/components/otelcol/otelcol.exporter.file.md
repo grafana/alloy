@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.file/
 description: Learn about otelcol.exporter.file
 labels:
-  stage: general-availability
+  stage: public-preview
   products:
     - oss
   tags:

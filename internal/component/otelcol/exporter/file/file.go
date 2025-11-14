@@ -3,7 +3,6 @@ package file
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -19,7 +18,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.exporter.file",
-		Stability: featuregate.StabilityGenerallyAvailable,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 		Exports:   otelcol.ConsumerExports{},
 
@@ -119,6 +118,22 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
+// SetToDefault implements syntax.Defaulter.
+func (r *Rotation) SetToDefault() {
+	*r = Rotation{
+		MaxMegabytes: 100,
+		MaxBackups:   100,
+	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (g *GroupBy) SetToDefault() {
+	*g = GroupBy{
+		ResourceAttribute: "fileexporter.path_segment",
+		MaxOpenFiles:      100,
+	}
+}
+
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := &fileexporter.Config{
@@ -172,51 +187,11 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.Path == "" {
-		return errors.New("path must be non-empty")
+	// Convert to upstream config and let upstream validate
+	cfg, err := args.Convert()
+	if err != nil {
+		return err
 	}
 
-	if args.Append && args.Compression != "" {
-		return errors.New("append and compression enabled at the same time is not supported")
-	}
-
-	if args.Append && args.Rotation != nil {
-		return errors.New("append and rotation enabled at the same time is not supported")
-	}
-
-	if args.Format != "json" && args.Format != "proto" {
-		return errors.New("format type must be json or proto")
-	}
-
-	if args.Compression != "" && args.Compression != "zstd" {
-		return errors.New("compression must be zstd if specified")
-	}
-
-	if args.FlushInterval <= 0 {
-		return errors.New("flush_interval must be greater than zero")
-	}
-
-	if args.GroupBy != nil && args.GroupBy.Enabled {
-		// Apply implicit defaults if user enabled group_by but omitted optional fields.
-		if args.GroupBy.ResourceAttribute == "" {
-			args.GroupBy.ResourceAttribute = "fileexporter.path_segment"
-		}
-		if args.GroupBy.MaxOpenFiles == 0 {
-			args.GroupBy.MaxOpenFiles = 100
-		}
-		pathParts := strings.Split(args.Path, "*")
-		if len(pathParts) != 2 {
-			return errors.New("path must contain exactly one * when group_by is enabled")
-		}
-
-		if pathParts[0] == "" {
-			return errors.New("path must not start with * when group_by is enabled")
-		}
-
-		if args.GroupBy.ResourceAttribute == "" { // Should not happen after defaulting above, but keep for safety.
-			return errors.New("resource_attribute must not be empty when group_by is enabled")
-		}
-	}
-
-	return nil
+	return cfg.Validate()
 }
