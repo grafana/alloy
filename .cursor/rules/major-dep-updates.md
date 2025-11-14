@@ -118,7 +118,7 @@ Update the major dependencies in the recommended order, using the tools describe
 
 ### Step 4: Fix `make alloy` compilation errors
 
-- Use `make alloy` as it correctly sets the build tags. If you run `go build` or `go test` directly, you may not get the correct build tags.
+- Use `make alloy` as it correctly sets the build tags. If you run `go build` or `go test` directly, you may not get the correct build tags. These can be found in the Makefile.
 - If you get compilation errors:
   - List the errors and the dependencies that are involved in the errors. State what version we used previously and what version we updated to.
   - With that information you can fetch the commit history using similar method we used to check what were the changes in the forks. You can get even more details by inferring the pull request URL and reading the PR description and comments.
@@ -132,11 +132,59 @@ Update the major dependencies in the recommended order, using the tools describe
 - If you were able to fix the compilation errors, explain what you did and how confident you are that these are correct fixes.
 - If we still have compilation errors, stop here.
 
-### Step 5: Fix the `make test` errors
+### Step 5: Fix test errors and failures
 
-- This is basically the same as the previous step, but for the tests. Follow the same principles, but use `make test` instead of `make alloy`.
+This is a very important step, we're almost there, but we need to make sure all the tests pass. Do not give up or leave
+a TODO item without exploring multiple alternatives, some of which are called out in this document in the
+current and previous steps. If you do find an issue that is too hard for you to solve, stop and describe
+it clearly as required, provide steps to reproduce it, the options we have and your recommendations.
 
-- If you do find that you need to modify Alloy tests, take a clear note and explain why this has to happen. This is potentially a significant change in the behaviour and may need to be documented as a new feature, breaking change, bugfix or exposed to the users and documented. Help me identify such situations.
+- If you run `go build` or `go test` directly, you may not get the correct build tags. Make sure you use them.
+  These can be found in the Makefile.
+
+- This step is basically the same as the previous step where we fixed the `make alloy` compilation errors,
+  but for the tests. Follow the same principles as in the previous step to diagnose and fix issues, but instead of using `make alloy`, use the following commands to progressively fix more complex test packages and test suites:
+  - `go test ./internal/runtime/...` - to test parts of the core Alloy runtime
+  - `go test ./internal/component/prometheus/...` - to test the Prometheus components
+  - `go test ./internal/component/loki/...` - to test the Loki components
+  - `go test ./internal/component/otelcol/...` - to test the OpenTelemetry Collector components
+  - `go test ./internal/component/beyla/...` - to test the Beyla components
+  - `go test ./internal/component/...` - to test all components
+  - `go test ./internal/converter/...` - to test the config converters - make sure that users can still smoothly convert
+    their configurations to Alloy. If there is a lot of additions to alloy output files, this often indicates that
+    the defaults are not correctly handled in component configs.
+  - And finally use `make test` to run all the tests and make sure they all pass. DO NOT SKIP THIS STEP.
+
+- If you do find that you need to modify Alloy tests, make a clear note and explain why this has to happen:
+  - Differentiate between tests failing to compile vs. tests failing to pass. The latter is often more concerning.
+  - Test changes may possibly indicate a significant change in the behaviour and may need to be documented as
+    a new feature, breaking change, bugfix or exposed to the users and documented. Help me identify such situations
+    and give a recommendation. Be brief and to the point.
+
+- If a test fails because the behavior after the update is different from the behavior before
+  the update, review the changes in the relevant upstream dependencies between the previous and
+  new versions (see the tips and tools section below for methods to do this). There may be a
+  clear explanation for why the test fails, which can help us fix the issue or identify it as
+  a breaking change.
+
+- Don't be too quick to conclude that there is an upstream bug. It's relatively rare and it is
+  much more frequent that we are using mismatched versions of these dependencies or that we are
+  doing something wrong in our code. Investigate all test failures thoroughly before concluding
+  they're upstream bugs. Try to find workarounds or fixes in our codebase first, and don't assume
+  upstream bugs without exhausting all options. Check if similar patterns in the codebase handle
+  the same issue.
+
+- If you think you found a real issue upstream, search the issues and PRs, maybe there is someone
+  who has already found it and maybe there are fixes already in the main. See the paragraph below
+  about checking if the issue is already known upstream. If it is fixed upstream, you can switch to
+  use that commit SHA after merge (important! take the commit SHA that is on the main branch upstream)
+  by following the steps in a section about using a specific commit for a go.mod dependency below.
+
+- When trying to fix a failing test, do consider what are the dependencies that we are using, are there any suspicious
+  replace directives and are the versions mismatching for some reason? Don't hesitate to go back to figuring out what
+  are the right versions of dependencies that can be used to address the issue at hand.
+
+- If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on.
 
 ### Tips and tools to use
 
@@ -193,3 +241,56 @@ curl -s -H "Accept: application/vnd.github+json" \
   https://api.github.com/repos/prometheus/prometheus/compare/main...grafana:staleness_disabling_v3.7.3 \
 | jq -r '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'
 ```
+
+#### Getting list of changes made to a dependency between two versions
+
+For example, if we want to get the list of changes made to `prometheus/prometheus` between versions `v0.305.1` and `v0.307.3`, we can run:
+
+```bash
+curl -s -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/prometheus/prometheus/compare/v0.305.1...v0.307.3 \
+| jq -r '.commits[] | "\(.sha[0:7])  \(.commit.author.date)  \(.commit.author.name)  \(.commit.message|split("\n")[0])"'
+```
+
+You can go fetch the related PRs to read the descriptions and comments to understand the changes further.
+You can also look for the changelog file or notes attached to the release page on GitHub.
+
+#### Checking if the issue is already known upstream and if there is a fix available
+
+It may be the case that the issue you found has already been reported upstream and there could be a fix available.
+
+Do check for this by searching the issues and PRs on GitHub. For example, if we want to search for issues in open-telemetry/opentelemetry-collector-contrib that mention the error message "loadbalancer does not have type otlp", we can run:
+
+```bash
+owner=open-telemetry
+repo=opentelemetry-collector-contrib
+error_message='loadbalancer does not have type otlp'
+per_page=10
+
+# Build and URL-encode the GitHub search query
+
+q="repo:$owner/$repo is:issue $error_message"
+encoded_q=$(printf '%s' "$q" | jq -sRr @uri)
+
+curl -s \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "<https://api.github.com/search/issues?q=$encoded_q&per_page=$per_page>" \
+| jq -r '.items[] | "\(.number)\t\(.state)\t\(.created_at)\t\(.title)\n\(.html_url)\n"'
+
+```
+
+You can add qualifiers like in:title, in:body, label:bug, author:username, or a time window like created:>=2025-01-01 to narrow results.
+You can also switch to open issues by setting state=open
+
+#### Using a specific commit for a go.mod dependency
+
+Suppose you want to use `9cc36524215aaa92192ac3faf5c316a6b563818a` commit for `github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter`. It's hard to figure out the version name to use, so follow the following steps:
+
+Add a temporary replace:
+
+```go.mod
+replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter => github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter 9cc36524215aaa92192ac3faf5c316a6b563818a
+```
+
+Run `go mod tidy` and it will fix the raw commit sha with the correct version number corresponding to the commit you want!
