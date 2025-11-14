@@ -695,7 +695,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
-		// Ensure all expected queries were executed before stopping
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -753,7 +752,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
-		// Ensure all expected queries were executed before stopping
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -812,7 +810,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, entries[0].Timestamp.Equal(expectedTs))
 		}, 5*time.Second, 50*time.Millisecond)
 
-		// Ensure all expected queries were executed before stopping
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
@@ -900,7 +897,6 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			require.True(t, seen22002 && seen23002)
 		}, 5*time.Second, 50*time.Millisecond)
 
-		// Ensure all expected queries were executed before stopping
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 
 		sampleCollector.Stop()
