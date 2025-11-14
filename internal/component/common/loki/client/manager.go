@@ -41,7 +41,6 @@ type StoppableWatcher interface {
 
 type StoppableClient interface {
 	Stop()
-	StopNow()
 }
 
 // watcherClientPair represents a pair of watcher and client, which are coupled together, or just a single client.
@@ -173,34 +172,26 @@ func NewManager(metrics *Metrics, logger log.Logger, maxStreams int, reg prometh
 // are not used since they are read from the WAL, so we need a routine to just read the entries received through the channel
 // and discarding them, to not block the sending side.
 func (m *Manager) startWithConsume() {
-	m.wg.Add(1)
-	go func() {
+	m.wg.Go(func() {
 		defer m.wg.Done()
 		// discard read entries
 		//nolint:revive
 		for range m.entries {
 		}
-	}()
+	})
 }
 
 // startWithForward starts the main manager routine, which reads entries from the exposed channel, and forwards them
 // doing a fan-out across all inner clients.
 func (m *Manager) startWithForward() {
-	m.wg.Add(1)
-	go func() {
+	m.wg.Go(func() {
 		defer m.wg.Done()
 		for e := range m.entries {
 			for _, c := range m.clients {
 				c.Chan() <- e
 			}
 		}
-	}()
-}
-
-func (m *Manager) StopNow() {
-	for _, pair := range m.pairs {
-		pair.client.StopNow()
-	}
+	})
 }
 
 func (m *Manager) Name() string {

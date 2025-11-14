@@ -30,7 +30,6 @@ import (
 type StoppableWriteTo interface {
 	wal.WriteTo
 	Stop()
-	StopNow()
 }
 
 // MarkerHandler re-defines the interface of internal.MarkerHandler that the queue client interacts with, to contribute
@@ -562,16 +561,6 @@ func (c *queueClient) Stop() {
 	// stop request after drain times out or exits
 	c.cancel()
 
-	c.markerHandler.Stop()
-}
-
-// StopNow stops the client without retries or draining the send queue
-func (c *queueClient) StopNow() {
-	// cancel will stop retrying http requests.
-	c.cancel()
-	close(c.quit)
-	c.sendQueue.closeNow()
-	c.wg.Wait()
 	c.markerHandler.Stop()
 }
 

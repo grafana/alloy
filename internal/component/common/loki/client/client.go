@@ -39,7 +39,6 @@ var userAgent = useragent.Get()
 type Client interface {
 	loki.EntryHandler
 	// Stop goroutine sending batch of entries without retries.
-	StopNow()
 	Name() string
 }
 
@@ -328,13 +327,6 @@ func (c *client) getTenantID(labels model.LabelSet) string {
 func (c *client) Stop() {
 	c.once.Do(func() { close(c.entries) })
 	c.wg.Wait()
-}
-
-// StopNow stops the client without retries
-func (c *client) StopNow() {
-	// cancel will stop retrying http requests.
-	c.cancel()
-	c.Stop()
 }
 
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
