@@ -361,7 +361,7 @@ func TestQueryDetails(t *testing.T) {
 			},
 		},
 		{
-			name: "correctly parse quoted queries",
+			name: "correctly escape quoted queries",
 			eventStatementsRows: [][]driver.Value{
 				{
 					"3871016669222913500",
