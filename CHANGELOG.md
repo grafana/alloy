@@ -93,6 +93,9 @@ Main (unreleased)
 
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
+- `loki.write` now supports `queue_config` when used with or without WAL.
+  - It was also exteded with configuration to start multiple shards, each having their own queue and is able to push batches in parallel.
+
 ### Bugfixes
 
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
