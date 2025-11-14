@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/extension"
@@ -176,7 +177,11 @@ func AppendConfig(file *builder.File, cfg *otelcol.Config, labelPrefix string, e
 	var diags diag.Diagnostics
 
 	if convertServiceAttrs {
-		diags.AddAll(convertTelemetry(file, cfg.Service.Telemetry))
+		// Note: Telemetry field changed to component.Config interface in OTel v0.139.0
+		// Need to type assert to the concrete type
+		if telCfg, ok := cfg.Service.Telemetry.(configtelemetry.Config); ok {
+			diags.AddAll(convertTelemetry(file, telCfg))
+		}
 	}
 
 	groups, err := createPipelineGroups(cfg.Service.Pipelines)

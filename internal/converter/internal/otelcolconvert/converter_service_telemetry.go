@@ -5,17 +5,17 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/token/builder"
-	otel_tel "go.opentelemetry.io/collector/service/telemetry"
-	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.uber.org/zap/zapcore"
 )
 
-func convertTelemetry(file *builder.File, tel otelconftelemetry.Config) diag.Diagnostics {
+func convertTelemetry(file *builder.File, tel configtelemetry.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	diags.AddAll(convertLogging(file, tel.Logs))
 	diags.AddAll(convertMetrics(file, tel.Metrics))
-	diags.AddAll(convertTraces(file, tel.Traces))
+	// Note: Traces telemetry configuration was removed in OTel v0.139.0
+	// diags.AddAll(convertTraces(file, tel.Traces))
 
 	return diags
 }
@@ -118,17 +118,18 @@ func convertMetrics(_ *builder.File, tel otelconftelemetry.MetricsConfig) diag.D
 	return diags
 }
 
-// TODO: Support metrics conversion once upstream's "traces" section is not experimental.
-func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	if len(tel.Processors) > 0 {
-		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/processors configuration is not supported")
-	}
-
-	if len(tel.Propagators) > 0 {
-		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/propagators configuration is not supported")
-	}
-
-	return diags
-}
+// NOTE: TracesConfig was removed in OTel v0.139.0 - the telemetry traces configuration is no longer supported
+// TODO: Investigate if there's a replacement or if this functionality is now handled differently
+// func convertTraces(_ *builder.File, tel otel_tel.TracesConfig) diag.Diagnostics {
+// 	var diags diag.Diagnostics
+//
+// 	if len(tel.Processors) > 0 {
+// 		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/processors configuration is not supported")
+// 	}
+//
+// 	if len(tel.Propagators) > 0 {
+// 		diags.Add(diag.SeverityLevelCritical, "the service/telemetry/traces/propagators configuration is not supported")
+// 	}
+//
+// 	return diags
+// }

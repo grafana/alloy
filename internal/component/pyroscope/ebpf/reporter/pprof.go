@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.opentelemetry.io/ebpf-profiler/host"
 
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
@@ -46,7 +45,8 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 
-	ExtraNativeSymbolResolver samples.NativeSymbolResolver
+	// Note: NativeSymbolResolver moved to irsymcache in ebpf-profiler v0.0.202545
+	ExtraNativeSymbolResolver irsymcache.NativeSymbolResolver
 	Consumer                  PPROFConsumer
 }
 type PPROFReporter struct {
@@ -88,13 +88,14 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 	}
 
 	containerID := meta.ContainerID
+	// Note: ContainerID field was removed from TraceAndMetaKey in ebpf-profiler v0.0.202545
+	// but is still available in TraceEventMeta and used for indexing
 	key := samples.TraceAndMetaKey{
 		Hash:           trace.Hash,
 		Comm:           meta.Comm,
 		ProcessName:    meta.ProcessName,
 		ExecutablePath: meta.ExecutablePath,
 		ApmServiceName: meta.APMServiceName,
-		ContainerID:    containerID,
 		Pid:            int64(meta.PID),
 		Tid:            int64(meta.TID),
 	}
@@ -164,9 +165,10 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for _, ts := range reportedEvents {
+	// Note: containerID is part of the key in TraceEventsTree but not in TraceAndMetaKey anymore
+	for containerID, ts := range reportedEvents {
 		for origin, events := range ts {
-			pp := p.createProfile(origin, events)
+			pp := p.createProfile(origin, containerID, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -179,7 +181,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(origin libpf.Origin, containerID samples.ContainerID, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.cfg.ExtraNativeSymbolResolver != nil {
 			p.cfg.ExtraNativeSymbolResolver.Cleanup()
@@ -192,8 +194,9 @@ func (p *PPROFReporter) createProfile(origin libpf.Origin, events map[samples.Tr
 		Origin:        origin,
 	})
 
+	// Note: containerID is now passed as a parameter since it's no longer in TraceAndMetaKey
 	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid), traceKey.ContainerID)
+		target := p.sd.FindTarget(uint32(traceKey.Pid), string(containerID))
 		if target == nil {
 			continue
 		}
@@ -333,22 +336,26 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 		return
 	}
 	addr := fr.AddressOrLineno
-	hostFrame := host.Frame{
-		File:          host.FileIDFromLibpf(mappingFile.FileID),
-		Lineno:        addr,
-		Type:          fr.Type,
-		ReturnAddress: false,
-	}
-	irsymcache.SymbolizeNativeFrame(p.cfg.ExtraNativeSymbolResolver, mappingFile.FileName, hostFrame, func(si samples.SourceInfo) {
-		name := si.FunctionName
-		if name == libpf.NullString && si.FilePath == libpf.NullString {
-			return
-		}
-		name = p.demangle(name)
-		loc.Mapping.HasFunctions = true
-		line := profile.Line{Function: b.Function(name, si.FilePath)}
-		loc.Line = append(loc.Line, line)
-	})
+	// Note: API changed in ebpf-profiler v0.0.202545 - SymbolizeNativeFrame now takes fileID and addr separately
+	irsymcache.SymbolizeNativeFrame(
+		p.cfg.ExtraNativeSymbolResolver,
+		mappingFile.FileName,
+		addr,
+		mappingFile.FileID,
+		func(si irsymcache.SourceInfo) {
+			name := si.FunctionName
+			if name == libpf.NullString && si.FilePath == libpf.NullString {
+				return
+			}
+			name = p.demangle(name)
+			loc.Mapping.HasFunctions = true
+			line := profile.Line{Function: b.Function(name, si.FilePath)}
+			if si.LineNumber != 0 {
+				line.Line = int64(si.LineNumber)
+			}
+			loc.Line = append(loc.Line, line)
+		},
+	)
 }
 
 func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Location, fr libpf.Frame) {
