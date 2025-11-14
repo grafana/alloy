@@ -389,7 +389,9 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
 				FollowRedirects: falsePtr,
-				ProxyURL:        &proxyURL,
+				ProxyConfig: promopv1.ProxyConfig{
+					ProxyURL: &proxyURL,
+				},
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",

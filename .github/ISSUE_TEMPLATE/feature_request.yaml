@@ -78,6 +78,7 @@ body:
       - loki.source.syslog
       - loki.source.windowsevent
       - loki.write
+      - mimir.alerts.kubernetes
       - mimir.rules.kubernetes
       - otelcol.auth.basic
       - otelcol.auth.bearer

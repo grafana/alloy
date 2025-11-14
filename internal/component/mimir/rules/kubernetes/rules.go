@@ -60,7 +60,7 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	mimirClient       mimirClient.Interface
+	mimirClient       mimirClient.RulerInterface
 	k8sClient         kubernetes.Interface
 	promClient        promVersioned.Interface
 	namespaceSelector labels.Selector
