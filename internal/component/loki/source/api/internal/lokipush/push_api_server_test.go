@@ -33,7 +33,6 @@ import (
 type fakeBatchReceiver struct {
 	entries  chan []loki.Entry
 	received []loki.Entry
-	once     sync.Once
 	mtx      sync.Mutex
 	wg       sync.WaitGroup
 }
@@ -42,14 +41,11 @@ func newFakeBatchReceiver() *fakeBatchReceiver {
 	c := &fakeBatchReceiver{
 		entries: make(chan []loki.Entry),
 	}
-	c.wg.Add(1)
 	c.wg.Go(func() {
 		defer c.wg.Done()
 		for batch := range c.entries {
 			c.mtx.Lock()
-			for _, e := range batch {
-				c.received = append(c.received, e)
-			}
+			c.received = append(c.received, batch...)
 			c.mtx.Unlock()
 		}
 	})
