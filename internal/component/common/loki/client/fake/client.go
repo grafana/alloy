@@ -22,7 +22,6 @@ func NewClient(stop func()) *Client {
 		entries: make(chan loki.Entry),
 	}
 	c.wg.Go(func() {
-		defer c.wg.Done()
 		for e := range c.entries {
 			c.mtx.Lock()
 			c.received = append(c.received, e)
