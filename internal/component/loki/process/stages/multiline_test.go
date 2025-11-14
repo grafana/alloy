@@ -55,11 +55,11 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 	}
 
 	out := processEntries(stage,
-		simpleEntry("START line 1", "one"),
-		simpleEntry("not a start line 1", "one"),
-		simpleEntry("START line 1", "two"),
-		simpleEntry("not a start line 2", "one"),
-		simpleEntry("START line 2", "two"),
+		simpleEntry("START line 1\r\n", "one"),
+		simpleEntry("not a start line 1\r\n", "one"),
+		simpleEntry("START line 1\n", "two"),
+		simpleEntry("not a start line 2\n", "one"),
+		simpleEntry("START line 2\n", "two"),
 		simpleEntry("START line 2", "one"),
 		simpleEntry("not a start line 1", "one"),
 	)

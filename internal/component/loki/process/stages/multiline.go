@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -166,7 +167,7 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry, wg *sync.Wa
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
-			state.buffer.WriteString(e.Line)
+			state.buffer.WriteString(strings.TrimRight(e.Line, "\r\n"))
 			state.currentLines++
 
 			if state.currentLines == m.cfg.MaxLines {
