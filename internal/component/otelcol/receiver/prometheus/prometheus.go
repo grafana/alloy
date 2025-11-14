@@ -3,13 +3,11 @@ package prometheus
 
 import (
 	"context"
-	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -17,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus/internal"
+	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util/zapadapter"
@@ -144,18 +143,20 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		ID: otelcomponent.NewIDWithName(otelcomponent.MustNewType("prometheus"), c.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
 			Logger: zapadapter.New(c.opts.Logger),
-
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  mp,
 		},
 
-		BuildInfo: otelcomponent.BuildInfo{
-			Command:     os.Args[0],
-			Description: "Grafana Alloy",
-			Version:     build.Version,
-		},
+		BuildInfo: otelcolutil.GetBuildInfo(),
 	}
+
+	resource, err := otelcolutil.GetTelemetrySettingsResource()
+	if err != nil {
+		return err
+	}
+	settings.TelemetrySettings.Resource = resource
+
 	nextMetrics := cfg.Output.Metrics
 	fanout := fanoutconsumer.Metrics(nextMetrics)
 	metricsInterceptor := interceptconsumer.Metrics(fanout,
