@@ -213,7 +213,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		lastErr error
 	)
 	for _, stream := range req.Streams {
-
 		ls, err := promql_parser.ParseMetric(stream.Labels)
 		if err != nil {
 			lastErr = err
