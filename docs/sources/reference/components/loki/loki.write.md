@@ -128,7 +128,7 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 ### `queue_config`
 
-The optional `queue_config` block configures, how the underlying client queues batches of logs sent to Loki.
+The optional `queue_config` block configures, how the endpoint queues batches of logs sent to Loki.
 
 The following arguments are supported:
 
