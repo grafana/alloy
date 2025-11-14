@@ -223,8 +223,7 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 
 	c.client.Timeout = cfg.Timeout
 
-	c.wg.Add(1)
-	go c.runSendOldBatches()
+	c.wg.Go(func() { c.runSendOldBatches() })
 	return c, nil
 }
 
@@ -360,7 +359,6 @@ func (c *queueClient) runSendOldBatches() {
 	// pablo: maybe this should be moved out
 	defer func() {
 		maxWaitCheck.Stop()
-		c.wg.Done()
 	}()
 
 	var batchesToFlush []queuedBatch
