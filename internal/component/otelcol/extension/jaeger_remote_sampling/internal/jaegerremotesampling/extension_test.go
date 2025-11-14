@@ -101,13 +101,21 @@ func TestRemote(t *testing.T) {
 			cfg := testConfig()
 			cfg.GRPCServerConfig.NetAddr.Endpoint = "127.0.0.1:0"
 			cfg.Source.ReloadInterval = tc.reloadInterval
+			// Convert map to MapList for v1.45.0+ API
+			opaqueHeaders := make(configopaque.MapList, 0, len(tc.remoteClientHeaderConfig))
+			for headerName, headerVal := range tc.remoteClientHeaderConfig {
+				opaqueHeaders = append(opaqueHeaders, configopaque.Pair{
+					Name:  headerName,
+					Value: headerVal,
+				})
+			}
 			cfg.Source.Remote = &configgrpc.ClientConfig{
 				Endpoint: fmt.Sprintf("127.0.0.1:%d", lis.Addr().(*net.TCPAddr).Port),
 				TLS: configtls.ClientConfig{
 					Insecure: true, // test only
 				},
 				WaitForReady: true,
-				Headers:      tc.remoteClientHeaderConfig,
+				Headers:      opaqueHeaders,
 			}
 
 			// create the extension

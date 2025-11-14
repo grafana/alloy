@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconnector "go.opentelemetry.io/collector/connector"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -164,6 +165,12 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	mp := metric.NewMeterProvider(metric.WithReader(promExporter))
+
+	// Initialize Resource for TelemetrySettings. The OpenTelemetry Collector service
+	// automatically sets this with service.instance.id, but in Alloy we need to initialize
+	// it ourselves. The connector code will handle generating an instance ID if needed.
+	resource := pcommon.NewResource()
+
 	settings := otelconnector.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
@@ -171,6 +178,7 @@ func (p *Connector) Update(args component.Arguments) error {
 
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
+			Resource:       resource,
 		},
 
 		BuildInfo: otelcomponent.BuildInfo{

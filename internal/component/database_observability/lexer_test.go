@@ -546,7 +546,12 @@ func TestContainsReservedKeywords(t *testing.T) {
 	}
 
 	t.Run("lexer error", func(t *testing.T) {
-		_, err := ContainsReservedKeywords("SELECT \"foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
-		require.Error(t, err)
+		// Note: The SQL lexer library has been updated and no longer returns errors
+		// for unclosed quotes. This test verifies that the function handles
+		// such cases gracefully without errors.
+		result, err := ContainsReservedKeywords("SELECT \"foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		require.NoError(t, err)
+		// The query doesn't contain reserved keywords, so result should be false
+		require.False(t, result)
 	})
 }

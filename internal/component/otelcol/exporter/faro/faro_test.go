@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
@@ -18,7 +19,15 @@ func TestConfigConversion(t *testing.T) {
 	var (
 		defaultRetrySettings = configretry.NewDefaultBackOffConfig()
 		defaultTimeout       = 30 * time.Second
-		defaultQueueConfig   = exporterhelper.NewDefaultQueueConfig()
+		defaultQueueConfig   = exporterhelper.QueueBatchConfig{
+			Enabled:         true,
+			NumConsumers:    10,
+			QueueSize:       1000,
+			BlockOnOverflow: false,
+			Sizer:           exporterhelper.RequestSizerTypeRequests,
+			WaitForResult:   false,
+			Batch:           configoptional.None[exporterhelper.BatchConfig](),
+		}
 	)
 
 	tests := []struct {
@@ -60,8 +69,8 @@ func TestConfigConversion(t *testing.T) {
 					WriteBufferSize: 512 * 1024,
 					MaxIdleConns:    100,
 					IdleConnTimeout: 90 * time.Second,
-					Headers: map[string]configopaque.String{
-						"X-Scope-OrgID": "123",
+					Headers: configopaque.MapList{
+						{Name: "X-Scope-OrgID", Value: "123"},
 					},
 				},
 				QueueConfig: defaultQueueConfig,
@@ -90,7 +99,7 @@ func TestConfigConversion(t *testing.T) {
 					WriteBufferSize: 512 * 1024,
 					MaxIdleConns:    100,
 					IdleConnTimeout: 90 * time.Second,
-					Headers:         map[string]configopaque.String{},
+					Headers:         configopaque.MapList{},
 				},
 				QueueConfig: defaultQueueConfig,
 				RetryConfig: defaultRetrySettings,

@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/service/pipelines"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	"golang.org/x/exp/maps"
 )
 
@@ -145,6 +146,7 @@ func getFactories() otelcol.Factories {
 		Exporters:  make(map[component.Type]exporter.Factory),
 		Extensions: make(map[component.Type]extension.Factory),
 		Connectors: make(map[component.Type]connector.Factory),
+		Telemetry:  otelconftelemetry.NewFactory(),
 	}
 
 	for _, converter := range converters {
