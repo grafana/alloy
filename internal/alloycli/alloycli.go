@@ -9,9 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Run runs the Alloy CLI. It is expected to be called directly from the main
-// function.
-func Run() {
+func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     fmt.Sprintf("%s [global options] <subcommand>", os.Args[0]),
 		Short:   "Grafana Alloy",
@@ -26,12 +24,10 @@ func Run() {
 	cmd.AddCommand(
 		convertCommand(),
 		fmtCommand(),
-		runCommand(),
+		RunCommand(),
 		toolsCommand(),
 		validateCommand(),
 	)
 
-	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
-	}
+	return cmd
 }
