@@ -1,11 +1,11 @@
 module github.com/grafana/alloy/tools
 
-go 1.25.1
+go 1.25.4
 
 require (
 	github.com/google/go-github/v57 v57.0.0
-	github.com/openai/openai-go/v3 v3.7.0
-	golang.org/x/oauth2 v0.32.0
+	github.com/openai/openai-go/v3 v3.8.1
+	golang.org/x/oauth2 v0.33.0
 )
 
 require (
