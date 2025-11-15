@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/goutils"
+	"github.com/grafana/alloy/internal/component/discovery/test_util"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
@@ -639,7 +640,7 @@ func TestHashing(t *testing.T) {
 					return true
 				})
 			},
-			expectedHash: 0xa28155048ff30d6f,
+			expectedHash: test_util.ExpectedHashes().AllLabelsSame,
 		},
 		{
 			name: "all labels same for all targets - non meta labels hash",
@@ -649,7 +650,7 @@ func TestHashing(t *testing.T) {
 				},
 			},
 			hashOp:       func(target Target) uint64 { return target.NonMetaLabelsHash() },
-			expectedHash: 0xa28155048ff30d6f,
+			expectedHash: test_util.ExpectedHashes().AllLabelsSameNonMeta,
 		},
 
 		{
@@ -663,7 +664,7 @@ func TestHashing(t *testing.T) {
 				func(targetInd, labelInd int) (string, string) { return "bin", "baz" },
 			},
 			hashOp:       func(target Target) uint64 { return target.SpecificLabelsHash([]string{"foo", "bin"}) },
-			expectedHash: 0xbbbe498586b668f3,
+			expectedHash: test_util.ExpectedHashes().SpecificLabelsEqual,
 		},
 		{
 			name: "specific labels hash different",
@@ -697,7 +698,7 @@ func TestHashing(t *testing.T) {
 					return strings.HasPrefix(key, "label_")
 				})
 			},
-			expectedHash: 0x77c5d28715ca6a11,
+			expectedHash: test_util.ExpectedHashes().LabelsWithPredicateEqual,
 		},
 		{
 			name: "labels with predicate different values",
@@ -727,7 +728,7 @@ func TestHashing(t *testing.T) {
 				},
 			},
 			hashOp:       func(target Target) uint64 { return target.NonMetaLabelsHash() },
-			expectedHash: 0x77c5d28715ca6a11,
+			expectedHash: test_util.ExpectedHashes().MetaLabelsEqual,
 		},
 		{
 			name: "meta labels different",
@@ -825,17 +826,18 @@ func TestHashLargeLabelSets(t *testing.T) {
 	}
 
 	target := NewTargetFromSpecificAndBaseLabelSet(genLabelSet(ownLabels), genLabelSet(sharedLabels))
-	expectedNonMetaLabelsHash := 0x374005f6a622f4d8
-	expectedAllLabelsHash := 0x174c789bf3b783a7
+	expectedHashes := test_util.ExpectedHashes()
+	expectedNonMetaLabelsHash := expectedHashes.LargeLabelSetNonMeta
+	expectedAllLabelsHash := expectedHashes.LargeLabelSetAll
 
-	require.Equal(t, uint64(expectedNonMetaLabelsHash), target.NonMetaLabelsHash())
-	require.Equal(t, uint64(expectedNonMetaLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
+	require.Equal(t, expectedNonMetaLabelsHash, target.NonMetaLabelsHash())
+	require.Equal(t, expectedNonMetaLabelsHash, target.HashLabelsWithPredicate(func(key string) bool {
 		return !strings.HasPrefix(key, "__meta_")
 	}))
-	require.Equal(t, uint64(expectedAllLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
+	require.Equal(t, expectedAllLabelsHash, target.HashLabelsWithPredicate(func(key string) bool {
 		return true
 	}))
-	require.Equal(t, uint64(expectedAllLabelsHash), target.PromLabels().Hash()) // check it matches Prometheus algo
+	require.Equal(t, expectedAllLabelsHash, target.PromLabels().Hash()) // check it matches Prometheus algo
 
 	var allNonMetaLabels []string
 	target.ForEachLabel(func(k string, v string) bool {
@@ -845,7 +847,7 @@ func TestHashLargeLabelSets(t *testing.T) {
 		return true
 	})
 
-	require.Equal(t, uint64(expectedNonMetaLabelsHash), target.SpecificLabelsHash(allNonMetaLabels))
+	require.Equal(t, expectedNonMetaLabelsHash, target.SpecificLabelsHash(allNonMetaLabels))
 }
 
 func TestComponentTargetsToPromTargetGroups(t *testing.T) {
@@ -877,16 +879,18 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 					{group: map[string]string{"hip": "hop"}, own: map[string]string{"tiki": "ta"}},
 				},
 			},
-			expected: map[string][]*targetgroup.Group{"job": {
-				{
-					Source: "job_part_9994420383135092995",
-					Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
-					Targets: []model.LabelSet{
-						mapToLabelSet(map[string]string{"boom": "bap"}),
-						mapToLabelSet(map[string]string{"tiki": "ta"}),
+			expected: func() map[string][]*targetgroup.Group {
+				return map[string][]*targetgroup.Group{"job": {
+					{
+						Source: fmt.Sprintf("job_part_%d", test_util.ExpectedHashes().GroupHashHipHop),
+						Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
+						Targets: []model.LabelSet{
+							mapToLabelSet(map[string]string{"boom": "bap"}),
+							mapToLabelSet(map[string]string{"tiki": "ta"}),
+						},
 					},
-				},
-			}},
+				}}
+			}(),
 		},
 		{
 			name: "two groups",
@@ -899,24 +903,27 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 					{group: map[string]string{"kung": "foo"}, own: map[string]string{"bibim": "bap"}},
 				},
 			},
-			expected: map[string][]*targetgroup.Group{"job": {
-				{
-					Source: "job_part_9994420383135092995",
-					Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
-					Targets: []model.LabelSet{
-						mapToLabelSet(map[string]string{"boom": "bap"}),
-						mapToLabelSet(map[string]string{"hoo": "rey"}),
+			expected: func() map[string][]*targetgroup.Group {
+				hashes := test_util.ExpectedHashes()
+				return map[string][]*targetgroup.Group{"job": {
+					{
+						Source: fmt.Sprintf("job_part_%d", hashes.GroupHashHipHop),
+						Labels: mapToLabelSet(map[string]string{"hip": "hop"}),
+						Targets: []model.LabelSet{
+							mapToLabelSet(map[string]string{"boom": "bap"}),
+							mapToLabelSet(map[string]string{"hoo": "rey"}),
+						},
 					},
-				},
-				{
-					Source: "job_part_13313558424202542889",
-					Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
-					Targets: []model.LabelSet{
-						mapToLabelSet(map[string]string{"tiki": "ta"}),
-						mapToLabelSet(map[string]string{"bibim": "bap"}),
+					{
+						Source: fmt.Sprintf("job_part_%d", hashes.GroupHashKungFoo),
+						Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
+						Targets: []model.LabelSet{
+							mapToLabelSet(map[string]string{"tiki": "ta"}),
+							mapToLabelSet(map[string]string{"bibim": "bap"}),
+						},
 					},
-				},
-			}},
+				}}
+			}(),
 		},
 		{
 			name: "two groups with hash conflict",
@@ -935,23 +942,25 @@ func TestComponentTargetsToPromTargetGroups(t *testing.T) {
 					{group: map[string]string{"kung": "foo"}, own: map[string]string{"bibim": "bap"}},
 				},
 			},
-			expected: map[string][]*targetgroup.Group{"job": {
-				{
-					Source: "job_part_13313558424202542889",
-					Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
-					Targets: []model.LabelSet{
-						mapToLabelSet(map[string]string{"tiki": "ta"}),
-						mapToLabelSet(map[string]string{"bibim": "bap"}),
+			expected: func() map[string][]*targetgroup.Group {
+				return map[string][]*targetgroup.Group{"job": {
+					{
+						Source: fmt.Sprintf("job_part_%d", test_util.ExpectedHashes().GroupHashKungFoo),
+						Labels: mapToLabelSet(map[string]string{"kung": "foo"}),
+						Targets: []model.LabelSet{
+							mapToLabelSet(map[string]string{"tiki": "ta"}),
+							mapToLabelSet(map[string]string{"bibim": "bap"}),
+						},
 					},
-				},
-				{
-					Source: "job_rest",
-					Targets: []model.LabelSet{
-						mapToLabelSet(map[string]string{"boom": "bap", "hip": "hop"}),
-						mapToLabelSet(map[string]string{"hoo": "rey", "hip": "hop"}),
+					{
+						Source: "job_rest",
+						Targets: []model.LabelSet{
+							mapToLabelSet(map[string]string{"boom": "bap", "hip": "hop"}),
+							mapToLabelSet(map[string]string{"hoo": "rey", "hip": "hop"}),
+						},
 					},
-				},
-			}},
+				}}
+			}(),
 		},
 	}
 	for _, tt := range tests {

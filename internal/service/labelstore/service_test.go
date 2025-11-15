@@ -100,11 +100,7 @@ func TestReplaceLocalMappings(t *testing.T) {
 
 func TestReplaceWithoutAddingLocalMapping(t *testing.T) {
 	mapping := New(log.NewNopLogger(), prometheus.DefaultRegisterer)
-	l := labels.Labels{}
-	l = append(l, labels.Label{
-		Name:  "__name__",
-		Value: "test",
-	})
+	l := labels.FromStrings("__name__", "test")
 
 	globalID := mapping.GetOrAddGlobalRefID(l)
 	localRefID := uint64(2)
