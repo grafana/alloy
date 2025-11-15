@@ -113,6 +113,8 @@ v1.12.0-rc.0
 
 ### Bugfixes
 
+- Fix Docker log corruption for multiplexed long lines. (@axd1x8a)
+
 - Stop `loki.source.kubernetes` discarding log lines with duplicate timestamps. (@ciaranj)
 
 - Fix direction of arrows for pyroscope components in UI graph. (@dehaansa)
