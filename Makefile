@@ -195,11 +195,11 @@ integration-test-k8s: alloy-image
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-otel-collector-distro
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.
@@ -243,8 +243,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
@@ -265,6 +265,16 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+endif
+
+
+generate-otel-collector-distro:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./collector && builder --config ./builder-config.yaml --skip-compilation
+	cd ./collector && go mod tidy
+	cd ./collector && go run ./generator/generator.go -- ./main.go ./main_alloy.go
 endif
 
 generate-ui:
