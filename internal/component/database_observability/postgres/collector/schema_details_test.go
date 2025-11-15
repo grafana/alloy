@@ -1706,3 +1706,12 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 		}, actual)
 	})
 }
+
+func Test_Postgres_SchemaDetails_query_excludes_databases(t *testing.T) {
+	assert.Equal(t, `
+		SELECT datname
+		FROM pg_database
+		WHERE datistemplate = false
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ('azure_maintenance')`, selectAllDatabases)
+}

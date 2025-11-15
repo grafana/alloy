@@ -29,12 +29,15 @@ const (
 )
 
 const (
+	excludedDatabases = `('azure_maintenance')`
+
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
-		SELECT datname 
-		FROM pg_database 
+		SELECT datname
+		FROM pg_database
 		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')`
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ` + excludedDatabases
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
