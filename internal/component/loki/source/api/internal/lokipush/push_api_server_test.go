@@ -63,7 +63,7 @@ regex = "dropme"
 		BatchSize: 100 * 1024,
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	pc, err := client.New(m, ccfg, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -150,7 +150,7 @@ regex = "dropme"
 		BatchSize: 100 * 1024,
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	pc, err := client.New(m, ccfg, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -227,7 +227,7 @@ regex = "dropme"
 		},
 	}
 	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, 0, logger)
+	pc, err := client.New(m, ccfg, logger)
 	require.NoError(t, err)
 	defer pc.Stop()
 
