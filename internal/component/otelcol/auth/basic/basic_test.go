@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -18,11 +19,21 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	actualUsername = "foo"
-	actualPassword = "bar"
+	actualUsername       = "foo"
+	actualPassword       = "bar"
+	actualPasswordSHA512 = "$6$9CWNcoxP$2Xzv3wSu4TebVRfYxrl6d.8858Bz9gy1KoQUavTd/7sFaoitij4j/2dztwX7KYw3zMEfQaqEBFbvB9JK7Os0a/"
+
+	htpasswdPath     = ".htpasswd"
+	htpasswdUser     = "user"
+	htpasswdPassword = "password"
+
+	clientAuthUsername = "fizz"
+	clientAuthPassword = "buzz"
 )
 
 var (
@@ -30,98 +41,219 @@ var (
 		username = "%s"
 		password = "%s"
 	`, actualUsername, actualPassword)
+	// setting both here, so that the deprecated config can be used
+	// for server authentication
+	clientAuthCfg = fmt.Sprintf(`
+		username = "%s"
+		password = "%s"
+		client_auth {
+			username = "%s"
+			password = "%s"
+		}
+	`, clientAuthUsername, clientAuthPassword, clientAuthUsername, clientAuthPassword)
+
+	cfgWithClientAuth = fmt.Sprintf(`
+		username = "%s"
+		password = "%s"
+		client_auth {
+			username = "%s"
+			password = "%s"
+		}
+	`, actualUsername, actualPasswordSHA512, clientAuthUsername, clientAuthPassword)
+
+	serverCfg = fmt.Sprintf(`
+		username = "%s"	
+		password = "%s"
+	`, actualUsername, actualPasswordSHA512)
+	htpasswdCfg = fmt.Sprintf(`
+		htpasswd {
+			file = "%s"
+		}
+	`, htpasswdPath)
+
+	cfgWithHtpasswd = fmt.Sprintf(`
+		username = "%s"
+		password = "%s"
+		
+		htpasswd {
+			file = "%s"	
+		}
+	`, actualUsername, actualPasswordSHA512, htpasswdPath)
 )
+
+type basicAuthTests struct {
+	name     string
+	config   string
+	username string
+	password string
+}
 
 // Test performs a basic integration test which runs the otelcol.auth.basic
 // component and ensures that it can be used for authentication.
 func TestClientAuth(t *testing.T) {
-	// Create an HTTP server which will assert that basic auth has been injected
-	// into the request.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		assert.True(t, ok, "no basic auth found")
-		assert.Equal(t, actualUsername, username, "basic auth username didn't match")
-		assert.Equal(t, actualPassword, password, "basic auth password didn't match")
+	tests := []basicAuthTests{
+		{
+			name:     "deprecated config",
+			config:   cfg,
+			username: actualUsername,
+			password: actualPassword,
+		},
+		{
+			name:     "client auth config",
+			config:   clientAuthCfg,
+			username: clientAuthUsername,
+			password: clientAuthPassword,
+		},
+		{
+			name:     "combined config",
+			config:   cfgWithClientAuth,
+			username: clientAuthUsername,
+			password: clientAuthPassword,
+		},
+	}
 
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create an HTTP server which will assert that basic auth has been injected
+			// into the request.
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				username, password, ok := r.BasicAuth()
+				assert.True(t, ok, "no basic auth found")
+				assert.Equal(t, tt.username, username, "basic auth username didn't match")
+				assert.Equal(t, tt.password, password, "basic auth password didn't match")
 
-	ctx := componenttest.TestContext(t)
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
 
-	ctrl := newTestComponent(t, ctx)
+			ctx := componenttest.TestContext(t)
+			ctx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+			ctrl := newTestComponent(t, ctx, tt.config)
 
-	// Get the authentication extension from our component and use it to make a
-	// request to our test server.
-	exports := ctrl.Exports().(auth.Exports)
-	require.NotNil(t, exports.Handler)
+			require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
+			require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
 
-	clientExtension, err := exports.Handler.GetExtension(auth.Client)
-	require.NoError(t, err)
-	require.NotNil(t, clientExtension)
-	clientAuth, ok := clientExtension.Extension.(extauth.HTTPClient)
-	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
+			// Get the authentication extension from our component and use it to make a
+			// request to our test server.
+			exports := ctrl.Exports().(auth.Exports)
+			require.NotNil(t, exports.Handler)
 
-	rt, err := clientAuth.RoundTripper(http.DefaultTransport)
-	require.NoError(t, err)
-	cli := &http.Client{Transport: rt}
+			clientExtension, err := exports.Handler.GetExtension(auth.Client)
+			require.NoError(t, err)
+			require.NotNil(t, clientExtension)
+			clientAuth, ok := clientExtension.Extension.(extauth.HTTPClient)
+			require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
 
-	// Wait until the request finishes. We don't assert anything else here; our
-	// HTTP handler won't write the response until it ensures that the basic auth
-	// was found.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
-	require.NoError(t, err)
-	resp, err := cli.Do(req)
-	require.NoError(t, err, "HTTP request failed")
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+			rt, err := clientAuth.RoundTripper(http.DefaultTransport)
+			require.NoError(t, err)
+			cli := &http.Client{Transport: rt}
+
+			// Wait until the request finishes. We don't assert anything else here; our
+			// HTTP handler won't write the response until it ensures that the basic auth
+			// was found.
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+			require.NoError(t, err)
+			resp, err := cli.Do(req)
+			require.NoError(t, err, "HTTP request failed")
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	}
 }
 
 // TestServerAuth verifies the server auth component starts up properly and we can
 // authenticate with the provided credentials.
 func TestServerAuth(t *testing.T) {
-	ctx := componenttest.TestContext(t)
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
+	tests := []basicAuthTests{
+		{
+			name:     "deprecated config",
+			config:   serverCfg,
+			username: actualUsername,
+			password: actualPassword,
+		},
+		{
+			name:     "htpasswd config",
+			config:   htpasswdCfg,
+			username: htpasswdUser,
+			password: htpasswdPassword,
+		},
+		{
+			name:     "combined config",
+			config:   cfgWithHtpasswd,
+			username: htpasswdUser,
+			password: htpasswdPassword,
+		},
+	}
 
-	ctrl := newTestComponent(t, ctx)
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := componenttest.TestContext(t)
+			ctx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+			createTestHtpasswdFile(t, htpasswdPath, tt.username, tt.password)
+			defer deleteTestHtpasswdFile(t, htpasswdPath)
 
-	exports, ok := ctrl.Exports().(auth.Exports)
-	require.True(t, ok, "extension doesn't export auth exports struct")
-	require.NotNil(t, exports.Handler)
+			ctrl := newTestComponent(t, ctx, tt.config)
+			require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
+			require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
 
-	startedComponent, err := ctrl.GetComponent()
-	require.NoError(t, err, "no component added in controller.")
+			exports, ok := ctrl.Exports().(auth.Exports)
+			require.True(t, ok, "extension doesn't export auth exports struct")
+			require.NotNil(t, exports.Handler)
 
-	authComponent, ok := startedComponent.(*auth.Auth)
-	require.True(t, ok, "component was not an auth component")
+			startedComponent, err := ctrl.GetComponent()
+			require.NoError(t, err, "no component added in controller.")
 
-	// auth components expose a health field. Utilize this to wait for the component to be healthy.
-	err = waitHealthy(ctx, authComponent, time.Second)
-	require.NoError(t, err, "timed out waiting for the component to be healthy")
+			authComponent, ok := startedComponent.(*auth.Auth)
+			require.True(t, ok, "component was not an auth component")
 
-	serverAuthExtension, err := exports.Handler.GetExtension(auth.Server)
+			// auth components expose a health field. Utilize this to wait for the component to be healthy.
+			err = waitHealthy(ctx, authComponent, time.Second)
+			require.NoError(t, err, "timed out waiting for the component to be healthy")
 
+			serverAuthExtension, err := exports.Handler.GetExtension(auth.Server)
+
+			require.NoError(t, err)
+			require.NotNil(t, serverAuthExtension.ID)
+			require.NotNil(t, serverAuthExtension.Extension)
+
+			otelServerExtension, ok := serverAuthExtension.Extension.(extauth.Server)
+			require.True(t, ok, "extension did not implement server authentication")
+
+			b64EncodingAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", tt.username, tt.password)))
+			_, err = otelServerExtension.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
+			require.NoError(t, err)
+		})
+	}
+}
+
+func createTestHtpasswdFile(t *testing.T, path, username, password string) {
+	t.Helper()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	require.NoError(t, err)
-	require.NotNil(t, serverAuthExtension.ID)
-	require.NotNil(t, serverAuthExtension.Extension)
 
-	otelServerExtension, ok := serverAuthExtension.Extension.(extauth.Server)
-	require.True(t, ok, "extension did not implement server authentication")
+	content := fmt.Sprintf("%s:%s\n", username, string(hash))
 
-	b64EncodingAuth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", actualUsername, actualPassword)))
-	_, err = otelServerExtension.Authenticate(ctx, map[string][]string{"Authorization": {"Basic " + b64EncodingAuth}})
+	// create file
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Write the entry to the file
+	_, err = f.WriteString(content)
+	require.NoError(t, err)
+}
+
+func deleteTestHtpasswdFile(t *testing.T, path string) {
+	t.Helper()
+	err := os.Remove(path)
 	require.NoError(t, err)
 }
 
 // newTestComponent brings up and runs the test component.
-func newTestComponent(t *testing.T, ctx context.Context) *componenttest.Controller {
+func newTestComponent(t *testing.T, ctx context.Context, config string) *componenttest.Controller {
 	t.Helper()
 	l := util.TestLogger(t)
 
@@ -130,7 +262,7 @@ func newTestComponent(t *testing.T, ctx context.Context) *componenttest.Controll
 	require.NoError(t, err)
 
 	var args basic.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 
 	go func() {
 		err := ctrl.Run(ctx, args)
