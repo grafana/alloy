@@ -40,6 +40,10 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |
 | alloy.configMap.key | string | `nil` | Key in ConfigMap to get config from. |
 | alloy.configMap.name | string | `nil` | Name of existing ConfigMap to use. Used when create is false. |
+| alloy.secret.content | string | `""` | Content to assign to the new Secret. This is passed into `tpl` allowing for templating from values. |
+| alloy.secret.create | bool | `false` | Create a new Secret for the config file. Takes precedence over configMap if both are configured. |
+| alloy.secret.key | string | `nil` | Key in Secret to get config from. |
+| alloy.secret.name | string | `nil` | Name of existing Secret to use. Used when create is false. |
 | alloy.enableHttpServerPort | bool | `true` | Enables Grafana Alloy container's http server port. |
 | alloy.enableReporting | bool | `true` | Enables sending Grafana Labs anonymous usage stats to help improve Grafana Alloy. |
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
@@ -253,6 +257,21 @@ If `alloy.configMap.content` is not provided, a [default configuration file][def
 used. When provided, `alloy.configMap.content` must hold a valid Alloy configuration file.
 
 [default-config]: ./config/example.alloy
+
+### alloy.secret
+
+You can use `alloy.secret` to mount configuration from a Kubernetes Secret instead of a ConfigMap.
+This provides better security for configurations containing sensitive credentials.
+
+When `alloy.secret.create` is set to `true` or `alloy.secret.name` is specified, the Secret takes
+precedence over the ConfigMap configuration. The ConfigMap will not be created in this case.
+
+`alloy.secret.content` holds the Grafana Alloy configuration to store in the Secret.
+When provided, it must hold a valid Alloy configuration file and is passed through `tpl` for templating.
+
+You can reference an existing Secret by setting `alloy.secret.create` to `false` and specifying
+the Secret name in `alloy.secret.name`. Optionally set `alloy.secret.key` if the configuration
+is stored under a different key than the default `config.alloy`.
 
 ### alloy.securityContext
 
