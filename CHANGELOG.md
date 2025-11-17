@@ -48,6 +48,7 @@ v1.12.0-rc.0
   - enable `explain_plans` collector by default (@rgeyer)
   - safely generate server_id when UDP socket used for database connection (@matthewnolf)
   - add table registry and include "validated" in parsed table name logs (@fridgepoet)
+  - add database exclusion list for Postgres schema_details collector (@fridgepoet)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
