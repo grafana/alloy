@@ -1162,6 +1162,7 @@ github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesproces
 github.com/grafana/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.0.0-20251021125353-73458b01ab23/go.mod h1:7+xyIHr2PJNE9kic/D91c9SMxACdGIGCJykzTcqsYv0=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0 h1:i/Ne0XwoRokYj52ZcSmnvuyID3h/uA91n0Ycg/grHU8=
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
+github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.10/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13 h1:za+TpC0g0Iu7UYz0Q7rLbIzhsRLItZCuPr2pFeVhW/U=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.13/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
@@ -1738,10 +1739,10 @@ github.com/onsi/ginkgo/v2 v2.23.4 h1:ktYTpKJAVZnDT4VjxSbiBenUjmlL/5QkBEocaWXiQus
 github.com/onsi/ginkgo/v2 v2.23.4/go.mod h1:Bt66ApGPBFzHyR+JO10Zbt0Gsp4uWxu5mIOTusL46e8=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
-github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0 h1:L/mt81EynyqP8+Eo1RScotNMKodU8tzu5kdDVZsxzos=
-github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0/go.mod h1:aamgZ/EgklfjbFzEpZHJFw6558jhx7iVrH/BF4aIkDM=
 github.com/open-telemetry/opamp-go v0.22.0 h1:7UnsQgFFS7ffM09JQk+9aGVBAAlsLfcooZ9xvSYwxWM=
 github.com/open-telemetry/opamp-go v0.22.0/go.mod h1:339N71soCPrhHywbAcKUZJDODod581ZOxCpTkrl3zYQ=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0 h1:L/mt81EynyqP8+Eo1RScotNMKodU8tzu5kdDVZsxzos=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.139.0/go.mod h1:aamgZ/EgklfjbFzEpZHJFw6558jhx7iVrH/BF4aIkDM=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0 h1:wsylHna5nuu6Jl+ow9uv3WJ0qKGJxg2aRORFUDa8SAs=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.139.0/go.mod h1:LIR7KA0MIoHFQN/mO3zLEeK7piZL3cR6Ig10GfpS5UU=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.139.0 h1:USQU4VEL4Vi1rDm1am6LFjIvRGSOWhb+huw1OLIo3Eo=
