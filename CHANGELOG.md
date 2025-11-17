@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
 v1.12.0-rc.0
 -----------------
 
@@ -106,8 +110,6 @@ v1.12.0-rc.0
 - Rework underlying framework of Alloy UI to use Vite instead of Create React App. (@jharvey10)
 
 - Use POST requests for remote config requests to avoid hitting http2 header limits. (@tpaschalis)
-
-- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
