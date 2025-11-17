@@ -54,20 +54,22 @@ func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 	// Add entries to the batch
 	for _, entry := range entries {
 		//never error here
-		_ = b.add(entry)
+		_ = b.add(entry, 0)
 	}
 
 	return b
 }
 
-// add an entry to the batch
-func (b *batch) add(entry loki.Entry) error {
+// add an entry to the batch. segmentNum is used to associate batch with a segment from WAL.
+// If entry is added from non backed WAL client it can be anything and is unused.
+func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	b.totalBytes += entrySize(entry.Entry)
 
 	// Append the entry to an already existing stream (if any)
 	labels := labelsMapToString(entry.Labels)
 	if stream, ok := b.streams[labels]; ok {
 		stream.Entries = append(stream.Entries, entry.Entry)
+		b.countForSegment(segmentNum)
 		return nil
 	}
 
@@ -80,34 +82,7 @@ func (b *batch) add(entry loki.Entry) error {
 		Labels:  labels,
 		Entries: []push.Entry{entry.Entry},
 	}
-	return nil
-}
-
-// addFromWAL adds an entry to the batch, tracking that the data being added comes from segment segmentNum read from the
-// WAL.
-func (b *batch) addFromWAL(lbs model.LabelSet, entry push.Entry, segmentNum int) error {
-	b.totalBytes += len(entry.Line)
-
-	// Append the entry to an already existing stream (if any)
-	labels := labelsMapToString(lbs)
-	if stream, ok := b.streams[labels]; ok {
-		stream.Entries = append(stream.Entries, entry)
-		b.countForSegment(segmentNum)
-		return nil
-	}
-
-	streams := len(b.streams)
-	if b.maxStreams > 0 && streams >= b.maxStreams {
-		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
-	}
-
-	// Add the entry as a new stream
-	b.streams[labels] = &push.Stream{
-		Labels:  labels,
-		Entries: []push.Entry{entry},
-	}
 	b.countForSegment(segmentNum)
-
 	return nil
 }
 

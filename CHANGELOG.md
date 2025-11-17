@@ -10,6 +10,17 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Enhancements
+
+- update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
+
+### Bugfixes
+
+- `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
+
+v1.12.0-rc.0
+-----------------
+
 ### Breaking changes
 
 - `prometheus.exporter.blackbox`, `prometheus.exporter.snmp` and `prometheus.exporter.statsd` now use the component ID instead of the hostname as
@@ -41,6 +52,7 @@ Main (unreleased)
   - enable `explain_plans` collector by default (@rgeyer)
   - safely generate server_id when UDP socket used for database connection (@matthewnolf)
   - add table registry and include "validated" in parsed table name logs (@fridgepoet)
+  - add database exclusion list for Postgres schema_details collector (@fridgepoet)
 
 - Add `otelcol.exporter.googlecloudpubsub` community component to export metrics, traces, and logs to Google Cloud Pub/Sub topic. (@eraac)
 
@@ -139,7 +151,7 @@ Main (unreleased)
 - Fix the `loki.write` endpoint block's `enable_http2` attribute to actually affect the client. HTTP2 was previously disabled regardless of configuration. (@dehaansa)
 
 - Optionally remove trailing newlines before appending entries in `stage.multiline`. (@dehaansa)
- 
+
 v1.11.3
 -----------------
 
