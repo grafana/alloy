@@ -60,8 +60,8 @@ func newBatch(maxStreams int, entries ...loki.Entry) *batch {
 	return b
 }
 
-// add an entry to the batch, tracking that the data being added
-// comes from segment segmentNum read from the WAL.
+// add an entry to the batch. segmentNum is used to associate batch with a segment from WAL.
+// If entry is added from non backed WAL client it can be anything and is unused.
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	b.totalBytes += entrySize(entry.Entry)
 
