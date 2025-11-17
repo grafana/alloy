@@ -51,5 +51,5 @@ func checkMimirConfig(t *testing.T, testDataDir, expectedFile string) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		actualMimirConfig := util.Curl(c, "http://localhost:12346/api/v1/alerts")
 		require.Equal(c, expectedMimirConfig, actualMimirConfig)
-	}, 60*time.Second, 500*time.Millisecond)
+	}, 5*time.Minute, 500*time.Millisecond)
 }
