@@ -16,11 +16,8 @@ type LogsConfig struct {
 	StartFrom           string        `alloy:"start_from,attr,optional"`
 }
 
-func (args *LogsConfig) Convert() *awscloudwatchreceiver.LogsConfig {
-	if args == nil {
-		return nil
-	}
-	return &awscloudwatchreceiver.LogsConfig{
+func (args LogsConfig) Convert() awscloudwatchreceiver.LogsConfig {
+	return awscloudwatchreceiver.LogsConfig{
 		PollInterval:        args.PollInterval,
 		MaxEventsPerRequest: args.MaxEventsPerRequest,
 		Groups:              args.Groups.Convert(),

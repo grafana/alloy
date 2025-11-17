@@ -49,8 +49,8 @@ You can use the following arguments with `otelcol.processor.batch`:
 | ---------------------------- | -------------- | ------------------------------------------------------------------------------------ | --------- | -------- |
 | `metadata_cardinality_limit` | `number`       | Limit of the unique metadata key/value combinations.                                 | `1000`    | no       |
 | `metadata_keys`              | `list(string)` | Creates a different batch processor for each key/value combination of metadata.      | `[]`      | no       |
-| `send_batch_max_size`        | `number`       | Upper limit of a batch size.                                                         | `0`       | no       |
-| `send_batch_size`            | `number`       | Number of spans, log records, or metric data points that trigger a batch to be sent. | `8192`    | no       |
+| `send_batch_max_size`        | `number`       | Upper limit of a batch size.                                                         | `3000`    | no       |
+| `send_batch_size`            | `number`       | Number of spans, log records, or metric data points that trigger a batch to be sent. | `2000`    | no       |
 | `timeout`                    | `duration`     | How long to wait before flushing the batch.                                          | `"200ms"` | no       |
 
 `otelcol.processor.batch` accumulates data into a batch until one of the following events happens:
@@ -73,7 +73,7 @@ Use `send_batch_max_size` to limit the amount of data contained in a single batc
   Every batch contains up to the `send_batch_max_size` number of spans, log records, or metric data points.
   The excess spans, log records, or metric data points aren't lost - instead, they're added to the next batch.
 
-For example, assume you set `send_batch_size` to the default `8192` and there are 8,000 batched spans.
+For example, assume you set `send_batch_size` to `8192` and there are 8,000 batched spans.
 If the batch processor receives 8,000 more spans at once, its behavior depends on how you configure `send_batch_max_size`:
 
 * If you set `send_batch_max_size` to `0`, the total batch size would be 16,000 spans which are then flushed as a single batch.
@@ -162,13 +162,14 @@ otelcol.exporter.otlp "production" {
 
 ### Batching with a timeout
 
-This example buffers up to 10,000 spans, log records, or metric data points for up to 10 seconds.
-Because `send_batch_max_size` isn't set and defaults to 0, the actual batch size may exceed 10,000 if large amounts of data arrive simultaneously.
+This example buffers up to 1000 spans, log records, or metric data points for up to 10 seconds.
+Because `send_batch_max_size` is set to 0, the actual batch size may exceed 1000 if large amounts of data arrive simultaneously.
 
 ```alloy
 otelcol.processor.batch "default" {
   timeout = "10s"
-  send_batch_size = 10000
+  send_batch_size = 1000
+  send_batch_max_size = 0
 
   output {
     metrics = [otelcol.exporter.otlp.production.input]

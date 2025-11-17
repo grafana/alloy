@@ -9,7 +9,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,15 +21,15 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
-func Test_collectSQLText(t *testing.T) {
+func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		query_samples {
 			disable_query_redaction = true
 		}
@@ -44,11 +43,10 @@ func Test_collectSQLText(t *testing.T) {
 	})
 
 	t.Run("disable sql text when not provided (default behavior)", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -59,11 +57,10 @@ func Test_collectSQLText(t *testing.T) {
 	})
 
 	t.Run("setup consumers scrape interval is correctly parsed from config", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		setup_consumers {
 			collect_interval = "1h"
 		}
@@ -79,11 +76,10 @@ func Test_collectSQLText(t *testing.T) {
 
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse cloud provider block", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		cloud_provider {
 			aws {
 				arn = "arn:aws:rds:some-region:some-account:db:some-db-instance"
@@ -98,11 +94,10 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Equal(t, "arn:aws:rds:some-region:some-account:db:some-db-instance", args.CloudProvider.AWS.ARN)
 	})
 	t.Run("empty cloud provider block", func(t *testing.T) {
-		t.Parallel()
-
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -118,6 +113,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 	`
 
 		var args Arguments
@@ -131,7 +127,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
@@ -140,6 +136,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
 
@@ -163,6 +160,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans"]
 	`
 
@@ -186,6 +184,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		disable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 		enable_collectors = ["query_details", "schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 	`
@@ -210,6 +209,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		disable_collectors = ["schema_details", "query_samples", "setup_consumers", "explain_plans", "locks"]
 		enable_collectors = ["query_details"]
 	`
@@ -234,6 +234,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
 		forward_to = []
+		targets = []
 		enable_collectors = ["some_string"]
 		disable_collectors = ["another_string"]
 	`
@@ -249,7 +250,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SchemaDetailsCollector:  true,
 			collector.QuerySamplesCollector:   true,
 			collector.SetupConsumersCollector: true,
-			collector.ExplainPlansCollector:   false,
+			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
 		}, actualCollectors)
 	})
@@ -264,7 +265,7 @@ func Test_addLokiLabels(t *testing.T) {
 		go func() {
 			ts := time.Now().UnixNano()
 			entryHandler.Chan() <- loki.Entry{
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      "some-message",
 				},
@@ -288,8 +289,6 @@ func Test_addLokiLabels(t *testing.T) {
 // TestMySQL_Update_DBUnavailable_ReportsUnhealthy tests that the component does not return an error when the database is unavailable,
 // but reports unhealthy with the error message from the database.
 func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
-	t.Parallel()
-
 	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
 	opts := cmp.Options{
 		ID:     "test.mysql",
@@ -308,8 +307,6 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 // TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors tests that the component tries to start collectors on a best effort basis,
 // reports unhealthy stacking errors for the collectors that failed to start and generate metrics for the collectors that started successfully.
 func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
-	t.Parallel()
-
 	args := Arguments{
 		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
 		DisableCollectors: []string{"query_details", "schema_details", "setup_consumers", "explain_plans"},

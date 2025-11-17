@@ -38,7 +38,7 @@ func (faroExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case auth.Handler:
-			ext := state.LookupExtension(cfg.(*faroexporter.Config).ClientConfig.Auth.AuthenticatorID)
+			ext := state.LookupExtension(cfg.(*faroexporter.Config).ClientConfig.Auth.Get().AuthenticatorID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			ext := state.LookupExtension(*cfg.(*faroexporter.Config).QueueConfig.StorageID)
@@ -70,7 +70,7 @@ func toFaroExporter(cfg *faroexporter.Config) *faro.Arguments {
 
 func toFaroHTTPClientArguments(cfg confighttp.ClientConfig) faro.HTTPClientArguments {
 	var a *auth.Handler
-	if cfg.Auth != nil {
+	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
 	}
 

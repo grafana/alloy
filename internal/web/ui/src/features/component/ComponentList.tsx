@@ -1,11 +1,9 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 
 import { HealthLabel } from '../component/HealthLabel';
-import { ComponentInfo, SortOrder } from '../component/types';
-
-import Table from './Table';
-
+import { type ComponentInfo, SortOrder } from '../component/types';
 import styles from './ComponentList.module.css';
+import Table from './Table';
 
 interface ComponentListProps {
   components: ComponentInfo[];

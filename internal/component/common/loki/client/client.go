@@ -14,16 +14,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 
-	lokiutil "github.com/grafana/loki/v3/pkg/util"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
-	"github.com/grafana/alloy/internal/util"
 )
 
 const (
@@ -33,111 +31,18 @@ const (
 	// Label reserved to override the tenant ID while processing
 	// pipeline stages
 	ReservedLabelTenantID = "__tenant_id__"
-
-	LatencyLabel = "filename"
-	HostLabel    = "host"
-	ClientLabel  = "client"
-	TenantLabel  = "tenant"
-	ReasonLabel  = "reason"
-
-	ReasonGeneric       = "ingester_error"
-	ReasonRateLimited   = "rate_limited"
-	ReasonStreamLimited = "stream_limited"
-	ReasonLineTooLong   = "line_too_long"
 )
-
-var Reasons = []string{ReasonGeneric, ReasonRateLimited, ReasonStreamLimited, ReasonLineTooLong}
 
 var userAgent = useragent.Get()
 
-type Metrics struct {
-	encodedBytes                 *prometheus.CounterVec
-	sentBytes                    *prometheus.CounterVec
-	droppedBytes                 *prometheus.CounterVec
-	sentEntries                  *prometheus.CounterVec
-	droppedEntries               *prometheus.CounterVec
-	mutatedEntries               *prometheus.CounterVec
-	mutatedBytes                 *prometheus.CounterVec
-	requestDuration              *prometheus.HistogramVec
-	batchRetries                 *prometheus.CounterVec
-	countersWithHostTenant       []*prometheus.CounterVec
-	countersWithHostTenantReason []*prometheus.CounterVec
-}
-
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	var m Metrics
-
-	m.encodedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_encoded_bytes_total",
-		Help: "Number of bytes encoded and ready to send.",
-	}, []string{HostLabel, TenantLabel})
-	m.sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_sent_bytes_total",
-		Help: "Number of bytes sent.",
-	}, []string{HostLabel, TenantLabel})
-	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_dropped_bytes_total",
-		Help: "Number of bytes dropped because failed to be sent to the ingester after all retries.",
-	}, []string{HostLabel, TenantLabel, ReasonLabel})
-	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_sent_entries_total",
-		Help: "Number of log entries sent to the ingester.",
-	}, []string{HostLabel, TenantLabel})
-	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_dropped_entries_total",
-		Help: "Number of log entries dropped because failed to be sent to the ingester after all retries.",
-	}, []string{HostLabel, TenantLabel, ReasonLabel})
-	m.mutatedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_mutated_entries_total",
-		Help: "The total number of log entries that have been mutated.",
-	}, []string{HostLabel, TenantLabel, ReasonLabel})
-	m.mutatedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_mutated_bytes_total",
-		Help: "The total number of bytes that have been mutated.",
-	}, []string{HostLabel, TenantLabel, ReasonLabel})
-	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "loki_write_request_duration_seconds",
-		Help: "Duration of send requests.",
-	}, []string{"status_code", HostLabel, TenantLabel})
-	m.batchRetries = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "loki_write_batch_retries_total",
-		Help: "Number of times batches has had to be retried.",
-	}, []string{HostLabel, TenantLabel})
-
-	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries, m.encodedBytes, m.sentBytes, m.sentEntries,
-	}
-
-	m.countersWithHostTenantReason = []*prometheus.CounterVec{
-		m.droppedBytes, m.droppedEntries, m.mutatedEntries, m.mutatedBytes,
-	}
-
-	if reg != nil {
-		m.encodedBytes = util.MustRegisterOrGet(reg, m.encodedBytes).(*prometheus.CounterVec)
-		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
-		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
-		m.sentEntries = util.MustRegisterOrGet(reg, m.sentEntries).(*prometheus.CounterVec)
-		m.droppedEntries = util.MustRegisterOrGet(reg, m.droppedEntries).(*prometheus.CounterVec)
-		m.mutatedEntries = util.MustRegisterOrGet(reg, m.mutatedEntries).(*prometheus.CounterVec)
-		m.mutatedBytes = util.MustRegisterOrGet(reg, m.mutatedBytes).(*prometheus.CounterVec)
-		m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
-		m.batchRetries = util.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
-	}
-
-	return &m
-}
-
 // Client pushes entries to Loki and can be stopped
 type Client interface {
-	loki.EntryHandler
-	// Stop goroutine sending batch of entries without retries.
-	StopNow()
-	Name() string
+	Chan() chan<- loki.Entry
+	Stop()
 }
 
 // Client for pushing logs in snappy-compressed protos over HTTP.
 type client struct {
-	name    string
 	metrics *Metrics
 	logger  log.Logger
 	cfg     Config
@@ -148,19 +53,16 @@ type client struct {
 	wg   sync.WaitGroup
 
 	// ctx is used in any upstream calls from the `client`.
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	maxStreams          int
-	maxLineSize         int
-	maxLineSizeTruncate bool
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // New makes a new Client.
-func New(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, maxStreams, maxLineSize, maxLineSizeTruncate, logger)
+func New(metrics *Metrics, cfg Config, logger log.Logger) (Client, error) {
+	return newClient(metrics, cfg, logger)
 }
 
-func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLineSizeTruncate bool, logger log.Logger) (*client, error) {
+func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -171,19 +73,12 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &client{
-		logger:              log.With(logger, "component", "client", "host", cfg.URL.Host),
-		cfg:                 cfg,
-		entries:             make(chan loki.Entry),
-		metrics:             metrics,
-		name:                GetClientName(cfg),
-		ctx:                 ctx,
-		cancel:              cancel,
-		maxStreams:          maxStreams,
-		maxLineSize:         maxLineSize,
-		maxLineSizeTruncate: maxLineSizeTruncate,
-	}
-	if cfg.Name != "" {
-		c.name = cfg.Name
+		logger:  log.With(logger, "component", "client", "host", cfg.URL.Host),
+		cfg:     cfg,
+		entries: make(chan loki.Entry),
+		metrics: metrics,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 
 	err := cfg.Client.Validate()
@@ -198,8 +93,7 @@ func newClient(metrics *Metrics, cfg Config, maxStreams, maxLineSize int, maxLin
 
 	c.client.Timeout = cfg.Timeout
 
-	c.wg.Add(1)
-	go c.run()
+	c.wg.Go(func() { c.run() })
 	return c, nil
 }
 
@@ -237,8 +131,6 @@ func (c *client) run() {
 		for tenantID, batch := range batches {
 			c.sendBatch(tenantID, batch)
 		}
-
-		c.wg.Done()
 	}()
 
 	for {
@@ -249,25 +141,11 @@ func (c *client) run() {
 			}
 
 			e, tenantID := c.processEntry(e)
-
-			// Either drop or mutate the log entry because its length is greater than maxLineSize. maxLineSize == 0 means disabled.
-			if c.maxLineSize != 0 && len(e.Line) > c.maxLineSize {
-				if !c.maxLineSizeTruncate {
-					c.metrics.droppedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-					c.metrics.droppedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line)))
-					break
-				}
-
-				c.metrics.mutatedEntries.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Inc()
-				c.metrics.mutatedBytes.WithLabelValues(c.cfg.URL.Host, tenantID, ReasonLineTooLong).Add(float64(len(e.Line) - c.maxLineSize))
-				e.Line = e.Line[:c.maxLineSize]
-			}
-
 			batch, ok := batches[tenantID]
 
 			// If the batch doesn't exist yet, we create a new one with the entry
 			if !ok {
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				c.initBatchMetrics(tenantID)
 				break
 			}
@@ -277,12 +155,12 @@ func (c *client) run() {
 			if batch.sizeBytesAfter(e.Entry) > c.cfg.BatchSize {
 				c.sendBatch(tenantID, batch)
 
-				batches[tenantID] = newBatch(c.maxStreams, e)
+				batches[tenantID] = newBatch(c.cfg.MaxStreams, e)
 				break
 			}
 
 			// The max size of the batch isn't reached, so we can add the entry
-			err := batch.add(e)
+			err := batch.add(e, 0)
 			if err != nil {
 				level.Error(c.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
 				reason := ReasonGeneric
@@ -405,7 +283,7 @@ func (c *client) send(ctx context.Context, tenantID string, buf []byte) (int, er
 	if err != nil {
 		return -1, err
 	}
-	defer lokiutil.LogError("closing response body", resp.Body.Close)
+	defer lokiutil.LogError(c.logger, "closing response body", resp.Body.Close)
 
 	if resp.StatusCode/100 != 2 {
 		scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxErrMsgLen))
@@ -440,18 +318,7 @@ func (c *client) Stop() {
 	c.wg.Wait()
 }
 
-// StopNow stops the client without retries
-func (c *client) StopNow() {
-	// cancel will stop retrying http requests.
-	c.cancel()
-	c.Stop()
-}
-
 func (c *client) processEntry(e loki.Entry) (loki.Entry, string) {
 	tenantID := c.getTenantID(e.Labels)
 	return e, tenantID
-}
-
-func (c *client) Name() string {
-	return c.name
 }

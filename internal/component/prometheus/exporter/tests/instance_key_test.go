@@ -39,10 +39,11 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snowflake"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/squid"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/static"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/statsd"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/unix"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/windows"
-	http_service "github.com/grafana/alloy/internal/service/http"
+	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -95,8 +96,8 @@ func TestInstanceKey(t *testing.T) {
 				},
 			},
 			temporaryHostname: "test-agent",
-			// TODO: this is not desired - the instance should reflect the target being exported
-			expectedInstanceLabel: "test-agent",
+			// Blackbox exporter can target many hosts, so we don't have anything reliable to use.
+			expectedInstanceLabel: "prometheus.exporter.blackbox.test_comp_id",
 		},
 		{
 			testName:      "cadvisor",
@@ -114,8 +115,8 @@ func TestInstanceKey(t *testing.T) {
 			args: catchpoint.Arguments{
 				Port: "9090",
 			},
-			// TODO: this is not desired - catchpoint exporter is a webhook endpoint that is called by catchpoint
-			//       we don't know where it is called from. Port is better than hostname, but not ideal.
+			// Port is better than hostname, but not ideal. Catchpoint is a webhook called externally, so there is no
+			// clearly better option here.
 			expectedInstanceLabel: "9090",
 		},
 		{
@@ -198,7 +199,7 @@ func TestInstanceKey(t *testing.T) {
 				Organizations: []string{"org1", "org2"},
 				Users:         []string{"user1", "user2"},
 			},
-			// TODO: it may not be enough - we may need the repositories and orgs? or use hash?
+			// This is better than hostname, but it may not be enough - we may need the repositories and orgs?
 			expectedInstanceLabel: "api.github.com:8080",
 		},
 		// TODO: kafka exporters won't build successfully if it cannot connect right away to kafka. This is not
@@ -297,7 +298,6 @@ func TestInstanceKey(t *testing.T) {
 					alloytypes.Secret("postgresql://host02:5432/dbname"),
 				},
 			},
-			// TODO: this is a good alternative, but perhaps there are better options?
 			expectedInstanceLabel: "prometheus.exporter.postgres.test_comp_id",
 		},
 		{
@@ -335,8 +335,8 @@ func TestInstanceKey(t *testing.T) {
 				},
 			},
 			temporaryHostname: "test-agent",
-			// TODO: this is likely not desired. SNMP can be multiple remote hosts.
-			expectedInstanceLabel: "test-agent",
+			// SNMP can be used for many targets, there is no better target name we can be certain of
+			expectedInstanceLabel: "prometheus.exporter.snmp.test_comp_id",
 		},
 		{
 			testName:      "snowflake",
@@ -370,8 +370,8 @@ func TestInstanceKey(t *testing.T) {
 				CacheType:  "lru",
 			},
 			temporaryHostname: "test-agent",
-			// TODO: this is likely not desired - statsd opens a listener and receives data from different sources
-			expectedInstanceLabel: "test-agent",
+			// StatsD exporter can receive data from network, so the best default we have is
+			expectedInstanceLabel: "prometheus.exporter.statsd.test_comp_id",
 		},
 		{
 			testName:      "unix",
@@ -398,6 +398,13 @@ func TestInstanceKey(t *testing.T) {
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",
 		},
+		{
+			testName:              "static",
+			componentName:         "prometheus.exporter.static",
+			args:                  static.Arguments{},
+			temporaryHostname:     "test-agent",
+			expectedInstanceLabel: "prometheus.exporter.static.test_comp_id",
+		},
 	}
 
 	componentsCovered := map[string]any{}
@@ -408,8 +415,8 @@ func TestInstanceKey(t *testing.T) {
 				ID: tt.componentName + ".test_comp_id",
 				GetServiceData: func(name string) (interface{}, error) {
 					switch name {
-					case http_service.ServiceName:
-						return http_service.Data{
+					case httpservice.ServiceName:
+						return httpservice.Data{
 							HTTPListenAddr:   "localhost:12345",
 							MemoryListenAddr: "alloy.internal:1245",
 							BaseHTTPPath:     "/",

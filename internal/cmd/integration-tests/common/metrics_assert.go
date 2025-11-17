@@ -19,12 +19,16 @@ var PromDefaultMetrics = []string{
 	"golang_histogram_bucket",
 	"golang_histogram_count",
 	"golang_histogram_sum",
+	"golang_mixed_histogram_bucket",
+	"golang_mixed_histogram_count",
+	"golang_mixed_histogram_sum",
 	"golang_summary",
 }
 
 // Default native histogram metrics list according to what the prom-gen app is generating.
 var PromDefaultNativeHistogramMetrics = []string{
 	"golang_native_histogram",
+	"golang_mixed_histogram",
 }
 
 // Default metrics list according to what the otel-gen app is generating.
@@ -87,7 +91,7 @@ func AssertMetricsAvailable(t *testing.T, metrics []string, histogramMetrics []s
 	query := MetricsQuery(testName)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var metricsResponse MetricsResponse
-		err := FetchDataFromURL(query, &metricsResponse)
+		_, err := FetchDataFromURL(query, &metricsResponse)
 		assert.NoError(c, err)
 
 		actualMetrics := make(map[string]struct{}, len(metricsResponse.Data))
@@ -97,7 +101,7 @@ func AssertMetricsAvailable(t *testing.T, metrics []string, histogramMetrics []s
 
 		missingMetrics = findMissingMetrics(expectedMetrics, actualMetrics)
 
-		assert.Emptyf(c, missingMetrics, "Expected to receive %v metrics, but did not find %v in received metrics %v", expectedMetrics, missingMetrics, maps.Keys(actualMetrics))
+		assert.Emptyf(c, missingMetrics, "Did not find %v in received metrics %v", missingMetrics, maps.Keys(actualMetrics))
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 }
 
@@ -117,12 +121,12 @@ func findMissingMetrics(expectedMetrics []string, actualMetrics map[string]struc
 func AssertHistogramData(t *testing.T, query string, expectedMetric string, testName string) {
 	var metricResponse MetricResponse
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(query, &metricResponse)
+		responseStr, err := FetchDataFromURL(query, &metricResponse)
 		assert.NoError(c, err)
 		if assert.NotEmpty(c, metricResponse.Data.Result) {
 			assert.Equal(c, metricResponse.Data.Result[0].Metric.Name, expectedMetric)
 			assert.Equal(c, metricResponse.Data.Result[0].Metric.TestName, testName)
-			require.NotNil(c, metricResponse.Data.Result[0].Histogram, "Histogram data was not present on the metric result %v", metricResponse.Data.Result[0])
+			require.NotNil(c, metricResponse.Data.Result[0].Histogram, "Histogram data was not present in query %s for the metric response %v", query, responseStr)
 
 			histogram := metricResponse.Data.Result[0].Histogram
 			if assert.NotEmpty(c, histogram.Data.Count) {
@@ -143,7 +147,7 @@ func AssertHistogramData(t *testing.T, query string, expectedMetric string, test
 func AssertMetricData(t *testing.T, query, expectedMetric string, testName string) {
 	var metricResponse MetricResponse
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := FetchDataFromURL(query, &metricResponse)
+		_, err := FetchDataFromURL(query, &metricResponse)
 		assert.NoError(c, err)
 		if assert.NotEmpty(c, metricResponse.Data.Result) {
 			assert.Equal(c, metricResponse.Data.Result[0].Metric.Name, expectedMetric)

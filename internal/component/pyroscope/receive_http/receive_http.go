@@ -182,10 +182,10 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var lb = labels.NewBuilder(nil)
+			var lb = labels.NewBuilder(labels.EmptyLabels())
 
 			for idx := range req.Msg.Series {
-				lb.Reset(nil)
+				lb.Reset(labels.EmptyLabels())
 				setLabelBuilderFromAPI(lb, req.Msg.Series[idx].Labels)
 				// Ensure service_name label is set
 				lbls := ensureServiceName(lb.Labels())

@@ -3,10 +3,12 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
@@ -174,6 +176,10 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
 	cancel()
 	<-done
 
@@ -193,7 +199,7 @@ func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, 
 func testOptions(t *testing.T) Options {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	return Options{

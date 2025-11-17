@@ -13,19 +13,24 @@
 ```sql
 CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
 GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'db-o11y'@'%';
-GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%'; /* see note */
+GRANT SELECT ON performance_schema.* TO 'db-o11y'@'%';
 ```
 
-Please note: Regarding `GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%'`, it is possible to restrict permissions, if necessary. Instead, grant the `db-o11y` user privileges access only to the objects (schemas) for which you want information. For example, to restrict permissions only to a schema named `payments`:
+3. Grant the `db-o11y` user additional privileges to access the objects (schemas, tables, views) for which you want to collect detailed information.
+
+For example, to limit permissions only to a schema named `payments`:
 
 ```sql
-CREATE USER 'db-o11y'@'%' IDENTIFIED by '<password>';
-GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'db-o11y'@'%';
-GRANT SELECT ON performance_schema.* TO 'db-o11y'@'%';   /* required */
-GRANT SELECT, SHOW VIEW ON payments.* TO 'db-o11y'@'%';  /* limit grant to the `payments` schema */
+GRANT SELECT, SHOW VIEW ON payments.* TO 'db-o11y'@'%';
 ```
 
-3. Verify that the user has been properly created.
+Alternatively, grant access to all available schemas:
+
+```sql
+GRANT SELECT, SHOW VIEW ON *.* TO 'db-o11y'@'%';
+```
+
+4. Verify that the user has been properly created.
 
 ```sql
 SHOW GRANTS FOR 'db-o11y'@'%';
@@ -38,7 +43,7 @@ SHOW GRANTS FOR 'db-o11y'@'%';
 +-------------------------------------------------------------------+
 ```
 
-4. Enable Performance Schema. To enable it explicitly, start the server with the `performance_schema` variable set to an appropriate value. Verify that Performance Schema has been enabled:
+5. Enable Performance Schema. To enable it explicitly, start the server with the `performance_schema` variable set to an appropriate value. Verify that Performance Schema has been enabled:
 
 ```sql
 SHOW VARIABLES LIKE 'performance_schema';
@@ -50,7 +55,7 @@ SHOW VARIABLES LIKE 'performance_schema';
 +--------------------+-------+
 ```
 
-5. Increase `max_digest_length` and `performance_schema_max_digest_length` to `4096`. Verify that the changes have been applied:
+6. Increase `max_digest_length` and `performance_schema_max_digest_length` to `4096`. Verify that the changes have been applied:
 
 ```sql
 SHOW VARIABLES LIKE 'max_digest_length';
@@ -74,7 +79,19 @@ SHOW VARIABLES LIKE 'performance_schema_max_digest_length';
 +--------------------------------------+-------+
 ```
 
-6. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
+7. [OPTIONAL] Increase `performance_schema_max_sql_text_length` to `4096` if you want to collect the actual, unredacted sql text from queries samples (this requires setting `disable_query_redaction` to `true`, see later). Verify that the changes have been applied:
+
+```sql
+SHOW VARIABLES LIKE 'performance_schema_max_sql_text_length';
+
++----------------------------------------+-------+
+| Variable_name                          | Value |
++----------------------------------------+-------+
+| performance_schema_max_sql_text_length | 4096  |
++----------------------------------------+-------+
+```
+
+8. [OPTIONAL] Enable the `events_statements_cpu` consumer if you want to capture CPU activity and time on query samples. Verify the current setting with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME = 'events_statements_cpu';
@@ -109,7 +126,7 @@ database_observability.mysql "mysql_<your_DB_name>" {
 }
 ```
 
-7. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
+9. [OPTIONAL] Enable the `events_waits_current` and `events_waits_history` consumers if you want to collect wait events for each query sample. Verify the current settings with a sql query:
 
 ```sql
 SELECT * FROM performance_schema.setup_consumers WHERE NAME IN ('events_waits_current', 'events_waits_history');
@@ -141,15 +158,13 @@ local.file "mysql_secret_<your_DB_name>" {
 
 prometheus.exporter.mysql "integrations_mysqld_exporter_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
-  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
+  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 database_observability.mysql "mysql_<your_DB_name>" {
   data_source_name  = local.file.mysql_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_mysql_<your_DB_name>.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>.targets
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
   enable_collectors = ["query_samples"]
@@ -185,7 +200,7 @@ loki.relabel "database_observability_mysql_<your_DB_name>" {
 }
 
 discovery.relabel "database_observability_mysql_<your_DB_name>" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_<your_DB_name>.targets, database_observability.mysql.mysql_<your_DB_name>.targets)
+  targets = database_observability.mysql.mysql_<your_DB_name>.targets
 
   rule {
     target_label = "job"
@@ -295,14 +310,12 @@ local.file "mysql_secret_example_db_1" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_1" {
   data_source_name  = local.file.mysql_secret_example_db_1.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_1.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1.targets
   enable_collectors = ["query_samples"]
 }
 
@@ -311,7 +324,7 @@ loki.relabel "database_observability_mysql_example_db_1" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_1" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_1.targets, database_observability.mysql.mysql_example_db_1.targets)
+  targets = database_observability.mysql.mysql_example_db_1.targets
 
   rule {
     target_label = "job"
@@ -333,14 +346,12 @@ local.file "mysql_secret_example_db_2" {
 prometheus.exporter.mysql "integrations_mysqld_exporter_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
-  perf_schema.eventsstatements {
-    text_limit = 2048
-  }
 }
 
 database_observability.mysql "mysql_example_db_2" {
   data_source_name  = local.file.mysql_secret_example_db_2.content
   forward_to        = [loki.relabel.database_observability_mysql_example_db_2.receiver]
+  targets           = prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2.targets
   enable_collectors = ["query_samples"]
 }
 
@@ -349,7 +360,7 @@ loki.relabel "database_observability_mysql_example_db_2" {
 }
 
 discovery.relabel "database_observability_mysql_example_db_2" {
-  targets = concat(prometheus.exporter.mysql.integrations_mysqld_exporter_example_db_2.targets, database_observability.mysql.mysql_example_db_2.targets)
+  targets = database_observability.mysql.mysql_example_db_2.targets
 
   rule {
     target_label = "job"
@@ -358,7 +369,7 @@ discovery.relabel "database_observability_mysql_example_db_2" {
 }
 
 prometheus.scrape "database_observability_mysql_example_db_2" {
-  targets    = discovery.relabel.database_observability_mysql_example_db_2.targets
+  targets    = discovery.relabel.database_observability_mysql_example_db_2.output
   job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
@@ -384,7 +395,17 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements';
 ```
 
-5. Create a dedicated DB user and grant permissions.
+5. Increase `track_activity_query_size` to `4096`. Verify that the change has been applied:
+
+```sql
+show track_activity_query_size;
+
+ track_activity_query_size
+---------------------------
+ 4kB
+```
+
+6. Create a dedicated DB user and grant permissions to monitor the DB.
 
 ```sql
 CREATE USER "db-o11y" WITH PASSWORD '<password>';
@@ -392,20 +413,43 @@ GRANT pg_monitor TO "db-o11y";
 GRANT pg_read_all_stats TO "db-o11y";
 ```
 
-6. Verify that the user has been properly created.
+7. Verify that the user has been properly created and has the correct privileges for the `pg_stat_statements` extension.
 
 ```sql
 -- run with the `db-o11y` user
 SELECT * FROM pg_stat_statements LIMIT 1;
 ```
 
+8. Grant the `db-o11y` user additional privileges to access the objects (databases, schemas, tables, views) for which you want to collect detailed information.
+
+For example, connect to a `payments` database and grant access to specific schemas:
+
+```sql
+-- switch to the 'payments' database
+\c payments
+
+-- grant USAGE and SELECT permissions in the 'public' schema
+GRANT USAGE ON SCHEMA public TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO "db-o11y";
+
+-- grant USAGE and SELECT permissions in the 'tests' schema
+GRANT USAGE ON SCHEMA tests TO "db-o11y";
+GRANT SELECT ON ALL TABLES IN SCHEMA tests TO "db-o11y";
+```
+
+Alternatively, use the predefined role `pg_read_all_data` to grant `USAGE` and `SELECT` permissions to all objects at once:
+
+```sql
+GRANT pg_read_all_data TO "db-o11y";
+```
+
 ### Running and configuring Alloy
 
 1. You need to run the latest Alloy version from the `main` branch. The latest tags are available here on [Docker Hub](https://hub.docker.com/r/grafana/alloy-dev/tags) (for example, `grafana/alloy-dev:v1.10.0-devel-630bcbb` or more recent) . Additionally, the `--stability.level=experimental` CLI flag is necessary for running the `database_observability` component.
 
-2. Add the following configuration block to Alloy for each Postgres DB you'd like to monitor.
+2. Add the following configuration block to Alloy.
 - Replace `<your_DB_name>`
-- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/dbname?sslmode=require"`.
+- Create a [`local.file`](https://grafana.com/docs/alloy/latest/reference/components/local/local.file/) with your DB secrets. The content of the file should be the Data Source Name string, for example `"postgresql://user:password@(hostname:port)/postgres?sslmode=require"`.
 
 3. Copy this block for each DB you'd like to monitor.
 
@@ -417,7 +461,7 @@ local.file "postgres_secret_<your_DB_name>" {
 
 prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
-  enabled_collectors = ["database", "stat_statements"]
+  enabled_collectors = ["stat_statements"]
 
   autodiscovery {
     enabled = true
@@ -430,9 +474,10 @@ prometheus.exporter.postgres "integrations_postgres_exporter_<your_DB_name>" {
 database_observability.postgres "postgres_<your_DB_name>" {
   data_source_name  = local.file.postgres_secret_<your_DB_name>.content
   forward_to        = [loki.relabel.database_observability_postgres_<your_DB_name>.receiver]
+  targets           = prometheus.exporter.postgres.integrations_postgres_exporter_<your_DB_name>.targets
 
   // OPTIONAL: enable collecting samples of queries with their execution metrics. The sql text will be redacted to hide sensitive params.
-  enable_collectors = ["query_samples"]
+  enable_collectors = ["query_samples", "query_details"]
 
   // OPTIONAL: if `query_samples` collector is enabled, you can use
   // the following setting to disable sql text redaction (by default
@@ -465,7 +510,7 @@ loki.relabel "database_observability_postgres_<your_DB_name>" {
 }
 
 discovery.relabel "database_observability_postgres_<your_DB_name>" {
-  targets = concat(prometheus.exporter.postgres.integrations_postgres_exporter_<your_DB_name>.targets, database_observability.postgres.postgres_<your_DB_name>.targets)
+  targets = database_observability.postgres.postgres_<your_DB_name>.targets
 
   rule {
     target_label = "job"

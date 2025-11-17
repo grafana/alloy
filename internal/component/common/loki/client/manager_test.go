@@ -5,32 +5,23 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
-var (
-	testLimitsConfig = limit.Config{
-		MaxLineSizeTruncate: false,
-		MaxStreams:          0,
-		MaxLineSize:         0,
-	}
-	nilMetrics = NewMetrics(nil)
-)
+var nilMetrics = NewMetrics(nil)
 
 // TestManager_NoDuplicateMetricsPanic ensures that creating two managers does
 // not lead to duplicate metrics registration.
@@ -44,9 +35,9 @@ func TestManager_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for i := 0; i < 2; i++ {
-			_, err := NewManager(metrics, log.NewLogfmtLogger(os.Stdout), testLimitsConfig, reg, wal.Config{
+			_, err := NewManager(metrics, log.NewNopLogger(), reg, wal.Config{
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier, Config{
+			}, Config{
 				URL: flagext.URLValue{URL: host},
 			})
 			require.NoError(t, err)
@@ -58,11 +49,11 @@ func TestManager_ErrorCreatingWhenNoClientConfigsProvided(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), testLimitsConfig, prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier)
+			})
 			require.Error(t, err)
 		})
 	}
@@ -79,11 +70,11 @@ func TestManager_ErrorCreatingWhenRepeatedConfigs(t *testing.T) {
 	for _, walEnabled := range []bool{true, false} {
 		t.Run(fmt.Sprintf("wal-enabled = %t", walEnabled), func(t *testing.T) {
 			walDir := t.TempDir()
-			_, err := NewManager(nilMetrics, log.NewLogfmtLogger(os.Stdout), testLimitsConfig, prometheus.NewRegistry(), wal.Config{
+			_, err := NewManager(nilMetrics, log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{
 				Dir:         walDir,
 				Enabled:     walEnabled,
 				WatchConfig: wal.DefaultWatchConfig,
-			}, NilNotifier, config1, config1Copy)
+			}, config1, config1Copy)
 			require.Error(t, err)
 		})
 	}
@@ -136,16 +127,12 @@ func TestManager_WALEnabled(t *testing.T) {
 	}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	clientMetrics := NewMetrics(reg)
 
-	// start writer and manager
-	writer, err := wal.NewWriter(walConfig, logger, reg)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
-	manager, err := NewManager(clientMetrics, logger, testLimitsConfig, prometheus.NewRegistry(), walConfig, writer, testClientConfig)
-	require.NoError(t, err)
-	require.Equal(t, "wal:test-client", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	go func() {
@@ -155,7 +142,6 @@ func TestManager_WALEnabled(t *testing.T) {
 	}()
 
 	defer func() {
-		writer.Stop()
 		manager.Stop()
 		closeServer.Close()
 	}()
@@ -165,9 +151,9 @@ func TestManager_WALEnabled(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := 0; i < totalLines; i++ {
-		writer.Chan() <- loki.Entry{
+		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},
@@ -194,14 +180,13 @@ func TestManager_WALDisabled(t *testing.T) {
 	walConfig := wal.Config{}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	clientMetrics := NewMetrics(reg)
 
 	// start writer and manager
-	manager, err := NewManager(clientMetrics, logger, testLimitsConfig, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
-	require.Equal(t, "multi:test-client", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	go func() {
@@ -222,7 +207,7 @@ func TestManager_WALDisabled(t *testing.T) {
 	for i := 0; i < totalLines; i++ {
 		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},
@@ -249,7 +234,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	walConfig := wal.Config{}
 	// start all necessary resources
 	reg := prometheus.NewRegistry()
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewNopLogger()
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
@@ -258,9 +243,8 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	clientMetrics := NewMetrics(reg)
 
 	// start writer and manager
-	manager, err := NewManager(clientMetrics, logger, testLimitsConfig, prometheus.NewRegistry(), walConfig, NilNotifier, testClientConfig, testClientConfig2)
+	manager, err := NewManager(clientMetrics, logger, prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
-	require.Equal(t, "multi:test-client,test-client-2", manager.Name())
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
@@ -291,7 +275,7 @@ func TestManager_WALDisabled_MultipleConfigs(t *testing.T) {
 	for i := range totalLines {
 		manager.Chan() <- loki.Entry{
 			Labels: testLabels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      fmt.Sprintf("line%d", i),
 			},

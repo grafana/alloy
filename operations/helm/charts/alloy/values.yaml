@@ -154,6 +154,56 @@ rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
 
+  # -- If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and
+  # ClusterRoleBindings. If not using ClusterRoles, bear in mind that Alloy will not be able to discover cluster-scoped
+  # resources such as Nodes.
+  namespaces: []
+
+  # -- The rules to create for the ClusterRole or Role objects.
+  rules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.podlogs` component.
+    - apiGroups: ["monitoring.grafana.com"]
+      resources: ["podlogs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `mimir.rules.kubernetes` component.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["prometheusrules"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `prometheus.operator.*` components.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes_events` component.
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `remote.kubernetes.*` components.
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `otelcol.processor.k8sattributes` component.
+    - apiGroups: ["apps", "extensions"]
+      resources: ["replicasets"]
+      verbs: ["get", "list", "watch"]
+
+  # -- The rules to create for the ClusterRole objects.
+  clusterRules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["nodes", "nodes/proxy", "nodes/metrics"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for accessing metrics endpoint.
+    - nonResourceURLs: ["/metrics"]
+      verbs: ["get"]
+
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
   create: true

@@ -57,7 +57,7 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
+	Targets                       []discovery.Target  `alloy:"targets,attr"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
@@ -143,7 +143,7 @@ var DefaultArguments = Arguments{
 	},
 
 	QuerySamplesArguments: QuerySamplesArguments{
-		CollectInterval:             1 * time.Minute,
+		CollectInterval:             10 * time.Second,
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
@@ -364,7 +364,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SchemaDetailsCollector:  true,
 		collector.SetupConsumersCollector: true,
 		collector.QuerySamplesCollector:   true,
-		collector.ExplainPlansCollector:   false,
+		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
 	}
 

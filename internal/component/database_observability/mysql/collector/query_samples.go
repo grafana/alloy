@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
-	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -47,7 +46,6 @@ SELECT
 	statements.EVENT_ID,
 	statements.END_EVENT_ID,
 	statements.DIGEST,
-	statements.DIGEST_TEXT,
 	statements.TIMER_END,
 	statements.TIMER_WAIT,
 	statements.ROWS_EXAMINED,
@@ -69,8 +67,8 @@ LEFT JOIN
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-	AND statements.CURRENT_SCHEMA NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')
-	%s %s`
+	AND statements.CURRENT_SCHEMA NOT IN ` + EXCLUDED_SCHEMAS +
+	` %s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -94,7 +92,6 @@ type QuerySamples struct {
 	engineVersion               semver.Version
 	collectInterval             time.Duration
 	entryHandler                loki.EntryHandler
-	sqlParser                   parser.Parser
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
@@ -114,7 +111,6 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		engineVersion:               args.EngineVersion,
 		collectInterval:             args.CollectInterval,
 		entryHandler:                args.EntryHandler,
-		sqlParser:                   parser.NewTiDBSqlParser(),
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
@@ -131,7 +127,7 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. Query samples will include complete SQL text including query parameters.")
+		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
@@ -268,7 +264,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			StatementEventID    sql.NullString
 			StatementEndEventID sql.NullString
 			Digest              sql.NullString
-			DigestText          sql.NullString
 			SQLText             sql.NullString
 
 			// sample time
@@ -302,7 +297,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.StatementEventID,
 			&row.StatementEndEventID,
 			&row.Digest,
-			&row.DigestText,
 			&row.TimerEndPicoseconds,
 			&row.ElapsedTimePicoseconds,
 			&row.RowsExamined,
@@ -342,28 +336,14 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		serverStartTime := now - uptime
 		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
-
-		digestText, err := c.sqlParser.CleanTruncatedText(row.DigestText.String)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to handle truncated sql query", "schema", row.Schema.String, "digest", row.Digest.String, "err", err)
-			continue
-		}
-
-		digestText, err = c.sqlParser.Redact(digestText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to redact sql query", "schema", row.Schema.String, "digest", row.Digest.String, "err", err)
-			continue
-		}
-
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" digest_text="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			`schema="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 			row.Schema.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
-			digestText,
 			row.RowsExamined,
 			row.RowsSent,
 			row.RowsAffected,
@@ -393,11 +373,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		if row.WaitEventID.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
-				`schema="%s" thread_id="%s" digest="%s" digest_text="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+				`schema="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
 				row.ThreadID.String,
 				row.Digest.String,
-				digestText,
 				row.StatementEventID.String,
 				row.WaitEventID.String,
 				row.WaitEndEventID.String,

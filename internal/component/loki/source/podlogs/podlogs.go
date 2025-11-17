@@ -52,6 +52,10 @@ type Arguments struct {
 	// Node filtering settings to limit pod discovery to specific nodes.
 	NodeFilter NodeFilterConfig `alloy:"node_filter,block,optional"`
 
+	// PreserveDiscoveredLabels controls whether discovered Kubernetes meta labels
+	// are preserved when forwarding logs to downstream components.
+	PreserveDiscoveredLabels bool `alloy:"preserve_discovered_labels,attr,optional"`
+
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
@@ -279,15 +283,19 @@ func (c *Component) updateReconciler(args Arguments) error {
 	c.reconciler.SetDistribute(args.Clustering.Enabled)
 
 	var (
-		selectorChanged          = !reflect.DeepEqual(c.args.Selector, args.Selector)
-		namespaceSelectorChanged = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
-		nodeFilterChanged        = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
+		selectorChanged                 = !reflect.DeepEqual(c.args.Selector, args.Selector)
+		namespaceSelectorChanged        = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
+		nodeFilterChanged               = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
+		preserveDiscoveredLabelsChanged = c.args.PreserveDiscoveredLabels != args.PreserveDiscoveredLabels
 	)
+
+	// Update preserve discovered labels configuration
+	c.reconciler.UpdatePreserveMetaLabels(args.PreserveDiscoveredLabels)
 
 	// Update node filter configuration
 	c.reconciler.UpdateNodeFilter(args.NodeFilter.Enabled, args.NodeFilter.NodeName)
 
-	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged {
+	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged && !preserveDiscoveredLabelsChanged {
 		return nil
 	}
 

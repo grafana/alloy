@@ -3,6 +3,8 @@ package configgen
 // SEE https://github.com/prometheus-operator/prometheus-operator/blob/aa8222d7e9b66e9293ed11c9291ea70173021029/pkg/prometheus/promcfg.go
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -191,6 +193,20 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	return &c
 }
 
+func convertScrapeProtocols(protocols []promopv1.ScrapeProtocol) ([]config.ScrapeProtocol, error) {
+	result := make([]config.ScrapeProtocol, len(protocols))
+	var errs error
+	for i, p := range protocols {
+		protocol := config.ScrapeProtocol(p)
+		if err := protocol.Validate(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("validating scrape protocol from probe: %w", err))
+			continue
+		}
+		result[i] = protocol
+	}
+	return result, errs
+}
+
 type relabeler struct {
 	configs []*relabel.Config
 }
@@ -210,6 +226,10 @@ func (r *relabeler) add(cfgs ...*relabel.Config) {
 		}
 		if cfg.Replacement == "" {
 			cfg.Replacement = relabel.DefaultRelabelConfig.Replacement
+		}
+		// Set NameValidationScheme to LegacyValidation to maintain compatibility
+		if cfg.NameValidationScheme == model.UnsetValidation {
+			cfg.NameValidationScheme = model.LegacyValidation
 		}
 		r.configs = append(r.configs, cfg)
 	}

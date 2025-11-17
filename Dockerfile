@@ -4,15 +4,15 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21 AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.22 AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
 RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
-    yarn --network-timeout=1200000                            \
-    && yarn run build
+    npm install                                               \
+    && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.21 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.22 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -26,13 +26,13 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-COPY --from=ui-build /ui/build /src/alloy/internal/web/ui/build
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled pyroscope_ebpf" \
+    GO_TAGS="netgo builtinassets promtail_journal_enabled slicelabels" \
     GOEXPERIMENT=${GOEXPERIMENT} \
     make alloy
 

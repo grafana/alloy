@@ -10,25 +10,28 @@ import (
 
 // Config describes configuration for an HTTP pusher client.
 type Config struct {
-	Name      string `yaml:"name,omitempty"`
+	Name      string
 	URL       flagext.URLValue
-	BatchWait time.Duration `yaml:"batchwait"`
-	BatchSize int           `yaml:"batchsize"`
+	BatchWait time.Duration
+	BatchSize int
 
-	Client  config.HTTPClientConfig `yaml:",inline"`
-	Headers map[string]string       `yaml:"headers,omitempty"`
+	Client  config.HTTPClientConfig
+	Headers map[string]string
 
-	BackoffConfig backoff.Config `yaml:"backoff_config"`
-	Timeout       time.Duration  `yaml:"timeout"`
+	BackoffConfig backoff.Config
+	Timeout       time.Duration
 
 	// The tenant ID to use when pushing logs to Loki (empty string means
 	// single tenant mode)
-	TenantID string `yaml:"tenant_id"`
+	TenantID string
+
+	// Max number of streams that can be added to a batch.
+	MaxStreams int
 
 	// When enabled, Promtail will not retry batches that get a
 	// 429 'Too Many Requests' response from the distributor. Helps
 	// prevent HOL blocking in multitenant deployments.
-	DropRateLimitedBatches bool `yaml:"drop_rate_limited_batches"`
+	DropRateLimitedBatches bool
 
 	// Queue controls configuration parameters specific to the queue client
 	Queue QueueConfig

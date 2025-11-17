@@ -11,7 +11,7 @@ jobs:
 
   test_linux:
     name: Test Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     steps:
     - name: Checkout code
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -24,4 +24,4 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - run: make GO_TAGS="nodocker" test
+    - run: make GO_TAGS="nodocker,slicelabels" test

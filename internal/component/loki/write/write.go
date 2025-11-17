@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/limit"
 	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -89,7 +88,6 @@ type Component struct {
 
 	// remote write components
 	clientManger *client.Manager
-	walWriter    *wal.Writer
 
 	// sink is the place where log entries received by this component should be written to. If WAL
 	// is enabled, this will be the WAL Writer, otherwise, the client manager
@@ -105,7 +103,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver()
+	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -119,11 +117,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// when exiting Run, proceed to shut down first the writer component, and then
-		// the client manager, with the WAL and remote-write client inside
-		if c.walWriter != nil {
-			c.walWriter.Stop()
+		// First we need to stop the sink. Stopping the sink will not stop the wrapped handler.
+		if c.sink != nil {
+			c.sink.Stop()
 		}
+
 		if c.clientManger != nil {
 			// drain, since the component is shutting down. That means Alloy is shutting down as well
 			c.clientManger.StopWithDrain(true)
@@ -155,9 +153,10 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 	c.args = newArgs
 
-	if c.walWriter != nil {
-		c.walWriter.Stop()
+	if c.sink != nil {
+		c.sink.Stop()
 	}
+
 	if c.clientManger != nil {
 		// only drain on component shutdown
 		c.clientManger.Stop()
@@ -176,6 +175,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	walCfg := wal.Config{
 		Enabled:       newArgs.WAL.Enabled,
+		Dir:           filepath.Join(c.opts.DataPath, "wal"),
 		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
 		WatchConfig: wal.WatchConfig{
 			MinReadFrequency: newArgs.WAL.MinReadFrequency,
@@ -184,45 +184,22 @@ func (c *Component) Update(args component.Arguments) error {
 		},
 	}
 
-	// Update WAL dir with DataPath subdir
-	walCfg.Dir = filepath.Join(c.opts.DataPath, "wal")
-
 	var err error
-	var notifier client.WriterEventsNotifier = client.NilNotifier
-	// nil-out wal writer in case WAL was disabled
-	c.walWriter = nil
-	// only configure WAL Writer if enabled
-	if walCfg.Enabled {
-		c.walWriter, err = wal.NewWriter(walCfg, c.opts.Logger, c.opts.Registerer)
-		if err != nil {
-			return fmt.Errorf("error creating wal writer: %w", err)
-		}
-		notifier = c.walWriter
-	}
-
-	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, limit.Config{
-		MaxStreams: newArgs.MaxStreams,
-	}, c.opts.Registerer, walCfg, notifier, cfgs...)
+	c.clientManger, err = client.NewManager(c.metrics, c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	if err != nil {
 		return fmt.Errorf("failed to create client manager: %w", err)
 	}
 
-	externalLabels := utils.ToLabelSet(c.args.ExternalLabels)
-	// if WAL is enabled, the WAL writer should be the destination sink. Otherwise, the client manager
-	if walCfg.Enabled {
-		c.sink = newEntryHandler(c.walWriter, externalLabels)
-	} else {
-		c.sink = newEntryHandler(c.clientManger, externalLabels)
-	}
+	c.sink = newEntryHandler(c.clientManger, utils.ToLabelSet(c.args.ExternalLabels))
 
 	return nil
 }
 
 func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
-	if len(externalLabels) == 0 {
-		return handler
-	}
 	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
+		if len(externalLabels) == 0 {
+			return e
+		}
 		e.Labels = externalLabels.Merge(e.Labels)
 		return e
 	})

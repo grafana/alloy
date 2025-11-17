@@ -18,7 +18,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -27,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -92,36 +92,12 @@ func NewTarget(metrics *Metrics, logger log.Logger, handler loki.EntryHandler, p
 	return t, nil
 }
 
-func (t *Target) processLoop(ctx context.Context) {
-	inspectInfo, err := t.client.ContainerInspect(ctx, t.containerName)
-	if err != nil {
-		level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
-		t.mu.Lock()
-		t.err = err
-		t.mu.Unlock()
-		return
-	}
-
-	logs, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-		Timestamps: true,
-		Since:      strconv.FormatInt(t.since.Load(), 10),
-	})
-	if err != nil {
-		level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
-		t.mu.Lock()
-		t.err = err
-		t.mu.Unlock()
-		return
-	}
-	defer logs.Close()
+func (t *Target) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+	defer reader.Close()
 
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
 	rstderr, wstderr := io.Pipe()
-	t.wg.Add(1)
 	go func() {
 		defer func() {
 			t.wg.Done()
@@ -131,10 +107,10 @@ func (t *Target) processLoop(ctx context.Context) {
 		}()
 		var written int64
 		var err error
-		if inspectInfo.Config.Tty {
-			written, err = io.Copy(wstdout, logs)
+		if tty {
+			written, err = io.Copy(wstdout, reader)
 		} else {
-			written, err = stdcopy.StdCopy(wstdout, wstderr, logs)
+			written, err = stdcopy.StdCopy(wstdout, wstderr, reader)
 		}
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerName, "err", err)
@@ -144,7 +120,6 @@ func (t *Target) processLoop(ctx context.Context) {
 	}()
 
 	// Start processing
-	t.wg.Add(2)
 	go t.process(rstdout, t.getStreamLabels("stdout"))
 	go t.process(rstderr, t.getStreamLabels("stderr"))
 
@@ -208,7 +183,7 @@ func (t *Target) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		t.handler.Chan() <- loki.Entry{
 			Labels: logStreamLset,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      line,
 			},
@@ -234,11 +209,33 @@ func (t *Target) StartIfNotRunning() {
 	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerName)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
+		info, err := t.client.ContainerInspect(ctx, t.containerName)
+		if err != nil {
+			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerName, "err", err)
+			t.err = err
+			return
+		}
+
+		reader, err := t.client.ContainerLogs(ctx, t.containerName, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Timestamps: true,
+			Since:      strconv.FormatInt(t.since.Load(), 10),
+		})
+		if err != nil {
+			level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerName, "err", err)
+			t.err = err
+			return
+		}
+
+		ctx, cancel := context.WithCancel(ctx)
 		t.cancel = cancel
 		t.running = true
-
-		go t.processLoop(ctx)
+		// proccessLoop will start 3 goroutines that we need to wait for if Stop is called.
+		t.wg.Add(3)
+		go t.processLoop(ctx, info.Config.Tty, reader)
 	}
 }
 
@@ -307,7 +304,7 @@ func (t *Target) Details() map[string]string {
 
 func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
@@ -315,12 +312,12 @@ func (t *Target) getStreamLabels(logStream string) model.LabelSet {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return filtered
 }

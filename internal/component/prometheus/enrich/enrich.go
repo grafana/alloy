@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/service/labelstore"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -18,6 +13,12 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 func init() {
@@ -61,7 +62,6 @@ type Component struct {
 
 	mut      sync.RWMutex
 	receiver *prometheus.Interceptor
-	ls       labelstore.LabelStore
 	fanout   *prometheus.Fanout
 	exited   atomic.Bool
 
@@ -76,11 +76,11 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
+	ls := service.(labelstore.LabelStore)
 
 	c := &Component{
 		opts: opts,
 		args: args,
-		ls:   service.(labelstore.LabelStore),
 	}
 
 	c.cacheSize = prometheus_client.NewGauge(prometheus_client.GaugeOpts{
@@ -97,10 +97,11 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
-	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, c.ls, prometheus.NoopMetadataStore{})
+	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
-		c.ls,
+		ls,
+		prometheus.WithComponentID(c.opts.ID),
 		prometheus.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", opts.ID)
@@ -108,6 +109,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 			newLabels := c.enrich(l)
 
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.Append(0, newLabels, t, v)
 		}),
 		prometheus.WithExemplarHook(func(_ storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
@@ -117,6 +119,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 			newLabels := c.enrich(l)
 
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendExemplar(0, newLabels, e)
 		}),
 		prometheus.WithMetadataHook(func(_ storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
@@ -126,6 +129,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 			newLabels := c.enrich(l)
 
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.UpdateMetadata(0, newLabels, m)
 		}),
 		prometheus.WithHistogramHook(func(_ storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
@@ -200,21 +204,20 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 		return lbls
 	}
 
-	newLabels := lbls.Copy()
-
+	newLabels := labels.NewBuilder(lbls.Copy())
 	if len(c.args.LabelsToCopy) == 0 {
 		for k, v := range targetSet {
-			newLabels = append(newLabels, labels.Label{Name: string(k), Value: string(v)})
+			newLabels.Set(string(k), string(v))
 		}
 	} else {
 		for _, label := range c.args.LabelsToCopy {
 			if value, ok := targetSet[model.LabelName(label)]; ok {
-				newLabels = append(newLabels, labels.Label{Name: label, Value: string(value)})
+				newLabels.Set(label, string(value))
 			}
 		}
 	}
 
-	return newLabels
+	return newLabels.Labels()
 }
 
 func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {

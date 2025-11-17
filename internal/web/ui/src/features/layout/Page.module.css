@@ -39,7 +39,8 @@ div.page main {
   color: rgba(36, 41, 46, 0.75);
 }
 
-.header h1, .header h2 {
+.header h1,
+.header h2 {
   padding: 0px;
   margin: 0px;
 }

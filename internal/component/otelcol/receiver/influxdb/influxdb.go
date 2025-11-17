@@ -64,7 +64,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	return &influxdbreceiver.Config{
-		ServerConfig: *serverConfig,
+		ServerConfig: *serverConfig.Get(),
 	}, nil
 }
 

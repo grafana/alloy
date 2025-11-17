@@ -7,14 +7,14 @@ ARG VERSION
 ARG RELEASE_BUILD=1
 ARG GO_TAGS
 
-#################### 
+####################
 # The snippet below was taken from tools/build-image/windows/Dockerfile.
 # This is so that we don't have to run the CI step inside a build image container.
-# 
+#
 # TODO: Build Alloy outside of the Dockerfile?
 # Then we don't need to install all those dependencies.
 # However, the versions of Windows may not match.
-# GitHub Actions may use one version of Windows ot build Alloy, 
+# GitHub Actions may use one version of Windows to build Alloy,
 # and Docker may put it into a container with a different version.
 ####################
 SHELL ["powershell", "-command"]
@@ -55,9 +55,7 @@ RUN choco install git --version 2.39.0 -y
 # React App Dependencies
 #
 # nodejs - node server
-# yarn - installs node dependencies
-RUN choco install nodejs.install --version 19.2.0 -y
-RUN choco install yarn --version 1.22.19 -y
+RUN choco install nodejs.install --version 24.4.0 -y
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository
@@ -77,9 +75,9 @@ SHELL ["cmd", "/S", "/C"]
 
 # Creating new layers can be really slow on Windows so we clean up any caches
 # we can before moving on to the next step.
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} make generate-ui && rm -rf web/ui/node_modules && yarn cache clean --all""
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} make generate-ui && rm -rf internal/web/ui/node_modules""
 
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"builtinassets ${GO_TAGS}\" make alloy""
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"builtinassets slicelabels ${GO_TAGS}\" make alloy""
 # In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
 # files is denied immediately after make alloy, for example:
 # "go: remove C:\go\pkg\mod\golang.org\toolchain@v0.0.1-go1.22.3.windows-amd64\bin\go.exe: Access is denied."

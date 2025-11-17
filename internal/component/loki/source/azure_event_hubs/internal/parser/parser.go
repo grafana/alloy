@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
 )
 
 type azureMonitorResourceLogs struct {
@@ -135,7 +135,7 @@ func (e *AzureEventHubsTargetMessageParser) tryUnmarshal(message []byte) (*azure
 func (e *AzureEventHubsTargetMessageParser) entryWithCustomPayload(body []byte, labelSet model.LabelSet, messageTime time.Time) loki.Entry {
 	return loki.Entry{
 		Labels: labelSet,
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: messageTime,
 			Line:      string(body),
 		},
@@ -178,7 +178,7 @@ func (e *AzureEventHubsTargetMessageParser) parseRecord(record []byte, labelSet 
 
 	return loki.Entry{
 		Labels: labelSet.Merge(logLabels),
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      string(record),
 		},
@@ -199,12 +199,10 @@ func (e *AzureEventHubsTargetMessageParser) getTime(messageTime time.Time, useIn
 }
 
 func (e *AzureEventHubsTargetMessageParser) getLabels(logRecord *azureMonitorResourceLog, relabelConfig []*relabel.Config) model.LabelSet {
-	lbs := labels.Labels{
-		{
-			Name:  "__azure_event_hubs_category",
-			Value: logRecord.Category,
-		},
-	}
+	lbs := labels.New(labels.Label{
+		Name:  "__azure_event_hubs_category",
+		Value: logRecord.Category,
+	})
 
 	var processed labels.Labels
 	// apply relabeling
@@ -216,19 +214,19 @@ func (e *AzureEventHubsTargetMessageParser) getLabels(logRecord *azureMonitorRes
 
 	// final labelset that will be sent to loki
 	resultLabels := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		// ignore internal labels
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		// ignore invalid labels
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValid() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+			return
 		}
 		resultLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	return resultLabels
 }

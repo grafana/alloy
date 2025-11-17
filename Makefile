@@ -88,6 +88,7 @@ GOARM                ?= $(shell go env GOARM)
 CGO_ENABLED          ?= 1
 RELEASE_BUILD        ?= 0
 GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+GO_TAGS              ?= slicelabels
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -146,19 +147,19 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	$(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
-# more without -race for packages that have known race detection issues. The
+# more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
+	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter
 	$(GO_ENV) cd ./syntax && go test -race ./...
 
 test-packages:
@@ -166,12 +167,18 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test
 integration-test:
 	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
 
 #
 # Targets for building binaries
@@ -249,7 +256,7 @@ generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./internal/web/ui && yarn --network-timeout=1200000 && yarn run build
+	cd ./internal/web/ui && npm install && npm run build
 endif
 
 generate-versioned-files:

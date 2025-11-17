@@ -36,10 +36,10 @@ The component starts an HTTP server on the configured port and address with the 
 
 * `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
 * `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
-   This can be used to send NDJSON or plain text logs.
-   This is compatible with the Promtail push API endpoint.
-   Refer to the [Promtail documentation][promtail-push-api] for more information.
-   When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
+  This can be used to send NDJSON or plain text logs.
+  This is compatible with the Promtail push API endpoint.
+  Refer to the [Promtail documentation][promtail-push-api] for more information.
+  When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
 * `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
 * `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
 * `/api/v1/raw` - internally reroutes to `/loki/api/v1/raw`.
@@ -50,13 +50,14 @@ The component starts an HTTP server on the configured port and address with the 
 
 You can use the following arguments with `loki.source.api`:
 
-| Name                     | Type                 | Description                                             | Default    | Required |
-|--------------------------|----------------------|---------------------------------------------------------|------------|----------|
-| `forward_to`             | `list(LogsReceiver)` | List of receivers to send log entries to.               |            | yes      |
-| `labels`                 | `map(string)`        | The labels to associate with each received logs record. | `{}`       | no       |
-| `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.               | `{}`       | no       |
-| `use_incoming_timestamp` | `bool`               | Whether to use the timestamp received from request.     | `false`    | no       |
-| `max_send_message_size`  | `size`               | Maximum size of a request to the push API.              | `"100MiB"` | no       |
+| Name                        | Type                 | Description                                                                        | Default    | Required |
+| --------------------------- | -------------------- | ---------------------------------------------------------------------------------- | ---------- | -------- |
+| `forward_to`                | `list(LogsReceiver)` | List of receivers to send log entries to.                                          |            | yes      |
+| `labels`                    | `map(string)`        | The labels to associate with each received logs record.                            | `{}`       | no       |
+| `relabel_rules`             | `RelabelRules`       | Relabeling rules to apply on log entries.                                          | `{}`       | no       |
+| `use_incoming_timestamp`    | `bool`               | Whether to use the timestamp received from request.                                | `false`    | no       |
+| `max_send_message_size`     | `size`               | Maximum size of a request to the push API.                                         | `"100MiB"` | no       |
+| `graceful_shutdown_timeout` | `duration`           | Timeout for server's graceful shutdown. If configured, should be greater than zero. | `"30s"`    | no       |
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
@@ -64,17 +65,28 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 ## Blocks
 
-You can use the following block with `loki.source.api`:
+You can use the following blocks with `loki.source.api`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
+[tls]: #tls
 
 ### `http`
 
-{{< docs/shared lookup="reference/components/loki-server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -93,6 +105,7 @@ The metrics include labels such as `status_code` where relevant, which can be us
 * `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
 * `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
 * `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
+* `loki_source_api_entries_written` (counter): Total number of log entries forwarded.
 
 ## Example
 
@@ -132,7 +145,7 @@ Replace the following:
 
 ### Technical details
 
-`loki.source.api` filters out all labels that start with `__`, for example,  `__tenant_id__`.
+`loki.source.api` filters out all labels that start with `__`, for example, `__tenant_id__`.
 
 If you need to be able to set the tenant ID, you must either make sure the `X-Scope-OrgID` header is present or use the [`loki.process`][loki.process] component.
 
