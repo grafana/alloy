@@ -86,7 +86,7 @@ type Component struct {
 	receiver loki.LogsReceiver
 
 	// remote write components
-	clientManger client.Manager
+	clientManger client.StoppableConsumer
 
 	// sink is the place where log entries received by this component should be written to. If WAL
 	// is enabled, this will be the WAL Writer, otherwise, the client manager
@@ -121,8 +121,12 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 
 		if c.clientManger != nil {
-			// stop and drain all client since component is shutting down.
-			c.clientManger.StopAndDrain()
+			if d, ok := c.clientManger.(client.DrainableConsumer); ok {
+				// stop and drain since component is shutting down.
+				d.StopAndDrain()
+			} else {
+				c.clientManger.Stop()
+			}
 		}
 	}()
 
@@ -184,9 +188,9 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var err error
 	if walCfg.Enabled {
-		c.clientManger, err = client.NewWALManager(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		c.clientManger, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.clientManger, err = client.NewMemoryManager(c.opts.Logger, c.opts.Registerer, cfgs...)
+		c.clientManger, err = client.NewInMemoryConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {

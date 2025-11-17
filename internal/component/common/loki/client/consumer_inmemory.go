@@ -25,13 +25,13 @@ import (
 	"github.com/grafana/dskit/backoff"
 )
 
-func NewMemoryManager(logger log.Logger, reg prometheus.Registerer, clientCfgs ...Config) (*MemoryManager, error) {
+func NewInMemoryConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs ...Config) (*InMemoryConsumer, error) {
 	if len(clientCfgs) == 0 {
 		return nil, fmt.Errorf("at least one client config must be provided")
 	}
 
-	m := &MemoryManager{
-		clients: make([]Client, 0, len(clientCfgs)),
+	m := &InMemoryConsumer{
+		clients: make([]*client, 0, len(clientCfgs)),
 		recv:    make(chan loki.Entry),
 	}
 
@@ -48,7 +48,7 @@ func NewMemoryManager(logger log.Logger, reg prometheus.Registerer, clientCfgs .
 		}
 
 		clientsCheck[clientName] = struct{}{}
-		client, err := New(metrics, cfg, logger)
+		client, err := newClient(metrics, cfg, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error starting client: %w", err)
 		}
@@ -60,16 +60,16 @@ func NewMemoryManager(logger log.Logger, reg prometheus.Registerer, clientCfgs .
 	return m, nil
 }
 
-var _ Manager = (*MemoryManager)(nil)
+var _ StoppableConsumer = (*InMemoryConsumer)(nil)
 
-type MemoryManager struct {
-	clients []Client
+type InMemoryConsumer struct {
+	clients []*client
 	wg      sync.WaitGroup
 	once    sync.Once
 	recv    chan loki.Entry
 }
 
-func (m *MemoryManager) run() {
+func (m *InMemoryConsumer) run() {
 	for e := range m.recv {
 		for _, c := range m.clients {
 			c.Chan() <- e
@@ -77,11 +77,11 @@ func (m *MemoryManager) run() {
 	}
 }
 
-func (m *MemoryManager) Chan() chan<- loki.Entry {
+func (m *InMemoryConsumer) Chan() chan<- loki.Entry {
 	return m.recv
 }
 
-func (m *MemoryManager) Stop() {
+func (m *InMemoryConsumer) Stop() {
 	// First stop the receiving channel.
 	m.once.Do(func() { close(m.recv) })
 	m.wg.Wait()
@@ -96,10 +96,6 @@ func (m *MemoryManager) Stop() {
 
 	// Wait for all clients to stop.
 	stopWG.Wait()
-}
-
-func (m *MemoryManager) StopAndDrain() {
-	m.Stop()
 }
 
 // getClientName computes the specific name for each client config. The name is either the configured Name setting in Config,
@@ -130,12 +126,6 @@ const (
 
 var userAgent = useragent.Get()
 
-// Client pushes entries to Loki and can be stopped
-type Client interface {
-	Chan() chan<- loki.Entry
-	Stop()
-}
-
 // Client for pushing logs in snappy-compressed protos over HTTP.
 type client struct {
 	metrics *Metrics
@@ -150,11 +140,6 @@ type client struct {
 	// ctx is used in any upstream calls from the `client`.
 	ctx    context.Context
 	cancel context.CancelFunc
-}
-
-// New makes a new Client.
-func New(metrics *Metrics, cfg Config, logger log.Logger) (Client, error) {
-	return newClient(metrics, cfg, logger)
 }
 
 func newClient(metrics *Metrics, cfg Config, logger log.Logger) (*client, error) {

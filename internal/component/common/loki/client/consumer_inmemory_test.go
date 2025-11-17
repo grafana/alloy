@@ -25,10 +25,10 @@ import (
 	"github.com/grafana/alloy/internal/loki/util"
 )
 
-func TestMemoryManager(t *testing.T) {
+func TestInMemoryConsumer(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 
-	manager, err := NewMemoryManager(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
+	consumer, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -39,7 +39,7 @@ func TestMemoryManager(t *testing.T) {
 	}()
 
 	defer func() {
-		manager.Stop()
+		consumer.Stop()
 		closeServer()
 	}()
 
@@ -48,7 +48,7 @@ func TestMemoryManager(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		manager.Chan() <- loki.Entry{
+		consumer.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -73,13 +73,13 @@ func TestMemoryManager(t *testing.T) {
 	require.Len(t, seenEntries, totalLines)
 }
 
-func TestMemoryManager_MultipleConfigs(t *testing.T) {
+func TestInMemoryConsumer_MultipleConfigs(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
 	testClientConfig2.Name = "test-client-2"
 
-	// start writer and manager
-	manager, err := NewMemoryManager(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
+	// start writer and consumer
+	consumer, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -98,7 +98,7 @@ func TestMemoryManager_MultipleConfigs(t *testing.T) {
 	}(ctx)
 
 	defer func() {
-		manager.Stop()
+		consumer.Stop()
 		closeServer()
 		closeServer2()
 		cancel()
@@ -109,7 +109,7 @@ func TestMemoryManager_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		manager.Chan() <- loki.Entry{
+		consumer.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -135,21 +135,21 @@ func TestMemoryManager_MultipleConfigs(t *testing.T) {
 	require.Equal(t, seenEntries, expectedTotalLines)
 }
 
-func TestMemoryManager_InvalidConfig(t *testing.T) {
+func TestInMemoryConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no clients", func(t *testing.T) {
-		_, err := NewMemoryManager(log.NewNopLogger(), prometheus.NewRegistry())
+		_, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry())
 		require.Error(t, err)
 	})
 
 	t.Run("repeated client", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewMemoryManager(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
+		_, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
 		require.Error(t, err)
 	})
 }
 
-func TestMemoryManager_NoDuplicateMetricsPanic(t *testing.T) {
+func TestInMemoryConsumer_NoDuplicateMetricsPanic(t *testing.T) {
 	var (
 		host, _ = url.Parse("http://localhost:3100")
 		reg     = prometheus.NewRegistry()
@@ -157,7 +157,7 @@ func TestMemoryManager_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for range 2 {
-			_, err := NewMemoryManager(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
+			_, err := NewInMemoryConsumer(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
 			require.NoError(t, err)
 		}
 	})
@@ -578,7 +578,7 @@ func TestClient_Handle(t *testing.T) {
 			}
 
 			m := NewMetrics(reg)
-			c, err := New(m, cfg, log.NewNopLogger())
+			c, err := newClient(m, cfg, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries

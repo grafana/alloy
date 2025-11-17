@@ -410,7 +410,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 }
 
 // newTestLokiClientTLS creates a Loki client configured for TLS connections
-func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component.Options) client.Client {
+func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component.Options) client.StoppableConsumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
 		"https://%s/api/v1/push",
@@ -418,21 +418,18 @@ func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component
 	))
 	require.NoError(t, err)
 
-	lokiClient, err := client.New(
-		client.NewMetrics(nil),
-		client.Config{
-			URL:     url,
-			Timeout: 10 * time.Second,
-			Client: promCfg.HTTPClientConfig{
-				TLSConfig: promCfg.TLSConfig{
-					InsecureSkipVerify: true,
-				},
+	c, err := client.NewInMemoryConsumer(opts.Logger, opts.Registerer, client.Config{
+		URL:     url,
+		Timeout: 10 * time.Second,
+		Client: promCfg.HTTPClientConfig{
+			TLSConfig: promCfg.TLSConfig{
+				InsecureSkipVerify: true,
 			},
 		},
-		opts.Logger,
-	)
+	})
+
 	require.NoError(t, err)
-	return lokiClient
+	return c
 }
 
 func TestDefaultServerConfig(t *testing.T) {
@@ -621,7 +618,7 @@ func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
 	return channels
 }
 
-func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.Client {
+func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.StoppableConsumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
 		"http://%s:%d/api/v1/push",
@@ -630,13 +627,13 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	))
 	require.NoError(t, err)
 
-	lokiClient, err := client.New(
-		client.NewMetrics(nil),
+	lokiClient, err := client.NewInMemoryConsumer(
+		opts.Logger,
+		opts.Registerer,
 		client.Config{
 			URL:     url,
 			Timeout: 5 * time.Second,
 		},
-		opts.Logger,
 	)
 	require.NoError(t, err)
 	return lokiClient

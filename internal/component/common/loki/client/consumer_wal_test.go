@@ -28,7 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
-func TestWALManager(t *testing.T) {
+func TestWALConsumer(t *testing.T) {
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
 		Enabled:       true,
@@ -38,7 +38,7 @@ func TestWALManager(t *testing.T) {
 	// start all necessary resources
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 
-	manager, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
+	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -49,7 +49,7 @@ func TestWALManager(t *testing.T) {
 	}()
 
 	defer func() {
-		manager.Stop()
+		consumer.Stop()
 		closeServer()
 	}()
 
@@ -58,7 +58,7 @@ func TestWALManager(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		manager.Chan() <- loki.Entry{
+		consumer.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -83,7 +83,7 @@ func TestWALManager(t *testing.T) {
 	require.Len(t, seenEntries, totalLines)
 }
 
-func TestWALManager_MultipleConfigs(t *testing.T) {
+func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
 	testClientConfig2.Name = "test-client-2"
@@ -95,7 +95,7 @@ func TestWALManager_MultipleConfigs(t *testing.T) {
 		MaxSegmentAge: time.Second * 10,
 	}
 
-	manager, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
+	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -114,7 +114,7 @@ func TestWALManager_MultipleConfigs(t *testing.T) {
 	}(ctx)
 
 	defer func() {
-		manager.Stop()
+		consumer.Stop()
 		closeServer()
 		closeServer2()
 		cancel()
@@ -125,7 +125,7 @@ func TestWALManager_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		manager.Chan() <- loki.Entry{
+		consumer.Chan() <- loki.Entry{
 			Labels: testLabels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -151,16 +151,16 @@ func TestWALManager_MultipleConfigs(t *testing.T) {
 	require.Equal(t, seenEntries, expectedTotalLines)
 }
 
-func TestWALManager_InvalidConfig(t *testing.T) {
+func TestWALConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no clients", func(t *testing.T) {
-		_, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{})
+		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{})
 		require.Error(t, err)
 	})
 
 	t.Run("repeated client", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{}, config, config)
+		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{}, config, config)
 		require.Error(t, err)
 	})
 }
@@ -497,7 +497,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, logger)
+	qc, err := newClient(m, cfg, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

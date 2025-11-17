@@ -29,7 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/useragent"
 )
 
-func NewWALManager(logger log.Logger, reg prometheus.Registerer, walCfg wal.Config, clientCfgs ...Config) (*WALManager, error) {
+func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Config, clientCfgs ...Config) (*WALConsumer, error) {
 	if len(clientCfgs) == 0 {
 		return nil, fmt.Errorf("at least one client config must be provided")
 	}
@@ -39,9 +39,9 @@ func NewWALManager(logger log.Logger, reg prometheus.Registerer, walCfg wal.Conf
 		return nil, fmt.Errorf("error creating wal writer: %w", err)
 	}
 
-	m := &WALManager{
+	m := &WALConsumer{
 		writer: writer,
-		pairs:  make([]pair, 0, len(clientCfgs)),
+		pairs:  make([]clientWatcherPair, 0, len(clientCfgs)),
 	}
 
 	var (
@@ -87,7 +87,7 @@ func NewWALManager(logger log.Logger, reg prometheus.Registerer, walCfg wal.Conf
 		level.Debug(logger).Log("msg", "starting WAL watcher for client", "client", clientName)
 		watcher.Start()
 
-		m.pairs = append(m.pairs, pair{
+		m.pairs = append(m.pairs, clientWatcherPair{
 			watcher: watcher,
 			client:  client,
 		})
@@ -96,13 +96,13 @@ func NewWALManager(logger log.Logger, reg prometheus.Registerer, walCfg wal.Conf
 	return m, nil
 }
 
-type pair struct {
+type clientWatcherPair struct {
 	watcher *wal.Watcher
 	client  *walClient
 }
 
 // Stop will proceed to stop, in order, watcher and the client.
-func (p pair) Stop(drain bool) {
+func (p clientWatcherPair) Stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
@@ -113,28 +113,28 @@ func (p pair) Stop(drain bool) {
 	p.client.Stop()
 }
 
-var _ Manager = (*WALManager)(nil)
+var _ DrainableConsumer = (*WALConsumer)(nil)
 
-type WALManager struct {
+type WALConsumer struct {
 	writer *wal.Writer
-	pairs  []pair
+	pairs  []clientWatcherPair
 }
 
-func (m *WALManager) Chan() chan<- loki.Entry {
+func (m *WALConsumer) Chan() chan<- loki.Entry {
 	return m.writer.Chan()
 }
 
-func (m *WALManager) Stop() {
+func (m *WALConsumer) Stop() {
 	m.stop(false)
 }
 
 // StopAndDrain will stop the manager, its WalWriter, Write-Ahead Log watchers,
 // and queues accordingly. It attempt to drain the WAL completely.
-func (m *WALManager) StopAndDrain() {
+func (m *WALConsumer) StopAndDrain() {
 	m.stop(true)
 }
 
-func (m *WALManager) stop(drain bool) {
+func (m *WALConsumer) stop(drain bool) {
 	m.writer.Stop()
 
 	var stopWG sync.WaitGroup
