@@ -151,6 +151,8 @@ func (e *eventProcessor) run(ctx context.Context) {
 // stop stops adding new Kubernetes events to the queue and blocks until all existing
 // events have been processed by the run loop.
 func (e *eventProcessor) stop() {
+	// TODO: This stops the informers, but the informers are not created by eventProcessor.
+	//       Create and stop the components in the same struct? To make it more clear what owns them.
 	close(e.stopChan)
 	// Because this method blocks until the queue is empty, it's important that we don't
 	// stop the run loop and let it continue to process existing items in the queue.

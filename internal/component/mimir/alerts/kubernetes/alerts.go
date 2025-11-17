@@ -128,6 +128,8 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+	//TODO: There's a chance that the startup function is stuck retrying forever.
+	// What's worse is that a config update wouldn't be able to fix it, since we haven't entered the config update loop yet.
 	c.startupWithRetries(ctx, c, c)
 
 	for {
