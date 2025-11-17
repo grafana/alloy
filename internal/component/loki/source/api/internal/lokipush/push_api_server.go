@@ -30,10 +30,13 @@ import (
 )
 
 type PushAPIServer struct {
-	logger        log.Logger
-	serverConfig  *fnet.ServerConfig
-	server        *fnet.TargetServer
-	handler       loki.LogsReceiver
+	logger       log.Logger
+	serverConfig *fnet.ServerConfig
+	server       *fnet.TargetServer
+	handler      loki.LogsBatchReceiver
+	metrics      *metrics
+
+	once          sync.Once
 	forceShutdown chan struct{}
 
 	rwMutex            sync.RWMutex
@@ -45,7 +48,7 @@ type PushAPIServer struct {
 
 func NewPushAPIServer(logger log.Logger,
 	serverConfig *fnet.ServerConfig,
-	handler loki.LogsReceiver,
+	handler loki.LogsBatchReceiver,
 	registerer prometheus.Registerer,
 	maxSendMessageSize int64,
 ) (*PushAPIServer, error) {
@@ -59,6 +62,7 @@ func NewPushAPIServer(logger log.Logger,
 		logger:             logger,
 		serverConfig:       serverConfig,
 		handler:            handler,
+		metrics:            newMetircs(registerer),
 		forceShutdown:      make(chan struct{}),
 		maxSendMessageSize: maxSendMessageSize,
 	}
@@ -126,7 +130,14 @@ func (s *PushAPIServer) Shutdown() {
 
 	// After we have tried a graceful shutdown we force all remaining in-flight
 	// requests to exit.
-	close(s.forceShutdown)
+	s.once.Do(func() { close(s.forceShutdown) })
+}
+
+// ForceShutdown will cancel all in-flight before starting server shutdown.
+func (s *PushAPIServer) ForceShutdown() {
+	level.Info(s.logger).Log("msg", "force shutdown of push API server")
+	s.once.Do(func() { close(s.forceShutdown) })
+	s.server.StopAndShutdown()
 }
 
 func (s *PushAPIServer) SetLabels(labels model.LabelSet) {
@@ -199,7 +210,10 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 	relabelRules := s.getRelabelRules()
 	keepTimestamp := s.getKeepTimestamp()
 
-	var lastErr error
+	var (
+		entries []loki.Entry
+		lastErr error
+	)
 	for _, stream := range req.Streams {
 		ls, err := promql_parser.ParseMetric(stream.Labels)
 		if err != nil {
@@ -217,8 +231,7 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		// Apply relabeling
 		processed, keep := relabel.Process(lb.Labels(), relabelRules...)
 		if !keep || processed.Len() == 0 {
-			w.WriteHeader(http.StatusNoContent)
-			return
+			continue
 		}
 
 		// Convert to model.LabelSet
@@ -250,22 +263,29 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 				e.Timestamp = time.Now()
 			}
 
-			select {
-			case s.handler.Chan() <- e:
-			case <-r.Context().Done():
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			case <-s.forceShutdown:
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			}
+			entries = append(entries, e)
 		}
 	}
 
-	if lastErr != nil {
-		level.Warn(s.logger).Log("msg", "at least one entry in the push request failed to process", "err", lastErr.Error())
-		http.Error(w, lastErr.Error(), http.StatusBadRequest)
-		return
+	numEntries := len(entries)
+	if numEntries > 0 {
+		select {
+		case s.handler.Chan() <- entries:
+		case <-r.Context().Done():
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case <-s.forceShutdown:
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+
+		s.metrics.entriesWritten.Add(float64(numEntries))
+
+		if lastErr != nil {
+			level.Warn(s.logger).Log("msg", "at least one entry in the push request failed to process", "err", lastErr.Error())
+			http.Error(w, lastErr.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -277,6 +297,9 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 	defer r.Body.Close()
 	body := bufio.NewReader(r.Body)
 	addLabels := s.getLabels()
+
+	var entries []loki.Entry
+
 	for {
 		line, err := body.ReadString('\n')
 		if err != nil && err != io.EOF {
@@ -292,10 +315,16 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 
-		entry := loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}}
+		entries = append(entries, loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}})
+		if err == io.EOF {
+			break
+		}
+	}
 
+	numEntries := len(entries)
+	if numEntries > 0 {
 		select {
-		case s.handler.Chan() <- entry:
+		case s.handler.Chan() <- entries:
 		case <-r.Context().Done():
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
@@ -303,10 +332,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-
-		if err == io.EOF {
-			break
-		}
+		s.metrics.entriesWritten.Add(float64(numEntries))
 	}
 
 	w.WriteHeader(http.StatusNoContent)
