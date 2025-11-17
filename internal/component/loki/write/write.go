@@ -190,7 +190,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if walCfg.Enabled {
 		c.clientManger, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.clientManger, err = client.NewInMemoryConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		c.clientManger, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {

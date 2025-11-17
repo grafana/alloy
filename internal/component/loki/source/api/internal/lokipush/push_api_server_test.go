@@ -94,7 +94,7 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	pc, err := client.NewInMemoryConsumer(logger, prometheus.DefaultRegisterer, client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
@@ -179,7 +179,7 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/loki/api/v1/push")
 	require.NoError(t, err)
 
-	pc, err := client.NewInMemoryConsumer(logger, prometheus.DefaultRegisterer, client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
@@ -251,7 +251,7 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	pc, err := client.NewInMemoryConsumer(logger, prometheus.DefaultRegisterer, client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,

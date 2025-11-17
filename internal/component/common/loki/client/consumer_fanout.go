@@ -25,12 +25,12 @@ import (
 	"github.com/grafana/dskit/backoff"
 )
 
-func NewInMemoryConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs ...Config) (*InMemoryConsumer, error) {
+func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs ...Config) (*FanoutConsumer, error) {
 	if len(clientCfgs) == 0 {
 		return nil, fmt.Errorf("at least one client config must be provided")
 	}
 
-	m := &InMemoryConsumer{
+	m := &FanoutConsumer{
 		clients: make([]*client, 0, len(clientCfgs)),
 		recv:    make(chan loki.Entry),
 	}
@@ -60,35 +60,35 @@ func NewInMemoryConsumer(logger log.Logger, reg prometheus.Registerer, clientCfg
 	return m, nil
 }
 
-var _ StoppableConsumer = (*InMemoryConsumer)(nil)
+var _ StoppableConsumer = (*FanoutConsumer)(nil)
 
-type InMemoryConsumer struct {
+type FanoutConsumer struct {
 	clients []*client
 	wg      sync.WaitGroup
 	once    sync.Once
 	recv    chan loki.Entry
 }
 
-func (m *InMemoryConsumer) run() {
-	for e := range m.recv {
-		for _, c := range m.clients {
+func (c *FanoutConsumer) run() {
+	for e := range c.recv {
+		for _, c := range c.clients {
 			c.Chan() <- e
 		}
 	}
 }
 
-func (m *InMemoryConsumer) Chan() chan<- loki.Entry {
-	return m.recv
+func (c *FanoutConsumer) Chan() chan<- loki.Entry {
+	return c.recv
 }
 
-func (m *InMemoryConsumer) Stop() {
+func (c *FanoutConsumer) Stop() {
 	// First stop the receiving channel.
-	m.once.Do(func() { close(m.recv) })
-	m.wg.Wait()
+	c.once.Do(func() { close(c.recv) })
+	c.wg.Wait()
 
 	var stopWG sync.WaitGroup
 	// Stop all clients.
-	for _, c := range m.clients {
+	for _, c := range c.clients {
 		stopWG.Go(func() {
 			c.Stop()
 		})

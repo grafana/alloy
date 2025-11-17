@@ -25,10 +25,10 @@ import (
 	"github.com/grafana/alloy/internal/loki/util"
 )
 
-func TestInMemoryConsumer(t *testing.T) {
+func TestFanoutConsumer(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 
-	consumer, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -73,13 +73,13 @@ func TestInMemoryConsumer(t *testing.T) {
 	require.Len(t, seenEntries, totalLines)
 }
 
-func TestInMemoryConsumer_MultipleConfigs(t *testing.T) {
+func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
 	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
 	testClientConfig2.Name = "test-client-2"
 
 	// start writer and consumer
-	consumer, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
@@ -135,21 +135,21 @@ func TestInMemoryConsumer_MultipleConfigs(t *testing.T) {
 	require.Equal(t, seenEntries, expectedTotalLines)
 }
 
-func TestInMemoryConsumer_InvalidConfig(t *testing.T) {
+func TestFanoutConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no clients", func(t *testing.T) {
-		_, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry())
+		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry())
 		require.Error(t, err)
 	})
 
 	t.Run("repeated client", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewInMemoryConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
+		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
 		require.Error(t, err)
 	})
 }
 
-func TestInMemoryConsumer_NoDuplicateMetricsPanic(t *testing.T) {
+func TestFanoutConsumer_NoDuplicateMetricsPanic(t *testing.T) {
 	var (
 		host, _ = url.Parse("http://localhost:3100")
 		reg     = prometheus.NewRegistry()
@@ -157,7 +157,7 @@ func TestInMemoryConsumer_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for range 2 {
-			_, err := NewInMemoryConsumer(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
+			_, err := NewFanoutConsumer(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
 			require.NoError(t, err)
 		}
 	})
