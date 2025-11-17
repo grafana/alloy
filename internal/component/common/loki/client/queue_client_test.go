@@ -124,7 +124,7 @@ func TestQueueClient(t *testing.T) {
 				URL:           serverURL,
 				BatchWait:     tc.batchWait,
 				BatchSize:     tc.batchSize,
-				Client:        config.HTTPClientConfig{},
+				Client:        config.DefaultHTTPClientConfig,
 				BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 				Timeout:       1 * time.Second,
 				TenantID:      "",
@@ -133,7 +133,7 @@ func TestQueueClient(t *testing.T) {
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, nilMarkerHandler{})
+			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, logger, nilMarkerHandler{})
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -264,7 +264,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 		URL:           serverURL,
 		BatchWait:     time.Millisecond * 50,
 		BatchSize:     10,
-		Client:        config.HTTPClientConfig{},
+		Client:        config.DefaultHTTPClientConfig,
 		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 		Timeout:       1 * time.Second,
 		TenantID:      "",
@@ -276,7 +276,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, 0, logger, mhFactory(b))
+	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -357,7 +357,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 		URL:           serverURL,
 		BatchWait:     time.Millisecond * 50,
 		BatchSize:     10,
-		Client:        config.HTTPClientConfig{},
+		Client:        config.DefaultHTTPClientConfig,
 		BackoffConfig: backoff.Config{MinBackoff: 5 * time.Second, MaxBackoff: 10 * time.Second, MaxRetries: 1},
 		Timeout:       1 * time.Second,
 		TenantID:      "",
@@ -370,7 +370,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := NewMetrics(reg)
-	qc, err := New(m, cfg, 0, logger)
+	qc, err := New(m, cfg, logger)
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

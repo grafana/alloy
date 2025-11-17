@@ -129,17 +129,32 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 
 	run, err := c.buildComponent(dataPath, args)
 
-	// We close c.running before checking the error, since the component will
-	// never run if we return an error anyway.
+	if err != nil {
+		c.onRun.Do(func() {
+			c.runError.Store(err)
+			close(c.running)
+		})
+		return err
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+		// ensure we signal running if the component doesn't exit within the first few hundred ms
+		case <-time.After(500 * time.Millisecond):
+			c.onRun.Do(func() {
+				close(c.running)
+			})
+		}
+	}()
+	// Ensure the error is captured for the defer
+	err = run.Run(ctx)
+
 	c.onRun.Do(func() {
 		c.runError.Store(err)
 		close(c.running)
 	})
-
-	if err != nil {
-		return err
-	}
-	return run.Run(ctx)
+	return err
 }
 
 func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {

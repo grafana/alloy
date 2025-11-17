@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type noopClient struct {
@@ -242,9 +243,69 @@ func TestDecompressor(t *testing.T) {
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
-			path:                filename,
-			labels:              labels,
-			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			path:                 filename,
+			labels:               labels,
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
+		},
+	)
+	require.NoError(t, err)
+
+	go decompressor.Run(t.Context())
+
+	select {
+	case logEntry := <-ch1.Chan():
+		require.Contains(t, logEntry.Line, "onelinelog.log")
+	case <-time.After(1 * time.Second):
+		require.FailNow(t, "failed waiting for log line")
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		pos, err := positionsFile.Get(filename, labels.String())
+		assert.NoError(c, err)
+		assert.Equal(c, int64(1), pos)
+	}, time.Second, 50*time.Millisecond)
+
+	// Run the decompressor again
+	go decompressor.Run(t.Context())
+	select {
+	case <-ch1.Chan():
+		t.Fatal("no message should be sent because of the position file")
+	case <-time.After(1 * time.Second):
+	}
+
+	positionsFile.Stop()
+}
+
+func TestDecompressorCorruptedPositionFile(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	l := util.TestLogger(t)
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	filename := "testdata/onelinelog.tar.gz"
+	labels := model.LabelSet{
+		"filename": model.LabelValue(filename),
+		"foo":      "bar",
+	}
+	positionsFile.PutString(filename, labels.String(), "\\0\\0\\0\\01345") // corrupted position entry
+	decompressor, err := newDecompressor(
+		newMetrics(nil),
+		l,
+		ch1,
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path:                 filename,
+			labels:               labels,
+			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 		},
 	)
 	require.NoError(t, err)
@@ -300,9 +361,10 @@ func TestDecompressorPositionFileEntryDeleted(t *testing.T) {
 		positionsFile,
 		func() bool { return false },
 		sourceOptions{
-			path:                filename,
-			labels:              labels,
-			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			path:                 filename,
+			labels:               labels,
+			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 		},
 	)
 	require.NoError(t, err)
@@ -348,9 +410,10 @@ func TestDecompressor_RunCalledTwice(t *testing.T) {
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
-			path:                filename,
-			labels:              labels,
-			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			path:                 filename,
+			labels:               labels,
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
 		},
 	)
 	require.NoError(t, err)

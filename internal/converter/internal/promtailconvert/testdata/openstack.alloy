@@ -31,18 +31,18 @@ discovery.openstack "prometheus1_2" {
 	region = "region2"
 }
 
-local.file_match "prometheus1" {
-	path_targets = array.concat(
+loki.source.file "prometheus1" {
+	targets = array.concat(
 		discovery.openstack.prometheus1.targets,
 		discovery.openstack.prometheus1_2.targets,
 		[{
 			__address__ = "localhost:9090",
 		}],
 	)
-}
+	forward_to = []
 
-loki.source.file "prometheus1" {
-	targets               = local.file_match.prometheus1.targets
-	forward_to            = []
+	file_match {
+		enabled = true
+	}
 	legacy_positions_file = "/var/log/positions.yaml"
 }

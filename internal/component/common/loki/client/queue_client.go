@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/useragent"
@@ -30,7 +31,6 @@ import (
 type StoppableWriteTo interface {
 	wal.WriteTo
 	Stop()
-	StopNow()
 }
 
 // MarkerHandler re-defines the interface of internal.MarkerHandler that the queue client interacts with, to contribute
@@ -64,8 +64,7 @@ func newQueue(client *queueClient, size int, logger log.Logger) *queue {
 		logger: logger,
 	}
 
-	q.wg.Add(1)
-	go q.run()
+	q.wg.Go(func() { q.run() })
 
 	return &q
 }
@@ -88,8 +87,6 @@ func (q *queue) enqueueWithCancel(ctx context.Context, qb queuedBatch) bool {
 }
 
 func (q *queue) run() {
-	defer q.wg.Done()
-
 	for {
 		select {
 		case <-q.quit:
@@ -139,13 +136,6 @@ func (q *queue) sendAndReport(ctx context.Context, tenantId string, b *batch) {
 	b.reportAsSentData(q.client.markerHandler)
 }
 
-// closeNow closes the queue, without draining batches that might be buffered to be sent.
-func (q *queue) closeNow() {
-	close(q.quit)
-	q.wg.Wait()
-	close(q.q)
-}
-
 // queueClient is a WAL-specific remote write client implementation. This client attests to the wal.WriteTo interface,
 // which allows it to be injected in the wal.Watcher as a destination where to write read series and entries. As the watcher
 // reads from the WAL, batches are created and dispatched onto a send queue when ready to be sent.
@@ -171,17 +161,16 @@ type queueClient struct {
 	// ctx is used in any upstream calls from the `client`.
 	ctx           context.Context
 	cancel        context.CancelFunc
-	maxStreams    int
 	quit          chan struct{}
 	markerHandler MarkerHandler
 }
 
 // NewQueue creates a new queueClient.
-func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
-	return newQueueClient(metrics, queueClientMetrics, cfg, maxStreams, logger, markerHandler)
+func NewQueue(metrics *Metrics, queueClientMetrics *QueueClientMetrics, cfg Config, logger log.Logger, markerHandler MarkerHandler) (StoppableWriteTo, error) {
+	return newQueueClient(metrics, queueClientMetrics, cfg, logger, markerHandler)
 }
 
-func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, maxStreams int, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
+func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config, logger log.Logger, markerHandler MarkerHandler) (*queueClient, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("client needs target URL")
 	}
@@ -202,9 +191,8 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		series:        make(map[chunks.HeadSeriesRef]model.LabelSet),
 		seriesSegment: make(map[chunks.HeadSeriesRef]int),
 
-		ctx:        ctx,
-		cancel:     cancel,
-		maxStreams: maxStreams,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	// The buffered channel size is calculated using the configured capacity, which is the worst case number of bytes
@@ -217,15 +205,14 @@ func newQueueClient(metrics *Metrics, qcMetrics *QueueClientMetrics, cfg Config,
 		return nil, err
 	}
 
-	c.client, err = config.NewClientFromConfig(cfg.Client, useragent.ProductName, config.WithHTTP2Disabled())
+	c.client, err = config.NewClientFromConfig(cfg.Client, useragent.ProductName)
 	if err != nil {
 		return nil, err
 	}
 
 	c.client.Timeout = cfg.Timeout
 
-	c.wg.Add(1)
-	go c.runSendOldBatches()
+	c.wg.Go(func() { c.runSendOldBatches() })
 	return c, nil
 }
 
@@ -300,10 +287,10 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 
 	// If the batch doesn't exist yet, we create a new one with the entry
 	if !ok {
-		nb := newBatch(c.maxStreams)
+		nb := newBatch(c.cfg.MaxStreams)
 		// since the batch is new, adding a new entry, and hence a new stream, won't fail since there aren't any stream
 		// registered in the batch.
-		_ = nb.addFromWAL(lbs, e, segmentNum)
+		_ = nb.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 
 		c.batches[tenantID] = nb
 		c.batchesMtx.Unlock()
@@ -320,8 +307,8 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 			Batch:    batch,
 		})
 
-		nb := newBatch(c.maxStreams)
-		_ = nb.addFromWAL(lbs, e, segmentNum)
+		nb := newBatch(c.cfg.MaxStreams)
+		_ = nb.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 		c.batches[tenantID] = nb
 		c.batchesMtx.Unlock()
 
@@ -329,7 +316,7 @@ func (c *queueClient) appendSingleEntry(segmentNum int, lbs model.LabelSet, e pu
 	}
 
 	// The max size of the batch isn't reached, so we can add the entry
-	err := batch.addFromWAL(lbs, e, segmentNum)
+	err := batch.add(loki.Entry{Labels: lbs, Entry: e}, segmentNum)
 	c.batchesMtx.Unlock()
 
 	if err != nil {
@@ -361,7 +348,6 @@ func (c *queueClient) runSendOldBatches() {
 	// pablo: maybe this should be moved out
 	defer func() {
 		maxWaitCheck.Stop()
-		c.wg.Done()
 	}()
 
 	var batchesToFlush []queuedBatch
@@ -562,16 +548,6 @@ func (c *queueClient) Stop() {
 	// stop request after drain times out or exits
 	c.cancel()
 
-	c.markerHandler.Stop()
-}
-
-// StopNow stops the client without retries or draining the send queue
-func (c *queueClient) StopNow() {
-	// cancel will stop retrying http requests.
-	c.cancel()
-	close(c.quit)
-	c.sendQueue.closeNow()
-	c.wg.Wait()
 	c.markerHandler.Stop()
 }
 
