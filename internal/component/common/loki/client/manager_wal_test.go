@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -26,6 +28,143 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
+func TestWALManager(t *testing.T) {
+	walConfig := wal.Config{
+		Dir:           t.TempDir(),
+		Enabled:       true,
+		MaxSegmentAge: time.Second * 10,
+		WatchConfig:   wal.DefaultWatchConfig,
+	}
+	// start all necessary resources
+	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+
+	manager, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig)
+	require.NoError(t, err)
+
+	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	go func() {
+		for req := range rwReceivedReqs {
+			receivedRequests.Append(req)
+		}
+	}()
+
+	defer func() {
+		manager.Stop()
+		closeServer()
+	}()
+
+	var testLabels = model.LabelSet{
+		"wal_enabled": "true",
+	}
+	var totalLines = 100
+	for i := range totalLines {
+		manager.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("line%d", i),
+			},
+		}
+	}
+
+	require.Eventually(t, func() bool {
+		return receivedRequests.Length() == totalLines
+	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+
+	var seenEntries = map[string]struct{}{}
+	// assert over rw client received entries
+	defer receivedRequests.DoneIterate()
+	for _, req := range receivedRequests.StartIterate() {
+		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
+		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
+		require.Equal(t, `{wal_enabled="true"}`, req.Request.Streams[0].Labels)
+		seenEntries[req.Request.Streams[0].Entries[0].Line] = struct{}{}
+	}
+	require.Len(t, seenEntries, totalLines)
+}
+
+func TestWALManager_MultipleConfigs(t *testing.T) {
+	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
+	testClientConfig2.Name = "test-client-2"
+
+	walConfig := wal.Config{
+		Dir:           t.TempDir(),
+		Enabled:       true,
+		WatchConfig:   wal.DefaultWatchConfig,
+		MaxSegmentAge: time.Second * 10,
+	}
+
+	manager, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testClientConfig, testClientConfig2)
+	require.NoError(t, err)
+
+	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	ctx, cancel := context.WithCancel(t.Context())
+	go func(ctx context.Context) {
+		for {
+			select {
+			case req := <-rwReceivedReqs:
+				receivedRequests.Append(req)
+			case req := <-rwReceivedReqs2:
+				receivedRequests.Append(req)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}(ctx)
+
+	defer func() {
+		manager.Stop()
+		closeServer()
+		closeServer2()
+		cancel()
+	}()
+
+	var testLabels = model.LabelSet{
+		"pizza-flavour": "fugazzeta",
+	}
+	var totalLines = 100
+	for i := range totalLines {
+		manager.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("line%d", i),
+			},
+		}
+	}
+
+	// times 2 due to clients being run
+	expectedTotalLines := totalLines * 2
+	require.Eventually(t, func() bool {
+		return receivedRequests.Length() == expectedTotalLines
+	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+
+	var seenEntries int
+	// assert over rw client received entries
+	defer receivedRequests.DoneIterate()
+	for _, req := range receivedRequests.StartIterate() {
+		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
+		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
+		seenEntries += 1
+	}
+	require.Equal(t, seenEntries, expectedTotalLines)
+}
+
+func TestWALManager_InvalidConfig(t *testing.T) {
+	t.Run("no clients", func(t *testing.T) {
+		_, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{})
+		require.Error(t, err)
+	})
+
+	t.Run("repeated client", func(t *testing.T) {
+		host, _ := url.Parse("http://localhost:3100")
+		config := Config{URL: flagext.URLValue{URL: host}}
+		_, err := NewWALManager(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{}, config, config)
+		require.Error(t, err)
+	})
+}
+
 type testCase struct {
 	// numLines is the total number of lines sent through the client in the benchmark.
 	numLines int
@@ -43,18 +182,7 @@ type testCase struct {
 	expectedRWReqsCount int64
 }
 
-type nilMarkerHandler struct{}
-
-func (n nilMarkerHandler) UpdateReceivedData(segmentId, dataCount int) {
-}
-
-func (n nilMarkerHandler) UpdateSentData(segmentId, dataCount int) {
-}
-
-func (n nilMarkerHandler) Stop() {
-}
-
-func TestQueueClient(t *testing.T) {
+func TestWALClient(t *testing.T) {
 	for name, tc := range map[string]testCase{
 		"small test": {
 			numLines:  3,
@@ -133,7 +261,7 @@ func TestQueueClient(t *testing.T) {
 
 			logger := log.NewLogfmtLogger(os.Stdout)
 
-			qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, logger, nilMarkerHandler{})
+			wc, err := newWalClient(NewMetrics(reg), NewWALClientMetrics(reg).CurryWithId("test"), cfg, logger, internal.NewNopMarkerHandler())
 			require.NoError(t, err)
 
 			//labels := model.LabelSet{"app": "test"}
@@ -145,7 +273,7 @@ func TestQueueClient(t *testing.T) {
 			// Send all the input log entries
 			for i, l := range lines {
 				mod := i % tc.numSeries
-				qc.StoreSeries([]record.RefSeries{
+				wc.StoreSeries([]record.RefSeries{
 					{
 						Labels: labels.New(
 							labels.Label{Name: "app", Value: fmt.Sprintf("test-%d", mod)},
@@ -154,7 +282,7 @@ func TestQueueClient(t *testing.T) {
 					},
 				}, 0)
 
-				_ = qc.AppendEntries(wal.RefEntries{
+				_ = wc.AppendEntries(wal.RefEntries{
 					Ref: chunks.HeadSeriesRef(mod),
 					Entries: []push.Entry{{
 						Timestamp: time.Now(),
@@ -172,7 +300,7 @@ func TestQueueClient(t *testing.T) {
 			}
 
 			// Stop the client: it waits until the current batch is sent
-			qc.Stop()
+			wc.Stop()
 			close(receivedReqsChan)
 		})
 	}
@@ -202,14 +330,14 @@ func BenchmarkClientImplementations(b *testing.B) {
 		},
 	} {
 		b.Run(name, func(b *testing.B) {
-			b.Run("implementation=queue_nil_marker_handler", func(b *testing.B) {
-				runQueueClientBenchCase(b, bc, func(t *testing.B) MarkerHandler {
-					return &nilMarkerHandler{}
+			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
+				runWALClientBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
+					return internal.NewNopMarkerHandler()
 				})
 			})
 
-			b.Run("implementation=queue_marker_handler", func(b *testing.B) {
-				runQueueClientBenchCase(b, bc, func(t *testing.B) MarkerHandler {
+			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
+				runWALClientBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
 					dir := b.TempDir()
 					nopLogger := log.NewNopLogger()
 
@@ -229,7 +357,7 @@ func BenchmarkClientImplementations(b *testing.B) {
 	}
 }
 
-func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) MarkerHandler) {
+func runWALClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) internal.MarkerHandler) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -276,7 +404,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 
 	logger := log.NewLogfmtLogger(os.Stdout)
 
-	qc, err := NewQueue(NewMetrics(reg), NewQueueClientMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
+	qc, err := newWalClient(NewMetrics(reg), NewWALClientMetrics(reg).CurryWithId("test"), cfg, logger, mhFactory(b))
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}
@@ -285,8 +413,7 @@ func runQueueClientBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 		lines = append(lines, fmt.Sprintf("hola %d", i))
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
@@ -379,8 +506,7 @@ func runRegularClientBenchCase(b *testing.B, bc testCase) {
 		lines = append(lines, fmt.Sprintf("hola %d", i))
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries

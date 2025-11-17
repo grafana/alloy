@@ -46,9 +46,7 @@ type dataUpdate struct {
 	dataCount int
 }
 
-var (
-	_ MarkerHandler = (*markerHandler)(nil)
-)
+var _ MarkerHandler = (*markerHandler)(nil)
 
 // NewMarkerHandler creates a new markerHandler.
 func NewMarkerHandler(mfh MarkerFileHandler, maxSegmentAge time.Duration, logger log.Logger, metrics *MarkerMetrics) MarkerHandler {
@@ -212,3 +210,19 @@ func FindMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 
 	return lastZero
 }
+
+func NewNopMarkerHandler() *NopMarkerHandler {
+	return &NopMarkerHandler{}
+}
+
+var _ MarkerHandler = (*NopMarkerHandler)(nil)
+
+type NopMarkerHandler struct{}
+
+func (n *NopMarkerHandler) LastMarkedSegment() int { return 0 }
+
+func (n *NopMarkerHandler) UpdateReceivedData(segmentId int, dataCount int) {}
+
+func (n *NopMarkerHandler) UpdateSentData(segmentId int, dataCount int) {}
+
+func (n *NopMarkerHandler) Stop() {}
