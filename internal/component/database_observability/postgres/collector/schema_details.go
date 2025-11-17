@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -28,12 +29,15 @@ const (
 )
 
 const (
+	excludedDatabases = `('azure_maintenance')`
+
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
-		SELECT datname 
-		FROM pg_database 
+		SELECT datname
+		FROM pg_database
 		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')`
+			AND has_database_privilege(datname, 'CONNECT')
+			AND datname NOT IN ` + excludedDatabases
 
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
@@ -167,9 +171,9 @@ const (
 )
 
 type tableInfo struct {
-	database     string
-	schema       string
-	tableName    string
+	database     database
+	schema       schema
+	tableName    table
 	updateTime   time.Time
 	b64TableSpec string
 }
@@ -205,6 +209,77 @@ type foreignKey struct {
 	ReferencedColumnName string `json:"referenced_column_name"`
 }
 
+type database string
+type schema string
+type table string
+
+// TableRegistry is a source-of-truth cache that keeps track of databases, schemas, tables
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[database]map[schema]map[table]struct{}
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[database]map[schema]map[table]struct{}),
+	}
+}
+
+func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	delete(tr.tables, database)
+
+	if len(tablesInfo) > 0 {
+		tr.tables[database] = make(map[schema]map[table]struct{})
+		for _, tblInfo := range tablesInfo {
+			if tr.tables[database][tblInfo.schema] == nil {
+				tr.tables[database][tblInfo.schema] = make(map[table]struct{})
+			}
+			tr.tables[database][tblInfo.schema][tblInfo.tableName] = struct{}{}
+		}
+	}
+}
+
+// IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry
+func (tr *TableRegistry) IsValid(database database, parsedTableName string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return false
+	}
+
+	schemaName, tableName := parseSchemaQualifiedIfAny(parsedTableName)
+	switch schemaName {
+	case "": // parsedTableName isn't schema-qualified, e.g. SELECT * FROM table_name.
+		// table name can only be validated as "exists somewhere in the database", see limitation: https://github.com/grafana/alloy/issues/4815
+		for _, tables := range schemas {
+			if _, ok := tables[tableName]; ok {
+				return true
+			}
+		}
+	default: // parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+		if tables, ok := schemas[schemaName]; ok {
+			_, ok := tables[tableName]
+			return ok
+		}
+	}
+
+	return false
+}
+
+// parseSchemaQualifiedIfAny returns separated schema and table if the parsedTableName is schema-qualified, e.g. SELECT * FROM schema_name.table_name
+func parseSchemaQualifiedIfAny(parsedTableName string) (schema, table) {
+	parts := strings.SplitN(parsedTableName, ".", 2)
+	if len(parts) == 2 {
+		return schema(parts[0]), table(parts[1])
+	}
+	return "", table(parsedTableName)
+}
+
 type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	DSN             string
@@ -232,6 +307,8 @@ type SchemaDetails struct {
 	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
 	cache *expirable.LRU[string, *tableInfo]
 
+	tableRegistry *TableRegistry
+
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -250,6 +327,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		entryHandler:        args.EntryHandler,
+		tableRegistry:       NewTableRegistry(),
 		logger:              log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:             &atomic.Bool{},
 	}
@@ -263,6 +341,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -367,10 +449,10 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 	tables := []*tableInfo{}
 
-	for _, schema := range schemas {
-		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schema)
+	for _, schemaName := range schemas {
+		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to query tables", "datname", dbName, "schema", schema, "err", err)
+			level.Error(c.logger).Log("msg", "failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
 			break
 		}
 		defer rs.Close()
@@ -378,20 +460,20 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		for rs.Next() {
 			var tableName string
 			if err := rs.Scan(&tableName); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan tables", "datname", dbName, "schema", schema, "err", err)
+				level.Error(c.logger).Log("msg", "failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
 				break
 			}
 			tables = append(tables, &tableInfo{
-				database:   dbName,
-				schema:     schema,
-				tableName:  tableName,
+				database:   database(dbName),
+				schema:     schema(schemaName),
+				tableName:  table(tableName),
 				updateTime: time.Now(),
 			})
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_TABLE_DETECTION,
-				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schema, tableName),
+				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
 			)
 		}
 
@@ -399,6 +481,8 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 			return fmt.Errorf("failed to iterate over tables result set for database %s: %w", dbName, err)
 		}
 	}
+
+	c.tableRegistry.SetTablesForDatabase(database(dbName), tables)
 
 	if len(tables) == 0 {
 		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "datname", dbName)
@@ -495,7 +579,7 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 	return table, nil
 }
 
-func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName, schemaName, tableName string, dbConnection *sql.DB) (*tableSpec, error) {
+func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName database, schemaName schema, tableName table, dbConnection *sql.DB) (*tableSpec, error) {
 	qualifiedTableName := fmt.Sprintf("%s.%s", schemaName, tableName)
 	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, qualifiedTableName)
 	if err != nil {

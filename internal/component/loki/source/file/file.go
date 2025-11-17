@@ -43,19 +43,44 @@ const (
 // Arguments holds values which are used to configure the loki.source.file
 // component.
 type Arguments struct {
-	Targets             []discovery.Target  `alloy:"targets,attr"`
-	ForwardTo           []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Encoding            string              `alloy:"encoding,attr,optional"`
-	DecompressionConfig DecompressionConfig `alloy:"decompression,block,optional"`
-	FileWatch           FileWatch           `alloy:"file_watch,block,optional"`
-	FileMatch           FileMatch           `alloy:"file_match,block,optional"`
-	TailFromEnd         bool                `alloy:"tail_from_end,attr,optional"`
-	LegacyPositionsFile string              `alloy:"legacy_positions_file,attr,optional"`
+	Targets              []discovery.Target   `alloy:"targets,attr"`
+	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	Encoding             string               `alloy:"encoding,attr,optional"`
+	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
+	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
+	FileMatch            FileMatch            `alloy:"file_match,block,optional"`
+	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
+	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
+	OnPositionsFileError OnPositionsFileError `alloy:"on_positions_file_error,attr,optional"`
+}
+
+type OnPositionsFileError string
+
+const (
+	OnPositionsFileErrorSkip             OnPositionsFileError = "skip"
+	OnPositionsFileErrorRestartEnd       OnPositionsFileError = "restart_from_end"
+	OnPositionsFileErrorRestartBeginning OnPositionsFileError = "restart_from_beginning"
+)
+
+func (o OnPositionsFileError) MarshalText() ([]byte, error) {
+	return []byte(string(o)), nil
+}
+
+func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
+	s := OnPositionsFileError(text)
+	switch s {
+	case OnPositionsFileErrorSkip, OnPositionsFileErrorRestartEnd, OnPositionsFileErrorRestartBeginning:
+		*o = s
+	default:
+		return fmt.Errorf("unknown OnPositionsFileError value: %s", s)
+	}
+	return nil
 }
 
 func (a *Arguments) SetToDefault() {
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
+	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
 }
 
 func (a *Arguments) Validate() error {
@@ -326,13 +351,14 @@ func (c *Component) scheduleSources() {
 		c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
 		source, err := c.newSource(sourceOptions{
-			path:                target.Path,
-			labels:              target.Labels,
-			encoding:            c.args.Encoding,
-			decompressionConfig: c.args.DecompressionConfig,
-			fileWatch:           c.args.FileWatch,
-			tailFromEnd:         c.args.TailFromEnd,
-			legacyPositionUsed:  c.args.LegacyPositionsFile != "",
+			path:                 target.Path,
+			labels:               target.Labels,
+			encoding:             c.args.Encoding,
+			decompressionConfig:  c.args.DecompressionConfig,
+			fileWatch:            c.args.FileWatch,
+			tailFromEnd:          c.args.TailFromEnd,
+			onPositionsFileError: c.args.OnPositionsFileError,
+			legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 		})
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create file source", "error", err, "filename", target.Path)
@@ -389,13 +415,14 @@ func (c *Component) DebugInfo() any {
 }
 
 type sourceOptions struct {
-	path                string
-	labels              model.LabelSet
-	encoding            string
-	decompressionConfig DecompressionConfig
-	fileWatch           FileWatch
-	tailFromEnd         bool
-	legacyPositionUsed  bool
+	path                 string
+	labels               model.LabelSet
+	encoding             string
+	decompressionConfig  DecompressionConfig
+	fileWatch            FileWatch
+	tailFromEnd          bool
+	onPositionsFileError OnPositionsFileError
+	legacyPositionUsed   bool
 }
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.

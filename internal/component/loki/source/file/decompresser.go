@@ -50,6 +50,8 @@ type decompressor struct {
 
 	posAndSizeMtx sync.RWMutex
 
+	onPositionsFileError OnPositionsFileError
+
 	running *atomic.Bool
 
 	decoder *encoding.Decoder
@@ -76,7 +78,19 @@ func newDecompressor(
 
 	position, err := pos.Get(opts.path, labelsStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get positions: %w", err)
+		switch opts.onPositionsFileError {
+		case OnPositionsFileErrorSkip:
+			return nil, fmt.Errorf("failed to get file position: %w", err)
+		case OnPositionsFileErrorRestartEnd:
+			level.Warn(logger).Log("msg", "`restart_from_end` is not supported for compressed files, defaulting to `restart_from_beginning`")
+			fallthrough
+		default:
+			level.Warn(logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", opts.onPositionsFileError)
+			fallthrough
+		case OnPositionsFileErrorRestartBeginning:
+			position = 0
+			level.Info(logger).Log("msg", "reset position to start of file after positions error", "original_error", err)
+		}
 	}
 
 	decoder, err := getDecoder(opts.encoding)
@@ -85,17 +99,18 @@ func newDecompressor(
 	}
 
 	decompressor := &decompressor{
-		metrics:           metrics,
-		logger:            logger,
-		receiver:          receiver,
-		positions:         pos,
-		key:               positions.Entry{Path: opts.path, Labels: labelsStr},
-		labels:            opts.labels,
-		running:           atomic.NewBool(false),
-		position:          position,
-		decoder:           decoder,
-		cfg:               opts.decompressionConfig,
-		componentStopping: componentStopping,
+		metrics:              metrics,
+		logger:               logger,
+		receiver:             receiver,
+		positions:            pos,
+		key:                  positions.Entry{Path: opts.path, Labels: labelsStr},
+		labels:               opts.labels,
+		running:              atomic.NewBool(false),
+		position:             position,
+		decoder:              decoder,
+		cfg:                  opts.decompressionConfig,
+		onPositionsFileError: opts.onPositionsFileError,
+		componentStopping:    componentStopping,
 	}
 
 	return decompressor, nil

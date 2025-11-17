@@ -53,8 +53,6 @@ func TestTail(t *testing.T) {
 	t.Run("should be able to stop", func(t *testing.T) {
 		tail, err := TailFile("README.md", Config{})
 		assert.NoError(t, err)
-
-		go consume(tail)
 		assert.NoError(t, tail.Stop())
 	})
 
@@ -143,16 +141,12 @@ func TestTail(t *testing.T) {
 		offset, err := tail.Tell()
 		assert.NoError(t, err)
 
-		// consume rest so we can close
-		go consume(tail)
 		tail.Stop()
 
 		tail = tailTest.StartTail("test.txt", Config{Location: &SeekInfo{offset, io.SeekStart}})
 		l := <-tail.Lines
 		assert.Equal(t, "again", l.Text)
 
-		// consume rest so we can stop
-		go consume(tail)
 		tail.Stop()
 	})
 
@@ -288,10 +282,4 @@ func (t TailTest) StartTail(name string, config Config) *Tail {
 	tail, err := TailFile(t.path+"/"+name, config)
 	assert.NoError(t.t, err)
 	return tail
-}
-
-// consume consumes lines from tail
-func consume(tail *Tail) {
-	for range tail.Lines {
-	}
 }

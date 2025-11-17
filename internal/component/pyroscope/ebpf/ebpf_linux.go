@@ -65,7 +65,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	if err != nil {
 		return nil, err
 	}
-	cfg.FileObserver = nfs
+	cfg.ExecutableReporter = nfs
 
 	if dynamicProfilingPolicy {
 		cfg.Policy = &dynamicprofiling.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
@@ -138,8 +138,10 @@ func (c *Component) Run(ctx context.Context) error {
 	c.metrics.profilingSessionsTotal.Inc()
 	defer func() {
 		ctlr.Shutdown()
-		if c.cfg.FileObserver != nil {
-			c.cfg.FileObserver.Cleanup()
+		if c.cfg.ExecutableReporter != nil {
+			if nfs, ok := c.cfg.ExecutableReporter.(*irsymcache.Resolver); ok {
+				nfs.Cleanup()
+			}
 		}
 	}()
 

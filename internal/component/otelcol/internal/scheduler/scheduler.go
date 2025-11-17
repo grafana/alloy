@@ -112,8 +112,12 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	updateConsumers()
 
 	// 4. Start the new components
-	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cs.schedComponents))
-	cs.schedComponents = cs.startComponents(ctx, h, cc...)
+	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cc))
+	var err error
+	cs.schedComponents, err = cs.startComponents(ctx, h, cc...)
+	if err != nil {
+		level.Error(cs.log).Log("msg", "failed to start some scheduled components", "err", err)
+	}
 	cs.host = h
 	//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
 
@@ -128,10 +132,14 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 	cs.running = true
 
 	cs.onPause()
-	cs.startComponents(ctx, cs.host, cs.schedComponents...)
+	started, err := cs.startComponents(ctx, cs.host, cs.schedComponents...)
 	cs.onResume()
 
 	cs.schedMut.Unlock()
+
+	if len(started) == 0 && err != nil {
+		return fmt.Errorf("no components started successfully: %w", err)
+	}
 
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
@@ -157,9 +165,7 @@ func (cs *Scheduler) stopComponents(ctx context.Context, cc ...otelcomponent.Com
 
 // startComponent schedules the provided components from cc. It then returns
 // the list of components which started successfully.
-func (cs *Scheduler) startComponents(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component) {
-	var errs error
-
+func (cs *Scheduler) startComponents(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component, errs error) {
 	for _, c := range cc {
 		if err := c.Start(ctx, h); err != nil {
 			level.Error(cs.log).Log("msg", "failed to start scheduled component", "err", err)
@@ -183,7 +189,7 @@ func (cs *Scheduler) startComponents(ctx context.Context, h otelcomponent.Host, 
 		})
 	}
 
-	return started
+	return started, errs
 }
 
 // CurrentHealth implements component.HealthComponent. The component is
