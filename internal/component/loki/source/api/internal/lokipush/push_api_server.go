@@ -215,8 +215,6 @@ func (s *PushAPIServer) handleLoki(w http.ResponseWriter, r *http.Request) {
 		lastErr error
 	)
 	for _, stream := range req.Streams {
-		s.metrics.entriesProcessed.Add(float64(len(stream.Entries)))
-
 		ls, err := promql_parser.ParseMetric(stream.Labels)
 		if err != nil {
 			lastErr = err
@@ -317,9 +315,7 @@ func (s *PushAPIServer) handlePlaintext(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 
-		s.metrics.entriesProcessed.Inc()
 		entries = append(entries, loki.Entry{Labels: addLabels, Entry: lokipush.Entry{Timestamp: time.Now(), Line: line}})
-
 		if err == io.EOF {
 			break
 		}
