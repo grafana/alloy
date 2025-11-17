@@ -14,6 +14,8 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
+- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
+
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
@@ -119,8 +121,6 @@ v1.12.0-rc.0
 - `loki.source.api` during component shutdown will now reject all the inflight requests with status code 503 after `graceful_shutdown_timeout` has expired. (@kalleep)
 
 - `kubernetes.discovery` Add support for attaching namespace metadata. (@kgeckhart)
-
-- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
 
 ### Bugfixes
 
