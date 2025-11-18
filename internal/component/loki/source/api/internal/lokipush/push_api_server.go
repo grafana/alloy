@@ -119,6 +119,14 @@ func (s *PushAPIServer) ServerConfig() fnet.ServerConfig {
 	return *s.serverConfig
 }
 
+func (s *PushAPIServer) HTTPListenAddress() string {
+	return s.server.HTTPListenAddr()
+}
+
+func (s *PushAPIServer) GRPCListenAddress() string {
+	return s.server.GRPCListenAddr()
+}
+
 func (s *PushAPIServer) Shutdown() {
 	level.Info(s.logger).Log("msg", "stopping push API server")
 	// StopAndShutdown tries to gracefully shutdown.
