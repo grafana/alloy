@@ -76,7 +76,7 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels) *Target {
 	// Precompute the hash of the target from the public labels and the ID of the
 	// target.
 	hasher := xxhash.New()
-	_, _ = fmt.Fprintf(hasher, "%016d", publicLabels.Hash())
+	_, _ = fmt.Fprintf(hasher, "%016d", labels.StableHash(publicLabels))
 	_, _ = fmt.Fprint(hasher, id)
 	_, _ = fmt.Fprint(hasher, uid)
 	hash := hasher.Sum64()
