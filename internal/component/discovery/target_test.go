@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -835,7 +836,7 @@ func TestHashLargeLabelSets(t *testing.T) {
 	require.Equal(t, uint64(expectedAllLabelsHash), target.HashLabelsWithPredicate(func(key string) bool {
 		return true
 	}))
-	require.Equal(t, uint64(expectedAllLabelsHash), target.PromLabels().Hash()) // check it matches Prometheus algo
+	require.Equal(t, uint64(expectedAllLabelsHash), labels.StableHash(target.PromLabels())) // check it matches Prometheus algo
 
 	var allNonMetaLabels []string
 	target.ForEachLabel(func(k string, v string) bool {
