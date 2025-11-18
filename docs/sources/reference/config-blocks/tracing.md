@@ -26,9 +26,10 @@ tracing {
 You can use the following arguments with `tracing`:
 
 | Name                | Type                     | Description                                         | Default | Required |
-| ------------------- | ------------------------ | --------------------------------------------------- | ------- | -------- |
+|---------------------|--------------------------|-----------------------------------------------------|---------|----------|
 | `sampling_fraction` | `number`                 | Fraction of traces to keep.                         | `0.1`   | no       |
 | `write_to`          | `list(otelcol.Consumer)` | Inputs from `otelcol` components to send traces to. | `[]`    | no       |
+| `send_traceparent`  | `bool`                   | Send traceparent header with traces                 | `false` | no       |
 
 The `write_to` argument controls which components to send traces to for processing.
 The elements in the array can be any `otelcol` component that accept traces, including processors and exporters.
@@ -41,6 +42,8 @@ Any traces generated before the `tracing` block has been evaluated,such as at th
 The `sampling_fraction` argument controls what percentage of generated traces should be sent to the consumers specified by `write_to`.
 When set to `1` or greater, 100% of traces are kept.
 When set to `0` or lower, 0% of traces are kept.
+
+The `send_traceparent` argument controls whether the `traceparent` header is sent with requests to other services.
 
 ## Blocks
 
@@ -85,6 +88,7 @@ If the remote sampling strategy exceeds the limit, sampling decisions fall back 
 ```alloy
 tracing {
   sampling_fraction = 0.1
+  send_traceparent = true
 
   write_to = [otelcol.exporter.otlp.tempo.input]
 }
