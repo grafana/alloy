@@ -169,13 +169,13 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 ## Debug metrics
 
-| Metric Name                                    | Type        | Description                                                              |
-| ---------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
-| `mimir_alerts_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.                                   |
-| `mimir_alerts_config_updates_total`            | `counter`   | Number of times the configuration has been updated.                      |
-| `mimir_alerts_events_failed_total`             | `counter`   | Number of events that failed to be processed, partitioned by event type. |
-| `mimir_alerts_events_retried_total`            | `counter`   | Number of events that were retried, partitioned by event type.           |
-| `mimir_alerts_events_total`                    | `counter`   | Number of events processed, partitioned by event type.                   |
+| Metric Name                                          | Type        | Description                                                              |
+| ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------ |
+| `mimir_alerts_mimir_client_request_duration_seconds` | `histogram` | Duration of requests to the Mimir API.                                   |
+| `mimir_alerts_config_updates_total`                  | `counter`   | Number of times the configuration has been updated.                      |
+| `mimir_alerts_events_failed_total`                   | `counter`   | Number of events that failed to be processed, partitioned by event type. |
+| `mimir_alerts_events_retried_total`                  | `counter`   | Number of events that were retried, partitioned by event type.           |
+| `mimir_alerts_events_total`                          | `counter`   | Number of events processed, partitioned by event type.                   |
 
 ## Example
 
