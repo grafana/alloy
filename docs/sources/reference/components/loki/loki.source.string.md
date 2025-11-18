@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.string/
 aliases:
   - ../loki.source.string/ # /docs/alloy/latest/reference/components/loki.source.string/
-description: Learn about loki.string
+description: Learn about loki.source.string
 labels:
   stage: general-availability
   products:
