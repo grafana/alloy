@@ -153,6 +153,9 @@ func (args Attributes) Convert() beyla.Attributes {
 	attrs.Kubernetes.DisableInformers = args.Kubernetes.DisableInformers
 	attrs.Kubernetes.MetaRestrictLocalNode = args.Kubernetes.MetaRestrictLocalNode
 	attrs.Kubernetes.ClusterName = args.Kubernetes.ClusterName
+	if args.Kubernetes.MetaCacheAddress != "" {
+		attrs.Kubernetes.MetaCacheAddress = args.Kubernetes.MetaCacheAddress
+	}
 	// InstanceID
 	if args.InstanceID.HostnameDNSResolution {
 		attrs.InstanceID.HostnameDNSResolution = args.InstanceID.HostnameDNSResolution
