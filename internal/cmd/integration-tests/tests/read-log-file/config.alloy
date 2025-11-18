@@ -1,3 +1,7 @@
+logging {
+	level = "debug"
+}
+
 loki.source.file "test" {
   targets    = [
     {__path__ = "/etc/alloy/logs.txt"},
