@@ -17,7 +17,7 @@ title: mimir.alerts.kubernetes
 `mimir.alerts.kubernetes` discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance.
 
 * You can specify multiple `mimir.alerts.kubernetes` components by giving them different labels.
-* [Kubernetes label selectors][] can be used to limit the `Namespace` and `AlertmanagerConfig` resources considered during reconciliation.
+* You can use [Kubernetes label selectors][] to limit the `Namespace` and `AlertmanagerConfig` resources considered during reconciliation.
 * Compatible with the Alertmanager APIs of Grafana Mimir, Grafana Cloud, and Grafana Enterprise Metrics.
 * Compatible with the `AlertmanagerConfig` CRD from the [`prometheus-operator`][prometheus-operator].
 * This component accesses the Kubernetes REST API from [within a Pod][].
@@ -28,7 +28,7 @@ This component requires [Role-based access control (RBAC)][] to be set up in Kub
 [Role-based access control (RBAC)]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 {{< /admonition >}}
 
-`mimir.alerts.kubernetes` does not support [clustering][clustered mode].
+`mimir.alerts.kubernetes` doesn't support [clustering][clustered mode].
 [clustered mode]: ../../../../get-started/clustering/
 
 [Kubernetes label selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
@@ -165,7 +165,7 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 ## Debug information
 
-`mimir.alerts.kubernetes` does not expose debug information.
+`mimir.alerts.kubernetes` doesn't expose debug information.
 
 ## Debug metrics
 
@@ -434,7 +434,7 @@ spec:
 
 {{< /collapse >}}
 
-The Kubernetes configuration above will create the Alertmanager configuration below and send it to Mimir:
+The Kubernetes configuration above creates the Alertmanager configuration below and sends it to Mimir:
 
 {{< collapse title="Example merged configuration sent to Mimir." >}}
 
