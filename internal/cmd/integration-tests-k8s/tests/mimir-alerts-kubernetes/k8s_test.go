@@ -33,6 +33,10 @@ func TestMimirAlerts(t *testing.T) {
 		"Port forward Mimir")
 	defer terminatePortFwd()
 
+	tester := util.NewKubernetesTester(t)
+	tester.WaitForPodRunning("testing", "app=grafana-alloy")
+	tester.WaitForPodRunning("mimir-test", "app.kubernetes.io/component=alertmanager")
+
 	checkMimirConfig(t, testDataDir, "expected_1.yml")
 
 	util.ExecuteCommand(

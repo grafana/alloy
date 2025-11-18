@@ -9,6 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type CleanupFunc func()
@@ -91,15 +92,10 @@ func ExecuteBackgroundCommand(command string, args []string, taskDescription str
 
 func Curl(c *assert.CollectT, url string) string {
 	resp, err := http.Get(url)
-	if err != nil {
-		c.Errorf("Failed to make HTTP request: %v", err)
-		c.FailNow()
-	}
+	require.NoError(c, err)
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed to read response body: %v", err)
-	}
+	require.NoError(c, err)
 
 	return string(body)
 }
