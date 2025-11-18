@@ -29,7 +29,7 @@ You can use the following arguments with `tracing`:
 |---------------------|--------------------------|-----------------------------------------------------|---------|----------|
 | `sampling_fraction` | `number`                 | Fraction of traces to keep.                         | `0.1`   | no       |
 | `write_to`          | `list(otelcol.Consumer)` | Inputs from `otelcol` components to send traces to. | `[]`    | no       |
-| `send_traceparent`  | `bool`                   | Send traceparent header with traces                 | `false` | no       |
+| `send_traceparent`  | `bool`                   | Send traceparent header with requests               | `false` | no       |
 
 The `write_to` argument controls which components to send traces to for processing.
 The elements in the array can be any `otelcol` component that accept traces, including processors and exporters.
