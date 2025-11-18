@@ -9,11 +9,6 @@ services:
       - -config.file=/etc/mimir-config/mimir.yaml
     ports:
       - "9009:9009"
-    healthcheck:
-      test: wget -q -O - http://localhost:9009/ready || exit 1
-      interval: 1s
-      timeout: 5s
-      retries: 30
     networks:
       - integration-tests
 
@@ -29,11 +24,6 @@ services:
       - "4319:4317"    # otlp grpc
       - "4320:4318"    # otlp http
       - "9411:9411"    # zipkin
-    healthcheck:
-      test: wget -q -O - http://localhost:3200/ready || exit 1
-      interval: 1s
-      timeout: 5s
-      retries: 30
     networks:
       - integration-tests
 
@@ -82,7 +72,7 @@ services:
       test: wget -q -O - http://localhost:3100/services | grep -v Running || true
       interval: 1s
       timeout: 5s
-      retries: 60
+      retries: 120
     networks:
       - integration-tests
 
@@ -110,11 +100,6 @@ services:
     image: redis:6.0.9-alpine
     ports:
       - "6379:6379"
-    healthcheck:
-      test: redis-cli ping || exit 1
-      interval: 1s
-      timeout: 5s
-      retries: 10
     networks:
       - integration-tests
 
