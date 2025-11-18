@@ -113,7 +113,7 @@ func New(cfg Options) (*Tracer, error) {
 	var sampler lazySampler
 	sampler.SetSampler(tracesdk.TraceIDRatioBased(cfg.SamplingFraction))
 
-	SetPropagator(cfg)
+	SetOTELPropagator(cfg)
 
 	shimClient := &client{}
 	exp := otlptrace.NewUnstarted(shimClient)
@@ -142,7 +142,7 @@ func (t *Tracer) Update(opts Options) error {
 	t.samplerMut.Lock()
 	defer t.samplerMut.Unlock()
 
-	SetPropagator(opts)
+	SetOTELPropagator(opts)
 
 	t.client.UpdateWriteTo(opts.WriteTo)
 
@@ -177,7 +177,7 @@ func (t *Tracer) Update(opts Options) error {
 	return nil
 }
 
-func SetPropagator(opts Options) {
+func SetOTELPropagator(opts Options) {
 	var propagators []propagation.TextMapPropagator
 	if opts.SendTraceparent {
 		propagators = append(
