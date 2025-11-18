@@ -113,7 +113,7 @@ func New(cfg Options) (*Tracer, error) {
 	var sampler lazySampler
 	sampler.SetSampler(tracesdk.TraceIDRatioBased(cfg.SamplingFraction))
 
-	SendTraceparent(cfg)
+	SetPropagator(cfg)
 
 	shimClient := &client{}
 	exp := otlptrace.NewUnstarted(shimClient)
@@ -142,7 +142,7 @@ func (t *Tracer) Update(opts Options) error {
 	t.samplerMut.Lock()
 	defer t.samplerMut.Unlock()
 
-	SendTraceparent(opts)
+	SetPropagator(opts)
 
 	t.client.UpdateWriteTo(opts.WriteTo)
 
@@ -177,15 +177,14 @@ func (t *Tracer) Update(opts Options) error {
 	return nil
 }
 
-func SendTraceparent(opts Options) {
+func SetPropagator(opts Options) {
+	var propagators []propagation.TextMapPropagator
 	if opts.SendTraceparent {
-		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		))
-	} else {
-		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator())
+		propagators = append(propagators, propagation.TraceContext{})
+		propagators = append(propagators, propagation.Baggage{})
 	}
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagators...))
 }
 
 // Run starts the tracing subsystem and runs it until the provided context is
