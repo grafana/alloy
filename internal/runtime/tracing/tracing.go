@@ -180,8 +180,11 @@ func (t *Tracer) Update(opts Options) error {
 func SetPropagator(opts Options) {
 	var propagators []propagation.TextMapPropagator
 	if opts.SendTraceparent {
-		propagators = append(propagators, propagation.TraceContext{})
-		propagators = append(propagators, propagation.Baggage{})
+		propagators = append(
+			propagators,
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		)
 	}
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagators...))
