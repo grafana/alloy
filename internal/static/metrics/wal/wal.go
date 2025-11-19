@@ -955,9 +955,73 @@ func (a *appender) SetOptions(_ *storage.AppendOptions) {
 	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
 }
 
-func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, ct int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	// TODO: implement this later
-	return 0, nil
+func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	if h != nil {
+		if err := h.Validate(); err != nil {
+			return 0, err
+		}
+	}
+	if fh != nil {
+		if err := fh.Validate(); err != nil {
+			return 0, err
+		}
+	}
+	if st >= t {
+		return 0, ErrSTNewerThanSample
+	}
+
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		// Ensure no empty labels have gotten through.
+		l = l.WithoutEmpty()
+		if l.IsEmpty() {
+			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
+		}
+
+		if lbl, dup := l.HasDuplicateLabelNames(); dup {
+			return 0, fmt.Errorf(`label name "%s" is not unique: %w`, lbl, tsdb.ErrInvalidSample)
+		}
+
+		var created bool
+		series, created = a.getOrCreate(l)
+		if created {
+			a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+				Ref:    series.ref,
+				Labels: l,
+			})
+			a.w.metrics.numActiveSeries.Inc()
+		}
+	}
+
+	series.Lock()
+	defer series.Unlock()
+
+	if st <= series.lastTs {
+		// discard the sample if it's out of order.
+		return 0, ErrOutOfOrderST
+	}
+	series.lastTs = st
+
+	switch {
+	case h != nil:
+		zeroHistogram := &histogram.Histogram{}
+		a.pendingHistograms = append(a.pendingHistograms, record.RefHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			H:   zeroHistogram,
+		})
+		a.histogramSeries = append(a.histogramSeries, series)
+	case fh != nil:
+		a.pendingFloatHistograms = append(a.pendingFloatHistograms, record.RefFloatHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			FH:  &histogram.FloatHistogram{},
+		})
+		a.floatHistogramSeries = append(a.floatHistogramSeries, series)
+	}
+
+	a.w.metrics.totalAppendedSamples.Inc()
+	return storage.SeriesRef(series.ref), nil
 }
 
 // Commit submits the collected samples and purges the batch.
