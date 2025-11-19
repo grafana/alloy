@@ -13,6 +13,7 @@ Main (unreleased)
 ### Features
 
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
 
 ### Enhancements
 
