@@ -78,6 +78,8 @@ type Arguments struct {
 	ScrapeClassicHistograms bool `alloy:"scrape_classic_histograms,attr,optional"`
 	// Whether to scrape native histograms.
 	ScrapeNativeHistograms bool `alloy:"scrape_native_histograms,attr,optional"`
+	// Whether to enable ingesting the created timestamp as a synthetic zero sample.
+	ScrapeCreatedTimestampZeroIngestion bool `alloy:"scrape_created_timestamp_zero_ingestion,attr,optional"`
 	// File to which scrape failures are logged.
 	ScrapeFailureLogFile string `alloy:"scrape_failure_log_file,attr,optional"`
 	// How frequently to scrape the targets of this scrape config.
@@ -321,14 +323,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		EnableNativeHistogramsIngestion: args.ScrapeNativeHistograms,
 		AppendMetadata:                  args.HonorMetadata,
 		// otelcol.receiver.prometheus gets metadata from context
-		PassMetadataInContext: args.HonorMetadata,
+		PassMetadataInContext:               args.HonorMetadata,
+		EnableCreatedTimestampZeroIngestion: args.ScrapeCreatedTimestampZeroIngestion,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
-		Help: "Number of targets this component is configured to scrape"})
+		Help: "Number of targets this component is configured to scrape",
+	})
 	err = o.Registerer.Register(targetsGauge)
 	if err != nil {
 		return nil, err
@@ -336,7 +340,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	movedTargetsCounter := client_prometheus.NewCounter(client_prometheus.CounterOpts{
 		Name: "prometheus_scrape_targets_moved_total",
-		Help: "Number of targets that have moved from this cluster node to another one"})
+		Help: "Number of targets that have moved from this cluster node to another one",
+	})
 	err = o.Registerer.Register(movedTargetsCounter)
 	if err != nil {
 		return nil, err
@@ -432,7 +437,6 @@ func (c *Component) distributeTargets(
 	jobName string,
 	args Arguments,
 ) (map[string][]*targetgroup.Group, []*scrape.Target) {
-
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets
