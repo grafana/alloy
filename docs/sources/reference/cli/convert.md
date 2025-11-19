@@ -74,6 +74,10 @@ Using the `--source-format=prometheus` will convert the source configuration fro
 This includes Prometheus features such as [`scrape_config`][scrape_config], [`relabel_config`][relabel_config], [`metric_relabel_configs`][metric_relabel_configs], [`remote_write`][remote_write], and many supported `*_sd_configs`.
 Unsupported features in a source configuration result in [errors][].
 
+{{< admonition type="warning" >}}
+The converter does not support prometheus feature gates, if you are using feature gates like created-timestamp-zero-ingestion ensure you update your Alloy configuration after conversion.
+{{< /admonition >}}
+
 Refer to [Migrate from Prometheus to {{< param "PRODUCT_NAME" >}}][migrate prometheus] for a detailed migration guide.
 
 ### Promtail
