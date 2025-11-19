@@ -10,6 +10,10 @@ internal API changes are not present.
 Main (unreleased)
 -----------------
 
+### Features
+
+- A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
+
 ### Enhancements
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
@@ -17,6 +21,9 @@ Main (unreleased)
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
+
+- (_Public Preview_) Additions to `database_observability.postgres` component:
+    - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
 
 v1.12.0-rc.0
 -----------------
