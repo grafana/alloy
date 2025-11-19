@@ -94,14 +94,12 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
 		BatchSize: 100 * 1024,
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -110,7 +108,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -181,14 +179,12 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/loki/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
 		BatchSize: 100 * 1024,
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
@@ -197,7 +193,7 @@ regex = "dropme"
 		"stream":             "stream1",
 		"__anotherdroplabel": "dropme",
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pc.Chan() <- loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
@@ -255,7 +251,7 @@ regex = "dropme"
 	err = serverURL.Set("http://" + localhost + ":" + strconv.Itoa(port) + "/api/v1/push")
 	require.NoError(t, err)
 
-	ccfg := client.Config{
+	pc, err := client.NewFanoutConsumer(logger, prometheus.DefaultRegisterer, client.Config{
 		URL:       serverURL,
 		Timeout:   1 * time.Second,
 		BatchWait: 1 * time.Second,
@@ -263,9 +259,7 @@ regex = "dropme"
 		Headers: map[string]string{
 			"X-Scope-OrgID": "tenant1",
 		},
-	}
-	m := client.NewMetrics(prometheus.DefaultRegisterer)
-	pc, err := client.New(m, ccfg, logger)
+	})
 	require.NoError(t, err)
 	defer pc.Stop()
 
