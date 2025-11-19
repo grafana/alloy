@@ -1,6 +1,10 @@
 package client
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +21,147 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/loki/util"
 )
+
+func TestFanoutConsumer(t *testing.T) {
+	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig)
+	require.NoError(t, err)
+
+	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	go func() {
+		for req := range rwReceivedReqs {
+			receivedRequests.Append(req)
+		}
+	}()
+
+	defer func() {
+		consumer.Stop()
+		closeServer()
+	}()
+
+	var testLabels = model.LabelSet{
+		"pizza-flavour": "fugazzeta",
+	}
+	var totalLines = 100
+	for i := range totalLines {
+		consumer.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("line%d", i),
+			},
+		}
+	}
+
+	require.Eventually(t, func() bool {
+		return receivedRequests.Length() == totalLines
+	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+
+	var seenEntries = map[string]struct{}{}
+	// assert over rw client received entries
+	defer receivedRequests.DoneIterate()
+	for _, req := range receivedRequests.StartIterate() {
+		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
+		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
+		require.Equal(t, `{pizza-flavour="fugazzeta"}`, req.Request.Streams[0].Labels)
+		seenEntries[req.Request.Streams[0].Entries[0].Line] = struct{}{}
+	}
+	require.Len(t, seenEntries, totalLines)
+}
+
+func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
+	testClientConfig, rwReceivedReqs, closeServer := newServerAndClientConfig(t)
+	testClientConfig2, rwReceivedReqs2, closeServer2 := newServerAndClientConfig(t)
+	testClientConfig2.Name = "test-client-2"
+
+	// start writer and consumer
+	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testClientConfig, testClientConfig2)
+	require.NoError(t, err)
+
+	receivedRequests := utils.NewSyncSlice[utils.RemoteWriteRequest]()
+	ctx, cancel := context.WithCancel(t.Context())
+	go func(ctx context.Context) {
+		for {
+			select {
+			case req := <-rwReceivedReqs:
+				receivedRequests.Append(req)
+			case req := <-rwReceivedReqs2:
+				receivedRequests.Append(req)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}(ctx)
+
+	defer func() {
+		consumer.Stop()
+		closeServer()
+		closeServer2()
+		cancel()
+	}()
+
+	var testLabels = model.LabelSet{
+		"pizza-flavour": "fugazzeta",
+	}
+	var totalLines = 100
+	for i := range totalLines {
+		consumer.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("line%d", i),
+			},
+		}
+	}
+
+	// times 2 due to clients being run
+	expectedTotalLines := totalLines * 2
+	require.Eventually(t, func() bool {
+		return receivedRequests.Length() == expectedTotalLines
+	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+
+	var seenEntries int
+	// assert over rw client received entries
+	defer receivedRequests.DoneIterate()
+	for _, req := range receivedRequests.StartIterate() {
+		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
+		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
+		seenEntries += 1
+	}
+	require.Equal(t, seenEntries, expectedTotalLines)
+}
+
+func TestFanoutConsumer_InvalidConfig(t *testing.T) {
+	t.Run("no clients", func(t *testing.T) {
+		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry())
+		require.Error(t, err)
+	})
+
+	t.Run("repeated client", func(t *testing.T) {
+		host, _ := url.Parse("http://localhost:3100")
+		config := Config{URL: flagext.URLValue{URL: host}}
+		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
+		require.Error(t, err)
+	})
+}
+
+func TestFanoutConsumer_NoDuplicateMetricsPanic(t *testing.T) {
+	var (
+		host, _ = url.Parse("http://localhost:3100")
+		reg     = prometheus.NewRegistry()
+	)
+
+	require.NotPanics(t, func() {
+		for range 2 {
+			_, err := NewFanoutConsumer(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
+			require.NoError(t, err)
+		}
+	})
+}
 
 var logEntries = []loki.Entry{
 	{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Unix(1, 0).UTC(), Line: "line1"}},
@@ -435,7 +578,7 @@ func TestClient_Handle(t *testing.T) {
 			}
 
 			m := NewMetrics(reg)
-			c, err := New(m, cfg, log.NewNopLogger())
+			c, err := newClient(m, cfg, log.NewNopLogger())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -469,5 +612,32 @@ func TestClient_Handle(t *testing.T) {
 			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total", "loki_write_mutated_entries_total", "loki_write_mutated_bytes_total")
 			assert.NoError(t, err)
 		})
+	}
+}
+
+func newServerAndClientConfig(t *testing.T) (Config, chan utils.RemoteWriteRequest, func()) {
+	receivedReqsChan := make(chan utils.RemoteWriteRequest, 10)
+
+	// Start a local HTTP server
+	server := utils.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
+	require.NotNil(t, server)
+
+	testClientURL, _ := url.Parse(server.URL)
+	testClientConfig := Config{
+		Name:      "test-client",
+		URL:       flagext.URLValue{URL: testClientURL},
+		Timeout:   time.Second * 2,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MaxRetries: 0,
+		},
+		Queue: QueueConfig{
+			Capacity:     10, // buffered channel of size 10
+			DrainTimeout: time.Second * 10,
+		},
+	}
+	return testClientConfig, receivedReqsChan, func() {
+		server.Close()
+		close(receivedReqsChan)
 	}
 }

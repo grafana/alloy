@@ -50,11 +50,6 @@ const (
 	StageTypeWindowsEvent           = "windowsevent"
 )
 
-// Add stages that are not GA. Stages that are not specified here are considered GA.
-var stagesUnstable = map[string]featuregate.Stability{
-	StageTypeWindowsEvent: featuregate.StabilityExperimental,
-}
-
 // Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
 // timestamp and log entry
 type Processor interface {
@@ -119,14 +114,6 @@ func toStage(p Processor) Stage {
 		Processor: p,
 		inspector: newInspector(os.Stderr, runtime.GOOS == "windows"),
 	}
-}
-
-func checkFeatureStability(stageName string, minStability featuregate.Stability) error {
-	blockStability, exist := stagesUnstable[stageName]
-	if exist {
-		return featuregate.CheckAllowed(blockStability, minStability, fmt.Sprintf("stage %q", stageName))
-	}
-	return nil
 }
 
 // New creates a new stage for the given type and configuration.
@@ -276,10 +263,6 @@ func New(logger log.Logger, jobName *string, cfg StageConfig, registerer prometh
 		}
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
-	}
-
-	if err := checkFeatureStability(s.Name(), minStability); err != nil {
-		return nil, err
 	}
 
 	return s, nil
