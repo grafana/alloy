@@ -308,7 +308,7 @@ func (t Target) groupLabelsHash() uint64 {
 	return t.hashLabelsInOrder(labelsInOrder)
 }
 
-// NOTE 1: This function is copied from Prometheus codebase and adapted to work correctly with Alloy types.
+// NOTE 1: This function is copied from Prometheus codebase (labels.StableHash()) and adapted to work correctly with Alloy types.
 // NOTE 2: It is important to keep the hashing function consistent between Alloy versions in order to have
 //
 //	smooth rollouts without duplicated or missing data. There are tests to verify this behaviour. Do not change it.

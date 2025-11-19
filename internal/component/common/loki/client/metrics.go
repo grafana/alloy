@@ -95,12 +95,12 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	return &m
 }
 
-type QueueClientMetrics struct {
+type WALClientMetrics struct {
 	lastReadTimestamp *prometheus.GaugeVec
 }
 
-func NewQueueClientMetrics(reg prometheus.Registerer) *QueueClientMetrics {
-	m := &QueueClientMetrics{
+func NewWALClientMetrics(reg prometheus.Registerer) *WALClientMetrics {
+	m := &WALClientMetrics{
 		lastReadTimestamp: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "loki_write",
@@ -118,8 +118,8 @@ func NewQueueClientMetrics(reg prometheus.Registerer) *QueueClientMetrics {
 	return m
 }
 
-func (m *QueueClientMetrics) CurryWithId(id string) *QueueClientMetrics {
-	return &QueueClientMetrics{
+func (m *WALClientMetrics) CurryWithId(id string) *WALClientMetrics {
+	return &WALClientMetrics{
 		lastReadTimestamp: m.lastReadTimestamp.MustCurryWith(map[string]string{
 			"id": id,
 		}),
