@@ -2278,6 +2278,8 @@ github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0 h1:o3bgcECyB
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0/go.mod h1:ljLR42dN7k40CX0dp30R8BRIB3OOdvr7rBANEpfmMs4=
 github.com/tg123/go-htpasswd v1.2.4 h1:HgH8KKCjdmo7jjXWN9k1nefPBd7Be3tFCTjc2jPraPU=
 github.com/tg123/go-htpasswd v1.2.4/go.mod h1:EKThQok9xHkun6NBMynNv6Jmu24A33XdZzzl4Q7H1+0=
+github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119124539-eb722986d8ed h1:eZ5AASwValJRCzVZ/Zu8GgGN4MTlgP2VoZmuqM1c5Tg=
+github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119124539-eb722986d8ed/go.mod h1:bYhWgro0or2UhzNw7Y8KgdIWhZEmSS0IH74h1Dg+xPU=
 github.com/tidwall/gjson v1.10.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=
 github.com/tidwall/gjson v1.18.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=

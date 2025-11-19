@@ -204,3 +204,19 @@ Could conditionally exclude pyroscope/ebpf component until the fork is fixed, al
 /home/ubuntu/go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c/reporter/internal/pdata/generate.go:285:63
 ```
 
+### Update: Attempted thampiotr/opentelemetry-ebpf-profiler fork
+
+Tried using https://github.com/thampiotr/opentelemetry-ebpf-profiler/tree/alloy-fork-v0.140 (commit eb722986d8ed with OTel 0.140 compatibility), but this fork also doesn't contain the pyroscope packages that `internal/component/pyroscope/ebpf` requires:
+
+**Missing packages**:
+- `go.opentelemetry.io/ebpf-profiler/pyroscope/discovery`
+- `go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling`
+- `go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller`
+- `go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache`
+
+**Root cause**: The `pyroscope/*` packages have been removed from the ebpf-profiler entirely. The `internal/component/pyroscope/ebpf` component needs to be refactored to:
+1. Use the new package structure from the ebpf-profiler, OR
+2. Use packages from `github.com/grafana/pyroscope/ebpf` instead
+
+The thampiotr fork has `internal/controller` which may replace `pyroscope/internalshim/controller`, but the other packages don't have obvious replacements.
+
