@@ -78,6 +78,8 @@ v1.12.0-rc.1
 
 - A new `mimir.alerts.kubernetes` component which discovers `AlertmanagerConfig` Kubernetes resources and loads them into a Mimir instance. (@ptodev)
 
+- Mark `stage.windowsevent` block in the `loki.process` component as GA. (@kgeckhart)
+
 ### Enhancements
 
 - Add per-application rate limiting with the `strategy` attribute in the `faro.receiver` component, to prevent one application from consuming the rate limit quota of others. (@hhertout)
