@@ -112,9 +112,16 @@ No reorganization needed. ✅
 - Line 216: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
 - Line 281: `profile.Sample().Len()` → `profile.Samples().Len()`
 
-**Note:** The thampiotr fork (`alloy-fork-v0.140` branch) contains the fix but has some structural differences (different import paths) and doesn't include all the packages Alloy needs (specifically the `pyroscope` packages). Therefore, we're using the grafana fork as the base and applying the same API fixes directly. The replace directive currently points to a local path with the fix applied.
+**Issue:** The thampiotr fork (`github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140`) contains the OTel v0.140 compatibility fixes, but it doesn't include the `pyroscope` packages that Alloy requires. Go modules don't support replacing individual subpackages - when you replace a module, it replaces the entire module.
+
+**Current Status:** ⚠️ **BLOCKED** - Using the grafana fork (`github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c`) which has all required packages, but it still uses the old API that's incompatible with OTel v0.140. The build will fail until the grafana fork is updated with the fix.
+
+**Required Fix:** The `grafana/opentelemetry-ebpf-profiler` fork needs to be updated with the API compatibility fixes from the thampiotr fork. The changes needed in `reporter/internal/pdata/generate.go`:
+- Line 159: `profile.Sample().AppendEmpty()` → `profile.Samples().AppendEmpty()`
+- Line 226: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
+- Line 285: `profile.Sample().Len()` → `profile.Samples().Len()`
 
 **Next Steps:**
-1. The fix should be merged into the main `grafana/opentelemetry-ebpf-profiler` fork
+1. Apply the fix from `github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140` to the `grafana/opentelemetry-ebpf-profiler` fork
 2. Once merged, update the replace directive to use the new commit from the grafana fork
-3. Remove the local path replace directive
+3. The build will then succeed
