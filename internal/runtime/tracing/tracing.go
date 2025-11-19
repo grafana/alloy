@@ -177,7 +177,7 @@ func (t *Tracer) Update(opts Options) error {
 	return nil
 }
 
-func SetOTELTraceContextPropagators(opts Options) {
+func setOTELTraceContextPropagators(opts Options) {
 	var propagators []propagation.TextMapPropagator
 	if opts.SendTraceparent {
 		propagators = append(
