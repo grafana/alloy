@@ -116,6 +116,8 @@ func NewManager(metrics *Metrics, logger log.Logger, reg prometheus.Registerer, 
 				return nil, fmt.Errorf("error starting queue client: %w", err)
 			}
 
+			walWriter.Start(walCfg.MaxSegmentAge)
+
 			// subscribe watcher's wal.WriteTo to writer events. This will make the writer trigger the cleanup of the wal.WriteTo
 			// series cache whenever a segment is deleted.
 			walWriter.SubscribeCleanup(queue)
