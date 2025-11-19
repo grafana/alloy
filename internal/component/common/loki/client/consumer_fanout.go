@@ -60,7 +60,7 @@ func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, clientCfgs 
 	return m, nil
 }
 
-var _ StoppableConsumer = (*FanoutConsumer)(nil)
+var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	clients []*client

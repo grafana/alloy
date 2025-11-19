@@ -86,7 +86,7 @@ type Component struct {
 	receiver loki.LogsReceiver
 
 	// remote write components
-	clientManger client.StoppableConsumer
+	clientManger client.Consumer
 
 	// sink is the place where log entries received by this component should be written to. If WAL
 	// is enabled, this will be the WAL Writer, otherwise, the client manager

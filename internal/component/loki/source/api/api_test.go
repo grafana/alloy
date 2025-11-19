@@ -410,7 +410,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 }
 
 // newTestLokiClientTLS creates a Loki client configured for TLS connections
-func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component.Options) client.StoppableConsumer {
+func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component.Options) client.Consumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
 		"https://%s/api/v1/push",
@@ -618,7 +618,7 @@ func mapToChannels(clients []*fake.Client) []loki.LogsReceiver {
 	return channels
 }
 
-func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.StoppableConsumer {
+func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.Consumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
 		"http://%s:%d/api/v1/push",

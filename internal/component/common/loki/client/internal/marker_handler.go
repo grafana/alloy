@@ -211,12 +211,18 @@ func FindMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 	return lastZero
 }
 
+// NewNopMarkerHandler creates a new no-op marker handler that implements
+// MarkerHandler but performs no operations. This is useful when marker tracking
+// is not needed or disabled.
 func NewNopMarkerHandler() *NopMarkerHandler {
 	return &NopMarkerHandler{}
 }
 
 var _ MarkerHandler = (*NopMarkerHandler)(nil)
 
+// NopMarkerHandler is a no-op implementation of MarkerHandler. All methods
+// are implemented as empty functions, making it suitable for use when marker
+// tracking functionality is not required.
 type NopMarkerHandler struct{}
 
 func (n *NopMarkerHandler) LastMarkedSegment() int { return 0 }
