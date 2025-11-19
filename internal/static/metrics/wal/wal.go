@@ -1020,6 +1020,7 @@ func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.L
 		a.floatHistogramSeries = append(a.floatHistogramSeries, series)
 	}
 
+	// TODO: prometheus uses CounterVec metric here.
 	a.w.metrics.totalAppendedSamples.Inc()
 	return storage.SeriesRef(series.ref), nil
 }
