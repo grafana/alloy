@@ -1075,11 +1075,12 @@ The `stage.multiline` inner block merges multiple lines into a single block befo
 
 The following arguments are supported:
 
-| Name            | Type       | Description                                        | Default | Required |
-| --------------- | ---------- | -------------------------------------------------- | ------- | -------- |
-| `firstline`     | `string`   | Name from extracted data to use for the log entry. |         | yes      |
-| `max_lines`     | `number`   | The maximum number of lines a block can have.      | `128`   | no       |
-| `max_wait_time` | `duration` | The maximum time to wait for a multiline block.    | `"3s"`  | no       |
+| Name            | Type       | Description                                                 | Default | Required |
+|-----------------|------------|-------------------------------------------------------------|---------|----------|
+| `firstline`     | `string`   | Name from extracted data to use for the log entry.          |         | yes      |
+| `max_lines`     | `number`   | The maximum number of lines a block can have.               | `128`   | no       |
+| `max_wait_time` | `duration` | The maximum time to wait for a multiline block.             | `"3s"`  | no       |
+| `trim_newlines` | `bool`     | Whether to trim newlines from the end of each merged entry. | `true`  | no       |
 
 A new block is identified by the RE2 regular expression passed in `firstline`.
 
@@ -1562,14 +1563,16 @@ stage.static_labels {
 ### `stage.structured_metadata`
 
 The `stage.structured_metadata` inner block configures a stage that can read data from the extracted values map and add them to log entries as structured metadata.
+If you add labels to structured metadata, the labels are removed from the label map.
 
 The following arguments are supported:
 
-| Name     | Type          | Description                                                                 | Default | Required |
-| -------- | ------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry. | `{}`    | no       |
+| Name     | Type          | Description                                                                                 | Default | Required |
+| -------- | ------------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
+| `values` | `map(string)` | Specifies the list of labels to add from extracted values map to log entry.                 | `{}`    | no       |
+| `regex`  | `string`      | Specifies a regular expression, matching extracted values are added to structured metadata. | `""`    | no       |
 
-In a `structured_metadata` stage, the map's keys define the label to set and the values are how to look them up.
+In a `structured_metadata` stage, the keys for the `values` map define the labels to set and the values define how to look them up.
 If the value is empty, it's inferred to be the same as the key.
 
 ```alloy
@@ -1578,6 +1581,7 @@ stage.structured_metadata {
       env  = "",         // Sets up an 'env' property to structured metadata, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' property to structured metadata, based on the 'username' extracted value.
     }
+    regex = "pod_.*"   // Adds all extracted values starting with 'pod_' to structured metadata.
 }
 ```
 

@@ -186,7 +186,6 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 ### `batch`
 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
-By default, the `batch` block is not used.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

@@ -63,10 +63,11 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"TRUNCATE": {},
 
 	// Transaction control that can commit writes
-	"BEGIN":     {},
-	"COMMIT":    {},
-	"ROLLBACK":  {},
-	"SAVEPOINT": {},
+	"BEGIN":       {},
+	"COMMIT":      {},
+	"ROLLBACK":    {},
+	"SAVEPOINT":   {},
+	"TRANSACTION": {},
 
 	// Database/Schema management
 	"USE":      {},

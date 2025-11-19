@@ -482,6 +482,18 @@ func TestContainsReservedKeywords(t *testing.T) {
 			reservedWords: ExplainReservedWordDenyList,
 			expected:      false,
 		},
+		{
+			name:          "FOR UPDATE precedes UPDATE",
+			query:         "SELECT * FROM users FOR UPDATE UPDATE users SET name = 'John'",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
+		{
+			name:          "START TRANSACTION should be detected",
+			query:         "START TRANSACTION",
+			reservedWords: ExplainReservedWordDenyList,
+			expected:      true,
+		},
 		// Single prefix with default reserved word list
 		{
 			name:          "SELECT with FOR UPDATE",
@@ -546,7 +558,8 @@ func TestContainsReservedKeywords(t *testing.T) {
 	}
 
 	t.Run("lexer error", func(t *testing.T) {
-		_, err := ContainsReservedKeywords("SELECT \"foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+		// TODO - consider if lexer should still error on "foo, see https://github.com/DataDog/go-sqllexer/pull/72
+		_, err := ContainsReservedKeywords("SELECT `foo", ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
 		require.Error(t, err)
 	})
 }

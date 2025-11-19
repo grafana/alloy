@@ -114,10 +114,8 @@ func NewWriter(walCfg Config, logger log.Logger, reg prometheus.Registerer) (*Wr
 }
 
 func (wrt *Writer) start(maxSegmentAge time.Duration) {
-	wrt.wg.Add(1)
 	// main WAL writer routine
-	go func() {
-		defer wrt.wg.Done()
+	wrt.wg.Go(func() {
 		for e := range wrt.entries {
 			if err := wrt.entryWriter.WriteEntry(e, wrt.wal, wrt.log); err != nil {
 				level.Error(wrt.log).Log("msg", "failed to write entry", "err", err)
@@ -134,11 +132,10 @@ func (wrt *Writer) start(maxSegmentAge time.Duration) {
 			}
 			wrt.writeSubscribersLock.RUnlock()
 		}
-	}()
+	})
+
 	// WAL cleanup routine that cleans old segments
-	wrt.wg.Add(1)
-	go func() {
-		defer wrt.wg.Done()
+	wrt.wg.Go(func() {
 		// By cleaning every 10th of the configured threshold for considering a segment old, we are allowing a maximum slip
 		// of 10%. If the configured time is 1 hour, that'd be 6 minutes.
 		triggerEvery := maxSegmentAge / 10
@@ -158,7 +155,7 @@ func (wrt *Writer) start(maxSegmentAge time.Duration) {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (wrt *Writer) Chan() chan<- loki.Entry {
