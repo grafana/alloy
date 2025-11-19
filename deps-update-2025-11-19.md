@@ -185,7 +185,23 @@ Major dependency updates were successfully completed with the following highligh
 
 ✅ **Major dependency update completed successfully!**
 
-All dependencies have been updated and the project builds without errors.
+All dependencies have been updated, the project builds without errors, and all tests pass (except 2 Docker integration tests - not dependency-related).
+
+### Test Results
+
+See [TEST_RESULTS_SUMMARY.md](./TEST_RESULTS_SUMMARY.md) for detailed test results.
+
+**Summary**:
+- ✅ All runtime tests pass
+- ✅ All Prometheus component tests pass  
+- ✅ All Loki component tests pass
+- ✅ All OpenTelemetry Collector component tests pass
+- ✅ All Beyla component tests pass
+- ✅ All Pyroscope component tests pass (except 1 Docker integration test)
+- ✅ All converter tests pass
+- ⚠️ 2 integration tests require Docker (not dependency-related):
+  - `TestPyroscopeJavaIntegration` - Pyroscope Java integration
+  - `Test_GetSecrets` - Vault integration
 
 ### Final Version Summary
 
