@@ -104,7 +104,7 @@ The following arguments are supported:
 If no `tenant_id` is provided, the component assumes that the Loki instance at `endpoint` is running in single-tenant mode and no X-Scope-OrgID header is sent.
 
 When multiple `endpoint` blocks are provided, the `loki.write` component creates a client for each.
-Received log entries are fanned-out to these endpoints in succession. That means that if one endpint is bottlenecked, it may impact the rest.
+Received log entries are fanned-out to these endpoints in succession. That means that if one endpoint is bottlenecked, it may impact the rest.
 
 Each endpoint has a _queue_ of batches to be sent. The `queue_config` block can be used to customize the behavior of this queue.
 
