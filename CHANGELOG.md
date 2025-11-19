@@ -19,6 +19,8 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
+- Add support for HTTP service discovery in `prometheus.operator.scrapeconfigs` component using `httpSDConfigs` in ScrapeConfig CRDs. (@QuentinBisson)
+
 ### Bugfixes
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
