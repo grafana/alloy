@@ -85,11 +85,11 @@ type Component struct {
 	args     Arguments
 	receiver loki.LogsReceiver
 
-	// remote write components
-	clientManger client.Consumer
+	// remote write consumer
+	consumer client.Consumer
 
-	// sink is the place where log entries received by this component should be written to. If WAL
-	// is enabled, this will be the WAL Writer, otherwise, the client manager
+	// sink is the place where log entries received by this component should be written to.
+	// It will in turn write to client.Consumer.
 	sink loki.EntryHandler
 }
 
@@ -120,12 +120,12 @@ func (c *Component) Run(ctx context.Context) error {
 			c.sink.Stop()
 		}
 
-		if c.clientManger != nil {
-			if d, ok := c.clientManger.(client.DrainableConsumer); ok {
+		if c.consumer != nil {
+			if d, ok := c.consumer.(client.DrainableConsumer); ok {
 				// stop and drain since component is shutting down.
 				d.StopAndDrain()
 			} else {
-				c.clientManger.Stop()
+				c.consumer.Stop()
 			}
 		}
 	}()
@@ -159,9 +159,9 @@ func (c *Component) Update(args component.Arguments) error {
 		c.sink.Stop()
 	}
 
-	if c.clientManger != nil {
+	if c.consumer != nil {
 		// only drain on component shutdown
-		c.clientManger.Stop()
+		c.consumer.Stop()
 	}
 
 	cfgs := newArgs.convertClientConfigs()
@@ -188,16 +188,16 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var err error
 	if walCfg.Enabled {
-		c.clientManger, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.clientManger, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create client manager: %w", err)
+		return fmt.Errorf("failed to create cliens: %w", err)
 	}
 
-	c.sink = newEntryHandler(c.clientManger, utils.ToLabelSet(c.args.ExternalLabels))
+	c.sink = newEntryHandler(c.consumer, utils.ToLabelSet(c.args.ExternalLabels))
 
 	return nil
 }
