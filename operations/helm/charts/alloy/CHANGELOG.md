@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add support for mounting configuration from Kubernetes Secrets via `alloy.secret` values. (@claude-code)
+
 ### Bug fixes
 
 - Correct `extraEnv` indentation in container template (@orkhan-huseyn)

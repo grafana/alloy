@@ -1,5 +1,5 @@
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
-{{- if $values.configMap.create }}
+{{- if and $values.configMap.create (not (or $values.secret.create $values.secret.name)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
