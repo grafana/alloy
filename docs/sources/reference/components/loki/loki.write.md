@@ -46,7 +46,7 @@ You can use the following blocks with `loki.write`:
 | `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
 | `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
-| `endpoint` > [`queue_config`][queue_config]        | When WAL is enabled, configures the queue client.          | no       |
+| `endpoint` > [`queue_config`][queue_config]        | Configure the queue used for endpoint.                     | no       |
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`wal`][wal]                                       | Write-ahead log configuration.                             | no       |
 
@@ -104,8 +104,9 @@ The following arguments are supported:
 If no `tenant_id` is provided, the component assumes that the Loki instance at `endpoint` is running in single-tenant mode and no X-Scope-OrgID header is sent.
 
 When multiple `endpoint` blocks are provided, the `loki.write` component creates a client for each.
-Received log entries are fanned-out to these clients in succession.
-That means that if one client is bottlenecked, it may impact the rest.
+Received log entries are fanned-out to these endpoints in succession. That means that if one endpint is bottlenecked, it may impact the rest.
+
+Each endpoint has a _queue_ of batches to be sent. The `queue_config` block can be used to customize the behavior of this queue.
 
 Endpoints can be named for easier identification in debug metrics by using the `name` argument. If the `name` argument isn't provided, a name is generated based on a hash of the endpoint settings.
 
@@ -127,10 +128,7 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 ### `queue_config`
 
-{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-The optional `queue_config` block configures, when WAL is enabled, how the underlying client queues batches of logs sent to Loki.
-Refer to [Write-Ahead block](#wal) for more information.
+The optional `queue_config` block configures how the endpoint queues batches of logs sent to Loki.
 
 The following arguments are supported:
 
@@ -138,6 +136,10 @@ The following arguments are supported:
 | --------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `capacity`      | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
 | `drain_timeout` | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
+| `min_shards`    | `number`   | Minimum amount of concurrent shards sending samples to the endpoint.                                                                                                          | `1`      | no       |
+
+Each endpoint manages a number of concurrent _shards_ which is responsible for sending a fraction of batches, number of shards are controlled with `min_shards` argument.
+Each shard has a queue of batches it keeps in memory, controlled with the `capacity` argument.
 
 ### `tls_config`
 
