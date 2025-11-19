@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -25,8 +26,19 @@ import (
 )
 
 func TestPyroscopeJavaIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Pyroscope Java integration test in short mode")
+	}
 	if os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("GITHUB_JOB") != "test_pyroscope" {
 		t.Skip("Skipping Pyroscope Java integration test in GitHub Actions (job name is not test_pyroscope)")
+	}
+	// Skip if Docker is not available
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Skipping Pyroscope Java integration test: Docker not available")
+	}
+	// Check if Docker daemon is running
+	if err := exec.Command("docker", "ps").Run(); err != nil {
+		t.Skip("Skipping Pyroscope Java integration test: Docker daemon not running")
 	}
 	wg := sync.WaitGroup{}
 	defer func() {

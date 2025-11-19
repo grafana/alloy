@@ -5,6 +5,7 @@ package vault
 import (
 	"fmt"
 	stdlog "log"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -23,6 +24,17 @@ import (
 )
 
 func Test_GetSecrets(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Vault integration test in short mode")
+	}
+	// Skip if Docker is not available
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Skipping Vault integration test: Docker not available")
+	}
+	// Check if Docker daemon is running
+	if err := exec.Command("docker", "ps").Run(); err != nil {
+		t.Skip("Skipping Vault integration test: Docker daemon not running")
+	}
 	var (
 		ctx = componenttest.TestContext(t)
 		l   = util.TestLogger(t)
@@ -107,6 +119,17 @@ func Test_PollSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if testing.Short() {
+				t.Skip("Skipping Vault integration test in short mode")
+			}
+			// Skip if Docker is not available
+			if _, err := exec.LookPath("docker"); err != nil {
+				t.Skip("Skipping Vault integration test: Docker not available")
+			}
+			// Check if Docker daemon is running
+			if err := exec.Command("docker", "ps").Run(); err != nil {
+				t.Skip("Skipping Vault integration test: Docker daemon not running")
+			}
 			var (
 				ctx = componenttest.TestContext(t)
 				l   = util.TestLogger(t)
