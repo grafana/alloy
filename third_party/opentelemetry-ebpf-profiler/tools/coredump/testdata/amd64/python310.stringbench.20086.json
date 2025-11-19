@@ -1,0 +1,20 @@
+{
+  "coredump-ref": "caf74bc49055cd6959fe96a6c14b19da025254b2351293a1b9d1b9165d78074e",
+  "threads": [
+    {
+      "lwp": 20086,
+      "frames": [
+        "libpython3.10.so.1.0+0x126a16",
+        "libpython3.10.so.1.0+0x190a07",
+        "libpython3.10.so.1.0+0x11e986",
+        "rpartition_test_slow_match_two_characters+2 in /home/flehner/src/github.com/python/cpython/Tools/stringbench/stringbench.py:478",
+        "inner+1 in <timeit-src>:3",
+        "timeit+10 in /usr/lib64/python3.10/timeit.py:174",
+        "best+1 in /home/flehner/src/github.com/python/cpython/Tools/stringbench/stringbench.py:1399",
+        "main+1 in /home/flehner/src/github.com/python/cpython/Tools/stringbench/stringbench.py:1410",
+        "<module>+4 in /home/flehner/src/github.com/python/cpython/Tools/stringbench/stringbench.py:5"
+      ]
+    }
+  ],
+  "modules": null
+}

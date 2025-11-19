@@ -1,0 +1,32 @@
+{
+  "coredump-ref": "4533ef3d0fdf4e16f093e7aa26e14d26da3e9ba9779b4e86cf446143361f9986",
+  "threads": [
+    {
+      "lwp": 67475,
+      "frames": [
+        "libc-2.33.so+0xa4b60",
+        "stackalign+0x95f",
+        "stackalign+0x96f",
+        "stackalign+0x96f",
+        "stackalign+0x96f",
+        "stackalign+0x70f",
+        "libc-2.33.so+0x21613",
+        "stackalign+0x777"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "b95a10cd6c5a218f195287bda176bc162091b2aeaeab7f0fae45fed8d4075c0e",
+      "local-path": "/media/psf/devel/prodfiler/utils/coredump/testsources/c/stackalign"
+    },
+    {
+      "ref": "1159053678e9e948b064a36d9abad8592e195a4815a3ecfddd6c4c6da86fea54",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libc-2.33.so"
+    },
+    {
+      "ref": "c2bed948068b2fdbfb2daf41c7a25c4cbe69e40323bb9761061f93157941fb9c",
+      "local-path": "/usr/lib/aarch64-linux-gnu/ld-2.33.so"
+    }
+  ]
+}

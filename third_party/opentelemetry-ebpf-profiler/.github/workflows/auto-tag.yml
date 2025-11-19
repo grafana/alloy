@@ -1,0 +1,36 @@
+name: Monthly Tagging
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+  schedule:
+    # Run every month on the 3rd day at 08:15 AM.
+    - cron: '15 8 3 * *'
+
+permissions:
+  contents: read
+
+jobs:
+  create-monthly-tag:
+    permissions:
+      contents: write # required for pushing git tags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Configure Git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Get current year and week number
+        id: date
+        run: |
+          echo "tag_name=v0.0.$(date +%G%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          TAG_NAME="${{ steps.date.outputs.tag_name }}"
+          # Create an annotated tag on the latest commit of the current branch (main)
+          git tag -a $TAG_NAME -m "$TAG_NAME"
+          # Push the newly created tag to the remote repository
+          git push origin $TAG_NAME

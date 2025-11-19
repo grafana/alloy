@@ -1,0 +1,25 @@
+{
+  "coredump-ref": "462c77ccad87047ed1c2dceed36af11abaa155823f03a65622a0e8a3c416c101",
+  "threads": [
+    {
+      "lwp": 14,
+      "frames": [
+        "libpthread-2.28.so+0x11471",
+        "perl+0x173cd4",
+        "perl+0x1766f9",
+        "perl+0x175496",
+        "perl+0x17601c",
+        "perl+0x14b7cd",
+        "perl+0xe602b",
+        "HelloWorld::print+0 in hi.pl:12",
+        "<top-level>+0 in hi.pl:19",
+        "perl+0xe2c25",
+        "perl+0x5e116",
+        "perl+0x34401",
+        "libc-2.28.so+0x2409a",
+        "perl+0x34449"
+      ]
+    }
+  ],
+  "modules": null
+}

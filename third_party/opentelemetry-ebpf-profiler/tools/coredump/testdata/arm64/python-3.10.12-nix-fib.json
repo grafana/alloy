@@ -1,0 +1,78 @@
+{
+  "coredump-ref": "c93288784033ddea76690d3f041314f82db21710b1ab8abe2b8abe23766ca0ff",
+  "threads": [
+    {
+      "lwp": 33070,
+      "frames": [
+        "libpython3.10.so.1.0+0x6977c",
+        "libpython3.10.so.1.0+0xbdbd7",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "recur_fibo+1 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:4",
+        "<module>+2 in /media/psf/Development/prodfiler/utils/coredump/testsources/python/./fib.py:3"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "68071b1ae6ef41a68486d94c7d4935e8f6639186d58ae2ab42f41bf9e60db409",
+      "local-path": "/nix/store/izmxx6s0nl1mcwvl8a5wisckqd9vbmjw-python3-3.10.12/bin/python3.10"
+    },
+    {
+      "ref": "6172458584fbf879f9048bb1513f999017f71cfe478ee8b42df31f8e995ddb9d",
+      "local-path": "/nix/store/rgizi393ki2q2p6lksk2rf53jgsjdvna-glibc-locales-2.37-8/lib/locale/locale-archive"
+    },
+    {
+      "ref": "da5d4d024db9a259fb452e2e7ff8d56b758769d8813d0c94d6ca5d7a1c1614a1",
+      "local-path": "/nix/store/7zii1yvdbwchx06qz6sd82d1p53jx86y-glibc-2.37-8/lib/libc.so.6"
+    },
+    {
+      "ref": "412c80537dbad3e1f9b73ba754dd7e3f60bf2a94e3bb07aac13cf98f3f7524e1",
+      "local-path": "/nix/store/cn95gf9d86wsj66aa1ahvbs7fkj3hgfp-gcc-12.3.0-libgcc/lib/libgcc_s.so.1"
+    },
+    {
+      "ref": "642c6a6c4a4a2f49c2bf1bb410c2256f9541f022a8b2af9fb213612fdf3f039e",
+      "local-path": "/nix/store/7zii1yvdbwchx06qz6sd82d1p53jx86y-glibc-2.37-8/lib/libm.so.6"
+    },
+    {
+      "ref": "a55fce5fe8901c7b53f792cded887db642289e0685e9e0e503c47b51f1e70c36",
+      "local-path": "/nix/store/7zii1yvdbwchx06qz6sd82d1p53jx86y-glibc-2.37-8/lib/libdl.so.2"
+    },
+    {
+      "ref": "f9ad69590604af14b6d216360bde9e9ddc569579c02a14deb057c5b20e9cb16a",
+      "local-path": "/nix/store/i886g12blyyjyr8cbhl1iq7azw0hlxwp-libxcrypt-4.4.36/lib/libcrypt.so.2.0.0"
+    },
+    {
+      "ref": "3e6ef8e2e7204b9e8380efa559469faf3e186cb8c78e12df6ce7863cd956b528",
+      "local-path": "/nix/store/izmxx6s0nl1mcwvl8a5wisckqd9vbmjw-python3-3.10.12/lib/libpython3.10.so.1.0"
+    },
+    {
+      "ref": "e046e1c60cefe433aaded583d2ede85dfc91b4ed06234a91c264dc10f4257511",
+      "local-path": "/nix/store/7zii1yvdbwchx06qz6sd82d1p53jx86y-glibc-2.37-8/lib/ld-linux-aarch64.so.1"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+BasedOnStyle:  LLVM
+AlignAfterOpenBracket: AlwaysBreak
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: false
+BinPackParameters: false
+BraceWrapping:
+  AfterFunction:   true
+  SplitEmptyFunction: false
+BreakBeforeBraces: Custom
+BreakStringLiterals: false
+ColumnLimit: 100
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentPPDirectives: BeforeHash
+AlignConsecutiveMacros: AcrossComments
+AlignConsecutiveAssignments: AcrossComments
+AllowShortCaseLabelsOnASingleLine: true
+ContinuationIndentWidth: 2

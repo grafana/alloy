@@ -1,0 +1,64 @@
+name: Common environment setup
+
+inputs:
+  skip_rust:
+    description: 'Set to true to skip installing Rust toolchains'
+    required: false
+    type: boolean
+    default: false
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: |
+        # Ubuntu has ARM64 packages in an entirely different repo, so we can't just
+        # `dpkg --add-architecture arm64` here: we have to add a custom sources.list first.
+        sudo tee /etc/apt/sources.list.d/ubuntu.sources <<EOF > /dev/null
+        Types: deb
+        URIs: http://azure.archive.ubuntu.com/ubuntu/
+        Suites: noble noble-updates noble-backports
+        Components: main universe restricted multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+        Architectures: amd64
+
+        Types: deb
+        URIs: http://azure.ports.ubuntu.com/ubuntu-ports/
+        Suites: noble noble-updates noble-backports
+        Components: main universe restricted multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+        Architectures: arm64
+        EOF
+
+        sudo dpkg --add-architecture arm64
+        sudo apt-get update -y
+
+        sudo apt-get install -y curl unzip gcc-aarch64-linux-gnu \
+          libc6-arm64-cross qemu-user-binfmt libc6:arm64 \
+          musl-dev:amd64 musl-dev:arm64 musl-tools binutils-aarch64-linux-gnu
+    - name: Set up Go
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      with:
+        go-version-file: go.mod
+        cache-dependency-path: go.sum
+      id: go
+    - name: Install Rust
+      if: ${{ inputs.skip_rust == false }}
+      uses: dtolnay/rust-toolchain@888c2e1ea69ab0d4330cbf0af1ecc7b68f368cc1
+      with:
+        targets: x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+        toolchain: 1.77
+    - name: Install protoc
+      shell: bash
+      env:
+        PB_URL: "https://github.com/protocolbuffers/protobuf/releases/download/v24.4/"
+        PB_FILE: "protoc-24.4-linux-x86_64.zip"
+        INSTALL_DIR: "/usr/local"
+      run: |
+        wget -nv "$PB_URL/$PB_FILE"
+        sudo unzip "$PB_FILE" -d "$INSTALL_DIR" 'bin/*' 'include/*'
+        sudo chmod +xr "$INSTALL_DIR/bin/protoc"
+        sudo find "$INSTALL_DIR/include" -type d -exec chmod +x {} \;
+        sudo find "$INSTALL_DIR/include" -type f -exec chmod +r {} \;
+        rm "$PB_FILE"

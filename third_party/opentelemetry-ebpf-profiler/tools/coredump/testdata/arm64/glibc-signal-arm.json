@@ -1,0 +1,36 @@
+{
+  "coredump-ref": "6a7fdbf45a7cc74b556668eea4bc54310bcc12d5b6fbd8bef87235d6c1c1e021",
+  "threads": [
+    {
+      "lwp": 17849,
+      "frames": [
+        "libc.so.6+0xc090c",
+        "libc.so.6+0xc5c5f",
+        "libc.so.6+0xc5b0f",
+        "sig+0x4101f7",
+        "linux-vdso.1.so+0x803",
+        "libc.so.6+0xc0910",
+        "libc.so.6+0xc5c5f",
+        "libc.so.6+0xc5b0f",
+        "sig+0x410237",
+        "libc.so.6+0x35a73",
+        "libc.so.6+0x35b5b",
+        "sig+0x4100ef"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "0fdfedf4db555c77c21e4e942b747963b08f35890fe61c4562e2e1a07853e559",
+      "local-path": "/home/ec2-user/sig"
+    },
+    {
+      "ref": "7436f95b8689a98ab322c19f96621da984d7062555107b55ac42d03303d9eaaa",
+      "local-path": "/usr/lib64/libc.so.6"
+    },
+    {
+      "ref": "20b53776e9fc8e7263c1911b7e338119c777212ffe6028cfe3e524796e403736",
+      "local-path": "/usr/lib/ld-linux-aarch64.so.1"
+    }
+  ]
+}

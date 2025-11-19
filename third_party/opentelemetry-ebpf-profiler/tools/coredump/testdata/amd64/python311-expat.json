@@ -1,0 +1,67 @@
+{
+  "coredump-ref": "5b13b3e4ef3ed1f7f5b62113200514b45285c445ab6cebfea7dd038053472202",
+  "threads": [
+    {
+      "lwp": 25548,
+      "frames": [
+        "test+1 in /home/tteras/work/elastic/python/expat.py:4",
+        "start_element+2 in /home/tteras/work/elastic/python/expat.py:10",
+        "libpython3.11.so.1.0+0x1c0c9c",
+        "libpython3.11.so.1.0+0x1bd1c9",
+        "pyexpat.cpython-311-x86_64-linux-musl.so+0x6f2e",
+        "libexpat.so.1.8.10+0xb51c",
+        "libexpat.so.1.8.10+0xbb37",
+        "libexpat.so.1.8.10+0xc3b9",
+        "libexpat.so.1.8.10+0xd833",
+        "libexpat.so.1.8.10+0x7898",
+        "pyexpat.cpython-311-x86_64-linux-musl.so+0x6bee",
+        "libpython3.11.so.1.0+0x21c1da",
+        "libpython3.11.so.1.0+0x1cc093",
+        "main+7 in /home/tteras/work/elastic/python/expat.py:23",
+        "<module>+27 in /home/tteras/work/elastic/python/expat.py:28",
+        "libpython3.11.so.1.0+0x1bf4b4",
+        "libpython3.11.so.1.0+0x1bd1c9",
+        "libpython3.11.so.1.0+0x245657",
+        "libpython3.11.so.1.0+0x265472",
+        "libpython3.11.so.1.0+0x261ac9",
+        "libpython3.11.so.1.0+0x277251",
+        "libpython3.11.so.1.0+0x276774",
+        "libpython3.11.so.1.0+0x276493",
+        "libpython3.11.so.1.0+0x270c06",
+        "libpython3.11.so.1.0+0x235b06",
+        "ld-musl-x86_64.so.1+0x1c9c9",
+        "python3.11+0x1075"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "ab8be098465c68bc1f218be3784058347c752bd1f1b4fd3ee465d4ac10e19be6",
+      "local-path": "/usr/lib/libexpat.so.1.8.10"
+    },
+    {
+      "ref": "df9b50d7d109e06c63878f8b1b01edaa75f1876312b0b81aa0e3217d0e5cf0c0",
+      "local-path": "/usr/lib/python3.11/lib-dynload/pyexpat.cpython-311-x86_64-linux-musl.so"
+    },
+    {
+      "ref": "b87ba1ea40af6305503e4377439e271672ca8e7a045095066421caafd87d248f",
+      "local-path": "/usr/lib/debug/usr/lib/python3.11/lib-dynload/pyexpat.cpython-311-x86_64-linux-musl.so.debug"
+    },
+    {
+      "ref": "b14a0e943b0480bd6d590fa0b2b2734763b3e134625e84ab1c363bb2f77e0a2a",
+      "local-path": "/usr/lib/libpython3.11.so.1.0"
+    },
+    {
+      "ref": "a0e80898190e34005a4d0598fa71e2e0b0ab2726a3cd73c3ad147770ca371173",
+      "local-path": "/lib/ld-musl-x86_64.so.1"
+    },
+    {
+      "ref": "c63ff448b1840dd2eb5ca1630eb4edc2e4104a6e944bea0b34539c882caae0d5",
+      "local-path": "/usr/lib/debug/lib/ld-musl-x86_64.so.1.debug"
+    },
+    {
+      "ref": "79244af6389e0530139f967cf82f7161116ae4b454d52363f1668744cbe2d40a",
+      "local-path": "/usr/bin/python3.11"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "coredump-ref": "b21ceabeabae6be900f44f56bb52dd89065c71903603938135fb19b128575c6b",
+  "threads": [
+    {
+      "lwp": 144534,
+      "frames": [
+        "fib+1 in /home/korniltsev/trash/fib.py:2",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "<module>+6 in /home/korniltsev/trash/fib.py:7",
+        "<interpreter trampoline>+0 in <shim>:1",
+        "libpython3.12.so.1.0+0x11243a",
+        "libpython3.12.so.1.0+0x28e7de",
+        "libpython3.12.so.1.0+0x2e9dc5",
+        "libpython3.12.so.1.0+0x2e9ed8",
+        "libpython3.12.so.1.0+0x2ecdbf",
+        "libpython3.12.so.1.0+0x2ed39f",
+        "libpython3.12.so.1.0+0x314d53",
+        "libpython3.12.so.1.0+0x315199",
+        "libpython3.12.so.1.0+0x31535d",
+        "libc.so.6+0x2a1c9",
+        "libc.so.6+0x2a28a",
+        "python3.12+0x1094"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "474c778ae8a8baf4d26717c9e1011846268d7f0a3767f73b30a31d124a65d169",
+      "local-path": "/home/korniltsev/.pyenv/versions/3.12.9/bin/python3.12"
+    },
+    {
+      "ref": "1a2eb220c22ae7ba8aaf8b243e57dbc25542f8c9c269ed6100c7ad5aea7c3ada",
+      "local-path": "/home/korniltsev/.pyenv/versions/3.12.9/lib/libpython3.12.so.1.0"
+    },
+    {
+      "ref": "e7a914a33fd4f6d25057b8d48c7c5f3d55ab870ec4ee27693d6c5f3a532e6226",
+      "local-path": "/usr/lib/x86_64-linux-gnu/libc.so.6"
+    },
+    {
+      "ref": "c09178edd7fbc58aa8415f4bbe54dd76c5ff6c6398ba3e56e5a4743fd7e9adfc",
+      "local-path": "/usr/lib/x86_64-linux-gnu/libm.so.6"
+    },
+    {
+      "ref": "6c5e1b4528b704dc7081aa45b5037bda4ea9cad78ca562b4fb6b0dbdbfc7e7e7",
+      "local-path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
+    }
+  ]
+}

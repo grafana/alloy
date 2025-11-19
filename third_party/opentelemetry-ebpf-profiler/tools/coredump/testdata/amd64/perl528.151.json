@@ -1,0 +1,32 @@
+{
+  "coredump-ref": "4f94861ca06fa1f2101387824db3bc2fc5c8af508f21e6a055d15a72fe338764",
+  "threads": [
+    {
+      "lwp": 151,
+      "frames": [
+        "libc-2.28.so+0x15c751",
+        "perl+0xfa5b8",
+        "perl+0xe1987",
+        "perl+0x11cc2c",
+        "HTML::Lint::Parser::_element_push+0 in /usr/share/perl5/HTML/Lint/Parser.pm:337",
+        "HTML::Lint::Parser::_start+0 in /usr/share/perl5/HTML/Lint/Parser.pm:142",
+        "perl+0xe2c25",
+        "perl+0x55f61",
+        "Parser.so+0x6458",
+        "Parser.so+0x78a1",
+        "Parser.so+0x89c7",
+        "Parser.so+0x8e46",
+        "Parser.so+0x958a",
+        "perl+0xec900",
+        "HTML::Lint::parse+0 in /usr/share/perl5/HTML/Lint.pm:135",
+        "<top-level>+0 in /usr/bin/weblint:67",
+        "perl+0xe2c25",
+        "perl+0x5e116",
+        "perl+0x34401",
+        "libc-2.28.so+0x2409a",
+        "perl+0x34449"
+      ]
+    }
+  ],
+  "modules": null
+}

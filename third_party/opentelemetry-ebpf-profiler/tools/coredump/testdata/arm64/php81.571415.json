@@ -1,0 +1,23 @@
+{
+  "coredump-ref": "98c8be16cd50150fcfba63823bcdf991dbfbb8b8577c4e722662d881170e82b6",
+  "threads": [
+    {
+      "lwp": 571415,
+      "frames": [
+        "php8.1+0x1ed574",
+        "shuffle+0 in :0",
+        "run_forever+3 in /home/admin/php_forever.php:6",
+        "<top-level>+19 in /home/admin/php_forever.php:20",
+        "php8.1+0x33e730",
+        "php8.1+0x349d77",
+        "php8.1+0x2cb883",
+        "php8.1+0x2666fb",
+        "php8.1+0x3bd2c3",
+        "php8.1+0x1091bf",
+        "libc-2.33.so+0x21613",
+        "php8.1+0x1093f7"
+      ]
+    }
+  ],
+  "modules": null
+}

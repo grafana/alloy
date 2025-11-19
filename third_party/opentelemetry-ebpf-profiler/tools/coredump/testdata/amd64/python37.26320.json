@@ -1,0 +1,21 @@
+{
+  "coredump-ref": "3740f861518da26014fc27f693555b7d9f2974d7f0e3c39e7eb15cca8b119b09",
+  "threads": [
+    {
+      "lwp": 26320,
+      "frames": [
+        "python3.7+0x532049",
+        "python3.7+0x5329a0",
+        "python3.7+0x4d9964",
+        "python3.7+0x5ccf60",
+        "python3.7+0x5d0228",
+        "python3.7+0x5d0548",
+        "python3.7+0x4c27c2",
+        "python3.7+0x54ab47",
+        "python3.7+0x5ccd0b",
+        "<module>+2 in /tmp/systemtest_tmppy_1612432164662592633.py:3"
+      ]
+    }
+  ],
+  "modules": null
+}

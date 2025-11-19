@@ -1,0 +1,3 @@
+handle SIGILL nostop
+handle SIGSEGV nostop
+set pagination off

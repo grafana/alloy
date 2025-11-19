@@ -1,0 +1,22 @@
+{
+  "coredump-ref": "9ad2317b116884d61014c03f86e01054ec95e84bafcf50f031c44ede8f6ba021",
+  "threads": [
+    {
+      "lwp": 7893,
+      "frames": [
+        "php7.4+0x2e9b52",
+        "is_prime+13 in /home/j/prime.php:16",
+        "<top-level>+33 in /home/j/prime.php:34",
+        "php7.4+0x321863",
+        "php7.4+0x32a09a",
+        "php7.4+0x2a2b53",
+        "php7.4+0x2417ef",
+        "php7.4+0x32c147",
+        "php7.4+0x10d870",
+        "libc-2.31.so+0x26d09",
+        "php7.4+0x10d9e9"
+      ]
+    }
+  ],
+  "modules": null
+}

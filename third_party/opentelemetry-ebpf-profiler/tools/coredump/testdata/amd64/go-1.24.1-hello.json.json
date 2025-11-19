@@ -1,0 +1,63 @@
+{
+  "coredump-ref": "ad99fdc13a9fd30c511ae87fbd2f0d4ba8c16af65a691cce39dc9031f04b26f4",
+  "threads": [
+    {
+      "lwp": 2683,
+      "frames": [
+        "internal/runtime/syscall.Syscall6+0 in /usr/local/go/src/internal/runtime/syscall/asm_linux_amd64.s:36",
+        "syscall.RawSyscall6+0 in /usr/local/go/src/syscall/syscall_linux.go:66",
+        "syscall.Syscall+0 in /usr/local/go/src/syscall/syscall_linux.go:86",
+        "syscall.write+0 in /usr/local/go/src/syscall/zsyscall_linux_amd64.go:964",
+        "internal/poll.(*FD).Write+0 in /usr/local/go/src/syscall/syscall_unix.go:211",
+        "os.(*File).Write+0 in /usr/local/go/src/os/file.go:196",
+        "fmt.Fprintln+0 in /usr/local/go/src/fmt/print.go:305",
+        "main.hello+0 in /home/ec2-user/testsources/go/hello.go:14",
+        "main.main+0 in /home/ec2-user/testsources/go/hello.go:50",
+        "runtime.main+0 in /usr/local/go/src/internal/runtime/atomic/types.go:194",
+        "runtime.goexit+0 in /usr/local/go/src/runtime/asm_amd64.s:1701"
+      ]
+    },
+    {
+      "lwp": 2684,
+      "frames": [
+        "runtime.usleep+0 in /usr/local/go/src/runtime/sys_linux_amd64.s:135",
+        "runtime.sysmon+0 in /usr/local/go/src/runtime/proc.go:6108",
+        "runtime.sysmon+0 in /usr/local/go/src/runtime/proc.go:6108",
+        "runtime.mstart1+0 in /usr/local/go/src/runtime/proc.go:1855",
+        "runtime.mstart0+0 in /usr/local/go/src/runtime/proc.go:1817",
+        "runtime.mstart+0 in /usr/local/go/src/runtime/asm_amd64.s:396"
+      ]
+    },
+    {
+      "lwp": 2685,
+      "frames": [
+        "runtime.futex+0 in /usr/local/go/src/runtime/sys_linux_amd64.s:558",
+        "runtime.futexsleep+0 in /usr/local/go/src/runtime/os_linux.go:75",
+        "runtime.notesleep+0 in /usr/local/go/src/runtime/lock_futex.go:48",
+        "runtime.stopm+0 in /usr/local/go/src/runtime/proc.go:1888",
+        "runtime.findRunnable+0 in /usr/local/go/src/runtime/proc.go:3279",
+        "runtime.schedule+0 in /usr/local/go/src/runtime/proc.go:4017",
+        "runtime.goschedImpl+0 in /usr/local/go/src/runtime/proc.go:4176",
+        "runtime.gopreempt_m+0 in /usr/local/go/src/runtime/proc.go:4193",
+        "runtime.mcall+0 in /usr/local/go/src/runtime/asm_amd64.s:463"
+      ]
+    },
+    {
+      "lwp": 2686,
+      "frames": [
+        "runtime.futex+0 in /usr/local/go/src/runtime/sys_linux_amd64.s:558",
+        "runtime.futexsleep+0 in /usr/local/go/src/runtime/os_linux.go:75",
+        "runtime.notesleep+0 in /usr/local/go/src/runtime/lock_futex.go:48",
+        "runtime.stopm+0 in /usr/local/go/src/runtime/proc.go:1888",
+        "runtime.exitsyscall0+0 in /usr/local/go/src/runtime/proc.go:4875",
+        "runtime.mcall+0 in /usr/local/go/src/runtime/asm_amd64.s:463"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "cfe34afe8ed0115e552d0e94cf7bd46186deb8c3775b310204f194a0b5f67cd5",
+      "local-path": "/home/ec2-user/testsources/go/hello"
+    }
+  ]
+}

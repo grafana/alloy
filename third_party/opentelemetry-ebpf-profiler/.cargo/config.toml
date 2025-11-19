@@ -1,0 +1,9 @@
+[env]
+CC_aarch64_unknown_linux_musl = "aarch64-linux-musl-gcc"
+CC_x86_64_unknown_linux_musl = "x86_64-linux-musl-gcc"
+
+# Zydis CMake config requires a C++ compiler for the test cases but the musl
+# toolchain doesn't have one. We simply force the compiler to `g++` here to
+# trick CMake into passing the check for a C++ compiler: it isn't actually
+# used anyway.
+TARGET_CXX = "g++"

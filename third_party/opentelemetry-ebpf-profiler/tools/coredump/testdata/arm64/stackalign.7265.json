@@ -1,0 +1,19 @@
+{
+  "coredump-ref": "3effcb31df636723dcfb07ccf2ab0dfd0ac093ff1fd1911dd67c50858e41d876",
+  "threads": [
+    {
+      "lwp": 7265,
+      "frames": [
+        "libc-2.33.so+0xa8020",
+        "stackalign+0x95f",
+        "stackalign+0x96f",
+        "stackalign+0x96f",
+        "stackalign+0x96f",
+        "stackalign+0x70f",
+        "libc-2.33.so+0x24ad3",
+        "stackalign+0x777"
+      ]
+    }
+  ],
+  "modules": null
+}

@@ -1,0 +1,44 @@
+{
+  "coredump-ref": "1b496ac7c0747b896e6c5ef5720db01d900a224a529eb74d5ce0c787a7e4bcd1",
+  "threads": [
+    {
+      "lwp": 253432,
+      "frames": [
+        "libruby.so.3.0.2+0x249714",
+        "libruby.so.3.0.2+0x24aa77",
+        "libruby.so.3.0.2+0x194bec",
+        "libruby.so.3.0.2+0x195d12",
+        "libruby.so.3.0.2+0x1983e1",
+        "libruby.so.3.0.2+0x23bd74",
+        "libruby.so.3.0.2+0x23e0d5",
+        "libruby.so.3.0.2+0x240db6",
+        "is_prime+0 in /home/flehner/tmp/ruby3/loop.rb:10",
+        "sum_of_primes+0 in /home/flehner/tmp/ruby3/loop.rb:20",
+        "<main>+0 in /home/flehner/tmp/ruby3/loop.rb:30",
+        "libruby.so.3.0.2+0x2461e4",
+        "libruby.so.3.0.2+0x24aa77",
+        "libruby.so.3.0.2+0x1982dd",
+        "libruby.so.3.0.2+0x23bd74",
+        "libruby.so.3.0.2+0x23e0d5",
+        "libruby.so.3.0.2+0x240db6",
+        "<main>+0 in /home/flehner/tmp/ruby3/loop.rb:29",
+        "libruby.so.3.0.2+0x2461e4",
+        "libruby.so.3.0.2+0x249387",
+        "libruby.so.3.0.2+0xb2e49",
+        "libruby.so.3.0.2+0xb30ad",
+        "libruby.so.3.0.2+0x23bd74",
+        "libruby.so.3.0.2+0x23e0d5",
+        "libruby.so.3.0.2+0x240db6",
+        "<main>+0 in /home/flehner/tmp/ruby3/loop.rb:28",
+        "libruby.so.3.0.2+0x2461e4",
+        "libruby.so.3.0.2+0xb1c1a",
+        "libruby.so.3.0.2+0xb54f9",
+        "ruby-mri+0x118e",
+        "libc.so.6+0x2d55f",
+        "libc.so.6+0x2d60b",
+        "ruby-mri+0x11d4"
+      ]
+    }
+  ],
+  "modules": null
+}

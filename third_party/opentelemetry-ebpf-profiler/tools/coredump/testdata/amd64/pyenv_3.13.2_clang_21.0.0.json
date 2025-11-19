@@ -1,0 +1,62 @@
+{
+  "coredump-ref": "dc8dd740e0456edc70077e8e453facfae0775a8bf50387f05e9f4e948c3ae700",
+  "threads": [
+    {
+      "lwp": 167127,
+      "frames": [
+        "fib+1 in /home/korniltsev/trash/fib.py:2",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "fib+3 in /home/korniltsev/trash/fib.py:4",
+        "<module>+6 in /home/korniltsev/trash/fib.py:7",
+        "libpython3.13.so.1.0+0x1f9740",
+        "libpython3.13.so.1.0+0x1f450c",
+        "libpython3.13.so.1.0+0x260fdc",
+        "libpython3.13.so.1.0+0x260cd7",
+        "libpython3.13.so.1.0+0x25e751",
+        "libpython3.13.so.1.0+0x25e262",
+        "libpython3.13.so.1.0+0x283a63",
+        "libpython3.13.so.1.0+0x2832a2",
+        "libpython3.13.so.1.0+0x283589",
+        "libpython3.13.so.1.0+0x2835dc",
+        "libc.so.6+0x2a1c9",
+        "libc.so.6+0x2a28a",
+        "python3.13+0x1074"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "b76cc07b46f4a2f32a16f3a4df617353d454f7890ebd92f49a96f8f7410613f4",
+      "local-path": "/home/korniltsev/.pyenv/versions/3.13.2/bin/python3.13"
+    },
+    {
+      "ref": "e7a914a33fd4f6d25057b8d48c7c5f3d55ab870ec4ee27693d6c5f3a532e6226",
+      "local-path": "/usr/lib/x86_64-linux-gnu/libc.so.6"
+    },
+    {
+      "ref": "c09178edd7fbc58aa8415f4bbe54dd76c5ff6c6398ba3e56e5a4743fd7e9adfc",
+      "local-path": "/usr/lib/x86_64-linux-gnu/libm.so.6"
+    },
+    {
+      "ref": "67997ac257675599247dc0445f4d2705f67e203678fb9920162bc2cd7f9d0009",
+      "local-path": "/home/korniltsev/.pyenv/versions/3.13.2/lib/libpython3.13.so.1.0"
+    },
+    {
+      "ref": "6c5e1b4528b704dc7081aa45b5037bda4ea9cad78ca562b4fb6b0dbdbfc7e7e7",
+      "local-path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
+    }
+  ]
+}

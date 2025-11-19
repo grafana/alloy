@@ -1,0 +1,86 @@
+{
+  "coredump-ref": "3eb6bae4e0089983f436d6bbd4a0b7ee0d72738eac29f15495494f53bc82263d",
+  "threads": [
+    {
+      "lwp": 80,
+      "frames": [
+        "fib+1 in /mnt/trash/qwe.py:2",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "fib+3 in /mnt/trash/qwe.py:4",
+        "<module>+6 in /mnt/trash/qwe.py:7",
+        "<interpreter trampoline>+0 in <shim>:1",
+        "libpython3.12.so.1.0+0x95b58",
+        "libpython3.12.so.1.0+0x1ecfe2",
+        "libpython3.12.so.1.0+0x2136b6",
+        "libpython3.12.so.1.0+0x20c91b",
+        "libpython3.12.so.1.0+0x226f72",
+        "libpython3.12.so.1.0+0x2264f1",
+        "libpython3.12.so.1.0+0x2260d3",
+        "libpython3.12.so.1.0+0x21f742",
+        "libpython3.12.so.1.0+0x1d6ed6",
+        "ld-musl-x86_64.so.1+0x1c709",
+        "python3.12+0x1045"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "983f4cac5caf833fbf7d5d28ac8d6a55d3cbab6152d37a246af1a9991f72d8b1",
+      "local-path": "/usr/lib/debug/lib/ld-musl-x86_64.so.1.debug"
+    },
+    {
+      "ref": "497dd0d2b4a80bfd11339306c84aa752d811f612a398cb526a0a9ac2f426c0b8",
+      "local-path": "/usr/lib/libpython3.12.so.1.0"
+    },
+    {
+      "ref": "02a162bd137903ef2511ccb6edc32eaa63a9c9c66c8474f6ce7d9d47fc5a1e71",
+      "local-path": "/usr/lib/debug/usr/lib/libpython3.12.so.1.0.debug"
+    },
+    {
+      "ref": "9cf22fb673cad95247584fd0bc21b95aa37ae152a8bd01022a494e4f7ec3854c",
+      "local-path": "/usr/bin/python3.12"
+    },
+    {
+      "ref": "f2c83c6e5aea0e1e42b69e344a2eb0aac35b361cad7497157f727dbe30b8565e",
+      "local-path": "/usr/lib/debug/usr/bin/python3.12.debug"
+    },
+    {
+      "ref": "c9cbfe6a266c104f74629a257e2017020cba7a0da97caefa4c1d068ea6fe698c",
+      "local-path": "/lib/ld-musl-x86_64.so.1"
+    }
+  ]
+}

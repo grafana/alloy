@@ -1,0 +1,6 @@
+/coredump
+/coredump.test
+/testsources/java/*.class
+/modulecache
+/gdb-sysroot
+

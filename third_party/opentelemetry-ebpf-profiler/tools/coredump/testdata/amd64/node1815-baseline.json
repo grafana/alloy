@@ -1,0 +1,197 @@
+{
+  "coredump-ref": "f9f50c571dbc44589186c3bdf8f515c2f33451da023e28879f0f289ba026a9c1",
+  "threads": [
+    {
+      "lwp": 7564,
+      "frames": [
+        "V8::ExitFrame+0 in :0",
+        "getColorDepth+0 in node:internal/tty:0",
+        "value+5 in node:internal/console/constructor:320",
+        "value+1 in node:internal/console/constructor:347",
+        "warn+1 in node:internal/console/constructor:382",
+        "V8::InternalFrame+0 in :0",
+        "V8::EntryFrame+0 in :0",
+        "node+0x9bfced",
+        "node+0x9c0cb1",
+        "node+0x877853",
+        "node+0x7906bf",
+        "V8::ExitFrame+0 in :0",
+        "trace+6 in node:internal/console/constructor:428",
+        "V8::InternalFrame+0 in :0",
+        "V8::EntryFrame+0 in :0",
+        "node+0x9bfced",
+        "node+0x9c0cb1",
+        "node+0x877853",
+        "node+0x7906bf",
+        "V8::ExitFrame+0 in :0",
+        "add+1 in /home/tteras/work/elastic/node/test.js:3",
+        "add3+1 in /home/tteras/work/elastic/node/test.js:8",
+        "test+1 in /home/tteras/work/elastic/node/test.js:12",
+        "submain+1 in /home/tteras/work/elastic/node/test.js:16",
+        "main+2 in /home/tteras/work/elastic/node/test.js:23",
+        "<anonymous>+26 in /home/tteras/work/elastic/node/test.js:27",
+        "Module._compile+46 in node:internal/modules/cjs/loader:1254",
+        "Module._extensions..js+45 in node:internal/modules/cjs/loader:1308",
+        "Module.load+12 in node:internal/modules/cjs/loader:1117",
+        "Module._load+72 in node:internal/modules/cjs/loader:958",
+        "executeUserEntryPoint+0 in node:internal/modules/run_main:0",
+        "<anonymous>+0 in node:internal/main/run_main_module:0",
+        "V8::InternalFrame+0 in :0",
+        "V8::EntryFrame+0 in :0",
+        "node+0x9bfced",
+        "node+0x9c0cb1",
+        "node+0x877853",
+        "node+0x6f04e6",
+        "node+0x62e6a9",
+        "node+0x6308c8",
+        "node+0x5b3992",
+        "node+0x6b8b25",
+        "node+0x6b98ea",
+        "node+0x62fd8f",
+        "node+0x632f82",
+        "ld-musl-x86_64.so.1+0x1baac",
+        "node+0x58197c"
+      ]
+    },
+    {
+      "lwp": 7565,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x1eed3",
+        "node+0x11dfb04",
+        "node+0x11ce153",
+        "node+0x6e3827",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 7566,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "node+0x11dc118",
+        "node+0x6e05ba",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 7567,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "node+0x11dc118",
+        "node+0x6e05ba",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 7568,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "node+0x11dc118",
+        "node+0x6e05ba",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 7569,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "node+0x11dc118",
+        "node+0x6e05ba",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 7570,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x57aea",
+        "node+0x11dbfa1",
+        "node+0x781bc1",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "2f15e5cf60c63c296e982052e49d9c44d6f52431eb41537ba4f71f842d518ded",
+      "local-path": "/usr/lib/libstdc++.so.6.0.30"
+    },
+    {
+      "ref": "e54a14f63a00fa869bc24002d79c0d53215a2e456fb6bccac7379758749c7a1e",
+      "local-path": "/lib/libssl.so.3"
+    },
+    {
+      "ref": "c128a02af22c672acc5a9c0106b24e9e12cddf4038f3519aca79ab3e53ac2f19",
+      "local-path": "/usr/lib/libcares.so.2.6.0"
+    },
+    {
+      "ref": "6e1d5d052d55bbff81ecccc8a271694bd9c2f78bee5ef7a50f289b2f86b07b1e",
+      "local-path": "/usr/lib/libicui18n.so.72.1"
+    },
+    {
+      "ref": "3ef4635dca6d0269348caaecffe325faa4b67722d4e9cbf49331187c48bc1517",
+      "local-path": "/lib/libcrypto.so.3"
+    },
+    {
+      "ref": "1720409815423c3a8ff923c07118e635fc414f2aff0ba92bd7ccdcfe87016dfb",
+      "local-path": "/usr/lib/libbrotlicommon.so.1.0.9"
+    },
+    {
+      "ref": "2ff2fe1b0f4a342226fa6012a5ea509769af19ad0b325a152173226023c525cd",
+      "local-path": "/usr/lib/libnghttp2.so.14.24.1"
+    },
+    {
+      "ref": "9bad037e78fe4ef35bf0a97fe09ab53c4a7241155bc31372f6dca6463efed34a",
+      "local-path": "/usr/bin/node"
+    },
+    {
+      "ref": "fd2fd9f296ea16052681d3192e7356f28e2fc916c5b5220610b86af03688ef17",
+      "local-path": "/usr/lib/libgcc_s.so.1"
+    },
+    {
+      "ref": "b865c43fe862c6c04fce726f7f20f8eca6a4e34c5d4b2bd271e9372168fc6bcc",
+      "local-path": "/lib/libz.so.1.2.13"
+    },
+    {
+      "ref": "86caea8c44fcd368a9c998f3e1e385c4346c917dda5e94c5920481d6ed8d6c8b",
+      "local-path": "/usr/lib/libicuuc.so.72.1"
+    },
+    {
+      "ref": "cc912e63cebce01c23c27e038e5ede1bcb8ea3ee9b460c61287f718c0927f159",
+      "local-path": "/usr/lib/libbrotlienc.so.1.0.9"
+    },
+    {
+      "ref": "6f44493fa40580fe818ddd7ae810ac9fd981fb2bdf0d81dafdabf9bea4e05dff",
+      "local-path": "/usr/lib/libbrotlidec.so.1.0.9"
+    },
+    {
+      "ref": "92444cca4a4673c8f640fd78a187be4d4e5f99d46850e667c3014197f766a3ee",
+      "local-path": "/lib/ld-musl-x86_64.so.1"
+    },
+    {
+      "ref": "abe4096f3cd9a8fb0defef90b0ac03ecd3033297a476ad367c51bd6d9c08f48c",
+      "local-path": "/usr/lib/debug/lib/ld-musl-x86_64.so.1.debug"
+    }
+  ]
+}

@@ -1,0 +1,386 @@
+{
+  "coredump-ref": "14b0ec7c3df287683b8ba70258b9b7abd8503e61f9b3e6ceac5b8052359f8d27",
+  "threads": [
+    {
+      "lwp": 13577,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x56462",
+        "libjli.so+0x835e",
+        "libjli.so+0x59bc",
+        "libjli.so+0x64f8",
+        "java+0x1210",
+        "ld-musl-x86_64.so.1+0x1baac",
+        "java+0x1290"
+      ]
+    },
+    {
+      "lwp": 13578,
+      "frames": [
+        "void sun.nio.cs.StreamEncoder.implWrite(java.nio.CharBuffer)+10 in StreamEncoder.java:377",
+        "void sun.nio.cs.StreamEncoder.implWrite(char[], int, int)+1 in StreamEncoder.java:361",
+        "void sun.nio.cs.StreamEncoder.lockedWrite(char[], int, int)+7 in StreamEncoder.java:162",
+        "void sun.nio.cs.StreamEncoder.write(char[], int, int)+4 in StreamEncoder.java:143",
+        "void java.io.OutputStreamWriter.write(char[], int, int)+0 in OutputStreamWriter.java:220",
+        "void java.io.BufferedWriter.implFlushBuffer()+3 in BufferedWriter.java:178",
+        "void java.io.BufferedWriter.flushBuffer()+4 in BufferedWriter.java:163",
+        "void java.io.PrintStream.implWriteln(java.lang.String)+3 in PrintStream.java:848",
+        "void java.io.PrintStream.writeln(java.lang.String)+3 in PrintStream.java:826",
+        "void java.io.PrintStream.println(java.lang.String)+1 in PrintStream.java:1168",
+        "void HelloWorld.main(java.lang.String[])+0 in HelloWorld.java:4",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x8bc159",
+        "libjvm.so+0x963c7b",
+        "libjvm.so+0x96668c",
+        "libjli.so+0x46c8",
+        "libjli.so+0x7aa8",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13579,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x57aea",
+        "libjvm.so+0xd3d841",
+        "libjvm.so+0xfc2a4a",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13580,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc9816a",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0x78c2a9",
+        "libjvm.so+0x642469",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13581,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x57aea",
+        "libjvm.so+0xd3d841",
+        "libjvm.so+0xfc2a4a",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13582,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc9816a",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0x792db2",
+        "libjvm.so+0x79315d",
+        "libjvm.so+0x642469",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13583,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0x7ec074",
+        "libjvm.so+0x7ec44f",
+        "libjvm.so+0x642469",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13584,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0xf9c2e4",
+        "libjvm.so+0xf9cd0f",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13585,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc9816a",
+        "libjvm.so+0xc46106",
+        "libjvm.so+0x9998c9",
+        "void java.lang.ref.Reference.waitForReferencePendingList()+0 in Reference.java:0",
+        "void java.lang.ref.Reference.processPendingReferences()+0 in Reference.java:246",
+        "void java.lang.ref.Reference$ReferenceHandler.run()+3 in Reference.java:208",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x8bc159",
+        "libjvm.so+0x8bda8b",
+        "libjvm.so+0x98e9b8",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13586,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc97912",
+        "libjvm.so+0xc6a6c4",
+        "libjvm.so+0xec452b",
+        "libjvm.so+0x9901e5",
+        "void java.lang.Object.wait0(long)+0 in Object.java:0",
+        "void java.lang.Object.wait(long)+2 in Object.java:366",
+        "void java.lang.Object.wait()+0 in Object.java:339",
+        "void java.lang.ref.NativeReferenceQueue.await()+0 in NativeReferenceQueue.java:48",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove0()+2 in ReferenceQueue.java:158",
+        "java.lang.ref.Reference java.lang.ref.NativeReferenceQueue.remove()+1 in NativeReferenceQueue.java:89",
+        "void java.lang.ref.Finalizer$FinalizerThread.run()+7 in Finalizer.java:173",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x8bc159",
+        "libjvm.so+0x8bda8b",
+        "libjvm.so+0x98e9b8",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13587,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x57aea",
+        "libjvm.so+0xd3d841",
+        "libjvm.so+0xe02d7a",
+        "libjvm.so+0xc8203c",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13588,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc9816a",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0xd3f1ac",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13589,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0xc3a0ab",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13590,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc46106",
+        "libjvm.so+0x6250fc",
+        "libjvm.so+0x626c4f",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13591,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc46106",
+        "libjvm.so+0x6250fc",
+        "libjvm.so+0x626c4f",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13592,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc9816a",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0xc5cbd9",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13593,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc980dc",
+        "libjvm.so+0xc4608f",
+        "libjvm.so+0xc5c6db",
+        "libjvm.so+0xc5c795",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    },
+    {
+      "lwp": 13594,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x57f81",
+        "ld-musl-x86_64.so.1+0x5510b",
+        "ld-musl-x86_64.so.1+0x546d6",
+        "ld-musl-x86_64.so.1+0x55514",
+        "libjvm.so+0xc97da6",
+        "libjvm.so+0xf40c0c",
+        "void jdk.internal.misc.Unsafe.park(boolean, long)+0 in Unsafe.java:0",
+        "void java.util.concurrent.locks.LockSupport.parkNanos(java.lang.Object, long)+7 in LockSupport.java:269",
+        "boolean java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(long, java.util.concurrent.TimeUnit)+16 in AbstractQueuedSynchronizer.java:1847",
+        "void java.lang.ref.ReferenceQueue.await(long)+0 in ReferenceQueue.java:71",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove0(long)+4 in ReferenceQueue.java:143",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove(long)+7 in ReferenceQueue.java:218",
+        "void jdk.internal.ref.CleanerImpl.run()+12 in CleanerImpl.java:140",
+        "void java.lang.Thread.runWith(java.lang.Object, java.lang.Runnable)+1 in Thread.java:1636",
+        "void java.lang.Thread.run()+3 in Thread.java:1623",
+        "void jdk.internal.misc.InnocuousThread.run()+2 in InnocuousThread.java:186",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x8bc159",
+        "libjvm.so+0x8bda8b",
+        "libjvm.so+0x98e9b8",
+        "libjvm.so+0x8d207d",
+        "libjvm.so+0xf10b08",
+        "libjvm.so+0xc8dadf",
+        "ld-musl-x86_64.so.1+0x55bdf",
+        "ld-musl-x86_64.so.1+0x57f4d"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "ac02a88b68c20ab5a42ad5bb8a10c1ac992e5049ed54e31ff24b62eeea589f87",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/lib/libjava.so"
+    },
+    {
+      "ref": "eb522a9e0d4d3802cd10b6961f1848e304ffd625ec72ef0d02d95d092caedc92",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/lib/libjimage.so"
+    },
+    {
+      "ref": "1dac2f829d3f9f1dc70857e47cd74968a2b2dc9b389d39dbb40d09e66a808011",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/lib/libjli.so"
+    },
+    {
+      "ref": "92444cca4a4673c8f640fd78a187be4d4e5f99d46850e667c3014197f766a3ee",
+      "local-path": "/lib/ld-musl-x86_64.so.1"
+    },
+    {
+      "ref": "abe4096f3cd9a8fb0defef90b0ac03ecd3033297a476ad367c51bd6d9c08f48c",
+      "local-path": "/usr/lib/debug/lib/ld-musl-x86_64.so.1.debug"
+    },
+    {
+      "ref": "7a9d1fdf2d2a78ca4fa6b89a5f4f9f74ae14d9c8ad7dc001c091615bc3fcaef7",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/bin/java"
+    },
+    {
+      "ref": "bd0743111d0acc90b4c1bbc2654515ff96e1c6fafcb8a60100734b1191cc26d6",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/lib/libjsvml.so"
+    },
+    {
+      "ref": "d70c8e544abfe2b059bf7e504e7cbfad7e3d0d90f0a5f0e13f0bbc20c85aea94",
+      "local-path": "/usr/lib/jvm/java-20-openjdk/lib/server/libjvm.so"
+    },
+    {
+      "ref": "b865c43fe862c6c04fce726f7f20f8eca6a4e34c5d4b2bd271e9372168fc6bcc",
+      "local-path": "/lib/libz.so.1.2.13"
+    }
+  ]
+}

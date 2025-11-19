@@ -1,0 +1,249 @@
+syntax = "proto3";
+package symbfile;
+
+// # General format
+//
+// The file starts with a magic byte sequence of "symbfile" (8 bytes).
+// Following this magic, all further data is stored as protobuf messages
+// that are prefixed with:
+//
+// - a variable-length integer indicating the length of the message
+// - a variable-length integer indicating the message type
+//
+// The variable-length integers are encoded using the same algorithm as `uint32`
+// in the protobuf wire protocol. The first message must always be of kind
+// `Header`.
+//
+// # Example file
+//
+// ```text
+// ┃ File offset    ┃ Contents                       ┃ Comment                             ┃
+// ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+// ┃ [0x000, 0x008) ┃ "symbfile"                     ┃ File magic                          ┃
+// ┃ [0x008, 0x009) ┃ 0x00                           ┃ Length of the empty header          ┃
+// ┃ [0x009, 0x010) ┃ 0x01                           ┃ Message type = MT_HEADER            ┃
+// ┃ [0x010, 0x011) ┃ 0x21                           ┃ Length of the next message          ┃
+// ┃ [0x011, 0x012) ┃ 0x02                           ┃ Message type = MT_RANGE_V1          ┃
+// ┃ [0x012, 0x033) ┃ [0x21 bytes of protobuf data]  ┃ Protobuf serialized RangeV1 message ┃
+// ┃ [0x033, 0x035) ┃ 0x80, 0x03                     ┃ Length of the next message          ┃
+// ┃ [0x035, 0x036) ┃ 0x02                           ┃ Message type = MT_RANGE_V1          ┃
+// ┃ [0x036, 0x137) ┃ [0x101 bytes of protobuf data] ┃ Protobuf serialized RangeV1 message ┃
+// ┃      EOF       ┃ N/A                            ┃ Parsing ends gracefully             ┃
+// ```
+//
+// # Design goals
+//
+// - Size-efficiently store symbolization information in a format that can
+//   efficiently (memory, compute) be ingested into a database.
+// - Simple: should be able to implement a reader and writer in a day
+// - Allow for lazy/streamed reading and insertion into our DB tables
+//   - No forward references
+//   - Preferably little state to be kept in memory during reading
+// - Good compressibility with zstd
+// - Paying some extra memory and computation overhead during writing is
+//   acceptable if it improves compressibility or read performance
+//   - Creating files doesn't have to be streamable
+// - Good forward and backward compatibility
+//   - Served by global service that will have a wide range of different
+//     symbolizer versions asking it for symbols
+//   - Symbol data can remain relevant for many years
+
+// Header message. Currently empty.
+message Header {}
+
+// Defines the type of a message.
+enum MessageType {
+  // Sentinel value to ensure that an uninitialized field of this type can
+  // be told from one initialized to the first valid value.
+  MT_INVALID = 0;
+
+  // The message is of type `Header`.
+  MT_HEADER = 1;
+
+  // The message is of type `RangeV1`.
+  MT_RANGE_V1 = 2;
+
+  // The message is of type `ReturnPadV1`.
+  MT_RETURN_PAD_V1 = 3;
+
+  // The message is of type `StringTableV1`.
+  MT_STRING_TABLE_V1 = 4;
+}
+
+// Symbol information for a range of instructions.
+//
+// The ranges essentially represent a flattened interval tree of inline functions.
+//
+// Consider the following source file `main.c`:
+//
+// ```text
+// 01 ┃ #include <stdio.h>
+// 02 ┃ #include <stdlib.h>
+// 03 ┃ #include <string.h>
+// 04 ┃
+// 05 ┃ int main() {
+// 06 ┃   char* s = strdup("Hello, world!");
+// 07 ┃   puts(s);
+// 08 ┃   free(s);
+// 09 ┃   return 0;
+// 10 ┃ }
+// ```
+//
+// Imagine the compiler optimized the binary as follows, inlining the `strdup`,
+// `puts` and `free` functions into `main` and then additionally inlining `malloc`
+// and `strcpy` into the `strdup` inline instance (thus transitively also into
+// `main`).
+//
+// ```text
+// Depth
+// 2 ┃   [ malloc ][ strcpy ]
+// 1 ┃  [ strdup             ] [ puts ] [ free ]
+// 0 ┃ [ main                                       ]
+// ━━╋━━━━━━━━━━━━━━━━━━━━━┷━━━━━━━━━━━━━━━━━━━━┷━━━━━ ELF VA
+// 0x000                 0x100                0x200
+// ```
+//
+// The corresponding `Range` records would look like this (arbitrary order):
+//
+// ```text
+// ┃ elf VA ┃ length ┃ func    ┃ file              ┃ call line ┃ depth ┃
+// ┣━━━━━━━━╋━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━┫
+// ┃ 0x0000 ┃ 0x0210 ┃ main    ┃ /home/bob/main.c  ┃         0 ┃     0 ┃
+// ┃ 0x000A ┃ 0x0100 ┃ strdup  ┃ /lib/glibc/sdup.c ┃         6 ┃     1 ┃
+// ┃ 0x0010 ┃ 0x0081 ┃ malloc  ┃ /lib/glibc/mm.c   ┃      1234 ┃     2 ┃
+// ┃ 0x0010 ┃ 0x0073 ┃ strcpy  ┃ /lib/glibc/scpy.c ┃      1240 ┃     2 ┃
+// ┃ 0x0110 ┃ 0x0084 ┃ puts    ┃ /lib/glibc/io.c   ┃         7 ┃     1 ┃
+// ┃ 0x017C ┃ 0x006A ┃ free    ┃ /lib/glibc/io.c   ┃         8 ┃     1 ┃
+// ```
+message RangeV1 {
+  // Start address of the instruction range, in ELF virtual address space.
+  oneof elfVA {
+    // Update ELF VA with an offset relative to the
+    // previous range or return pad record's ELF VA.
+    sint64 deltaElfVA = 1;
+
+    // Set ELF VA to a new absolute value.
+    uint64 setElfVA = 12;
+  }
+
+  // Length of the instruction sequence.
+  uint64 length = 2;
+
+  // Demangled name of the function.
+  oneof func {
+    string funcStr = 3;
+    uint32 funcRef = 9;
+  }
+
+  // Source file that these instructions were generated from.
+  oneof file {
+    string fileStr = 4;
+    uint32 fileRef = 10;
+  }
+
+  // Absolute line number of the call to the inline function. 0 if `depth` is 0.
+  uint32 callLine = 5;
+
+  // The file that issued the call to the inline function. 0 if `depth` is 0 or
+  // the call file is equal to the file of the parent record record (`depth - 1`).
+  oneof callFile {
+    string callFileStr = 6;
+    uint32 callFileRef = 11;
+  }
+
+  // Depth in the inline function tree, starting at 0 for the top-level function.
+  uint32 depth = 7;
+
+  // Line table for this executable range.
+  LineTable lineTable = 8;
+}
+
+// Columnar array mapping range offsets to line numbers.
+//
+// The line table only contains information for ranges that aren't
+// covered by other inline functions.
+message LineTable {
+  // Byte offset from the range start address.
+  //
+  // The first offset is encoded relative to the `elfVA` field of the containing
+  // `RangeV1` struct, all following offsets are relative to the previous offset
+  // (cumulative sum). The addresses constructed via the cumulative sum then
+  // denote the start of a source line mapping range that either spans to the next
+  // record or to the end of the range (`elfVa` + `length`).
+  //
+  // For example, the following range
+  //
+  // ```text
+  // Range {
+  //   elf_va: 0x123,
+  //   length: 0x20,
+  //   // [other fields omitted]
+  //   lineTable: LineTable {
+  //     offset: [0x3, 0x10],
+  //     lineNumber: [10, 53],
+  //   },
+  // }
+  // ```
+  //
+  // corresponds to the following table of address mappings:
+  //
+  // ```text
+  // ┃ Range          ┃ Line number                                                ┃
+  // ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+  // ┃ [0x123..0x126) ┃ Unknown. Hole in table, likely covered by inline instances ┃
+  // ┃ [0x126..0x136) ┃ Line 10                                                    ┃
+  // ┃ [0x136..0x143) ┃ Line 53                                                    ┃
+  // ```
+  repeated uint32 offset = 1;
+
+  // Line number in the source file.
+  repeated uint32 lineNumber = 2;
+}
+
+// Information about an instruction that can serve as the next instruction after
+// a call instruction. These are instructions that can show up as non-leaf
+// frames in stack traces, which is why we special-case them.
+//
+// This message stores the whole inline function stack for the given address in
+// a columnar fashion. The records are ordered by their depth in the inline
+// stack in ascending order (top-level function is first).
+message ReturnPadV1 {
+  // Address of the return pad, in ELF virtual address space.
+  //
+  // This is the address of the instruction following a call, minus 1. This
+  // offset is applied to be consistent with the addresses sent by the host
+  // agent: because disassembling backwards is a hard problem, the host agent
+  // simply subtracts 1 from the addresses of all non-leaf frames to indicate
+  // that we want traces for the previous instruction.
+  oneof elfVA {
+    // Update ELF VA with an offset relative to the
+    // previous range or return pad record's ELF VA.
+    sint64 deltaElfVA = 1;
+
+    // Set ELF VA to a new absolute value.
+    uint64 setElfVA = 5;
+  }
+
+  // Name of the function.
+  //
+  // Reference into the string table.
+  repeated uint32 func = 2;
+
+  // Source file that these instructions were generated from.
+  //
+  // Reference into the string table.
+  repeated uint32 file = 3;
+
+  // Absolute source line number.
+  //
+  // This is the call line for the first n-1 records and the line
+  // number corresponding to the return pad for the nth record.
+  repeated uint32 line = 4;
+}
+
+// Replace the string lookup table in the reader.
+message StringTableV1 {
+  // New string table. String indices in other messages correspond to indices
+  // in this array.
+  repeated string strings = 1;
+}

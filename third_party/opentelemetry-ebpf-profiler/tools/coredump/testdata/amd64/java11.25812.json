@@ -1,0 +1,340 @@
+{
+  "coredump-ref": "077a380b756b6898860a302c0ccdd36f53621e265be5978f44da40f21c725ba1",
+  "threads": [
+    {
+      "lwp": 25815,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xba16ba",
+        "libjvm.so+0xb51f17",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0x72004b",
+        "libjvm.so+0x5ffba9",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25813,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb9feb6",
+        "libjvm.so+0x8d78e3",
+        "void java.lang.Thread.sleep(long)+0 in Thread.java:0",
+        "int Lambda1.lambda$comparator1$0(java.lang.Double, java.lang.Double)+0 in Lambda1.java:10",
+        "int Lambda1$$Lambda$1.compare(java.lang.Object, java.lang.Object)+0 in <unknown>:0",
+        "int java.util.TimSort.countRunAndMakeAscending(java.lang.Object[], int, int, java.util.Comparator)+6 in TimSort.java:355",
+        "void java.util.TimSort.sort(java.lang.Object[], int, int, java.util.Comparator, java.lang.Object[], int, int)+8 in TimSort.java:220",
+        "void java.util.Arrays.sort(java.lang.Object[], int, int, java.util.Comparator)+7 in Arrays.java:1515",
+        "void java.util.ArrayList.sort(java.util.Comparator)+1 in ArrayList.java:1750",
+        "void java.util.Collections.sort(java.util.List, java.util.Comparator)+0 in Collections.java:179",
+        "void Lambda1.main(java.lang.String[])+3 in Lambda1.java:21",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x817f22",
+        "libjvm.so+0x898be3",
+        "libjvm.so+0x89b05c",
+        "libjli.so+0x4669",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25812,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x53882",
+        "libjli.so+0x8f8c",
+        "libjli.so+0x59e1",
+        "libjli.so+0x71c3",
+        "java+0x1212",
+        "ld-musl-x86_64.so.1+0x1ca02",
+        "java+0x129c"
+      ]
+    },
+    {
+      "lwp": 25819,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0xda2242",
+        "libjvm.so+0xda299b",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25822,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x54ea5",
+        "libjvm.so+0xc54781",
+        "libjvm.so+0xb928f9",
+        "libjvm.so+0xb85f84",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25817,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xba16ba",
+        "libjvm.so+0xb51f17",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0x722c4b",
+        "libjvm.so+0x5ffba9",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25820,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xba16ba",
+        "libjvm.so+0xb51f17",
+        "libjvm.so+0xb529fd",
+        "libjvm.so+0x8cd15d",
+        "void java.lang.ref.Reference.waitForReferencePendingList()+0 in Reference.java:0",
+        "void java.lang.ref.Reference.processPendingReferences()+0 in Reference.java:241",
+        "void java.lang.ref.Reference$ReferenceHandler.run()+0 in Reference.java:213",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x817f22",
+        "libjvm.so+0x81640c",
+        "libjvm.so+0x8c3ef9",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25824,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb529fd",
+        "libjvm.so+0x5e99d0",
+        "libjvm.so+0x5ec794",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25827,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0xd27706",
+        "libjvm.so+0xd277ad",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25814,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x54ea5",
+        "libjvm.so+0xc54781",
+        "libjvm.so+0xdc8a2c",
+        "libjvm.so+0xdc7ad8",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25825,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb529fd",
+        "libjvm.so+0x5e99d0",
+        "libjvm.so+0x5ec794",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25821,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xba16ba",
+        "libjvm.so+0xb72674",
+        "libjvm.so+0xcec0b8",
+        "libjvm.so+0x8c56b5",
+        "void java.lang.Object.wait(long)+0 in Object.java:0",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove(long)+8 in ReferenceQueue.java:155",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove()+0 in ReferenceQueue.java:176",
+        "void java.lang.ref.Finalizer$FinalizerThread.run()+17 in Finalizer.java:170",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x817f22",
+        "libjvm.so+0x81640c",
+        "libjvm.so+0x8c3ef9",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25828,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb71f61",
+        "libjvm.so+0xcec0b8",
+        "libjvm.so+0x8c56b5",
+        "void java.lang.Object.wait(long)+0 in Object.java:0",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove(long)+8 in ReferenceQueue.java:155",
+        "void jdk.internal.ref.CleanerImpl.run()+14 in CleanerImpl.java:148",
+        "void java.lang.Thread.run()+1 in Thread.java:829",
+        "void jdk.internal.misc.InnocuousThread.run()+2 in InnocuousThread.java:134",
+        "StubRoutines (1) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x817f22",
+        "libjvm.so+0x81640c",
+        "libjvm.so+0x8c3ef9",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25816,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x54ea5",
+        "libjvm.so+0xc54781",
+        "libjvm.so+0xdc8a2c",
+        "libjvm.so+0xdc7ad8",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25826,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0xce4342",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25823,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xba16ba",
+        "libjvm.so+0xb51f17",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0xc54f31",
+        "libjvm.so+0xd3012a",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    },
+    {
+      "lwp": 25818,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x55354",
+        "ld-musl-x86_64.so.1+0x5266d",
+        "ld-musl-x86_64.so.1+0x51c6a",
+        "ld-musl-x86_64.so.1+0x52a77",
+        "libjvm.so+0xb9ef9d",
+        "libjvm.so+0xb51fd8",
+        "libjvm.so+0xb52978",
+        "libjvm.so+0x768368",
+        "libjvm.so+0x5ffba9",
+        "libjvm.so+0xd2d569",
+        "libjvm.so+0xb97c5d",
+        "ld-musl-x86_64.so.1+0x53161",
+        "ld-musl-x86_64.so.1+0x55320"
+      ]
+    }
+  ],
+  "modules": null
+}

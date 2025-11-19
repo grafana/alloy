@@ -1,0 +1,28 @@
+{
+  "coredump-ref": "20e6703ba5278290b6ec913da9605927ec95a4bde97c7ec22b30b9d49ffc4e9b",
+  "threads": [
+    {
+      "lwp": 1458,
+      "frames": [
+        "brokenstack+0x1148",
+        "brokenstack+0x1156",
+        "brokenstack+0x1176",
+        "<unwinding aborted due to error native_small_pc>"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "46e6661eca1c28e6fd3ab6a586994d9d9eb2dd56a233ad1d1bf6b4ca68d91707",
+      "local-path": "/usr/lib/x86_64-linux-gnu/libc.so.6"
+    },
+    {
+      "ref": "838ed8808d15fb09e04381d36a36eb45de3622d7d1d0bb1fac6722ccab2eb80e",
+      "local-path": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
+    },
+    {
+      "ref": "e1972e610166390de54af6360388c72fbc2b2c6e51faaee9f07d3800f6b3cd67",
+      "local-path": "/home/admin/prodfiler/utils/coredump/testsources/c/brokenstack"
+    }
+  ]
+}

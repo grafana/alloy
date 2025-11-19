@@ -1,0 +1,359 @@
+{
+  "coredump-ref": "c5256ec86b2b16cd016c16ac59a4c85d422c352ea96351428233bbd25c3915d6",
+  "threads": [
+    {
+      "lwp": 121748,
+      "frames": [
+        "StubRoutines (compiler stubs) [sha256_implCompressMB]+0 in :0",
+        "void java.util.Random.nextBytes(byte[])+3 in Random.java:472",
+        "byte[] ShaShenanigans.hashRandomStuff()+3 in ShaShenanigans.java:29",
+        "void ShaShenanigans.shaShenanigans()+2 in ShaShenanigans.java:20",
+        "void ShaShenanigans.main(java.lang.String[])+0 in ShaShenanigans.java:13",
+        "StubRoutines (initial stubs) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x833107",
+        "libjvm.so+0x8cc613",
+        "libjvm.so+0x8ce2cb",
+        "libjli.so+0x4b17",
+        "libjli.so+0x737b",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121746,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x806d7",
+        "libjli.so+0x7ebf",
+        "libjli.so+0x54a3",
+        "libjli.so+0x65bf",
+        "java+0xacb",
+        "libc.so.6+0x2777f",
+        "libc.so.6+0x27857",
+        "java+0xb6f"
+      ]
+    },
+    {
+      "lwp": 121749,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x8732b",
+        "libjvm.so+0xc61a4b",
+        "libjvm.so+0xe6e417",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121750,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbf393",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0x70aef7",
+        "libjvm.so+0x5e195b",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121751,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x8732b",
+        "libjvm.so+0xc61a4b",
+        "libjvm.so+0xe6e417",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121752,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbf393",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0x711da7",
+        "libjvm.so+0x7121df",
+        "libjvm.so+0x5e195b",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121753,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0x76947b",
+        "libjvm.so+0x76982f",
+        "libjvm.so+0x5e195b",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121754,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0xe57613",
+        "libjvm.so+0xe5816b",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121755,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbf393",
+        "libjvm.so+0xb6d943",
+        "libjvm.so+0x8f2ff7",
+        "void java.lang.ref.Reference.waitForReferencePendingList()+0 in Reference.java:0",
+        "void java.lang.ref.Reference.processPendingReferences()+0 in Reference.java:246",
+        "void java.lang.ref.Reference$ReferenceHandler.run()+3 in Reference.java:208",
+        "StubRoutines (initial stubs) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x833107",
+        "libjvm.so+0x8345cb",
+        "libjvm.so+0x8f0c5b",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121756,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbea13",
+        "libjvm.so+0xb91b17",
+        "libjvm.so+0xd98f2f",
+        "libjvm.so+0x8f49a3",
+        "void java.lang.Object.wait0(long)+0 in Object.java:0",
+        "void java.lang.Object.wait(long)+2 in Object.java:366",
+        "void java.lang.Object.wait()+0 in Object.java:339",
+        "void java.lang.ref.NativeReferenceQueue.await()+0 in NativeReferenceQueue.java:48",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove0()+2 in ReferenceQueue.java:158",
+        "java.lang.ref.Reference java.lang.ref.NativeReferenceQueue.remove()+1 in NativeReferenceQueue.java:89",
+        "void java.lang.ref.Finalizer$FinalizerThread.run()+7 in Finalizer.java:173",
+        "StubRoutines (initial stubs) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x833107",
+        "libjvm.so+0x8345cb",
+        "libjvm.so+0x8f0c5b",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121757,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x8732b",
+        "libjvm.so+0xc61a4b",
+        "libjvm.so+0xd0fb2b",
+        "libjvm.so+0xba8b63",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121758,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbf393",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0xc64313",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121759,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0xb60beb",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121760,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d943",
+        "libjvm.so+0x5c5a9f",
+        "libjvm.so+0x5c910b",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121761,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d943",
+        "libjvm.so+0x5c5a9f",
+        "libjvm.so+0x5c910b",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121762,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e18f",
+        "libjvm.so+0xbbf393",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0xb8564f",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121763,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbf2ef",
+        "libjvm.so+0xb6d8b7",
+        "libjvm.so+0xb8519b",
+        "libjvm.so+0xb8525f",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    },
+    {
+      "lwp": 121764,
+      "frames": [
+        "libc.so.6+0x7b654",
+        "libc.so.6+0x7e47f",
+        "libjvm.so+0xbbef0f",
+        "libjvm.so+0xe00a2b",
+        "void jdk.internal.misc.Unsafe.park(boolean, long)+0 in Unsafe.java:0",
+        "void java.util.concurrent.locks.LockSupport.parkNanos(java.lang.Object, long)+7 in LockSupport.java:269",
+        "boolean java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(long, java.util.concurrent.TimeUnit)+16 in AbstractQueuedSynchronizer.java:1847",
+        "void java.lang.ref.ReferenceQueue.await(long)+0 in ReferenceQueue.java:71",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove0(long)+4 in ReferenceQueue.java:143",
+        "java.lang.ref.Reference java.lang.ref.ReferenceQueue.remove(long)+7 in ReferenceQueue.java:218",
+        "void jdk.internal.ref.CleanerImpl.run()+12 in CleanerImpl.java:140",
+        "void java.lang.Thread.runWith(java.lang.Object, java.lang.Runnable)+1 in Thread.java:1596",
+        "void java.lang.Thread.run()+3 in Thread.java:1583",
+        "void jdk.internal.misc.InnocuousThread.run()+2 in InnocuousThread.java:186",
+        "StubRoutines (initial stubs) [call_stub_return_address]+0 in :0",
+        "libjvm.so+0x833107",
+        "libjvm.so+0x8345cb",
+        "libjvm.so+0x8f0c5b",
+        "libjvm.so+0x8490f3",
+        "libjvm.so+0xdcbbc7",
+        "libjvm.so+0xbb53ab",
+        "libc.so.6+0x7edd7",
+        "libc.so.6+0xe7e5b"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "ae6bd25b1f9616e37fb652d1052af984576d22adacfd3bced9df82d075ad92c7",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libm.so.6"
+    },
+    {
+      "ref": "3d9ec598f8e4081d73da9ec3b602201f668caf7d309bff6fb32c10ad3fb3c1c0",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/lib/server/libjvm.so"
+    },
+    {
+      "ref": "ffb1ab496e6eced03ab679075f9f2c415c7728a145cc7f63d614497102d73822",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libz.so.1.2.13"
+    },
+    {
+      "ref": "44bbd3b7b29bc29454e8350f6346b36798e371702fd8bb74c1055cb3e680e48e",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/lib/libjli.so"
+    },
+    {
+      "ref": "fd9fc7af90a3817a1e01a35ed92500e2b80a046b495a3418c469aa0d7a77f428",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/bin/java"
+    },
+    {
+      "ref": "bb65f57adff3fd6f2c1f63c640873f2dec8ec3781bec383231d9b65930ed629d",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/lib/libjava.so"
+    },
+    {
+      "ref": "53b3b3700ebbd727460a841e6f1d370a66dae7f7c3efee32222dcc82593e337a",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/lib/libjimage.so"
+    },
+    {
+      "ref": "72eb811bb6d61300f62f9e9e4d824759d3c6a8f510d157999d8d2adb6dc683d8",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libgcc_s.so.1"
+    },
+    {
+      "ref": "ff608307ebc72d45b92578b3eaaa0430b133c4a6625a2ed4088f8ea921973b4f",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libstdc++.so.6.0.32"
+    },
+    {
+      "ref": "02393b2bdc6555140149dda7b17c94d1c6532d343fe42f7a06eb090c9c8f51ed",
+      "local-path": "/usr/lib/jvm/java-21-openjdk-arm64/lib/libzip.so"
+    },
+    {
+      "ref": "ae89390ee9874d9b0c4f7eda0ba8c798d631df0e600549d6a15f7237f03c0317",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libc.so.6"
+    },
+    {
+      "ref": "388929059d814ffeedda0beaff53722c24c59838817324d95221c18ed851f21c",
+      "local-path": "/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1"
+    }
+  ]
+}

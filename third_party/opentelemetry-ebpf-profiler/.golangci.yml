@@ -1,0 +1,147 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      # simplify code: gofmt with `-s` option, true by default
+      simplify: true
+    goimports:
+      # put imports beginning with prefix after 3rd-party packages;
+      # it's a comma-separated list of prefixes
+      local-prefixes:
+        - github.com/open-telemetry/opentelemetry-ebpf-profiler
+
+run:
+  timeout: 10m
+  build-tags:
+    - integration
+    - linux
+
+linters:
+  default: all
+  disable:
+    # Disabled because of
+    #   - too many non-sensical warnings
+    #   - not relevant for us
+    #   - false positives
+    #
+    # "might be worth fixing" means we should investigate/fix in the mid term
+    - containedctx # might be worth fixing
+    - contextcheck # might be worth fixing
+    - cyclop
+    - depguard
+    - dupword
+    - durationcheck # might be worth fixing
+    - err113
+    - errcheck
+    - errorlint # might be worth fixing
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - forcetypeassert # might be worth fixing
+    - funlen
+    - funcorder
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocyclo
+    - godot
+    - godox # complains about TODO etc
+    - gomoddirectives
+    - gosmopolitan
+    - inamedparam
+    - interfacebloat
+    - ireturn
+    - maintidx
+    - makezero
+    - mnd
+    - nestif
+    - nilerr # might be worth fixing
+    - nilnil
+    - nlreturn
+    - noctx # might be worth fixing
+    - nonamedreturns
+    - paralleltest
+    - protogetter
+    - sqlclosecheck # might be worth fixing
+    - staticcheck
+    - tagalign
+    - tagliatelle
+    - testableexamples # might be worth fixing
+    - testpackage
+    - tparallel # might be worth fixing
+    - thelper
+    - varnamelen
+    - wastedassign
+    - wsl
+    - wrapcheck
+    # we don't want to change code to Go 1.22+ yet
+    - intrange
+    - copyloopvar
+
+  exclusions:
+    paths:
+      - design-docs
+      - doc
+      - LICENSES 
+      - target
+      - go
+
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport # https://github.com/go-critic/go-critic/issues/845
+        - ifElseChain
+        - whyNoLint
+        - sloppyReassign
+        - uncheckedInlineErr # experimental rule with high false positive rate.
+        - importShadow # shadow of imported package
+    gocyclo:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G103 # unsafe calls should be audited
+        - G115 # integer overflow
+        - G204 # subprocess launched with variable
+        - G301 # directory permissions
+        - G302 # file permissions
+        - G304 # potential file inclusion via variable
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - unsafeptr
+      settings:
+        printf: # analyzer name, run `go tool vet help` to see all analyzers
+          funcs: # run `go tool vet help printf` to see available settings for `printf` analyzer
+            - debug,debugf,debugln
+            - error,errorf,errorln
+            - fatal,fatalf,fataln
+            - info,infof,infoln
+            - log,logf,logln
+            - warn,warnf,warnln
+            - print,printf,println,sprint,sprintf,sprintln,fprint,fprintf,fprintln
+    lll:
+      line-length: 100
+      tab-width: 4
+    misspell:
+      locale: US
+      ignore-rules:
+        - rela
+    revive:
+      rules:
+        - name: unexported-naming
+          disabled: true

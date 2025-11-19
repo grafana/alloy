@@ -1,0 +1,191 @@
+{
+  "coredump-ref": "e724cd571e6d1da4c1e7d97f826c01c27f72532335b1fb77108be532639d11d6",
+  "threads": [
+    {
+      "lwp": 13591,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x554a3",
+        "ld-musl-x86_64.so.1+0x526f9",
+        "ld-musl-x86_64.so.1+0x51cf4",
+        "ld-musl-x86_64.so.1+0x52b03",
+        "node+0x1193d48",
+        "node+0x771dca",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    },
+    {
+      "lwp": 13589,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x566d8",
+        "node+0x119812a",
+        "node+0x119748e",
+        "node+0x1185d76",
+        "node+0x7750a7",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    },
+    {
+      "lwp": 13594,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x554a3",
+        "ld-musl-x86_64.so.1+0x526f9",
+        "ld-musl-x86_64.so.1+0x51cf4",
+        "ld-musl-x86_64.so.1+0x55005",
+        "node+0x1193bd1",
+        "node+0x7f7920",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    },
+    {
+      "lwp": 13588,
+      "frames": [
+        "node+0xcf88b2",
+        "node+0xcffaae",
+        "node+0xcffdd1",
+        "node+0xcb985a",
+        "node+0xceb17a",
+        "node+0xcb6a6d",
+        "node+0x958702",
+        "V8::BuiltinExitFrame+0 in :0",
+        "trace+5 in node:internal/console/constructor:426",
+        "V8::InternalFrame+0 in :0",
+        "V8::EntryFrame+0 in :0",
+        "node+0xa1aab4",
+        "node+0xa1b8e1",
+        "node+0x8ee8bb",
+        "node+0x8055bf",
+        "V8::ExitFrame+0 in :0",
+        "add+1 in /home/tteras/optimyze/node/test.js:3",
+        "add3+1 in /home/tteras/optimyze/node/test.js:8",
+        "test+1 in /home/tteras/optimyze/node/test.js:12",
+        "submain+2 in /home/tteras/optimyze/node/test.js:17",
+        "main+2 in /home/tteras/optimyze/node/test.js:23",
+        "<anonymous>+26 in /home/tteras/optimyze/node/test.js:27",
+        "Module._compile+46 in node:internal/modules/cjs/loader:1126",
+        "Module._extensions..js+45 in node:internal/modules/cjs/loader:1180",
+        "Module.load+12 in node:internal/modules/cjs/loader:1004",
+        "Module._load+68 in node:internal/modules/cjs/loader:839",
+        "executeUserEntryPoint+0 in node:internal/modules/run_main:0",
+        "<anonymous>+0 in node:internal/main/run_main_module:0",
+        "V8::InternalFrame+0 in :0",
+        "V8::EntryFrame+0 in :0",
+        "node+0xa1aab4",
+        "node+0xa1b8e1",
+        "node+0x8ee8bb",
+        "node+0x6c8695",
+        "node+0x6c88bc",
+        "node+0x6ca399",
+        "node+0x644d72",
+        "node+0x746acd",
+        "node+0x746eef",
+        "node+0x6cc146",
+        "ld-musl-x86_64.so.1+0x1ca21",
+        "node+0x618c1c"
+      ]
+    },
+    {
+      "lwp": 13590,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x554a3",
+        "ld-musl-x86_64.so.1+0x526f9",
+        "ld-musl-x86_64.so.1+0x51cf4",
+        "ld-musl-x86_64.so.1+0x52b03",
+        "node+0x1193d48",
+        "node+0x771dca",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    },
+    {
+      "lwp": 13592,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x554a3",
+        "ld-musl-x86_64.so.1+0x526f9",
+        "ld-musl-x86_64.so.1+0x51cf4",
+        "ld-musl-x86_64.so.1+0x52b03",
+        "node+0x1193d48",
+        "node+0x771dca",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    },
+    {
+      "lwp": 13593,
+      "frames": [
+        "ld-musl-x86_64.so.1+0x554a3",
+        "ld-musl-x86_64.so.1+0x526f9",
+        "ld-musl-x86_64.so.1+0x51cf4",
+        "ld-musl-x86_64.so.1+0x52b03",
+        "node+0x1193d48",
+        "node+0x771dca",
+        "ld-musl-x86_64.so.1+0x531f4",
+        "ld-musl-x86_64.so.1+0x5546f"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "5ab1ef5271e278d73e0bf67f8ffd5316ebdd7f65ba80d78e8ab73d2a081abe0a",
+      "local-path": "/usr/lib/libgcc_s.so.1"
+    },
+    {
+      "ref": "5437ef6d210060ffd1155a4fbb3efe900e81588f0bb6a7e06935ec9bf27668b4",
+      "local-path": "/usr/lib/libstdc++.so.6.0.30"
+    },
+    {
+      "ref": "9bdf749ca620aac88e30575deac05d6f076ed01ebfcd4c59a461c9b08192eabd",
+      "local-path": "/usr/lib/libcares.so.2.5.1"
+    },
+    {
+      "ref": "ed4af2df45ae11c1427cdedb3e8709689be255f82fe238086fef9525a07db39c",
+      "local-path": "/lib/libz.so.1.2.12"
+    },
+    {
+      "ref": "0afad06589227d52a9be225f7c29b1a1ebc045e6b19d6be4d5d0484e2629e882",
+      "local-path": "/usr/bin/node"
+    },
+    {
+      "ref": "cd3409849cb7fb1d938cb3d52a39951d2d3084af994b7a92246affe19ab2a5e4",
+      "local-path": "/usr/lib/libicui18n.so.71.1"
+    },
+    {
+      "ref": "465eee61ae9960b541c86df05007b18abb2758aaa539790d4e247d9ca6c2f1f2",
+      "local-path": "/lib/libcrypto.so.3"
+    },
+    {
+      "ref": "703e21e00df635be9406c653ab153ea6cc31d16b24eedbf8147f589da6355917",
+      "local-path": "/usr/lib/libbrotlienc.so.1.0.9"
+    },
+    {
+      "ref": "77d4e17277f51885a677d16771620f0a8fa5696f5e05db3e6cc89c2d4df53f94",
+      "local-path": "/usr/lib/libbrotlidec.so.1.0.9"
+    },
+    {
+      "ref": "363684f4c2cc049e17e9e784d6369b4f590c11e08d69538e01a2d90dc0914ef5",
+      "local-path": "/usr/lib/libbrotlicommon.so.1.0.9"
+    },
+    {
+      "ref": "a3a410820b3d773d81a75a7dcc9d2346a5dad03e92cf82b35c92c2c13098aeb2",
+      "local-path": "/usr/lib/libnghttp2.so.14.23.0"
+    },
+    {
+      "ref": "2a973a89a5d64b0fe31c1bce2339d3774b683c526513b7b0bbaa487d4d0c3d3b",
+      "local-path": "/lib/ld-musl-x86_64.so.1"
+    },
+    {
+      "ref": "8ec76ae6d3acc71c81eaa12797f71d02a2f42c39b15d310c4e3619f69d11e6ab",
+      "local-path": "/usr/lib/debug/lib/ld-musl-x86_64.so.1.debug"
+    },
+    {
+      "ref": "1b8ef46271445700050eb307b887fc73cc1b687ed43e83151d2c696cbdf3e054",
+      "local-path": "/usr/lib/libicuuc.so.71.1"
+    },
+    {
+      "ref": "d69e8d7e2f8570f8b736c6061f9dc0bfe969733a17f3f5518ad33890dc7928c4",
+      "local-path": "/lib/libssl.so.3"
+    }
+  ]
+}

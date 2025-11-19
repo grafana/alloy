@@ -1,0 +1,33 @@
+{
+  "coredump-ref": "2133172239f9a1934df5159c20f137f8fb128b497662fb6c419556a4be5cc9b6",
+  "threads": [
+    {
+      "lwp": 40852,
+      "frames": [
+        "libc.so.6+0xd2057",
+        "libc.so.6+0xd6846",
+        "libc.so.6+0xd677d",
+        "libperl.so.5.36.0+0x173c8b",
+        "main::fib+0 in a.pl:21",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "<top-level>+0 in a.pl:32",
+        "libperl.so.5.36.0+0x11084f",
+        "libperl.so.5.36.0+0x80fa0",
+        "perl+0x1349",
+        "libc.so.6+0x2750f",
+        "libc.so.6+0x275c8",
+        "perl+0x1384"
+      ]
+    }
+  ],
+  "modules": null
+}

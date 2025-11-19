@@ -1,0 +1,14 @@
+/* WARNING: this file is auto-generated, DO NOT CHANGE MANUALLY */
+
+#ifndef OPTI_ERRORS_H
+#define OPTI_ERRORS_H
+
+typedef enum ErrorCode {
+{{- range $i, $el := .Errors -}}
+  {{if $i}}{{printf ",\n"}}{{end}}
+  // {{if .Obsolete}}Deprecated: {{end}}{{.Description}}
+  {{enumident .Name}} = {{.ID}}
+{{- end}}
+} ErrorCode;
+
+#endif // OPTI_ERRORS_H

@@ -1,0 +1,107 @@
+{
+  "coredump-ref": "7b76cdf23ec39e19d6bf6447ee87020f4e2098671e7d9755f71d1ee70d46a57e",
+  "threads": [
+    {
+      "lwp": 23794,
+      "frames": [
+        "libruby.so.3.0.4+0x2a8670",
+        "libruby.so.3.0.4+0xeea1b",
+        "libruby.so.3.0.4+0xef02b",
+        "libruby.so.3.0.4+0x23831b",
+        "libruby.so.3.0.4+0x1729af",
+        "libruby.so.3.0.4+0x1c469b",
+        "libruby.so.3.0.4+0x28c1e7",
+        "is_prime+0 in /pwd/testsources/ruby/loop.rb:10",
+        "sum_of_primes+0 in /pwd/testsources/ruby/loop.rb:20",
+        "<main>+0 in /pwd/testsources/ruby/loop.rb:30",
+        "libruby.so.3.0.4+0x291987",
+        "libruby.so.3.0.4+0x29df97",
+        "libruby.so.3.0.4+0x1c4373",
+        "libruby.so.3.0.4+0x27e697",
+        "libruby.so.3.0.4+0x28912f",
+        "libruby.so.3.0.4+0x28ef0b",
+        "<main>+0 in /pwd/testsources/ruby/loop.rb:29",
+        "libruby.so.3.0.4+0x2911df",
+        "libruby.so.3.0.4+0x2928a7",
+        "libruby.so.3.0.4+0xcc5db",
+        "libruby.so.3.0.4+0xcc80f",
+        "libruby.so.3.0.4+0x27e697",
+        "libruby.so.3.0.4+0x28912f",
+        "libruby.so.3.0.4+0x28ef0b",
+        "<main>+0 in /pwd/testsources/ruby/loop.rb:28",
+        "libruby.so.3.0.4+0x2911df",
+        "libruby.so.3.0.4+0xc9173",
+        "libruby.so.3.0.4+0xceeeb",
+        "ruby+0xb8b",
+        "libc-2.31.so+0x20e17",
+        "ruby+0xbe7"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "ref": "5d40c0f2c1910c474c1be914bd92665ede870cea8a3c1a59a942c0e328ecb99d",
+      "local-path": "/usr/local/bin/ruby"
+    },
+    {
+      "ref": "1625e01413123b014da51cec0d46fd77149f1c12ed6dec5ce46c41ba494ef8c7",
+      "local-path": "/usr/local/lib/ruby/3.0.0/aarch64-linux/monitor.so"
+    },
+    {
+      "ref": "72114b92bdca2d2bf3c271e0b4db9f62d4aa4526e10d3e474a56505a3b869587",
+      "local-path": "/usr/local/lib/ruby/3.0.0/aarch64-linux/enc/trans/transdb.so"
+    },
+    {
+      "ref": "6452d6a0ef7c5cb088a818789059ffc87efc6066212a40ecc26d660d05e757de",
+      "local-path": "/usr/local/lib/ruby/3.0.0/aarch64-linux/enc/encdb.so"
+    },
+    {
+      "ref": "2044fcff94037c2c75cc5bc3aa42877bf2b41042608e011706b6c631232b0edd",
+      "local-path": "/usr/lib/aarch64-linux-gnu/gconv/gconv-modules.cache"
+    },
+    {
+      "ref": "e19b13d271385be968316e97e08ef7a33d7702b8c370e93dbd9e7470933411c7",
+      "local-path": "/usr/lib/locale/C.UTF-8/LC_CTYPE"
+    },
+    {
+      "ref": "e7ff33fe09c75416e22aa74c0a22024b7b709c04512c6163ca65d1d5245d75ad",
+      "local-path": "/lib/aarch64-linux-gnu/libc-2.31.so"
+    },
+    {
+      "ref": "faa394287347689f0a5f32711a86c51bce33865841e23c7d95c3e1034233d4a8",
+      "local-path": "/lib/aarch64-linux-gnu/libm-2.31.so"
+    },
+    {
+      "ref": "daec9eb17045e5dcb418926c75e7e0ddb94cc6694fe2a162ca990557571ab510",
+      "local-path": "/lib/aarch64-linux-gnu/libcrypt.so.1.1.0"
+    },
+    {
+      "ref": "8a68bff83c8079ca027df33d70add7dca6b4379ed5b31afa5f72f67268b2ad2a",
+      "local-path": "/lib/aarch64-linux-gnu/libdl-2.31.so"
+    },
+    {
+      "ref": "58e99cc018e8b3e5b5d15dc8a92751b9b885ce80afae47ff53c921f5c5f86458",
+      "local-path": "/usr/lib/aarch64-linux-gnu/libgmp.so.10.4.1"
+    },
+    {
+      "ref": "cf28b76891ee4ecd32aeec63d2ded7e4e1f5573c7c4688057f3d1a6e115608c9",
+      "local-path": "/lib/aarch64-linux-gnu/librt-2.31.so"
+    },
+    {
+      "ref": "29db8bca17f39b763a3c33b649d8b86931ed50367a3cc83c0335a076fec6dc99",
+      "local-path": "/lib/aarch64-linux-gnu/libpthread-2.31.so"
+    },
+    {
+      "ref": "7fb37d1568085015270b83b794d78bece261bdd617b664d2263780fd1093d5f4",
+      "local-path": "/lib/aarch64-linux-gnu/libz.so.1.2.11"
+    },
+    {
+      "ref": "d64f1c54e9ade54017427655cf9dde444d1e33750d2db7534b98e41edbe1df2e",
+      "local-path": "/usr/local/lib/libruby.so.3.0.4"
+    },
+    {
+      "ref": "585ea8ab582624fe720e73cdec311fdaf1c4ed481319929dd0ce4c3af8bd21c4",
+      "local-path": "/lib/aarch64-linux-gnu/ld-2.31.so"
+    }
+  ]
+}

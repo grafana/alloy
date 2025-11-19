@@ -36,3 +36,19 @@
 - **Base / Deltas:** Currently pinned to commit `a00a0ef` (post-tag pseudo-version) that merges Grafana PR [#36](https://github.com/grafana/opentelemetry-ebpf-profiler/pull/36), fixing a race in `processmanager`’s resource release logic.
 - **Why:** Upstream PR [open-telemetry/opentelemetry-ebpf-profiler#899](https://github.com/open-telemetry/opentelemetry-ebpf-profiler/pull/899) carrying the same fix was closed (code being rewritten), so we need the fork for Alloy releases.
 - **Status:** Alloy already consumes the fork head with the race fix, so we can proceed; for bookkeeping we should cut a tag (e.g., `v0.0.202546`) or rebase onto upstream `v0.0.202547` when available, but it is not blocking the dependency update.
+
+## Step 4 – Go Module Updates
+- Bumped the OpenTelemetry Collector core modules from `v1.45.0/v0.139.0` to `v1.46.0/v0.140.0`, and the contrib components to `v0.140.1`. The legacy `opencensusreceiver` no longer ships after `v0.133.0`, so it remains pinned with an inline note.
+- Upgraded Prometheus core dependency to `v0.307.3` (release `v3.7.3`) while continuing to route it through the `staleness_disabling_v3.7.3` Grafana fork.
+- Prometheus common moved to `v0.67.3`; client_golang/client_model were already current.
+- Updated `go.opentelemetry.io/obi` replace to the latest fork tag `v1.3.8`.
+- Patched the Grafana eBPF profiler fork to support the new `pprofile` API introduced in Collector `v0.140.x`. To keep the race fix while adapting to the new APIs, the fork now lives under `third_party/opentelemetry-ebpf-profiler` and exposes updated `Samples()` / `Lines()` usage plus refreshed tests. The module replace points to this local copy.
+- Tidied modules (`go mod tidy`) after the upgrades; go.mod now carries only two `require` blocks (direct and indirect), with the former reorganized alphabetically during the update.
+
+## Step 5 – go.mod Organization
+- Collapsed the third indirect `require` block into the main indirect block so that go.mod now follows the requested structure: one direct block, one indirect block, followed by replace/exclude sections.
+- Documented special cases inline (e.g., opencensusreceiver removal, new local profiler fork) to make future upgrades easier.
+
+## Step 6 – Build & Validation
+- `make alloy` initially failed because the Grafana eBPF profiler fork still relied on the pre-`v0.140` `pprofile` API (`Profile.Sample`, `Location.Line`). The local fork now mirrors upstream’s `Samples()` / `Lines()` helpers, resolving those build breaks.
+- After the patch, `make alloy` completes successfully with the new dependency graph. No additional compilation issues surfaced in the prioritized subsystems.

@@ -1,0 +1,76 @@
+# Rust workspace. Allows command like `cargo test` to work anywhere within the
+# repo and ensures that all components use the same dependency versions
+# (global Cargo.lock).
+
+[workspace]
+members = [
+    "rust-crates/symblib",
+    "rust-crates/symblib-capi",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.0"
+rust-version = "1.77"
+license = "Apache-2.0"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+opt-level = 3
+strip = "debuginfo"
+
+[profile.release-unstripped]
+inherits = "release"
+strip = false
+debug = 1
+
+[profile.release-with-asserts]
+inherits = "release-unstripped"
+overflow-checks = true
+debug-assertions = true
+
+[profile.test]
+opt-level = 1 # default of 0 is annoyingly slow
+
+[workspace.dependencies]
+argh = "0.1"
+base64 = "0.22.0"
+cpp_demangle = "0.5"
+fallible-iterator = "0.3"
+flate2 = "1"
+memmap2 = "0.9.0"
+native-tls = "0.2"
+prost = "0.14.0"
+prost-build = "0.14.0"
+rustc-demangle = "0.1"
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+thiserror = "2"
+zstd = "0.13.0"
+zydis = "4.1.1"
+
+[workspace.dependencies.gimli]
+version = "0.32.0"
+default-features = false
+features = ["std", "endian-reader", "fallible-iterator"]
+
+[workspace.dependencies.intervaltree]
+version = "0.2"
+default-features = false
+features = ["std"]
+
+[workspace.dependencies.lru]
+version = "0.16.0"
+default-features = false
+
+[workspace.dependencies.object]
+version = "0.37.0"
+default-features = false
+features = ["std", "read_core", "elf", "macho", "unaligned"]
+
+[workspace.dependencies.smallvec]
+version = "1"
+features = ["const_new", "union", "const_generics", "write"]

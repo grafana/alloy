@@ -1,0 +1,31 @@
+{
+  "coredump-ref": "3f5d5c988bf17f6ce616430a7a815bbc67bbb1bb5b98bd03e5d26988f49ae2a7",
+  "threads": [
+    {
+      "lwp": 206,
+      "frames": [
+        "libc-2.28.so+0xc66f4",
+        "libc-2.28.so+0xc6629",
+        "perl+0x141b17",
+        "main::fib+0 in a.pl:21",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "main::fib+0 in a.pl:24",
+        "<top-level>+0 in a.pl:32",
+        "perl+0xe2c25",
+        "perl+0x5e116",
+        "perl+0x34401",
+        "libc-2.28.so+0x2409a",
+        "perl+0x34449"
+      ]
+    }
+  ],
+  "modules": null
+}

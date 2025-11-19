@@ -1,0 +1,50 @@
+{
+  "coredump-ref": "a52c68c34e13a52931d41619d965b875128e6540376e991f93c2a5bc5f0d9951",
+  "threads": [
+    {
+      "lwp": 20836,
+      "frames": [
+        "libruby-2.5.so.2.5.5+0xaafc4",
+        "libruby-2.5.so.2.5.5+0xadd73",
+        "libruby-2.5.so.2.5.5+0x183762",
+        "libruby-2.5.so.2.5.5+0xef995",
+        "libruby-2.5.so.2.5.5+0x127be1",
+        "libruby-2.5.so.2.5.5+0x1b8c0c",
+        "libruby-2.5.so.2.5.5+0x1bdef3",
+        "libruby-2.5.so.2.5.5+0x1c4e88",
+        "libruby-2.5.so.2.5.5+0x1264d7",
+        "libruby-2.5.so.2.5.5+0x1b47a0",
+        "libruby-2.5.so.2.5.5+0x1c238a",
+        "libruby-2.5.so.2.5.5+0x1b9a59",
+        "libruby-2.5.so.2.5.5+0x1bdef3",
+        "libruby-2.5.so.2.5.5+0x1bf4b2",
+        "libruby-2.5.so.2.5.5+0x97601",
+        "libruby-2.5.so.2.5.5+0x1b47a0",
+        "libruby-2.5.so.2.5.5+0x1c238a",
+        "libruby-2.5.so.2.5.5+0x1b9a59",
+        "libruby-2.5.so.2.5.5+0x1bdef3",
+        "libruby-2.5.so.2.5.5+0x94f13",
+        "is_prime+0 in /tmp/systemtest_sum_of_primes_1619527295051925477.rb:10",
+        "sum_of_primes+0 in /tmp/systemtest_sum_of_primes_1619527295051925477.rb:20",
+        "<main>+0 in /tmp/systemtest_sum_of_primes_1619527295051925477.rb:30",
+        "<main>+0 in /tmp/systemtest_sum_of_primes_1619527295051925477.rb:29",
+        "<main>+0 in /tmp/systemtest_sum_of_primes_1619527295051925477.rb:28",
+        "libruby-2.5.so.2.5.5+0x96dbc",
+        "libruby-2.5.so.2.5.5+0x9926d",
+        "ruby2.5+0x10ea",
+        "libc-2.28.so+0x2409a",
+        "ruby2.5+0x1119"
+      ]
+    },
+    {
+      "lwp": 20837,
+      "frames": [
+        "libc-2.28.so+0xee819",
+        "libruby-2.5.so.2.5.5+0x190133",
+        "libpthread-2.28.so+0x7fa2",
+        "libc-2.28.so+0xf94ce"
+      ]
+    }
+  ],
+  "modules": null
+}
