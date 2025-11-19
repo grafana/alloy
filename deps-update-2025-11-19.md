@@ -107,3 +107,32 @@ No reorganization needed. ✅
 - ✅ All required pyroscope packages (`pyroscope/discovery`, `pyroscope/dynamicprofiling`, `pyroscope/internalshim/controller`, `pyroscope/symb/irsymcache`)
 
 **Status:** ✅ **RESOLVED** - Build successful! The thampiotr fork (commit `fe6dbb9e62bc`, updated Nov 19, 2025) contains both the API fixes and all required packages. The project builds successfully with all dependencies updated.
+
+## Summary
+
+✅ **Task Complete** - All major dependencies have been successfully updated:
+
+### Updated Dependencies
+- **OpenTelemetry Collector Core**: v1.46.0/v0.140.0 ✅
+- **OpenTelemetry Collector Contrib**: v0.140.1 ✅
+- **Prometheus**: v3.7.3 (via Grafana fork `staleness_disabling_v3.7.3`) ✅
+- **Prometheus common**: v0.67.3 ✅
+- **Loki**: v3.6.0 ✅
+- **OBI**: v1.3.8 (Grafana fork) ✅
+- **ebpf-profiler**: thampiotr fork `alloy-fork-v0.140` (commit fe6dbb9e62bc) ✅
+
+### Verification
+- ✅ `go mod tidy` completes successfully
+- ✅ `make alloy` builds successfully
+- ✅ Tests pass (verified with `go test -short ./internal/component/pyroscope/ebpf/...`)
+- ✅ No linter errors
+- ✅ All required packages available
+
+### Key Changes
+1. Updated all OpenTelemetry Collector packages from v0.139.0 to v0.140.0/v0.140.1
+2. Updated Prometheus fork to v3.7.3 base with staleness disabling feature
+3. Updated Loki from commit-based to v3.6.0 release
+4. Updated OBI from v1.3.7 to v1.3.8
+5. Switched ebpf-profiler from Grafana fork to thampiotr fork for OTel v0.140 compatibility
+
+The project is now ready with all major dependencies updated to their latest compatible versions.
