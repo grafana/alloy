@@ -1,28 +1,43 @@
+logging {
+    level = "debug"
+}
+
+livedebugging {}
+
 prometheus.scrape "scrape_prom_metrics" {
   targets = [
     {"__address__" = "prom-gen:9001"},
   ]
-  forward_to = [prometheus.remote_write.scrape_prom_metrics.receiver, otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver]
+  forward_to = [
+    prometheus.write.queue.scrape_prom_metrics.receiver,
+    prometheus.remote_write.scrape_prom_metrics.receiver,
+    prometheus.remote_write.scrape_prom_metrics_prw_v2.receiver,
+    otelcol.receiver.prometheus.scrape_prom_metrics_to_otlp.receiver,
+  ]
   scrape_classic_histograms = true
-  scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
+  scrape_native_histograms = true
   scrape_interval = "1s"
   scrape_timeout = "500ms"
 }
 
+prometheus.write.queue "scrape_prom_metrics" {
+    endpoint "mimir" {
+        url = "http://mimir:9009/api/v1/push"
+        flush_interval = "1s"
+        batch_count = 10
+        external_labels = {
+            test_name = "scrape_prom_metrics_writequeue",
+        }
+    }
+}
+
 prometheus.remote_write "scrape_prom_metrics" {
-  endpoint {
-    url = "http://mimir:9009/api/v1/push"
-    send_native_histograms = true
-    metadata_config {
-        send_interval = "1s"
+    external_labels = {
+      test_name = "scrape_prom_metrics_remote_write",
     }
-    queue_config {
-        max_samples_per_send = 100
-    }
-  }
-  external_labels = {
-    test_name = "scrape_prom_metrics",
-  }
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+	}
 }
 
 otelcol.receiver.prometheus "scrape_prom_metrics_to_otlp" {
@@ -51,4 +66,14 @@ otelcol.exporter.otlphttp "scrape_prom_metrics_to_otlp" {
       insecure_skip_verify = true
     }
   }
+}
+
+prometheus.remote_write "scrape_prom_metrics_prw_v2" {
+    external_labels = {
+      test_name = "scrape_prom_metrics_prw_v2",
+    }
+	endpoint {
+	    protobuf_message = "io.prometheus.write.v2.Request"
+		url = "http://mimir:9009/api/v1/push"
+	}
 }

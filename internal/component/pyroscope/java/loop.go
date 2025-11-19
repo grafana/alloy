@@ -35,7 +35,6 @@ type profilingLoop struct {
 	pid        int
 	target     discovery.Target
 	cancel     context.CancelFunc
-	dist       *asprof.Distribution
 	jfrFile    string
 	startTime  time.Time
 	profiler   Profiler
@@ -50,21 +49,18 @@ type profilingLoop struct {
 }
 
 type Profiler interface {
-	CopyLib(dist *asprof.Distribution, pid int) error
-	Execute(dist *asprof.Distribution, argv []string) (string, string, error)
-	Distribution() *asprof.Distribution
+	CopyLib(pid int) error
+	Execute(argv []string) (string, string, error)
 }
 
 func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
-	dist := profiler.Distribution()
 	p := &profilingLoop{
 		logger:   log.With(logger, "pid", pid),
 		output:   output,
 		pid:      pid,
 		target:   target,
 		cancel:   cancel,
-		dist:     dist,
 		jfrFile:  fmt.Sprintf("/tmp/asprof-%d-%d.jfr", os.Getpid(), pid),
 		cfg:      cfg,
 		profiler: profiler,
@@ -80,7 +76,7 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 }
 
 func (p *profilingLoop) loop(ctx context.Context) {
-	if err := p.profiler.CopyLib(p.dist, p.pid); err != nil {
+	if err := p.profiler.CopyLib(p.pid); err != nil {
 		p.onError(fmt.Errorf("failed to copy libasyncProfiler.so: %w", err))
 		return
 	}
@@ -183,7 +179,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
 		l := log.With(p.logger, "metric", metric, "sz", sz)
-		ls := labels.NewBuilder(nil)
+		ls := labels.NewBuilder(labels.EmptyLabels())
 		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
 		}
@@ -245,19 +241,17 @@ func (p *profilingLoop) start() error {
 		argv = append(argv, "--lock", cfg.Lock)
 	}
 	if cfg.LogLevel != "" {
-		argv = append(argv, "--loglevel", cfg.LogLevel)
+		argv = append(argv, "-L", cfg.LogLevel)
 	}
-	if cfg.Quiet {
-		argv = append(argv, "--quiet")
-	}
+
 	argv = append(argv,
 		"start",
 		"--timeout", strconv.Itoa(int(p.interval().Seconds())),
 		strconv.Itoa(p.pid),
 	)
 
-	_ = level.Debug(p.logger).Log("cmd", fmt.Sprintf("%s %s", p.dist.LauncherPath(), strings.Join(argv, " ")))
-	stdout, stderr, err := p.profiler.Execute(p.dist, argv)
+	_ = level.Debug(p.logger).Log("cmd", strings.Join(argv, " "))
+	stdout, stderr, err := p.profiler.Execute(argv)
 	if err != nil {
 		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
 	}
@@ -276,8 +270,8 @@ func (p *profilingLoop) stop() error {
 		"-o", "jfr",
 		strconv.Itoa(p.pid),
 	}
-	_ = level.Debug(p.logger).Log("msg", "asprof", "cmd", fmt.Sprintf("%s %s", p.dist.LauncherPath(), strings.Join(argv, " ")))
-	stdout, stderr, err := p.profiler.Execute(p.dist, argv)
+	_ = level.Debug(p.logger).Log("msg", "asprof", "cmd", strings.Join(argv, " "))
+	stdout, stderr, err := p.profiler.Execute(argv)
 	if err != nil {
 		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
 	}

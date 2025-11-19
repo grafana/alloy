@@ -57,7 +57,7 @@ func (a *Arguments) labelSet() model.LabelSet {
 
 type Component struct {
 	opts               component.Options
-	entriesChan        chan loki.Entry
+	handler            loki.LogsBatchReceiver
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
@@ -72,7 +72,7 @@ type Component struct {
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
-		entriesChan:        make(chan loki.Entry),
+		handler:            loki.NewLogsBatchReceiver(),
 		receivers:          args.ForwardTo,
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 	}
@@ -85,22 +85,31 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) (err error) {
-	defer c.stop()
+	defer func() {
+		c.serverMut.Lock()
+		defer c.serverMut.Unlock()
+		if c.server != nil {
+			// We want to cancel all in-flight request when component stops.
+			c.server.ForceShutdown()
+			c.server = nil
+		}
+	}()
 
 	for {
 		select {
-		case entry := <-c.entriesChan:
+		case entries := <-c.handler.Chan():
 			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				select {
-				case receiver.Chan() <- entry:
-				case <-ctx.Done():
-					return
+			for _, entry := range entries {
+				for _, receiver := range c.receivers {
+					select {
+					case receiver.Chan() <- entry:
+					case <-ctx.Done():
+						c.receiversMut.RUnlock()
+						return
+					}
 				}
 			}
+			c.receiversMut.RUnlock()
 		case <-ctx.Done():
 			return
 		}
@@ -146,7 +155,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(serverRegistry)
 
 		var err error
-		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, loki.NewEntryHandler(c.entriesChan, func() {}), serverRegistry, int64(newArgs.MaxSendMessageSize))
+		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, c.handler, serverRegistry, int64(newArgs.MaxSendMessageSize))
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
@@ -161,13 +170,4 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server.SetKeepTimestamp(newArgs.UseIncomingTimestamp)
 
 	return nil
-}
-
-func (c *Component) stop() {
-	c.serverMut.Lock()
-	defer c.serverMut.Unlock()
-	if c.server != nil {
-		c.server.Shutdown()
-		c.server = nil
-	}
 }

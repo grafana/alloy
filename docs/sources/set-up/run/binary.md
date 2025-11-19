@@ -59,7 +59,6 @@ These steps assume you have a default systemd and {{< param "PRODUCT_NAME" >}} c
    ExecStart=<BINARY_PATH> run $CUSTOM_ARGS --storage.path=<WORKING_DIRECTORY> $CONFIG_FILE
    ExecReload=/usr/bin/env kill -HUP $MAINPID
    TimeoutStopSec=20s
-   SendSIGKILL=no
 
    [Install]
    WantedBy=multi-user.target

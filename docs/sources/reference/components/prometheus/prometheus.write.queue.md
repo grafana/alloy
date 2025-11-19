@@ -23,7 +23,7 @@ You can specify multiple `prometheus.write.queue` components by giving them diff
 
 ```alloy
 prometheus.write.queue "<LABEL>" {
-  endpoint "default "{
+  endpoint "default" {
     url = "<REMOTE_WRITE_URL>"
 
     ...
@@ -70,21 +70,29 @@ Each `endpoint` has its own WAL folder.
 
 The following arguments are supported:
 
-| Name                     | Type          | Description                                                                      | Default | Required |
-| ------------------------ | ------------- | -------------------------------------------------------------------------------- | ------- | -------- |
-| `url`                    | `string`      | Full URL to send metrics to.                                                     |         | yes      |
-| `batch_count`            | `uint`        | How many series to queue in each queue.                                          | `1000`  | no       |
-| `bearer_token`           | `secret`      | Bearer token to authenticate with.                                               |         | no       |
-| `enable_round_robin`     | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false` | no       |
-| `external_labels`        | `map(string)` | Labels to add to metrics sent over the network.                                  |         | no       |
-| `flush_interval`         | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `"1s"`  | no       |
-| `headers`                | `map(secret)` | Custom HTTP headers to add to all requests sent to the server.                   |         | no       |
-| `max_retry_attempts`     | `uint`        | Maximum number of retries before dropping the batch.                             | `0`     | no       |
-| `proxy_url`              | `string`      | URL of the HTTP proxy to use for requests.                                       |         | no       |
-| `proxy_from_environment` | `bool`        | Whether to read proxy configuration from environment variables.                  | `false` | no       |
-| `proxy_connect_headers`  | `map(secret)` | HTTP headers to send to proxies during CONNECT requests.                         |         | no       |
-| `retry_backoff`          | `duration`    | How long to wait between retries.                                                | `"1s"`  | no       |
-| `write_timeout`          | `duration`    | Timeout for requests made to the URL.                                            | `"30s"` | no       |
+| Name                     | Type          | Description                                                                      | Default                     | Required |
+|--------------------------|---------------|----------------------------------------------------------------------------------|-----------------------------|----------|
+| `url`                    | `string`      | Full URL to send metrics to.                                                     |                             | yes      |
+| `batch_count`            | `uint`        | How many series to queue in each queue.                                          | `1000`                      | no       |
+| `bearer_token`           | `secret`      | Bearer token to authenticate with.                                               |                             | no       |
+| `enable_round_robin`     | `bool`        | Use round robin load balancing when there are multiple IPs for a given endpoint. | `false`                     | no       |
+| `external_labels`        | `map(string)` | Labels to add to metrics sent over the network.                                  |                             | no       |
+| `flush_interval`         | `duration`    | How long to wait until sending if `batch_count` isn't triggered.                 | `"1s"`                      | no       |
+| `headers`                | `map(secret)` | Custom HTTP headers to add to all requests sent to the server.                   |                             | no       |
+| `max_retry_attempts`     | `uint`        | Maximum number of retries before dropping the batch.                             | `0`                         | no       |
+| `metadata_cache_enabled` | `bool`        | Enables an LRU cache for tracking Metadata to support sparse metadata sending.   | `false`                     | no       |
+| `metadata_cache_size`    | `uint`        | Maximum number of metadata entries to keep in cache to track what has been sent. | `1000`                      | no       |
+| `protobuf_message`       | `string`      | Protobuf message format to use for remote write.                                 | `"prometheus.WriteRequest"` | no       |
+| `proxy_url`              | `string`      | URL of the HTTP proxy to use for requests.                                       |                             | no       |
+| `proxy_from_environment` | `bool`        | Whether to read proxy configuration from environment variables.                  | `false`                     | no       |
+| `proxy_connect_headers`  | `map(secret)` | HTTP headers to send to proxies during CONNECT requests.                         |                             | no       |
+| `retry_backoff`          | `duration`    | How long to wait between retries.                                                | `"1s"`                      | no       |
+| `write_timeout`          | `duration`    | Timeout for requests made to the URL.                                            | `"30s"`                     | no       |
+
+`protobuf_message` must be `prometheus.WriteRequest` or `io.prometheus.write.v2.Request`. These values represent prometheus remote write protocol versions 1 and 2.
+
+'metadata_cache_enabled' and `metadata_cache_size` are only relevant when using `io.prometheus.write.v2.Request`, and is intended to reduce the frequency of metadata sending to reduce overall network traffic.
+A larger cache_size will consume more memory, but if you are sending many different metrics will also reduce how frequently metadata is sent with samples.
 
 ### `basic_auth`
 

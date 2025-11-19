@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
-	lokiflagext "github.com/grafana/loki/v3/pkg/util/flagext"
 
 	types "github.com/grafana/alloy/internal/component/common/config"
 )
@@ -103,9 +101,9 @@ func (args Arguments) convertClientConfigs() []client.Config {
 				MaxBackoff: cfg.MaxBackoff,
 				MaxRetries: cfg.MaxBackoffRetries,
 			},
-			ExternalLabels:         lokiflagext.LabelSet{LabelSet: utils.ToLabelSet(args.ExternalLabels)},
 			Timeout:                cfg.RemoteTimeout,
 			TenantID:               cfg.TenantID,
+			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
 			Queue: client.QueueConfig{
 				Capacity:     int(cfg.QueueConfig.Capacity),

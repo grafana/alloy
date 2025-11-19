@@ -46,9 +46,7 @@ type dataUpdate struct {
 	dataCount int
 }
 
-var (
-	_ MarkerHandler = (*markerHandler)(nil)
-)
+var _ MarkerHandler = (*markerHandler)(nil)
 
 // NewMarkerHandler creates a new markerHandler.
 func NewMarkerHandler(mfh MarkerFileHandler, maxSegmentAge time.Duration, logger log.Logger, metrics *MarkerMetrics) MarkerHandler {
@@ -212,3 +210,25 @@ func FindMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 
 	return lastZero
 }
+
+// NewNopMarkerHandler creates a new no-op marker handler that implements
+// MarkerHandler but performs no operations. This is useful when marker tracking
+// is not needed or disabled.
+func NewNopMarkerHandler() *NopMarkerHandler {
+	return &NopMarkerHandler{}
+}
+
+var _ MarkerHandler = (*NopMarkerHandler)(nil)
+
+// NopMarkerHandler is a no-op implementation of MarkerHandler. All methods
+// are implemented as empty functions, making it suitable for use when marker
+// tracking functionality is not required.
+type NopMarkerHandler struct{}
+
+func (n *NopMarkerHandler) LastMarkedSegment() int { return 0 }
+
+func (n *NopMarkerHandler) UpdateReceivedData(segmentId int, dataCount int) {}
+
+func (n *NopMarkerHandler) UpdateSentData(segmentId int, dataCount int) {}
+
+func (n *NopMarkerHandler) Stop() {}

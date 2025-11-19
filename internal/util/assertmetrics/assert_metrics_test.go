@@ -18,10 +18,10 @@ func TestMetricValue(t *testing.T) {
 	reg.MustRegister(gauge)
 
 	metrics := ReadMetrics(t, reg)
-	AssertValueInStr(t, metrics, "some_metric", nil, 42)
+	AssertValueInStr(t, metrics, "some_metric", labels.EmptyLabels(), 42)
 
 	gauge.Set(31337)
-	AssertValueInReg(t, reg, "some_metric", nil, 31337)
+	AssertValueInReg(t, reg, "some_metric", labels.EmptyLabels(), 31337)
 }
 
 func TestMetricValueWithLabels(t *testing.T) {

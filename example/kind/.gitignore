@@ -1,0 +1,4 @@
+# Generated files
+build/
+# Environment variables for local development
+.env.credentials

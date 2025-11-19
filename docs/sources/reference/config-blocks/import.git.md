@@ -62,7 +62,10 @@ You can use the following blocks with `import.git`:
 
 ### `basic_auth`
 
-{{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+| Name       | Type     | Description          | Default | Required |
+| ---------- | -------- | -------------------- | ------- | -------- |
+| `password` | `secret` | Basic auth password. |         | no       |
+| `username` | `string` | Basic auth username. |         | no       |
 
 ### `ssh_key`
 

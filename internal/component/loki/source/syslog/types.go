@@ -41,7 +41,7 @@ func (sc *ListenerConfig) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (sc *ListenerConfig) Validate() error {
-	if sc.ListenProtocol != "tcp" && sc.ListenProtocol != "udp" {
+	if sc.ListenProtocol != st.ProtocolTCP && sc.ListenProtocol != st.ProtocolUDP {
 		return fmt.Errorf("syslog listener protocol should be either 'tcp' or 'udp', got %s", sc.ListenProtocol)
 	}
 

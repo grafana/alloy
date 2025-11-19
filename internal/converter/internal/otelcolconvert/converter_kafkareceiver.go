@@ -86,7 +86,10 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MinFetchSize:           cfg.MinFetchSize,
 		DefaultFetchSize:       cfg.DefaultFetchSize,
 		MaxFetchSize:           cfg.MaxFetchSize,
+		MaxPartitionFetchSize:  cfg.MaxPartitionFetchSize,
 		MaxFetchWait:           cfg.MaxFetchWait,
+		RackID:                 cfg.RackID,
+		UseLeaderEpoch:         cfg.UseLeaderEpoch,
 		GroupRebalanceStrategy: cfg.GroupRebalanceStrategy,
 		GroupInstanceID:        cfg.GroupInstanceID,
 
@@ -160,8 +163,7 @@ func toKafkaAWSMSK(cfg map[string]any) otelcol.KafkaAWSMSKArguments {
 	}
 
 	return otelcol.KafkaAWSMSKArguments{
-		Region:     cfg["region"].(string),
-		BrokerAddr: cfg["broker_addr"].(string),
+		Region: cfg["region"].(string),
 	}
 }
 

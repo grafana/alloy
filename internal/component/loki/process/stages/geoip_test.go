@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	util_log "github.com/grafana/loki/v3/pkg/util/log"
+	"github.com/go-kit/log"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/stretchr/testify/require"
@@ -131,7 +131,7 @@ func Test_MaxmindAsn(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            util_log.Logger,
+		logger:            log.NewNopLogger(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}
@@ -175,7 +175,7 @@ func Test_MaxmindCity(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            util_log.Logger,
+		logger:            log.NewNopLogger(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}
@@ -229,7 +229,7 @@ func Test_MaxmindCountry(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            util_log.Logger,
+		logger:            log.NewNopLogger(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}

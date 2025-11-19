@@ -2,9 +2,12 @@ package runtime
 
 import (
 	"context"
-	"os"
+	"io"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -12,8 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 const loggingConfig = `
@@ -127,7 +128,7 @@ func TestModule(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
 			mc := newModuleController(testModuleControllerOptions(t)).(*moduleController)
 			// modules do not clean up their own worker pool as we normally use a shared one from the root controller
-			defer mc.o.WorkerPool.Stop()
+			defer mc.o.WorkerPool.Stop(5 * time.Second)
 
 			tm := &testModule{
 				content: tc.argumentModuleContent + tc.exportModuleContent,
@@ -192,7 +193,7 @@ func TestExportsWhenNotUsed(t *testing.T) {
 func TestIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
@@ -226,7 +227,7 @@ func TestIDList(t *testing.T) {
 func TestDuplicateIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
@@ -251,7 +252,7 @@ func TestDuplicateIDList(t *testing.T) {
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	services := []service.Service{

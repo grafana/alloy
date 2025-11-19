@@ -27,11 +27,11 @@ pyroscope.receive_http "<LABEL>" {
 }
 ```
 
-The component starts an HTTP server supporting the following endpoint.
+The component starts an HTTP server supporting the following endpoints:
 
-* `POST /ingest` - send profiles to the component, which is forwarded to the receivers as configured in the `forward_to argument`.
+* `POST /ingest`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope ingest API.
-* `POST /push.v1.PusherService/Push` - send profiles to the component, which is forwarded to the receivers as configured in the `forward_to argument`.
+* `POST /push.v1.PusherService/Push`: Send profiles to the component, which forwards them to the receivers configured in the `forward_to` argument.
   The request format must match the format of the Pyroscope pushv1.PusherService Connect API.
 
 ## Arguments
@@ -44,28 +44,29 @@ You can use the following argument with `pyroscope.receive_http`:
 
 ## Blocks
 
-You can use the following block with `pyroscope.receive_http`:
+You can use the following blocks with `pyroscope.receive_http`:
 
-| Name           | Description                                        | Required |
-| -------------- | -------------------------------------------------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no       |
+| Name                  | Description                                        | Required |
+| --------------------- | -------------------------------------------------- | -------- |
+| [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
+
+The > symbol indicates deeper levels of nesting.
+For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
 
 ### `http`
 
-The `http` block configures the HTTP server.
+{{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-You can use the following arguments to configure the `http` block. Any omitted fields take their default values.
+[tls]: #tls
 
-| Name                   | Type       | Description                                                                                                      | Default  | Required |
-| ---------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- | -------- | -------- |
-| `conn_limit`           | `int`      | Maximum number of simultaneous HTTP connections. Defaults to 100.                                                | `0`      | no       |
-| `listen_address`       | `string`   | Network address on which the server listens for new connections. Defaults to accepting all incoming connections. | `""`     | no       |
-| `listen_port`          | `int`      | Port number on which the server listens for new connections.                                                     | `8080`   | no       |
-| `server_idle_timeout`  | `duration` | Idle timeout for the HTTP server.                                                                                | `"120s"` | no       |
-| `server_read_timeout`  | `duration` | Read timeout for the HTTP server.                                                                                | `"30s"`  | no       |
-| `server_write_timeout` | `duration` | Write timeout for the HTTP server.                                                                               | `"30s"`  | no       |
+### `tls`
+
+The `tls` block configures TLS for the HTTP server.
+
+{{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -74,6 +75,15 @@ You can use the following arguments to configure the `http` block. Any omitted f
 ## Component health
 
 `pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+
+## Debug metrics
+
+`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
+`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+
+## Troubleshoot
+
+{{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Example
 
@@ -107,7 +117,7 @@ pyroscope.write "production" {
 
 {{< admonition type="note" >}}
 This example demonstrates forwarding to multiple `pyroscope.write` components.
-This configuration duplicates the received profiles and send a copy to each configured `pyroscope.write` component.
+This configuration duplicates the received profiles and sends a copy to each configured `pyroscope.write` component.
 {{< /admonition >}}
 
 You can also create multiple `pyroscope.receive_http` components with different configurations to listen on different addresses or ports as needed.

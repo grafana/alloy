@@ -77,7 +77,7 @@ func (app *Appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v f
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -108,7 +108,7 @@ func (app *Appender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e ex
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -136,7 +136,7 @@ func (app *Appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m me
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {
@@ -162,7 +162,7 @@ func (app *Appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t i
 	app.init()
 
 	l = l.WithoutEmpty()
-	if len(l) == 0 {
+	if l.Len() == 0 {
 		return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
 	}
 	if lbl, dup := l.HasDuplicateLabelNames(); dup {

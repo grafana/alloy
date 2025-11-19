@@ -12,7 +12,6 @@ prometheus.scrape "prometheus1" {
 		username = "user"
 		password = "pass"
 	}
-	metric_name_escaping_scheme = "allow-utf-8"
 }
 
 prometheus.scrape "prometheus2" {
@@ -22,7 +21,6 @@ prometheus.scrape "prometheus2" {
 	forward_to                    = [prometheus.remote_write.default.receiver]
 	job_name                      = "prometheus2"
 	scrape_classic_histograms     = true
-	metric_name_escaping_scheme   = "allow-utf-8"
 	native_histogram_bucket_limit = 2
 }
 

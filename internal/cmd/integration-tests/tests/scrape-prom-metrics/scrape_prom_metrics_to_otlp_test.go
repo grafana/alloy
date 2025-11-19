@@ -9,5 +9,5 @@ import (
 )
 
 func TestScrapePromMetricsToOtlp(t *testing.T) {
-	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultHistogramMetric, "scrape_prom_metrics_to_otlp")
+	common.MimirMetricsTest(t, common.PromDefaultMetrics, common.PromDefaultNativeHistogramMetrics, "scrape_prom_metrics_to_otlp")
 }

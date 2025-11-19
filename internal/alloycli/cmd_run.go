@@ -68,6 +68,7 @@ func runCommand() *cobra.Command {
 		clusterRejoinInterval: 60 * time.Second,
 		disableSupportBundle:  false,
 		windowsPriority:       windowspriority.PriorityNormal,
+		taskShutdownDeadline:  10 * time.Minute,
 	}
 
 	cmd := &cobra.Command{
@@ -166,6 +167,7 @@ depending on the nature of the reload error.
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
+	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 
 	addDeprecatedFlags(cmd)
 	return cmd
@@ -201,6 +203,7 @@ type alloyRun struct {
 	enableCommunityComps         bool
 	disableSupportBundle         bool
 	windowsPriority              string
+	taskShutdownDeadline         time.Duration
 }
 
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
@@ -384,6 +387,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			remoteCfgService,
 			uiService,
 		},
+		TaskShutdownDeadline: fr.taskShutdownDeadline,
 	})
 
 	ready = f.Ready
@@ -425,7 +429,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(l).Log("msg", "failed to start reporter", "err", err)
 			}
 		}()

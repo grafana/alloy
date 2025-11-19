@@ -3,8 +3,9 @@ package main
 import (
 	"testing"
 
-	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/alloy/internal/cmd/integration-tests/common"
 )
 
 const query = "http://localhost:3100/loki/api/v1/query_range?query={test_name=%22read_log_file%22}"
@@ -12,7 +13,7 @@ const query = "http://localhost:3100/loki/api/v1/query_range?query={test_name=%2
 func TestReadLogFile(t *testing.T) {
 	var logResponse common.LogResponse
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		err := common.FetchDataFromURL(query, &logResponse)
+		_, err := common.FetchDataFromURL(query, &logResponse)
 		assert.NoError(c, err)
 		if assert.NotEmpty(c, logResponse.Data.Result) {
 			logs := make([]string, 0)
@@ -24,5 +25,5 @@ func TestReadLogFile(t *testing.T) {
 			}
 			assert.Contains(c, logs, "[2023-10-02 14:25:43] INFO: Starting the web application...")
 		}
-	}, common.DefaultTimeout, common.DefaultRetryInterval, "Data did not satisfy the conditions within the time limit")
+	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval, "Data did not satisfy the conditions within the time limit")
 }

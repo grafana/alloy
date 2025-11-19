@@ -55,6 +55,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			MaxAllowedPayloadSize: units.Base2Bytes(config.Server.MaxAllowedPayloadSize),
 			RateLimiting: receiver.RateLimitingArguments{
 				Enabled:   config.Server.RateLimiting.Enabled,
+				Strategy:  receiver.RateLimitingStrategyGlobal,
 				Rate:      config.Server.RateLimiting.RPS,
 				BurstSize: float64(config.Server.RateLimiting.Burstiness),
 			},

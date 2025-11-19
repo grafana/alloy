@@ -233,11 +233,11 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 ### `attach_metadata`
 
 The `attach_metadata` block allows you to attach node metadata to discovered targets.
-This block is valid for the `pod`, `endpoints`, and `endpointslice` roles.
 
-| Name   | Type   | Description           | Default | Required |
-| ------ | ------ | --------------------- | ------- | -------- |
-| `node` | `bool` | Attach node metadata. |         | no       |
+| Name        | Type   | Description                                                                                                                                                               | Default | Required |
+|-------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `node`      | `bool` | Attach node metadata. Alloy must have permissions to list/watch Nodes. This is valid for the `pod`, `endpoints`, and `endpointslice` roles.                               |         | no       |
+| `namespace` | `bool` | Attach namespace metadata. Alloy must have permissions to list/watch Namespaces. Valid for roles the `pod`, `endpoints`, `endpointslice`, `service`, and `ingress` roles. |         | no       |
 
 ### `authorization`
 

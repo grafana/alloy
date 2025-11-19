@@ -5,7 +5,7 @@ package runtime_test
 
 import (
 	"context"
-	"os"
+	"io"
 	"strconv"
 	"testing"
 	"time"
@@ -77,6 +77,10 @@ func TestUpdates_EmptyModule(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
+	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
 		return export.LastAdded == 10
 	}, 3*time.Second, 10*time.Millisecond)
@@ -136,6 +140,10 @@ func TestUpdates_ThroughModule(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
@@ -198,6 +206,10 @@ func TestUpdates_TwoModules_SameCompNames(t *testing.T) {
 		cancel()
 		<-done
 	}()
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
 
 	// Verify updates propagated correctly.
 	require.Eventually(t, func() bool {
@@ -267,6 +279,10 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
+		return ctrl.Ready()
+	}, 3*time.Second, 10*time.Millisecond)
+
+	require.Eventually(t, func() bool {
 		export := getExport[testcomponents.SummationExports](t, ctrl, "", "testcomponents.summation.sum")
 		return export.LastAdded == 10
 	}, 3*time.Second, 10*time.Millisecond)
@@ -318,7 +334,7 @@ func TestUpdates_ReloadConfig(t *testing.T) {
 
 func testOptions(t *testing.T) runtime.Options {
 	t.Helper()
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{

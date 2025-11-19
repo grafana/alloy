@@ -47,6 +47,7 @@ You can use the following arguments with `otelcol.processor.tail_sampling`:
 |-------------------------------|------------|------------------------------------------------------------------------------|---------|----------|
 | `decision_wait`               | `duration` | Wait time since the first span of a trace before making a sampling decision. | `"30s"` | no       |
 | `num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no       |
+| `block_on_overflow`           | `boolean`  | If `true`, wait for space when the `num_traces` limit is reached. If `false`, old traces will be evicted to make space. | `false` | no       |
 | `expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no       |
 | `decision_cache`              | `object`   | Configures caches for sampling decisions.                                    | `{}`    | no       |
 

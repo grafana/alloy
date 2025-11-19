@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
 	"github.com/IBM/sarama"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 // Consumergroup handler
@@ -142,11 +142,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_key"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_key",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_key"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_key",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_key": "foo"},
@@ -159,11 +160,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_key"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_key",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_key"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_key",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_key": "none"},
@@ -176,11 +178,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_offset"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_offset",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_offset"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_offset",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_offset": "42"},
@@ -193,11 +196,12 @@ func Test_TargetRun(t *testing.T) {
 			inLS:            model.LabelSet{"buzz": "bazz"},
 			relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_message_offset"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					TargetLabel:  "message_offset",
-					Replacement:  "$1",
-					Action:       "replace",
+					SourceLabels:         model.LabelNames{"__meta_kafka_message_offset"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					TargetLabel:          "message_offset",
+					Replacement:          "$1",
+					Action:               "replace",
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			expectedLS: model.LabelSet{"buzz": "bazz", "message_offset": "0"},

@@ -170,6 +170,17 @@ func (ctrl *controller) configureInformers(ctx context.Context, informers cache.
 	informerCtx, cancel := context.WithTimeout(ctx, informerSyncTimeout)
 	defer cancel()
 
+	// Register field index for spec.nodeName only if node filtering is enabled
+	if ctrl.reconciler.nodeFilterEnabled && ctrl.reconciler.getNodeFilterName() != "" {
+		if err := informers.IndexField(informerCtx, &corev1.Pod{}, "spec.nodeName", func(obj client.Object) []string {
+			pod := obj.(*corev1.Pod)
+			return []string{pod.Spec.NodeName}
+		}); err != nil {
+			return fmt.Errorf("failed to register field index for spec.nodeName: %w", err)
+		}
+		level.Debug(ctrl.log).Log("msg", "registered field index for spec.nodeName")
+	}
+
 	for _, ty := range types {
 		informer, err := informers.GetInformer(informerCtx, ty)
 		if err != nil {

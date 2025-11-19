@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
+	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -177,15 +177,15 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 		instanceLabel string
 	)
 
-	if serviceName, ok := attrs.Get(semconv.AttributeServiceName); ok {
-		if serviceNamespace, ok := attrs.Get(semconv.AttributeServiceNamespace); ok {
+	if serviceName, ok := attrs.Get(string(semconv.ServiceNameKey)); ok {
+		if serviceNamespace, ok := attrs.Get(string(semconv.ServiceNamespaceKey)); ok {
 			jobLabel = fmt.Sprintf("%s/%s", serviceNamespace.AsString(), serviceName.AsString())
 		} else {
 			jobLabel = serviceName.AsString()
 		}
 	}
 
-	if instanceID, ok := attrs.Get(semconv.AttributeServiceInstanceID); ok {
+	if instanceID, ok := attrs.Get(string(semconv.ServiceInstanceIDKey)); ok {
 		instanceLabel = instanceID.AsString()
 	}
 
@@ -196,9 +196,9 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	attrs.Range(func(k string, v pcommon.Value) bool {
 		// Skip attributes that we used for determining the job and instance
 		// labels.
-		if k == semconv.AttributeServiceName ||
-			k == semconv.AttributeServiceNamespace ||
-			k == semconv.AttributeServiceInstanceID {
+		if k == string(semconv.ServiceNameKey) ||
+			k == string(semconv.ServiceNamespaceKey) ||
+			k == string(semconv.ServiceInstanceIDKey) {
 
 			return true
 		}
@@ -463,7 +463,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 		if convType == model.MetricTypeCounter {
 			for i := 0; i < dp.Exemplars().Len(); i++ {
 				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", metricName, "err", err)
+					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
 				}
 			}
 		}
@@ -661,14 +661,14 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 
 // Convert Otel Exemplar to Prometheus Exemplar.
 func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Time) exemplar.Exemplar {
-	exemplarLabels := make(labels.Labels, 0)
+	exemplarLabels := labels.NewScratchBuilder(0)
 
 	if traceID := otelExemplar.TraceID(); !traceID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "trace_id", Value: hex.EncodeToString(traceID[:])})
+		exemplarLabels.Add("trace_id", hex.EncodeToString(traceID[:]))
 	}
 
 	if spanID := otelExemplar.SpanID(); !spanID.IsEmpty() {
-		exemplarLabels = append(exemplarLabels, labels.Label{Name: "span_id", Value: hex.EncodeToString(spanID[:])})
+		exemplarLabels.Add("span_id", hex.EncodeToString(spanID[:]))
 	}
 
 	var value float64
@@ -679,9 +679,10 @@ func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Ti
 		value = float64(otelExemplar.IntValue())
 	}
 
+	exemplarLabels.Sort()
 	return exemplar.Exemplar{
 		Value:  value,
-		Labels: exemplarLabels,
+		Labels: exemplarLabels.Labels(),
 		Ts:     timestamp.FromTime(ts),
 	}
 }

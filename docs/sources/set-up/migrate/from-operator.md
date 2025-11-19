@@ -282,6 +282,7 @@ The [reference documentation][component documentation] should help convert those
 [prometheus.remote_write]: ../../../reference/components/prometheus/prometheus.remote_write/
 [prometheus.operator.podmonitors]: ../../../reference/components/prometheus/prometheus.operator.podmonitors/
 [prometheus.operator.servicemonitors]: ../../../reference/components/prometheus/prometheus.operator.servicemonitors/
+[prometheus.operator.scrapeconfigs]: ../../../reference/components/prometheus/prometheus.operator.scrapeconfigs/
 [prometheus.operator.probes]: ../../../reference/components/prometheus/prometheus.operator.probes/
 [prometheus.scrape]: ../../../reference/components/prometheus/prometheus.scrape/
 [loki.source.kubernetes]: ../../../reference/components/loki/loki.source.kubernetes/

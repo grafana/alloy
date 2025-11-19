@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"sync"
 
 	"go.uber.org/atomic"
@@ -295,14 +294,11 @@ func toModelLabelSet(lbls labels.Labels) model.LabelSet {
 
 // toLabelsLabels converts model.LabelSet to labels.Labels
 func toLabelsLabels(ls model.LabelSet) labels.Labels {
-	result := make(labels.Labels, 0, len(ls))
+	result := labels.NewScratchBuilder(len(ls))
 	for name, value := range ls {
-		result = append(result, labels.Label{
-			Name:  string(name),
-			Value: string(value),
-		})
+		result.Add(string(name), string(value))
 	}
 	// Labels need to be sorted
-	sort.Sort(result)
-	return result
+	result.Sort()
+	return result.Labels()
 }

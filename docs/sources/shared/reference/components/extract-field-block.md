@@ -8,10 +8,12 @@ The following attributes are supported:
 
 | Name        | Type     | Description                                                                                 | Default | Required |
 | ----------- | -------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
-| `from`      | `string` | The source of the labels or annotations. Allowed values are `pod`, `namespace`, and `node`. | `pod`   | no       |
+| `from`      | `string` | The source of the labels or annotations.                                                    | `pod`   | no       |
 | `key_regex` | `string` | A regular expression used to extract a key that matches the regular expression.             | `""`    | no       |
 | `key`       | `string` | The annotation or label name. This key must exactly match an annotation or label name.      | `""`    | no       |
 | `tag_name`  | `string` | The name of the resource attribute added to logs, metrics, or spans.                        | `""`    | no       |
+
+The `from` attribute must be one of `pod`, `namespace`, `deployment`, `statefulset`, `daemonset`, `job`, or `node`.
 
 When you don't specify the `tag_name`, a default tag name is used with the format:
 

@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	SetupConsumersName = "setup_consumers"
+	SetupConsumersCollector = "setup_consumers"
 )
 
-type SetupConsumerArguments struct {
+type SetupConsumersArguments struct {
 	DB       *sql.DB
 	Registry *prometheus.Registry
 
@@ -37,7 +37,7 @@ type SetupConsumers struct {
 	cancel  context.CancelFunc
 }
 
-func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
+func NewSetupConsumers(args SetupConsumersArguments) (*SetupConsumers, error) {
 	setupConsumerMetric := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "database_observability",
 		Name:      "setup_consumers_enabled",
@@ -51,17 +51,17 @@ func NewSetupConsumer(args SetupConsumerArguments) (*SetupConsumers, error) {
 		registry:             args.Registry,
 		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
-		logger:               args.Logger,
+		logger:               log.With(args.Logger, "collector", SetupConsumersCollector),
 		collectInterval:      args.CollectInterval,
 	}, nil
 }
 
 func (c *SetupConsumers) Name() string {
-	return SetupConsumersName
+	return SetupConsumersCollector
 }
 
 func (c *SetupConsumers) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", SetupConsumersName+" collector started")
+	level.Debug(c.logger).Log("msg", "collector started")
 	c.running.Store(true)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -78,7 +78,7 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 
 		for {
 			if err := c.getSetupConsumers(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "setupConsumers collector error", "err", err)
+				level.Error(c.logger).Log("msg", "collector error", "err", err)
 			}
 
 			select {
@@ -123,7 +123,7 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	for rs.Next() {
 		var consumer consumer
 		if err := rs.Scan(&consumer.name, &consumer.enabled); err != nil {
-			return fmt.Errorf("error scanning getSetupConsumers row: %w", err)
+			return fmt.Errorf("failed to scan getSetupConsumers row: %w", err)
 		}
 
 		if consumer.enabled == "YES" {

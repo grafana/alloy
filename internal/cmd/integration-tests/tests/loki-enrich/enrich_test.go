@@ -18,7 +18,7 @@ import (
 
 func TestEnrichWithFileDiscovery(t *testing.T) {
 	// Send test logs directly to API
-	sendTestLogsForDevice(t, "router1.example.com")
+	sendTestLogsForDevice(t, "router1.example.com", "enrich_with_file_discovery")
 
 	// Verify logs were enriched with expected labels
 	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
@@ -35,7 +35,7 @@ func TestEnrichWithFileDiscovery(t *testing.T) {
 
 func TestEnrichWithMissingLabels(t *testing.T) {
 	// Send test logs for unknown device
-	sendTestLogsForDevice(t, "unknown.example.com")
+	sendTestLogsForDevice(t, "unknown.example.com", "enrich_with_missing_labels")
 
 	// Verify logs passed through without enrichment
 	common.AssertLogsPresent(t, "network_device_enriched", map[string]string{
@@ -50,8 +50,8 @@ func TestEnrichWithMissingLabels(t *testing.T) {
 }
 
 func getLokiAPIEndpoint() string {
-	host := os.Getenv("ALLOY_HOST")
-	port := os.Getenv("ALLOY_PORT")
+	host := os.Getenv(common.AlloyHostEnv)
+	port := os.Getenv(common.AlloyPortEnv)
 
 	if host != "" && port != "" {
 		return fmt.Sprintf("http://%s:%s/loki/api/v1/push", host, port)
@@ -61,7 +61,7 @@ func getLokiAPIEndpoint() string {
 	return "http://localhost:1514/loki/api/v1/push"
 }
 
-func sendTestLogsForDevice(t *testing.T, hostname string) {
+func sendTestLogsForDevice(t *testing.T, hostname string, testName string) {
 	networkLogs := []string{
 		"%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up",
 		"%SEC-6-IPACCESSLOGP: list 102 denied tcp 10.1.1.1(1234) -> 10.1.1.2(80), 1 packet",
@@ -81,7 +81,8 @@ func sendTestLogsForDevice(t *testing.T, hostname string) {
 	pushReq := common.PushRequest{
 		Streams: []common.LogData{{
 			Stream: map[string]string{
-				"host": hostname,
+				"host":      hostname,
+				"test_name": testName,
 			},
 			Values: values,
 		}},

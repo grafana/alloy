@@ -56,11 +56,13 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 | [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
 | [`resource_attrs_to_s3`][resource_attrs_to_s3] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no       |
 | [`sending_queue`][sending_queue]               | Configures batching of data before sending.                                                              | no       |
+| `sending_queue` > [`batch`][batch]             | Configures batching requests based on a timeout and a minimum number of items.                           | no       |
 
 [s3_uploader]: #s3_uploader
 [marshaler]: #marshaler
 [debug_metrics]: #debug_metrics
 [sending_queue]: #sending_queue
+[batch]: #batch
 [resource_attrs_to_s3]: #resource_attrs_to_s3-block
 
 ### `s3_uploader`
@@ -71,23 +73,25 @@ The `s3_uploader` block configures the AWS S3 bucket details used by the compone
 
 The following arguments are supported:
 
-| Name                  | Type       | Description                                                                                           | Default                                       | Required |
-|-----------------------|------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
-| `s3_bucket`           | `string`   | The S3 bucket.                                                                                        |                                               | yes      |
-| `s3_prefix`           | `string`   | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | yes      |
-| `acl`                 | `string`   | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
-| `compression`         | `string`   | File compression method, `none` or `gzip`                                                             | `"none"`                                      | no       |
-| `disable_ssl`         | `boolean`  | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
-| `endpoint`            | `string`   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
-| `file_prefix`         | `string`   | The file prefix defined by the user.                                                                  |                                               | no       |
-| `region`              | `string`   | The AWS region.                                                                                       | `"us-east-1"`                                 | no       |
-| `retry_max_attempts`  | `int`      | The max number of attempts for retrying a request.                                                    | `3`                                           | no       |
-| `retry_max_backoff`   | `duration` | The max backoff delay that can occur before retrying a request.                                       | `20s`                                         | no       |
-| `retry_mode`          | `string`   | The retryer implementation.                                                                           | `"standard"`                                  | no       |
-| `role_arn`            | `string`   | The Role ARN to be assumed.                                                                           |                                               | no       |
-| `s3_force_path_style` | `boolean`  | Set this to `true` to force the request to use [path-style requests][]                                | `false`                                       | no       |
-| `s3_partition_format` | `string`   | Filepath formatting for the partition; Refer to [`strftime`][strftime] for format specification.      | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no       |
-| `storage_class`       | `string`   | The storage class to use when uploading objects.                                                      | `"STANDARD"`                                  | no       |
+| Name                    | Type       | Description                                                                                           | Default                                       | Required |
+|-------------------------|------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------|----------|
+| `s3_bucket`             | `string`   | The S3 bucket.                                                                                        |                                               | yes      |
+| `s3_prefix`             | `string`   | Prefix for the S3 key (directory inside the bucket), appended to `s3_base_prefix` if provided.        |                                               | yes      |
+| `acl`                   | `string`   | The canned ACL to use when uploading objects.                                                         | `"private"`                                   | no       |
+| `compression`           | `string`   | File compression method, `none` or `gzip`                                                             | `"none"`                                      | no       |
+| `disable_ssl`           | `boolean`  | Set this to `true` to disable SSL when sending requests.                                              | `false`                                       | no       |
+| `endpoint`              | `string`   | Overrides the endpoint used by the exporter instead of constructing it from `region` and `s3_bucket`. |                                               | no       |
+| `file_prefix`           | `string`   | The file prefix defined by the user.                                                                  |                                               | no       |
+| `region`                | `string`   | The AWS region.                                                                                       | `"us-east-1"`                                 | no       |
+| `retry_max_attempts`    | `int`      | The max number of attempts for retrying a request.                                                    | `3`                                           | no       |
+| `retry_max_backoff`     | `duration` | The max backoff delay that can occur before retrying a request.                                       | `20s`                                         | no       |
+| `retry_mode`            | `string`   | The retryer implementation.                                                                           | `"standard"`                                  | no       |
+| `role_arn`              | `string`   | The Role ARN to be assumed.                                                                           |                                               | no       |
+| `s3_base_prefix`        | `string`   | Prefix for the S3 key (root directory inside the bucket).                                             |                                               | no       |
+| `s3_force_path_style`   | `boolean`  | Set this to `true` to force the request to use [path-style requests][]                                | `false`                                       | no       |
+| `s3_partition_format`   | `string`   | Filepath formatting for the partition; Refer to [`strftime`][strftime] for format specification.      | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no       |
+| `s3_partition_timezone` | `string`   | Timezone used for partition time. Local timezone is used if not configured.                           |                                               | no       |
+| `storage_class`         | `string`   | The storage class to use when uploading objects.                                                      | `"STANDARD"`                                  | no       |
 
 `retry_mode` must be one of `standard`, `adaptive`, or `nop`.
 If `retry_mode` is set to `nop`, the `aws.NopRetryer` implementation effectively disables the retry.
@@ -120,9 +124,15 @@ The following arguments are supported:
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to S3.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### resource_attrs_to_s3 block
 
@@ -130,11 +140,12 @@ The following arguments are supported:
 
 | Name        | Type     | Description                                                                  | Default | Required |
 |-------------|----------|------------------------------------------------------------------------------|---------|----------|
-| `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
+| `s3_bucket` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
+| `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 bucket. |         | no      |
 
-When `s3_prefix` is set, it dynamically overrides [`s3_uploader`][s3_uploader] > `s3_prefix`.
-If the specified resource attribute exists in the data, its value will be used as the prefix.
-Otherwise, [`s3_uploader`][s3_uploader] > `s3_prefix` will serve as the fallback.
+When `s3_prefix` or `s3_bucket` are set, they dynamically override the [`s3_uploader`][s3_uploader] attributes.
+If the specified resource attribute exists in the data, its value will be used.
+Otherwise, the [`s3_uploader`][s3_uploader] attribute will serve as the fallback.
 
 ### Compression
 

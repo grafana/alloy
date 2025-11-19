@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
@@ -28,6 +29,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	astutil "github.com/grafana/alloy/internal/util/ast"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -291,7 +293,11 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 // Cleanup unregisters any existing metrics and optionally stops the worker pool.
 func (l *Loader) Cleanup(stopWorkerPool bool) {
 	if stopWorkerPool {
-		l.workerPool.Stop()
+		// Wait at most 5 seconds for currently evaluating components to finish.
+		err := l.workerPool.Stop(time.Second * 5)
+		if err != nil {
+			level.Warn(l.log).Log("msg", "timed out stopping worker pool", "err", err)
+		}
 	}
 	if l.globals.Registerer == nil {
 		return
@@ -982,10 +988,11 @@ func splitPath(id string) (string, string) {
 	return "/" + parent, id
 }
 
-func setDataFlowEdges(n dag.Node, refs []Reference) {
+func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
 	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
+	pyroscopeAppendableType := reflect.TypeOf((*pyroscope.Appendable)(nil)).Elem()
 	if cn, ok := n.(ComponentNode); ok {
 		for _, ref := range refs {
 			if tn, ok := ref.Target.(ComponentNode); ok {
@@ -1018,7 +1025,7 @@ func setDataFlowEdges(n dag.Node, refs []Reference) {
 				// For most export types, the data flow edge has the opposite direction of the reference.
 				if found {
 					switch field.Type {
-					case otelConsumerType, appendableType, logsReceiverType:
+					case otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType:
 						cn.AddDataFlowEdgeTo(tn.NodeID())
 					default:
 						tn.AddDataFlowEdgeTo(cn.NodeID())

@@ -28,8 +28,10 @@ import (
 )
 
 func TestGeneratePodMonitorConfig(t *testing.T) {
-	var falseVal = false
-	var proxyURL = "https://proxy:8080"
+	var (
+		falsePtr = ptr.To(false)
+		proxyURL = "https://proxy:8080"
+	)
 	suite := []struct {
 		name                   string
 		m                      *promopv1.PodMonitor
@@ -66,14 +68,15 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "podMonitor/operator/podmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Hour),
-				ScrapeTimeout:     model.Duration(42 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Hour),
+				ScrapeTimeout:          model.Duration(42 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/metrics",
+				Scheme:                 "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -88,9 +91,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -127,14 +131,15 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  replacement: http_metrics
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "podMonitor/operator/podmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Hour),
-				ScrapeTimeout:     model.Duration(42 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Hour),
+				ScrapeTimeout:          model.Duration(42 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/metrics",
+				Scheme:                 "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -149,9 +154,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -188,14 +194,15 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  replacement: "8080"
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "podMonitor/operator/podmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Hour),
-				ScrapeTimeout:     model.Duration(42 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Hour),
+				ScrapeTimeout:          model.Duration(42 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/metrics",
+				Scheme:                 "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -210,9 +217,71 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+			},
+		},
+		{
+			name: "portnumber",
+			m: &promopv1.PodMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "podmonitor",
+				},
+			},
+			ep: promopv1.PodMetricsEndpoint{
+				PortNumber: ptr.To[int32](2000),
+			},
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: ["__meta_kubernetes_pod_container_port_number"]
+				  regex: "2000"
+				  action: "keep"
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- target_label: job
+				  replacement: operator/podmonitor
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Hour),
+				ScrapeTimeout:          model.Duration(42 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/metrics",
+				Scheme:                 "http",
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "pod",
+
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -249,14 +318,15 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  replacement: "8080"
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "podMonitor/operator/podmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Hour),
-				ScrapeTimeout:     model.Duration(42 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        true,
+				ScrapeInterval:         model.Duration(time.Hour),
+				ScrapeTimeout:          model.Duration(42 * time.Second),
+				ScrapeProtocols:        config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/metrics",
+				Scheme:                 "http",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -271,9 +341,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 		{
@@ -309,6 +380,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 							},
 						},
 					},
+					ScrapeProtocols:       []promopv1.ScrapeProtocol{promopv1.ScrapeProtocol(config.PrometheusProto)},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
 					SampleLimit:           ptr.To(uint64(101)),
 					TargetLimit:           ptr.To(uint64(102)),
@@ -320,25 +392,29 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.PodMetricsEndpoint{
 				Port:            stringPtr("metrics"),
-				EnableHttp2:     &falseVal,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: &falseVal,
-				ProxyURL:        &proxyURL,
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
-				HonorTimestamps: &falseVal,
-				FilterRunning:   &falseVal,
-				TLSConfig: &promopv1.SafeTLSConfig{
-					ServerName:         stringPtr("foo.com"),
-					InsecureSkipVerify: boolPtr(true),
-				},
+				HonorTimestamps: falsePtr,
+				FilterRunning:   falsePtr,
 				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
+					},
+				},
+				HTTPConfig: promopv1.HTTPConfig{
+					EnableHTTP2:     falsePtr,
+					FollowRedirects: falsePtr,
+					ProxyConfig: promopv1.ProxyConfig{
+						ProxyURL: &proxyURL,
+					},
+					TLSConfig: &promopv1.SafeTLSConfig{
+						ServerName:         stringPtr("foo.com"),
+						InsecureSkipVerify: boolPtr(true),
 					},
 				},
 			},
@@ -399,20 +475,21 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  source_labels: [foo]
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "podMonitor/operator/podmonitor/1",
-				HonorTimestamps:   false,
-				HonorLabels:       true,
-				ScrapeInterval:    model.Duration(12 * time.Minute),
-				ScrapeTimeout:     model.Duration(17 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/foo",
-				Scheme:            "https",
+				JobName:                "podMonitor/operator/podmonitor/1",
+				HonorTimestamps:        false,
+				HonorLabels:            true,
+				ScrapeInterval:         model.Duration(12 * time.Minute),
+				ScrapeTimeout:          model.Duration(17 * time.Second),
+				ScrapeProtocols:        []config.ScrapeProtocol{config.PrometheusProto},
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/foo",
+				Scheme:                 "https",
 				Params: url.Values{
 					"a": []string{"b"},
 				},
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
-					FollowRedirects: falseVal,
+					FollowRedirects: false,
 					EnableHTTP2:     false,
 					TLSConfig: commonConfig.TLSConfig{
 						ServerName:         "foo.com",
@@ -437,9 +514,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
-				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     "utf8",
-				MetricNameEscapingScheme:       "allow-utf-8",
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
 	}

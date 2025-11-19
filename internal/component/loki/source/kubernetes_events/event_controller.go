@@ -10,7 +10,6 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/positions"
 	"github.com/grafana/alloy/internal/runner"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -223,7 +223,7 @@ func (ctrl *eventController) handleEvent(ctx context.Context, event *corev1.Even
 	}
 
 	entry := loki.Entry{
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: eventTs,
 			Line:      msg,
 		},

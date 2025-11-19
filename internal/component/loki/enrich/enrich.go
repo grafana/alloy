@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/go-kit/log/level"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -66,7 +66,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts:         opts,
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
-		receiver:     loki.NewLogsReceiver(),
+		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 	}
 
 	// Initialize the cache with provided targets
@@ -113,7 +113,7 @@ func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
 	c.cacheMutex.Unlock()
 }
 
-func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) error {
+func (c *Component) processLog(entry *push.Entry, labels model.LabelSet) error {
 	// Determine which label to use for matching
 	matchLabel := c.args.LogsMatchLabel
 	if matchLabel == "" {
@@ -156,7 +156,7 @@ func (c *Component) processLog(entry *logproto.Entry, labels model.LabelSet) err
 	return c.forwardLog(entry, newLabels)
 }
 
-func (c *Component) forwardLog(entry *logproto.Entry, labels model.LabelSet) error {
+func (c *Component) forwardLog(entry *push.Entry, labels model.LabelSet) error {
 	c.mut.RLock()
 	fanout := c.args.ForwardTo
 	c.mut.RUnlock()

@@ -10,6 +10,8 @@ weight: 400
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on macOS
 
+{{< docs/learning-journeys title="Monitor a macOS system in Grafana Cloud" url="https://grafana.com/docs/learning-journeys/macos-integration/" >}}
+
 You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew.
 
 {{< admonition type="note" >}}

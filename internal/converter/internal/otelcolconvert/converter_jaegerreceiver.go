@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -64,25 +65,25 @@ func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerre
 	}
 }
 
-func toJaegerGRPCArguments(cfg *configgrpc.ServerConfig) *jaeger.GRPC {
-	if cfg == nil {
+func toJaegerGRPCArguments(cfg configoptional.Optional[configgrpc.ServerConfig]) *jaeger.GRPC {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.GRPC{GRPCServerArguments: toGRPCServerArguments(cfg)}
+	return &jaeger.GRPC{GRPCServerArguments: toGRPCServerArguments(cfg.Get())}
 }
 
-func toJaegerThriftHTTPArguments(cfg *confighttp.ServerConfig) *jaeger.ThriftHTTP {
-	if cfg == nil {
+func toJaegerThriftHTTPArguments(cfg configoptional.Optional[confighttp.ServerConfig]) *jaeger.ThriftHTTP {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftHTTP{HTTPServerArguments: toHTTPServerArguments(cfg)}
+	return &jaeger.ThriftHTTP{HTTPServerArguments: toHTTPServerArguments(cfg.Get())}
 }
 
-func toJaegerThriftBinaryArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ThriftBinary {
-	if cfg == nil {
+func toJaegerThriftBinaryArguments(cfg configoptional.Optional[jaegerreceiver.ProtocolUDP]) *jaeger.ThriftBinary {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftBinary{ProtocolUDP: toJaegerProtocolUDPArguments(cfg)}
+	return &jaeger.ThriftBinary{ProtocolUDP: toJaegerProtocolUDPArguments(cfg.Get())}
 }
 
 func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ProtocolUDP {
@@ -99,9 +100,9 @@ func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.Proto
 	}
 }
 
-func toJaegerThriftCompactArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ThriftCompact {
-	if cfg == nil {
+func toJaegerThriftCompactArguments(cfg configoptional.Optional[jaegerreceiver.ProtocolUDP]) *jaeger.ThriftCompact {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftCompact{ProtocolUDP: toJaegerProtocolUDPArguments(cfg)}
+	return &jaeger.ThriftCompact{ProtocolUDP: toJaegerProtocolUDPArguments(cfg.Get())}
 }

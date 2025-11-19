@@ -16,6 +16,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_traceContextKeptWhenStacktraceDefined(t *testing.T) {
+	input := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{},
+		Trace: payload.TraceContext{
+			TraceID: "0000000000000",
+			SpanID:  "000000",
+		},
+	}
+
+	expect := input
+	actual := transformException(nil, nil, input, "123")
+	require.Equal(t, expect, actual)
+}
+
+func Test_traceContextKeptWhenStacktraceNotDefined(t *testing.T) {
+	input := &payload.Exception{
+		Trace: payload.TraceContext{
+			TraceID: "0000000000000",
+			SpanID:  "000000",
+		},
+	}
+
+	expect := input
+	actual := transformException(nil, nil, input, "123")
+	require.Equal(t, expect, actual)
+}
+
 func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 	var (
 		logger = alloyutil.TestLogger(t)

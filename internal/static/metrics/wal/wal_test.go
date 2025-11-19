@@ -5,19 +5,25 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/prometheus/prometheus/tsdb/tsdbutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestStorage_InvalidSeries(t *testing.T) {
@@ -35,28 +41,28 @@ func TestStorage_InvalidSeries(t *testing.T) {
 	_, err = app.Append(0, labels.Labels{}, 0, 0)
 	require.Error(t, err, "should reject empty labels")
 
-	_, err = app.Append(0, labels.Labels{{Name: "a", Value: "1"}, {Name: "a", Value: "2"}}, 0, 0)
+	_, err = app.Append(0, labels.FromStrings("a", "1", "a", "2"), 0, 0)
 	require.Error(t, err, "should reject duplicate labels")
 
 	// Sanity check: valid series
-	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
+	sRef, err := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
 	require.NoError(t, err, "should not reject valid series")
 
 	// Exemplars
-	_, err = app.AppendExemplar(0, nil, exemplar.Exemplar{})
+	_, err = app.AppendExemplar(0, labels.EmptyLabels(), exemplar.Exemplar{})
 	require.Error(t, err, "should reject unknown series ref")
 
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}, {Name: "a", Value: "2"}}}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1", "a", "2")}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.ErrorIs(t, err, tsdb.ErrInvalidExemplar, "should reject duplicate labels")
 
-	e = exemplar.Exemplar{Labels: labels.Labels{{Name: "a_somewhat_long_trace_id", Value: "nYJSNtFrFTY37VR7mHzEE/LIDt7cdAQcuOzFajgmLDAdBSRHYPDzrxhMA4zz7el8naI/AoXFv9/e/G0vcETcIoNUi3OieeLfaIRQci2oa"}}}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e = exemplar.Exemplar{Labels: labels.FromStrings("a_somewhat_long_trace_id", "nYJSNtFrFTY37VR7mHzEE/LIDt7cdAQcuOzFajgmLDAdBSRHYPDzrxhMA4zz7el8naI/AoXFv9/e/G0vcETcIoNUi3OieeLfaIRQci2oa")}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.ErrorIs(t, err, storage.ErrExemplarLabelLength, "should reject too long label length")
 
 	// Sanity check: valid exemplars
-	e = exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
-	_, err = app.AppendExemplar(sRef, nil, e)
+	e = exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
+	_, err = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	require.NoError(t, err, "should not reject valid exemplars")
 }
 
@@ -76,7 +82,7 @@ func TestStorage(t *testing.T) {
 	app := s.Appender(t.Context())
 
 	// Write some samples
-	payload := buildSeries([]string{"foo", "bar", "baz"})
+	payload := buildMixedTypeSeries()
 	for _, metric := range payload {
 		metric.Write(t, app)
 	}
@@ -93,10 +99,18 @@ func TestStorage(t *testing.T) {
 	}
 	require.Equal(t, payload.SeriesNames(), names)
 
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, expectedHistograms, expectedFloatHistograms := payload.ExpectedSamples()
 	actualSamples := collector.samples
 	sort.Sort(byRefSample(actualSamples))
 	require.Equal(t, expectedSamples, actualSamples)
+
+	actualHistograms := collector.histograms
+	sort.Sort(byRefHistogramSample(actualHistograms))
+	require.Equal(t, expectedHistograms, actualHistograms)
+
+	actualFloatHistograms := collector.floatHistograms
+	sort.Sort(byRefFloatHistogramSample(actualFloatHistograms))
+	require.Equal(t, expectedFloatHistograms, actualFloatHistograms)
 
 	expectedExemplars := payload.ExpectedExemplars()
 	actualExemplars := collector.exemplars
@@ -146,31 +160,31 @@ func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 
 	app := s.Appender(t.Context())
 
-	sRef, err := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
+	sRef, err := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
 	require.NoError(t, err, "should not reject valid series")
 
 	// If the Labels, Value or Timestamp are different than the last exemplar,
 	// then a new one should be appended; Otherwise, it should be skipped.
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
-	e.Labels = labels.Labels{{Name: "b", Value: "2"}}
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	e.Labels = labels.FromStrings("b", "2")
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Value = 42
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Ts = 25
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	e.Ts = 24
-	_, _ = app.AppendExemplar(sRef, nil, e)
-	_, _ = app.AppendExemplar(sRef, nil, e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
+	_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 
 	require.NoError(t, app.Commit())
 	collector := walDataCollector{}
@@ -233,7 +247,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	}
 	require.Equal(t, payload.SeriesNames(), names)
 
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, _, _ := payload.ExpectedSamples()
 	actualSamples := collector.samples
 	sort.Sort(byRefSample(actualSamples))
 	require.Equal(t, expectedSamples, actualSamples)
@@ -314,7 +328,7 @@ func TestStorage_Truncate(t *testing.T) {
 	}, func(e exemplar.Exemplar) bool {
 		return e.HasTs && e.Ts >= keepTs
 	})
-	expectedSamples := payload.ExpectedSamples()
+	expectedSamples, _, _ := payload.ExpectedSamples()
 	expectedExemplars := payload.ExpectedExemplars()
 
 	// Read back the WAL, collect series and samples.
@@ -337,6 +351,83 @@ func TestStorage_Truncate(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
+func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
+	// Ensure the WAL can handle duplicate SeriesRefs by hash when being loaded.
+	walDir := t.TempDir()
+
+	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	app := s.Appender(t.Context())
+
+	var payload seriesList
+	for i, metricName := range []string{"foo", "bar", "baz", "blerg"} {
+		payload = append(payload, &series{
+			name: metricName,
+			samples: []sample{
+				{int64(i), float64(i * 10.0), nil, nil},
+				{int64(i * 10), float64(i * 100.0), nil, nil},
+			},
+		})
+	}
+
+	originalSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.Write(t, app)
+		originalSeriesRefs = append(originalSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+
+	// Forcefully create a bunch of new segments so when we truncate
+	// there's enough segments to be considered for truncation.
+	for i := 0; i < 3; i++ {
+		_, err := s.wal.NextSegmentSync()
+		require.NoError(t, err)
+	}
+	// Series are still active
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Force GC of all the series, but they will stay in the checkpoint
+	keepTs := payload[len(payload)-1].samples[1].ts + 1
+	err = s.Truncate(keepTs)
+	require.NoError(t, err)
+	// No more active series because they were GC'ed with Truncate
+	require.Equal(t, 0.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Publish new samples that will create new SeriesRefs for the same labels.
+	duplicateSeriesRefs := make([]chunks.HeadSeriesRef, 0, len(payload))
+	for _, metric := range payload {
+		metric.samples = metric.samples[1:]
+		metric.samples[0].ts = metric.samples[0].ts * 10
+		metric.Write(t, app)
+
+		duplicateSeriesRefs = append(duplicateSeriesRefs, chunks.HeadSeriesRef(*metric.ref))
+	}
+	require.NoError(t, app.Commit())
+	// We should be back to 4 active series now
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+
+	// Close the WAL before we have a chance to remove the first RefIDs
+	require.NoError(t, s.Close())
+
+	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	require.NoError(t, err)
+
+	// There should only be 4 active series after we reload the WAL
+	assert.Equal(t, 4.0, testutil.ToFloat64(s.metrics.numActiveSeries))
+	// The original SeriesRefs should be in series
+	for _, ref := range originalSeriesRefs {
+		assert.NotNil(t, s.series.GetByID(ref))
+	}
+
+	// The duplicated SeriesRefs should be considered deleted
+	for _, ref := range duplicateSeriesRefs {
+		assert.Contains(t, s.deleted, ref)
+	}
+
+	require.NoError(t, s.Close())
+}
+
 func TestStorage_WriteStalenessMarkers(t *testing.T) {
 	walDir := t.TempDir()
 
@@ -350,9 +441,9 @@ func TestStorage_WriteStalenessMarkers(t *testing.T) {
 
 	// Write some samples
 	payload := seriesList{
-		{name: "foo", samples: []sample{{1, 10.0}, {10, 100.0}}},
-		{name: "bar", samples: []sample{{2, 20.0}, {20, 200.0}}},
-		{name: "baz", samples: []sample{{3, 30.0}, {30, 300.0}}},
+		{name: "foo", samples: []sample{{1, 10.0, nil, nil}, {10, 100.0, nil, nil}}},
+		{name: "bar", samples: []sample{{2, 20.0, nil, nil}, {20, 200.0, nil, nil}}},
+		{name: "baz", samples: []sample{{3, 30.0, nil, nil}, {30, 300.0, nil, nil}}},
 	}
 	for _, metric := range payload {
 		metric.Write(t, app)
@@ -475,13 +566,13 @@ func BenchmarkAppendExemplar(b *testing.B) {
 	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
 	defer s.Close()
 	app := s.Appender(b.Context())
-	sRef, _ := app.Append(0, labels.Labels{{Name: "a", Value: "1"}}, 0, 0)
-	e := exemplar.Exemplar{Labels: labels.Labels{{Name: "a", Value: "1"}}, Value: 20, Ts: 10, HasTs: true}
+	sRef, _ := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
+	e := exemplar.Exemplar{Labels: labels.FromStrings("a", "1"), Value: 20, Ts: 10, HasTs: true}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		e.Ts = int64(i)
-		_, _ = app.AppendExemplar(sRef, nil, e)
+		_, _ = app.AppendExemplar(sRef, labels.EmptyLabels(), e)
 	}
 	b.StopTimer()
 
@@ -489,9 +580,57 @@ func BenchmarkAppendExemplar(b *testing.B) {
 	_ = app.Commit()
 }
 
+func BenchmarkCreateSeries(b *testing.B) {
+	walDir := b.TempDir()
+
+	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	defer s.Close()
+
+	app := s.Appender(b.Context()).(*appender)
+	lbls := make([]labels.Labels, b.N)
+
+	for i, l := range labelsForTest("benchmark", b.N) {
+		lbls[i] = labels.New(l...)
+	}
+
+	b.ResetTimer()
+
+	for _, l := range lbls {
+		app.getOrCreate(l)
+	}
+}
+
+// Create series for tests.
+func labelsForTest(lName string, seriesCount int) [][]labels.Label {
+	var s [][]labels.Label
+
+	for i := 0; i < seriesCount; i++ {
+		lset := []labels.Label{
+			{Name: "a", Value: lName},
+			{Name: "instance", Value: "localhost" + strconv.Itoa(i)},
+			{Name: "job", Value: "prometheus"},
+		}
+		s = append(s, lset)
+	}
+
+	return s
+}
+
+func BenchmarkStripeSeriesSize(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		newStripeSeries(stripeSeriesSize)
+	}
+}
+
+// Type is float histograms if fh!=nil,
+// otherwise integer histogram if h!=nil,
+// otherwise float.
 type sample struct {
 	ts  int64
 	val float64
+	h   *histogram.Histogram
+	fh  *histogram.FloatHistogram
 }
 
 type series struct {
@@ -507,10 +646,17 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	lbls := labels.FromMap(map[string]string{"__name__": s.name})
 
+	appendFunc := func(ref storage.SeriesRef, s sample) (storage.SeriesRef, error) {
+		if s.h != nil || s.fh != nil {
+			return app.AppendHistogram(ref, lbls, s.ts, s.h, s.fh)
+		}
+		return app.Append(ref, lbls, s.ts, s.val)
+	}
+
 	offset := 0
 	if s.ref == nil {
 		// Write first sample to get ref ID
-		ref, err := app.Append(0, lbls, s.samples[0].ts, s.samples[0].val)
+		ref, err := appendFunc(0, s.samples[0])
 		require.NoError(t, err)
 
 		s.ref = &ref
@@ -519,14 +665,18 @@ func (s *series) Write(t *testing.T, app storage.Appender) {
 
 	// Write other data points with AddFast
 	for _, sample := range s.samples[offset:] {
-		_, err := app.Append(*s.ref, lbls, sample.ts, sample.val)
+		ref, err := appendFunc(*s.ref, sample)
+		// The ref we had changed stop using the old value
+		if *s.ref != ref {
+			s.ref = &ref
+		}
 		require.NoError(t, err)
 	}
 
 	sRef := *s.ref
 	for _, exemplar := range s.exemplars {
 		var err error
-		sRef, err = app.AppendExemplar(sRef, nil, exemplar)
+		sRef, err = app.AppendExemplar(sRef, labels.EmptyLabels(), exemplar)
 		require.NoError(t, err)
 	}
 }
@@ -600,19 +750,35 @@ func (s seriesList) SeriesNames() []string {
 }
 
 // ExpectedSamples returns the list of expected samples, sorted by ref ID and timestamp
-func (s seriesList) ExpectedSamples() []record.RefSample {
-	expect := []record.RefSample{}
+func (s seriesList) ExpectedSamples() (expect []record.RefSample, expectHistogram []record.RefHistogramSample, expectFloatHistogram []record.RefFloatHistogramSample) {
 	for _, series := range s {
 		for _, sample := range series.samples {
-			expect = append(expect, record.RefSample{
-				Ref: chunks.HeadSeriesRef(*series.ref),
-				T:   sample.ts,
-				V:   sample.val,
-			})
+			switch {
+			case sample.fh != nil:
+				expectFloatHistogram = append(expectFloatHistogram, record.RefFloatHistogramSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					FH:  sample.fh,
+				})
+			case sample.h != nil:
+				expectHistogram = append(expectHistogram, record.RefHistogramSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					H:   sample.h,
+				})
+			default:
+				expect = append(expect, record.RefSample{
+					Ref: chunks.HeadSeriesRef(*series.ref),
+					T:   sample.ts,
+					V:   sample.val,
+				})
+			}
 		}
 	}
 	sort.Sort(byRefSample(expect))
-	return expect
+	sort.Sort(byRefHistogramSample(expectHistogram))
+	sort.Sort(byRefFloatHistogramSample(expectFloatHistogram))
+	return expect, expectHistogram, expectFloatHistogram
 }
 
 // ExpectedExemplars returns the list of expected exemplars, sorted by ref ID and timestamp
@@ -638,14 +804,62 @@ func buildSeries(nameSlice []string) seriesList {
 		i++
 		s = append(s, &series{
 			name:    n,
-			samples: []sample{{int64(i), float64(i * 10.0)}, {int64(i * 10), float64(i * 100.0)}},
+			samples: []sample{{int64(i), float64(i * 10.0), nil, nil}, {int64(i * 10), float64(i * 100.0), nil, nil}},
 			exemplars: []exemplar.Exemplar{
-				{Labels: labels.Labels{{Name: "foobar", Value: "barfoo"}}, Value: float64(i * 10.0), Ts: int64(i), HasTs: true},
-				{Labels: labels.Labels{{Name: "lorem", Value: "ipsum"}}, Value: float64(i * 100.0), Ts: int64(i * 10), HasTs: true},
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(i * 10.0), Ts: int64(i), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(i * 100.0), Ts: int64(i * 10), HasTs: true},
 			},
 		})
 	}
 	return s
+}
+
+func buildMixedTypeSeries() seriesList {
+	return seriesList{
+		{
+			name:    "float_series",
+			samples: []sample{{1, 10.0, nil, nil}, {10, 100.0, nil, nil}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(1), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(10), HasTs: true},
+			},
+		},
+		// From now on I put -1 into the float to be different from default 0.
+		// Since we should be reading back the histograms, we should never see
+		// the -1.
+		{
+			name:    "integer histogram",
+			samples: []sample{{2, -1, tsdbutil.GenerateTestHistogram(1), nil}, {20, -1, tsdbutil.GenerateTestHistogram(100), nil}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(2), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(20), HasTs: true},
+			},
+		},
+		{
+			name:    "float histogram",
+			samples: []sample{{3, -1, nil, tsdbutil.GenerateTestFloatHistogram(1)}, {30, -1, nil, tsdbutil.GenerateTestFloatHistogram(100)}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(3), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(30), HasTs: true},
+			},
+		},
+		{
+			name:    "integer NHCB",
+			samples: []sample{{2, -1, tsdbutil.GenerateTestCustomBucketsHistogram(1), nil}, {20, -1, tsdbutil.GenerateTestCustomBucketsHistogram(100), nil}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(2), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(20), HasTs: true},
+			},
+		},
+		{
+			name:    "float NHCB",
+			samples: []sample{{3, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(1)}, {30, -1, nil, tsdbutil.GenerateTestCustomBucketsFloatHistogram(100)}},
+			exemplars: []exemplar.Exemplar{
+				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: int64(3), HasTs: true},
+				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: int64(30), HasTs: true},
+			},
+		},
+	}
 }
 
 type byRefSample []record.RefSample
@@ -653,6 +867,28 @@ type byRefSample []record.RefSample
 func (b byRefSample) Len() int      { return len(b) }
 func (b byRefSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func (b byRefSample) Less(i, j int) bool {
+	if b[i].Ref == b[j].Ref {
+		return b[i].T < b[j].T
+	}
+	return b[i].Ref < b[j].Ref
+}
+
+type byRefHistogramSample []record.RefHistogramSample
+
+func (b byRefHistogramSample) Len() int      { return len(b) }
+func (b byRefHistogramSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byRefHistogramSample) Less(i, j int) bool {
+	if b[i].Ref == b[j].Ref {
+		return b[i].T < b[j].T
+	}
+	return b[i].Ref < b[j].Ref
+}
+
+type byRefFloatHistogramSample []record.RefFloatHistogramSample
+
+func (b byRefFloatHistogramSample) Len() int      { return len(b) }
+func (b byRefFloatHistogramSample) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b byRefFloatHistogramSample) Less(i, j int) bool {
 	if b[i].Ref == b[j].Ref {
 		return b[i].T < b[j].T
 	}

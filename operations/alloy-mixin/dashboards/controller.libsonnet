@@ -280,7 +280,7 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              max_over_time(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__interval])
+              increase(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__rate_interval])
             ||| % $._config,
             legendFormat='{{instance}} {{controller_path}} {{component_id}}',
           ),

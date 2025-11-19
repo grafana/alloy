@@ -7,7 +7,13 @@ import (
 	"testing"
 	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/prometheus/prometheus/model/value"
+	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -17,33 +23,36 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	prom "github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/relabel"
-	"github.com/prometheus/prometheus/model/value"
-	"github.com/prometheus/prometheus/storage"
-	"github.com/stretchr/testify/require"
 )
 
-func TestCache(t *testing.T) {
-	lc := labelstore.New(nil, prom.DefaultRegisterer)
-	relabeller := generateRelabel(t)
+func TestRelabelThroughAppend(t *testing.T) {
+	appendable, relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(0, lbls)
+
+	app := appendable.Appender(t.Context())
+	relabedRef, err := app.Append(storage.SeriesRef(0), lbls, time.Now().UnixMilli(), 0)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
 	require.True(t, relabeller.cache.Len() == 1)
-	entry, found := relabeller.getFromCache(lc.GetOrAddGlobalRefID(lbls))
-	require.True(t, found)
-	require.NotNil(t, entry)
-	require.True(
-		t,
-		lc.GetOrAddGlobalRefID(entry.labels) != lc.GetOrAddGlobalRefID(lbls),
-	)
+	// Get the first entry since we only have one we can get oldest
+	ref, cachedLbls, _ := relabeller.cache.GetOldest()
+
+	// We shouldn't have allowed a zero ref to be cached
+	require.NotEqual(t, storage.SeriesRef(0), ref)
+	require.NotEqual(t, lbls, cachedLbls)
+
+	// We should have added a new ref after relabeling
+	require.NotEqual(t, storage.SeriesRef(0), relabedRef)
+
+	// That ref should not be the cached ref
+	require.NotEqual(t, relabedRef, ref)
 }
 
 func TestUpdateReset(t *testing.T) {
-	relabeller := generateRelabel(t)
+	_, relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(0, lbls)
+	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
 	require.True(t, relabeller.cache.Len() == 1)
 	_ = relabeller.Update(Arguments{
 		CacheSize:            100000,
@@ -89,33 +98,39 @@ func TestNil(t *testing.T) {
 	require.NoError(t, err)
 
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(0, lbls)
+	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
 }
 
 func TestLRU(t *testing.T) {
-	relabeller := generateRelabel(t)
+	_, relabeller := generateRelabel(t)
 
 	for i := 0; i < 600_000; i++ {
 		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
-		relabeller.relabel(0, lbls)
+		relabeller.relabel(storage.SeriesRef(i), 0, lbls)
 	}
-	require.True(t, relabeller.cache.Len() == 100_000)
+	require.Equal(t, 100_000, relabeller.cache.Len())
 }
 
 func TestLRUNaN(t *testing.T) {
-	relabeller := generateRelabel(t)
+	_, relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
-	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
-	relabeller.relabel(math.Float64frombits(value.StaleNaN), lbls)
-	require.True(t, relabeller.cache.Len() == 0)
+	ref := storage.SeriesRef(1)
+	relabeller.relabel(ref, 0, lbls)
+
+	_, found := relabeller.getFromCache(ref)
+	require.True(t, found)
+
+	relabeller.relabel(ref, math.Float64frombits(value.StaleNaN), lbls)
+
+	_, found = relabeller.getFromCache(ref)
+	require.False(t, found)
 }
 
 func TestMetrics(t *testing.T) {
-	relabeller := generateRelabel(t)
+	_, relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 
-	relabeller.relabel(0, lbls)
+	relabeller.relabel(storage.SeriesRef(1), 0, lbls)
 	m := &dto.Metric{}
 	err := relabeller.metricsProcessed.Write(m)
 	require.NoError(t, err)
@@ -158,16 +173,17 @@ func BenchmarkCache(b *testing.B) {
 	app.Commit()
 }
 
-func generateRelabel(t *testing.T) *Component {
+func generateRelabel(t *testing.T) (storage.Appendable, *Component) {
 	ls := labelstore.New(nil, prom.DefaultRegisterer)
-	fanout := prometheus.NewInterceptor(nil, ls, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-		require.True(t, l.Has("new_label"))
-		return ref, nil
-	}))
+	fanout := prometheus.NewInterceptor(nil, ls)
+	var appendable storage.Appendable
 	relabeller, err := New(component.Options{
-		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
-		OnStateChange:  func(e component.Exports) {},
+		ID:     "1",
+		Logger: util.TestAlloyLogger(t),
+		OnStateChange: func(e component.Exports) {
+			newE := e.(Exports)
+			appendable = newE.Receiver
+		},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
@@ -185,7 +201,7 @@ func generateRelabel(t *testing.T) *Component {
 	})
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
-	return relabeller
+	return appendable, relabeller
 }
 
 func TestRuleGetter(t *testing.T) {

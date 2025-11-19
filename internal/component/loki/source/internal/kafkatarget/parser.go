@@ -2,7 +2,7 @@ package kafkatarget
 
 import (
 	"github.com/IBM/sarama"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 
@@ -16,7 +16,7 @@ func (p *KafkaTargetMessageParser) Parse(message *sarama.ConsumerMessage, labels
 	return []loki.Entry{
 		{
 			Labels: labels,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: timestamp(useIncomingTimestamp, message.Timestamp),
 				Line:      string(message.Value),
 			},

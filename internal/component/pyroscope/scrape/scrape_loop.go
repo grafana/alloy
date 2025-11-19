@@ -219,12 +219,8 @@ func (t *scrapeLoop) scrape() {
 	)
 	defer cancel()
 
-	for _, l := range t.allLabels {
-		if l.Name == ProfileName {
-			profileType = l.Value
-			break
-		}
-	}
+	profileType = t.allLabels.Get(ProfileName)
+
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
 		level.Error(t.logger).Log("msg", "fetch profile failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
@@ -264,7 +260,6 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 			return err
 		}
 		req.Header.Set("User-Agent", userAgentHeader)
-
 		t.req = req
 	}
 
@@ -288,8 +283,13 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 	}
 
 	if len(b) == 0 {
-		return fmt.Errorf("empty %s profile from %s", profileType, t.req.URL.String())
+		return fmt.Errorf("empty %s profile", profileType)
 	}
+
+	if err := validateProfileData(b, resp.Header.Get("Content-Type")); err != nil {
+		return fmt.Errorf("invalid profile data: %w", err)
+	}
+
 	return nil
 }
 

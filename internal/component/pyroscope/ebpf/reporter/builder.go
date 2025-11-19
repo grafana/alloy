@@ -1,4 +1,4 @@
-//go:build linux && (arm64 || amd64) && pyroscope_ebpf
+//go:build unix
 
 package reporter
 
@@ -55,6 +55,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	target *discovery.Target,
 	pid uint32,
 ) *ProfileBuilder {
+
 	labelsHash, _ := target.Labels()
 
 	k := builderHashKey{labelsHash: labelsHash}
@@ -69,14 +70,19 @@ func (b *ProfileBuilders) BuilderForSample(
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	if b.opt.Origin == support.TraceOriginSampling {
+	switch b.opt.Origin {
+	case support.TraceOriginSampling:
 		sampleType = []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}}
 		periodType = &profile.ValueType{Type: "cpu", Unit: "nanoseconds"}
 		period = time.Second.Nanoseconds() / b.opt.SampleRate
-	} else if b.opt.Origin == support.TraceOriginOffCPU {
+	case support.TraceOriginOffCPU:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	} else {
+	case support.TraceOriginUProbe:
+		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
+		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
+		period = 1
+	default:
 		panic(fmt.Sprintf("unknown sample type %v", sampleType))
 	}
 	dummyMapping := &profile.Mapping{
@@ -84,8 +90,9 @@ func (b *ProfileBuilders) BuilderForSample(
 	}
 	builder := &ProfileBuilder{
 		p:         b,
-		locations: make(map[libpf.FrameID]*profile.Location),
+		locations: make(map[locationsKey]*profile.Location),
 		functions: make(map[functionsKey]*profile.Function),
+		mappings:  make(map[mappingKey]*profile.Mapping),
 		Target:    target,
 		Profile: &profile.Profile{
 			Mapping: []*profile.Mapping{
@@ -96,8 +103,7 @@ func (b *ProfileBuilders) BuilderForSample(
 			PeriodType: periodType,
 			TimeNanos:  time.Now().UnixNano(),
 		},
-		dummyMapping:    dummyMapping,
-		fileIDtoMapping: make(map[libpf.FileID]*profile.Mapping),
+		dummyMapping: dummyMapping,
 	}
 	res = builder
 	b.Builders[k] = res
@@ -105,36 +111,60 @@ func (b *ProfileBuilders) BuilderForSample(
 }
 
 type functionsKey struct {
-	name string
-	file string
+	name libpf.String
+	file libpf.String
 }
-type ProfileBuilder struct {
-	p         *ProfileBuilders
-	locations map[libpf.FrameID]*profile.Location
 
+type locationsKey struct {
+	mappingId uint64
+	addr      libpf.AddressOrLineno
+	name      libpf.String
+	line      libpf.SourceLineno
+}
+type mappingKey struct {
+	Start libpf.Address
+	File  libpf.FrameMappingFile
+}
+
+type ProfileBuilder struct {
+	p *ProfileBuilders
+
+	locations map[locationsKey]*profile.Location
 	functions map[functionsKey]*profile.Function
+	mappings  map[mappingKey]*profile.Mapping
 
 	Profile *profile.Profile
 	Target  *discovery.Target
 
-	dummyMapping    *profile.Mapping
-	fileIDtoMapping map[libpf.FileID]*profile.Mapping
+	dummyMapping *profile.Mapping
 }
 
-func (p *ProfileBuilder) Mapping(fid libpf.FileID) (*profile.Mapping, bool) {
-	if tmpMappingIndex, exists := p.fileIDtoMapping[fid]; exists {
+func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
+	return p.dummyMapping
+}
+
+func (p *ProfileBuilder) Mapping(
+	start libpf.Address,
+	file libpf.FrameMappingFile,
+) (*profile.Mapping, bool) {
+
+	k := mappingKey{
+		Start: start,
+		File:  file,
+	}
+	if tmpMappingIndex, exists := p.mappings[k]; exists {
 		return tmpMappingIndex, false
 	}
 	mid := uint64(len(p.Profile.Mapping) + 1)
 	mapping := &profile.Mapping{
 		ID: mid,
 	}
-	p.fileIDtoMapping[fid] = mapping
+	p.mappings[k] = mapping
 	p.Profile.Mapping = append(p.Profile.Mapping, mapping)
 	return mapping, true
 }
 
-func (p *ProfileBuilder) Function(function, file string) *profile.Function {
+func (p *ProfileBuilder) Function(function, file libpf.String) *profile.Function {
 	k := functionsKey{name: function, file: file}
 	f, ok := p.functions[k]
 	if ok {
@@ -144,8 +174,8 @@ func (p *ProfileBuilder) Function(function, file string) *profile.Function {
 	id := uint64(len(p.Profile.Function) + 1)
 	f = p.p.functions.pop()
 	f.ID = id
-	f.Name = function
-	f.Filename = file
+	f.Name = function.String()
+	f.Filename = file.String()
 
 	p.Profile.Function = append(p.Profile.Function, f)
 	p.functions[k] = f
@@ -182,15 +212,20 @@ func (p *ProfileBuilder) AddValue(v int64, sample *profile.Sample) {
 	sample.Value[0] += v * p.Profile.Period
 }
 
-func (p *ProfileBuilder) Location(frameID libpf.FrameID) (*profile.Location, bool) {
-	loc, ok := p.locations[frameID]
+func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno, name libpf.String, line libpf.SourceLineno) (*profile.Location, bool) {
+	key := locationsKey{
+		mappingId: m.ID,
+		addr:      addr,
+		name:      name,
+		line:      line,
+	}
+	loc, ok := p.locations[key]
 	if ok {
 		return loc, false
 	}
 	loc = p.p.locations.pop()
 	loc.ID = uint64(len(p.Profile.Location) + 1)
-	loc.Mapping = p.dummyMapping
-	p.locations[frameID] = loc
+	p.locations[key] = loc
 	p.Profile.Location = append(p.Profile.Location, loc)
 	return loc, true
 }

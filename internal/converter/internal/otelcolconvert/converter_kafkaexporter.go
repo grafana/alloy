@@ -35,7 +35,7 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.
 	overrideHook := func(val interface{}) interface{} {
 		switch val.(type) {
 		case extension.ExtensionHandler:
-			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueSettings.StorageID)
+			ext := state.LookupExtension(*cfg.(*kafkaexporter.Config).QueueBatchConfig.StorageID)
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -70,6 +70,9 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Encoding:                             cfg.Encoding,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
+		PartitionLogsByResourceAttributes:    cfg.PartitionLogsByResourceAttributes,
+		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
+		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 
 		Logs:    toKafkaSignalConfig(cfg.Logs),
@@ -79,7 +82,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
 		Metadata:       toKafkaMetadata(cfg.Metadata),
 		Retry:          toRetryArguments(cfg.BackOffConfig),
-		Queue:          toQueueArguments(cfg.QueueSettings),
+		Queue:          toQueueArguments(cfg.QueueBatchConfig),
 		Producer:       toKafkaProducer(cfg.Producer),
 
 		TLS: tlsCfgPtr,
@@ -90,11 +93,12 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
-		MaxMessageBytes:   cfg.MaxMessageBytes,
-		Compression:       cfg.Compression,
-		CompressionParams: toKafkaCompressionParams(cfg.CompressionParams),
-		RequiredAcks:      int(cfg.RequiredAcks),
-		FlushMaxMessages:  cfg.FlushMaxMessages,
+		MaxMessageBytes:        cfg.MaxMessageBytes,
+		Compression:            cfg.Compression,
+		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
+		RequiredAcks:           int(cfg.RequiredAcks),
+		FlushMaxMessages:       cfg.FlushMaxMessages,
+		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
 	}
 }
 
@@ -106,7 +110,8 @@ func toKafkaCompressionParams(cfg configcompression.CompressionParams) kafka.Com
 
 func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) *kafka.KafkaExporterSignalConfig {
 	return &kafka.KafkaExporterSignalConfig{
-		Topic:    cfg.Topic,
-		Encoding: cfg.Encoding,
+		Topic:                cfg.Topic,
+		TopicFromMetadataKey: cfg.TopicFromMetadataKey,
+		Encoding:             cfg.Encoding,
 	}
 }

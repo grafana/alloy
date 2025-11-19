@@ -1,0 +1,30 @@
+extend type Query {
+  """
+  Information about the running Alloy instance.
+  """
+  alloy: Alloy!
+}
+
+"""
+Represents build and runtime information for an Alloy instance.
+Contains version control and build environment details.
+"""
+type Alloy {
+  "The git branch from which this build was created"
+  branch: String!
+
+  "The timestamp of when this build was created"
+  buildDate: String!
+
+  "The user account that initiated this build"
+  buildUser: String!
+
+  "Whether the Alloy instance is up and running"
+  isReady: Boolean!
+
+  "The git commit hash from which this build was created"
+  revision: String!
+
+  "The semantic version of this Alloy build"
+  version: String!
+}

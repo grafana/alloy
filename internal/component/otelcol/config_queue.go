@@ -2,10 +2,12 @@ package otelcol
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configoptional"
 	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -15,9 +17,11 @@ type QueueArguments struct {
 	Enabled         bool   `alloy:"enabled,attr,optional"`
 	NumConsumers    int    `alloy:"num_consumers,attr,optional"`
 	QueueSize       int64  `alloy:"queue_size,attr,optional"`
-	Blocking        bool   `alloy:"blocking,attr,optional"`
 	BlockOnOverflow bool   `alloy:"block_on_overflow,attr,optional"`
 	Sizer           string `alloy:"sizer,attr,optional"`
+	WaitForResult   bool   `alloy:"wait_for_result,attr,optional"`
+
+	Batch *BatchConfig `alloy:"batch,block,optional"`
 
 	// Storage is a binding to an otelcol.storage.* component extension which handles
 	// reading and writing to disk
@@ -76,14 +80,18 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 		}
 	}
 
-	q := &otelexporterhelper.QueueBatchConfig{
-		Enabled:         args.Enabled,
-		NumConsumers:    args.NumConsumers,
-		QueueSize:       args.QueueSize,
-		Blocking:        args.Blocking,
-		BlockOnOverflow: args.BlockOnOverflow,
-		Sizer:           *sizer,
+	batch, err := args.Batch.Convert()
+	if err != nil {
+		return nil, err
 	}
+	q := otelexporterhelper.NewDefaultQueueConfig()
+	q.Enabled = args.Enabled
+	q.NumConsumers = args.NumConsumers
+	q.QueueSize = args.QueueSize
+	q.BlockOnOverflow = args.BlockOnOverflow
+	q.Sizer = *sizer
+	q.WaitForResult = args.WaitForResult
+	q.Batch = batch
 
 	// Configure storage if args.Storage is set.
 	if args.Storage != nil {
@@ -94,7 +102,7 @@ func (args *QueueArguments) Convert() (*otelexporterhelper.QueueBatchConfig, err
 		q.StorageID = &args.Storage.ID
 	}
 
-	return q, nil
+	return &q, nil
 }
 
 // Validate returns an error if args is invalid.
@@ -112,6 +120,16 @@ func (args *QueueArguments) Validate() error {
 		return err
 	}
 
+	if args.Batch != nil {
+		if args.Batch.Sizer == args.Sizer && args.Batch.MinSize > args.QueueSize {
+			// Avoid situations where the queue is not able to hold any data.
+			return fmt.Errorf("`min_size` must be less than or equal to `queue_size`")
+		}
+		if err := args.Batch.Validate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -126,4 +144,61 @@ func convertSizer(sizer string) (*otelexporterhelper.RequestSizerType, error) {
 	default:
 		return nil, fmt.Errorf("invalid sizer: %s", sizer)
 	}
+}
+
+type BatchConfig struct {
+	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
+	MinSize      int64         `alloy:"min_size,attr,optional"`
+	MaxSize      int64         `alloy:"max_size,attr,optional"`
+	Sizer        string        `alloy:"sizer,attr,optional"`
+}
+
+var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
+
+// Validate returns an error if args is invalid.
+func (args *BatchConfig) Validate() error {
+	if args == nil {
+		return nil
+	}
+
+	// Only support items or bytes sizer for batch at this moment.
+	if args.Sizer != "items" && args.Sizer != "bytes" {
+		return fmt.Errorf("`batch` supports only `items` or `bytes` sizer")
+	}
+
+	if args.FlushTimeout <= 0 {
+		return fmt.Errorf("`flush_timeout` must be positive")
+	}
+
+	if args.MinSize < 0 {
+		return fmt.Errorf("`min_size` must be non-negative")
+	}
+
+	if args.MaxSize < 0 {
+		return fmt.Errorf("`max_size` must be non-negative")
+	}
+
+	if args.MaxSize > 0 && args.MaxSize < args.MinSize {
+		return fmt.Errorf("`max_size` must be greater or equal to `min_size`")
+	}
+
+	return nil
+}
+
+func (args *BatchConfig) Convert() (configoptional.Optional[otelexporterhelper.BatchConfig], error) {
+	if args == nil {
+		return defaultBatchConfig, nil
+	}
+
+	sizer, err := convertSizer(args.Sizer)
+	if err != nil {
+		return configoptional.None[otelexporterhelper.BatchConfig](), err
+	}
+
+	return configoptional.Some(otelexporterhelper.BatchConfig{
+		FlushTimeout: args.FlushTimeout,
+		MinSize:      args.MinSize,
+		MaxSize:      args.MaxSize,
+		Sizer:        *sizer,
+	}), nil
 }

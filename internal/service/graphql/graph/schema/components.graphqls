@@ -1,0 +1,33 @@
+extend type Query {
+  """
+  All components running in Alloy.
+  """
+  components: [Component!]!
+
+  """
+  Component by ID.
+  """
+  component(id: ID!): Component
+}
+
+type Component {
+  "Health status of the component."
+  health: Health!
+
+  "Fully-qualified ID of the component."
+  id: ID!
+
+  "Name of the component."
+  name: String!
+}
+
+"""
+Health status of the component.
+"""
+type Health {
+  "Message of the health status."
+  message: String!
+
+  "Last updated time of the health status."
+  lastUpdated: Time!
+}

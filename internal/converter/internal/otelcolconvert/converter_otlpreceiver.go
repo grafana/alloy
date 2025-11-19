@@ -76,14 +76,14 @@ func toGRPCServerArguments(cfg *configgrpc.ServerConfig) *otelcol.GRPCServerArgu
 		Endpoint:  cfg.NetAddr.Endpoint,
 		Transport: string(cfg.NetAddr.Transport),
 
-		TLS: toTLSServerArguments(cfg.TLS),
+		TLS: toTLSServerArguments(cfg.TLS.Get()),
 
 		MaxRecvMsgSize:       units.Base2Bytes(cfg.MaxRecvMsgSizeMiB) * units.MiB,
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
 		ReadBufferSize:       units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize:      units.Base2Bytes(cfg.WriteBufferSize),
 
-		Keepalive: toKeepaliveServerArguments(cfg.Keepalive),
+		Keepalive: toKeepaliveServerArguments(cfg.Keepalive.Get()),
 
 		IncludeMetadata: cfg.IncludeMetadata,
 	}
@@ -124,8 +124,8 @@ func toKeepaliveServerArguments(cfg *configgrpc.KeepaliveServerConfig) *otelcol.
 	}
 
 	return &otelcol.KeepaliveServerArguments{
-		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters),
-		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy),
+		ServerParameters:  toKeepaliveServerParameters(cfg.ServerParameters.Get()),
+		EnforcementPolicy: toKeepaliveEnforcementPolicy(cfg.EnforcementPolicy.Get()),
 	}
 }
 
@@ -184,9 +184,9 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 	return &otelcol.HTTPServerArguments{
 		Endpoint: cfg.Endpoint,
 
-		TLS: toTLSServerArguments(cfg.TLS),
+		TLS: toTLSServerArguments(cfg.TLS.Get()),
 
-		CORS: toCORSArguments(cfg.CORS),
+		CORS: toCORSArguments(cfg.CORS.Get()),
 
 		MaxRequestBodySize: units.Base2Bytes(cfg.MaxRequestBodySize),
 		IncludeMetadata:    cfg.IncludeMetadata,

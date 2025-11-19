@@ -13,12 +13,12 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
 
       - name: Create test Windows build image
-        uses: mr-smithers-excellent/docker-build-push@d340da11223063b221f873be135aaddd8aba52c5 # v6.5
+        uses: mr-smithers-excellent/docker-build-push@19d2beefef6bcdc202195fdcb9deb79a4fab5c1f # v6.8
         with:
           image: grafana/alloy-build-image
           tags: latest

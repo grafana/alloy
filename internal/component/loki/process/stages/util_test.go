@@ -8,9 +8,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func newEntry(ex map[string]interface{}, lbs model.LabelSet, line string, ts time.Time) Entry {
@@ -24,7 +23,7 @@ func newEntry(ex map[string]interface{}, lbs model.LabelSet, line string, ts tim
 		Extracted: ex,
 		Entry: loki.Entry{
 			Labels: lbs,
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: ts,
 				Line:      line,
 			},

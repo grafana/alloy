@@ -32,7 +32,7 @@ func main() {
 
 	address, port := getAddressAndPort(cfg.ListenAddress)
 	listenAddress := fmt.Sprintf("%s:%s", address, port)
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", http.HandlerFunc(handleWithPrefixSupport))
 	server := &http.Server{Addr: listenAddress, Handler: nil}
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -55,9 +55,32 @@ func main() {
 	go handleGaugeInput(setupGauge(labels))
 	go handleHistogramInput(setupHistogram(labels))
 	go handleHistogramInput(setupNativeHistogram(labels))
+	go handleHistogramInput(setupMixedHistogram(labels))
 	go handleSummary(setupSummary(labels))
 	stopChan := make(chan struct{})
 	<-stopChan
+}
+
+// When wrapping with a prefix, we need something that can act as a prometheus.Collector, a prometheus.Registerer, and a prometheus.Gatherer
+// which means we need a full prometheus.Registry
+var registry = prometheus.NewRegistry()
+var defaultHandler = promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+var metricPrefixQueryParam = "metric-prefix"
+
+func handleWithPrefixSupport(w http.ResponseWriter, r *http.Request) {
+	prefix := r.URL.Query().Get(metricPrefixQueryParam)
+	if prefix == "" {
+		defaultHandler.ServeHTTP(w, r)
+		return
+	}
+
+	// Wrap the registry with the provided prefix and serve the metrics from it
+	reg := prometheus.NewRegistry()
+	prefixedCollector := prometheus.WrapCollectorWithPrefix(prefix, registry)
+	reg.MustRegister(prefixedCollector)
+	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+	h.ServeHTTP(w, r)
+	return
 }
 
 // getAddressAndPort always defines a non empty address and port
@@ -84,9 +107,10 @@ func setupGauge(labels map[string]string) prometheus.Gauge {
 		prometheus.GaugeOpts{
 			Namespace:   "golang",
 			Name:        "gauge",
+			Help:        "The gauge description string",
 			ConstLabels: labels,
 		})
-	prometheus.MustRegister(gauge)
+	registry.MustRegister(gauge)
 	return gauge
 }
 
@@ -105,13 +129,30 @@ func setupNativeHistogram(labels map[string]string) prometheus.Histogram {
 		prometheus.HistogramOpts{
 			Namespace:                       "golang",
 			Name:                            "native_histogram",
+			Help:                            "The native_histogram description string",
 			ConstLabels:                     labels,
 			NativeHistogramBucketFactor:     1.1,
 			NativeHistogramMaxBucketNumber:  100,
 			NativeHistogramMinResetDuration: 1 * time.Hour,
 		})
-	prometheus.MustRegister(nativeHistogram)
+	registry.MustRegister(nativeHistogram)
 	return nativeHistogram
+}
+
+func setupMixedHistogram(labels map[string]string) prometheus.Histogram {
+	mixedHistogram := prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace:                       "golang",
+			Name:                            "mixed_histogram",
+			Help:                            "The mixed_histogram description string",
+			ConstLabels:                     labels,
+			Buckets:                         []float64{1, 10, 100, 1000},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
+		})
+	registry.MustRegister(mixedHistogram)
+	return mixedHistogram
 }
 
 func setupHistogram(labels map[string]string) prometheus.Histogram {
@@ -119,10 +160,11 @@ func setupHistogram(labels map[string]string) prometheus.Histogram {
 		prometheus.HistogramOpts{
 			Namespace:   "golang",
 			Name:        "histogram",
+			Help:        "The histogram description string",
 			ConstLabels: labels,
 			Buckets:     []float64{1, 10, 100, 1000},
 		})
-	prometheus.MustRegister(histogram)
+	registry.MustRegister(histogram)
 	return histogram
 }
 
@@ -141,9 +183,10 @@ func setupCounter(labels map[string]string) prometheus.Counter {
 		prometheus.CounterOpts{
 			Namespace:   "golang",
 			Name:        "counter",
+			Help:        "The counter description string",
 			ConstLabels: labels,
 		})
-	prometheus.MustRegister(counter)
+	registry.MustRegister(counter)
 	return counter
 }
 
@@ -161,10 +204,11 @@ func setupSummary(labels map[string]string) prometheus.Summary {
 		prometheus.SummaryOpts{
 			Namespace:   "golang",
 			Name:        "summary",
+			Help:        "The summary description string",
 			ConstLabels: labels,
 			Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		})
-	prometheus.MustRegister(summary)
+	registry.MustRegister(summary)
 	return summary
 }
 

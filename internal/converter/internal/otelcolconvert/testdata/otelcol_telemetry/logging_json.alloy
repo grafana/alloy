@@ -20,6 +20,9 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.batch "default" {
+	send_batch_size     = 8192
+	send_batch_max_size = 0
+
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
 		logs    = [otelcol.exporter.otlp.default.input]

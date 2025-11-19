@@ -1,7 +1,7 @@
 package write
 
 import (
-	"github.com/grafana/alloy/internal/util"
+	pyrometricsutil "github.com/grafana/alloy/internal/component/pyroscope/util/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -11,6 +11,7 @@ type metrics struct {
 	sentProfiles    *prometheus.CounterVec
 	droppedProfiles *prometheus.CounterVec
 	retries         *prometheus.CounterVec
+	latency         *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -35,14 +36,19 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Name: "pyroscope_write_retries_total",
 			Help: "Total number of retries to Pyroscope.",
 		}, []string{"endpoint"}),
+		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "pyroscope_write_latency",
+			Help: "Write latency for sending profiles to pyroscope",
+		}, []string{"endpoint", "type"}),
 	}
 
 	if reg != nil {
-		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
-		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
-		m.sentProfiles = util.MustRegisterOrGet(reg, m.sentProfiles).(*prometheus.CounterVec)
-		m.droppedProfiles = util.MustRegisterOrGet(reg, m.droppedProfiles).(*prometheus.CounterVec)
-		m.retries = util.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
+		m.sentBytes = pyrometricsutil.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
+		m.droppedBytes = pyrometricsutil.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
+		m.sentProfiles = pyrometricsutil.MustRegisterOrGet(reg, m.sentProfiles).(*prometheus.CounterVec)
+		m.droppedProfiles = pyrometricsutil.MustRegisterOrGet(reg, m.droppedProfiles).(*prometheus.CounterVec)
+		m.retries = pyrometricsutil.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
+		m.latency = pyrometricsutil.MustRegisterOrGet(reg, m.latency).(*prometheus.HistogramVec)
 	}
 
 	return m

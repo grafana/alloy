@@ -19,6 +19,7 @@ func toAzureExporter(config *azure_exporter.Config) *azure.Arguments {
 		Metrics:                  config.Metrics,
 		MetricAggregations:       config.MetricAggregations,
 		Timespan:                 config.Timespan,
+		Interval:                 config.Interval,
 		IncludedDimensions:       config.IncludedDimensions,
 		IncludedResourceTags:     config.IncludedResourceTags,
 		MetricNamespace:          config.MetricNamespace,

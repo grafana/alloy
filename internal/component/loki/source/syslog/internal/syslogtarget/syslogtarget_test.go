@@ -19,13 +19,14 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
 
 	"github.com/go-kit/log"
-	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/leodido/go-syslog/v4"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 )
 
 var (
@@ -306,8 +307,8 @@ func Benchmark_SyslogTarget(b *testing.B) {
 		protocol   string
 		formatFunc formatFunc
 	}{
-		{"tcp", protocolTCP, fmtOctetCounting},
-		{"udp", protocolUDP, fmtOctetCounting},
+		{"tcp", ProtocolTCP, fmtOctetCounting},
+		{"udp", ProtocolUDP, fmtOctetCounting},
 	} {
 		tt := tt
 		b.Run(tt.name, func(b *testing.B) {
@@ -364,10 +365,10 @@ func TestSyslogTarget(t *testing.T) {
 		protocol string
 		fmtFunc  formatFunc
 	}{
-		{"tcp newline separated", protocolTCP, fmtNewline},
-		{"tcp octetcounting", protocolTCP, fmtOctetCounting},
-		{"udp newline separated", protocolUDP, fmtNewline},
-		{"udp octetcounting", protocolUDP, fmtOctetCounting},
+		{"tcp newline separated", ProtocolTCP, fmtNewline},
+		{"tcp octetcounting", ProtocolTCP, fmtOctetCounting},
+		{"udp newline separated", ProtocolUDP, fmtNewline},
+		{"udp octetcounting", ProtocolUDP, fmtOctetCounting},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -403,7 +404,7 @@ func TestSyslogTarget(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, c.Close())
 
-			if tt.protocol == protocolUDP {
+			if tt.protocol == ProtocolUDP {
 				time.Sleep(time.Second)
 				require.NoError(t, tgt.Stop())
 			} else {
@@ -462,6 +463,11 @@ func relabelConfig(t *testing.T) []*relabel.Config {
 	err := yaml.Unmarshal([]byte(relabelCfg), &relabels)
 	require.NoError(t, err)
 
+	// Set the validation scheme for all relabel configs
+	for _, cfg := range relabels {
+		cfg.NameValidationScheme = model.LegacyValidation
+	}
+
 	return relabels
 }
 
@@ -481,8 +487,8 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 		protocol string
 		fmtFunc  formatFunc
 	}{
-		{"tcp newline separated", protocolTCP, fmtNewline},
-		{"tcp octetcounting", protocolTCP, fmtOctetCounting},
+		{"tcp newline separated", ProtocolTCP, fmtNewline},
+		{"tcp octetcounting", ProtocolTCP, fmtOctetCounting},
 	} {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -566,7 +572,7 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 			}()
 
 			addr := tgt.ListenAddress().String()
-			c, err := net.Dial("tcp", addr)
+			c, err := net.Dial(ProtocolTCP, addr)
 			require.NoError(t, err)
 
 			messages := []string{
@@ -682,7 +688,7 @@ func testSyslogTargetWithTLS(t *testing.T, fmtFunc formatFunc) {
 	}
 
 	addr := tgt.ListenAddress().String()
-	c, err := tls.Dial("tcp", addr, &tlsConfig)
+	c, err := tls.Dial(ProtocolTCP, addr, &tlsConfig)
 	require.NoError(t, err)
 
 	validMessages := []string{
@@ -817,7 +823,7 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 	addr := tgt.ListenAddress().String()
 
 	t.Run("WithoutClientCertificate", func(t *testing.T) {
-		c, err := tls.Dial("tcp", addr, &tlsConfig)
+		c, err := tls.Dial(ProtocolTCP, addr, &tlsConfig)
 		require.NoError(t, err)
 
 		err = c.SetDeadline(time.Now().Add(time.Second))
@@ -830,7 +836,7 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 
 	t.Run("WithClientCertificate", func(t *testing.T) {
 		tlsConfig.Certificates = []tls.Certificate{clientCerts}
-		c, err := tls.Dial("tcp", addr, &tlsConfig)
+		c, err := tls.Dial(ProtocolTCP, addr, &tlsConfig)
 		require.NoError(t, err)
 
 		messages := []string{
@@ -879,7 +885,7 @@ func TestSyslogTarget_InvalidData(t *testing.T) {
 	}()
 
 	addr := tgt.ListenAddress().String()
-	c, err := net.Dial("tcp", addr)
+	c, err := net.Dial(ProtocolTCP, addr)
 	require.NoError(t, err)
 	defer c.Close()
 
@@ -910,7 +916,7 @@ func TestSyslogTarget_NonUTF8Message(t *testing.T) {
 	}()
 
 	addr := tgt.ListenAddress().String()
-	c, err := net.Dial("tcp", addr)
+	c, err := net.Dial(ProtocolTCP, addr)
 	require.NoError(t, err)
 
 	msg1 := "Some non utf8 \xF8\xF7\xE3\xE4 characters"
@@ -949,7 +955,7 @@ func TestSyslogTarget_IdleTimeout(t *testing.T) {
 	}()
 
 	addr := tgt.ListenAddress().String()
-	c, err := net.Dial("tcp", addr)
+	c, err := net.Dial(ProtocolTCP, addr)
 	require.NoError(t, err)
 	defer c.Close()
 

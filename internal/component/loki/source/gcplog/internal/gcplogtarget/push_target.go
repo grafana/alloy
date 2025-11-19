@@ -76,7 +76,7 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cancel()
 
-	pushMessage := PushMessage{}
+	pushMessage := PushMessageBody{}
 	bs, err := io.ReadAll(r.Body)
 	if err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("read_error").Inc()

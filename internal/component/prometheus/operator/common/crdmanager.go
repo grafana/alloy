@@ -364,21 +364,26 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 	var informer cache.Informer
 	var err error
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
+	deadline, _ := timeoutCtx.Deadline()
+	defer cancel()
 	backoff := backoff.New(
-		ctx,
+		timeoutCtx,
 		backoff.Config{
 			MinBackoff: 1 * time.Second,
 			MaxBackoff: 10 * time.Second,
-			MaxRetries: 3, // retry up to 3 times
+			MaxRetries: 0, // Will retry until InformerSyncTimeout is reached
 		},
 	)
-	for backoff.Ongoing() {
+	for {
 		// Retry to get the informer in case of a timeout.
 		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
-		if err == nil {
+		nextDelay := backoff.NextDelay()
+		// exit loop on success, timeout, max retries reached, or if next backoff exceeds timeout
+		if err == nil || !backoff.Ongoing() || time.Now().Add(nextDelay).After(deadline) {
 			break
 		}
-		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", backoff.NextDelay(), "err", err)
+		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", nextDelay, "err", err)
 		backoff.Wait()
 	}
 	if err != nil {
@@ -434,9 +439,14 @@ func (c *crdManager) apply() error {
 	for _, sc := range c.scrapeConfigs {
 		scs = append(scs, sc)
 	}
-	err = c.scrapeManager.ApplyConfig(&config.Config{
-		ScrapeConfigs: scs,
-	})
+
+	cfg, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.logger)))
+	if err != nil {
+		return fmt.Errorf("loading empty config: %w", err)
+	}
+	cfg.ScrapeConfigs = scs
+
+	err = c.scrapeManager.ApplyConfig(cfg)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "error applying scrape configs", "err", err)
 		return err

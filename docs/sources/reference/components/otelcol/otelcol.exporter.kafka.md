@@ -39,12 +39,16 @@ otelcol.exporter.kafka "LABEL" {
 You can use the following arguments with `otelcol.exporter.kafka`:
 
 | Name                                       | Type           | Description                                                                                                                 | Default              | Required |
-| ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- |
+|--------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------|----------------------|----------|
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
-| `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"sarama"`           | no       |
+| `allow_auto_topic_creation`                | `bool`         | Whether to allow automatic topic creation.                                                                                  | `true`               | no       |
+| `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"otel-collector"`   | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
+| `include_metadata_keys`                    | `list(string)` | List of metadata keys to propagate as Kafka message headers.                                                                | `[]`                 | no       |
 | `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `false`              | no       |
+| `partition_logs_by_resource_attributes`    | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in log messages sent to Kafka.    | `false`              | no       |
+| `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
@@ -55,35 +59,41 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
 {{< /admonition >}}
 
+When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
 When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
 
 `partition_traces_by_id` doesn't have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
+
+`partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
+
+`include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
 
 ## Blocks
 
 You can use the following blocks with `otelcol.exporter.kafka`:
 
-| Block                                                   | Description                                                                 | Required |
-|---------------------------------------------------------|-----------------------------------------------------------------------------|----------|
-| [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                  | no       |
-| `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                          | no       |
-| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                         | no       |
-| `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                              | no       |
-| `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM.                          | no       |
-| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                       | no       |
-| [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state. | no       |
-| [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                               | no       |
-| [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                     | no       |
-| `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                 | no       |
-| [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                            | no       |
-| [`producer`][producer]                                  | Kafka producer configuration,                                               | no       |
-| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.               | no       |
-| [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                             | no       |
-| [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                 | no       |
-| [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                         | no       |
-| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                               | no       |
-| [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                             | no       |
+| Block                                                   | Description                                                                    | Required |
+|---------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
+| `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
+| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
+| `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                                 | no       |
+| `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                 | no       |
+| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                            | no       |
+| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                          | no       |
+| [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state.    | no       |
+| [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                                  | no       |
+| [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                        | no       |
+| `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                    | no       |
+| [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
+| [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.                  | no       |
+| [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                            | no       |
+| `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS key_file.                                  | no       |
+| [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
 
 The > symbol indicates deeper levels of nesting.
 For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
@@ -102,6 +112,7 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [retry]: #retry
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
+[batch]: #batch
 [producer]: #producer
 [compression_params]: #compression_params
 [debug_metrics]: #debug_metrics
@@ -110,28 +121,31 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 	
 The `logs` block configures how to send logs to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+| Name                     | Type     | Description                                                                  | Default        | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `metrics`
 
 The `metrics` block configures how to send metrics to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default          | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`    | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+| Name                     | Type     | Description                                                                  | Default          | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
 ### `traces`
 
 The `traces` block configures how to send traces to Kafka brokers.
 
-| Name       | Type     | Description                                                                  | Default        | Required |
-| ---------- | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding` | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`    | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
+| Name                     | Type     | Description                                                                  | Default        | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
+| `topic`                  | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
+| `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `authentication`
 
@@ -232,9 +246,15 @@ The `retry_on_failure` block configures how failed requests to Kafka are retried
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to the gRPC server.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

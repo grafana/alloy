@@ -10,6 +10,8 @@ weight: 300
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
+{{< docs/learning-journeys title="Monitor a Linux server in Grafana Cloud" url="https://grafana.com/docs/learning-journeys/linux-server-integration/" >}}
+
 You can install {{< param "PRODUCT_NAME" >}} as a systemd service on Linux.
 
 ## Before you begin

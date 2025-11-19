@@ -21,15 +21,13 @@ func NewClient(stop func()) *Client {
 		OnStop:  stop,
 		entries: make(chan loki.Entry),
 	}
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		for e := range c.entries {
 			c.mtx.Lock()
 			c.received = append(c.received, e)
 			c.mtx.Unlock()
 		}
-	}()
+	})
 	return c
 }
 
@@ -52,15 +50,6 @@ func (c *Client) Received() []loki.Entry {
 	return cpy
 }
 
-// StopNow implements client.Client
-func (c *Client) StopNow() {
-	c.Stop()
-}
-
-func (c *Client) Name() string {
-	return "fake"
-}
-
 // Clear is used to cleanup the buffered received entries, so the same client can be re-used between
 // test cases.
 func (c *Client) Clear() {
@@ -71,5 +60,5 @@ func (c *Client) Clear() {
 
 // LogsReceiver returns this client as a LogsReceiver, which is useful in testing.
 func (c *Client) LogsReceiver() loki.LogsReceiver {
-	return loki.NewLogsReceiverWithChannel(c.entries)
+	return loki.NewLogsReceiver(loki.WithChannel(c.entries))
 }

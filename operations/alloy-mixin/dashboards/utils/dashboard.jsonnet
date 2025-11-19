@@ -79,6 +79,13 @@
     sort: 2,    
   },
 
+  newTemplateVariableCustom(name, query) :: {
+    name: name,
+	label: name,
+	type: 'custom',
+    query: query,
+  },
+
   newLokiAnnotation(name, expression, color):: {
     name: name,
     datasource: '$loki_datasource',

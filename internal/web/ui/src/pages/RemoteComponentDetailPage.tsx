@@ -1,8 +1,8 @@
-import { FC, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { type FC, useEffect, useState } from 'react';
+import { useParams } from 'react-router';
 
 import { ComponentView } from '../features/component/ComponentView';
-import { ComponentDetail, ComponentInfo, componentInfoByID } from '../features/component/types';
+import { type ComponentDetail, type ComponentInfo, componentInfoByID } from '../features/component/types';
 import { useComponentInfo } from '../hooks/componentInfo';
 import { parseID } from '../utils/id';
 

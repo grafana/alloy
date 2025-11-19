@@ -66,6 +66,15 @@ loki.source.gcplog "push_pipeline" {
 			server_read_timeout  = "10s"
 			server_write_timeout = "10s"
 			server_idle_timeout  = "10s"
+
+			tls {
+				cert_pem         = "my_cert"
+				cert_file        = "/var/cert"
+				key_file         = "/var/key"
+				client_auth_type = "RequireAndVerifyClientCert"
+				client_ca_file   = "/var/ca"
+				client_ca        = "my_ca"
+			}
 		}
 
 		grpc {
@@ -78,6 +87,15 @@ loki.source.gcplog "push_pipeline" {
 			server_max_recv_msg_size      = 1000
 			server_max_send_msg_size      = 1000
 			server_max_concurrent_streams = 100
+
+			tls {
+				cert_pem         = "my_cert"
+				cert_file        = "/var/cert"
+				key_file         = "/var/key"
+				client_auth_type = "RequireAndVerifyClientCert"
+				client_ca_file   = "/var/ca"
+				client_ca        = "my_ca"
+			}
 		}
 		graceful_shutdown_timeout = "0s"
 		push_timeout              = "10s"

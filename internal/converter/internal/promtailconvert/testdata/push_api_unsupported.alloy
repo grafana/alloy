@@ -6,6 +6,10 @@ loki.source.api "fun" {
 		server_read_timeout  = "10s"
 		server_write_timeout = "10s"
 		server_idle_timeout  = "10s"
+
+		tls {
+			cert_file = "/var/cert"
+		}
 	}
 
 	grpc {
@@ -18,6 +22,10 @@ loki.source.api "fun" {
 		server_max_recv_msg_size      = 1000
 		server_max_send_msg_size      = 1000
 		server_max_concurrent_streams = 100
+
+		tls {
+			cert_file = "/var/cert"
+		}
 	}
 	graceful_shutdown_timeout = "10s"
 	forward_to                = []

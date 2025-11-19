@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	conventions "go.opentelemetry.io/collector/semconv/v1.27.0"
+	conventions "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 type jobInstanceDefinition struct {
@@ -25,34 +25,34 @@ func makeK8sResource(jobInstance *jobInstanceDefinition, def *k8sResourceDefinit
 	resource := makeResourceWithJobInstanceScheme(jobInstance, true)
 	attrs := resource.Attributes()
 	if def.podName != "" {
-		attrs.PutStr(conventions.AttributeK8SPodName, def.podName)
+		attrs.PutStr(string(conventions.K8SPodNameKey), def.podName)
 	}
 	if def.podUID != "" {
-		attrs.PutStr(conventions.AttributeK8SPodUID, def.podUID)
+		attrs.PutStr(string(conventions.K8SPodUIDKey), def.podUID)
 	}
 	if def.container != "" {
-		attrs.PutStr(conventions.AttributeK8SContainerName, def.container)
+		attrs.PutStr(string(conventions.K8SContainerNameKey), def.container)
 	}
 	if def.node != "" {
-		attrs.PutStr(conventions.AttributeK8SNodeName, def.node)
+		attrs.PutStr(string(conventions.K8SNodeNameKey), def.node)
 	}
 	if def.rs != "" {
-		attrs.PutStr(conventions.AttributeK8SReplicaSetName, def.rs)
+		attrs.PutStr(string(conventions.K8SReplicaSetNameKey), def.rs)
 	}
 	if def.ds != "" {
-		attrs.PutStr(conventions.AttributeK8SDaemonSetName, def.ds)
+		attrs.PutStr(string(conventions.K8SDaemonSetNameKey), def.ds)
 	}
 	if def.ss != "" {
-		attrs.PutStr(conventions.AttributeK8SStatefulSetName, def.ss)
+		attrs.PutStr(string(conventions.K8SStatefulSetNameKey), def.ss)
 	}
 	if def.job != "" {
-		attrs.PutStr(conventions.AttributeK8SJobName, def.job)
+		attrs.PutStr(string(conventions.K8SJobNameKey), def.job)
 	}
 	if def.cronjob != "" {
-		attrs.PutStr(conventions.AttributeK8SCronJobName, def.cronjob)
+		attrs.PutStr(string(conventions.K8SCronJobNameKey), def.cronjob)
 	}
 	if def.ns != "" {
-		attrs.PutStr(conventions.AttributeK8SNamespaceName, def.ns)
+		attrs.PutStr(string(conventions.K8SNamespaceNameKey), def.ns)
 	}
 	return resource
 }
@@ -67,24 +67,6 @@ func makeResourceWithJobInstanceScheme(def *jobInstanceDefinition, hasHost bool)
 		attrs.PutStr("server.address", def.host)
 	}
 	attrs.PutStr("service.instance.id", def.instance)
-	attrs.PutStr("server.port", def.port)
-	attrs.PutStr("url.scheme", def.scheme)
-	return resource
-}
-
-func makeResourceWithJobInstanceSchemeDuplicate(def *jobInstanceDefinition, hasHost bool) pcommon.Resource {
-	resource := pcommon.NewResource()
-	attrs := resource.Attributes()
-	// Using hardcoded values to assert on outward expectations so that
-	// when variables change, these tests will fail and we'll have reports.
-	attrs.PutStr("service.name", def.job)
-	if hasHost {
-		attrs.PutStr("net.host.name", def.host)
-		attrs.PutStr("server.address", def.host)
-	}
-	attrs.PutStr("service.instance.id", def.instance)
-	attrs.PutStr("net.host.port", def.port)
-	attrs.PutStr("http.scheme", def.scheme)
 	attrs.PutStr("server.port", def.port)
 	attrs.PutStr("url.scheme", def.scheme)
 	return resource
@@ -151,55 +133,6 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 			job:  "job", instance: "localhost:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
 			removeOldSemconvFeatureGate: true,
 			want: makeResourceWithJobInstanceScheme(&jobInstanceDefinition{
-				"job", "localhost:8888", "", "http", "8888",
-			}, false),
-		},
-		{
-			name: "all attributes proper with duplicates",
-			job:  "job", instance: "hostname:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "hostname:8888", "hostname", "http", "8888",
-			}, true),
-		},
-		{
-			name: "missing port with duplicates",
-			job:  "job", instance: "myinstance", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "https"}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "myinstance", "myinstance", "https", "",
-			}, true),
-		},
-		{
-			name: "blank scheme with duplicates",
-			job:  "job", instance: "myinstance:443", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: ""}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "myinstance:443", "myinstance", "", "443",
-			}, true),
-		},
-		{
-			name: "blank instance, blank scheme with duplicates",
-			job:  "job", instance: "", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: ""}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "", "", "", "",
-			}, true),
-		},
-		{
-			name: "blank instance, non-blank scheme with duplicates",
-			job:  "job", instance: "", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "", "", "http", "",
-			}, true),
-		},
-		{
-			name: "0.0.0.0 address with duplicates",
-			job:  "job", instance: "0.0.0.0:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
-				"job", "0.0.0.0:8888", "", "http", "8888",
-			}, false),
-		},
-		{
-			name: "localhost with duplicates",
-			job:  "job", instance: "localhost:8888", sdLabels: labels.New(labels.Label{Name: "__scheme__", Value: "http"}),
-			want: makeResourceWithJobInstanceSchemeDuplicate(&jobInstanceDefinition{
 				"job", "localhost:8888", "", "http", "8888",
 			}, false),
 		},

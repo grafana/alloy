@@ -7,17 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
-
-	"github.com/grafana/dskit/flagext"
-	"github.com/prometheus/common/config"
-
 	"github.com/IBM/sarama"
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/flagext"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki/client/fake"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -58,22 +57,18 @@ func Test_TopicDiscovery(t *testing.T) {
 	ts.loop()
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1"}, group.GetTopics())
-	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
+	}, 1*time.Minute, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1"}, group.GetTopics())
 
 	client.UpdateTopics([]string{"topic1", "topic2"})
 
 	require.Eventually(t, func() bool {
-		group.mut.Lock()
 		if !group.consuming.Load() {
 			return false
 		}
-		group.mut.Unlock()
 		return reflect.DeepEqual([]string{"topic1", "topic2"}, group.GetTopics())
 	}, 5*time.Second, 100*time.Millisecond, "expected topics: %v, got: %v", []string{"topic1", "topic2"}, group.GetTopics())
 
@@ -88,11 +83,12 @@ func Test_NewTarget(t *testing.T) {
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__meta_kafka_topic"},
-					TargetLabel:  "topic",
-					Replacement:  "$1",
-					Action:       relabel.Replace,
-					Regex:        relabel.MustNewRegexp("(.*)"),
+					SourceLabels:         model.LabelNames{"__meta_kafka_topic"},
+					TargetLabel:          "topic",
+					Replacement:          "$1",
+					Action:               relabel.Replace,
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			KafkaConfig: TargetConfig{

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/prometheus/prometheus/util/compression"
@@ -16,13 +15,13 @@ import (
 )
 
 var (
-	recordPool = wal.NewRecordPool()
+	recordPool = NewRecordPool()
 )
 
 // WAL is an interface that allows us to abstract ourselves from Prometheus WAL implementation.
 type WAL interface {
 	// Log marshals the records and writes it into the WAL.
-	Log(*wal.Record) error
+	Log(*Record) error
 
 	Delete() error
 	Sync() error
@@ -65,7 +64,7 @@ func (w *wrapper) Delete() error {
 	return err
 }
 
-func (w *wrapper) Log(record *wal.Record) error {
+func (w *wrapper) Log(record *Record) error {
 	if record == nil || (len(record.Series) == 0 && len(record.RefEntries) == 0) {
 		return nil
 	}
@@ -78,7 +77,7 @@ func (w *wrapper) Log(record *wal.Record) error {
 }
 
 // logBatched logs to the WAL both series and records, batching the operation to prevent unnecessary page flushes.
-func (w *wrapper) logBatched(record *wal.Record) error {
+func (w *wrapper) logBatched(record *Record) error {
 	seriesBuf := recordPool.GetBytes()
 	entriesBuf := recordPool.GetBytes()
 	defer func() {
@@ -87,13 +86,13 @@ func (w *wrapper) logBatched(record *wal.Record) error {
 	}()
 
 	*seriesBuf = record.EncodeSeries(*seriesBuf)
-	*entriesBuf = record.EncodeEntries(wal.CurrentEntriesRec, *entriesBuf)
+	*entriesBuf = record.EncodeEntries(CurrentEntriesRec, *entriesBuf)
 	// Always write series then entries
 	return w.wal.Log(*seriesBuf, *entriesBuf)
 }
 
 // logSingle logs to the WAL series and records in separate WAL operation. This causes a page flush after each operation.
-func (w *wrapper) logSingle(record *wal.Record) error {
+func (w *wrapper) logSingle(record *Record) error {
 	buf := recordPool.GetBytes()
 	defer func() {
 		recordPool.PutBytes(buf)
@@ -108,7 +107,7 @@ func (w *wrapper) logSingle(record *wal.Record) error {
 		*buf = (*buf)[:0]
 	}
 	if len(record.RefEntries) > 0 {
-		*buf = record.EncodeEntries(wal.CurrentEntriesRec, *buf)
+		*buf = record.EncodeEntries(CurrentEntriesRec, *buf)
 		if err := w.wal.Log(*buf); err != nil {
 			return err
 		}

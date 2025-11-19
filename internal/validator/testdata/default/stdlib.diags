@@ -1,0 +1,13 @@
+Warning: main.alloy:11:13: a component is shadowing an existing stdlib name
+
+10 | local.file "file" {
+11 |     filename = sys.sys.env
+   |                ^^^
+12 | }
+
+Warning: main.alloy:15:13: this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives
+
+14 | local.file "file2" {
+15 |     filename = env("test")
+   |                ^^^
+16 | }

@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -29,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
@@ -117,7 +117,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// Send a log entry to the component's receiver.
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ingestionTs,
 			Line:      logline,
 		},
@@ -221,7 +221,7 @@ stage.label_keep {
 	logline := `{"log":"log message\n","stream":"stderr","time":"2022-01-09T08:37:45.8233626Z"}`
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "env": "dev"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      logline,
 		},
@@ -317,7 +317,7 @@ stage.labels {
 	logline := `2022-01-17T08:17:42-07:00 stderr somewhere, somehow, an error occurred`
 	logEntry := loki.Entry{
 		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: logproto.Entry{
+		Entry: push.Entry{
 			Timestamp: ts,
 			Line:      logline,
 		},
@@ -404,6 +404,10 @@ stage.static_labels {
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
 				tc2.Exports().(Exports).Receiver,
+			},
+			FileMatch: lsf.FileMatch{
+				Enabled:    false,
+				SyncPeriod: 10 * time.Second,
 			},
 		})
 		require.NoError(t, err)
@@ -543,7 +547,7 @@ func (r *testFrequentUpdate) sendLogs() {
 			ts := time.Now()
 			logEntry := loki.Entry{
 				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-				Entry: logproto.Entry{
+				Entry: push.Entry{
 					Timestamp: ts,
 					Line:      logline,
 				},
@@ -852,7 +856,7 @@ func newTester(t *testing.T) *tester {
 		logTimestamp: logTimestamp,
 		logEntry: loki.Entry{
 			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: logTimestamp,
 				Line:      logline,
 			},

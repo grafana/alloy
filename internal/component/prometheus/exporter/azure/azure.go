@@ -19,8 +19,9 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
@@ -31,6 +32,7 @@ type Arguments struct {
 	Metrics                  []string `alloy:"metrics,attr"`
 	MetricAggregations       []string `alloy:"metric_aggregations,attr,optional"`
 	Timespan                 string   `alloy:"timespan,attr,optional"`
+	Interval                 string   `alloy:"interval,attr,optional"`
 	IncludedDimensions       []string `alloy:"included_dimensions,attr,optional"`
 	IncludedResourceTags     []string `alloy:"included_resource_tags,attr,optional"`
 	MetricNamespace          string   `alloy:"metric_namespace,attr,optional"`
@@ -44,7 +46,8 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		Timespan:              "PT1M",
+		Timespan:              "PT5M",
+		Interval:              "PT1M",
 		MetricNameTemplate:    "azure_{type}_{metric}_{aggregation}_{unit}",
 		MetricHelpTemplate:    "Azure metric {metric} for {type} with aggregation {aggregation} as {unit}",
 		IncludedResourceTags:  []string{"owner"},
@@ -72,6 +75,7 @@ func (a *Arguments) Convert() *azure_exporter.Config {
 		Metrics:                  a.Metrics,
 		MetricAggregations:       a.MetricAggregations,
 		Timespan:                 a.Timespan,
+		Interval:                 a.Interval,
 		IncludedDimensions:       a.IncludedDimensions,
 		IncludedResourceTags:     a.IncludedResourceTags,
 		MetricNamespace:          a.MetricNamespace,

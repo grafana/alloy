@@ -31,6 +31,7 @@ type Appender interface {
 }
 
 type RawSample struct {
+	ID string
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte
 }
@@ -101,6 +102,10 @@ func (f *Fanout) Appender() Appender {
 		app.children = append(app.children, x.Appender())
 	}
 	return app
+}
+
+func (f *Fanout) String() string {
+	return f.componentID + ".receiver"
 }
 
 var _ Appender = (*appender)(nil)

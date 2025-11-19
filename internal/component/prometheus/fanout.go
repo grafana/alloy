@@ -74,18 +74,24 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 
-	// TODO(@tpaschalis): The `otelcol.receiver.prometheus` component reuses
-	// code from the prometheusreceiver which expects the Appender context to
-	// contain both a scrape target and a metadata store, and fails the
-	// conversion if they are missing. We should find a way around this as both
-	// Targets and Metadata will be handled in a different way in Alloy.
-	ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-		labels.EmptyLabels(),
-		&config.DefaultScrapeConfig,
-		model.LabelSet{},
-		model.LabelSet{},
-	))
-	ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	// We should only change the context if
+	// it already doesn't have a target or metadata store.
+	// It will have these if the scrape loop was started
+	// with the PassMetadataInContext option set to true.
+	t, ok := scrape.TargetFromContext(ctx)
+	if !ok || t == nil {
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+	}
+
+	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
+	if !ok || s == nil {
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	}
 
 	app := &appender{
 		children:          make([]storage.Appender, 0),
@@ -210,6 +216,7 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m meta
 	if ref == 0 {
 		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
+
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.UpdateMetadata(ref, l, m)
@@ -227,6 +234,7 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	if ref == 0 {
 		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
 	}
+	// TODO histograms are not currently tracked for staleness causing them to be held forever
 	var multiErr error
 	for _, x := range a.children {
 		_, err := x.AppendHistogram(ref, l, t, h, fh)
@@ -270,20 +278,3 @@ func (a *appender) AppendHistogramCTZeroSample(ref storage.SeriesRef, l labels.L
 	}
 	return ref, multiErr
 }
-
-// NoopMetadataStore implements the MetricMetadataStore interface.
-type NoopMetadataStore map[string]scrape.MetricMetadata
-
-// GetMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) GetMetadata(_ string) (scrape.MetricMetadata, bool) {
-	return scrape.MetricMetadata{}, false
-}
-
-// ListMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) ListMetadata() []scrape.MetricMetadata { return nil }
-
-// SizeMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) SizeMetadata() int { return 0 }
-
-// LengthMetadata implements the MetricMetadataStore interface.
-func (ms NoopMetadataStore) LengthMetadata() int { return 0 }

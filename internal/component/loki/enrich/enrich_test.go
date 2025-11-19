@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func TestEnricher(t *testing.T) {
@@ -24,7 +24,7 @@ func TestEnricher(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           Arguments
-		inputLog       *logproto.Entry
+		inputLog       *push.Entry
 		inputLabels    model.LabelSet
 		expectedLabels model.LabelSet
 	}{
@@ -43,7 +43,7 @@ func TestEnricher(t *testing.T) {
 				LogsMatchLabel:   "service_name",
 				LabelsToCopy:     []string{"env", "owner"},
 			},
-			inputLog: &logproto.Entry{
+			inputLog: &push.Entry{
 				Timestamp: time.Now(),
 				Line:      "test log",
 			},
@@ -70,7 +70,7 @@ func TestEnricher(t *testing.T) {
 				LogsMatchLabel:   "service_name",
 				LabelsToCopy:     []string{"env"},
 			},
-			inputLog: &logproto.Entry{
+			inputLog: &push.Entry{
 				Timestamp: time.Now(),
 				Line:      "test log",
 			},
@@ -97,7 +97,7 @@ func TestEnricher(t *testing.T) {
 				TargetMatchLabel: "service",
 				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 			},
-			inputLog: &logproto.Entry{
+			inputLog: &push.Entry{
 				Timestamp: time.Now(),
 				Line:      "test log",
 			},
@@ -125,7 +125,7 @@ func TestEnricher(t *testing.T) {
 				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 				LabelsToCopy: []string{"env", "owner"},
 			},
-			inputLog: &logproto.Entry{
+			inputLog: &push.Entry{
 				Timestamp: time.Now(),
 				Line:      "test log",
 			},

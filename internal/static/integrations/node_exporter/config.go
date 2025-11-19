@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
-	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
-	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/node_exporter/collector"
 	"github.com/prometheus/procfs"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 var (
@@ -99,6 +100,9 @@ type Config struct {
 	SetCollectors flagext.StringSlice `yaml:"set_collectors,omitempty"`
 
 	// Collector-specific config options
+	ArpDeviceExclude                 string              `yaml:"arp_device_exclude,omitempty"`
+	ArpDeviceInclude                 string              `yaml:"arp_device_include,omitempty"`
+	ArpNetlink                       bool                `yaml:"arp_netlink,omitempty"`
 	BcachePriorityStats              bool                `yaml:"enable_bcache_priority_stats,omitempty"`
 	CPUBugsInclude                   string              `yaml:"cpu_bugs_include,omitempty"`
 	CPUEnableCPUGuest                bool                `yaml:"enable_cpu_guest_seconds_metric,omitempty"`
@@ -252,9 +256,8 @@ func (c *Config) Name() string {
 	return "node_exporter"
 }
 
-// InstanceKey returns the hostname:port of the agent process.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
-	return agentKey, nil
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
 }
 
 // NewIntegration converts this config into an instance of an integration.
@@ -489,9 +492,9 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 	}
 
 	cfg.Arp = collector.ArpConfig{
-		DeviceInclude: &blankString,
-		DeviceExclude: &blankString,
-		Netlink:       &blankBool,
+		DeviceInclude: &c.ArpDeviceInclude,
+		DeviceExclude: &c.ArpDeviceExclude,
+		Netlink:       &c.ArpNetlink,
 	}
 
 	cfg.Stat = collector.StatConfig{

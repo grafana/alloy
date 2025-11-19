@@ -117,7 +117,7 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
     > We recommend using the `Editor` tab to copy and paste the Docker Compose file. However, you can also use a terminal editor like `nano` or `vim`.
    {{< /docs/ignore >}}
 
-   ```yaml
+    ```yaml
     version: '3'
     services:
       loki:
@@ -167,12 +167,12 @@ This Docker Compose file includes Loki and Prometheus configured as data sources
         image: grafana/grafana:11.0.0
         ports:
           - "3000:3000"
-    ```
+     ```
 
 1. To start the local Grafana instance, run the following command.
 
    ```bash
-    docker compose up -d
+   docker compose up -d
    ```
     <!-- INTERACTIVE ignore START -->
     {{< admonition type="note" >}}
@@ -206,12 +206,12 @@ touch config.alloy
 
 Copy and paste the following component configuration at the top of the file.
 
-   ```alloy
-    local.file_match "local_files" {
-        path_targets = [{"__path__" = "/var/log/*.log"}]
-        sync_period = "5s"
-    }
-   ```
+```alloy
+local.file_match "local_files" {
+  path_targets = [{"__path__" = "/var/log/*.log"}]
+  sync_period = "5s"
+}
+```
 
 This configuration creates a [local.file_match][] component named `local_files` which does the following:
 
@@ -223,11 +223,11 @@ This configuration creates a [local.file_match][] component named `local_files` 
 Copy and paste the following component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
-  loki.source.file "log_scrape" {
-    targets    = local.file_match.local_files.targets
-    forward_to = [loki.process.filter_logs.receiver]
-    tail_from_end = true
-  }
+loki.source.file "log_scrape" {
+  targets    = local.file_match.local_files.targets
+  forward_to = [loki.process.filter_logs.receiver]
+  tail_from_end = true
+}
 ```
 
 This configuration creates a [`loki.source.file`][loki.source.file] component named `log_scrape` which does the following:
@@ -245,14 +245,14 @@ The following example demonstrates how you can filter out or drop logs before se
 Copy and paste the following component configuration below the previous component in your `config.alloy` file:
 
 ```alloy
-  loki.process "filter_logs" {
-    stage.drop {
-        source = ""
-        expression  = ".*Connection closed by authenticating user root"
-        drop_counter_reason = "noisy"
-      }
-    forward_to = [loki.write.grafana_loki.receiver]
-    }
+loki.process "filter_logs" {
+  stage.drop {
+    source = ""
+    expression  = ".*Connection closed by authenticating user root"
+    drop_counter_reason = "noisy"
+  }
+  forward_to = [loki.write.grafana_loki.receiver]
+}
 ```
 
 The `loki.process` component allows you to transform, filter, parse, and enrich log data.
@@ -273,16 +273,16 @@ The [`loki.process`][loki.process] documentation provides more comprehensive inf
 Copy and paste this component configuration below the previous component in your `config.alloy` file.
 
 ```alloy
-  loki.write "grafana_loki" {
-    endpoint {
-      url = "http://localhost:3100/loki/api/v1/push"
+loki.write "grafana_loki" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
 
-      // basic_auth {
-      //  username = "admin"
-      //  password = "admin"
-      // }
-    }
+    // basic_auth {
+    //  username = "admin"
+    //  password = "admin"
+    // }
   }
+}
 ```
 
 This final component creates a [`loki.write`][loki.write] component named `grafana_loki` that points to `http://localhost:3100/loki/api/v1/push`.
@@ -337,7 +337,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 1. Call the `/-/reload` endpoint to tell {{< param "PRODUCT_NAME" >}} to reload the configuration file without a system service restart.
 
    ```bash
-    curl -X POST http://localhost:12345/-/reload
+   curl -X POST http://localhost:12345/-/reload
    ```
    <!-- INTERACTIVE ignore START -->
    {{< admonition type="tip" >}}
@@ -360,7 +360,7 @@ With this configuration, {{< param "PRODUCT_NAME" >}} connects directly to the L
 {{< docs/ignore >}}
 
    ```bash
-    sudo systemctl reload alloy
+   sudo systemctl reload alloy
    ```
 
 {{< /docs/ignore >}}

@@ -9,12 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )
@@ -84,7 +84,7 @@ func Test_serviceManager(t *testing.T) {
 	t.Run("can forward to stdout", func(t *testing.T) {
 		listenHost := getListenHost(t)
 
-		var buf syncBuffer
+		var buf syncbuffer.Buffer
 
 		mgr := newServiceManager(l, serviceManagerConfig{
 			Path:   serviceBinary,
@@ -112,7 +112,7 @@ func Test_serviceManager(t *testing.T) {
 	t.Run("can forward to stderr", func(t *testing.T) {
 		listenHost := getListenHost(t)
 
-		var buf syncBuffer
+		var buf syncbuffer.Buffer
 
 		mgr := newServiceManager(l, serviceManagerConfig{
 			Path:   serviceBinary,
@@ -185,25 +185,4 @@ func makeServiceRequest(host string, path string, body []byte) ([]byte, error) {
 		return nil, fmt.Errorf("unexpected status code %s", resp.Status)
 	}
 	return io.ReadAll(resp.Body)
-}
-
-// syncBuffer wraps around a bytes.Buffer and makes it safe to use from
-// multiple goroutines.
-type syncBuffer struct {
-	mut sync.RWMutex
-	buf bytes.Buffer
-}
-
-func (sb *syncBuffer) Bytes() []byte {
-	sb.mut.RLock()
-	defer sb.mut.RUnlock()
-
-	return sb.buf.Bytes()
-}
-
-func (sb *syncBuffer) Write(p []byte) (n int, err error) {
-	sb.mut.Lock()
-	defer sb.mut.Unlock()
-
-	return sb.buf.Write(p)
 }

@@ -27,6 +27,14 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	dConfig := cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, role, m.Spec.AttachMetadata)
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, dConfig)
 
+	if m.Spec.ScrapeProtocols != nil {
+		protocols, err := convertScrapeProtocols(m.Spec.ScrapeProtocols)
+		if err != nil {
+			return nil, err
+		}
+		cfg.ScrapeProtocols = protocols
+	}
+
 	if ep.Interval != "" {
 		if cfg.ScrapeInterval, err = model.ParseDuration(string(ep.Interval)); err != nil {
 			return nil, fmt.Errorf("parsing interval from serviceMonitor: %w", err)

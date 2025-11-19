@@ -43,10 +43,7 @@ Click the {{< param "PRODUCT_NAME" >}} logo to navigate back to the home page.
 
 ### Graph page
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< figure src="/media/docs/alloy/ui_graph_page_new_2.png" alt="Alloy UI graph page" >}}
 
@@ -57,7 +54,7 @@ You can click and drag the components to move them around.
 
 To access the graph page of a module, click on the **Graph** button on the module's detail page.
 
-The amount of data that exits a component that supports [live debugging][#live-debugging-page] is shown on the outgoing edges of the component.
+The amount of data that exits a component that supports [live debugging](#live-debugging-page) is shown on the outgoing edges of the component.
 The data is refreshed according to the `window` parameter.
 ### Component detail page
 

@@ -1,6 +1,9 @@
 package build
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -22,7 +25,26 @@ func split(collectorList string) []string {
 	return strings.Split(collectorList, ",")
 }
 
+// This behavior is copied from getDefaultPath() function in:
+// windows_exporter@v0.27.4-0.20241010144849-a0f6d3bcf9a4\pkg\collector\textfile\textfile.go
+func getDefaultTextFileConfig() windows_exporter.TextFileConfig {
+	execPath, _ := os.Executable()
+	return windows_exporter.TextFileConfig{
+		TextFileDirectory: filepath.Join(filepath.Dir(execPath), "textfile_inputs"),
+	}
+}
+
 func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
+	// In order to support the rename of text_file block to textfile,
+	// we need to leave them both as nil in the Arguments default, but that breaks
+	// the behavior of the syntax token builder encodeFields function checking for default values
+	var textfile *windows.TextFileConfig
+	if !reflect.DeepEqual(config.TextFile, getDefaultTextFileConfig()) {
+		textfile = &windows.TextFileConfig{
+			Directories: split(config.TextFile.TextFileDirectory),
+		}
+	}
+
 	return &windows.Arguments{
 		EnabledCollectors: split(config.EnabledCollectors),
 		Dfsr: windows.DfsrConfig{
@@ -45,10 +67,11 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			SiteInclude:   config.IIS.SiteInclude,
 		},
 		LogicalDisk: windows.LogicalDiskConfig{
-			BlackList: config.LogicalDisk.BlackList,
-			WhiteList: config.LogicalDisk.WhiteList,
-			Include:   config.LogicalDisk.Include,
-			Exclude:   config.LogicalDisk.Exclude,
+			BlackList:   config.LogicalDisk.BlackList,
+			WhiteList:   config.LogicalDisk.WhiteList,
+			Include:     config.LogicalDisk.Include,
+			Exclude:     config.LogicalDisk.Exclude,
+			EnabledList: split(config.LogicalDisk.EnabledList),
 		},
 		MSSQL: windows.MSSQLConfig{
 			EnabledClasses: split(config.MSSQL.EnabledClasses),
@@ -77,10 +100,12 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Include: config.Printer.Include,
 		},
 		Process: windows.ProcessConfig{
-			BlackList: config.Process.BlackList,
-			WhiteList: config.Process.WhiteList,
-			Exclude:   config.Process.Exclude,
-			Include:   config.Process.Include,
+			BlackList:              config.Process.BlackList,
+			WhiteList:              config.Process.WhiteList,
+			Exclude:                config.Process.Exclude,
+			Include:                config.Process.Include,
+			EnableIISWorkerProcess: config.Process.EnableIISWorkerProcess,
+			CounterVersion:         config.Process.CounterVersion,
 		},
 		ScheduledTask: windows.ScheduledTaskConfig{
 			Exclude: config.ScheduledTask.Exclude,
@@ -102,9 +127,7 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude:   config.SMTP.Exclude,
 			Include:   config.SMTP.Include,
 		},
-		TextFile: windows.TextFileConfig{
-			TextFileDirectory: config.TextFile.TextFileDirectory,
-		},
+		TextFile: textfile,
 		TCP: windows.TCPConfig{
 			EnabledList: split(config.TCP.EnabledList),
 		},
@@ -114,6 +137,11 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		Update: windows.UpdateConfig{
 			Online:         config.Update.Online,
 			ScrapeInterval: config.Update.ScrapeInterval,
+		},
+		Net: windows.NetConfig{
+			Include:     config.Net.Include,
+			Exclude:     config.Net.Exclude,
+			EnabledList: split(config.Net.EnabledList),
 		},
 	}
 }
