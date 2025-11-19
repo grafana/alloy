@@ -18,7 +18,7 @@ Main (unreleased)
 
 - `loki.source.api` no longer drops request when relabel rules drops a specific stream. (@kalleep)
 
-- (_Experimental_) Additions to experimental `database_observability.postgres` component:
+- (_Public Preview_) Additions to `database_observability.postgres` component:
     - fixes collection of Postgres schema details for mixed case table names (@fridgepoet)
 
 v1.12.0-rc.0
