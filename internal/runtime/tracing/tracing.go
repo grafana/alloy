@@ -142,7 +142,7 @@ func (t *Tracer) Update(opts Options) error {
 	t.samplerMut.Lock()
 	defer t.samplerMut.Unlock()
 
-	SetOTELTraceContextPropagators(opts)
+	setOTELTraceContextPropagators(opts)
 
 	t.client.UpdateWriteTo(opts.WriteTo)
 
