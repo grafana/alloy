@@ -223,26 +223,6 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - name: Download dist
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: dist
-        path: dist
-
-    # Overwrite the original Windows Alloy executable with the signed version
-    - name: Download signed Windows executable
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-executables-signed
-        path: .
-
-    # Overwrite the original Windows Alloy installer with the signed version
-    - name: Download signed Windows installer
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      with:
-        name: windows-installer-signed
-        path: dist
-
     # A GitHub App is used to create the release instead of github-actions so that submit-winget-manifest is triggered when the release is published
     - name: Get GitHub app secrets
       id: get-secrets
@@ -269,10 +249,25 @@ jobs:
         token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
 
-    - name: Configure Git
-      run: |
-        git config user.name "$GITHUB_ACTOR"
-        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+    - name: Download dist
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: dist
+        path: dist
+
+    # Overwrite the original Windows Alloy executable with the signed version
+    - name: Download signed Windows executable
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: windows-executables-signed
+        path: .
+
+    # Overwrite the original Windows Alloy installer with the signed version
+    - name: Download signed Windows installer
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+      with:
+        name: windows-installer-signed
+        path: dist
 
     - name: Publish
       run: |
