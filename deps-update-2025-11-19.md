@@ -105,9 +105,16 @@ No reorganization needed. ✅
 - Line 226: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
 - Line 285: `profile.Sample().Len()` → `profile.Samples().Len()`
 
-**Status:** ✅ Build successful with local fix. The fork at `github.com/grafana/opentelemetry-ebpf-profiler` needs to be updated with this fix. Currently using a local replace directive pointing to `/tmp/ebpf-profiler-fix`.
+**Status:** ✅ Build successful! Using the fixed code from `github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140` branch, which includes the API compatibility fixes.
 
-**Next Steps:** 
-1. Create a PR to the grafana/opentelemetry-ebpf-profiler fork with this fix
-2. Once merged, update the replace directive to use the new commit
+**Fix Applied:** The `reporter/internal/pdata/generate.go` file has been updated with the fixed code from the thampiotr fork:
+- Line 151: `profile.Sample().AppendEmpty()` → `profile.Samples().AppendEmpty()`
+- Line 216: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
+- Line 281: `profile.Sample().Len()` → `profile.Samples().Len()`
+
+**Note:** The thampiotr fork (`alloy-fork-v0.140` branch) contains the fix but has some structural differences (different import paths) and doesn't include all the packages Alloy needs (specifically the `pyroscope` packages). Therefore, we're using the grafana fork as the base and applying the same API fixes directly. The replace directive currently points to a local path with the fix applied.
+
+**Next Steps:**
+1. The fix should be merged into the main `grafana/opentelemetry-ebpf-profiler` fork
+2. Once merged, update the replace directive to use the new commit from the grafana fork
 3. Remove the local path replace directive

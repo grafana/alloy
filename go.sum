@@ -1175,6 +1175,8 @@ github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8 h1:yQAdbWisIEPjS1eOA6FmM2SWREm4o4XqtDJTaXYnN1k=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c/go.mod h1:eXOwk9x2rmJZ9+Ov5ot7NitRWNmF0jynNEeuIDRnK/Q=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
