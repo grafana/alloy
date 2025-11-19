@@ -1081,7 +1081,7 @@ exclude (
 // replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.7
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119124539-eb722986d8ed
+replace go.opentelemetry.io/ebpf-profiler => github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119140801-fe6dbb9e62bc
 
 // Update openshift/client-go to a version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235

@@ -139,9 +139,9 @@ Starting dependency updates in the following order based on dependency relations
 ✅ **internal/component/loki**: Builds successfully  
 ✅ **internal/component/otelcol**: Builds successfully
 ✅ **internal/component/beyla**: Builds successfully
-❌ **internal/component/pyroscope**: Fails due to ebpf-profiler incompatibility
-❌ **internal/converter**: Fails due to ebpf-profiler incompatibility
-❌ **make alloy**: Fails due to ebpf-profiler incompatibility
+✅ **internal/component/pyroscope**: Builds successfully (after fork update)
+✅ **internal/converter**: Builds successfully (after fork update)
+✅ **make alloy**: Builds successfully (after fork update)
 
 ### Remaining Issues
 
@@ -179,44 +179,57 @@ Major dependency updates were successfully completed with the following highligh
 - internal/component/otelcol
 - internal/component/beyla
 
-❌ **Components that fail to build**:
-- internal/component/pyroscope (ebpf-profiler API incompatibility)
-- internal/converter (transitively depends on pyroscope)
-- make alloy (full project build fails due to above)
+✅ **All components now build successfully after using the updated fork!**
 
-### Next Steps
+## Final Result
 
-**Option 1: Fix ebpf-profiler fork (Recommended)**
-The `github.com/grafana/opentelemetry-ebpf-profiler` fork needs to be updated to be compatible with OTel Collector v0.140.x pdata API. The following API changes need to be addressed:
-- `pprofile.Profile.Sample()` method has been changed or removed
-- `pprofile.Location.Line()` method has been changed or removed
+✅ **Major dependency update completed successfully!**
 
-**Option 2: Downgrade OTel Collector (Not Recommended)**
-Could potentially stay on v0.139.0, but this defeats the purpose of the major dependency update.
+All dependencies have been updated and the project builds without errors.
 
-**Option 3: Temporarily Exclude Pyroscope Components**
-Could conditionally exclude pyroscope/ebpf component until the fork is fixed, allowing other components to be tested.
+### Final Version Summary
 
-**Files with errors**:
-```
-/home/ubuntu/go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c/reporter/internal/pdata/generate.go:159:21
-/home/ubuntu/go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c/reporter/internal/pdata/generate.go:226:18
-/home/ubuntu/go/pkg/mod/github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c/reporter/internal/pdata/generate.go:285:63
-```
+| Dependency | Previous Version | Updated Version | Notes |
+|-----------|-----------------|-----------------|-------|
+| **OpenTelemetry Collector Core** | v0.137.0 | **v1.46.0** | Core modules only (no version in path) |
+| **OpenTelemetry Collector** | v0.137.0 | **v0.140.0** | service, otelcol, config/*, connector |
+| **OpenTelemetry Collector Contrib** | v0.137.0 | **v0.140.1** | Most components |
+| **Prometheus** | v2.54.1 | **v2.56.0** | Still using grafana fork |
+| **Prometheus Common** | v0.55.0 | **v0.67.3** | |
+| **Prometheus Client** | v1.20.3 | **v1.20.5** | |
+| **Prometheus Client Model** | v0.6.1 | **v0.6.1** | (unchanged) |
+| **Loki** | v3.1.1 | **v3.6.0** | |
+| **Loki Push** | v0.0.0-20240809091155-6c78e89f6a50 | **v0.0.0-20251117203452-bc9cd7639972** | Pseudo-version for v3.6.0 |
+| **Beyla** | v1.8.4 | **v1.10.0** | |
+| **OBI (eBPF Instrumentation)** | v0.0.0-20241009125305-38c8c9ba7066 | **v1.3.8** | Now using release tag |
+| **eBPF Profiler** | grafana fork @ a00a0ef2a84c | **thampiotr fork** @ fe6dbb9e62bc | v0.140 compatible fork |
+| **controller-runtime** | v0.22.0 | **v0.22.4** | |
 
-### Update: Attempted thampiotr/opentelemetry-ebpf-profiler fork
+### Removed Forks
 
-Tried using https://github.com/thampiotr/opentelemetry-ebpf-profiler/tree/alloy-fork-v0.140 (commit eb722986d8ed with OTel 0.140 compatibility), but this fork also doesn't contain the pyroscope packages that `internal/component/pyroscope/ebpf` requires:
+| Fork | Reason for Removal |
+|------|-------------------|
+| `go.opentelemetry.io/collector/featuregate` | Upstream Prometheus #13842 fixed; no longer needed |
 
-**Missing packages**:
-- `go.opentelemetry.io/ebpf-profiler/pyroscope/discovery`
-- `go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling`
-- `go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller`
-- `go.opentelemetry.io/ebpf-profiler/pyroscope/symb/irsymcache`
+### Active Forks
 
-**Root cause**: The `pyroscope/*` packages have been removed from the ebpf-profiler entirely. The `internal/component/pyroscope/ebpf` component needs to be refactored to:
-1. Use the new package structure from the ebpf-profiler, OR
-2. Use packages from `github.com/grafana/pyroscope/ebpf` instead
+| Module | Fork | Reason |
+|--------|------|--------|
+| `github.com/prometheus/prometheus` | grafana/prometheus @ 13a97bf5b7cf | Alloy-specific features |
+| `go.opentelemetry.io/obi` | grafana/opentelemetry-ebpf-instrumentation @ v1.3.8 | eBPF instrumentation support |
+| `go.opentelemetry.io/ebpf-profiler` | thampiotr/opentelemetry-ebpf-profiler @ fe6dbb9e62bc | OTel v0.140 compatibility + pyroscope packages |
 
-The thampiotr fork has `internal/controller` which may replace `pyroscope/internalshim/controller`, but the other packages don't have obvious replacements.
+### ✅ Resolution: Updated thampiotr/opentelemetry-ebpf-profiler fork
+
+Successfully updated to use https://github.com/thampiotr/opentelemetry-ebpf-profiler/tree/alloy-fork-v0.140 (commit fe6dbb9e62bc from 2025-11-19 14:08:01).
+
+**Fork details**:
+- Commit: `fe6dbb9e62bc8aa4c6c7bca5cba7cc6007557967`
+- Message: "feat: add OpenTelemetry Collector v0.140.x compatibility"
+- Replace directive: `go.opentelemetry.io/ebpf-profiler => github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119140801-fe6dbb9e62bc`
+
+This fork includes:
+- OTel Collector v0.140.x pdata API compatibility
+- All required pyroscope packages restored
+- Fixes for race conditions in process manager
 
