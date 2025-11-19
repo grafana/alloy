@@ -1099,4 +1099,4 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
-replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c
+replace go.opentelemetry.io/ebpf-profiler => github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.202546-0.20251119140801-fe6dbb9e62bc

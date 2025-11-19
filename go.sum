@@ -1175,8 +1175,6 @@ github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd
 github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0/go.mod h1:mm8+xyQfgDmqhyegZRNIQmoKsNnDTwWKFLsdMoXAb7A=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8 h1:yQAdbWisIEPjS1eOA6FmM2SWREm4o4XqtDJTaXYnN1k=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8/go.mod h1:/O9nceaQ+yhwDdosHsQrs1AilAJWAZf2Laa2DssrjJk=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c h1:I9KB024eev8z9NRJZTcmTw0V0+txKLC6RqPUX3ADO2s=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202546-0.20251106085643-a00a0ef2a84c/go.mod h1:eXOwk9x2rmJZ9+Ov5ot7NitRWNmF0jynNEeuIDRnK/Q=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363 h1:/vCopugIegPx9brm+E9+4bMQ6uIsZujCoE7su3bLLbk=
@@ -2280,6 +2278,8 @@ github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0 h1:o3bgcECyB
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0/go.mod h1:ljLR42dN7k40CX0dp30R8BRIB3OOdvr7rBANEpfmMs4=
 github.com/tg123/go-htpasswd v1.2.4 h1:HgH8KKCjdmo7jjXWN9k1nefPBd7Be3tFCTjc2jPraPU=
 github.com/tg123/go-htpasswd v1.2.4/go.mod h1:EKThQok9xHkun6NBMynNv6Jmu24A33XdZzzl4Q7H1+0=
+github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.202546-0.20251119140801-fe6dbb9e62bc h1:BdCEt5ZVfByA54liI3QNj3O5BYWy2iComTxBgqms/ew=
+github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.202546-0.20251119140801-fe6dbb9e62bc/go.mod h1:gIoPsnQhcGEVfPtL3gz3U3cVko8s1Zc2o8hh9kGEpyM=
 github.com/tidwall/gjson v1.10.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=
 github.com/tidwall/gjson v1.18.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=

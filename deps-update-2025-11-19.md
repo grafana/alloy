@@ -51,11 +51,13 @@ Tools to be used:
 
 ### ebpf-profiler Fork
 
-**Fork:** `github.com/grafana/opentelemetry-ebpf-profiler`
-**Current commit:** a00a0ef (Nov 6, 2025)
-**Latest commit:** a00a0ef (same)
+**Fork:** `github.com/thampiotr/opentelemetry-ebpf-profiler` branch `alloy-fork-v0.140`
+**Current commit:** fe6dbb9e62bc (Nov 19, 2025)
+**Previous fork:** `github.com/grafana/opentelemetry-ebpf-profiler` commit a00a0ef (Nov 6, 2025)
 
-**Status:** ✅ Using latest commit. No update needed.
+**Status:** ✅ Using thampiotr fork which includes:
+- OTel v0.140.0 API compatibility fixes (`profile.Samples()`, `loc.Lines()`)
+- All required pyroscope packages (`pyroscope/discovery`, `pyroscope/dynamicprofiling`, `pyroscope/internalshim/controller`, `pyroscope/symb/irsymcache`)
 
 ### Other Forks
 
@@ -78,7 +80,7 @@ Target versions:
 - Prometheus common: v0.67.3
 - Loki: v3.6.0
 - OBI: v1.3.8
-- ebpf-profiler: keep current commit
+- ebpf-profiler: thampiotr fork `alloy-fork-v0.140` (commit fe6dbb9e62bc)
 
 **Update Status:** ✅ Successfully updated go.mod. All major dependencies updated to target versions. `go mod tidy` completed successfully.
 
@@ -100,28 +102,8 @@ No reorganization needed. ✅
 - `profile.Sample()` → `profile.Samples()` (returns SampleSlice)
 - `loc.Line()` → `loc.Lines()` (returns LineSlice)
 
-**Fix Applied:** Updated the fork code locally to use the new API:
-- Line 159: `profile.Sample().AppendEmpty()` → `profile.Samples().AppendEmpty()`
-- Line 226: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
-- Line 285: `profile.Sample().Len()` → `profile.Samples().Len()`
+**Solution:** Switched to `github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140` fork which includes:
+- ✅ OTel v0.140.0 API compatibility fixes (`profile.Samples()`, `loc.Lines()`)
+- ✅ All required pyroscope packages (`pyroscope/discovery`, `pyroscope/dynamicprofiling`, `pyroscope/internalshim/controller`, `pyroscope/symb/irsymcache`)
 
-**Status:** ✅ Build successful! Using the fixed code from `github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140` branch, which includes the API compatibility fixes.
-
-**Fix Applied:** The `reporter/internal/pdata/generate.go` file has been updated with the fixed code from the thampiotr fork:
-- Line 151: `profile.Sample().AppendEmpty()` → `profile.Samples().AppendEmpty()`
-- Line 216: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
-- Line 281: `profile.Sample().Len()` → `profile.Samples().Len()`
-
-**Issue:** The thampiotr fork (`github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140`) contains the OTel v0.140 compatibility fixes, but it doesn't include the `pyroscope` packages that Alloy requires. Go modules don't support replacing individual subpackages - when you replace a module, it replaces the entire module.
-
-**Current Status:** ⚠️ **BLOCKED** - Using the grafana fork (`github.com/grafana/opentelemetry-ebpf-profiler@v0.0.202546-0.20251106085643-a00a0ef2a84c`) which has all required packages, but it still uses the old API that's incompatible with OTel v0.140. The build will fail until the grafana fork is updated with the fix.
-
-**Required Fix:** The `grafana/opentelemetry-ebpf-profiler` fork needs to be updated with the API compatibility fixes from the thampiotr fork. The changes needed in `reporter/internal/pdata/generate.go`:
-- Line 159: `profile.Sample().AppendEmpty()` → `profile.Samples().AppendEmpty()`
-- Line 226: `loc.Line().AppendEmpty()` → `loc.Lines().AppendEmpty()`
-- Line 285: `profile.Sample().Len()` → `profile.Samples().Len()`
-
-**Next Steps:**
-1. Apply the fix from `github.com/thampiotr/opentelemetry-ebpf-profiler@alloy-fork-v0.140` to the `grafana/opentelemetry-ebpf-profiler` fork
-2. Once merged, update the replace directive to use the new commit from the grafana fork
-3. The build will then succeed
+**Status:** ✅ **RESOLVED** - Build successful! The thampiotr fork (commit `fe6dbb9e62bc`, updated Nov 19, 2025) contains both the API fixes and all required packages. The project builds successfully with all dependencies updated.
