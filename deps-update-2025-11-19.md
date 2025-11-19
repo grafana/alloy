@@ -42,12 +42,12 @@
 - Upgraded Prometheus core dependency to `v0.307.3` (release `v3.7.3`) while continuing to route it through the `staleness_disabling_v3.7.3` Grafana fork.
 - Prometheus common moved to `v0.67.3`; client_golang/client_model were already current.
 - Updated `go.opentelemetry.io/obi` replace to the latest fork tag `v1.3.8`.
-- Patched the Grafana eBPF profiler fork to support the new `pprofile` API introduced in Collector `v0.140.x`. To keep the race fix while adapting to the new APIs, the fork now lives under `third_party/opentelemetry-ebpf-profiler` and exposes updated `Samples()` / `Lines()` usage plus refreshed tests. The module replace points to this local copy.
+- Adopted the dedicated `thampiotr/opentelemetry-ebpf-profiler` fork (`alloy-fork-v0.140`, pseudo-version `v0.0.0-20251119140801-fe6dbb9e62bc`), which bundles both the Grafana race fix and the new `pprofile` API updates (`Samples()`/`Lines()`). go.mod now replaces `go.opentelemetry.io/ebpf-profiler` with that fork, so no vendored copy is needed.
 - Tidied modules (`go mod tidy`) after the upgrades; go.mod now carries only two `require` blocks (direct and indirect), with the former reorganized alphabetically during the update.
 
 ## Step 5 – go.mod Organization
 - Collapsed the third indirect `require` block into the main indirect block so that go.mod now follows the requested structure: one direct block, one indirect block, followed by replace/exclude sections.
-- Documented special cases inline (e.g., opencensusreceiver removal, new local profiler fork) to make future upgrades easier.
+- Documented special cases inline (e.g., opencensusreceiver removal, new profiler fork replace) to make future upgrades easier.
 
 ## Step 6 – Build & Validation
 - `make alloy` initially failed because the Grafana eBPF profiler fork still relied on the pre-`v0.140` `pprofile` API (`Profile.Sample`, `Location.Line`). The local fork now mirrors upstream’s `Samples()` / `Lines()` helpers, resolving those build breaks.

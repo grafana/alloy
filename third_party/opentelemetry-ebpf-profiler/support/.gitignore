@@ -1,3 +1,0 @@
-*.test
-ebpf/tracer.ebpf.debug.amd64
-ebpf/tracer.ebpf.debug.arm64

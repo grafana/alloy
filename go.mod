@@ -1081,8 +1081,6 @@ exclude (
 
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.3.8
 
-replace go.opentelemetry.io/ebpf-profiler => ./third_party/opentelemetry-ebpf-profiler
-
 // Update openshift/client-go to a version compatible with structured-merge-diff v6
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
@@ -1097,3 +1095,5 @@ replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
+
+replace go.opentelemetry.io/ebpf-profiler => github.com/thampiotr/opentelemetry-ebpf-profiler v0.0.0-20251119140801-fe6dbb9e62bc

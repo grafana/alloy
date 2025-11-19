@@ -1,7 +1,0 @@
-*-debug-syms
-fixed-address
-the_notorious_build_id
-kernel-image
-ubuntu-kernel-image
-go-binary
-separate-debug-file
