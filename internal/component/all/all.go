@@ -174,6 +174,4 @@ import (
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"                 // Import remote.kubernetes.secret
 	_ "github.com/grafana/alloy/internal/component/remote/s3"                                // Import remote.s3
 	_ "github.com/grafana/alloy/internal/component/remote/vault"                             // Import remote.vault
-
-	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )

@@ -53,7 +53,6 @@ import (
 	"github.com/grafana/alloy/internal/static/traces/remotewriteexporter"
 	"github.com/grafana/alloy/internal/static/traces/servicegraphprocessor"
 	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor"
-	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 const (
