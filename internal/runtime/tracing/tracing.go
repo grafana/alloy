@@ -113,7 +113,7 @@ func New(cfg Options) (*Tracer, error) {
 	var sampler lazySampler
 	sampler.SetSampler(tracesdk.TraceIDRatioBased(cfg.SamplingFraction))
 
-	SetOTELTraceContextPropagators(cfg)
+	setOTELTraceContextPropagators(cfg)
 
 	shimClient := &client{}
 	exp := otlptrace.NewUnstarted(shimClient)
