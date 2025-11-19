@@ -151,6 +151,7 @@ Note: `metric_name_escaping_scheme` cannot be set to `"allow-utf-8"` while `metr
 [prom-text-exposition-format]: https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format
 [prom-staleness]: https://prometheus.io/docs/prometheus/latest/querying/basics/#staleness
 [mimir-ooo]: https://grafana.com/docs/mimir/latest/configure/configure-out-of-order-samples-ingestion/
+[prom-proposal-ts]: https://github.com/prometheus/proposals/blob/main/proposals/0029-created-timestamp.md
 
 ## Blocks
 
