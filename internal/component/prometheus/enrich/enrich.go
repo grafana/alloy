@@ -97,7 +97,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
-	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
+	c.fanout = prometheus.NewFanout(args.ForwardTo, opts.Registerer, ls)
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
 		ls,

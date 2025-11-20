@@ -65,7 +65,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := alloyprom.NewFanout(args.ForwardTo, opts.ID, opts.Registerer, ls)
+	fanout := alloyprom.NewFanout(args.ForwardTo, opts.Registerer, ls)
 
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)

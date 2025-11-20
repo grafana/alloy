@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
@@ -15,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/prometheus/prometheus/storage"
 )
 
 func init() {
@@ -87,7 +88,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 	ls := service.(labelstore.LabelStore)
-	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls)
+	fanout := prometheus.NewFanout(nil, o.Registerer, ls)
 
 	converter := convert.New(o.Logger, fanout, convertArgumentsToConvertOptions(c))
 

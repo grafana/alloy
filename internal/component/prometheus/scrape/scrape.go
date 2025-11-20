@@ -16,10 +16,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
 	promlogging "github.com/prometheus/prometheus/util/logging"
@@ -310,7 +307,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("honor_metadata is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
-	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		// NOTE: This is not Update()-able.
 		ExtraMetrics: args.ExtraMetrics,
@@ -353,7 +350,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		unregisterer:        unregisterer,
 	}
 
-	interceptor := c.newInterceptor(ls)
+	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), ls, c.debugDataPublisher, alloyAppendable)
 
 	scraper, err := scrape.NewManager(
 		scrapeOptions,
@@ -646,68 +643,6 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 	}
 
 	return allTargets
-}
-
-func (c *Component) newInterceptor(ls labelstore.LabelStore) *prometheus.Interceptor {
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	return prometheus.NewInterceptor(c.appendable, ls,
-		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.Append(globalRef, l, t, v)
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
-				},
-			))
-			return globalRef, nextErr
-		}),
-		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					var data string
-					if h != nil {
-						data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
-					} else if fh != nil {
-						data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
-					} else {
-						data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
-					}
-					return data
-				},
-			))
-			return globalRef, nextErr
-		}),
-		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.UpdateMetadata(globalRef, l, m)
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
-				},
-			))
-			return globalRef, nextErr
-		}),
-		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
-			_, nextErr := next.AppendExemplar(globalRef, l, e)
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
-				},
-			))
-			return globalRef, nextErr
-		}),
-	)
 }
 
 func (c *Component) LiveDebugging() {}
