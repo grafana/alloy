@@ -22,6 +22,8 @@ Main (unreleased)
 
 - update promtail converter to use `file_match` block for `loki.source.file` instead of going through `local.file_match`. (@kalleep)
 
+- Added `send_traceparent` option for `tracing` config to enable traceparent header propagation. (@MyDigitalLife)
+
 - Add `meta_cache_address` to `beyla.ebpf` component. (@skl)
 
 ### Bugfixes
