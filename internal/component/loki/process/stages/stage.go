@@ -2,8 +2,6 @@ package stages
 
 import (
 	"fmt"
-	"os"
-	"runtime"
 	"time"
 
 	"github.com/go-kit/log"
@@ -11,7 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v2"
 )
 
 // TODO(@tpaschalis) Let's use this as the list of stages we need to port over.
@@ -74,42 +71,14 @@ type Stage interface {
 	Cleanup()
 }
 
-func (entry *Entry) copy() *Entry {
-	out, err := yaml.Marshal(entry)
-	if err != nil {
-		return nil
-	}
-
-	var n *Entry
-	err = yaml.Unmarshal(out, &n)
-	if err != nil {
-		return nil
-	}
-
-	return n
-}
-
 // stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
 type stageProcessor struct {
 	Processor
-
-	inspector *inspector
 }
 
 func (s stageProcessor) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
-		var before *Entry
-
-		if Inspect {
-			before = e.copy()
-		}
-
 		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-
-		if Inspect {
-			s.inspector.inspect(s.Processor.Name(), before, e)
-		}
-
 		return e
 	})
 }
@@ -117,7 +86,6 @@ func (s stageProcessor) Run(in chan Entry) chan Entry {
 func toStage(p Processor) Stage {
 	return &stageProcessor{
 		Processor: p,
-		inspector: newInspector(os.Stderr, runtime.GOOS == "windows"),
 	}
 }
 
